@@ -8,7 +8,7 @@ import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import type { AppConnectionRedirect } from "@app/pages/v4/components/app-connection-form";
 
-import { useConnectionCreation } from "../flows/connection-creation";
+import { useConnectionCreation } from "../../../../components/connection-creation";
 import {
   RotationField as SyncField,
   SelectField,

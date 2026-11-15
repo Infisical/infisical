@@ -68,10 +68,12 @@ const algorithmName = (label: string) =>
   (certKeyAlgorithmToNameMap as Record<string, string>)[label] ?? label.replace(/_/g, " ");
 
 const expirationSlices = (stats: TDashboardStats): DonutSlice[] => {
-  const count = (buckets: string[]) =>
-    stats.expirationBuckets
-      .filter((entry) => buckets.includes(entry.bucket))
+  const count = (buckets: string[]) => {
+    const wanted = new Set(buckets);
+    return stats.expirationBuckets
+      .filter((entry) => wanted.has(entry.bucket))
       .reduce((sum, entry) => sum + entry.count, 0);
+  };
   return [
     {
       label: "Under 7 days",
@@ -143,8 +145,8 @@ export const DashboardPage = () => {
     return (
       <Navigate
         replace
-        to={v4Path("/organizations/$orgId/$")}
-        params={{ orgId, _splat: "cert-manager/applications" }}
+        to={v4Path("/organizations/$orgId/cert-manager/applications")}
+        params={{ orgId }}
       />
     );
 

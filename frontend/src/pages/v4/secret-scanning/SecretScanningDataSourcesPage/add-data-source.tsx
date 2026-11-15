@@ -30,10 +30,10 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useDebounced } from "../../access/org/use-debounced";
 import { readableFailure, toast } from "../../access/toast";
+import { useConnectionCreation } from "../../components/connection-creation";
 import { useV4Adapter } from "../../data/adapters";
 import { startConnectionRedirect } from "../../data/integrations/connection-redirect";
 import { orgHref } from "../../links";
-import { useConnectionCreation } from "../../secret-manager/OverviewPage/secrets/flows/connection-creation";
 
 type Draft = {
   type: SecretScanningDataSource;

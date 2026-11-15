@@ -32,7 +32,7 @@ import {
 import type { THsmConnector } from "@app/hooks/api/hsmConnectors/types";
 
 import { formatDate } from "../../access/roles";
-import { saved, toast } from "../../access/toast";
+import { failed, saved, toast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { HsmPlan } from "../../data/cert-manager-settings/contract-hsm";
@@ -51,12 +51,14 @@ const Title = () => (
   </Inline>
 );
 
-const DeleteHsmConnectorDialog = ({
+export const DeleteHsmConnectorDialog = ({
   connector,
-  onClose
+  onClose,
+  onDeleted
 }: {
   connector?: THsmConnector;
   onClose: () => void;
+  onDeleted?: () => void;
 }) => {
   const remove = useV4Adapter("certManagerSettings").useDeleteHsmConnector();
   const [pending, setPending] = useState(false);
@@ -86,6 +88,7 @@ const DeleteHsmConnectorDialog = ({
               if (!deleted) return;
               saved(`HSM connector ${connector.name} deleted`);
               onClose();
+              onDeleted?.();
             }}
           >
             Delete
@@ -144,7 +147,10 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
     setTestingId(connector.id);
     const result = await test
       .mutateAsync({ connectorId: connector.id })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        failed(`Couldn't verify ${connector.name}`, error);
+        return undefined;
+      })
       .finally(() => setTestingId(undefined));
     if (!result) return;
     if (result.ok) {

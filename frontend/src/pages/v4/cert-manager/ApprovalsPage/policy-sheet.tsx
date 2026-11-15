@@ -18,6 +18,7 @@ import {
   type CertRequestPolicyConditions,
   type TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
+import type { TPkiApplicationMember } from "@app/hooks/api/pkiApplications/types";
 
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -119,19 +120,35 @@ const hasErrors = (errors: Errors) =>
     errors.stepErrors?.some((step) => Object.values(step).some(Boolean))
   );
 
+const memberOptions = (
+  members: TPkiApplicationMember[] | undefined,
+  key: "actorUserId" | "actorGroupId"
+) =>
+  (members ?? []).flatMap((member) => {
+    const id = member[key];
+    if (!id) return [];
+    const { name, username, email } = member.details ?? {};
+    return [{ value: id, label: name || username || email || id }];
+  });
+
 export const PolicySheet = ({
   projectId,
   policy,
+  application,
   onClose
 }: {
   projectId: string;
   policy?: TApprovalPolicy;
+  application?: { id: string; name: string };
   onClose: () => void;
 }) => {
   const approvals = useV4Adapter("approvalRequests");
   const update = approvals.useUpdatePolicy();
   const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({});
   const { data: directory } = approvals.useApprovers(projectId, { includeGroupMembers: false });
+  const { data: appMembers } = useV4Adapter("pkiApplications").useApplicationMembers(
+    application?.id ?? ""
+  );
   const [draft, setDraft] = useState<Draft>(() => draftOf(policy));
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState(0);
@@ -167,8 +184,12 @@ export const PolicySheet = ({
       ...draft.profileNames
     ])
   ].map((slug) => ({ value: slug, label: slug }));
-  const userOptions = (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
-  const groupOptions = (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
+  const userOptions = application
+    ? memberOptions(appMembers, "actorUserId")
+    : (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
+  const groupOptions = application
+    ? memberOptions(appMembers, "actorGroupId")
+    : (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
   const nameOf = (options: { value: string; label: string }[], id: string) =>
     options.find((option) => option.value === id)?.label ?? id;
   const close = () => {
@@ -366,7 +387,16 @@ export const PolicySheet = ({
                           }
                         />
                       </Field>
-                      <Field label="User approvers" error={stepError?.approvers} wide>
+                      <Field
+                        label="User approvers"
+                        description={
+                          application
+                            ? `Only members of ${application.name} can approve.`
+                            : undefined
+                        }
+                        error={stepError?.approvers}
+                        wide
+                      >
                         <MultiSelect
                           label="User approvers"
                           placeholder="Select users"
