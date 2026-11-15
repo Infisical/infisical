@@ -10,7 +10,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Calendar } from "@infisical/cipher/ui/calendar";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { Empty, EmptyHeader, EmptyState, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Json, type JsonValue } from "@infisical/cipher/ui/json";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
@@ -30,6 +30,11 @@ import { Heading, Meta } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import {
   eventToNameMap,
   projectToEventsMap,
@@ -44,9 +49,12 @@ import {
 import type { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { useV4Adapter, useV4Mode } from "../../data/adapters";
+import { useOrgPermission } from "../../access/permissions";
+import { AccessRestricted } from "../../access/ui";
+import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
+import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
 
 const PAGE_SIZE = 500;
@@ -580,14 +588,42 @@ export const AuditLogsTab = ({ project }: { project?: AuditLogsProject }) => {
   return <LogsTable project={project} />;
 };
 
+const OrgAuditLogSettings = () => {
+  const { organization } = useV4Session();
+  const adapter = useV4Adapter("auditLogs");
+  const { permission, isPending: permissionPending } = useOrgPermission();
+  const { data: plan } = adapter.usePlan(organization.id);
+  const { data: settings, isPending, error } = adapter.useOrgSettings(organization.id);
+  const update = adapter.useUpdateOrgSettings();
+  if (
+    !permissionPending &&
+    !permission.can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs)
+  )
+    return <AccessRestricted requirement="Read audit logs" />;
+  let locked: string | undefined;
+  if (!permission.can(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs))
+    locked = "You need the Edit permission on Audit Logs to change these settings.";
+  else if (plan && !plan.auditLogs) locked = "Choosing recorded events needs a paid plan.";
+  return (
+    <EventClassesCard
+      description="Choose which organization-level events are recorded. Each project has its own setting."
+      settings={settings}
+      isPending={isPending}
+      error={error}
+      locked={locked}
+      onSave={(eventClasses) => update.mutateAsync({ eventClasses })}
+    />
+  );
+};
+
 export const AuditLogsPage = () => {
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/audit-logs" });
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/audit-logs" });
   const navigate = useNavigate();
-  const mode = useV4Mode();
   const activeTab = tabs.some((tab) => tab.value === selectedTab) ? selectedTab : "audit-logs";
   return (
     <Stack gap={24}>
+      <PageTitle title="Audit logs" />
       <PageHeader
         title="Audit logs"
         description="Review who did what in this organization, and when."
@@ -603,10 +639,7 @@ export const AuditLogsPage = () => {
             value={activeTab}
             onValueChange={(next) =>
               navigate({
-                to:
-                  mode === "live" && next === "settings"
-                    ? "/organizations/$orgId/audit-logs"
-                    : v4Path("/organizations/$orgId/audit-logs"),
+                to: v4Path("/organizations/$orgId/audit-logs"),
                 params: { orgId },
                 search: { selectedTab: next }
               })
@@ -617,13 +650,7 @@ export const AuditLogsPage = () => {
       />
       {activeTab === "audit-logs" && <AuditLogsTab />}
       {activeTab === "streams" && <AuditLogStreamsTab />}
-      {activeTab === "settings" && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>This tab isn&apos;t in v4 yet</EmptyTitle>
-          </EmptyHeader>
-        </Empty>
-      )}
+      {activeTab === "settings" && <OrgAuditLogSettings />}
     </Stack>
   );
 };

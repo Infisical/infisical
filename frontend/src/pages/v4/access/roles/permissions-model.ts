@@ -9,6 +9,7 @@ import {
 
 import {
   ACTION_ALLOWED_CONDITIONS,
+  KMS_KEY_SUBJECTS,
   ORG_SUBJECTS,
   type PermissionSubject,
   PROJECT_SUBJECTS
@@ -59,7 +60,7 @@ export const allowedConditions = (
 };
 
 export const actionLabel = (scope: RoleScope, subject: string, action: string) =>
-  subjectsFor(scope)
+  [...subjectsFor(scope), ...(scope === "project" ? KMS_KEY_SUBJECTS : [])]
     .find((item) => item.subject === subject)
     ?.actions.find((item) => item.value === action)?.label ?? action;
 

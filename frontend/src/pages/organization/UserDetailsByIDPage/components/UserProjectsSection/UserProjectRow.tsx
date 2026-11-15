@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { useIsNamedByProduct } from "@app/components/organization/ProductAccess";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +26,6 @@ import { useGetUserProjects } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
-
-import { useIsNamedByProduct } from "./products";
 
 type Props = {
   membership: TWorkspaceUser;

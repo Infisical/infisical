@@ -10,7 +10,7 @@
     "internalPattern": ["e2e-test/"],
     "customGroups": [
       { "groupName": "node-protocol", "elementNamePattern": ["node:**"] },
-      { "groupName": "app", "elementNamePattern": ["@app/**", "@bdd_routes/**"] }
+      { "groupName": "app", "elementNamePattern": ["@app/**"] }
     ],
     "groups": [
       "side_effect",

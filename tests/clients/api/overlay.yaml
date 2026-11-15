@@ -18,6 +18,11 @@ actions:
   - target: $.paths['/api/v1/organization/audit-logs'].get.parameters[?(@.name == 'eventType' || @.name == 'eventClass')].schema
     update:
       type: string
+  - target: $.paths['/api/v2/users/me'].delete.parameters[?(@.name == 'lastMemberOrganizationIds')].schema.allOf
+    remove: true
+  - target: $.paths['/api/v2/users/me'].delete.parameters[?(@.name == 'lastMemberOrganizationIds')].schema
+    update:
+      type: string
   # The same permission-action naming bug as createProjectRole above, in every other body
   # that carries project permission rules. The suite sends rules as JSON
   # (fixture.Permission).

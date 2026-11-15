@@ -21,6 +21,7 @@ const defaults = (): TAuditLogSettings => ({
 });
 
 const settings = createFixtureStore<Record<string, TAuditLogSettings>>({});
+const orgSettings = createFixtureStore<TAuditLogSettings>(defaults());
 
 const day = 24 * 3600 * 1000;
 const at = (daysAgo: number) => new Date(Date.now() - daysAgo * day).toISOString();
@@ -117,6 +118,11 @@ export const auditLogsDemo: AuditLogsAdapter = {
     ({ projectId, auditLogsRetentionDays }) =>
       ({ id: projectId, auditLogsRetentionDays }) as Project
   ),
+  useOrgSettings: () => ({ data: orgSettings.use(), isPending: false, error: null }),
+  useUpdateOrgSettings: fixtureMutation(({ eventClasses }) => {
+    orgSettings.update((current) => ({ ...current, eventClasses }));
+    return orgSettings.get();
+  }),
   useStreams: () => ({ data: streams.use(), isPending: false, error: null }),
   useStreamOptions: () => ({ data: [...streamOptions], isPending: false, error: null }),
   useCreateStream: fixtureMutation(({ provider, credentials, filters }) => {

@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, getAdminMemberOnlyProductLabel, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { newProjectMembershipGroupFactory } from "@app/services/membership-group/project/project-membership-group-factory";
 import { newProjectMembershipIdentityFactory } from "@app/services/membership-identity/project/project-membership-identity-factory";
 
@@ -29,7 +30,7 @@ const buildDeps = (projectType: ProjectType) => ({
   projectKeyDAL: {},
   projectBotDAL: {},
   smtpService: {},
-  licenseService: {}
+  licenseService: new FakeLicenseService()
 });
 
 const dto = (role: string) => ({

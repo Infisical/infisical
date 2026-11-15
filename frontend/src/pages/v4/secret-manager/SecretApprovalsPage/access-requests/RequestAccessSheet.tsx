@@ -1,5 +1,6 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -14,6 +15,7 @@ import {
 import { DurationInput } from "@infisical/cipher/ui/duration-input";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { GlobPatternHelp, SecretPathInput } from "@infisical/cipher/ui/secret-path-input";
 import {
   Sheet,
   SheetBody,
@@ -43,6 +45,16 @@ import {
 
 import { failed, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
+import { AccessRequestScope } from "./AccessRequestScope";
+import {
+  ENTIRE_SCOPE_PATH,
+  getChildFolderNames,
+  getNavigableFolders,
+  getMatchingFolders,
+  isGlobPath,
+  normalizeFolderPath,
+  resolveAccessPolicyForPath
+} from "./scope";
 
 type ResourceAction = { value: string; label: string; description: string };
 
@@ -236,6 +248,103 @@ type Draft = {
 };
 type Errors = Partial<Record<"secretPath" | "resources" | "temporaryRange", string>>;
 
+const SecretPathField = ({
+  projectId,
+  environment,
+  environmentName,
+  policyPaths,
+  folderPaths,
+  value,
+  requestedPath,
+  pathIssue,
+  error,
+  onChange
+}: {
+  projectId: string;
+  environment: string;
+  environmentName: string;
+  policyPaths: string[];
+  folderPaths?: string[];
+  value: string;
+  requestedPath: string;
+  pathIssue?: string;
+  error?: string;
+  onChange: (secretPath: string) => void;
+}) => {
+  const [parentPath, setParentPath] = useState("/");
+  const [isPathFocused, setIsPathFocused] = useState(false);
+  const isFixedPathsOnly = policyPaths.length > 0 && !policyPaths.some(isGlobPath);
+  const navigableFolders = useMemo(
+    () => getNavigableFolders(folderPaths ?? [], policyPaths),
+    [folderPaths, policyPaths]
+  );
+  const pathError = error ?? (isPathFocused ? undefined : pathIssue);
+
+  return (
+    <>
+      {isFixedPathsOnly || !policyPaths.length ? (
+        <Field
+          label="Secret path"
+          error={
+            policyPaths.length
+              ? pathError
+              : `Access requests are not enabled in ${environmentName}. Ask a project admin to add an access policy.`
+          }
+          description={
+            policyPaths.length
+              ? `Only these paths can be requested in ${environmentName}.`
+              : undefined
+          }
+        >
+          <Combobox
+            label="Secret path"
+            mono
+            options={policyPaths.map((path) => ({ value: path, label: path }))}
+            value={value}
+            disabled={!policyPaths.length}
+            invalid={Boolean(pathError)}
+            placeholder="Select a secret path"
+            onValueChange={onChange}
+          />
+        </Field>
+      ) : (
+        <Field
+          label="Secret path"
+          help={<GlobPatternHelp />}
+          error={pathError}
+          description="Type a folder path or glob. Request the narrowest path you need."
+        >
+          <SecretPathInput
+            icon="folder"
+            placeholder="/folder/subfolder"
+            value={value}
+            invalid={Boolean(pathError)}
+            folders={getChildFolderNames(navigableFolders, parentPath)}
+            onParentPathChange={setParentPath}
+            onChange={onChange}
+            onFocus={() => setIsPathFocused(true)}
+            onBlur={() => setIsPathFocused(false)}
+          />
+        </Field>
+      )}
+      {requestedPath === ENTIRE_SCOPE_PATH && !pathIssue && (
+        <Alert tone="warn">
+          {`Grants every folder in ${environmentName}, including folders created later. Approvers see this request flagged as entire scope.`}
+        </Alert>
+      )}
+      {requestedPath && !pathIssue && isGlobPath(requestedPath) && (
+        <Field label="Folders granted">
+          <AccessRequestScope
+            projectId={projectId}
+            environment={environment}
+            secretPath={requestedPath}
+          />
+        </Field>
+      )}
+    </>
+  );
+};
+
 export const RequestAccessSheet = ({
   project,
   policies,
@@ -247,7 +356,8 @@ export const RequestAccessSheet = ({
   honeyTokens: boolean;
   onClose: () => void;
 }) => {
-  const createRequest = useV4Adapter("accessApprovals").useCreateRequest();
+  const approvals = useV4Adapter("accessApprovals");
+  const createRequest = approvals.useCreateRequest();
   const formId = useId();
   const initial: Draft = {
     environment: project.environments[0]?.slug ?? "",
@@ -266,14 +376,34 @@ export const RequestAccessSheet = ({
     onDiscard: onClose
   });
 
-  const selectablePaths = policies
-    .filter((policy) => policy.environments.some((env) => env.slug === draft.environment))
-    .map((policy) => policy.secretPath);
-  const matchedPolicy = policies.find(
-    (policy) =>
-      policy.environments.some((env) => env.slug === draft.environment) &&
-      policy.secretPath === draft.secretPath
+  const environmentPolicies = useMemo(
+    () =>
+      policies.filter((policy) =>
+        policy.environments.some((env) => env.slug === draft.environment)
+      ),
+    [policies, draft.environment]
   );
+  const policyPaths = useMemo(
+    () => [...new Set(environmentPolicies.map((policy) => policy.secretPath))],
+    [environmentPolicies]
+  );
+  const { data: folderPaths } = approvals.useEnvironmentFolderPaths({
+    projectId: project.id,
+    environment: draft.environment,
+    enabled: policyPaths.length > 0
+  });
+  const environmentName =
+    project.environments.find((env) => env.slug === draft.environment)?.name ?? draft.environment;
+  const requestedPath = draft.secretPath.trim() ? normalizeFolderPath(draft.secretPath) : "";
+  const matchedPolicy = requestedPath
+    ? resolveAccessPolicyForPath(environmentPolicies, requestedPath)
+    : undefined;
+
+  let pathIssue: string | undefined;
+  if (requestedPath && !matchedPolicy)
+    pathIssue = `Access requests are not enabled for ${requestedPath} in ${environmentName}. Ask a project admin to add an access policy.`;
+  else if (requestedPath && folderPaths && !getMatchingFolders(requestedPath, folderPaths).length)
+    pathIssue = `No folder matches ${requestedPath} in ${environmentName}.`;
   const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
   const addedSubjects = new Set(draft.resources.map((resource) => resource.subject));
   const available = RESOURCES.filter(
@@ -293,11 +423,9 @@ export const RequestAccessSheet = ({
   };
 
   const choosePath = (secretPath: string) => {
-    const policy = policies.find(
-      (entry) =>
-        entry.environments.some((env) => env.slug === draft.environment) &&
-        entry.secretPath === secretPath
-    );
+    const policy = secretPath.trim()
+      ? resolveAccessPolicyForPath(environmentPolicies, normalizeFolderPath(secretPath))
+      : undefined;
     const policyMax = policy?.maxTimePeriod ? ms(policy.maxTimePeriod) : null;
     const rangeMs = parseAccessDurationMs(draft.temporaryRange);
     const withinPolicy = draft.isTemporary && rangeMs && policyMax && rangeMs <= policyMax;
@@ -330,7 +458,7 @@ export const RequestAccessSheet = ({
     )
       rangeError = maxDurationMessage(matchedPolicy.maxTimePeriod);
     const next: Errors = {
-      secretPath: draft.secretPath ? undefined : "Select a secret path",
+      secretPath: requestedPath ? pathIssue : "Enter a secret path",
       resources: draft.resources.some((resource) => resource.actions.length)
         ? undefined
         : "Select at least one permission",
@@ -340,7 +468,7 @@ export const RequestAccessSheet = ({
     if (Object.values(next).some(Boolean)) return;
     const conditions = {
       environment: draft.environment,
-      secretPath: { $glob: draft.secretPath }
+      secretPath: { $glob: requestedPath }
     };
     setPending(true);
     try {
@@ -393,26 +521,18 @@ export const RequestAccessSheet = ({
                     }}
                   />
                 </Field>
-                <Field
-                  label="Secret path"
+                <SecretPathField
+                  projectId={project.id}
+                  environment={draft.environment}
+                  environmentName={environmentName}
+                  policyPaths={policyPaths}
+                  folderPaths={folderPaths}
+                  value={draft.secretPath}
+                  requestedPath={requestedPath}
+                  pathIssue={pathIssue}
                   error={errors.secretPath}
-                  description={
-                    selectablePaths.length
-                      ? undefined
-                      : "The selected environment doesn't have any policies."
-                  }
-                >
-                  <Combobox
-                    label="Secret path"
-                    mono
-                    options={selectablePaths.map((path) => ({ value: path, label: path }))}
-                    value={draft.secretPath}
-                    disabled={!selectablePaths.length}
-                    invalid={Boolean(errors.secretPath)}
-                    placeholder="Select a secret path"
-                    onValueChange={choosePath}
-                  />
-                </Field>
+                  onChange={choosePath}
+                />
                 <Field label="Resources and permissions" group error={errors.resources}>
                   <Stack gap={8}>
                     {draft.resources.map((resource, index) => {
@@ -426,7 +546,6 @@ export const RequestAccessSheet = ({
                           action={
                             <Button
                               variant="ghost"
-                              size="icon"
                               icon="x"
                               iconOnly
                               aria-label={`Remove ${config.label}`}

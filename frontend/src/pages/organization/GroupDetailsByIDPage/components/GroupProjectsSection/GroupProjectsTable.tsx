@@ -27,16 +27,14 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupProjectRow } from "./GroupProjectRow";
 
 type Props = {
   groupId: string;
-  groupSlug: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeProjectFromGroup", "addGroupProjects"]>,
+    popUpName: keyof UsePopUpState<["removeProjectFromGroup", "addGroupToProduct"]>,
     data?: object
   ) => void;
   hideAddToProject?: boolean;
@@ -48,7 +46,6 @@ enum GroupProjectsOrderBy {
 
 export const GroupProjectsTable = ({
   groupId,
-  groupSlug,
   handlePopUpOpen,
   hideAddToProject = false
 }: Props) => {
@@ -86,9 +83,7 @@ export const GroupProjectsTable = ({
   });
 
   const totalCount = groupMemberships?.totalCount ?? 0;
-  const projects = (groupMemberships?.projects ?? []).filter(
-    (p) => p.type !== ProjectType.CertificateManager
-  );
+  const projects = groupMemberships?.projects ?? [];
 
   useResetPageHelper({
     totalCount,
@@ -110,14 +105,15 @@ export const GroupProjectsTable = ({
         className="mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search projects..."
+        placeholder="Search by project name..."
       />
       {projects.length ? (
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-1/3">Product</TableHead>
               <TableHead onClick={toggleOrderDirection} className="w-1/3">
-                Name
+                Project
                 <ChevronDownIcon
                   className={twMerge(
                     orderDirection === OrderByDirection.DESC && "rotate-180",
@@ -125,7 +121,6 @@ export const GroupProjectsTable = ({
                   )}
                 />
               </TableHead>
-              <TableHead>Type</TableHead>
               <TableHead>Added On</TableHead>
               <TableHead className="w-5" />
             </TableRow>
@@ -145,28 +140,23 @@ export const GroupProjectsTable = ({
           <EmptyHeader>
             <EmptyTitle>
               {debouncedSearch
-                ? "No projects match this search"
-                : "This group is not a member of any projects"}
+                ? "No memberships match this search"
+                : "This group does not have access to any products"}
             </EmptyTitle>
             <EmptyDescription>
               {debouncedSearch
-                ? "Adjust search filters to view project memberships."
-                : "Add this group to a project."}
+                ? "Adjust search filters to view memberships."
+                : "Add this group to a product to give its members access."}
             </EmptyDescription>
             {!debouncedSearch && !hideAddToProject && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
-                  onClick={() =>
-                    handlePopUpOpen("addGroupProjects", {
-                      groupId,
-                      slug: groupSlug
-                    })
-                  }
+                  onClick={() => handlePopUpOpen("addGroupToProduct")}
                 >
                   <PlusIcon />
-                  Add to Project
+                  Add to Product
                 </Button>
               </EmptyContent>
             )}

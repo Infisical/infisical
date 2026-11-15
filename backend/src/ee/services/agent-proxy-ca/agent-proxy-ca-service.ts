@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -15,7 +16,6 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TOrgAgentProxyConfigDALFactory } from "./org-agent-proxy-config-dal";
 
@@ -24,7 +24,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -40,7 +40,7 @@ export const agentProxyCaServiceFactory = ({
 }: TAgentProxyCaServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretsBrokering) {
+    if (!plan.has(PlanFeature.SecretsBrokering)) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use the agent proxy."
       });

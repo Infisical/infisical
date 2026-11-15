@@ -1,6 +1,6 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import { errorCodes, FastifyError } from "fastify";
+import { errorCodes, FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -35,6 +35,7 @@ import {
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
+import { toHttpError } from "@app/server/lib/domain-errors";
 import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
@@ -97,7 +98,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     });
   });
 
-  server.setErrorHandler((error: Error, req, res) => {
+  const respond = (error: Error, req: FastifyRequest, res: FastifyReply) => {
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
@@ -441,5 +442,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: "Something went wrong"
       });
     }
-  });
+  };
+
+  server.setErrorHandler((error: Error, req, res) => respond(toHttpError(error), req, res));
 });

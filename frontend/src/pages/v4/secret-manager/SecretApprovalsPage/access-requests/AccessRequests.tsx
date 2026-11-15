@@ -38,6 +38,7 @@ import { useUpgradeGate } from "../../../license";
 import { displayOf, durationLabel, personName, stamp } from "./model";
 import { RequestAccessSheet } from "./RequestAccessSheet";
 import { ReviewRequestSheet } from "./ReviewRequestSheet";
+import { ENTIRE_SCOPE_PATH, getRequestedSecretPath } from "./scope";
 
 const TABLE = "accessRequestsTable";
 
@@ -143,6 +144,7 @@ export const AccessRequests = ({
       return [
         request.environmentName,
         environmentName(request.environmentName),
+        getRequestedSecretPath(request),
         `${by?.email ?? ""} ${by?.firstName ?? ""} ${by?.lastName ?? ""}`
       ].some((value) => value.toLowerCase().includes(needle));
     });
@@ -156,7 +158,7 @@ export const AccessRequests = ({
           ? (parseAccessDurationMs(request.temporaryRange) ?? 0)
           : Number.MAX_SAFE_INTEGER;
       if (sort.columnId === "environment") return environmentName(request.environmentName);
-      if (sort.columnId === "path") return request.policy.secretPath ?? "";
+      if (sort.columnId === "path") return getRequestedSecretPath(request);
       if (sort.columnId === "requestedBy") return personName(requesterOf(request));
       return new Date(request.createdAt).getTime();
     };
@@ -199,8 +201,20 @@ export const AccessRequests = ({
       sortable: true,
       mono: true,
       width: 160,
-      text: (request) => request.policy.secretPath ?? "",
-      render: (request) => request.policy.secretPath
+      text: getRequestedSecretPath,
+      render: (request) => {
+        const path = getRequestedSecretPath(request);
+        return (
+          <Inline gap={8} align="center" wrap={false}>
+            <span>{path}</span>
+            {path === ENTIRE_SCOPE_PATH && (
+              <Badge tone="warn" icon="alert">
+                Entire scope
+              </Badge>
+            )}
+          </Inline>
+        );
+      }
     },
     {
       id: "duration",
@@ -338,7 +352,7 @@ export const AccessRequests = ({
           <Input
             icon="search"
             aria-label="Search access requests"
-            placeholder="Search by requesting user or environment..."
+            placeholder="Search by requesting user, environment or path..."
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -400,7 +414,7 @@ export const AccessRequests = ({
         loading={isPending}
         getRowId={(request) => request.id}
         rowLabel={(request) =>
-          `${environmentName(request.environmentName)} ${request.policy.secretPath ?? ""}`
+          `${environmentName(request.environmentName)} ${getRequestedSecretPath(request)}`
         }
         sort={sort}
         onSortChange={setSort}

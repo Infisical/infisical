@@ -332,7 +332,7 @@ hand them a different set of permissions than they had the day before.
 What the downgrade takes away is the ability to change the set. Creating a new custom role
 and editing an existing one both fail with a message naming the plan, and the UI opens the
 upgrade modal on those same two actions. `role-service.ts` is the model to copy: `createRole`
-and `updateRole` check `plan.rbac`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
+and `updateRole` check `plan.has(PlanFeature.Rbac)`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
 check nothing.
 
 One rule produces both outcomes. Entitlement decides what a customer can build. It never

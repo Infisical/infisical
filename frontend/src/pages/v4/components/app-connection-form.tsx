@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Controller, type FieldValues, get, useForm, useWatch } from "react-hook-form";
+import {
+  Controller,
+  type FieldValues,
+  get,
+  useForm,
+  type UseFormReturn,
+  useWatch
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import type { ComboboxCreation } from "@infisical/cipher/ui/combobox";
@@ -104,7 +111,13 @@ export type AppConnectionFormProps = {
    * values are the stored root values, such as name, description and credentials.
    */
   edit?: { method: string; values: Record<string, unknown> };
+  /** Root values to start from instead of the first method's, such as a form resumed after a redirect. */
+  initialValues?: Record<string, unknown>;
+  /** Reads the current values, for a flow that leaves the page mid-form and resumes it later. */
+  handleRef?: React.Ref<AppConnectionFormHandle>;
 };
+
+export type AppConnectionFormHandle = Pick<UseFormReturn<FieldValues>, "getValues" | "setValue">;
 
 const storedKeys = (stored: unknown, keys: readonly string[]) => {
   const record = (stored ?? {}) as Record<string, unknown>;
@@ -141,7 +154,9 @@ export function AppConnectionForm({
   onDirtyChange,
   onPendingChange,
   onSubmitLabelChange,
-  edit
+  edit,
+  initialValues,
+  handleRef
 }: AppConnectionFormProps) {
   const editing = edit && preset.methods.find((entry) => entry.value === edit.method);
   const methods = editing ? [editing] : usableMethods(preset, redirect);
@@ -155,9 +170,15 @@ export function AppConnectionForm({
       description: "",
       method: first.value,
       credentials: first.credentials,
+      ...initialValues,
       ...(editing && edit ? editDefaults(editing, edit.values) : {})
     }
   });
+  React.useImperativeHandle(
+    handleRef,
+    () => ({ getValues: form.getValues, setValue: form.setValue }),
+    [form]
+  );
   const { control, formState } = form;
   const values = useWatch({ control });
   const method = methods.find((entry) => entry.value === values.method) ?? first;

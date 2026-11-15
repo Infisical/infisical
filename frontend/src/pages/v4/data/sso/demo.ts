@@ -4,7 +4,7 @@ import type { TGithubOrgSyncConfig } from "@app/hooks/api/githubOrgSyncConfig/ty
 import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 import type { LDAPGroupMap } from "@app/hooks/api/ldapConfig/types";
 import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
-import type { TOauthClient } from "@app/hooks/api/oauthClients/types";
+import type { TOauthAuthorizeInfo, TOauthClient } from "@app/hooks/api/oauthClients/types";
 import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import type { OIDCConfigData } from "@app/hooks/api/oidcConfig/types";
 import { ScimEvent } from "@app/hooks/api/scim/types";
@@ -180,7 +180,11 @@ const oauthClients = createFixtureStore<TOauthClient[]>([
     "backstage-portal",
     "Backstage portal",
     [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
-    { redirectUris: ["https://backstage.acme.com/api/auth/infisical/handler/frame"] }
+    {
+      description:
+        "Acme's internal developer portal. Shows each service's secrets in its catalog page.",
+      redirectUris: ["https://backstage.acme.com/api/auth/infisical/handler/frame"]
+    }
   ),
   oauthClient("ci-token-broker", "CI token broker", [OauthGrantType.TokenExchange], {
     tokenExchangeAudience: "https://ci.acme.com",
@@ -189,6 +193,32 @@ const oauthClients = createFixtureStore<TOauthClient[]>([
 ]);
 
 const secret = () => `ics_${crypto.randomUUID().replace(/-/g, "")}`;
+
+const oauthScopes: Record<string, string> = {
+  "secrets:read": "Read secrets, folders, and imports"
+};
+
+const authorizeInfo = (
+  clients: TOauthClient[],
+  clientId: string,
+  redirectUri: string,
+  scope?: string
+): TOauthAuthorizeInfo => {
+  const client = clients.find((entry) => entry.clientId === clientId);
+  if (!client) throw new Error("No application is registered with this client ID.");
+  if (!client.redirectUris.includes(redirectUri)) {
+    throw new Error("This redirect URI is not registered for the application.");
+  }
+  const requested = [...new Set((scope ?? "").split(/\s+/).filter(Boolean))];
+  const unknown = requested.filter((entry) => !oauthScopes[entry]);
+  if (unknown.length) throw new Error(`Unknown scope: ${unknown.join(", ")}`);
+  return {
+    clientName: client.name,
+    clientDescription: client.description,
+    requirePkce: client.requirePkce,
+    requestedScopes: requested.map((entry) => ({ scope: entry, description: oauthScopes[entry] }))
+  };
+};
 
 export const ssoDemo: SsoAdapter = {
   useServerConfig: () => ready({ enabledLoginMethods: null }),
@@ -443,5 +473,20 @@ export const ssoDemo: SsoAdapter = {
     const client = oauthClients.get().find((entry) => entry.id === clientDbId);
     if (!client) throw new Error("This application no longer exists.");
     return { client, clientSecret: secret() };
+  }),
+  useOauthAuthorizeInfo: (clientId, redirectUri, scope) => {
+    const clients = oauthClients.use();
+    try {
+      return ready(authorizeInfo(clients, clientId, redirectUri, scope));
+    } catch (error) {
+      return { data: undefined, isPending: false, error };
+    }
+  },
+  useOauthConsent: fixtureMutation(({ clientId, redirectUri, state, scope }) => {
+    authorizeInfo(oauthClients.get(), clientId, redirectUri, scope);
+    const callbackUrl = new URL(redirectUri);
+    callbackUrl.searchParams.set("code", `demo_${crypto.randomUUID().replace(/-/g, "")}`);
+    if (state) callbackUrl.searchParams.set("state", state);
+    return { callbackUrl: callbackUrl.toString() };
   })
 };

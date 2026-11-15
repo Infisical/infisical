@@ -1,0 +1,16 @@
+.count {
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.muted {
+  color: var(--cipher-muted);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+}

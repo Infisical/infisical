@@ -13,14 +13,21 @@ import { Heading } from "@infisical/cipher/ui/text";
 import ms from "ms";
 
 import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   ApprovalPolicyType,
   ApproverType,
   type CertRequestPolicyConditions,
   type TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
+import type { TPkiApplicationMember } from "@app/hooks/api/pkiApplications/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { CertificateProfileSheet } from "../components/profile-sheet";
 
 type StepDraft = {
   key: string;
@@ -119,23 +126,44 @@ const hasErrors = (errors: Errors) =>
     errors.stepErrors?.some((step) => Object.values(step).some(Boolean))
   );
 
+const memberOptions = (
+  members: TPkiApplicationMember[] | undefined,
+  key: "actorUserId" | "actorGroupId"
+) =>
+  (members ?? []).flatMap((member) => {
+    const id = member[key];
+    if (!id) return [];
+    const { name, username, email } = member.details ?? {};
+    return [{ value: id, label: name || username || email || id }];
+  });
+
 export const PolicySheet = ({
   projectId,
   policy,
+  application,
   onClose
 }: {
   projectId: string;
   policy?: TApprovalPolicy;
+  application?: { id: string; name: string };
   onClose: () => void;
 }) => {
   const approvals = useV4Adapter("approvalRequests");
   const update = approvals.useUpdatePolicy();
   const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({});
   const { data: directory } = approvals.useApprovers(projectId, { includeGroupMembers: false });
+  const { data: appMembers } = useV4Adapter("pkiApplications").useApplicationMembers(
+    application?.id ?? ""
+  );
   const [draft, setDraft] = useState<Draft>(() => draftOf(policy));
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState(0);
   const [discarding, setDiscarding] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState<string>();
+  const canCreateProfile = useProjectPermission(projectId).permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
   const completed = useRef(false);
   const initial = useRef(draftOf(policy));
 
@@ -167,8 +195,12 @@ export const PolicySheet = ({
       ...draft.profileNames
     ])
   ].map((slug) => ({ value: slug, label: slug }));
-  const userOptions = (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
-  const groupOptions = (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
+  const userOptions = application
+    ? memberOptions(appMembers, "actorUserId")
+    : (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
+  const groupOptions = application
+    ? memberOptions(appMembers, "actorGroupId")
+    : (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
   const nameOf = (options: { value: string; label: string }[], id: string) =>
     options.find((option) => option.value === id)?.label ?? id;
   const close = () => {
@@ -295,6 +327,8 @@ export const PolicySheet = ({
                     options={profileOptions}
                     value={draft.profileNames}
                     onChange={(value) => set("profileNames", value)}
+                    onCreate={canCreateProfile ? (query) => setCreatingProfile(query) : undefined}
+                    createLabel={(query) => `Create profile ${query}`}
                   />
                 </Field>
                 <Checkbox
@@ -366,7 +400,16 @@ export const PolicySheet = ({
                           }
                         />
                       </Field>
-                      <Field label="User approvers" error={stepError?.approvers} wide>
+                      <Field
+                        label="User approvers"
+                        description={
+                          application
+                            ? `Only members of ${application.name} can approve.`
+                            : undefined
+                        }
+                        error={stepError?.approvers}
+                        wide
+                      >
                         <MultiSelect
                           label="User approvers"
                           placeholder="Select users"
@@ -423,6 +466,14 @@ export const PolicySheet = ({
         }}
         description="Your unsaved policy changes will be lost."
       />
+      {creatingProfile !== undefined && (
+        <CertificateProfileSheet
+          projectId={projectId}
+          initialSlug={creatingProfile}
+          onCreated={(profile) => set("profileNames", [...draft.profileNames, profile.slug])}
+          onClose={() => setCreatingProfile(undefined)}
+        />
+      )}
     </>
   );
 };

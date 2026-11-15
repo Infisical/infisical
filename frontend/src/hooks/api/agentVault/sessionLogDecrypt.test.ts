@@ -74,6 +74,23 @@ describe("parseSessionLogRecords", () => {
     assert.equal(parsed.serviceType, "mcp");
     assert.equal(parsed.mcp, undefined);
   });
+
+  it("keeps the hook's part in a refused request", () => {
+    const hookRecord = {
+      ...record,
+      status: 403,
+      decision: "blocked",
+      hook: { decision: "deny", reason: "over budget" }
+    };
+    assert.deepEqual(parseSessionLogRecords([hookRecord]), [hookRecord]);
+  });
+
+  it("drops a malformed hook outcome rather than the whole chunk", () => {
+    const [parsed] = parseSessionLogRecords([{ ...record, status: 403, hook: "nope" }])!;
+    assert.equal(parsed.hook, undefined);
+    assert.equal(parsed.status, 403);
+    assert.equal(parsed.host, "api.github.com");
+  });
 });
 
 describe("recordsMatchChunk", () => {

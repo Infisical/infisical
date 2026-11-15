@@ -523,6 +523,27 @@
                   "@opentelemetry/*"
                 ],
                 "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/domains",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "Outside a domain, import only its ce/module or its ce/testing doubles (or @app/domains/domains), and domains/lib only through a folder index. See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
               }
             ]
           }
@@ -543,6 +564,646 @@
       "rules": {
         "eslint/no-restricted-imports": "off",
         "eslint/no-restricted-properties": "off"
+      }
+    },
+    {
+      "files": [
+        "src/domains/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/models/**",
+        "src/domains/**/ee/models/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "**/data-access/**",
+                  "**/router/**",
+                  "**/clients/**",
+                  "**/testing/**"
+                ],
+                "message": "models/ imports no other layer: rules about the data stay pure and testable. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/services/**",
+        "src/domains/**/ee/services/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "**/data-access/**",
+                  "**/clients/**",
+                  "**/router/**"
+                ],
+                "message": "A service never imports data-access/, a client or router/: declare what it needs as a type in services/dependencies.ts and take the implementation through the constructor. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module",
+                  "../../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/data-access/**",
+        "src/domains/**/ee/data-access/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "!../**/services/dependencies",
+                  "!../**/services/helpers/*-types",
+                  "**/router/**"
+                ],
+                "message": "data-access/ imports from services/ only dependencies.ts (and the helpers/*-types shapes it exposes), never a service class or helper, and never router/. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/clients/**",
+        "src/domains/**/ee/clients/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "!../**/services/dependencies",
+                  "!../**/services/helpers/*-types",
+                  "**/router/**"
+                ],
+                "message": "A clients/<system>/ client imports from services/ only dependencies.ts (and the helpers/*-types shapes it exposes), never a service class or helper, and never router/. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module",
+                  "../../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/router/**",
+        "src/domains/**/ee/router/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "**/data-access/**",
+                  "**/clients/**"
+                ],
+                "message": "router/ calls a service: it never imports data-access/ or a client. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/lib/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/**/*.test.ts",
+        "src/domains/**/ce/**/*.integration-test.ts",
+        "src/domains/**/ee/**/*.test.ts",
+        "src/domains/**/ee/**/*.integration-test.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/domains.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              }
+            ]
+          }
+        ]
       }
     },
     {

@@ -1,5 +1,6 @@
 import type {
   TAuditLogSettings,
+  TUpdateOrgAuditLogSettingsDTO,
   TUpdateProjectAuditLogSettingsDTO
 } from "@app/hooks/api/auditLogSettings/types";
 import type {
@@ -28,6 +29,8 @@ export type AuditLogsAdapter = {
   useProjectSettings: (projectId: string) => V4QueryResult<TAuditLogSettings>;
   useUpdateProjectSettings: V4Mutation<TUpdateProjectAuditLogSettingsDTO, TAuditLogSettings>;
   useUpdateProjectRetention: V4Mutation<UpdateAuditLogsRetentionDTO, Project>;
+  useOrgSettings: (orgId: string) => V4QueryResult<TAuditLogSettings>;
+  useUpdateOrgSettings: V4Mutation<TUpdateOrgAuditLogSettingsDTO, TAuditLogSettings>;
   useStreams: () => V4QueryResult<TAuditLogStream[]>;
   useStreamOptions: () => V4QueryResult<TAuditLogStreamProviderOption[]>;
   useCreateStream: V4Mutation<TCreateAuditLogStreamDTO, TAuditLogStream>;

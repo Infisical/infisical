@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { removeUsersFromGroupByUserIds } from "./group-fns";
 
@@ -28,6 +29,7 @@ const PROJECT_B = "project-b";
 const tx = {};
 
 const createDeps = () => ({
+  usageMeteringService: new FakeUsageMeteringService(),
   userDAL: { find: vi.fn().mockResolvedValue([{ id: USER_ID, isAccepted: true }]) },
   userGroupMembershipDAL: {
     find: vi.fn().mockResolvedValue([{ userId: USER_ID, groupId: GROUP.id }]),

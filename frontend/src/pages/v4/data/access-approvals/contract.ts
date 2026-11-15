@@ -32,6 +32,11 @@ export type AccessApprovalsAdapter = {
   useMembers: (projectId: string) => V4QueryResult<AccessRequestMember[]>;
   useGroups: (projectId: string) => V4QueryResult<AccessRequestGroup[]>;
   useDelegatedApprovalOptions: (enabled: boolean) => V4QueryResult<TDelegatedApprovalOption[]>;
+  useEnvironmentFolderPaths: (dto: {
+    projectId: string;
+    environment: string;
+    enabled: boolean;
+  }) => V4QueryResult<string[]>;
   useIsDispatchRetrying: () => (requestId: string) => boolean;
   useCreateRequest: V4Mutation<TCreateAccessRequestDTO>;
   useReviewRequest: V4Mutation<

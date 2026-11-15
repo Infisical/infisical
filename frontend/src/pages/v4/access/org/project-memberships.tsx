@@ -27,32 +27,24 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetHeader,
-  SheetTitle
-} from "@infisical/cipher/ui/sheet";
 
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
-import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
 import { productOf, projectBase } from "../../shell/navigation";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
-import { formatDate, grantLabel, type RoleGrant } from "../roles";
-import { failed, saved } from "../toast";
+import { formatDate, grantLabel, roleOptions, type RoleGrant } from "../roles";
+import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
-
-import css from "./org.module.css";
+import { builtInProjectRoles, type Product, PRODUCTS, useIsNamedByProduct } from "./products";
 
 export type MembershipSubject = "user" | "identity" | "group";
 
@@ -65,120 +57,240 @@ export type ProjectMembershipRow = {
   createdAt: string;
 };
 
-const copy = {
+type SubjectCopy = {
+  actor: string;
+  title: string;
+  emptyTitle: string;
+  projectTab: ProjectAccessControlTabs;
+  confirmText: string;
+  removeTitle: (label: string) => string;
+  removeDescription: (name: string, label: string) => string;
+};
+
+const copy: Record<MembershipSubject, SubjectCopy> = {
   user: {
-    emptyTitle: "This user is not a member of any projects",
-    added: "Successfully added user to project",
-    removed: () => "Successfully removed user from project",
-    projectTab: ProjectAccessControlTabs.Member
+    actor: "user",
+    title: "Add user to product",
+    emptyTitle: "This user does not have access to any products",
+    projectTab: ProjectAccessControlTabs.Member,
+    confirmText: "remove",
+    removeTitle: (label: string) => `Do you want to remove this user from ${label}?`,
+    removeDescription: () => "They lose their direct access to it."
   },
   identity: {
-    emptyTitle: "This machine identity is not a member of any projects",
-    added: "Successfully added identity to project",
-    removed: () => "Successfully removed identity from project",
-    projectTab: ProjectAccessControlTabs.Identities
+    actor: "machine identity",
+    title: "Add machine identity to product",
+    emptyTitle: "This machine identity does not have access to any products",
+    projectTab: ProjectAccessControlTabs.Identities,
+    confirmText: "confirm",
+    removeTitle: () => "Remove machine identity",
+    removeDescription: (name: string, label: string) =>
+      `${name} loses all access it has through this membership in ${label}.`
   },
   group: {
-    emptyTitle: "This group is not a member of any projects",
-    added: "",
-    removed: (project: string) => `Successfully removed the group from project ${project}`,
-    projectTab: ProjectAccessControlTabs.Groups
+    actor: "group",
+    title: "Add group to product",
+    emptyTitle: "This group does not have access to any products",
+    projectTab: ProjectAccessControlTabs.Groups,
+    confirmText: "confirm",
+    removeTitle: (label: string) => `Are you sure you want to remove the group from ${label}?`,
+    removeDescription: () => "Members lose access granted through this group."
   }
-} as const;
+};
 
-const typeName = (type: ProjectType) => productOf(type).label;
+const productName = (type: ProjectType) => productOf(type).label;
 
-const AddToProjectDialog = ({
+const DEFAULT_ROLE = "member";
+
+const useRoleChoices = (product: Product | undefined, targets: MembershipProject[]) => {
+  const singleTarget = targets.length === 1 ? targets[0].id : "";
+  const { data: singleRoles } = useV4Adapter("access").useProjectRoles(
+    product?.roles ? "" : singleTarget
+  );
+  if (product?.roles) return [...product.roles];
+  if (singleTarget && singleRoles) return roleOptions(singleRoles);
+  return builtInProjectRoles(product?.type);
+};
+
+const reportAdded = (
+  results: PromiseSettledResult<unknown>[],
+  actor: string,
+  productLabel: string
+) => {
+  const rejected = results.filter(
+    (result): result is PromiseRejectedResult => result.status === "rejected"
+  );
+  if (rejected.length === results.length) {
+    failed(`Failed to add ${actor} to ${productLabel}`, rejected[0].reason);
+    return false;
+  }
+  if (rejected.length)
+    toast({
+      tone: "neutral",
+      title: `Added ${actor} to ${results.length - rejected.length} of ${results.length} ${productLabel} projects`
+    });
+  else saved(`Successfully added ${actor} to ${productLabel}`);
+  return true;
+};
+
+const useAvailableProjects = (subject: MembershipSubject, memberProjectIds: readonly string[]) => {
+  const orgId = useOrgId();
+  const { data: projects = [], isPending: projectsPending } =
+    useV4Adapter("projects").useUserProjects();
+  const availableByType = useMemo(() => {
+    const members = new Set(memberProjectIds);
+    const grouped = new Map<ProjectType, MembershipProject[]>();
+    projects
+      .filter(
+        (project) =>
+          !members.has(project.id) &&
+          project.orgId === orgId &&
+          !(subject === "user" && project.version === ProjectVersion.V1)
+      )
+      .forEach((project) =>
+        grouped.set(project.type, [
+          ...(grouped.get(project.type) ?? []),
+          { id: project.id, name: project.name, type: project.type }
+        ])
+      );
+    return grouped;
+  }, [projects, memberProjectIds, orgId, subject]);
+  return { availableByType, projectsPending };
+};
+
+const AddToProductDialog = ({
   subject,
   open,
   onOpenChange,
-  available,
+  memberProjectIds,
+  membershipsReady,
   onAdd
 }: {
-  subject: "user" | "identity";
+  subject: MembershipSubject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  available: readonly MembershipProject[];
-  onAdd: (projectId: string, role: string) => Promise<void>;
+  memberProjectIds: readonly string[];
+  membershipsReady: boolean;
+  onAdd: (project: MembershipProject, role: string) => Promise<unknown>;
 }) => {
-  const access = useV4Adapter("access");
-  const [project, setProject] = useState("");
-  const [role, setRole] = useState("");
-  const [error, setError] = useState<{ project?: string; role?: string }>({});
-  const { data: roles = [] } = access.useProjectRoles(project);
+  const { availableByType, projectsPending } = useAvailableProjects(subject, memberProjectIds);
+  const isNamedByProduct = useIsNamedByProduct();
+  const [productType, setProductType] = useState<ProjectType>();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [role, setRole] = useState(DEFAULT_ROLE);
+  const [error, setError] = useState<string>();
+  const [pending, setPending] = useState(false);
+  const text = copy[subject];
+
+  const availableProducts = PRODUCTS.filter((product) => availableByType.has(product.type));
+  const product = PRODUCTS.find((entry) => entry.type === productType);
+  const productProjects = productType ? (availableByType.get(productType) ?? []) : [];
+  const pickerShown =
+    Boolean(productType) && !(isNamedByProduct(productType!) && productProjects.length === 1);
+  const selectedIds = new Set(selected);
+  const targets = pickerShown
+    ? productProjects.filter((project) => selectedIds.has(project.id))
+    : productProjects;
+  const roleChoices = useRoleChoices(product, targets);
+
+  const reset = () => {
+    setProductType(undefined);
+    setSelected([]);
+    setRole(DEFAULT_ROLE);
+    setError(undefined);
+  };
   const close = (next: boolean) => {
-    if (!next) {
-      setProject("");
-      setRole("");
-      setError({});
-    }
+    if (!next) reset();
     onOpenChange(next);
   };
-  const isUser = subject === "user";
+
+  const submit = async () => {
+    if (!product) {
+      setError("Select a product");
+      return;
+    }
+    if (!targets.length) {
+      setError("Select at least one project");
+      return;
+    }
+    setPending(true);
+    let results: PromiseSettledResult<unknown>[];
+    try {
+      results = await Promise.allSettled(targets.map((project) => onAdd(project, role)));
+    } finally {
+      setPending(false);
+    }
+    if (reportAdded(results, text.actor, productName(product.type))) close(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent>
+      <DialogContent pending={pending}>
         <DialogHeader>
-          <DialogTitle>
-            {isUser ? "Add user to project" : "Add machine identity to project"}
-          </DialogTitle>
+          <DialogTitle>{text.title}</DialogTitle>
         </DialogHeader>
         <form
-          id={`add-${subject}-to-project`}
-          onSubmit={async (event) => {
+          id={`add-${subject}-to-product`}
+          noValidate
+          onSubmit={(event) => {
             event.preventDefault();
-            const next = {
-              project: project ? undefined : "Required",
-              role: isUser || role ? undefined : "Required"
-            };
-            setError(next);
-            if (next.project || next.role) return;
-            await onAdd(project, isUser ? "member" : role);
-            close(false);
+            submit();
           }}
         >
           <Stack gap={16}>
-            <Field label="Project" error={error.project}>
+            <Field label="Product" error={product ? undefined : error}>
               <Select
-                label="Project"
+                label="Product"
                 placeholder={
-                  available.length
-                    ? "Select project..."
-                    : `This ${isUser ? "user" : "identity"} is already a member of every project you can access.`
+                  projectsPending || !membershipsReady || availableProducts.length
+                    ? "Select a product..."
+                    : "Already a member of everything you can access"
                 }
-                value={project}
-                invalid={Boolean(error.project)}
-                disabled={!available.length}
-                options={available.map((item) => ({
-                  value: item.id,
-                  label: item.name,
-                  group: typeName(item.type)
+                value={productType ?? ""}
+                invalid={Boolean(error && !product)}
+                disabled={projectsPending || !membershipsReady || !availableProducts.length}
+                options={availableProducts.map((entry) => ({
+                  value: entry.type,
+                  label: productName(entry.type)
                 }))}
                 onChange={(value) => {
-                  setProject(value);
-                  setRole("");
-                  setError({});
+                  setProductType(value as ProjectType);
+                  setSelected([]);
+                  setRole(DEFAULT_ROLE);
+                  setError(undefined);
                 }}
               />
             </Field>
-            {!isUser && (
-              <Field label="Role" error={error.role}>
-                <Select
-                  label="Role"
-                  placeholder="Select role..."
-                  value={role}
-                  invalid={Boolean(error.role)}
-                  disabled={!project}
-                  options={roles.map((item) => ({
-                    value: item.slug,
-                    label: item.name,
-                    description: item.description ?? undefined
+            {pickerShown && (
+              <Field label="Projects" error={product ? error : undefined}>
+                <MultiSelect
+                  label="Projects"
+                  placeholder="Select projects..."
+                  searchable
+                  invalid={Boolean(error && product)}
+                  options={productProjects.map((project) => ({
+                    value: project.id,
+                    label: project.name
                   }))}
-                  onChange={(value) => {
-                    setRole(value);
-                    setError({});
+                  value={selected}
+                  onChange={(next) => {
+                    setSelected(next);
+                    setRole(DEFAULT_ROLE);
+                    setError(undefined);
                   }}
                 />
+              </Field>
+            )}
+            {product && (
+              <Field
+                label="Role"
+                description={
+                  !product.roles && targets.length > 1
+                    ? "Only built-in roles are available for multiple projects."
+                    : undefined
+                }
+              >
+                <Select label="Role" value={role} options={roleChoices} onChange={setRole} />
               </Field>
             )}
           </Stack>
@@ -187,97 +299,18 @@ const AddToProjectDialog = ({
           <Button variant="ghost" onClick={() => close(false)}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form={`add-${subject}-to-project`}>
-            Add to project
+          <Button
+            variant="primary"
+            type="submit"
+            form={`add-${subject}-to-product`}
+            loading={pending}
+            disabledReason={membershipsReady ? undefined : "Loading current memberships"}
+          >
+            Add to product
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-};
-
-const AddGroupProjectsSheet = ({
-  open,
-  onOpenChange,
-  available,
-  canEdit,
-  onAssign
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  available: readonly MembershipProject[];
-  canEdit: boolean;
-  onAssign: (project: MembershipProject) => Promise<void>;
-}) => {
-  const list = usePagedList({
-    rows: available,
-    perPage: 10,
-    initialSort: { columnId: "name", direction: "asc" },
-    matches: (project, needle) => project.name.toLowerCase().includes(needle),
-    compare: (a, b) => a.name.localeCompare(b.name)
-  });
-  const columns: DataTableColumn<MembershipProject>[] = [
-    {
-      id: "name",
-      header: "Project",
-      render: (project) => (
-        <span className={css.projectCell}>
-          <span>{project.name}</span>
-        </span>
-      )
-    },
-    { id: "type", header: "Type", width: 180, render: (project) => typeName(project.type) },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (project) => (
-        <Gate allowed={canEdit}>
-          <Button variant="outline" disabled={!canEdit} onClick={() => onAssign(project)}>
-            Assign
-          </Button>
-        </Gate>
-      )
-    }
-  ];
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Add projects</SheetTitle>
-        </SheetHeader>
-        <SheetBody>
-          <Stack gap={16}>
-            <Input
-              icon="search"
-              placeholder="Search projects"
-              aria-label="Search projects"
-              value={list.search}
-              onChange={(event) => list.setSearch(event.target.value)}
-            />
-            <DataTable
-              label="Projects to add"
-              rows={list.pageRows}
-              columns={columns}
-              getRowId={(project) => project.id}
-              rowLabel={(project) => project.name}
-              empty={
-                <EmptyState
-                  size="sm"
-                  icon="folder"
-                  title={
-                    list.search.trim()
-                      ? "No projects match search"
-                      : "This group is already a part of all projects"
-                  }
-                />
-              }
-              pagination={list.pagination}
-            />
-          </Stack>
-        </SheetBody>
-      </SheetContent>
-    </Sheet>
   );
 };
 
@@ -312,8 +345,62 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
       createdAt: entry.joinedGroupAt ? String(entry.joinedGroupAt) : ""
     }));
   }, [subject, users.data, identities.data, groups.data]);
-  const pending = { user: users, identity: identities, group: groups }[subject].isPending;
-  return { rows, isPending: pending };
+  const query = { user: users, identity: identities, group: groups }[subject];
+  return { rows, isPending: query.isPending, error: query.error };
+};
+
+const useMembershipMutations = (
+  subject: MembershipSubject,
+  subjectId: string,
+  username?: string
+) => {
+  const access = useV4Adapter("access");
+  const orgId = useOrgId();
+  const addUsers = access.useAddProjectUsers();
+  const addIdentity = access.useAddProjectIdentity();
+  const addGroup = access.useAddProjectGroup();
+  const removeUsers = access.useRemoveProjectUsers();
+  const removeIdentity = access.useRemoveProjectIdentity();
+  const removeGroup = access.useRemoveProjectGroup();
+
+  const add = (project: MembershipProject, role: string) => {
+    if (subject === "user")
+      return addUsers.mutateAsync({
+        projectId: project.id,
+        projectType: project.type,
+        orgId,
+        usernames: [username ?? ""],
+        roleSlugs: [role]
+      });
+    if (subject === "identity")
+      return addIdentity.mutateAsync({
+        identityId: subjectId,
+        projectId: project.id,
+        projectType: project.type,
+        role
+      });
+    return addGroup.mutateAsync({
+      groupId: subjectId,
+      projectId: project.id,
+      projectType: project.type,
+      role
+    });
+  };
+
+  const remove = ({ id: projectId, type: projectType }: MembershipProject) => {
+    if (subject === "user")
+      return removeUsers.mutateAsync({
+        projectId,
+        projectType,
+        orgId,
+        usernames: [username ?? ""]
+      });
+    if (subject === "identity")
+      return removeIdentity.mutateAsync({ identityId: subjectId, projectId, projectType });
+    return removeGroup.mutateAsync({ groupId: subjectId, projectId, projectType });
+  };
+
+  return { add, remove };
 };
 
 export const ProjectMembershipsSection = ({
@@ -332,29 +419,22 @@ export const ProjectMembershipsSection = ({
   canAdd?: boolean;
 }) => {
   const go = useGo();
-  const access = useV4Adapter("access");
   const orgId = useOrgId();
-  const { projects } = useV4Session();
+  const isNamedByProduct = useIsNamedByProduct();
   const text = copy[subject];
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<ProjectMembershipRow>();
-  const { rows: memberships, isPending } = useMembershipRows(subject, subjectId);
-  const addUsers = access.useAddProjectUsers();
-  const addIdentity = access.useAddProjectIdentity();
-  const addGroup = access.useAddProjectGroup();
-  const removeUsers = access.useRemoveProjectUsers();
-  const removeIdentity = access.useRemoveProjectIdentity();
-  const removeGroup = access.useRemoveProjectGroup();
-  const available = projects.filter(
-    (project) => !memberships.some((membership) => membership.project.id === project.id)
-  );
+  const { rows: memberships, isPending, error } = useMembershipRows(subject, subjectId);
+  const { add, remove: removeMembership } = useMembershipMutations(subject, subjectId, username);
   const list = usePagedList({
     rows: memberships,
     perPage: subject === "user" ? 10 : 20,
-    initialSort: { columnId: "name", direction: "asc" },
+    initialSort: { columnId: "project", direction: "asc" },
     matches: (row, needle) => row.project.name.toLowerCase().includes(needle),
     compare: (a, b) => a.project.name.localeCompare(b.project.name)
   });
+  const labelOf = (row: ProjectMembershipRow) =>
+    isNamedByProduct(row.project.type) ? productName(row.project.type) : row.project.name;
   const projectHref = (row: ProjectMembershipRow) =>
     orgHref(
       orgId,
@@ -365,63 +445,47 @@ export const ProjectMembershipsSection = ({
       ? `${grantLabel(row.roles[0])}${row.roles.length > 1 ? ` (+${row.roles.length - 1})` : ""}`
       : "";
 
-  const add = async (projectId: string, role: string) => {
-    try {
-      if (subject === "user")
-        await addUsers.mutateAsync({
-          projectId,
-          orgId,
-          usernames: [username ?? ""],
-          roleSlugs: [role]
-        });
-      else if (subject === "identity")
-        await addIdentity.mutateAsync({ identityId: subjectId, projectId, role });
-      else await addGroup.mutateAsync({ groupId: subjectId, projectId, role });
-      return true;
-    } catch (error) {
-      failed("Failed to add to project", error);
-      return false;
-    }
-  };
-
   const remove = async (row: ProjectMembershipRow) => {
     try {
-      if (subject === "user")
-        await removeUsers.mutateAsync({
-          projectId: row.project.id,
-          orgId,
-          usernames: [username ?? ""]
-        });
-      else if (subject === "identity")
-        await removeIdentity.mutateAsync({ identityId: subjectId, projectId: row.project.id });
-      else await removeGroup.mutateAsync({ groupId: subjectId, projectId: row.project.id });
-      saved(text.removed(row.project.name));
-    } catch (error) {
-      failed("Failed to remove from project", error);
+      await removeMembership(row.project);
+      saved(`Successfully removed the ${text.actor} from ${labelOf(row)}`);
+    } catch (err) {
+      failed(`Failed to remove the ${text.actor} from ${labelOf(row)}`, err);
     }
   };
 
   const columns: DataTableColumn<ProjectMembershipRow>[] = [
     {
-      id: "name",
-      header: "Name",
-      sortable: true,
-      grow: true,
+      id: "product",
+      header: "Product",
+      width: 280,
+      text: (row) => productName(row.project.type),
       render: (row) => (
-        <RowLink link={go.link(projectHref(row))} title={row.project.name}>
-          {row.project.name}
+        <RowLink link={go.link(projectHref(row))} title={labelOf(row)}>
+          <Inline gap={8} align="center" wrap={false}>
+            <Icon name={productOf(row.project.type).icon} />
+            {productName(row.project.type)}
+          </Inline>
         </RowLink>
       )
     },
-    subject === "group"
-      ? { id: "type", header: "Type", render: (row) => typeName(row.project.type) }
-      : { id: "role", header: "Role", render: roleLabel },
+    {
+      id: "project",
+      header: "Project",
+      sortable: true,
+      grow: true,
+      text: (row) => (isNamedByProduct(row.project.type) ? "-" : row.project.name),
+      render: (row) =>
+        isNamedByProduct(row.project.type) ? "-" : <MiddleTruncate text={row.project.name} />
+    },
+    ...(subject === "group" ? [] : [{ id: "role", header: "Role", width: 160, render: roleLabel }]),
     ...(subject === "user"
       ? []
       : [
           {
             id: "added",
             header: "Added on",
+            width: 130,
             render: (row: ProjectMembershipRow) => formatDate(row.createdAt)
           }
         ])
@@ -436,26 +500,34 @@ export const ProjectMembershipsSection = ({
         onSelect={() => setRemoving(row)}
       >
         <Icon name="trash" />
-        Remove from project
+        {isNamedByProduct(row.project.type)
+          ? `Remove from ${productName(row.project.type)}`
+          : "Remove from project"}
       </DropdownMenuItem>
     )
   };
 
   const searching = Boolean(list.search.trim());
   const hasRows = isPending || list.pageRows.length > 0;
+  const removingLabel = removing ? labelOf(removing) : "";
+
+  let empty = <EmptyState size="sm" icon="folder" title={text.emptyTitle} />;
+  if (error) empty = <EmptyState size="sm" icon="alert" title="Could not load products" />;
+  else if (searching)
+    empty = <EmptyState size="sm" icon="search" title="No memberships match this search" />;
 
   return (
     <>
       <Card
         variant="framed"
-        title="Projects"
+        title="Products"
         flush={hasRows}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
               search={list.search}
               onSearch={list.setSearch}
-              placeholder="Search projects"
+              placeholder="Search by project name"
             />
             {canAdd && (
               <Gate allowed={canEdit}>
@@ -465,74 +537,47 @@ export const ProjectMembershipsSection = ({
                   disabled={!canEdit}
                   onClick={() => setAdding(true)}
                 >
-                  Add to project
+                  Add to product
                 </Button>
               </Gate>
             )}
           </Inline>
         }
       >
-        {hasRows && (
+        {hasRows ? (
           <DataTable
-            label={`Projects for ${subjectName}`}
+            label={`Products for ${subjectName}`}
             rows={list.pageRows}
             columns={columns}
             loading={isPending}
             rowActions={rowActions}
             getRowId={(row) => row.id}
-            rowLabel={(row) => row.project.name}
+            rowLabel={labelOf}
             sort={list.sort}
             onSortChange={list.setSort}
             pagination={list.pagination}
           />
+        ) : (
+          empty
         )}
-        {!hasRows &&
-          (searching ? (
-            <EmptyState size="sm" icon="search" title="No projects match this search" />
-          ) : (
-            <EmptyState size="sm" icon="folder" title={text.emptyTitle} />
-          ))}
       </Card>
-      {subject === "group" ? (
-        <AddGroupProjectsSheet
-          open={adding}
-          onOpenChange={setAdding}
-          available={available}
-          canEdit={canEdit}
-          onAssign={async (project) => {
-            if (await add(project.id, "no-access"))
-              saved(`Successfully assigned the group to project ${project.name}`);
-          }}
-        />
-      ) : (
-        <AddToProjectDialog
-          subject={subject}
-          open={adding}
-          onOpenChange={setAdding}
-          available={available}
-          onAdd={async (projectId, role) => {
-            if (await add(projectId, role)) saved(text.added);
-          }}
-        />
-      )}
+      <AddToProductDialog
+        subject={subject}
+        open={adding}
+        onOpenChange={setAdding}
+        memberProjectIds={memberships.map((row) => row.project.id)}
+        membershipsReady={!isPending && !error}
+        onAdd={add}
+      />
       <AlertDialog
         open={Boolean(removing)}
         onOpenChange={(open) => !open && setRemoving(undefined)}
       >
-        <AlertDialogContent tone="danger" confirmText={subject === "user" ? "remove" : "confirm"}>
+        <AlertDialogContent tone="danger" confirmText={text.confirmText}>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {subject === "user" &&
-                `Do you want to remove this user from ${removing?.project.name ?? ""}?`}
-              {subject === "identity" && "Remove identity from project"}
-              {subject === "group" &&
-                `Are you sure you want to remove the group from ${removing?.project.name ?? ""}?`}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{text.removeTitle(removingLabel)}</AlertDialogTitle>
             <AlertDialogDescription>
-              {subject === "user" && "They lose their direct access to this project."}
-              {subject === "identity" &&
-                `${subjectName} loses its access to ${removing?.project.name ?? "this project"}.`}
-              {subject === "group" && "Members lose access granted through this group."}
+              {text.removeDescription(subjectName, removingLabel)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -545,7 +590,7 @@ export const ProjectMembershipsSection = ({
                 setRemoving(undefined);
               }}
             >
-              {subject === "identity" ? "Remove from project" : "Delete"}
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -16,10 +16,11 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus } from "@app/hooks/api/secretApprovalRequest/types";
 import { getAccessRequestState } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/AccessApprovalRequest.utils";
 
+import { resolveAccessPolicyForPath } from "../../secret-manager/SecretApprovalsPage/access-requests/scope";
 import { createFixtureStore } from "../fixture-store";
 import type { AccessApprovalsAdapter, AccessRequestGroup, AccessRequestMember } from "./contract";
 
-const SCENARIOS = ["default", "empty", "no-policies", "loading", "unlicensed"] as const;
+const SCENARIOS = ["default", "empty", "no-policies", "loading", "unlicensed", "stressed"] as const;
 type Scenario = (typeof SCENARIOS)[number];
 
 const useScenario = () =>
@@ -150,6 +151,18 @@ const POLICY_SEEDS: PolicySeed[] = [
     delegated: true
   },
   {
+    id: "pol-prod-services",
+    name: "Production services",
+    env: "prod",
+    secretPath: "/services/**",
+    approvers: [
+      { id: SELF, type: ApproverType.User, sequence: 1, approvalsRequired: 1 },
+      { id: "u-jordan", type: ApproverType.User, sequence: 1, approvalsRequired: 1 }
+    ],
+    maxTimePeriod: "12h",
+    requestExpirationTime: "3d"
+  },
+  {
     id: "pol-dev",
     name: "Development",
     env: "dev",
@@ -161,6 +174,39 @@ const POLICY_SEEDS: PolicySeed[] = [
     allowedSelfApprovals: true
   }
 ];
+
+const STRESSED_POLICY_SEEDS: PolicySeed[] = [
+  {
+    id: "pol-prod-platform-eu",
+    name: "Regional platform workloads for the EU central Kubernetes deployment",
+    env: "prod",
+    secretPath: "/platform/regional-deployments/eu-central-1/kubernetes-workloads/**",
+    approvers: [
+      { id: SELF, type: ApproverType.User, sequence: 1, approvalsRequired: 1 },
+      { id: "g-security", type: ApproverType.Group, sequence: 2, approvalsRequired: 1 }
+    ],
+    maxTimePeriod: "4h",
+    requestExpirationTime: "1d"
+  }
+];
+const ALL_POLICY_SEEDS = [...POLICY_SEEDS, ...STRESSED_POLICY_SEEDS];
+
+const FOLDERS: Record<string, string[]> = {
+  dev: ["/", "/app", "/app/web", "/app/worker"],
+  staging: ["/", "/app"],
+  prod: [
+    "/",
+    "/api",
+    "/payments",
+    "/services",
+    "/services/billing",
+    "/services/payments",
+    "/services/payments/adyen",
+    "/services/payments/stripe",
+    "/services/payments/stripe/webhooks",
+    "/services/search"
+  ]
+};
 
 const GROUP_MEMBERS: Record<string, string[]> = { "g-security": ["u-priya", "u-maya"] };
 
@@ -175,7 +221,7 @@ const policyApprovers = (seed: PolicySeed): PolicyApprover[] =>
     )
   );
 
-const POLICIES: TAccessApprovalPolicy[] = POLICY_SEEDS.map((seed) => ({
+const POLICIES: TAccessApprovalPolicy[] = ALL_POLICY_SEEDS.map((seed) => ({
   id: seed.id,
   name: seed.name,
   approvals: 1,
@@ -222,6 +268,7 @@ const permissionsFor = (
 type RequestSeed = {
   id: string;
   policy: string;
+  path?: string;
   by: string;
   createdAgo: number;
   range?: string;
@@ -256,6 +303,17 @@ const SEEDS: RequestSeed[] = [
     ],
     note: "Rotating the Stripe webhook secret during the incident.",
     expiresIn: 2 * DAY
+  },
+  {
+    id: "ar-scoped",
+    policy: "pol-prod-services",
+    path: "/services/payments/**",
+    by: "u-maya",
+    createdAgo: 45 * 60 * 1000,
+    range: "4h",
+    grants: [{ subject: SECRETS, actions: READ }],
+    note: "Checking the Stripe and Adyen webhook keys after the provider rotation.",
+    expiresIn: 3 * DAY
   },
   {
     id: "ar-additional",
@@ -412,14 +470,35 @@ const SEEDS: RequestSeed[] = [
   }
 ];
 
+const STRESSED_SEEDS: RequestSeed[] = [
+  {
+    id: "ar-stressed",
+    policy: "pol-prod-platform-eu",
+    path: "/platform/regional-deployments/eu-central-1/kubernetes-workloads/payments-ledger-reconciliation/**",
+    by: "u-priya",
+    createdAgo: 10 * 60 * 1000,
+    range: "4h",
+    grants: [
+      { subject: SECRETS, actions: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit] }
+    ],
+    note: "Reconciling the ledger after the EU central failover. The job reads the regional database credentials and rewrites the settlement webhook secrets.",
+    expiresIn: DAY
+  }
+];
+const STRESSED_IDS = STRESSED_SEEDS.map((seed) => seed.id);
+
 const requestOf = (seed: RequestSeed): TAccessApprovalRequest => {
-  const policySeed = POLICY_SEEDS.find((entry) => entry.id === seed.policy)!;
+  const policySeed = ALL_POLICY_SEEDS.find((entry) => entry.id === seed.policy)!;
   const createdAt = at(-seed.createdAgo);
   const status = seed.status ?? ApprovalStatus.PENDING;
   const approved = status === ApprovalStatus.APPROVED;
   const approvedAt =
     approved || status === ApprovalStatus.REVOKED ? at(-seed.createdAgo + HOUR) : null;
-  const permissions = permissionsFor(policySeed.env, policySeed.secretPath, seed.grants ?? []);
+  const permissions = permissionsFor(
+    policySeed.env,
+    seed.path ?? policySeed.secretPath,
+    seed.grants ?? []
+  );
   return {
     id: seed.id,
     policyId: seed.policyDeleted ? null : policySeed.id,
@@ -500,7 +579,7 @@ const requestOf = (seed: RequestSeed): TAccessApprovalRequest => {
 type DemoState = { requests: TAccessApprovalRequest[]; retrying: string[] };
 
 const store = createFixtureStore<DemoState>({
-  requests: SEEDS.map(requestOf),
+  requests: [...SEEDS, ...STRESSED_SEEDS].map(requestOf),
   retrying: ["ar-snow-retrying"]
 });
 
@@ -517,8 +596,11 @@ const query = <T>(scenario: Scenario, data: T) =>
     ? { data: undefined, isPending: true, error: null }
     : { data, isPending: false, error: null };
 
-const visibleRequests = (scenario: Scenario, requests: TAccessApprovalRequest[]) =>
-  scenario === "empty" || scenario === "no-policies" ? [] : requests;
+const visibleRequests = (scenario: Scenario, requests: TAccessApprovalRequest[]) => {
+  if (scenario === "empty" || scenario === "no-policies") return [];
+  if (scenario === "stressed") return requests;
+  return requests.filter((request) => !STRESSED_IDS.includes(request.id));
+};
 
 const setRequest = (
   requestId: string,
@@ -566,7 +648,12 @@ export const accessApprovalsDemo: AccessApprovalsAdapter = {
   },
   usePolicies: () => {
     const scenario = useScenario();
-    return query(scenario, scenario === "no-policies" ? [] : POLICIES);
+    if (scenario === "no-policies") return query(scenario, []);
+    if (scenario === "stressed") return query(scenario, POLICIES);
+    return query(
+      scenario,
+      POLICIES.filter((policy) => POLICY_SEEDS.some((seed) => seed.id === policy.id))
+    );
   },
   useRequests: ({ envSlug, authorUserId }) => {
     const scenario = useScenario();
@@ -591,6 +678,13 @@ export const accessApprovalsDemo: AccessApprovalsAdapter = {
   useMembers: () => query(useScenario(), MEMBERS),
   useGroups: () => query(useScenario(), GROUPS),
   useDelegatedApprovalOptions: () => query(useScenario(), DELEGATED_OPTIONS),
+  useEnvironmentFolderPaths: ({ environment, enabled }) => {
+    const scenario = useScenario();
+    if (!enabled) return { data: undefined, isPending: true, error: null };
+    if (scenario === "stressed")
+      return { data: undefined, isPending: false, error: new Error("Failed to load folders") };
+    return query(scenario, FOLDERS[environment] ?? []);
+  },
   useIsDispatchRetrying: () => {
     const { retrying } = store.use();
     return (requestId) => retrying.includes(requestId);
@@ -599,16 +693,19 @@ export const accessApprovalsDemo: AccessApprovalsAdapter = {
     const conditions = permissions?.[0]?.conditions as
       | { environment?: string; secretPath?: { $glob?: string } }
       | undefined;
-    const policy = POLICIES.find(
-      (entry) =>
-        entry.environments.some((env) => env.slug === conditions?.environment) &&
-        entry.secretPath === conditions?.secretPath?.$glob
+    const secretPath = conditions?.secretPath?.$glob ?? "";
+    const policy = resolveAccessPolicyForPath(
+      POLICIES.filter((entry) =>
+        entry.environments.some((env) => env.slug === conditions?.environment)
+      ),
+      secretPath
     );
-    const seed = POLICY_SEEDS.find((entry) => entry.id === policy?.id);
+    const seed = ALL_POLICY_SEEDS.find((entry) => entry.id === policy?.id);
     if (!seed) throw new Error("No policy matches this environment and secret path");
     const request = requestOf({
       id: `ar-${crypto.randomUUID().slice(0, 8)}`,
       policy: seed.id,
+      path: secretPath,
       by: SELF,
       createdAgo: 0,
       range: isTemporary ? (temporaryRange ?? undefined) : undefined,

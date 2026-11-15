@@ -2,7 +2,17 @@ import {
   useAddPamProductGroupMember,
   useAddPamProductIdentityMember,
   useAddPamProductUserMember,
+  useCreatePamAccount,
+  useCreatePamFolder,
+  useDeletePamAccount,
+  useDeletePamFolder,
   useGetPamAccessCapabilities,
+  useGetPamAccountById,
+  useGrantPamFolderAdminAccess,
+  usePamAccountActions,
+  usePamFolderActions,
+  useUpdatePamAccount,
+  useUpdatePamFolder,
   useListPamAccounts,
   useListPamAccountTypes,
   useListPamFolders,
@@ -19,12 +29,24 @@ import {
 } from "@app/hooks/api/pam";
 
 import type { PamAdapter } from "./contract";
+import { pamOperationsLive } from "./operations/live";
 
 export const pamLive: PamAdapter = {
+  ...pamOperationsLive,
   useAccessCapabilities: useGetPamAccessCapabilities,
   useFolders: useListPamFolders,
   useAccounts: useListPamAccounts,
   useAccountTypes: useListPamAccountTypes,
+  useAccount: (accountId) => useGetPamAccountById(accountId),
+  useFolderActions: usePamFolderActions,
+  useAccountActions: usePamAccountActions,
+  useCreateFolder: useCreatePamFolder,
+  useUpdateFolder: useUpdatePamFolder,
+  useDeleteFolder: useDeletePamFolder,
+  useGrantFolderAdminAccess: useGrantPamFolderAdminAccess,
+  useCreateAccount: useCreatePamAccount,
+  useUpdateAccount: () => useUpdatePamAccount({ skipValidationToast: true }),
+  useDeleteAccount: useDeletePamAccount,
   useProductIdentities: useListPamProductIdentities,
   useAddProductUserMember: useAddPamProductUserMember,
   useUpdateProductUserMember: useUpdatePamProductUserMember,

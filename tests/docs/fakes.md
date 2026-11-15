@@ -20,6 +20,7 @@ gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep")) // state before the action
 gh.Repo(t, "acme/app").Secrets                                 // state now
 gh.Fail(t, "PUT", "/repos/*", 500, fakenet.Times(1))           // inject a failure
+gh.Fail(t, "GET", "/user", 0, fakenet.Hangup())                // drop the connection instead
 gh.Received(t, "GET", "/user")                                 // count calls
 ```
 
@@ -131,6 +132,20 @@ record, so publish it first; it is removed when the test ends.
 ```go
 fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
 ```
+
+DNS provider fakes (`cloudflare`, `dnsmadeeasy`) serve the TXT records created through
+their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers would.
+
+## Certificate Manager
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
+| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and validates DNS-01 against the TXT records the DNS provider fakes publish |
+| `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections and DNS-01 records |
+| `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
+
+A host registered as `*.<domain>` answers for every name under it; an exact host wins.
 
 ## Test plumbing once
 

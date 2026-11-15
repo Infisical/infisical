@@ -38,10 +38,10 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { useConnectionCreation } from "../../../../components/connection-creation";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
-import { useConnectionCreation } from "./connection-creation";
 import { ReviewSection, RotationField, TextField, useRotationForm } from "./secret-rotation/fields";
 import {
   appConnectionName,

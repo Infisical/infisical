@@ -1,10 +1,10 @@
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../../license/license-service";
 import { listChefDataBagItems, listChefDataBags } from "./chef-connection-fns";
 import { TChefConnection } from "./chef-connection-types";
 
@@ -15,9 +15,9 @@ type TGetAppConnectionFunc = (
 ) => Promise<TChefConnection>;
 
 // Enterprise check
-export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) => {
+export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.enterpriseAppConnections)
+  if (!plan.has(PlanFeature.EnterpriseAppConnections))
     throw new BadRequestError({
       message:
         "Failed to use app connection due to plan restriction. Upgrade plan to access enterprise app connections."
@@ -26,7 +26,7 @@ export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "ge
 
 export const chefConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {

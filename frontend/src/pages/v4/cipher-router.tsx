@@ -44,7 +44,10 @@ const cipherRouter: CipherRouter = {
       const exact = Boolean(matchRoute({ ...target, fuzzy: false }));
       if (!exact && (link.activeOptions?.exact || !matchRoute({ ...target, fuzzy: true })))
         return undefined;
-      return { exact, length: router.buildLocation(target).pathname.length };
+      const { pathname } = (
+        router as unknown as { buildLocation: (options: unknown) => { pathname: string } }
+      ).buildLocation(target);
+      return { exact, length: pathname.length };
     };
   }
 };

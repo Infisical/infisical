@@ -1,31 +1,20 @@
-import { useMemo, useState } from "react";
-import { Button } from "@infisical/cipher/ui/button";
+import { useState } from "react";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
-import { Switch } from "@infisical/cipher/ui/switch";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
-import {
-  ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES,
-  AUDIT_LOG_EVENT_CLASS_DEFAULTS,
-  AUDIT_LOG_EVENT_CLASSES,
-  auditLogEventClassToDescriptionMap,
-  auditLogEventClassToNameMap,
-  CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES
-} from "@app/hooks/api/auditLogSettings/constants";
-import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useProjectPermission } from "../../access/permissions";
@@ -38,8 +27,8 @@ import {
 } from "../../cert-manager/components/certificate";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { orgHref } from "../../links";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
+import { EventClassesCard } from "../../organization/AuditLogsPage/event-classes";
 import { PageLoader } from "../../shell/project-gate";
 
 const tabs = [
@@ -55,104 +44,30 @@ const scopeOf = (type: ProjectType) =>
 
 type Scope = { projectId: string; projectType: ProjectType };
 
-const EventClassesCard = ({ projectId, projectType, canEdit }: Scope & { canEdit: boolean }) => {
+const ProjectEventClassesCard = ({
+  projectId,
+  projectType,
+  canEdit
+}: Scope & { canEdit: boolean }) => {
   const { organization } = useV4Session();
   const adapter = useV4Adapter("auditLogs");
   const { data: plan } = adapter.usePlan(organization.id);
-  const { data: org } = useV4Adapter("org").useOrganization(organization.id);
   const { data: settings, isPending, error } = adapter.useProjectSettings(projectId);
   const update = adapter.useUpdateProjectSettings();
-  const newPrivileges =
-    settings?.shouldUseNewPrivilegeSystem ?? org?.shouldUseNewPrivilegeSystem ?? false;
-  const storedFlags = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) =>
-    eventClass === AuditLogEventClass.Authorization && !newPrivileges
-      ? false
-      : (settings?.eventClasses.find((entry) => entry.eventClass === eventClass)?.isEnabled ??
-        AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
-  )
-    .map(Number)
-    .join("");
-  const stored = useMemo(
-    () =>
-      CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass, index) => ({
-        eventClass,
-        isEnabled: storedFlags[index] === "1"
-      })),
-    [storedFlags]
-  );
-  const { value, save, status, pending } = useAutosave({
-    value: stored,
-    errorMessage: "Couldn't update the recorded event classes. Try again.",
-    onSave: async (eventClasses) => {
-      await update.mutateAsync({ projectId, eventClasses });
-      toast({ tone: "ok", title: "Audit log settings saved" });
-    }
-  });
 
   let locked: string | undefined;
   if (!canEdit) locked = EDIT_REQUIRED;
   else if (plan && !plan.auditLogs) locked = "Choosing recorded events needs a paid plan.";
 
-  if (error)
-    return (
-      <SettingsCard title="Event classes">
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="alert"
-          title="Couldn't load the audit log settings"
-          description="Refresh the page to try again."
-        />
-      </SettingsCard>
-    );
-
   return (
-    <SettingsCard
-      title="Event classes"
+    <EventClassesCard
       description={`Choose which classes of events ${scopeOf(projectType)} records.`}
-      loading={isPending}
+      settings={settings}
+      isPending={isPending}
+      error={error}
       locked={locked}
-      saveStatus={status}
-    >
-      <Stack gap={16}>
-        {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
-          const always = ALWAYS_RECORDED_AUDIT_LOG_EVENT_CLASSES.includes(eventClass);
-          const needsPrivileges = eventClass === AuditLogEventClass.Authorization && !newPrivileges;
-          let description = auditLogEventClassToDescriptionMap[eventClass];
-          if (always) description = `${description} Always recorded.`;
-          if (needsPrivileges)
-            description = `${description} Only recorded on the new privilege system.`;
-          return (
-            <Switch
-              key={eventClass}
-              layout="row"
-              label={auditLogEventClassToNameMap[eventClass]}
-              description={description}
-              checked={
-                always ||
-                (!needsPrivileges &&
-                  Boolean(value.find((entry) => entry.eventClass === eventClass)?.isEnabled))
-              }
-              disabled={always || needsPrivileges || Boolean(locked) || pending}
-              onCheckedChange={(checked) =>
-                save(
-                  value.map((entry) =>
-                    entry.eventClass === eventClass ? { ...entry, isEnabled: checked } : entry
-                  )
-                )
-              }
-            />
-          );
-        })}
-        {!newPrivileges && (
-          <Button variant="link" underline="hover" asChild>
-            <a href={orgHref(organization.id, "/access-management")}>
-              Upgrade the privilege system in access control
-            </a>
-          </Button>
-        )}
-      </Stack>
-    </SettingsCard>
+      onSave={(eventClasses) => update.mutateAsync({ projectId, eventClasses })}
+    />
   );
 };
 
@@ -227,7 +142,7 @@ const SettingsTab = (scope: Scope) => {
   );
   return (
     <Stack gap={24}>
-      <EventClassesCard {...scope} canEdit={canEdit} />
+      <ProjectEventClassesCard {...scope} canEdit={canEdit} />
       {!isInfisicalCloud() && <RetentionCard {...scope} canEdit={canEdit} />}
     </Stack>
   );
@@ -282,12 +197,12 @@ const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
   );
 };
 
-export const ProjectAuditLogsPage = () => {
+const ProjectAuditLogsBody = () => {
   const { projectId, projectType } = useProjectScope();
   return <ProjectAuditLogs key={projectId} projectId={projectId} projectType={projectType} />;
 };
 
-export const CertManagerAuditLogsPage = () => {
+const CertManagerAuditLogsBody = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { projectId, isPending } = useCertManagerProjectId(orgId);
   if (isPending) return <PageLoader label="Loading audit logs" />;
@@ -295,9 +210,20 @@ export const CertManagerAuditLogsPage = () => {
   return <ProjectAuditLogs projectId={projectId} projectType={ProjectType.CertificateManager} />;
 };
 
-export const PamAuditLogsPage = () => {
+const PamAuditLogsBody = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { data: projectId, isPending } = useV4Adapter("auditLogs").usePamProjectId(orgId);
   if (isPending || !projectId) return <PageLoader label="Loading audit logs" />;
   return <ProjectAuditLogs projectId={projectId} projectType={ProjectType.PAM} />;
 };
+
+const withAuditLogsTitle = (Body: () => React.JSX.Element) => () => (
+  <>
+    <PageTitle title="Audit logs" />
+    <Body />
+  </>
+);
+
+export const ProjectAuditLogsPage = withAuditLogsTitle(ProjectAuditLogsBody);
+export const CertManagerAuditLogsPage = withAuditLogsTitle(CertManagerAuditLogsBody);
+export const PamAuditLogsPage = withAuditLogsTitle(PamAuditLogsBody);

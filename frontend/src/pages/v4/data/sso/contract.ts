@@ -24,7 +24,9 @@ import type { LDAPGroupMap } from "@app/hooks/api/ldapConfig/types";
 import type {
   TCreateOauthClientDTO,
   TDeleteOauthClientDTO,
+  TOauthAuthorizeInfo,
   TOauthClient,
+  TOauthConsentDTO,
   TRotateOauthClientSecretDTO,
   TUpdateOauthClientDTO
 } from "@app/hooks/api/oauthClients/types";
@@ -156,4 +158,10 @@ export type SsoAdapter = {
     TRotateOauthClientSecretDTO,
     { client: TOauthClient; clientSecret: string }
   >;
+  useOauthAuthorizeInfo: (
+    clientId: string,
+    redirectUri: string,
+    scope?: string
+  ) => V4QueryResult<TOauthAuthorizeInfo>;
+  useOauthConsent: V4Mutation<TOauthConsentDTO, { callbackUrl: string }>;
 };
