@@ -1,5 +1,15 @@
 import type {
   TPamAccessRequest,
+  TPamAccount,
+  useCreatePamAccount,
+  useCreatePamFolder,
+  useDeletePamAccount,
+  useDeletePamFolder,
+  useGrantPamFolderAdminAccess,
+  usePamAccountActions,
+  usePamFolderActions,
+  useUpdatePamAccount,
+  useUpdatePamFolder,
   TPamAccountListItem,
   TPamAccountTypeMetadata,
   TPamFolderWithCount,
@@ -22,6 +32,7 @@ import type {
 
 import type { MutationOf } from "../access/contract";
 import type { V4QueryResult } from "../contract";
+import type { PamOperationsAdapter } from "./operations/contract";
 
 export type TPamFoldersParams = NonNullable<Parameters<typeof useListPamFolders>[0]>;
 export type TPamAccountsParams = NonNullable<Parameters<typeof useListPamAccounts>[0]>;
@@ -29,7 +40,7 @@ export type TPamAccessCapabilities = NonNullable<
   ReturnType<typeof useGetPamAccessCapabilities>["data"]
 >;
 
-export type PamAdapter = {
+export type PamAdapter = PamOperationsAdapter & {
   useAccessCapabilities: () => V4QueryResult<TPamAccessCapabilities>;
   useFolders: (
     params?: TPamFoldersParams,
@@ -40,6 +51,19 @@ export type PamAdapter = {
     options?: { enabled?: boolean }
   ) => V4QueryResult<TPamAccountListItem[]>;
   useAccountTypes: () => V4QueryResult<TPamAccountTypeMetadata[]>;
+  useAccount: (accountId?: string) => V4QueryResult<TPamAccount>;
+  useFolderActions: (folderId: string, enabled?: boolean) => ReturnType<typeof usePamFolderActions>;
+  useAccountActions: (
+    accountId: string,
+    enabled?: boolean
+  ) => ReturnType<typeof usePamAccountActions>;
+  useCreateFolder: MutationOf<typeof useCreatePamFolder>;
+  useUpdateFolder: MutationOf<typeof useUpdatePamFolder>;
+  useDeleteFolder: MutationOf<typeof useDeletePamFolder>;
+  useGrantFolderAdminAccess: MutationOf<typeof useGrantPamFolderAdminAccess>;
+  useCreateAccount: MutationOf<typeof useCreatePamAccount>;
+  useUpdateAccount: MutationOf<typeof useUpdatePamAccount>;
+  useDeleteAccount: MutationOf<typeof useDeletePamAccount>;
   useProductIdentities: () => V4QueryResult<TPamIdentityMember[]>;
   useAddProductUserMember: MutationOf<typeof useAddPamProductUserMember>;
   useUpdateProductUserMember: MutationOf<typeof useUpdatePamProductUserMember>;

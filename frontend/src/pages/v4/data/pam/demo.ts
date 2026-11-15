@@ -3,6 +3,7 @@ import { packRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import {
+  buildPamAccountCan,
   PamAccessGrantStatus,
   PamAccessRequestDecision,
   PamAccessRequestStatus,
@@ -11,6 +12,7 @@ import {
   PamAccountAccessibilityIssue,
   PamAccountType,
   PamAccountWarning,
+  PamFieldWidget,
   PamFolderCallerAccess,
   PamHeartbeatStatus,
   PamResourcePermissionActions,
@@ -19,7 +21,9 @@ import {
   type TPamAccessRequest,
   type TPamIdentityMember,
   type TPamAccountListItem,
+  type TPamAccount,
   type TPamAccountTypeMetadata,
+  type TPamFieldDescriptor,
   type TPamFolderWithCount
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -29,6 +33,7 @@ import { accessDemo } from "../access/demo";
 import { DEMO_PAM_PROJECT_ID } from "../access/fixtures";
 import { createFixtureStore } from "../fixture-store";
 import type { PamAdapter } from "./contract";
+import { demoApplicablePolicies, pamOperationsDemo, templateStore } from "./operations/demo";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -47,6 +52,132 @@ const launchOnly = pack([
   PamResourcePermissionActions.ReadAccounts,
   PamResourcePermissionActions.LaunchSessions
 ]);
+
+const text = (
+  key: string,
+  label: string,
+  extra: Partial<TPamFieldDescriptor> = {}
+): TPamFieldDescriptor => ({
+  key,
+  label,
+  widget: PamFieldWidget.Text,
+  required: true,
+  secret: false,
+  ...extra
+});
+
+const DEFAULT_PORTS: Partial<Record<PamAccountType, number>> = {
+  [PamAccountType.Postgres]: 5432,
+  [PamAccountType.MySQL]: 3306,
+  [PamAccountType.MsSQL]: 1433,
+  [PamAccountType.OracleDB]: 1521,
+  [PamAccountType.MongoDB]: 27017,
+  [PamAccountType.Redis]: 6379,
+  [PamAccountType.ClickHouse]: 9000,
+  [PamAccountType.SSH]: 22,
+  [PamAccountType.Windows]: 3389,
+  [PamAccountType.WindowsAd]: 3389
+};
+
+const CONNECTION_STRING_SCHEMES: Partial<Record<PamAccountType, string[]>> = {
+  [PamAccountType.Postgres]: ["postgres", "postgresql"],
+  [PamAccountType.MySQL]: ["mysql"],
+  [PamAccountType.MongoDB]: ["mongodb", "mongodb+srv"],
+  [PamAccountType.Redis]: ["redis", "rediss"]
+};
+
+const SSH_AUTH_METHODS = [
+  { label: "Password", value: "password" },
+  { label: "Public key", value: "public-key" },
+  { label: "Certificate", value: "certificate" }
+];
+
+const connectionFieldsFor = (type: PamAccountType): TPamFieldDescriptor[] => {
+  const port = DEFAULT_PORTS[type];
+  if (type === PamAccountType.AwsIam) return [text("roleArn", "Role ARN")];
+  if (type === PamAccountType.AzureCli) return [text("tenantId", "Tenant ID")];
+  if (type === PamAccountType.GcpServiceAccount)
+    return [text("serviceAccountEmail", "Service account email")];
+  if (type === PamAccountType.Kubernetes)
+    return [
+      text("url", "API server URL"),
+      {
+        key: "sslRejectUnauthorized",
+        label: "Reject unauthorized certificates",
+        widget: PamFieldWidget.Boolean,
+        required: false,
+        secret: false,
+        defaultValue: true
+      }
+    ];
+  if (type === PamAccountType.Snowflake)
+    return [text("account", "Account identifier"), text("database", "Database")];
+  const fields = [
+    text("host", "Host"),
+    {
+      ...text("port", "Port"),
+      widget: PamFieldWidget.Number,
+      ...(port ? { defaultValue: port } : {})
+    }
+  ];
+  if (type === PamAccountType.SSH || type === PamAccountType.Windows) return fields;
+  if (type === PamAccountType.WindowsAd) return [...fields, text("domain", "Domain")];
+  return [
+    ...fields,
+    text("database", "Database", { required: type !== PamAccountType.Redis }),
+    {
+      key: "sslEnabled",
+      label: "Use SSL",
+      widget: PamFieldWidget.Boolean,
+      required: false,
+      secret: false,
+      defaultValue: true
+    }
+  ];
+};
+
+const credentialFieldsFor = (type: PamAccountType): TPamFieldDescriptor[] => {
+  const password: TPamFieldDescriptor = {
+    key: "password",
+    label: "Password",
+    widget: PamFieldWidget.Password,
+    required: false,
+    secret: true
+  };
+  if (type === PamAccountType.AwsIam || type === PamAccountType.GcpServiceAccount) return [];
+  if (type === PamAccountType.Kubernetes)
+    return [
+      {
+        key: "serviceAccountToken",
+        label: "Service account token",
+        widget: PamFieldWidget.Textarea,
+        required: false,
+        secret: true
+      }
+    ];
+  if (type === PamAccountType.SSH)
+    return [
+      {
+        key: "authMethod",
+        label: "Authentication method",
+        widget: PamFieldWidget.Select,
+        required: true,
+        secret: false,
+        options: SSH_AUTH_METHODS
+      },
+      text("username", "Username"),
+      { ...password, showWhen: { field: "authMethod", equals: "password" } },
+      {
+        key: "privateKey",
+        label: "Private key",
+        widget: PamFieldWidget.Textarea,
+        required: false,
+        secret: true,
+        showWhen: { field: "authMethod", equals: "public-key" }
+      }
+    ];
+  return [text("username", "Username"), password];
+};
 
 const accountTypes: TPamAccountTypeMetadata[] = (
   [
@@ -73,9 +204,10 @@ const accountTypes: TPamAccountTypeMetadata[] = (
   supportsWebAccess: false,
   requiresGateway: type !== PamAccountType.AwsIam,
   supportsDependencies: false,
-  connectionFields: [],
-  credentialFields: [],
-  applicablePolicies: []
+  connectionStringSchemes: CONNECTION_STRING_SCHEMES[type],
+  connectionFields: connectionFieldsFor(type),
+  credentialFields: credentialFieldsFor(type),
+  applicablePolicies: demoApplicablePolicies(type)
 }));
 
 const folders: TPamFolderWithCount[] = (
@@ -248,6 +380,9 @@ const seeds: AccountSeed[] = [
   }
 ];
 
+const templateFor = (type: string) =>
+  templateStore.get().find((template) => template.type === type);
+
 const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
   const folder = folders.find((entry) => entry.name === seed.folder) ?? folders[0];
   const access = seed.access ?? PamAccessStatus.None;
@@ -258,8 +393,8 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
     description: seed.description ?? null,
     folderId: folder.id,
     folderName: folder.name,
-    templateId: uuid("e0", 1),
-    templateName: "Default",
+    templateId: templateFor(seed.type)?.id ?? uuid("e0", 1),
+    templateName: templateFor(seed.type)?.name ?? "Default",
     accountType: seed.type,
     gatewayId: null,
     gatewayPoolId: null,
@@ -287,6 +422,51 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
 
 const folderStore = createFixtureStore(folders);
 const accountStore = createFixtureStore(accounts);
+
+type AccountDetails = Pick<TPamAccount, "connectionDetails" | "credentials">;
+
+const detailsFor = (account: TPamAccountListItem): AccountDetails => {
+  const type = account.accountType as PamAccountType;
+  const host = `${account.name}.internal.acme.dev`;
+  const connection: Record<string, unknown> = Object.fromEntries(
+    connectionFieldsFor(type).map((field) => {
+      if (field.key === "host") return [field.key, host];
+      if (field.key === "database") return [field.key, account.name.split("-")[0]];
+      if (field.key === "url") return [field.key, `https://${host}:6443`];
+      if (field.key === "roleArn")
+        return [field.key, "arn:aws:iam::000000000000:role/infisical-pam-demo"];
+      if (field.key === "tenantId") return [field.key, "00000000-0000-4000-8000-0000000000aa"];
+      if (field.key === "serviceAccountEmail")
+        return [field.key, `${account.name}@acme-demo.iam.gserviceaccount.com`];
+      if (field.key === "account") return [field.key, "acme-demo"];
+      if (field.key === "domain") return [field.key, "corp.acme.dev"];
+      return [field.key, field.defaultValue ?? ""];
+    })
+  );
+  const credentials: Record<string, unknown> = {};
+  credentialFieldsFor(type).forEach((field) => {
+    if (field.key === "username") credentials.username = `svc_${account.name.replace(/-/g, "_")}`;
+    if (field.key === "authMethod") credentials.authMethod = "password";
+  });
+  return { connectionDetails: connection, credentials };
+};
+
+const accountDetailStore = createFixtureStore<Record<string, AccountDetails>>(
+  Object.fromEntries(accounts.map((account) => [account.id, detailsFor(account)]))
+);
+
+const isMemberFolder = (folderId: string) => {
+  const folder = folderStore.get().find(({ id }) => id === folderId);
+  return Boolean(folder && folder.callerAccess !== PamFolderCallerAccess.None);
+};
+
+const folderPermissions = (folderName?: string) =>
+  folderName === "contractors" ? launchOnly : fullAccess;
+
+const accountTypeOf = (type: string) =>
+  accountTypes.find((meta) => meta.type === type) ?? accountTypes[0];
+
+let createdCount = 0;
 
 type RequestSeed = Partial<TPamAccessRequest> & {
   account: string;
@@ -575,13 +755,8 @@ const accessRequestStore = createFixtureStore(accessRequests);
 
 const PAM_PROJECT_TYPE = ProjectType.PAM;
 
-const memberFolderIds = new Set(
-  folders
-    .filter(({ callerAccess }) => callerAccess !== PamFolderCallerAccess.None)
-    .map(({ id }) => id)
-);
-
 export const pamDemo: PamAdapter = {
+  ...pamOperationsDemo,
   useAccessCapabilities: () => ({
     data: {
       isProductAdmin: true,
@@ -603,7 +778,7 @@ export const pamDemo: PamAdapter = {
           return Boolean(params?.includeNonMemberFolders);
         if (params?.filterByAction === PamResourcePermissionActions.CreateAccounts)
           return name !== "contractors";
-        return memberFolderIds.has(id);
+        return isMemberFolder(id);
       })
       .map((folder) => ({
         ...folder,
@@ -617,7 +792,9 @@ export const pamDemo: PamAdapter = {
     const search = params?.search?.toLowerCase();
     const data = allAccounts.filter(
       (account) =>
-        memberFolderIds.has(account.folderId) &&
+        isMemberFolder(account.folderId) &&
+        (!params?.filterByAction ||
+          buildPamAccountCan(account.permissions)(params.filterByAction)) &&
         (!params?.folderId || account.folderId === params.folderId) &&
         (!params?.templateId || account.templateId === params.templateId) &&
         (!params?.accountType || account.accountType === params.accountType) &&
@@ -631,6 +808,218 @@ export const pamDemo: PamAdapter = {
     data: accountTypes,
     isPending: false,
     error: null
+  }),
+  useAccount: (accountId) => {
+    const allAccounts = accountStore.use();
+    const details = accountDetailStore.use();
+    const account = allAccounts.find(({ id }) => id === accountId);
+    if (!account) return { data: undefined, isPending: Boolean(accountId), error: null };
+    return {
+      data: {
+        ...account,
+        accountType: account.accountType as PamAccountType,
+        templatePolicies: {},
+        templateSettings: {},
+        settingsOverrides: null,
+        ...(details[account.id] ?? detailsFor(account))
+      },
+      isPending: false,
+      error: null
+    };
+  },
+  useFolderActions: (folderId) => {
+    const folder = folderStore.use().find(({ id }) => id === folderId);
+    const can = buildPamAccountCan(
+      folder && folder.callerAccess !== PamFolderCallerAccess.None
+        ? folderPermissions(folder.name)
+        : []
+    );
+    return { can, isLoading: false };
+  },
+  useAccountActions: (accountId) => {
+    const account = accountStore.use().find(({ id }) => id === accountId);
+    return { can: buildPamAccountCan(account?.permissions), isLoading: false };
+  },
+  useCreateFolder: () => ({
+    isPending: false,
+    mutateAsync: async ({ name, description }) => {
+      if (folderStore.get().some((folder) => folder.name === name))
+        throw new Error(`A folder named ${name} already exists`);
+      createdCount += 1;
+      const now = new Date().toISOString();
+      const folder: TPamFolderWithCount = {
+        id: uuid("f1", createdCount),
+        name,
+        description: description ?? null,
+        callerAccess: PamFolderCallerAccess.Admin,
+        accountCount: 0,
+        createdAt: now,
+        updatedAt: now
+      };
+      folderStore.update((current) => [...current, folder]);
+      return folder;
+    }
+  }),
+  useUpdateFolder: () => ({
+    isPending: false,
+    mutateAsync: async ({ folderId, ...changes }) => {
+      const existing = folderStore.get().find(({ id }) => id === folderId);
+      if (!existing) throw new Error("This folder no longer exists");
+      if (
+        changes.name &&
+        folderStore.get().some((folder) => folder.id !== folderId && folder.name === changes.name)
+      )
+        throw new Error(`A folder named ${changes.name} already exists`);
+      const updated = { ...existing, ...changes, updatedAt: new Date().toISOString() };
+      folderStore.update((current) =>
+        current.map((folder) => (folder.id === folderId ? updated : folder))
+      );
+      accountStore.update((current) =>
+        current.map((account) =>
+          account.folderId === folderId ? { ...account, folderName: updated.name } : account
+        )
+      );
+      return updated;
+    }
+  }),
+  useDeleteFolder: () => ({
+    isPending: false,
+    mutateAsync: async ({ folderId }) => {
+      const folder = folderStore.get().find(({ id }) => id === folderId);
+      if (!folder) throw new Error("This folder no longer exists");
+      if (accountStore.get().some((account) => account.folderId === folderId))
+        throw new Error("Move or delete the accounts in this folder first");
+      folderStore.update((current) => current.filter(({ id }) => id !== folderId));
+      return folder;
+    }
+  }),
+  useGrantFolderAdminAccess: () => ({
+    isPending: false,
+    mutateAsync: async ({ folderId }) => {
+      folderStore.update((current) =>
+        current.map((folder) =>
+          folder.id === folderId ? { ...folder, callerAccess: PamFolderCallerAccess.Admin } : folder
+        )
+      );
+      return {
+        folderId,
+        membershipId: uuid("m1", 1),
+        userId: "u-demo",
+        role: "admin",
+        createdAt: new Date().toISOString()
+      };
+    }
+  }),
+  useCreateAccount: () => ({
+    isPending: false,
+    mutateAsync: async ({ accountType, name, description, folderId, templateId, ...rest }) => {
+      const folder = folderStore.get().find(({ id }) => id === folderId);
+      if (!folder) throw new Error("Select a folder");
+      if (
+        accountStore.get().some((account) => account.name === name && account.folderId === folderId)
+      )
+        throw new Error(`An account named ${name} already exists in this folder`);
+      const template = templateStore.get().find(({ id }) => id === templateId);
+      createdCount += 1;
+      const now = new Date().toISOString();
+      const id = uuid("a1", createdCount);
+      const credentials = Object.fromEntries(
+        Object.entries(rest.credentials).filter(
+          ([key]) =>
+            !accountTypeOf(accountType).credentialFields.some(
+              (field) => field.key === key && field.secret
+            )
+        )
+      );
+      const account: TPamAccountListItem = {
+        ...accounts[0],
+        id,
+        name,
+        description: description ?? null,
+        folderId,
+        folderName: folder.name,
+        templateId,
+        templateName: template?.name ?? "Default",
+        accountType,
+        gatewayId: rest.gatewayId ?? null,
+        gatewayPoolId: rest.gatewayPoolId ?? null,
+        isAccessible: true,
+        accessibilityIssues: [],
+        isStale: false,
+        warnings: [],
+        heartbeatStatus: null,
+        heartbeatEnabled: false,
+        requiresApproval: false,
+        accessStatus: PamAccessStatus.None,
+        grantExpiresAt: null,
+        pendingRequestId: null,
+        permissions: folderPermissions(folder.name),
+        createdAt: now,
+        updatedAt: now
+      };
+      accountStore.update((current) => [...current, account]);
+      accountDetailStore.update((current) => ({
+        ...current,
+        [id]: { connectionDetails: rest.connectionDetails, credentials }
+      }));
+      return { ...account, corsProbeUrl: null };
+    }
+  }),
+  useUpdateAccount: () => ({
+    isPending: false,
+    mutateAsync: async ({ accountId, accountType, connectionDetails, credentials, ...changes }) => {
+      const existing = accountStore.get().find(({ id }) => id === accountId);
+      if (!existing) throw new Error("This account no longer exists");
+      const folder = folderStore
+        .get()
+        .find(({ id }) => id === (changes.folderId ?? existing.folderId));
+      const template = templateStore
+        .get()
+        .find(({ id }) => id === (changes.templateId ?? existing.templateId));
+      const updated: TPamAccountListItem = {
+        ...existing,
+        ...(changes.name !== undefined ? { name: changes.name } : {}),
+        ...(changes.description !== undefined ? { description: changes.description } : {}),
+        folderId: folder?.id ?? existing.folderId,
+        folderName: folder?.name ?? existing.folderName,
+        templateId: template?.id ?? existing.templateId,
+        templateName: template?.name ?? existing.templateName,
+        updatedAt: new Date().toISOString()
+      };
+      accountStore.update((current) =>
+        current.map((account) => (account.id === accountId ? updated : account))
+      );
+      const secretKeys = new Set(
+        accountTypeOf(accountType)
+          .credentialFields.filter((field) => field.secret)
+          .map((field) => field.key)
+      );
+      accountDetailStore.update((current) => {
+        const previous = current[accountId] ?? detailsFor(existing);
+        return {
+          ...current,
+          [accountId]: {
+            connectionDetails: connectionDetails ?? previous.connectionDetails,
+            credentials: {
+              ...previous.credentials,
+              ...Object.fromEntries(
+                Object.entries(credentials ?? {}).filter(([key]) => !secretKeys.has(key))
+              )
+            }
+          }
+        };
+      });
+      return { ...updated, corsProbeUrl: null };
+    }
+  }),
+  useDeleteAccount: () => ({
+    isPending: false,
+    mutateAsync: async ({ accountId }) => {
+      const existing = accountStore.get().find(({ id }) => id === accountId);
+      if (!existing) throw new Error("This account no longer exists");
+      accountStore.update((current) => current.filter(({ id }) => id !== accountId));
+      return existing;
+    }
   }),
   useProductIdentities: () => {
     const memberships = accessDemo.useProjectIdentities({
@@ -656,7 +1045,8 @@ export const pamDemo: PamAdapter = {
     return {
       isPending: add.isPending,
       mutateAsync: async ({ userIds, emails, role, projectId }) => {
-        const byId = (available.data ?? []).filter((user) => userIds?.includes(user.id));
+        const wanted = new Set(userIds);
+        const byId = (available.data ?? []).filter((user) => wanted.has(user.id));
         return add.mutateAsync({
           usernames: [...byId.map((user) => user.username), ...(emails ?? [])],
           orgId: V4_DEMO_ORG_ID,

@@ -9,13 +9,14 @@ export const Route = createFileRoute("/v4/organizations/$orgId/pam/accounts/")({
   staticData: {
     readiness: "partial",
     missing: [
-      "Add folder",
-      "Add account",
-      "Launch session",
-      "Configure account",
-      "Delete account",
-      "Folder actions",
-      "Folder view"
+      "Request access",
+      "View credentials",
+      "Account permissions",
+      "Account rotation",
+      "Account advanced overrides",
+      "Credential health check",
+      "Folder permissions",
+      "Folder approvals"
     ]
   },
   component: PamAccountsPage,
