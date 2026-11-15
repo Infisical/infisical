@@ -27,10 +27,10 @@ import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers/types";
 
 import { readableFailure, saved } from "../../access/toast";
+import { useConnectionCreation } from "../../components/connection-creation";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
-import { useConnectionCreation } from "../../secret-manager/OverviewPage/secrets/flows/connection-creation";
 import { AddHsmConnectorSheet } from "../SettingsPage/hsm-connector-wizard";
 import {
   type CaDraft,

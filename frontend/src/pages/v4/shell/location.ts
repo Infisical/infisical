@@ -37,7 +37,8 @@ const productResources = new Set([
 const detailOwners: [RegExp, string][] = [
   [/\/(members|identities|groups|roles)\//, "access"],
   [/^\/cert-manager\/certificates\//, "inventory"],
-  [/^\/cert-manager\/approvals\//, "requests"]
+  [/^\/cert-manager\/approvals\//, "requests"],
+  [/^\/cert-manager\/hsm-connectors\//, "settings"]
 ];
 
 const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "current"> => {

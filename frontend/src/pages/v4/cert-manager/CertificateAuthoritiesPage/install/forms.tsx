@@ -17,8 +17,8 @@ import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { CaSigningConfigType, CaStatus, CaType } from "@app/hooks/api/ca/enums";
 
 import { errorMessage, failed, saved } from "../../../access/toast";
+import { useConnectionCreation } from "../../../components/connection-creation";
 import { useV4Adapter } from "../../../data/adapters";
-import { useConnectionCreation } from "../../../secret-manager/OverviewPage/secrets/flows/connection-creation";
 
 const PATH_LENGTH_OPTIONS = [-1, 0, 1, 2, 3];
 
