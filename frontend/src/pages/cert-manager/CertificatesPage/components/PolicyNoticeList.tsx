@@ -1,6 +1,5 @@
 import { FieldError } from "@app/components/v3";
-
-import { PolicyNotice } from "./certificatePolicyGuidance";
+import { PolicyNotice } from "@app/helpers/certificatePolicyGuidance";
 
 type Props = {
   notices: PolicyNotice[];

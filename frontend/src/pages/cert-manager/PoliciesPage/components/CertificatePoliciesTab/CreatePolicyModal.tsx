@@ -54,20 +54,6 @@ import {
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import {
-  TCertificatePolicy,
-  TCertificatePolicyRule,
-  useCreateCertificatePolicy,
-  useUpdateCertificatePolicy
-} from "@app/hooks/api/certificatePolicies";
-import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
-
-import { PkiDocsUrls } from "../../../pki-docs-urls";
-import {
-  CUSTOM_EXTENSION_CRITICALITY_LABELS,
-  CustomExtensionRuleDialog
-} from "./CustomExtensionRuleDialog";
-import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
-import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertExtensionCriticality,
@@ -91,7 +77,21 @@ import {
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
-} from "./shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import {
+  TCertificatePolicy,
+  TCertificatePolicyRule,
+  useCreateCertificatePolicy,
+  useUpdateCertificatePolicy
+} from "@app/hooks/api/certificatePolicies";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+
+import { PkiDocsUrls } from "../../../pki-docs-urls";
+import {
+  CUSTOM_EXTENSION_CRITICALITY_LABELS,
+  CustomExtensionRuleDialog
+} from "./CustomExtensionRuleDialog";
+import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
 
 export type FormData = PolicyFormData;

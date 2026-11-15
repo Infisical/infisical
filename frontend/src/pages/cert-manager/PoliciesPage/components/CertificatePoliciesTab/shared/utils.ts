@@ -5,7 +5,7 @@ import {
   formatKeyUsage,
   USAGE_STATES,
   UsageState
-} from "./certificate-constants";
+} from "@app/helpers/certificateConstants";
 
 export const isValidDomainComponentSequence = (value: string): boolean => {
   const components = value.split(",");

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import {
@@ -17,6 +18,11 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionPkiSyncActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import {
@@ -29,10 +35,14 @@ import { CertKeyAlgorithm, CertKeyUsage, CertStatus } from "@app/hooks/api/certi
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
 import {
+  getApplicationCertificateAccess,
   getCertificateDisplayStatus,
   getCertSourceLabel
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+import { useProjectPermission } from "../../access/permissions";
+import { failed, saved } from "../../access/toast";
+import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import {
@@ -47,6 +57,9 @@ import {
   shortDate,
   useCertManagerProjectId
 } from "../components/certificate";
+import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
+import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
+import { CertificateSyncsDialog } from "./certificate-syncs";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
@@ -75,12 +88,15 @@ const algorithmLabel = (algorithm?: string | null) =>
   (algorithm && certKeyAlgorithmToNameMap[algorithm as CertKeyAlgorithm]) || algorithm || "None";
 
 const chainOf = (cert: TCertificate, authorities: TUnifiedCertificateAuthority[]) => {
+  const byId = new Map(authorities.map((ca) => [ca.id, ca]));
   const chain: TUnifiedCertificateAuthority[] = [];
-  let next = authorities.find((ca) => ca.id === cert.caId);
-  while (next && !chain.includes(next)) {
+  const seen = new Set<string>();
+  let next = byId.get(cert.caId);
+  while (next && !seen.has(next.id)) {
     chain.push(next);
+    seen.add(next.id);
     const parentId = next.type === CaType.INTERNAL ? next.configuration.parentCaId : undefined;
-    next = parentId ? authorities.find((ca) => ca.id === parentId) : undefined;
+    next = parentId ? byId.get(parentId) : undefined;
   }
   return chain;
 };
@@ -120,6 +136,14 @@ const CertificateDetail = ({
   });
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  const [managingRenewal, setManagingRenewal] = useState(false);
+  const [managingSyncs, setManagingSyncs] = useState(false);
+  const updateRenewal = certificates.useUpdateRenewalConfig();
+  const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
+    cert.applicationId ?? ""
+  );
+  const { permission } = useProjectPermission(projectId);
   const org = orgHref(orgId, "/cert-manager");
   const parentApplication = cert.applicationName ?? fromApplication;
   const caType = authorities.find((ca) => ca.id === cert.caId)?.type;
@@ -127,6 +151,49 @@ const CertificateDetail = ({
     isInventoryView: !parentApplication,
     caType
   });
+  const access = cert.applicationId
+    ? getApplicationCertificateAccess({
+        applicationName: cert.applicationName ?? "this application",
+        permission: appAccess?.permission
+      })
+    : undefined;
+  const certSubject = subject(ProjectPermissionSub.Certificates, {
+    commonName: cert.commonName,
+    altNames: cert.altNames?.split(",").map((name) => name.trim()),
+    serialNumber: cert.serialNumber,
+    friendlyName: cert.friendlyName,
+    metadata: cert.metadata
+  });
+  const canEdit = access
+    ? access.canEdit
+    : permission.can(ProjectPermissionCertificateActions.Edit, certSubject);
+  const canRenew = access ? access.canRenew : canEdit;
+  const canDelete = access
+    ? access.canDelete
+    : permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
+  const canManageSyncs = access
+    ? access.canManagePkiSyncs
+    : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+  const renewReason =
+    blocks.renew ?? (canRenew ? undefined : (access?.renewBlockedReason ?? RESTRICTED));
+  const autoRenewReason =
+    blocks.autoRenew ?? (canEdit ? undefined : (access?.editBlockedReason ?? RESTRICTED));
+  const syncReason =
+    blocks.sync ??
+    (canManageSyncs ? undefined : (access?.managePkiSyncsBlockedReason ?? RESTRICTED));
+  const revokeReason =
+    blocks.revoke ?? (canDelete ? undefined : (access?.revokeBlockedReason ?? RESTRICTED));
+  const deleteReason =
+    blocks.delete ?? (canDelete ? undefined : (access?.deleteBlockedReason ?? RESTRICTED));
+  const isAutoRenewalEnabled = Boolean(cert.renewBeforeDays && cert.renewBeforeDays > 0);
+  const disableAutoRenewal = async () => {
+    try {
+      await updateRenewal.mutateAsync({ certificateId: cert.id, enableAutoRenewal: false });
+      saved(`Auto renewal disabled for ${certificateName(cert)}`);
+    } catch (error) {
+      failed("Failed to disable auto renewal", error);
+    }
+  };
   const backCrumb = () => {
     if (parentApplication)
       return {
@@ -159,26 +226,45 @@ const CertificateDetail = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled={Boolean(blocks.renew)} description={blocks.renew}>
+                <DropdownMenuItem
+                  disabled={Boolean(renewReason)}
+                  description={renewReason}
+                  onSelect={() => setRenewing(true)}
+                >
                   <Icon name="sync" />
                   Renew now
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={Boolean(blocks.autoRenew)}
-                  description={blocks.autoRenew}
+                  disabled={Boolean(autoRenewReason)}
+                  description={autoRenewReason}
+                  onSelect={() => setManagingRenewal(true)}
                 >
                   <Icon name="clock" />
-                  {cert.renewBeforeDays ? "Manage auto renewal" : "Enable auto renewal"}
+                  {isAutoRenewalEnabled ? "Manage auto renewal" : "Enable auto renewal"}
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled={Boolean(blocks.sync)} description={blocks.sync}>
+                {isAutoRenewalEnabled && !blocks.autoRenew && (
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : (access?.editBlockedReason ?? RESTRICTED)}
+                    onSelect={disableAutoRenewal}
+                  >
+                    <Icon name="x" />
+                    Disable auto renewal
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  disabled={Boolean(syncReason)}
+                  description={syncReason}
+                  onSelect={() => setManagingSyncs(true)}
+                >
                   <Icon name="link" />
                   Manage certificate syncs
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={Boolean(blocks.revoke)}
-                  description={blocks.revoke}
+                  disabled={Boolean(revokeReason)}
+                  description={revokeReason}
                   onSelect={() => setRevoking(true)}
                 >
                   <Icon name="x" />
@@ -186,8 +272,8 @@ const CertificateDetail = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={Boolean(blocks.delete)}
-                  description={blocks.delete}
+                  disabled={Boolean(deleteReason)}
+                  description={deleteReason}
                   onSelect={() => setDeleting(true)}
                 >
                   <Icon name="trash" />
@@ -392,6 +478,24 @@ const CertificateDetail = ({
           ))}
         </List>
       </DetailLayout>
+      {renewing && (
+        <RenewCertificateSheet
+          cert={cert}
+          applicationName={parentApplication}
+          canRevoke={canDelete}
+          onClose={() => setRenewing(false)}
+        />
+      )}
+      <AutoRenewalDialog
+        cert={managingRenewal ? cert : undefined}
+        onClose={() => setManagingRenewal(false)}
+      />
+      <CertificateSyncsDialog
+        open={managingSyncs}
+        onOpenChange={setManagingSyncs}
+        certificate={cert}
+        projectId={projectId}
+      />
       <RevokeCertificateDialog
         cert={revoking ? cert : undefined}
         onClose={() => setRevoking(false)}
@@ -399,6 +503,7 @@ const CertificateDetail = ({
       <DeleteCertificateDialog
         cert={deleting ? cert : undefined}
         caType={caType}
+        projectId={projectId}
         onClose={() => setDeleting(false)}
         onDeleted={() =>
           navigate({

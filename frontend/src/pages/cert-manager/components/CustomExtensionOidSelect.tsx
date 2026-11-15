@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { Combobox } from "@app/components/v3";
-import { CUSTOM_EXTENSION_PRESETS } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { CUSTOM_EXTENSION_PRESETS } from "@app/helpers/certificateConstants";
 
 type TOidOption = { oid: string; name?: string; isCustom?: boolean };
 

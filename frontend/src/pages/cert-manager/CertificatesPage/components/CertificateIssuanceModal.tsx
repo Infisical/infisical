@@ -29,6 +29,17 @@ import {
   TextArea
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { buildManagedRequest } from "@app/helpers/buildManagedRequest";
+import {
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/helpers/certificateConstants";
+import {
+  detectSanTypeFromValue,
+  EXTERNAL_CA_TEMPLATE_HINT,
+  isExternalTemplateCa,
+  rowErrorsOf
+} from "@app/helpers/certificateUtils";
 import { useGetCert } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -39,29 +50,18 @@ import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/c
 import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
+import { useCertificatePolicy } from "@app/hooks/useCertificatePolicy";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
-import {
-  CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
-import { buildManagedRequest } from "./buildManagedRequest";
-import {
-  detectSanTypeFromValue,
-  EXTERNAL_CA_TEMPLATE_HINT,
-  isExternalTemplateCa,
-  rowErrorsOf
-} from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
-import { useCertificatePolicy } from "./useCertificatePolicy";
 import { usePolicyGuidance } from "./usePolicyGuidance";
 import { ValidityField } from "./ValidityField";
 

@@ -46,6 +46,13 @@ export const orgLive: OrgAdapter = {
                 offset: pageParam,
                 startDate: filters.startDate.toISOString(),
                 endDate: filters.endDate.toISOString(),
+                ...(filters.eventMetadata && Object.keys(filters.eventMetadata).length
+                  ? {
+                      eventMetadata: Object.entries(filters.eventMetadata)
+                        .map(([key, value]) => `${key}=${value}`)
+                        .join(",")
+                    }
+                  : {}),
                 ...(filters.eventType?.length ? { eventType: filters.eventType.join(",") } : {}),
                 ...(filters.eventClass?.length ? { eventClass: filters.eventClass.join(",") } : {}),
                 ...(projectId ? { projectId } : {})

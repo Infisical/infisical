@@ -27,6 +27,10 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
 import {
   certKeyAlgorithmToNameMap,
@@ -36,6 +40,8 @@ import {
 import { CertKeyAlgorithm, CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 
+import { useProjectPermission } from "../../access/permissions";
+import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import { v4Path } from "../../links";
@@ -50,6 +56,7 @@ import {
   CertManagerNotSetUp,
   useCertManagerProjectId
 } from "../components/certificate";
+import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
 
@@ -162,6 +169,7 @@ export const InventoryPage = () => {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>(() => filtersFromSearch(search));
   const [hidden, setHidden] = useState<string[]>(["issued", "algorithm"]);
+  const hiddenSet = new Set(hidden);
   const [sort, setSort] = useState<{
     columnId: string;
     direction: "asc" | "desc";
@@ -173,6 +181,7 @@ export const InventoryPage = () => {
   const [pageSize, setPageSize] = useState(25);
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const { data, isPending } = certificates.useCertificates({
     projectId: projectId ?? "",
@@ -184,6 +193,11 @@ export const InventoryPage = () => {
     sortOrder: sort.direction
   });
   const { data: stats } = certificates.useDashboardStats(projectId ?? "");
+  const { permission } = useProjectPermission(projectId ?? "");
+  const canImport = permission.can(
+    ProjectPermissionCertificateActions.Import,
+    ProjectPermissionSub.Certificates
+  );
   const { data: authorities = [] } = certificates.useCertificateAuthorities();
   const { data: profiles } = certificates.useCertificateProfiles({
     limit: 100
@@ -383,11 +397,17 @@ export const InventoryPage = () => {
               : "Every certificate across your infrastructure."
           }
           actions={
-            <Button variant="outline" icon="upload">
+            <Button
+              variant="outline"
+              icon="upload"
+              disabledReason={canImport ? undefined : RESTRICTED}
+              onClick={() => setImporting(true)}
+            >
               Import
             </Button>
           }
         />
+        {importing && <ImportCertificatesSheet onClose={() => setImporting(false)} />}
         <FilterBar
           label="Certificate filters"
           fields={fields}
@@ -462,7 +482,7 @@ export const InventoryPage = () => {
           label="Certificates"
           rows={rows}
           loading={isPending}
-          columns={columns.filter((column) => !hidden.includes(column.id))}
+          columns={columns.filter((column) => !hiddenSet.has(column.id))}
           getRowId={(r) => r.id}
           rowLabel={(r) => certificateName(r)}
           rowActions={{
@@ -557,6 +577,7 @@ export const InventoryPage = () => {
       <DeleteCertificateDialog
         cert={deleting}
         caType={deleting ? caType(deleting) : undefined}
+        projectId={projectId}
         onClose={() => setDeleteId(null)}
       />
     </TooltipProvider>

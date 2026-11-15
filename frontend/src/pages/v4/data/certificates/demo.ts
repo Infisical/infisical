@@ -15,6 +15,7 @@ import {
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import {
   CertExtendedKeyUsage,
+  CertificateRequestStatus,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSource,
@@ -37,10 +38,13 @@ import {
 } from "@app/hooks/api/signers/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { demoApplications, demoCertificateRequests } from "../pki-applications/demo-store";
 import { demoCertificateProfiles } from "../pki-policies/demo";
 import type { CertificatesAdapter } from "./contract";
 
 const projectId = "internal-pki";
+const applicationName = (applicationId?: string | null) =>
+  demoApplications.get().find((entry) => entry.id === applicationId)?.name;
 const day = (offset: number) => new Date(Date.now() + offset * 864e5).toISOString();
 
 const authority = (
@@ -127,6 +131,13 @@ const usages: Record<string, Pick<TCertificate, "keyUsages" | "extendedKeyUsages
   }
 };
 
+const demoOrderIds: Record<string, string> = {
+  "0f6b2d84-1e9a-4c37-b5d2-8a3e7c1f9d06": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e01",
+  "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e02",
+  "d84c1b6e-2f73-4a95-b0e8-7c5a3d9f1e26": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e03",
+  "8e4a1c07-2b9d-4f63-a5e0-6d3c9f1b7a42": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e04"
+};
+
 const certificate = (
   id: string,
   commonName: string,
@@ -168,6 +179,7 @@ const certificate = (
     basicConstraints: { isCA: false },
     hasPrivateKey: true,
     source: CertSource.Issued,
+    orderId: demoOrderIds[id] ?? id,
     ...extra
   };
 };
@@ -350,14 +362,15 @@ const result = <T>(data: T) => ({ data, isPending: false, error: null });
 const distribution = (
   certs: TCertificate[],
   key: (cert: TCertificate) => { id?: string; label: string }
-): TDashboardDistribution[] =>
-  Object.values(
-    certs.reduce<Record<string, TDashboardDistribution>>((groups, cert) => {
-      const { id, label } = key(cert);
-      const group = groups[label] ?? { id, label, count: 0 };
-      return { ...groups, [label]: { ...group, count: group.count + 1 } };
-    }, {})
-  );
+): TDashboardDistribution[] => {
+  const groups = new Map<string, TDashboardDistribution>();
+  certs.forEach((cert) => {
+    const { id, label } = key(cert);
+    const group = groups.get(label) ?? { id, label, count: 0 };
+    groups.set(label, { ...group, count: group.count + 1 });
+  });
+  return [...groups.values()];
+};
 
 const bucketCounts = (labels: string[], values: string[]) =>
   labels.map((bucket) => ({ bucket, count: values.filter((value) => value === bucket).length }));
@@ -458,10 +471,41 @@ const projectPermission = {
   memberships: [{ roles: [{ role: "admin" }] }]
 };
 
+const DEMO_PEM = "demo certificate body";
+
+const ttlDays = (ttl?: string) => {
+  const match = ttl?.match(/^(\d+)([dhmy])$/);
+  if (!match) return 90;
+  const value = Number(match[1]);
+  return { h: Math.max(1, Math.round(value / 24)), d: value, m: value * 30, y: value * 365 }[
+    match[2] as "h" | "d" | "m" | "y"
+  ];
+};
+
+const demoSerial = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join(":");
+
+const add = (cert: TCertificate) => {
+  store.update((certs) => [cert, ...certs]);
+  return cert;
+};
+
+const issuedResponse = (cert: TCertificate) => ({
+  certificate: DEMO_PEM,
+  issuingCaCertificate: DEMO_PEM,
+  certificateChain: DEMO_PEM,
+  serialNumber: cert.serialNumber,
+  certificateId: cert.id
+});
+
 const change = (id: string, patch: Partial<TCertificate>) => {
   store.update((certs) => certs.map((cert) => (cert.id === id ? { ...cert, ...patch } : cert)));
   return store.get().find((cert) => cert.id === id)!;
 };
+
+export const demoCertificates = store;
 
 export const certificatesDemo: CertificatesAdapter = {
   useInstanceState: () =>
@@ -484,6 +528,13 @@ export const certificatesDemo: CertificatesAdapter = {
     const sources = asList(dto.source);
     const direction = dto.sortOrder === "desc" ? -1 : 1;
     const sortKey = dto.sortBy === "notBefore" ? "notBefore" : "notAfter";
+    const statusSet = new Set<string>(statuses);
+    const algorithmSet = new Set<string>(algorithms);
+    const sourceSet = new Set<string>(sources);
+    const keySizeSet = new Set(dto.keySizes);
+    const caIdSet = new Set(dto.caIds);
+    const profileIdSet = new Set(dto.profileIds);
+    const enrollmentTypeSet = new Set<string>(dto.enrollmentTypes);
     const matched = store
       .use()
       .filter((cert) => dto.includeDeleted || !cert.deletedAt)
@@ -494,16 +545,13 @@ export const certificatesDemo: CertificatesAdapter = {
             value.toLowerCase().includes(needle)
           )
       )
-      .filter((cert) => !statuses.length || statuses.includes(cert.status))
-      .filter((cert) => !algorithms.length || algorithms.includes(cert.keyAlgorithm ?? ""))
-      .filter((cert) => !sources.length || sources.includes(cert.source ?? CertSource.Issued))
-      .filter((cert) => !dto.keySizes?.length || dto.keySizes.includes(keySize(cert.keyAlgorithm)))
-      .filter((cert) => !dto.caIds?.length || dto.caIds.includes(cert.caId))
-      .filter((cert) => !dto.profileIds?.length || dto.profileIds.includes(cert.profileId ?? ""))
-      .filter(
-        (cert) =>
-          !dto.enrollmentTypes?.length || dto.enrollmentTypes.includes(cert.enrollmentType ?? "")
-      )
+      .filter((cert) => !statusSet.size || statusSet.has(cert.status))
+      .filter((cert) => !algorithmSet.size || algorithmSet.has(cert.keyAlgorithm ?? ""))
+      .filter((cert) => !sourceSet.size || sourceSet.has(cert.source ?? CertSource.Issued))
+      .filter((cert) => !keySizeSet.size || keySizeSet.has(keySize(cert.keyAlgorithm)))
+      .filter((cert) => !caIdSet.size || caIdSet.has(cert.caId))
+      .filter((cert) => !profileIdSet.size || profileIdSet.has(cert.profileId ?? ""))
+      .filter((cert) => !enrollmentTypeSet.size || enrollmentTypeSet.has(cert.enrollmentType ?? ""))
       .filter((cert) => within(cert.notAfter, dto.notAfterFrom, dto.notAfterTo))
       .filter((cert) => within(cert.notBefore, dto.notBeforeFrom, dto.notBeforeTo))
       .sort((a, b) => a[sortKey].localeCompare(b[sortKey]) * direction);
@@ -626,7 +674,134 @@ export const certificatesDemo: CertificatesAdapter = {
       serialNumber: cert.serialNumber,
       revokedAt: new Date().toISOString()
     };
-  })
+  }),
+  useRenewalPreview: () =>
+    result({
+      hasOriginatingRequest: false,
+      hasOriginatingCsr: true,
+      request: { altNames: [], keyUsages: [], extendedKeyUsages: [], customExtensions: [] },
+      issuerModifiedFields: []
+    }),
+  useRenewCertificate: fixtureMutation(({ certificateId, attributes }) => {
+    const current = store.get().find((cert) => cert.id === certificateId);
+    if (!current) throw new Error("Certificate not found");
+    const renewed = add({
+      ...current,
+      id: crypto.randomUUID(),
+      serialNumber: demoSerial(),
+      notBefore: day(0),
+      notAfter: day(ttlDays(attributes?.ttl)),
+      renewedFromCertificateId: current.id,
+      renewedByCertificateId: undefined
+    });
+    change(certificateId, { renewedByCertificateId: renewed.id });
+    return {
+      status: CertificateRequestStatus.ISSUED,
+      ...issuedResponse(renewed),
+      projectId,
+      certificateRequestId: crypto.randomUUID()
+    };
+  }),
+  useUpdateRenewalConfig: fixtureMutation(
+    ({ certificateId, renewBeforeDays, enableAutoRenewal }) => {
+      const next = enableAutoRenewal === false ? undefined : renewBeforeDays;
+      change(certificateId, { renewBeforeDays: next });
+      return { message: "Updated auto renewal", renewBeforeDays: next };
+    }
+  ),
+  useImportCertificate: fixtureMutation(({ profileId, applicationId, privateKeyPem }) => {
+    const imported = add(
+      certificate(
+        crypto.randomUUID(),
+        "imported.example.com",
+        ["imported.example.com"],
+        demoSerial(),
+        30,
+        335,
+        demoCertificateProfiles.get().find((entry) => entry.id === profileId) ?? tlsServer,
+        CertKeyAlgorithm.RSA_2048,
+        {
+          source: CertSource.Imported,
+          profileId: profileId ?? undefined,
+          applicationId: applicationId ?? undefined,
+          applicationName: applicationName(applicationId),
+          hasPrivateKey: Boolean(privateKeyPem)
+        }
+      )
+    );
+    return {
+      certificateId: imported.id,
+      certificate: DEMO_PEM,
+      serialNumber: imported.serialNumber
+    };
+  }),
+  useImportPkcs12Entries: fixtureMutation(({ entries, applicationId, profileIdByFingerprint }) =>
+    entries.map((entry) => {
+      const profileId = profileIdByFingerprint?.[entry.fingerprintSha256];
+      add(
+        certificate(
+          crypto.randomUUID(),
+          entry.commonName ?? entry.alias ?? "imported.example.com",
+          entry.altNames ? entry.altNames.split(",").map((name) => name.trim()) : [],
+          entry.serialNumber,
+          30,
+          Math.max(1, Math.round((new Date(entry.notAfter).getTime() - Date.now()) / 864e5)),
+          demoCertificateProfiles.get().find((item) => item.id === profileId) ?? tlsServer,
+          CertKeyAlgorithm.RSA_2048,
+          {
+            source: CertSource.Imported,
+            profileId,
+            applicationId,
+            applicationName: applicationName(applicationId),
+            hasPrivateKey: Boolean(entry.privateKeyPem)
+          }
+        )
+      );
+      return { entry };
+    })
+  ),
+  useIssueCertificate: fixtureMutation(({ profileId, applicationId, attributes, csr }) => {
+    const commonName = attributes?.commonName || (csr ? "csr.example.com" : "new.example.com");
+    const issued = add(
+      certificate(
+        crypto.randomUUID(),
+        commonName,
+        attributes?.altNames?.map((name) => name.value) ?? [],
+        demoSerial(),
+        0,
+        ttlDays(attributes?.ttl),
+        demoCertificateProfiles.get().find((entry) => entry.id === profileId) ?? tlsServer,
+        (attributes?.keyAlgorithm as CertKeyAlgorithm) || CertKeyAlgorithm.RSA_2048,
+        { applicationId, applicationName: applicationName(applicationId) }
+      )
+    );
+    const certificateRequestId = crypto.randomUUID();
+    if (applicationId) {
+      const createdAt = new Date().toISOString();
+      demoCertificateRequests.update((current) => [
+        {
+          id: certificateRequestId,
+          applicationId,
+          status: CertificateRequestStatus.ISSUED,
+          commonName,
+          altNames: issued.altNames ?? commonName,
+          profileId: issued.profileId ?? null,
+          profileName: issued.profileName ?? null,
+          caId: issued.caId ?? null,
+          certificateId: issued.id,
+          approvalRequestId: null,
+          errorMessage: null,
+          pendingMessage: null,
+          createdAt,
+          updatedAt: createdAt,
+          certificate: { id: issued.id, serialNumber: issued.serialNumber, status: issued.status }
+        },
+        ...current
+      ]);
+    }
+    return { certificate: issuedResponse(issued), certificateRequestId };
+  }),
+  useDigiCertOrders: () => result([])
 };
 
 export const certificatesDemoCounts = () => ({

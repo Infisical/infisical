@@ -1,4 +1,3 @@
-import { PolicyFormData } from ".";
 import {
   ALGORITHM_FAMILIES,
   CertDurationUnit,
@@ -11,7 +10,9 @@ import {
   CertSubjectAttributeType,
   POLICY_PRESET_IDS,
   type PolicyPresetId
-} from "./certificate-constants";
+} from "@app/helpers/certificateConstants";
+
+import { PolicyFormData } from ".";
 
 export interface CertificatePolicyPreset {
   readonly id: PolicyPresetId;

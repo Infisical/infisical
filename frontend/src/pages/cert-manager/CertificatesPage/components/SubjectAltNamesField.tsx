@@ -19,10 +19,10 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { CertSubjectAlternativeNameType } from "@app/helpers/certificateConstants";
+import { PolicyNotice, PolicyRowGuidance } from "@app/helpers/certificatePolicyGuidance";
+import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "@app/helpers/certificateUtils";
 
-import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
-import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
 import { PolicyNoticeList } from "./PolicyNoticeList";
 import { PolicyRowMessage } from "./PolicyRowMessage";
 

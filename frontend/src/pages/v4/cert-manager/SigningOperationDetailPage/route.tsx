@@ -1,11 +1,11 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 
-import { NotPortedPage } from "../../organization/NotPortedPage/NotPortedPage";
+import { SigningOperationDetailPage } from "./SigningOperationDetailPage";
 
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/cert-manager/code-signing/$signerId/operations/$operationId"
 )({
-  staticData: { readiness: "none" },
-  component: NotPortedPage,
+  staticData: { readiness: "full" },
+  component: SigningOperationDetailPage,
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

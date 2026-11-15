@@ -1,7 +1,4 @@
-import {
-  CertExtensionCriticality,
-  CertPolicyState
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { CertExtensionCriticality, CertPolicyState } from "@app/helpers/certificateConstants";
 
 /**
  * A domain_component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
