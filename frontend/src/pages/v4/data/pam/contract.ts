@@ -33,6 +33,7 @@ import type {
 import type { MutationOf } from "../access/contract";
 import type { V4QueryResult } from "../contract";
 import type { PamOperationsAdapter } from "./operations/contract";
+import type { PamWebAccessAdapter } from "./web-access/contract";
 
 export type TPamFoldersParams = NonNullable<Parameters<typeof useListPamFolders>[0]>;
 export type TPamAccountsParams = NonNullable<Parameters<typeof useListPamAccounts>[0]>;
@@ -40,7 +41,9 @@ export type TPamAccessCapabilities = NonNullable<
   ReturnType<typeof useGetPamAccessCapabilities>["data"]
 >;
 
-export type PamAdapter = PamOperationsAdapter & {
+type PamSubdomainAdapters = PamOperationsAdapter & PamWebAccessAdapter;
+
+export type PamAdapter = PamSubdomainAdapters & {
   useAccessCapabilities: () => V4QueryResult<TPamAccessCapabilities>;
   useFolders: (
     params?: TPamFoldersParams,

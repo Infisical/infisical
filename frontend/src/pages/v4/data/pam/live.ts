@@ -30,9 +30,11 @@ import {
 
 import type { PamAdapter } from "./contract";
 import { pamOperationsLive } from "./operations/live";
+import { pamWebAccessLive } from "./web-access/live";
 
 export const pamLive: PamAdapter = {
   ...pamOperationsLive,
+  ...pamWebAccessLive,
   useAccessCapabilities: useGetPamAccessCapabilities,
   useFolders: useListPamFolders,
   useAccounts: useListPamAccounts,

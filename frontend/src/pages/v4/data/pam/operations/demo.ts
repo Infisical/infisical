@@ -7,6 +7,7 @@ import {
   PamPolicyType,
   PamRotationStatus,
   PamSessionStatus,
+  SessionChannelType,
   type TPamAccountTemplateDetail,
   type TPamAccountTemplateWithCount,
   type TPamDiscoveredAccount,
@@ -21,6 +22,11 @@ import {
 
 import { DEMO_PAM_PROJECT_ID } from "../../access/fixtures";
 import { createFixtureStore, fixtureMutation } from "../../fixture-store";
+import {
+  DEMO_DESKTOP_FRAMES,
+  DEMO_DESKTOP_POINTER,
+  encodeDemoFrame
+} from "../web-access/demo-desktop";
 import type { PamOperationsAdapter, TPamPageParams } from "./contract";
 
 const uuid = (prefix: string, index: number) =>
@@ -626,6 +632,32 @@ const terminalLogs = (minutesAgo: number, lines: string[]): TPamSessionLog[] =>
     elapsedTime: index * 18
   }));
 
+const base64Of = (bytes: Uint8Array) =>
+  btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
+
+const rdpRecording = (minutesAgo: number): TPamSessionLog[] => {
+  const record = (atMs: number, eventType: "input" | "output", event: Record<string, unknown>) => ({
+    timestamp: ago(minutesAgo - atMs / 60000),
+    eventType,
+    channelType: SessionChannelType.Rdp,
+    data: encode(JSON.stringify({ ...event, elapsedNs: atMs * 1e6 })),
+    elapsedTime: atMs / 1000
+  });
+  return [
+    ...DEMO_DESKTOP_FRAMES.map(({ atMs, rects }) =>
+      record(atMs, "output", {
+        type: "target_frame",
+        action: "fastpath",
+        payload: base64Of(encodeDemoFrame(rects))
+      })
+    ),
+    ...DEMO_DESKTOP_POINTER.flatMap(({ atMs, x, y, click }) => [
+      record(atMs, "input", { type: "mouse", x, y, flags: 0x0800 }),
+      ...(click ? [record(atMs + 80, "input", { type: "mouse", x, y, flags: 0x9000 })] : [])
+    ])
+  ].sort((a, b) => a.elapsedTime - b.elapsedTime);
+};
+
 type SessionSeed = {
   account: number;
   name: string;
@@ -781,7 +813,8 @@ const sessionSeeds: SessionSeed[] = [
     status: PamSessionStatus.Ended,
     startedMinutesAgo: HOUR * 26,
     durationMinutes: 61,
-    ip: "203.0.113.90"
+    ip: "203.0.113.90",
+    logs: rdpRecording(HOUR * 26)
   },
   {
     account: 4,

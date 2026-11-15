@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -82,6 +82,33 @@ const logBody = (log: TPamSessionLog) => {
   } catch {
     return decoded;
   }
+};
+
+const RdpReplay = lazy(() => import("./rdp-replay"));
+
+const SessionRecording = ({ session }: { session: TPamSession }) => {
+  const {
+    data: events = [],
+    isPending,
+    error
+  } = useV4Adapter("pam").useSessionLogs(
+    session.id,
+    true,
+    session.status === PamSessionStatus.Active
+  );
+  const loading = <Skeleton height={320} />;
+  if (error)
+    return (
+      <Alert tone="bad" title="Could not load the session recording">
+        {typeof error === "string" ? error : undefined}
+      </Alert>
+    );
+  if (isPending && events.length === 0) return loading;
+  return (
+    <Suspense fallback={loading}>
+      <RdpReplay logs={events} />
+    </Suspense>
+  );
 };
 
 const DESTRUCTIVE_PREFIXES = ["DROP ", "DELETE ", "TRUNCATE ", "ALTER "];
@@ -231,16 +258,7 @@ const SessionBody = ({ session }: { session: TPamSession }) => {
             </Badge>
           )}
         </Inline>
-        {isRdp ? (
-          <EmptyState
-            size="sm"
-            icon="monitor"
-            title="Session replay isn't in v4 yet"
-            description="Open this session in the classic app to watch the recording."
-          />
-        ) : (
-          <SessionLogs session={session} />
-        )}
+        {isRdp ? <SessionRecording session={session} /> : <SessionLogs session={session} />}
       </Stack>
     </Stack>
   );
