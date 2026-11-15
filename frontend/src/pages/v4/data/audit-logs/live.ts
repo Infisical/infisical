@@ -2,8 +2,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs/queries";
-import { useUpdateProjectAuditLogSettings } from "@app/hooks/api/auditLogSettings/mutations";
-import { useGetProjectAuditLogSettings } from "@app/hooks/api/auditLogSettings/queries";
+import {
+  useUpdateOrgAuditLogSettings,
+  useUpdateProjectAuditLogSettings
+} from "@app/hooks/api/auditLogSettings/mutations";
+import {
+  useGetOrgAuditLogSettings,
+  useGetProjectAuditLogSettings
+} from "@app/hooks/api/auditLogSettings/queries";
 import {
   useCreateAuditLogStream,
   useDeleteAuditLogStream,
@@ -20,6 +26,7 @@ import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/qu
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails/queries";
 import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
 
+import { useOrgId } from "../../access/permissions";
 import type { AuditLogsAdapter } from "./contract";
 
 const VOLUME_WARNING_ROWS = 350_000_000;
@@ -85,6 +92,8 @@ export const auditLogsLive: AuditLogsAdapter = {
   useProjectSettings: useGetProjectAuditLogSettings,
   useUpdateProjectSettings: useUpdateProjectAuditLogSettings,
   useUpdateProjectRetention: useUpdateWorkspaceAuditLogsRetention,
+  useOrgSettings: useGetOrgAuditLogSettings,
+  useUpdateOrgSettings: () => useUpdateOrgAuditLogSettings(useOrgId()),
   useStreams: () => useListAuditLogStreams(),
   useStreamOptions: () => useGetAuditLogStreamOptions(),
   useCreateStream: useCreateAuditLogStream,

@@ -21,13 +21,7 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyState,
-  EmptyTitle
-} from "@infisical/cipher/ui/empty";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -39,6 +33,7 @@ import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { isCustomOrgRole } from "@app/helpers/roles";
 import type { IncidentContact } from "@app/hooks/api/incidentContacts/types";
 import type { Organization } from "@app/hooks/api/organization/types";
@@ -50,6 +45,10 @@ import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
+import { EncryptionTab } from "./encryption";
+import { ProductSettingsTab } from "./product-settings-tab";
+import { SecurityTab } from "./security";
+import { SubOrgsTab } from "./sub-orgs";
 
 const noop = () => {};
 
@@ -374,24 +373,50 @@ const GeneralTab = () => {
   );
 };
 
+const SubOrgsUpgrade = () => {
+  const { orgId } = useParams({ from: "/v4/organizations/$orgId/settings" });
+  return (
+    <Stack gap={24}>
+      <PageHeader title="Sub-organizations" />
+      <EmptyState
+        icon="lock"
+        title="Upgrade your plan to use sub-organizations"
+        actions={
+          <Button variant="outline" asChild>
+            <a href={orgHref(orgId, "/billing")}>View plans</a>
+          </Button>
+        }
+      />
+    </Stack>
+  );
+};
+
 export const SettingsPage = () => {
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/settings" });
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/settings" });
-  if (selectedTab && selectedTab !== GENERAL_TAB) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>This settings tab isn&apos;t in v4 yet</EmptyTitle>
-          <EmptyDescription>
-            <a href={orgHref(orgId, "/settings")}>Go to General</a>
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  const { organization } = useV4Session();
+  const { data: entitlements } = useV4Adapter("orgSettings").useEntitlements(orgId);
+  const isSubOrg = organization.isSubOrganization;
+  const tabs = [
+    { key: GENERAL_TAB, name: "General", component: GeneralTab },
+    { key: "tab-org-security", name: "Security", component: SecurityTab, hidden: isSubOrg },
+    { key: "tab-org-encryption", name: "Encryption", component: EncryptionTab },
+    { key: "product-settings", name: "Product settings", component: ProductSettingsTab },
+    {
+      key: "tab-sub-organizations",
+      name: "Sub-organizations",
+      component: entitlements && !entitlements.subOrganization ? SubOrgsUpgrade : SubOrgsTab,
+      hidden: isSubOrg
+    }
+  ].filter((tab) => !tab.hidden);
+  const active = tabs.find((tab) => tab.key === selectedTab) ?? tabs[0];
+  const Active = active.component;
   return (
     <TooltipProvider>
-      <GeneralTab />
+      <PageTitle
+        title={`${active.name} - ${isSubOrg ? "Sub-organization" : "Organization"} settings`}
+      />
+      <Active />
     </TooltipProvider>
   );
 };
