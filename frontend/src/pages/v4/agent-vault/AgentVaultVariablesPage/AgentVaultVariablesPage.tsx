@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,7 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -126,107 +128,113 @@ const VariableDialog = ({
   const isTaken = Boolean(lookupKey && existing.has(lookupKey));
   const usedByCount = variable?.usedByServices.length ?? 0;
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: key !== (variable?.key ?? "") || Boolean(value),
+    onDiscard: () => onOpenChange(false)
+  });
 
   return (
-    <Dialog open onOpenChange={(open) => !pending && onOpenChange(open)}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>
-            {variable
-              ? `Edit ${variable.key}`
-              : `Add ${isPersonal ? "personal" : "global"} variable`}
-          </DialogTitle>
-        </DialogHeader>
-        <form
-          id="agent-vault-variable"
-          autoComplete="off"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const next = {
-              key: keyError(key, isTaken, isPersonal),
-              value: valueError(value, !variable)
-            };
-            setErrors(next);
-            if (next.key || next.value) return;
-            setPending(true);
-            try {
-              if (variable) {
-                await update.mutateAsync({
-                  variableId: variable.id,
-                  key: key === variable.key ? undefined : key,
-                  value: value.length > 0 ? value : undefined
-                });
-                saved(`Variable ${key} updated`);
-              } else {
-                await create.mutateAsync({ scope, key, value });
-                saved(`Variable ${key} created`);
+    <>
+      <Dialog open onOpenChange={(open) => !open && requestDiscard()}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>
+              {variable
+                ? `Edit ${variable.key}`
+                : `Add ${isPersonal ? "personal" : "global"} variable`}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            id="agent-vault-variable"
+            autoComplete="off"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const next = {
+                key: keyError(key, isTaken, isPersonal),
+                value: valueError(value, !variable)
+              };
+              setErrors(next);
+              if (next.key || next.value) return;
+              setPending(true);
+              try {
+                if (variable) {
+                  await update.mutateAsync({
+                    variableId: variable.id,
+                    key: key === variable.key ? undefined : key,
+                    value: value.length > 0 ? value : undefined
+                  });
+                  saved(`Variable ${key} updated`);
+                } else {
+                  await create.mutateAsync({ scope, key, value });
+                  saved(`Variable ${key} created`);
+                }
+                onOpenChange(false);
+              } catch (error) {
+                const response = axios.isAxiosError(error)
+                  ? (error.response?.data as TApiErrors | undefined)
+                  : undefined;
+                if (
+                  response?.error === ApiErrorTypes.BadRequestError &&
+                  (response.details as { field?: string } | undefined)?.field === "key"
+                )
+                  setErrors({ key: response.message });
+                failed(`Failed to ${variable ? "update" : "create"} variable`, error);
+              } finally {
+                setPending(false);
               }
-              onOpenChange(false);
-            } catch (error) {
-              const response = axios.isAxiosError(error)
-                ? (error.response?.data as TApiErrors | undefined)
-                : undefined;
-              if (
-                response?.error === ApiErrorTypes.BadRequestError &&
-                (response.details as { field?: string } | undefined)?.field === "key"
-              )
-                setErrors({ key: response.message });
-              failed(`Failed to ${variable ? "update" : "create"} variable`, error);
-            } finally {
-              setPending(false);
-            }
-          }}
-        >
-          <Stack gap={16}>
-            <Field
-              label="Key"
-              description={
-                isRenaming && usedByCount > 0
-                  ? `${usedByCount === 1 ? "The service" : `The ${usedByCount} services`} using it switch to the new key.`
-                  : "Upper case letters, numbers and underscores. Reference it as {{KEY}}."
-              }
-              error={errors.key ?? (isTaken ? keyError(key, true, isPersonal) : undefined)}
-            >
-              <Input
-                autoFocus
-                mono
-                value={key}
-                maxLength={VARIABLE_KEY_MAX_LENGTH}
-                placeholder="GITHUB_TOKEN"
-                invalid={Boolean(errors.key) || isTaken}
-                onChange={(event) => {
-                  setKey(event.target.value.toUpperCase());
-                  setErrors((current) => ({ ...current, key: undefined }));
-                }}
-              />
-            </Field>
-            <Field
-              label="Value"
-              description={variable ? "Leave blank to keep the current value." : undefined}
-              error={errors.value}
-            >
-              <SecretInput
-                aria-label="Value"
-                value={value}
-                invalid={Boolean(errors.value)}
-                onChange={(next) => {
-                  setValue(next);
-                  setErrors((current) => ({ ...current, value: undefined }));
-                }}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="agent-vault-variable" loading={pending}>
-            {variable ? "Save" : "Add variable"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            }}
+          >
+            <Stack gap={16}>
+              <Field
+                label="Key"
+                description={
+                  isRenaming && usedByCount > 0
+                    ? `${usedByCount === 1 ? "The service" : `The ${usedByCount} services`} using it switch to the new key.`
+                    : "Upper case letters, numbers and underscores. Reference it as {{KEY}}."
+                }
+                error={errors.key ?? (isTaken ? keyError(key, true, isPersonal) : undefined)}
+              >
+                <Input
+                  mono
+                  value={key}
+                  maxLength={VARIABLE_KEY_MAX_LENGTH}
+                  placeholder="GITHUB_TOKEN"
+                  invalid={Boolean(errors.key) || isTaken}
+                  onChange={(event) => {
+                    setKey(event.target.value.toUpperCase());
+                    setErrors((current) => ({ ...current, key: undefined }));
+                  }}
+                />
+              </Field>
+              <Field
+                label="Value"
+                description={variable ? "Leave blank to keep the current value." : undefined}
+                error={errors.value}
+              >
+                <SecretInput
+                  aria-label="Value"
+                  value={value}
+                  invalid={Boolean(errors.value)}
+                  onChange={(next) => {
+                    setValue(next);
+                    setErrors((current) => ({ ...current, value: undefined }));
+                  }}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" disabled={pending} onClick={requestDiscard}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="agent-vault-variable" loading={pending}>
+              {variable ? "Save" : "Add variable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 };
 

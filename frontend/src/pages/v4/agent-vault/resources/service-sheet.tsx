@@ -87,6 +87,17 @@ const SERVICE_TYPES = [
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 
+const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberProvidedField[]> = {
+  [AgentVaultCredentialType.Bearer]: [AgentVaultVariableReferenceField.CredentialValue],
+  [AgentVaultCredentialType.Basic]: [
+    AgentVaultVariableReferenceField.CredentialUsername,
+    AgentVaultVariableReferenceField.CredentialValue
+  ],
+  [AgentVaultCredentialType.Passthrough]: [],
+  [AgentVaultCredentialType.OAuth]: [],
+  [AgentVaultCredentialType.SshKey]: []
+};
+
 const storedMemberProvided = (service: TAgentVaultService, field: TAgentVaultMemberProvidedField) =>
   storedMemberFields(service).includes(field);
 
@@ -463,7 +474,14 @@ export const ServiceSheet = ({
                 ...current,
                 credentialType: type,
                 secret: service?.credential.type === type ? formFromService(service).secret : "",
-                username: service?.credential.type === type ? formFromService(service).username : ""
+                username:
+                  service?.credential.type === type ? formFromService(service).username : "",
+                memberProvidedFields:
+                  service?.credential.type === type
+                    ? storedMemberFields(service)
+                    : current.memberProvidedFields.filter((field) =>
+                        MEMBER_FIELDS_OF_TYPE[type].includes(field)
+                      )
               }));
               setErrors({});
             }}

@@ -476,7 +476,7 @@ const AccessBundleDetail = ({
       )}
       <PersonalValuesDialog
         projectId={projectId}
-        service={settingUp}
+        service={settingUp && (services.find(({ id }) => id === settingUp.id) ?? settingUp)}
         onOpenChange={(open) => !open && setSettingUp(undefined)}
       />
       <ManageAccessSheet

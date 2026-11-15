@@ -9,11 +9,13 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -33,6 +35,8 @@ const AddDialog = ({
   limitMessage,
   pending,
   createLabel,
+  search,
+  onSearchChange,
   onCreate,
   onAdd,
   onOpenChange
@@ -46,11 +50,16 @@ const AddDialog = ({
   limitMessage: string;
   pending: boolean;
   createLabel?: string;
+  search: string;
+  onSearchChange: (search: string) => void;
   onCreate?: () => void;
   onAdd: (ids: string[]) => Promise<boolean>;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [picked, setPicked] = useState<TOption[]>([]);
+  const selected = picked.map((option) => option.id);
+  const pickedIds = new Set(selected);
+  const shown = [...picked, ...options.filter((option) => !pickedIds.has(option.id))];
   const isOverLimit = selected.length > limit;
   const plural = `${noun}s`;
   return (
@@ -60,31 +69,41 @@ const AddDialog = ({
           <DialogTitle>{`Add ${plural}`}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <Field
-          label={plural[0].toUpperCase() + plural.slice(1)}
-          error={isOverLimit ? limitMessage : undefined}
-          description={
-            !isOverLimit && isTruncated
-              ? `Only the first ${PICKER_LIMIT} ${plural} are listed.`
-              : undefined
-          }
-          wide
-        >
-          <MultiSelect
-            label={plural}
-            searchable
-            placeholder={loading ? "Loading..." : `Pick ${plural}`}
-            disabled={loading}
-            invalid={isOverLimit}
-            options={options.map((option) => ({
-              value: option.id,
-              label: option.name,
-              description: option.meta
-            }))}
-            value={selected}
-            onChange={setSelected}
+        <Stack gap={16}>
+          <Input
+            aria-label={`Search ${plural}`}
+            placeholder={`Search ${plural}...`}
+            value={search}
+            maxLength={255}
+            onChange={(event) => onSearchChange(event.target.value)}
           />
-        </Field>
+          <Field
+            label={plural[0].toUpperCase() + plural.slice(1)}
+            error={isOverLimit ? limitMessage : undefined}
+            description={
+              !isOverLimit && isTruncated
+                ? `Only the first ${PICKER_LIMIT} matches are listed. Search to find more.`
+                : undefined
+            }
+            wide
+          >
+            <MultiSelect
+              label={plural}
+              searchable
+              placeholder={loading ? "Loading..." : `Pick ${plural}`}
+              invalid={isOverLimit}
+              options={shown.map((option) => ({
+                value: option.id,
+                label: option.name,
+                description: option.meta
+              }))}
+              value={selected}
+              onChange={(ids) =>
+                setPicked(ids.flatMap((id) => shown.find((option) => option.id === id) ?? []))
+              }
+            />
+          </Field>
+        </Stack>
         <DialogFooter>
           <Inline gap={8} justify="between" style={{ width: "100%" }}>
             {onCreate && createLabel ? (
@@ -131,8 +150,11 @@ export const AddBundleServicesDialog = ({
 }) => {
   const resources = useV4Adapter("agentVaultResources");
   const add = resources.useAddAccessBundleServices(projectId);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 300);
   const { data, isPending } = resources.useServices(projectId, {
-    limit: PICKER_LIMIT
+    limit: PICKER_LIMIT,
+    search: debouncedSearch.trim() || undefined
   });
   const inBundle = new Set(bundleServiceIds);
   const options = (data?.services ?? [])
@@ -153,6 +175,8 @@ export const AddBundleServicesDialog = ({
       limitMessage={`You can add up to ${MAX_SERVICES_PER_ADD} services at a time.`}
       pending={add.isPending}
       createLabel="Create new service"
+      search={search}
+      onSearchChange={setSearch}
       onCreate={() => {
         onOpenChange(false);
         onCreateNew();
@@ -195,8 +219,11 @@ export const AddBundleSkillsDialog = ({
 }) => {
   const resources = useV4Adapter("agentVaultResources");
   const add = resources.useAddAccessBundleSkills(projectId);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 300);
   const { data, isPending } = resources.useSkills(projectId, {
-    limit: PICKER_LIMIT
+    limit: PICKER_LIMIT,
+    search: debouncedSearch.trim() || undefined
   });
   const inBundle = new Set(bundleSkillIds);
   const roomLeft = Math.max(0, AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - bundleSkillIds.length);
@@ -218,6 +245,8 @@ export const AddBundleSkillsDialog = ({
       limitMessage={`An access bundle can have at most ${AGENT_VAULT_MAX_SKILLS_PER_BUNDLE} skills. This one has room for ${roomLeft} more.`}
       pending={add.isPending}
       createLabel={onCreateNew ? "Create new skill" : undefined}
+      search={search}
+      onSearchChange={setSearch}
       onCreate={
         onCreateNew
           ? () => {

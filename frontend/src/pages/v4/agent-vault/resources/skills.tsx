@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
@@ -138,7 +138,6 @@ export const CreateSkillDialog = ({
                   wide
                 >
                   <Input
-                    autoFocus
                     value={name}
                     maxLength={SKILL_NAME_MAX_LENGTH}
                     placeholder="code-review"
@@ -245,17 +244,32 @@ export const DeleteSkillDialog = ({
   );
 };
 
+type TSkillEdit = {
+  skillId: string;
+  baseVersion: number;
+  base: TSkillDraftFile[];
+  draft: TSkillDraftFile[];
+};
+
 const SkillSheetBody = ({
   projectId,
   skillId,
   canEdit,
   canDelete,
+  edit,
+  setEdit,
+  hasChanges,
+  requestDiscard,
   onClose
 }: {
   projectId: string;
   skillId: string;
   canEdit: boolean;
   canDelete: boolean;
+  edit?: TSkillEdit;
+  setEdit: Dispatch<SetStateAction<TSkillEdit | undefined>>;
+  hasChanges: boolean;
+  requestDiscard: () => void;
   onClose: () => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -268,11 +282,6 @@ const SkillSheetBody = ({
   const restore = resources.useRestoreSkillVersion(projectId);
   const [viewed, setViewed] = useState<number | null>(null);
   const [path, setPath] = useState(SKILL_ENTRY_FILE);
-  const [edit, setEdit] = useState<{
-    baseVersion: number;
-    base: TSkillDraftFile[];
-    draft: TSkillDraftFile[];
-  }>();
   const [rollingBack, setRollingBack] = useState<number>();
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -288,14 +297,9 @@ const SkillSheetBody = ({
   const latestFiles = useMemo(() => toDraftFiles(skill?.files ?? []), [skill]);
   const shownFiles = useMemo(() => {
     if (isOlder) return toDraftFiles(olderVersion?.files ?? []);
-    return edit && edit.baseVersion === latest ? edit.draft : latestFiles;
-  }, [isOlder, olderVersion, edit, latest, latestFiles]);
+    return edit ? edit.draft : latestFiles;
+  }, [isOlder, olderVersion, edit, latestFiles]);
   const file = shownFiles.find((entry) => entry.path === path) ?? shownFiles[0];
-  const hasChanges = edit ? getChangedSkillPaths(edit.base, edit.draft).hasChanges : false;
-  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: hasChanges,
-    onDiscard: onClose
-  });
   const isEditable = canEdit && !isOlder && file?.text !== null && file?.text !== undefined;
 
   if (isPending) return <Loader size="page" label="Loading skill" />;
@@ -313,14 +317,12 @@ const SkillSheetBody = ({
   const changeText = (text: string) => {
     if (!file) return;
     setEdit((prev) => {
-      const current =
-        prev && prev.baseVersion === skill.latestVersion
-          ? prev
-          : {
-              baseVersion: skill.latestVersion,
-              base: latestFiles,
-              draft: latestFiles
-            };
+      const current = prev ?? {
+        skillId: skill.id,
+        baseVersion: skill.latestVersion,
+        base: latestFiles,
+        draft: latestFiles
+      };
       return {
         ...current,
         draft: current.draft.map((entry) => (entry.path === file.path ? { ...entry, text } : entry))
@@ -504,7 +506,6 @@ const SkillSheetBody = ({
           </Inline>
         </Inline>
       </SheetFooter>
-      <DiscardChangesAlertDialog {...discardDialogProps} />
       <AlertDialog
         open={rollingBack !== undefined}
         onOpenChange={(open) => !open && setRollingBack(undefined)}
@@ -567,19 +568,40 @@ export const SkillSheet = ({
   canEdit: boolean;
   canDelete: boolean;
   onOpenChange: (open: boolean) => void;
-}) => (
-  <Sheet open={Boolean(skillId)} onOpenChange={onOpenChange}>
-    <SheetContent size="lg">
-      {skillId && (
-        <SkillSheetBody
-          key={skillId}
-          projectId={projectId}
-          skillId={skillId}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          onClose={() => onOpenChange(false)}
-        />
-      )}
-    </SheetContent>
-  </Sheet>
-);
+}) => {
+  const [storedEdit, setEdit] = useState<TSkillEdit>();
+  const edit = storedEdit?.skillId === skillId ? storedEdit : undefined;
+  const hasChanges = edit ? getChangedSkillPaths(edit.base, edit.draft).hasChanges : false;
+  const close = () => {
+    setEdit(undefined);
+    onOpenChange(false);
+  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: hasChanges,
+    onDiscard: close
+  });
+
+  return (
+    <>
+      <Sheet open={Boolean(skillId)} onOpenChange={(open) => !open && requestDiscard()}>
+        <SheetContent size="lg">
+          {skillId && (
+            <SkillSheetBody
+              key={skillId}
+              projectId={projectId}
+              skillId={skillId}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              edit={edit}
+              setEdit={setEdit}
+              hasChanges={hasChanges}
+              requestDiscard={requestDiscard}
+              onClose={close}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
+  );
+};

@@ -232,7 +232,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       )}
       <PersonalValuesDialog
         projectId={projectId}
-        service={settingUp}
+        service={settingUp && (services.find(({ id }) => id === settingUp.id) ?? settingUp)}
         onOpenChange={(open) => !open && setSettingUp(undefined)}
       />
     </TooltipProvider>

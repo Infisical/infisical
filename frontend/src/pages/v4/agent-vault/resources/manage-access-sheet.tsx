@@ -317,6 +317,7 @@ const ManageAccessContent = ({
                     ...actorIdsPayload([revoking])
                   });
                   saved(`Revoked ${name} from ${accessBundle.name}`);
+                  if (members.length === 1 && page > 1) setPage(page - 1);
                 } catch (error) {
                   failed(`Failed to revoke ${name}`, error);
                 }

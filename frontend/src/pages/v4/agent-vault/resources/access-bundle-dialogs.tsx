@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,7 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -57,92 +59,99 @@ export const AccessBundleDialog = ({
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [pending, setPending] = useState(false);
   const isCreate = !accessBundle;
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      name !== (accessBundle?.name ?? "") || description !== (accessBundle?.description ?? ""),
+    onDiscard: () => onOpenChange(false)
+  });
 
   return (
-    <Dialog open onOpenChange={(open) => !pending && onOpenChange(open)}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>{isCreate ? "Create access bundle" : "Edit access bundle"}</DialogTitle>
-        </DialogHeader>
-        <form
-          id="agent-vault-access-bundle"
-          autoComplete="off"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const next = {
-              name: issueOf(nameSchema, name),
-              description: issueOf(agentVaultDescriptionSchema, description)
-            };
-            setErrors(next);
-            if (next.name || next.description) return;
-            setPending(true);
-            try {
-              const trimmed = description.trim();
-              if (accessBundle) {
-                await update.mutateAsync({
-                  accessBundleId: accessBundle.id,
-                  name,
-                  description: trimmed || null
-                });
-                saved(`Access bundle ${name} updated`);
-                onOpenChange(false);
-              } else {
-                const created = await create.mutateAsync({
-                  name,
-                  description: trimmed || undefined
-                });
-                saved(`Access bundle ${name} created`);
-                onOpenChange(false);
-                onCreated?.(created);
+    <>
+      <Dialog open onOpenChange={(open) => !open && requestDiscard()}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>{isCreate ? "Create access bundle" : "Edit access bundle"}</DialogTitle>
+          </DialogHeader>
+          <form
+            id="agent-vault-access-bundle"
+            autoComplete="off"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const next = {
+                name: issueOf(nameSchema, name),
+                description: issueOf(agentVaultDescriptionSchema, description)
+              };
+              setErrors(next);
+              if (next.name || next.description) return;
+              setPending(true);
+              try {
+                const trimmed = description.trim();
+                if (accessBundle) {
+                  await update.mutateAsync({
+                    accessBundleId: accessBundle.id,
+                    name,
+                    description: trimmed || null
+                  });
+                  saved(`Access bundle ${name} updated`);
+                  onOpenChange(false);
+                } else {
+                  const created = await create.mutateAsync({
+                    name,
+                    description: trimmed || undefined
+                  });
+                  saved(`Access bundle ${name} created`);
+                  onOpenChange(false);
+                  onCreated?.(created);
+                }
+              } catch (error) {
+                failed(`Failed to ${isCreate ? "create" : "update"} access bundle`, error);
+              } finally {
+                setPending(false);
               }
-            } catch (error) {
-              failed(`Failed to ${isCreate ? "create" : "update"} access bundle`, error);
-            } finally {
-              setPending(false);
-            }
-          }}
-        >
-          <Stack gap={16}>
-            <Field
-              label="Name"
-              error={errors.name}
-              description="Use lowercase letters, numbers, and hyphens."
-            >
-              <Input
-                autoFocus
-                placeholder="on-call-infrastructure"
-                value={name}
-                maxLength={64}
-                invalid={Boolean(errors.name)}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </Field>
-            <Field label="Description" optional error={errors.description}>
-              <Input
-                placeholder="Paging, metrics, issue tracking"
-                value={description}
-                maxLength={256}
-                invalid={Boolean(errors.description)}
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            form="agent-vault-access-bundle"
-            loading={pending}
+            }}
           >
-            {isCreate ? "Create" : "Save"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <Stack gap={16}>
+              <Field
+                label="Name"
+                error={errors.name}
+                description="Use lowercase letters, numbers, and hyphens."
+              >
+                <Input
+                  placeholder="on-call-infrastructure"
+                  value={name}
+                  maxLength={64}
+                  invalid={Boolean(errors.name)}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </Field>
+              <Field label="Description" optional error={errors.description}>
+                <Input
+                  placeholder="Paging, metrics, issue tracking"
+                  value={description}
+                  maxLength={256}
+                  invalid={Boolean(errors.description)}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" disabled={pending} onClick={requestDiscard}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              form="agent-vault-access-bundle"
+              loading={pending}
+            >
+              {isCreate ? "Create" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 };
 

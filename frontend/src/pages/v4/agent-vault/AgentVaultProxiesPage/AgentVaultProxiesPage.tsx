@@ -310,7 +310,6 @@ const ProxySettingsDialog = ({
           <Stack gap={16}>
             <Field label="Name" error={errors.name}>
               <Input
-                autoFocus
                 value={draft.name}
                 maxLength={64}
                 placeholder="egress-1"

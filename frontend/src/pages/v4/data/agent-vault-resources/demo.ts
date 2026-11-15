@@ -16,6 +16,7 @@ import type {
   TAgentVaultActorIdsDTO,
   TAgentVaultBundleSkill,
   TAgentVaultMember,
+  TAgentVaultMemberProvidedField,
   TAgentVaultProductMember,
   TAgentVaultProjectService,
   TAgentVaultProxy,
@@ -772,15 +773,65 @@ const createdService = (
   };
 };
 
+const skillLabels = (
+  files: TAgentVaultSkillFile[],
+  fallback: { name: string; description: string }
+) => {
+  const manifest = files.find((file) => file.path === "SKILL.md");
+  const body = manifest ? decodeURIComponent(escape(atob(manifest.contentBase64))) : "";
+  return {
+    name: /^name:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? fallback.name,
+    description: /^description:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? fallback.description
+  };
+};
+
+const updatedCredential = (
+  current: TAgentVaultService["credential"],
+  credential: NonNullable<TUpdateAgentVaultServiceDTO["credential"]>
+): TAgentVaultService["credential"] => {
+  const dto = credential as {
+    type: AgentVaultCredentialType;
+    headerName?: string;
+    headerPrefix?: string;
+    memberProvidedFields?: TAgentVaultMemberProvidedField[];
+    certificate?: string | null;
+  };
+  const stored: Record<string, unknown> = current.type === dto.type ? { ...current } : {};
+  const memberProvidedFields =
+    dto.memberProvidedFields ??
+    (stored.memberProvidedFields as TAgentVaultMemberProvidedField[] | undefined) ??
+    [];
+  if (dto.type === AgentVaultCredentialType.Passthrough) return { type: dto.type };
+  if (dto.type === AgentVaultCredentialType.SshKey)
+    return {
+      type: dto.type,
+      hasCertificate:
+        dto.certificate === undefined ? Boolean(stored.hasCertificate) : Boolean(dto.certificate)
+    };
+  if (dto.type === AgentVaultCredentialType.Bearer)
+    return {
+      ...stored,
+      type: dto.type,
+      headerName: dto.headerName ?? stored.headerName ?? "Authorization",
+      headerPrefix: dto.headerPrefix ?? stored.headerPrefix ?? "Bearer",
+      memberProvidedFields
+    } as TAgentVaultService["credential"];
+  if (dto.type === AgentVaultCredentialType.OAuth)
+    return {
+      status: AgentVaultOauthStatus.Connected,
+      issuer: "",
+      grantedScopes: [],
+      requiredScopes: [],
+      ...stored,
+      type: dto.type,
+      memberProvidedFields
+    } as TAgentVaultService["credential"];
+  return { type: dto.type, memberProvidedFields } as TAgentVaultService["credential"];
+};
+
 const updatedService = (
   service: TAgentVaultService,
-  {
-    serviceId: _id,
-    type: _type,
-    hook,
-    credential: _credential,
-    ...dto
-  }: TUpdateAgentVaultServiceDTO
+  { serviceId: _id, type: _type, hook, credential, ...dto }: TUpdateAgentVaultServiceDTO
 ): TAgentVaultService => {
   const next = { ...service } as Record<string, unknown>;
   Object.entries(dto).forEach(([key, value]) => {
@@ -804,6 +855,7 @@ const updatedService = (
     }));
   }
   if (hook !== undefined) next.hook = hook ? { url: hook.url } : null;
+  if (credential) next.credential = updatedCredential(service.credential, credential);
   next.updatedAt = new Date().toISOString();
   return next as TAgentVaultService;
 };
@@ -1254,10 +1306,10 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
         .map(bundleSkill)
   ),
   useCreateSkill: mutation(({ files }: { files: TAgentVaultSkillFile[] }, state) => {
-    const manifest = files.find((file) => file.path === "SKILL.md");
-    const body = manifest ? decodeURIComponent(escape(atob(manifest.contentBase64))) : "";
-    const name = /^name:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? `skill-${state.counter}`;
-    const description = /^description:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? "";
+    const { name, description } = skillLabels(files, {
+      name: `skill-${state.counter}`,
+      description: ""
+    });
     if (state.skills.some((seed) => seed.skill.name === name))
       throw new Error(`A skill named ${name} already exists in this project.`);
     const now = new Date().toISOString();
@@ -1305,7 +1357,12 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
         createdAt: now,
         files
       };
-      const skill = { ...seed.skill, latestVersion: version.version, updatedAt: now };
+      const skill = {
+        ...seed.skill,
+        ...skillLabels(files, seed.skill),
+        latestVersion: version.version,
+        updatedAt: now
+      };
       const { files: _files, ...versionSummary } = version;
       return {
         state: bump({
@@ -1337,7 +1394,12 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
           skills: state.skills.map((entry) =>
             entry.skill.id === id
               ? {
-                  skill: { ...entry.skill, latestVersion: restored.version, updatedAt: now },
+                  skill: {
+                    ...entry.skill,
+                    ...skillLabels(restored.files, entry.skill),
+                    latestVersion: restored.version,
+                    updatedAt: now
+                  },
                   versions: [...entry.versions, restored]
                 }
               : entry
