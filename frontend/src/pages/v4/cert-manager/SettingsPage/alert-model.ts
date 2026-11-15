@@ -358,6 +358,55 @@ export const toCondition = (form: TAlertForm) => {
   return Object.keys(filters).length ? filters : null;
 };
 
+export type TFieldErrors = Record<string, string>;
+
+export const toFieldErrors = (
+  error: z.ZodError | undefined,
+  include: (path: (string | number)[]) => boolean
+): TFieldErrors => {
+  const errors: TFieldErrors = {};
+  error?.issues.forEach(({ path, message }) => {
+    const key = path.join(".");
+    if (include(path) && !errors[key]) errors[key] = message;
+  });
+  return errors;
+};
+
+export const withoutErrors = (errors: TFieldErrors, prefix: string): TFieldErrors =>
+  Object.fromEntries(
+    Object.entries(errors).filter(([key]) => key !== prefix && !key.startsWith(`${prefix}.`))
+  );
+
+export type TDraftHeader = { uid: string; key: string; value: string };
+
+export type TDraftChannel = Omit<TChannelForm, "headers"> & {
+  uid: string;
+  headers: TDraftHeader[];
+};
+
+export const toDraftHeader = (header: { key: string; value: string }): TDraftHeader => ({
+  uid: crypto.randomUUID(),
+  ...header
+});
+
+export const toDraftChannel = (channel: TChannelForm): TDraftChannel => ({
+  ...channel,
+  uid: crypto.randomUUID(),
+  headers: (channel.headers ?? []).map(toDraftHeader)
+});
+
+export const validateChannels = (channels: TDraftChannel[]): TFieldErrors => {
+  const result = channelFormSchema.array().safeParse(channels);
+  return result.success ? {} : toFieldErrors(result.error, () => true);
+};
+
+export type TAlertDraft = Omit<TAlertForm, "channels"> & { channels: TDraftChannel[] };
+
+export const toAlertDraft = (form: TAlertForm): TAlertDraft => ({
+  ...form,
+  channels: form.channels.map(toDraftChannel)
+});
+
 export const ENTERPRISE_CHANNEL_TYPES = [
   AlertChannelType.Slack,
   AlertChannelType.Webhook,
