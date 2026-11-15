@@ -76,10 +76,14 @@ const fitWindowTo = (container: HTMLElement) => {
     configurable: true,
     get: () => container.getBoundingClientRect().bottom
   });
-  return () =>
+  let restored = false;
+  return () => {
+    if (restored) return;
+    restored = true;
     descriptors.forEach(([key, descriptor]) => {
       if (descriptor) Object.defineProperty(window, key, descriptor);
     });
+  };
 };
 
 const transport: TWebAccessTransport = {
