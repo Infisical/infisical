@@ -108,11 +108,18 @@ export type TDeleteProjectDTO = {
   actor: ActorType;
   actorId: string;
   actorOrgId: string | undefined;
+  hardDelete?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListDeletedProjectsDTO = {
+  type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectsDTO = {
   includeRoles: boolean;
   type?: ProjectType;
+  limit?: number;
+  offset?: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {
@@ -146,6 +153,7 @@ export type TListProjectCertsDTO = {
   forPkiSync?: boolean;
   search?: string;
   status?: string | string[];
+  includeDeleted?: boolean;
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;

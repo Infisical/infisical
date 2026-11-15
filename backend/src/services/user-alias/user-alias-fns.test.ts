@@ -486,7 +486,7 @@ const sync = (args: Record<string, unknown>, deps: ReturnType<typeof makeDeps>) 
     userAlias: makeAlias(),
     assertedEmail: "old@example.com",
     orgId: "org-1",
-    isAuthEnforced: true,
+    isIdpAuthoritative: true,
     userDAL: deps.userDAL,
     userAliasDAL: deps.userAliasDAL,
     emailDomainDAL: deps.emailDomainDAL,
@@ -495,9 +495,9 @@ const sync = (args: Record<string, unknown>, deps: ReturnType<typeof makeDeps>) 
   } as Parameters<typeof syncSsoUserProfile>[0]);
 
 describe("syncSsoUserProfile", () => {
-  test("does nothing when the org does not enforce SSO", async () => {
+  test("does nothing when the IdP is not authoritative for the account", async () => {
     const deps = makeDeps();
-    const user = await sync({ assertedEmail: "new@example.com", isAuthEnforced: false }, deps);
+    const user = await sync({ assertedEmail: "new@example.com", isIdpAuthoritative: false }, deps);
 
     expect(user.username).toBe("old@example.com");
     expect(deps.userDAL.updateById).not.toHaveBeenCalled();

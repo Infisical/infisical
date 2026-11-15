@@ -16,10 +16,11 @@ import {
   CertificateAlertScopeKind,
   CertificateFilterKind,
   formatAlertBefore,
+  getFilterKinds,
   getFilterName,
+  getNoFiltersDescription,
   isExpiryEventType,
-  isFilterableEventType,
-  NO_FILTERS_DESCRIPTION,
+  isSignerEventType,
   TCertificateAlertForm,
   TCertificateAlertScope,
   TMemberEmails,
@@ -73,14 +74,16 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
 };
 
 const FilterDetails = ({
+  kinds,
   filters,
   conditionNames
 }: {
+  kinds: CertificateFilterKind[];
   filters: Partial<Record<CertificateFilterKind, string[]>>;
   conditionNames: Record<string, string>;
 }) => (
   <>
-    {Object.values(CertificateFilterKind).map((kind) => {
+    {kinds.map((kind) => {
       const ids = filters[kind] ?? [];
       return (
         <Detail key={kind} label={CERTIFICATE_FILTER_DEFINITIONS[kind].label}>
@@ -100,6 +103,7 @@ const FilterDetails = ({
 export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
   const isExpiry = isExpiryEventType(values.eventType);
+  const filterKinds = getFilterKinds(values.eventType);
 
   return (
     <div className="flex flex-col gap-8">
@@ -122,18 +126,23 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
         </div>
       </Section>
 
-      {scope.kind === CertificateAlertScopeKind.CertificateManager &&
-        isFilterableEventType(values.eventType) && (
-          <Section title="Certificate Filters">
-            {Object.values(CertificateFilterKind).some((kind) => values[kind]?.length) ? (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <FilterDetails filters={values} conditionNames={values.conditionNames} />
-              </div>
-            ) : (
-              <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>
-            )}
-          </Section>
-        )}
+      {scope.kind === CertificateAlertScopeKind.CertificateManager && (
+        <Section
+          title={isSignerEventType(values.eventType) ? "Signer Filters" : "Certificate Filters"}
+        >
+          {filterKinds.some((kind) => values[kind]?.length) ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <FilterDetails
+                kinds={filterKinds}
+                filters={values}
+                conditionNames={values.conditionNames}
+              />
+            </div>
+          ) : (
+            <span className="text-sm text-muted">{getNoFiltersDescription(values.eventType)}</span>
+          )}
+        </Section>
+      )}
 
       <Section title="Notification Channels">
         <div className="flex flex-col gap-3">

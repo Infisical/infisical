@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -27,7 +26,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { TListActorProjectMembershipsParams } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityProjectRow } from "./IdentityProjectRow";
@@ -35,7 +34,7 @@ import { IdentityProjectRow } from "./IdentityProjectRow";
 type Props = {
   identityId: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeIdentityFromProject", "addIdentityToProject"]>,
+    popUpName: keyof UsePopUpState<["removeIdentityFromProject", "addIdentityToProduct"]>,
     data?: object
   ) => void;
 };
@@ -44,13 +43,20 @@ enum IdentityProjectsOrderBy {
   Name = "name"
 }
 
-export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
-  const { data: projectMemberships = [], isPending } = useGetIdentityProjectMemberships(identityId);
+const DEFAULT_PER_PAGE = 20;
 
+export const getIdentityProjectsFirstPageParams = (): TListActorProjectMembershipsParams => ({
+  limit: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, DEFAULT_PER_PAGE),
+  offset: 0,
+  orderDirection: OrderByDirection.ASC
+});
+
+export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
   const { isSubOrganization } = useOrganization();
 
   const {
     search,
+    debouncedSearch,
     setSearch,
     setPage,
     page,
@@ -60,7 +66,11 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     orderDirection,
     toggleOrderDirection
   } = usePagination(IdentityProjectsOrderBy.Name, {
-    initPerPage: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, 20)
+    initPerPage: getUserTablePreference(
+      "identityProjectsTable",
+      PreferenceKey.PerPage,
+      DEFAULT_PER_PAGE
+    )
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -68,42 +78,38 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     setUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const visibleProjectMemberships = useMemo(
-    () =>
-      projectMemberships?.filter(
-        (membership) => membership.project.type !== ProjectType.CertificateManager
-      ),
-    [projectMemberships]
-  );
-  const filteredProjectMemberships = useMemo(
-    () =>
-      visibleProjectMemberships
-        ?.filter((membership) =>
-          membership.project.name.toLowerCase().includes(search.trim().toLowerCase())
-        )
-        .sort((a, b) => {
-          const [membershipOne, membershipTwo] =
-            orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          return membershipOne.project.name
-            .toLowerCase()
-            .localeCompare(membershipTwo.project.name.toLowerCase());
-        }),
-    [visibleProjectMemberships, orderDirection, search]
-  );
+  const projectSearch = debouncedSearch.trim();
+  const { data, isPending, isError } = useGetIdentityProjectMemberships(identityId, {
+    limit: perPage,
+    offset,
+    orderDirection,
+    ...(projectSearch ? { search: projectSearch } : {})
+  });
+  const projectMemberships = data?.identityMemberships ?? [];
+  const totalCount = data?.totalCount ?? 0;
 
   useResetPageHelper({
-    totalCount: filteredProjectMemberships.length,
+    totalCount,
     offset,
     setPage
   });
 
   if (isPending) {
     return (
-      // scott: todo proper loader
       <div className="flex h-40 w-full items-center justify-center">
         <Loader />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Could not load products</EmptyTitle>
+          <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
@@ -111,16 +117,21 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     <>
       <Input
         className="mb-4"
+        maxLength={255}
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search projects..."
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
+        placeholder="Search by project name..."
       />
-      {filteredProjectMemberships.length ? (
+      {projectMemberships.length ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead onClick={toggleOrderDirection} className="w-1/3">
-                Name
+              <TableHead className="w-1/4">Product</TableHead>
+              <TableHead onClick={toggleOrderDirection} className="w-1/4">
+                Project
                 <ChevronDownIcon
                   className={twMerge(
                     orderDirection === OrderByDirection.DESC && "rotate-180",
@@ -128,56 +139,54 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                   )}
                 />
               </TableHead>
-
               <TableHead>Role</TableHead>
               <TableHead>Added On</TableHead>
               <TableHead className="w-5" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!isPending &&
-              filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
-                return (
-                  <IdentityProjectRow
-                    key={`identity-project-membership-${membership.id}`}
-                    membership={membership}
-                    handlePopUpOpen={handlePopUpOpen}
-                  />
-                );
-              })}
+            {projectMemberships.map((membership) => {
+              return (
+                <IdentityProjectRow
+                  key={`identity-project-membership-${membership.id}`}
+                  membership={membership}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              );
+            })}
           </TableBody>
         </Table>
       ) : (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {visibleProjectMemberships.length
-                ? "No projects match this search"
-                : "This machine identity is not a member of any projects"}
+              {projectSearch
+                ? "No memberships match this search"
+                : "This machine identity does not have access to any products"}
             </EmptyTitle>
             <EmptyDescription>
-              {visibleProjectMemberships.length
-                ? "Adjust search filters to view project memberships."
-                : "Assign this machine identity to a project."}
+              {projectSearch
+                ? "Adjust search filters to view memberships."
+                : "Add this machine identity to a product to give it access."}
             </EmptyDescription>
-            {!visibleProjectMemberships.length && (
+            {!projectSearch && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
-                  onClick={() => handlePopUpOpen("addIdentityToProject")}
+                  onClick={() => handlePopUpOpen("addIdentityToProduct")}
                 >
                   <PlusIcon />
-                  Add to Project
+                  Add to Product
                 </Button>
               </EmptyContent>
             )}
           </EmptyHeader>
         </Empty>
       )}
-      {Boolean(filteredProjectMemberships.length) && (
+      {Boolean(projectMemberships.length) && (
         <Pagination
-          count={filteredProjectMemberships.length}
+          count={totalCount}
           page={page}
           perPage={perPage}
           onChangePage={setPage}

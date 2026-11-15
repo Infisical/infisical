@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { secretInsightsKeys } from "@app/hooks/api/secretInsights/queries";
 
 import { identitiyProjectPrivilegeKeys } from "./queries";
 import {
@@ -38,6 +39,7 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      queryClient.invalidateQueries({ queryKey: secretInsightsKeys.allSecretReadActivity() });
       invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });
@@ -66,6 +68,7 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      queryClient.invalidateQueries({ queryKey: secretInsightsKeys.allSecretReadActivity() });
       invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });
@@ -93,6 +96,7 @@ export const useDeleteIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      queryClient.invalidateQueries({ queryKey: secretInsightsKeys.allSecretReadActivity() });
       invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });

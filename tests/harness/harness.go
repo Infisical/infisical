@@ -54,12 +54,33 @@ type Option func(*config)
 type config struct {
 	extra []infra.Module
 	plan  *license.Plan
+	env   map[string]string
+	files []infra.File
 }
 
 // WithInfra adds a container the harness does not know about, for a suite that needs
 // one: Pebble for ACME, a target database for rotation.
 func WithInfra(mods ...infra.Module) Option {
 	return func(c *config) { c.extra = append(c.extra, mods...) }
+}
+
+// WithInfisicalEnv sets an environment variable on the package's own Infisical, such as
+// RELAY_AUTH_SECRET. Isolated only: a shared instance is adopted by name and keeps the
+// environment it was created with, so a Shared package asking for one would silently
+// not get it.
+func WithInfisicalEnv(key, value string) Option {
+	return func(c *config) {
+		if c.env == nil {
+			c.env = map[string]string{}
+		}
+		c.env[key] = value
+	}
+}
+
+// WithInfisicalFile swaps a file into the package's Infisical before boot. Isolated
+// only, same reason as WithInfisicalEnv.
+func WithInfisicalFile(src, dst string) Option {
+	return func(c *config) { c.files = append(c.files, infra.File{Src: src, Dst: dst}) }
 }
 
 // WithDefaultPlan sets the entitlements a tenant gets unless it asks for others.
@@ -97,7 +118,7 @@ func run(m *testing.M, profile Profile, cfg *config, mainFile string) (int, erro
 	// Opened before any test runs, so nothing a test triggers can happen before it is
 	// listening.
 	if fn, ok := stack.modules[fakenet.Key].(*fakenet.Handle); ok {
-		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary()); err != nil {
+		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary(), license.Host); err != nil {
 			return 0, err
 		}
 	}
@@ -148,7 +169,10 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	mods, scopes := profile.modules(img, fnImg, caFile, cfg.extra...)
+	if (len(cfg.env) > 0 || len(cfg.files) > 0) && profile != Isolated {
+		return nil, nil, fmt.Errorf("harness: WithInfisicalEnv and WithInfisicalFile need harness.Isolated; a shared instance keeps the environment it was created with")
+	}
+	mods, scopes := profile.modules(img, fnImg, caFile, infisicalOptions(cfg), cfg.extra...)
 	plan, err := infra.Resolve(mods, scopes)
 	if err != nil {
 		return nil, nil, err

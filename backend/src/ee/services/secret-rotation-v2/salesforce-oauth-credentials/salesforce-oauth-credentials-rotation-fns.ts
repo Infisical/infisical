@@ -13,6 +13,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
   getSalesforceConnectionAccessToken,
+  resolveSalesforcePath,
   SALESFORCE_API_VERSION
 } from "@app/services/app-connection/salesforce/salesforce-connection-fns";
 
@@ -45,14 +46,9 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
     };
   };
 
-  const $deleteStagedCredential = async (stagedCredentialUrl: string) => {
-    const { instanceUrl, headers } = await $authedRequest();
+  const $deleteStagedCredential = async (url: string, headers: Record<string, string>) => {
     try {
-      await request.request({
-        method: "DELETE",
-        url: `${instanceUrl}${stagedCredentialUrl}`,
-        headers
-      });
+      await request.request({ method: "DELETE", url, headers });
     } catch (error) {
       // 404 means the credential was already gone (manually deleted, or auto-expired past Salesforce's grace window)
       if (error instanceof AxiosError && error.response?.status === 404) return;
@@ -85,7 +81,7 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
 
     const { data: stagedData } = await request.request<TSalesforceStagedCredentialsResponse>({
       method: "POST",
-      url: `${instanceUrl}${consumer.stagedCredentialsUrl}`,
+      url: resolveSalesforcePath(instanceUrl, consumer.stagedCredentialsUrl),
       headers
     });
 
@@ -93,24 +89,23 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
     if (!staged?.url || !staged.key || !staged.secret) {
       throw new Error("Salesforce did not return a staged credential after POST");
     }
+    const stagedUrl = resolveSalesforcePath(instanceUrl, staged.url);
 
     try {
       await request.request({
         method: "PATCH",
-        url: `${instanceUrl}${staged.url}`,
+        url: stagedUrl,
         headers,
         data: { command: "rotate" }
       });
     } catch (error) {
       // best-effort cleanup of the staged credential we just created
-      await request
-        .request({ method: "DELETE", url: `${instanceUrl}${staged.url}`, headers })
-        .catch((cleanupError: Error) => {
-          logger.warn(
-            { err: cleanupError },
-            `Failed to clean up Salesforce staged credential after PATCH rotate failure [stagedUrl=${staged.url}]`
-          );
-        });
+      await request.request({ method: "DELETE", url: stagedUrl, headers }).catch((cleanupError: Error) => {
+        logger.warn(
+          { err: cleanupError },
+          `Failed to clean up Salesforce staged credential after PATCH rotate failure [stagedUrl=${staged.url}]`
+        );
+      });
       throw error;
     }
 
@@ -167,13 +162,19 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TSalesforceOauthCredentialsRotationGeneratedCredentials
   > = async (credentialToRevoke, callback) => {
+    // Resolve the stored link before issuing, so a refused link fails before Salesforce rotates the secret
+    const { instanceUrl, headers } = await $authedRequest();
+    const revokeUrl = credentialToRevoke?.stagedCredentialUrl
+      ? resolveSalesforcePath(instanceUrl, credentialToRevoke.stagedCredentialUrl)
+      : undefined;
+
     const credentials = await $issueConsumerSecret();
     // Salesforce keeps the previously-active credential valid for a grace period after PATCH rotate,
     // which is why this rotation is dual-credentials. Once a credential ages out of the array (one
     // generation past "previous"), DELETE it from Salesforce to prevent stale credentials from
     // remaining authentic-able beyond their Infisical lifespan.
-    if (credentialToRevoke?.stagedCredentialUrl) {
-      await $deleteStagedCredential(credentialToRevoke.stagedCredentialUrl);
+    if (revokeUrl) {
+      await $deleteStagedCredential(revokeUrl, headers);
     }
     return callback(credentials);
   };

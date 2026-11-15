@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { components, MultiValue, OptionProps } from "react-select";
 import { Building2Icon, CheckIcon, GlobeIcon, Info, type LucideIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Combobox,
   Field,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -79,50 +77,9 @@ type FilterFormShape = {
   filters?: { products?: AuditLogStreamProduct[] } | null;
 };
 
-const ProductOptionItem = ({ isSelected, children, ...props }: OptionProps<ProductOption>) => {
-  // The "All products" row is pinned to the top and divided from the rest. It reads as selected
-  // whenever no specific products are chosen (the default).
-  if (props.data.value === ALL_VALUE) {
-    const isAllProducts = (props.getValue() as ProductOption[]).length === 0;
-
-    return (
-      <div className="border-b border-border">
-        <components.Option {...props} isSelected={isAllProducts}>
-          <div className="flex flex-row items-center gap-2">
-            <GlobeIcon className="size-4 shrink-0 text-muted" />
-            <p className="mr-auto truncate">{children}</p>
-            {isAllProducts && <CheckIcon className="ml-2 size-4 shrink-0" />}
-          </div>
-        </components.Option>
-      </div>
-    );
-  }
-
-  const Icon = PRODUCT_ICONS[props.data.value];
-
-  return (
-    <components.Option isSelected={isSelected} {...props}>
-      <div className="flex flex-row items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <p className="mr-auto truncate">{children}</p>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
-
 export const ProductsField = () => {
   const { control } = useFormContext<FilterFormShape>();
   const { field } = useController({ control, name: "filters.products" });
-  const containerRef = useRef<HTMLDivElement>(null);
-  // Portal the menu into the enclosing modal so it can overflow the modal's scrollable body
-  // instead of being clipped. Targeting the dialog (not document.body) keeps it inside Radix's
-  // focus trap so options stay clickable. Falls back to inline rendering outside a modal.
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
 
   const selected = field.value ?? [];
   const value = PRODUCT_OPTIONS.filter((option) =>
@@ -144,37 +101,48 @@ export const ProductsField = () => {
           </TooltipContent>
         </Tooltip>
       </FieldLabel>
-      <div ref={containerRef}>
-        <FilterableSelect
-          inputId="products"
-          isMulti
-          value={value}
-          options={[ALL_OPTION, ...PRODUCT_OPTIONS]}
-          onChange={(newValue, actionMeta) => {
-            // Picking "All products" clears the filter (= stream everything).
-            if (actionMeta.action === "select-option" && actionMeta.option?.value === ALL_VALUE) {
-              field.onChange([]);
-              return;
-            }
+      <Combobox
+        id="products"
+        multiple
+        value={value}
+        options={[ALL_OPTION, ...PRODUCT_OPTIONS]}
+        onValueChange={(newValue) => {
+          // Picking "All products" clears the filter (= stream everything).
+          if (newValue.some((option) => option.value === ALL_VALUE)) {
+            field.onChange([]);
+            return;
+          }
 
-            const next = (newValue as MultiValue<ProductOption>)
-              .map((option) => option.value)
-              .filter(
-                (productValue): productValue is AuditLogStreamProduct => productValue !== ALL_VALUE
-              );
-            // Empty selection is "stream everything" — selecting every product is the same intent,
-            // so normalize it back to an empty list.
-            field.onChange(next.length === PRODUCTS.length ? [] : next);
-          }}
-          placeholder="All products"
-          getOptionValue={(option) => option.value}
-          getOptionLabel={(option) => option.label}
-          components={{ Option: ProductOptionItem }}
-          menuPortalTarget={menuPortalTarget ?? undefined}
-          menuPosition="fixed"
-          menuPlacement="auto"
-        />
-      </div>
+          const next = newValue
+            .map((option) => option.value)
+            .filter(
+              (productValue): productValue is AuditLogStreamProduct => productValue !== ALL_VALUE
+            );
+          // Empty selection is "stream everything"; selecting every product is the same intent,
+          // so normalize it back to an empty list.
+          field.onChange(next.length === PRODUCTS.length ? [] : next);
+        }}
+        placeholder="All products"
+        searchAriaLabel="Search products"
+        getOptionValue={(option) => option.value}
+        getOptionKeywords={(option) => [option.value]}
+        getOptionLabel={(option) => option.label}
+        renderOption={(option) => {
+          const Icon = option.value === ALL_VALUE ? GlobeIcon : PRODUCT_ICONS[option.value];
+
+          return (
+            <span className="flex items-center gap-2">
+              <Icon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{option.label}</span>
+            </span>
+          );
+        }}
+        renderOptionIndicator={(option, { isSelected }) =>
+          (isSelected || (option.value === ALL_VALUE && selected.length === 0)) && (
+            <CheckIcon className="size-4" />
+          )
+        }
+      />
     </Field>
   );
 };

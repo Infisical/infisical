@@ -49,6 +49,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       allowedSubjectAltNames: z.string().optional(),
       caCertificate: z.string().min(1),
       verifyClientCertificateChain: z.boolean().default(false),
+      bindAccessTokenToCertificate: z.boolean().default(false),
       accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
       accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
       accessTokenNumUsesLimit: z.string(),
@@ -106,6 +107,7 @@ export const IdentityTlsCertAuthForm = ({
     defaultValues: {
       caCertificate: "",
       verifyClientCertificateChain: false,
+      bindAccessTokenToCertificate: false,
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -120,6 +122,7 @@ export const IdentityTlsCertAuthForm = ({
         allowedCommonNames: data.allowedCommonNames || undefined,
         allowedSubjectAltNames: data.allowedSubjectAltNames?.join("\n") || undefined,
         verifyClientCertificateChain: data.verifyClientCertificateChain ?? false,
+        bindAccessTokenToCertificate: data.bindAccessTokenToCertificate ?? false,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
@@ -131,6 +134,7 @@ export const IdentityTlsCertAuthForm = ({
       reset({
         caCertificate: "",
         verifyClientCertificateChain: false,
+        bindAccessTokenToCertificate: false,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
@@ -148,6 +152,7 @@ export const IdentityTlsCertAuthForm = ({
     allowedCommonNames,
     allowedSubjectAltNames,
     verifyClientCertificateChain,
+    bindAccessTokenToCertificate,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -171,6 +176,7 @@ export const IdentityTlsCertAuthForm = ({
           ? allowedSubjectAltNamesList
           : null,
         verifyClientCertificateChain,
+        bindAccessTokenToCertificate,
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -187,6 +193,7 @@ export const IdentityTlsCertAuthForm = ({
           ? allowedSubjectAltNamesList
           : undefined,
         verifyClientCertificateChain,
+        bindAccessTokenToCertificate,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -331,6 +338,39 @@ export const IdentityTlsCertAuthForm = ({
                     </FieldLabel>
                     <Toggle
                       id="verifyClientCertificateChain"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="bindAccessTokenToCertificate"
+              render={({ field }) => (
+                <Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <FieldLabel
+                      htmlFor="bindAccessTokenToCertificate"
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      Bind Access Tokens to Client Certificate
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          Access tokens only work on requests that present the same client
+                          certificate used to log in. Your TLS-terminating proxy must forward the
+                          certificate on every API request. On Infisical Cloud, send requests to
+                          port 8443. Turning this on revokes the identity&apos;s existing TLS
+                          Certificate Auth access tokens.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <Toggle
+                      id="bindAccessTokenToCertificate"
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />

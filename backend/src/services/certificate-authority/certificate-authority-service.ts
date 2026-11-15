@@ -1,10 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  PlanProduct,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -15,16 +22,11 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
-import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
-import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CrlReason } from "../certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { recordCertificateRequestFailure } from "../certificate-request/certificate-request-fns";
@@ -33,10 +35,12 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../certificate-request/certificate-request-types";
-import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
+import { TCertificateAlertEventEmitter } from "../certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { InternalCas } from "../license-client";
-import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -84,11 +88,13 @@ import {
   TCreateAzureAdCsCertificateAuthorityDTO,
   TUpdateAzureAdCsCertificateAuthorityDTO
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
+import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
+import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
-import { assertNoCertificateProfilesUsingCa, rethrowCaDeleteError } from "./certificate-authority-fns";
+import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
-import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -149,7 +155,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -168,10 +174,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
-  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -202,10 +208,10 @@ export const certificateAuthorityServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  usageMeteringService,
-  hsmConnectorService,
-  certificateAuthoritySecretDAL,
   licenseService,
+  usageMeteringService,
+  caKeySourceService,
+  certificateAuthoritySecretDAL,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
   auditLogService
@@ -343,13 +349,13 @@ export const certificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+    if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
       throw new BadRequestError({
         message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
@@ -368,15 +374,13 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
 
-      if (internalConfig.keySource === CertKeySource.Hsm) {
-        if (!internalConfig.hsmConnectorId) {
-          throw new BadRequestError({ message: "An HSM Connector is required when the key source is HSM." });
-        }
-        await hsmConnectorService.assertAttachPermission(
-          { type: actor.type, id: actor.id, authMethod: actor.authMethod, orgId: actor.orgId },
-          internalConfig.hsmConnectorId,
-          projectId
-        );
+      if (isExternalCaKeySource(internalConfig.keySource)) {
+        await caKeySourceService.assertCanUse({
+          keySource: internalConfig.keySource,
+          actor,
+          projectId,
+          input: internalConfig
+        });
       }
 
       const ca = await internalCertificateAuthorityService.createCa({
@@ -392,7 +396,12 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
+
+      const caSecret = await certificateAuthoritySecretDAL.findOne(
+        { caId: ca.id },
+        certificateAuthoritySecretDAL.primaryNode()
+      );
 
       return {
         id: ca.id,
@@ -401,7 +410,7 @@ export const certificateAuthorityServiceFactory = ({
         name: ca.name,
         projectId,
         status,
-        configuration: ca.internalCa
+        configuration: { ...ca.internalCa, ...(await caKeySourceService.describeKey(caSecret)) }
       } as TCertificateAuthority;
     }
 
@@ -523,12 +532,7 @@ export const certificateAuthorityServiceFactory = ({
         subject: ProjectPermissionSub.CertificateAuthorities,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: {
-          ...certificateAuthority.internalCa,
-          keySource: (caSecret?.keySource as CertKeySource | undefined) ?? CertKeySource.Infisical,
-          hsmConnectorId: caSecret?.hsmConnectorId ?? undefined,
-          hsmKeyLabel: caSecret?.hsmKeyLabel ?? undefined
-        },
+        configuration: { ...certificateAuthority.internalCa, ...(await caKeySourceService.describeKey(caSecret)) },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -680,14 +684,18 @@ export const certificateAuthorityServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const plan = await licenseService.getPlan(project.orgId);
+    const countOrgId = isInstanceWidePkiQuota(licenseService) ? null : project.orgId;
     const [totalUsed, internalUsed] = await Promise.all([
-      certificateAuthorityDAL.countCasByOrgId(project.orgId),
-      certificateAuthorityDAL.countInternalCasByOrgId(project.orgId)
+      certificateAuthorityDAL.countCasByOrgId(countOrgId),
+      certificateAuthorityDAL.countInternalCasByOrgId(countOrgId)
     ]);
 
     return {
-      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
-      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+      certificateAuthorities: { used: totalUsed, limit: plan.limit(PlanLimit.CertificateAuthorities) },
+      internalCertificateAuthorities: {
+        used: internalUsed,
+        limit: plan.limit(PlanLimit.InternalCertificateAuthorities)
+      }
     };
   };
 
@@ -810,6 +818,7 @@ export const certificateAuthorityServiceFactory = ({
             crlDistributionPointUrls?: string[];
             disableManagedCrlDistributionPointUrl?: boolean;
             isOcspEnabled?: boolean;
+            crlValidityDays?: number;
           }
         | undefined;
 
@@ -820,7 +829,8 @@ export const certificateAuthorityServiceFactory = ({
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
         disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
-        isOcspEnabled: internalConfig?.isOcspEnabled
+        isOcspEnabled: internalConfig?.isOcspEnabled,
+        crlValidityDays: internalConfig?.crlValidityDays
       });
 
       if (!updatedCa.internalCa) {
@@ -830,14 +840,17 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       return {
-        id: updatedCa.id,
-        type,
-        enableDirectIssuance: updatedCa.enableDirectIssuance,
-        name: updatedCa.name,
-        projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
-        status: updatedCa.status
-      } as TCertificateAuthority;
+        ...({
+          id: updatedCa.id,
+          type,
+          enableDirectIssuance: updatedCa.enableDirectIssuance,
+          name: updatedCa.name,
+          projectId: updatedCa.projectId,
+          configuration: updatedCa.internalCa,
+          status: updatedCa.status
+        } as TCertificateAuthority),
+        crlWarning: updatedCa.crlWarning
+      };
     }
 
     if (type === CaType.ACME) {
@@ -959,17 +972,22 @@ export const certificateAuthorityServiceFactory = ({
 
     await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
+    const keyDetails = await deleteCaAndReleaseExternalKey({
+      caId: certificateAuthority.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      caKeySourceService
+    });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: { ...certificateAuthority.internalCa, ...keyDetails },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -1193,17 +1211,22 @@ export const certificateAuthorityServiceFactory = ({
 
     await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
+    const keyDetails = await deleteCaAndReleaseExternalKey({
+      caId: certificateAuthority.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      caKeySourceService
+    });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: { ...certificateAuthority.internalCa, ...keyDetails },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }

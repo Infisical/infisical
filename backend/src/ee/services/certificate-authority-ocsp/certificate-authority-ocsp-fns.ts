@@ -31,8 +31,7 @@ const ECDSA_SIGNATURE_OID_BY_HASH: Record<string, string> = {
   "SHA-512": "1.2.840.10045.4.3.4"
 };
 
-const toArrayBuffer = (view: Uint8Array): ArrayBuffer =>
-  view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+const toArrayBuffer = (view: Uint8Array): ArrayBuffer => new Uint8Array(view).buffer;
 
 export const normalizeSerialNumber = (hex: string): string => {
   let out = hex.toLowerCase();

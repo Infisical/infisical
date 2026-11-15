@@ -21,6 +21,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   filters: FilterRule[];
+  includeDeleted?: boolean;
   onViewCreated?: (viewId: string, filters: TInventoryViewFilters) => void;
   applicationId?: string;
 };
@@ -29,6 +30,7 @@ export const SaveViewModal = ({
   isOpen,
   onOpenChange,
   filters,
+  includeDeleted,
   onViewCreated,
   applicationId
 }: Props) => {
@@ -39,7 +41,10 @@ export const SaveViewModal = ({
   const handleSave = async () => {
     if (!name.trim()) return;
 
-    const apiFilters = filtersToSearchParams(filters);
+    const apiFilters: TInventoryViewFilters = {
+      ...filtersToSearchParams(filters),
+      ...(includeDeleted && { includeDeleted: true })
+    };
     const result = await createView({
       name: name.trim(),
       filters: apiFilters,

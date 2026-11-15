@@ -1,8 +1,21 @@
 import { faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { GenericFieldLabel, Modal, ModalContent, Skeleton, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
@@ -48,32 +61,54 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
 
   if (isLoadingAlert) {
     return (
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent title="Certificate Alert Details" className="max-w-3xl">
-          <div className="space-y-4">
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent size="form">
+          <SheetHeader>
+            <SheetTitle>Certificate Alert Details</SheetTitle>
+            <SheetDescription>View certificate details.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <Skeleton className="h-6 w-1/3" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
-        </ModalContent>
-      </Modal>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost">Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     );
   }
 
   if (!alert) {
     return (
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent title="Certificate Alert Details" className="max-w-3xl">
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent size="form">
+          <SheetHeader>
+            <SheetTitle>Certificate Alert Details</SheetTitle>
+            <SheetDescription>View certificate details.</SheetDescription>
+          </SheetHeader>
           <p className="py-8 text-center text-sm text-muted">Alert not found.</p>
-        </ModalContent>
-      </Modal>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost">Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     );
   }
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Certificate Alert Details" className="max-w-3xl">
-        <div className="space-y-6">
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent size="form">
+        <SheetHeader>
+          <SheetTitle>Certificate Alert Details</SheetTitle>
+          <SheetDescription>View certificate details.</SheetDescription>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-muted">Alert Name</p>
@@ -88,20 +123,30 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
           <div className="space-y-3">
             <SectionHeader title="Basic Information" />
             <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
-              <GenericFieldLabel label="Event Type">
-                {formatEventType(alert.eventType)}
-              </GenericFieldLabel>
+              <div>
+                <p className="text-xs text-accent">Event Type</p>
+                <div className="text-sm text-foreground">{formatEventType(alert.eventType)}</div>
+              </div>
               {alert.eventType === PkiAlertEventTypeV2.EXPIRATION && (
                 <>
-                  <GenericFieldLabel label="Alert Before">
-                    {formatAlertBefore(alert.alertBefore, undefined)}
-                  </GenericFieldLabel>
-                  <GenericFieldLabel label="Repeat daily until expiry">
-                    {alert.notificationConfig?.enableDailyNotification ? "Enabled" : "Disabled"}
-                  </GenericFieldLabel>
+                  <div>
+                    <p className="text-xs text-accent">Alert Before</p>
+                    <div className="text-sm text-foreground">
+                      {formatAlertBefore(alert.alertBefore, undefined)}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-accent">Repeat daily until expiry</p>
+                    <div className="text-sm text-foreground">
+                      {alert.notificationConfig?.enableDailyNotification ? "Enabled" : "Disabled"}
+                    </div>
+                  </div>
                 </>
               )}
-              <GenericFieldLabel label="Created">{formatDate(alert.createdAt)}</GenericFieldLabel>
+              <div>
+                <p className="text-xs text-accent">Created</p>
+                <div className="text-sm text-foreground">{formatDate(alert.createdAt)}</div>
+              </div>
             </div>
           </div>
 
@@ -128,8 +173,13 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                         {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
                           (channel.config as TPkiAlertChannelConfigWebhookResponse)
                             ?.hasSigningSecret && (
-                            <Tooltip content="Signed webhook">
-                              <FontAwesomeIcon icon={faKey} className="text-xs text-muted" />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <FontAwesomeIcon icon={faKey} className="text-xs text-muted" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Signed webhook</TooltipContent>
                             </Tooltip>
                           )}
                         {!channel.enabled && <Badge variant="neutral">Disabled</Badge>}
@@ -145,8 +195,13 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                           const displayed = recipients.slice(0, 3).join(", ");
                           const text = count <= 3 ? displayed : `${displayed} +${count - 3} more`;
                           return count > 3 ? (
-                            <Tooltip content={recipients.join(", ")}>
-                              <p className="mt-1 cursor-help text-xs text-muted">{text}</p>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <p className="mt-1 cursor-help text-xs text-muted">{text}</p>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{recipients.join(", ")}</TooltipContent>
                             </Tooltip>
                           ) : (
                             <p className="mt-1 text-xs text-muted">{text}</p>
@@ -172,7 +227,12 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
             )}
           </div>
         </div>
-      </ModalContent>
-    </Modal>
+        <SheetFooter className="justify-end border-t">
+          <SheetClose asChild>
+            <Button variant="ghost">Close</Button>
+          </SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };

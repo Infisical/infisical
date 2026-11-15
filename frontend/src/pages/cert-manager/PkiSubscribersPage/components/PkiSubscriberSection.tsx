@@ -3,7 +3,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog
+} from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -70,61 +78,65 @@ export const PkiSubscriberSection = () => {
   const subscriberName = subscriberStatusData?.subscriberName || "";
 
   return (
-    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-foreground">Subscribers</p>
-        <div className="flex w-full justify-end">
-          <ProjectPermissionCan
-            I={ProjectPermissionPkiSubscriberActions.Create}
-            a={ProjectPermissionSub.PkiSubscribers}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("creationBlocked")}
-                isDisabled={!isAllowed}
-                className="ml-4"
-              >
-                Add Subscriber
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-      </div>
-      <PkiSubscribersTable handlePopUpOpen={handlePopUpOpen} />
+    <Card>
+      <CardHeader>
+        <CardTitle>Subscribers</CardTitle>
+        <CardAction>
+          <div className="flex w-full justify-end">
+            <ProjectPermissionCan
+              I={ProjectPermissionPkiSubscriberActions.Create}
+              a={ProjectPermissionSub.PkiSubscribers}
+            >
+              {(isAllowed) => (
+                <Button
+                  type="submit"
+                  onClick={() => handlePopUpOpen("creationBlocked")}
+                  isDisabled={!isAllowed}
+                  variant="project"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                  Add Subscriber
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </div>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <PkiSubscribersTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <LegacyPkiCreationBlockedModal
         resource={LegacyPkiResource.PkiSubscriber}
         isOpen={popUp.creationBlocked.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.pkiSubscriberStatus.isOpen}
         title={`Are you sure you want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
-        subTitle={
+        description={
           isEnabling
             ? "This action will allow issuing certificates for this subscriber again."
             : "This action will prevent issuing certificates for this subscriber."
         }
-        onChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
-        deleteKey="confirm"
-        buttonColorSchema={isEnabling ? "primary" : "danger"}
-        buttonText={isEnabling ? "Enable" : "Disable"}
-        onDeleteApproved={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
+        onOpenChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
+        confirmKey="confirm"
+        confirmVariant={isEnabling ? "project" : "danger"}
+        confirmLabel={isEnabling ? "Enable" : "Disable"}
+        onConfirm={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title="Are you sure you want to remove the PKI subscriber?"
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemovePkiSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )
         }
       />
-    </div>
+    </Card>
   );
 };

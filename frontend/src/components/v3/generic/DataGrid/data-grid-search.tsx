@@ -4,9 +4,9 @@ import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@app/components/v3/generic/Button";
 import { Input } from "@app/components/v3/generic/Input";
 
+import type { SearchState } from "./data-grid-types";
 import { useAsRef } from "./hooks/use-as-ref";
 import { useDebouncedCallback } from "./hooks/use-debounced-callback";
-import type { SearchState } from "./data-grid-types";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface DataGridSearchProps extends SearchState {}

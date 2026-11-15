@@ -1,13 +1,13 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -178,11 +178,7 @@ const Page = () => {
                 groupSlug={data.group.slug}
                 isLinkedGroup={isLinkedGroup}
               />
-              <GroupProjectsSection
-                groupId={groupId}
-                groupSlug={data.group.slug}
-                hideAddToProject={isLinkedGroup}
-              />
+              <GroupProjectsSection groupId={groupId} hideAddToProject={isLinkedGroup} />
             </div>
           </div>
         </>
@@ -192,7 +188,7 @@ const Page = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
@@ -218,10 +214,8 @@ export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.group")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgPermissionGroupActions.Read}

@@ -5,6 +5,7 @@ export { AzureKeyVaultPkiSyncDestinationSection } from "./AzureKeyVaultPkiSyncDe
 export { ChefPkiSyncDestinationSection } from "./ChefPkiSyncDestinationSection";
 export { F5BigIpPkiSyncDestinationSection } from "./F5BigIpPkiSyncDestinationSection";
 export { GcpCertificateManagerPkiSyncDestinationSection } from "./GcpCertificateManagerPkiSyncDestinationSection";
+export { ImpervaPkiSyncDestinationSection } from "./ImpervaPkiSyncDestinationSection";
 export { KempLoadMasterPkiSyncDestinationSection } from "./KempLoadMasterPkiSyncDestinationSection";
 export { LinuxServerPkiSyncDestinationSection } from "./LinuxServerPkiSyncDestinationSection";
 export { NetScalerPkiSyncDestinationSection } from "./NetScalerPkiSyncDestinationSection";

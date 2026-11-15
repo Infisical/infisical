@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -28,6 +29,7 @@ export type TAlertItem = {
   summary?: string;
   severity?: TAlertSeverity;
   resource?: Record<string, unknown>;
+  url?: string; // this item's page in the app; email and Slack link the item's title to it
 };
 
 export type TAlertPayload = {
@@ -173,7 +175,15 @@ export const WebhookChannelConfigSchema = z
       .string()
       .max(2048)
       .url()
-      .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
+      .superRefine((url, ctx) => {
+        if (url.startsWith("https://")) return;
+        const appCfg = getConfig();
+        if (appCfg.ALERT_WEBHOOK_ALLOW_HTTP && url.startsWith("http://")) return;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Webhook URL must use HTTPS.${appCfg.isCloud ? "" : " If you are self-hosting, you can allow HTTP webhook URLs by setting the 'ALERT_WEBHOOK_ALLOW_HTTP' environment variable to 'true' on your instance."}`
+        });
+      }),
     signingSecret: z.string().max(256).optional().nullable(),
     authType: z.nativeEnum(WebhookAuthType).optional(),
     authCredentials: headerValueSchema("The token").optional(),

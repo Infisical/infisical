@@ -1,10 +1,10 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -30,9 +30,9 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 import { UserAuditLogsSection } from "./components/UserProjectsSection/UserAuditLogsSection";
 import { UserGroupsSection } from "./components/UserProjectsSection/UserGroupsSection";
-import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
 const Page = withPermission(
   () => {
@@ -225,7 +225,7 @@ const Page = withPermission(
             </div>
           </>
         )}
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.removeMember.isOpen}
           title={`Are you sure you want to remove member with username ${
             (popUp?.removeMember?.data as { username: string })?.username || ""
@@ -239,7 +239,7 @@ const Page = withPermission(
             )
           }
         />
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.deactivateMember.isOpen}
           title={`Are you sure you want to deactivate member with username ${
             (popUp?.deactivateMember?.data as { username: string })?.username || ""
@@ -283,10 +283,8 @@ export const UserDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.user")} />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

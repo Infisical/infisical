@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TDatabricksConnection } from "@app/services/app-connection/databricks";
+import { TDatabricksConnection, TDatabricksRequestConfig } from "@app/services/app-connection/databricks";
 
 import {
   CreateDatabricksSyncSchema,
@@ -24,7 +24,7 @@ export type TDatabricksListSecretKeysResponse = {
 
 type TBaseDatabricksSecretRequest = {
   scope: string;
-  workspaceUrl: string;
+  connection: TDatabricksRequestConfig;
   accessToken: string;
 };
 

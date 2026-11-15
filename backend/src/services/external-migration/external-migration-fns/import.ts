@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import slugify from "@sindresorhus/slugify";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
@@ -8,6 +10,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
@@ -26,6 +29,7 @@ export const importDataIntoInfisicalFn = async ({
   resourceMetadataDAL,
   folderVersionDAL,
   folderCommitService,
+  eventEmitter,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -45,6 +49,7 @@ export const importDataIntoInfisicalFn = async ({
       envSlug: string;
       folderId: string;
       projectId: string;
+      secretPath: string;
     }
   >();
   const projectsNotImported: string[] = [];
@@ -167,7 +172,8 @@ export const importDataIntoInfisicalFn = async ({
           folderId: newFolder.id,
           envId: parentEnv?.envId || parentFolder?.envId || "",
           envSlug: parentEnv?.envSlug || parentFolder?.envSlug || "",
-          projectId: parentEnv?.projectId || parentFolder?.projectId || ""
+          projectId: parentEnv?.projectId || parentFolder?.projectId || "",
+          secretPath: path.posix.join(parentFolder?.secretPath ?? "/", newFolder.name)
         });
       }
     }
@@ -226,14 +232,18 @@ export const importDataIntoInfisicalFn = async ({
         logger.info("[importDataIntoInfisicalFn]: Processing secrets for targetId", targetId);
 
         let selectedFolder: TSecretFolders | undefined;
-        let selectedProjectId: string | undefined;
+        let selectedScope: TSecretEventScope | undefined;
 
         // Case 1: Secret belongs to a folder / branch / branch of a block
         const foundFolder = originalToNewFolderId.get(targetId);
         if (foundFolder) {
           logger.info("[importDataIntoInfisicalFn]: Processing secrets for folder");
           selectedFolder = await folderDAL.findById(foundFolder.folderId, tx);
-          selectedProjectId = foundFolder.projectId;
+          selectedScope = {
+            projectId: foundFolder.projectId,
+            environment: foundFolder.envSlug,
+            secretPath: foundFolder.secretPath
+          };
         } else {
           logger.info("[importDataIntoInfisicalFn]: Processing secrets for normal environment");
           const environment = data.environments.find((env) => env.id === targetId);
@@ -277,7 +287,7 @@ export const importDataIntoInfisicalFn = async ({
           }
 
           selectedFolder = folder;
-          selectedProjectId = projectId;
+          selectedScope = { projectId, environment: env.envSlug, secretPath: "/" };
         }
 
         if (!selectedFolder) {
@@ -287,7 +297,7 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        if (!selectedProjectId) {
+        if (!selectedScope) {
           throw new NotFoundError({
             message: `Project not found for the given environment slug & secret path`,
             name: "CreateSecret"
@@ -297,12 +307,12 @@ export const importDataIntoInfisicalFn = async ({
         const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
           {
             type: KmsDataKey.SecretManager,
-            projectId: selectedProjectId
+            projectId: selectedScope.projectId
           },
           tx
         );
         const blindIndexer = await createSecretBlindIndexer({
-          projectId: selectedProjectId,
+          projectId: selectedScope.projectId,
           orgId: actorOrgId,
           kmsService,
           tx
@@ -346,6 +356,8 @@ export const importDataIntoInfisicalFn = async ({
           await fnSecretBulkInsert({
             inputSecrets: inputSecretsWithBlindIndex,
             folderId: selectedFolder.id,
+            eventEmitter,
+            eventScope: selectedScope,
             orgId: actorOrgId,
             resourceMetadataDAL,
             secretDAL,

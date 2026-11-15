@@ -45,7 +45,7 @@ const DefaultSecretSyncSourceFields = () => {
   const destination = watch("destination");
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
-  const includeAllSubFolders = watch("syncOptions.includeAllSubFolders");
+  const includeAllSubFolders = watch("includeAllSubFolders");
   const keySchema = watch("syncOptions.keySchema");
 
   const { syncOption } = useSecretSyncOption(destination);
@@ -128,7 +128,7 @@ const DefaultSecretSyncSourceFields = () => {
       />
       <Controller
         control={control}
-        name="syncOptions.includeAllSubFolders"
+        name="includeAllSubFolders"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
             <Field orientation="horizontal">
@@ -171,7 +171,7 @@ const DefaultSecretSyncSourceFields = () => {
             {isChecking && (
               <div className="flex items-center gap-2">
                 <Spinner size="xs" />
-                <p className="text-xs text-mineshaft-300">
+                <p className="text-xs text-label">
                   Checking for naming conflicts across folders...
                 </p>
               </div>

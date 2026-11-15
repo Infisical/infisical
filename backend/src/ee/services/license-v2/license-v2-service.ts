@@ -1,23 +1,25 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  Meter,
+  TCatalogProduct,
+  TEntitlementOrg,
+  TLicenseServerBilling,
+  TLicenseService,
+  TProductLineItem,
+  TSubscriptionPreviewPayload,
+  TSubscriptionResponse,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
-import { TLicenseClientFactory } from "@app/services/license-client";
-import {
-  TCatalogProduct,
-  TEntitlementOrg,
-  TProductLineItem,
-  TSubscriptionPreviewPayload,
-  TSubscriptionResponse
-} from "@app/services/license-client/license-client-types";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import { TMeteredFeature } from "@app/services/license-client/usage/usage-counters";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TLicenseDALFactory } from "../license/license-dal";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
@@ -25,6 +27,7 @@ import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
+  BillingV2Bands,
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
@@ -39,7 +42,6 @@ import {
   BillingV2Trial,
   BillingV2UsageBreakdown,
   TAddBillingV2PaymentMethodDTO,
-  TBillingV2SubscriptionLifecycleDTO,
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
@@ -59,42 +61,13 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors" | "getBillableIdentityOwnershipBreakdown">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    | "resolveRootOrgId"
-    | "countProjectIdentitiesByKindFor"
-    | "getProjectIdentityBreakdown"
-    | "getInternalCaOrgBreakdown"
-    | "getActiveCertificateOrgBreakdown"
-  >;
+  organizationsProjectsService: TOrganizationsProjectsService;
+  certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
-  // Same metered-feature/count-fn pairs the usage pipeline registers; used to seed a purchase's initial
-  // per_resource quantities with the org's present provisioned count so the previewed/charged figure is
-  // truthful (identities, active certs, ...).
-  meteredFeatures: TMeteredFeature[];
-  licenseClient: Pick<
-    TLicenseClientFactory,
-    | "getEntitlements"
-    | "markEntitlementsStale"
-    | "refreshEntitlements"
-    | "getCatalog"
-    | "getSubscription"
-    | "getCloudPlan"
-    | "getBillingProfile"
-    | "createPortal"
-    | "previewSubscriptionChange"
-    | "buyProduct"
-    | "removeProduct"
-    | "upgradeProduct"
-    | "changeCommitments"
-    | "startTrial"
-    | "cancelTrial"
-    | "confirmTrialPayment"
-    | "getTrials"
-    | "cancelSubscription"
-    | "resumeSubscription"
-  >;
+  licenseService: TLicenseService;
+  // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
+  usageMeteringService: TUsageMeteringService;
+  licenseBilling: TLicenseServerBilling;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;
@@ -115,6 +88,38 @@ const centsToDollars = (cents: number | null | undefined): number => {
     return 0;
   }
   return cents / 100;
+};
+
+type TCatalogPrice = TCatalogProduct["plans"][number]["prices"][number];
+
+// The License Server classifies a price by its dimension's billing type and does not send a kind, so a
+// metered dimension's price would otherwise default to per_unit and be offered as a buyer-set quantity.
+const effectivePriceKind = (product: TCatalogProduct, price: TCatalogPrice): string => {
+  if (price.kind && price.kind !== PER_UNIT_KIND) {
+    return price.kind;
+  }
+  const dimension = product.dimensions.find((candidate) => candidate.key === price.dimensionKey);
+  return dimension?.billingType === METERED_KIND ? METERED_KIND : PER_UNIT_KIND;
+};
+
+type TPriceTier = { upTo: number | null; unitAmountDecimal: string; flatAmountCents?: number };
+
+// Bands arrive in cents (unitAmountDecimal keeps sub-cent rates); the client works in dollars.
+const toBands = (
+  mode: string | null | undefined,
+  tiers: TPriceTier[] | null | undefined
+): BillingV2Bands | undefined => {
+  if (!tiers || tiers.length === 0) {
+    return undefined;
+  }
+  return {
+    mode: mode === "volume" ? "volume" : "graduated",
+    tiers: tiers.map((tier) => ({
+      upTo: tier.upTo,
+      unitPrice: Number(tier.unitAmountDecimal) / 100,
+      flatFee: centsToDollars(tier.flatAmountCents)
+    }))
+  };
 };
 
 const formatDate = (unixSeconds: number | null | undefined): string | null => {
@@ -277,7 +282,8 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     { monthly: number; annual: number; included: number; meteredMonthly: boolean; meteredAnnual: boolean }
   >();
   plan.prices.forEach((price) => {
-    if (!isKnownPriceKind(price.kind)) {
+    const kind = effectivePriceKind(product, price);
+    if (!isKnownPriceKind(kind)) {
       return;
     }
     const entry = priceByDim.get(price.dimensionKey) ?? {
@@ -289,15 +295,22 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     };
     if (price.cadence === "annual") {
       entry.annual = centsToDollars(price.unitAmountCents);
-      entry.meteredAnnual = price.kind === METERED_KIND;
+      entry.meteredAnnual = kind === METERED_KIND;
     } else {
       entry.monthly = centsToDollars(price.unitAmountCents);
-      entry.meteredMonthly = price.kind === METERED_KIND;
+      entry.meteredMonthly = kind === METERED_KIND;
     }
     if (price.includedQuantity !== null && price.includedQuantity !== undefined) {
       entry.included = price.includedQuantity;
     }
     priceByDim.set(price.dimensionKey, entry);
+  });
+  const bandsByDim = new Map<string, BillingV2Bands>();
+  plan.prices.forEach((price) => {
+    const bands = toBands(price.tiersMode, price.tiers);
+    if (bands && price.cadence === "monthly") {
+      bandsByDim.set(price.dimensionKey, bands);
+    }
   });
 
   const dims: BillingV2Dim[] = [];
@@ -314,7 +327,9 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
       annual: priced.annual,
       included: priced.included,
       meteredMonthly: priced.meteredMonthly,
-      meteredAnnual: priced.meteredAnnual
+      meteredAnnual: priced.meteredAnnual,
+      ...(dimension.aggregation ? { aggregation: dimension.aggregation } : {}),
+      ...(bandsByDim.has(dimension.key) ? { bands: bandsByDim.get(dimension.key) } : {})
     });
   });
 
@@ -392,14 +407,13 @@ export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
   permissionService,
-  meteredFeatures,
-  licenseClient,
-  licenseDAL,
-  usageCounterDAL,
+  licenseService,
+  usageMeteringService,
+  licenseBilling,
+  organizationsProjectsService,
+  certManagerService,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
-  const countByDimensionKey = new Map(meteredFeatures.map(({ feature, count }) => [feature.key, count]));
-
   const buildProductLineItem = async (
     product: TCatalogProduct,
     cadence: "monthly" | "annual",
@@ -427,12 +441,14 @@ export const licenseV2ServiceFactory = ({
       return null;
     }
 
-    const perUnitPrices = plan.prices.filter((price) => price.cadence === cadence && price.kind === PER_UNIT_KIND);
+    const perUnitPrices = plan.prices.filter(
+      (price) => price.cadence === cadence && effectivePriceKind(product, price) === PER_UNIT_KIND
+    );
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const countFn = countByDimensionKey.get(price.dimensionKey);
-        const present = countFn ? await countFn(orgId) : null;
+        const meter = Meter.fromKey(price.dimensionKey);
+        const present = meter ? await usageMeteringService.countUsage(orgId, meter) : null;
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );
@@ -516,7 +532,7 @@ export const licenseV2ServiceFactory = ({
     const needsCatalog = Boolean(subscription?.items.length);
     if (needsCatalog) {
       try {
-        const catalog = await licenseClient.getCatalog(org.id);
+        const catalog = await licenseBilling.getCatalog(org.id);
         catalog?.products.forEach((product) => {
           catalogProductById.set(product.id, product);
           product.dimensions.forEach((dimension) => {
@@ -545,7 +561,7 @@ export const licenseV2ServiceFactory = ({
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
 
-          // The license server reports usage for every dimension now: metered dims carry the period
+          // The license server reports usage for every dimension: metered dims carry the period
           // reading, per_resource dims the latest reported snapshot. Use it directly so the figure
           // matches what the customer is billed on (no separate live count that could diverge).
           const used = dimension.used ?? 0;
@@ -573,6 +589,35 @@ export const licenseV2ServiceFactory = ({
             ...(onDemandRate !== undefined ? { onDemandRate } : {}),
             ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {}),
             ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
+            ...(metered && dimension.usage
+              ? {
+                  usage: {
+                    periodStart: formatDate(dimension.usage.periodStart),
+                    periodEnd: formatDate(dimension.usage.periodEnd - 1),
+                    asOf: dimension.usage.asOf ? new Date(dimension.usage.asOf * 1000).toISOString() : null,
+                    estimatedAmount:
+                      dimension.usage.estimatedAmountCents === null ||
+                      dimension.usage.estimatedAmountCents === undefined
+                        ? null
+                        : centsToDollars(dimension.usage.estimatedAmountCents),
+                    currentTier: dimension.usage.currentTier,
+                    nextTierAt: dimension.usage.nextTierAt ?? null,
+                    earlierInPeriod: dimension.usage.earlierInPeriod.map((segment) => ({
+                      periodStart: formatDate(segment.periodStart),
+                      periodEnd: formatDate(segment.periodEnd - 1),
+                      used: segment.used,
+                      estimatedAmount:
+                        segment.estimatedAmountCents === null || segment.estimatedAmountCents === undefined
+                          ? null
+                          : centsToDollars(segment.estimatedAmountCents)
+                    })),
+                    trial: dimension.usage.trial
+                  }
+                }
+              : {}),
+            ...(metered && dimension.pricing
+              ? { bands: toBands(dimension.pricing.tiersMode, dimension.pricing.tiers) }
+              : {}),
             // Commitment-decrease window: the UI locks the stepper's floor to the current committed
             // quantity unless canDecreaseNow, and shows when a decrease opens (decreaseAllowedFrom).
             ...(dimension.canDecreaseNow !== null && dimension.canDecreaseNow !== undefined
@@ -698,9 +743,9 @@ export const licenseV2ServiceFactory = ({
     }
 
     let features = null;
-    let products: NonNullable<Awaited<ReturnType<typeof licenseClient.getEntitlements>>>["products"] = [];
+    let products: NonNullable<Awaited<ReturnType<typeof licenseBilling.getEntitlements>>>["products"] = [];
     try {
-      const result = await licenseClient.getEntitlements(org);
+      const result = await licenseBilling.getEntitlements(org);
       features = result?.features ?? null;
       products = result?.products ?? [];
     } catch (error) {
@@ -757,7 +802,7 @@ export const licenseV2ServiceFactory = ({
     // is unreachable, so surface it (the UI shows an error state) rather than masquerading as "Free".
     let subscription: TSubscriptionResponse | null = null;
     try {
-      subscription = await licenseClient.getSubscription(orgId);
+      subscription = await licenseBilling.getSubscription(orgId);
     } catch (error) {
       logger.error(error, `billing-v2: failed to read subscription [orgId=${orgId}]`);
       throw error;
@@ -783,7 +828,7 @@ export const licenseV2ServiceFactory = ({
     let invoices: BillingV2Overview["invoices"] = [];
     // Self-hosted has no Stripe customer (no billing profile endpoint); leave payment/invoices empty.
     try {
-      const profile = isSelfHostedLicense ? null : await licenseClient.getBillingProfile(orgId);
+      const profile = isSelfHostedLicense ? null : await licenseBilling.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
         // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
@@ -818,7 +863,7 @@ export const licenseV2ServiceFactory = ({
     let trialHistory: BillingV2Trial[] = [];
     if (!isSelfHostedLicense) {
       try {
-        const trials = await licenseClient.getTrials(orgId);
+        const trials = await licenseBilling.getTrials(orgId);
         trialHistory = trials.trials.map((trial) => ({
           productKey: trial.product_key,
           planTier: trial.plan_key ?? null,
@@ -837,11 +882,22 @@ export const licenseV2ServiceFactory = ({
     // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
     // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
     // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
-    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    // estimate, so flag hasUsage; the usage estimate is also only theirs). activeProductCount is the number of
+    // entitled products.
     const subBilling = subscription?.billing;
     const closingLines = subBilling?.nextChargeAt
       ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
       : [];
+    // A trialing product's usage is rated but never billed, so it adds nothing to the next charge.
+    const trialingProductKeys = new Set(
+      (subscription?.items ?? []).filter((item) => item.isTrialing).map((item) => item.productId)
+    );
+    const billedClosingLines = closingLines.filter((line) => !trialingProductKeys.has(line.productKey));
+    const closingEstimates = billedClosingLines.flatMap((line) =>
+      line.estimatedAmountCents === null || line.estimatedAmountCents === undefined ? [] : [line.estimatedAmountCents]
+    );
+    const closingUsageCents =
+      closingEstimates.length > 0 ? closingEstimates.reduce((sum, cents) => sum + cents, 0) : null;
     const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
     const nextCharge =
       subBilling?.nextChargeAt && closingLines.length > 0
@@ -850,7 +906,8 @@ export const licenseV2ServiceFactory = ({
             at: formatShortDate(subBilling.nextChargeAt) ?? "",
             productKeys: [...new Set(closingLines.map((line) => line.productKey))],
             cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
-            hasUsage: closingLines.some((line) => line.usageBased)
+            hasUsage: billedClosingLines.some((line) => line.usageBased),
+            estimatedUsage: closingUsageCents === null ? null : centsToDollars(closingUsageCents)
           }
         : null;
     const activeProductCount = Object.values(entitlements).filter(
@@ -995,7 +1052,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = isInstanceScope ? null : await usageCounterDAL.resolveRootOrgId(orgId);
+    const rootOrgId = isInstanceScope ? null : await organizationsProjectsService.resolveRootOrgId(orgId);
     const scopeOrgId = rootOrgId ?? undefined;
     const orgs = isInstanceScope
       ? await breakdownDAL.findAllOrgNames()
@@ -1041,8 +1098,8 @@ export const licenseV2ServiceFactory = ({
     switch (dimensionKey) {
       case BillingV2BreakdownDimension.Identities: {
         const [counts, rows] = await Promise.all([
-          licenseDAL.countBillableOrgActors(rootOrgId),
-          licenseDAL.getBillableIdentityOwnershipBreakdown(rootOrgId)
+          organizationsProjectsService.countBillableOrgActors(rootOrgId),
+          organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
         return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
@@ -1051,8 +1108,8 @@ export const licenseV2ServiceFactory = ({
         const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
         const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          usageCounterDAL.countProjectIdentitiesByKindFor(projectType, scopeOrgId),
-          usageCounterDAL.getProjectIdentityBreakdown(projectType, scopeOrgId)
+          organizationsProjectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
+          organizationsProjectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1064,7 +1121,7 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        const { users } = await licenseDAL.countBillableOrgActors(rootOrgId);
+        const { users } = await organizationsProjectsService.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,
@@ -1078,12 +1135,12 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        const rows = await usageCounterDAL.getInternalCaOrgBreakdown(scopeOrgId);
+        const rows = await certManagerService.getInternalCaOrgBreakdown(scopeOrgId);
         return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
       }
       case BillingV2BreakdownDimension.ActiveCerts:
       case BillingV2BreakdownDimension.WildcardCerts: {
-        const rows = await usageCounterDAL.getActiveCertificateOrgBreakdown(scopeOrgId);
+        const rows = await certManagerService.getActiveCertificateOrgBreakdown(scopeOrgId);
         const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
         return {
           breakdown: buildOrgOnlyBreakdown(
@@ -1134,18 +1191,17 @@ export const licenseV2ServiceFactory = ({
     return { organizations: orgs, totalCount };
   };
 
-  // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the
-  // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
+  // Only replaces the cached plan on success, so an outage keeps the current plan instead of the fallback.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor);
-    await licenseClient.refreshEntitlements({ id: orgId });
+    await licenseService.refreshPlan(orgId);
     return { success: true as const };
   };
 
   const getCatalog = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2CatalogDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     if (!catalog) {
       return { products: [] };
     }
@@ -1167,7 +1223,7 @@ export const licenseV2ServiceFactory = ({
         details: { code: "payment_action_required" }
       });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: "payment_action_required" as const, paymentUrl: url };
   };
 
@@ -1189,7 +1245,7 @@ export const licenseV2ServiceFactory = ({
   };
 
   const openPortal = async (orgId: string, returnPath?: string) => {
-    const session = await licenseClient.createPortal(orgId, {
+    const session = await licenseBilling.createPortal(orgId, {
       returnPath,
       returnUrl: buildReturnUrl(orgId, returnPath)
     });
@@ -1213,7 +1269,7 @@ export const licenseV2ServiceFactory = ({
   }: TBuyBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
 
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     if (!product) {
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
@@ -1226,7 +1282,7 @@ export const licenseV2ServiceFactory = ({
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const result = await licenseClient.buyProduct(orgId, {
+    const result = await licenseBilling.buyProduct(orgId, {
       productId,
       plan: resolved.planTier,
       cadence: normalizedCadence,
@@ -1245,7 +1301,7 @@ export const licenseV2ServiceFactory = ({
     }
 
     if (result.outcome === "subscription_updated") {
-      await licenseClient.markEntitlementsStale(orgId);
+      await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
       return {
         outcome: "subscription_updated" as const,
         subscriptionId: result.subscriptionId,
@@ -1258,7 +1314,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return {
       outcome: "checkout_created" as const,
       checkoutUrl: result.checkoutUrl,
@@ -1311,7 +1367,7 @@ export const licenseV2ServiceFactory = ({
       payload.upgrade = { productId: upgradeProductId, plan: upgradePlan };
     }
     if (addProductId) {
-      const catalog = await licenseClient.getCatalog(orgId);
+      const catalog = await licenseBilling.getCatalog(orgId);
       const product = catalog?.products.find((candidate) => candidate.id === addProductId);
       if (!product) {
         throw new NotFoundError({ message: `Product with ID '${addProductId}' not found` });
@@ -1336,7 +1392,7 @@ export const licenseV2ServiceFactory = ({
       payload.commitmentChanges = commitmentChanges;
     }
 
-    const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
+    const preview = await licenseBilling.previewSubscriptionChange(orgId, payload);
     const totalDueNowCents = preview.totalDueNow ?? preview.prorationAmount + preview.additionalCharges;
     return {
       preview: {
@@ -1378,7 +1434,7 @@ export const licenseV2ServiceFactory = ({
         });
       }
     }
-    const result = await licenseClient.upgradeProduct(orgId, {
+    const result = await licenseBilling.upgradeProduct(orgId, {
       productId,
       plan,
       expectedPlanVersionId,
@@ -1387,7 +1443,7 @@ export const licenseV2ServiceFactory = ({
     if (result.outcome === "payment_action_required") {
       return paymentActionRequired(orgId, result.paymentUrl);
     }
-    await licenseClient.markEntitlementsStale(orgId);
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return {
       outcome: result.outcome,
       subscriptionId: result.subscriptionId,
@@ -1401,7 +1457,7 @@ export const licenseV2ServiceFactory = ({
     if (!changes.length) {
       throw new BadRequestError({ message: "Provide at least one commitment change" });
     }
-    const result = await licenseClient.changeCommitments(orgId, {
+    const result = await licenseBilling.changeCommitments(orgId, {
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
@@ -1413,10 +1469,10 @@ export const licenseV2ServiceFactory = ({
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
       }
       // Longer window: the change only applies once the customer completes the hosted checkout.
-      await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+      await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
       return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
     }
-    await licenseClient.markEntitlementsStale(orgId);
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
@@ -1431,11 +1487,11 @@ export const licenseV2ServiceFactory = ({
     // Seed the trial with the org's present usage so it opens showing current quantities, exactly as
     // checkout does. A trial converts to a monthly usage-based line, so derive declaredUsage at the
     // monthly cadence; skip it silently if the product/plan can't be resolved (server floors it).
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     const resolved = product ? await buildProductLineItem(product, "monthly", orgId, plan) : null;
 
-    const result = await licenseClient.startTrial(orgId, {
+    const result = await licenseBilling.startTrial(orgId, {
       productKey: productId,
       planKey: plan,
       email,
@@ -1446,7 +1502,7 @@ export const licenseV2ServiceFactory = ({
     });
     // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
     // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
-    await licenseClient.markEntitlementsStale(orgId, { checkout: result.outcome === "awaiting_card" });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: result.outcome === "awaiting_card" } });
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
   };
 
@@ -1454,8 +1510,8 @@ export const licenseV2ServiceFactory = ({
   // the server (no active trial) propagates so the UI can surface it.
   const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
-    await licenseClient.markEntitlementsStale(orgId);
+    const result = await licenseBilling.cancelTrial(orgId, { productKey: productId });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: result.outcome };
   };
 
@@ -1463,13 +1519,13 @@ export const licenseV2ServiceFactory = ({
   // like checkout.
   const confirmTrialPayment = async ({ orgId, actor, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
+    const result = await licenseBilling.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
     if (result.outcome === "payment_action_required") {
       const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
       return { outcome: result.outcome, redirectUrl: paymentUrl };
     }
     if (result.outcome === "upgraded") {
-      await licenseClient.markEntitlementsStale(orgId);
+      await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
       return { outcome: result.outcome };
     }
     const checkoutUrl = toHttpsUrl(result.checkoutUrl);
@@ -1478,7 +1534,7 @@ export const licenseV2ServiceFactory = ({
         message: "We couldn't get a secure checkout link. Please try again or contact support."
       });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
@@ -1486,22 +1542,8 @@ export const licenseV2ServiceFactory = ({
   // Portal cannot do. The license server prorates at commit time (Stripe default = now).
   const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.removeProduct(orgId, productId);
-    await licenseClient.markEntitlementsStale(orgId);
-    return { subscriptionId: result.subscriptionId };
-  };
-
-  const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.cancelSubscription(orgId);
-    await licenseClient.markEntitlementsStale(orgId);
-    return { subscriptionId: result.subscriptionId };
-  };
-
-  const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.resumeSubscription(orgId);
-    await licenseClient.markEntitlementsStale(orgId);
+    const result = await licenseBilling.removeProduct(orgId, productId);
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };
 
@@ -1520,8 +1562,6 @@ export const licenseV2ServiceFactory = ({
     changeCommitments,
     startTrial,
     cancelTrial,
-    confirmTrialPayment,
-    cancelSubscription,
-    resumeSubscription
+    confirmTrialPayment
   };
 };

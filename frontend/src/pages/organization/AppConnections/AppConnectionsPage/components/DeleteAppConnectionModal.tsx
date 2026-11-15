@@ -50,7 +50,12 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
   };
 
   return (
-    <AlertDialog open={isOpen} confirmationValue={name} onOpenChange={onOpenChange}>
+    <AlertDialog
+      isPending={deleteAppConnection.isPending}
+      open={isOpen}
+      confirmationValue={name}
+      onOpenChange={onOpenChange}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
@@ -71,21 +76,16 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
         )}
         <AlertDialogConfirmationField
           onConfirm={() => {
-            if (!deleteAppConnection.isPending) {
-              handleDeleteAppConnection().catch(() => undefined);
-            }
+            handleDeleteAppConnection().catch(() => undefined);
           }}
         />
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={deleteAppConnection.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={deleteAppConnection.isPending}
             onClick={(event) => {
               event.preventDefault();
-              if (!deleteAppConnection.isPending) {
-                handleDeleteAppConnection().catch(() => undefined);
-              }
+              handleDeleteAppConnection().catch(() => undefined);
             }}
           >
             Delete

@@ -19,8 +19,8 @@ import {
 } from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./forms/schemas/pki-sync-schema";
 import { CreatePkiSyncForm } from "./forms";
+import { TPkiSyncForm } from "./forms/schemas/pki-sync-schema";
 import { PkiSyncModalHeader } from "./PkiSyncModalHeader";
 import { PkiSyncSelect } from "./PkiSyncSelect";
 
@@ -98,7 +98,7 @@ export const CreatePkiSyncModal = ({
               onComplete={closeSheet}
               onCancel={() => setSelectedSync(null)}
               destination={selectedSync}
-              initialData={initialData}
+              initialData={selectedSync === selectSync ? initialData : undefined}
               applicationId={applicationId}
             />
           ) : (

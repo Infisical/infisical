@@ -10,12 +10,12 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { JwtConfigurationType } from "@app/services/identity-jwt-auth/identity-jwt-auth-types";
 import {
   validateJwtAuthAudiencesField,
   validateJwtBoundClaimsField
 } from "@app/services/identity-jwt-auth/identity-jwt-auth-validators";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

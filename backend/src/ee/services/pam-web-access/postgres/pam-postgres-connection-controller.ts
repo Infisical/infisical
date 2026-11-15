@@ -1,4 +1,3 @@
-import { parse as parseSql } from "libpg-query";
 import pg from "pg";
 import Cursor from "pg-cursor";
 
@@ -11,6 +10,8 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
+import { sendCancelRequest, splitPostgresStatements } from "./pam-postgres-data-explorer-fns";
 import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 
 const pgTypes = {
@@ -24,7 +25,50 @@ const pgTypes = {
   }
 };
 
-export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
+const MAX_ROWS = 1000;
+const FIRST_BATCH_ROWS = 10;
+const MAX_BATCH_ROWS = 250;
+
+const readCursorRows = async (cursor: Cursor): Promise<{ rows: Record<string, unknown>[]; isTruncated: boolean }> => {
+  const rows: Record<string, unknown>[] = [];
+  let bytes = 0;
+  let isTruncated = false;
+  // pg-cursor holds every row of a batch until the read resolves, so rows past the cap are emptied as they arrive
+  const drop = (row: Record<string, unknown>) => {
+    // eslint-disable-next-line no-param-reassign
+    for (const key of Object.keys(row)) row[key] = null;
+  };
+  cursor.on("row", (row: Record<string, unknown>) => {
+    if (isTruncated || rows.length === MAX_ROWS) {
+      isTruncated = true;
+      drop(row);
+      return;
+    }
+    bytes += estimateRowBytes(row);
+    if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
+      isTruncated = true;
+      drop(row);
+      return;
+    }
+    rows.push(row);
+  });
+
+  let batchSize = FIRST_BATCH_ROWS;
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const batch = await cursor.read(batchSize);
+    if (isTruncated) return { rows, isTruncated };
+    if (batch.length < batchSize) return { rows, isTruncated: false };
+    // Grows instead of guessing from earlier rows, because rows past the cap still cross the network before they
+    // are dropped and the first rows can be much narrower or wider than the rest
+    batchSize = Math.min(batchSize * 2, MAX_BATCH_ROWS, MAX_ROWS + 1 - rows.length);
+  }
+};
+
+export const createPostgresConnectionController = async (
+  params: ControllerParams,
+  { lexicalFallback = false } = {}
+): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
   const pgClient = new pg.Client({
@@ -41,8 +85,19 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   await pgClient.connect();
 
-  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const nativeConnectionId = pidRows[0]?.pid ?? null;
+  // From the server's BackendKeyData, which @types/pg doesn't declare
+  const { processID, secretKey } = pgClient as unknown as { processID: number | null; secretKey: number | null };
+
+  // CockroachDB's SHOW SYNTAX parses a script without running it
+  const countCockroachdbStatements = async (script: string) => {
+    const { rows } = await pgClient.query<{ field: string; message: string }>(
+      `SHOW SYNTAX ${pgClient.escapeLiteral(script)}`
+    );
+    const field = (name: string) => rows.find((row) => row.field === name)?.message;
+    const error = field("error");
+    if (error) throw Object.assign(new Error(error), { detail: field("detail"), hint: field("hint") });
+    return rows.filter((row) => row.field === "sql").length;
+  };
 
   let isInTransaction = false;
   let disposing = false;
@@ -70,26 +125,11 @@ export const createPostgresConnectionController = async (params: ControllerParam
   };
 
   const cancelRunningQuery = async () => {
-    if (!nativeConnectionId) return;
-    const cancelClient = new pg.Client({
-      host: "localhost",
-      port: relayPort,
-      user: username,
-      database,
-      password: "",
-      ssl: false,
-      connectionTimeoutMillis: 5_000
-    });
-    cancelClient.on("error", (err) => {
-      logger.debug(err, `Cancel client error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    });
+    if (processID === null || secretKey === null) return;
     try {
-      await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [nativeConnectionId]);
+      await sendCancelRequest(relayPort, processID, secretKey);
     } catch (err) {
       logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    } finally {
-      await cancelClient.end().catch(() => {});
     }
   };
 
@@ -157,17 +197,10 @@ export const createPostgresConnectionController = async (params: ControllerParam
           case DataExplorerClientMessageType.Query: {
             try {
               const startTime = performance.now();
-              const MAX_ROWS = 1000;
-
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              const parsed = await parseSql(message.sql);
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
-                const location = s.stmt_location ?? 0;
-                return s.stmt_len !== undefined
-                  ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trim();
-              });
+              const stmtTexts = await splitPostgresStatements(
+                message.sql,
+                lexicalFallback ? { countStatementsOnServer: countCockroachdbStatements } : {}
+              );
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];
@@ -178,9 +211,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
               for (const stmtSql of stmtTexts) {
                 const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
                 // eslint-disable-next-line no-await-in-loop
-                const stmtRows = await cursor.read(MAX_ROWS + 1);
-                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
-                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
+                const { rows: stmtRows, isTruncated: stmtIsTruncated } = await readCursorRows(cursor);
                 // eslint-disable-next-line no-await-in-loop
                 await cursor.close();
 
@@ -192,7 +223,8 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
                 lastRows = stmtRows;
                 lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
-                lastRowCount = cursorResult.rowCount;
+                // Postgres reports the rows of the last fetch only, so count what was read when rows came back
+                lastRowCount = lastFields.length > 0 ? stmtRows.length : cursorResult.rowCount;
                 lastCommand = cursorResult.command ?? "";
                 lastIsTruncated = stmtIsTruncated;
               }
@@ -248,7 +280,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   return {
     connectionId,
-    nativeConnectionId,
+    nativeConnectionId: processID,
     handleMessage,
     dispose,
     isDisposing: () => disposing

@@ -3,6 +3,8 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { identityV2ServiceFactory } from "./identity-service";
 import { TDeleteIdentityV2DTO } from "./identity-types";
@@ -45,6 +47,7 @@ const createService = ({
   tx = TX
 }: { existingIdentity?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
+  const licenseService = new FakeLicenseService();
 
   const identityDAL = {
     findOne: vi.fn().mockResolvedValue(existingIdentity),
@@ -66,7 +69,8 @@ const createService = ({
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
-    licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     // The delete guards bound the removal against the roles the target identity holds.
     membershipIdentityDAL: {
       getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),
@@ -86,7 +90,6 @@ const createService = ({
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never
   });
 
@@ -234,5 +237,50 @@ describe("instance admin identities are protected on the v2 surface", () => {
     );
 
     expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateIdentity name check", () => {
+  const SOFT_HYPHEN = String.fromCharCode(0xad);
+  const LEGACY_NAME = `ci${SOFT_HYPHEN}bot`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+  });
+
+  const update = (service: ReturnType<typeof createService>["service"], data: Record<string, unknown>) =>
+    service.updateIdentity({ ...buildDto(), data } as never);
+
+  test("an unchanged name is let through even if it predates the rule", async () => {
+    const { service, identityDAL } = createService({
+      existingIdentity: { id: IDENTITY_ID, name: LEGACY_NAME, hasDeleteProtection: false }
+    });
+
+    await update(service, { name: LEGACY_NAME, hasDeleteProtection: true });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(
+      IDENTITY_ID,
+      { name: LEGACY_NAME, hasDeleteProtection: true },
+      TX
+    );
+  });
+
+  test("a rename to an unsafe name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(update(service, { name: LEGACY_NAME })).rejects.toThrow(
+      "Value cannot contain control, escape, bidirectional or zero-width characters"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("a rename to a safe name goes through", async () => {
+    const { service, identityDAL } = createService();
+
+    await update(service, { name: "ci-bot" });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "ci-bot" }, TX);
   });
 });

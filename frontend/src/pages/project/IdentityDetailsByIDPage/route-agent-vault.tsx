@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { IdentityDetailsByIDPage } from "./IdentityDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/identities/$identityId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/identities/$identityId"
 )({
   component: IdentityDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -15,9 +15,10 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/organizations/$orgId/agent-vault/access-management",
+            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-management",
             params: {
-              orgId: params.orgId
+              orgId: params.orgId,
+              projectId: params.projectId
             },
             search: {
               selectedTab: ProjectAccessControlTabs.Identities

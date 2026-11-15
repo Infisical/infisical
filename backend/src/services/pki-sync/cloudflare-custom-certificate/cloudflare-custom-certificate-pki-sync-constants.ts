@@ -3,6 +3,12 @@ import RE2 from "re2";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
+export enum CloudflareBundleMethod {
+  Ubiquitous = "ubiquitous",
+  Optimal = "optimal",
+  Force = "force"
+}
+
 /**
  * Cloudflare Custom Certificate naming constraints for certificates
  */

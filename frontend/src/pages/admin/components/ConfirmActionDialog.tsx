@@ -51,12 +51,10 @@ export const ConfirmActionDialog = ({
 
   return (
     <AlertDialog
+      isPending={isPending}
       open={isOpen}
       confirmationValue={confirmationKey}
-      onOpenChange={(open) => {
-        if (isPending && !open) return;
-        onOpenChange(open);
-      }}
+      onOpenChange={onOpenChange}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -74,10 +72,9 @@ export const ConfirmActionDialog = ({
         />
         {children}
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={isPending}
             onClick={(event) => {
               event.preventDefault();
               handleConfirm().catch(() => undefined);

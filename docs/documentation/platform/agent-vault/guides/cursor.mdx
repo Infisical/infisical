@@ -1,0 +1,774 @@
+---
+title: "Run Cursor Cloud Agents on Kubernetes with Agent Vault"
+sidebarTitle: "Cursor Cloud Agents"
+icon: "/images/agent-vault-agents/cursor.svg"
+description: "Give Cursor Cloud Agents in your Kubernetes cluster access to APIs without putting credentials in worker pods."
+---
+
+import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
+
+You can run [Cursor Cloud Agents](https://cursor.com/docs/cloud-agent/self-hosted) on your own Kubernetes cluster, where each run gets a worker: a pod that runs Cursor's worker process. Cursor still runs the model and decides what the agent does, while the worker runs the agent's commands and file edits.
+
+The agent's commands often need credentials, such as a GitHub token to push a branch. A [prompt injection](/documentation/platform/agent-vault/why-agent-vault) can make the agent read any credential on the worker and send it somewhere. With Agent Vault, the worker has no credentials. Its commands send requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), and the proxy attaches the real credential to requests for the APIs you allow.
+
+<Info>
+  This guide runs workers in a Cursor [team pool](https://cursor.com/docs/cloud-agent/self-hosted/pool) on Kubernetes, such as Amazon EKS or Google Kubernetes Engine. It covers Cloud Agents started from any Cursor surface, such as the web, the desktop app, Slack, GitHub, or the API. It doesn't cover the editor's local agent, which runs on the developer's computer instead of a worker.
+
+  Cursor-hosted Cloud Agents run on Cursor's machines, where you can't limit the agent's network to the proxy, so Agent Vault doesn't work with them.
+</Info>
+
+## How it works
+
+```mermaid
+flowchart LR
+  cursor["Cursor<br/>(model and agent)"]
+  subgraph cluster["Your Kubernetes cluster"]
+    controller["Worker controller<br/>(runs your spawn hook)"]
+    worker["Worker pod<br/>(no credentials)"]
+    proxy["Agent Vault proxy"]
+  end
+  apis["api.github.com<br/>..."]
+  infisical["Infisical"]
+  cursor <-->|"agent runs"| controller
+  controller -->|"creates a session"| infisical
+  controller -->|"starts a worker with the session token"| worker
+  cursor <-->|"tool calls, directly"| worker
+  worker -->|"request with the session token"| proxy
+  proxy -->|"request with the credential"| apis
+  proxy -->|"fetches the credentials"| infisical
+```
+
+When someone starts a Cloud Agent on your pool:
+
+1. Cursor's [worker controller](https://cursor.com/docs/cloud-agent/self-hosted/pool) claims the request and runs your [spawn hook](https://cursor.com/docs/cloud-agent/self-hosted/pool#claim-then-spawn)
+2. The spawn hook creates an Agent Vault [session](/documentation/platform/agent-vault/sessions) for the run, then starts a worker pod with the session token and a Cursor token that only serves this run
+3. The worker connects to Cursor directly and runs the commands Cursor sends it
+4. Each command's requests go through the proxy, which attaches the credentials
+
+<Note>
+This guide uses its own manifests instead of Cursor's [Kubernetes Helm chart](https://github.com/anysphere/k8s-workers), because the chart's spawn hook can't create a session for each worker. If you run the chart for this pool, uninstall it before you deploy the controller in [Step 5](#step-5-deploy-the-worker-controller).
+</Note>
+
+You create these files on your machine as you go through the guide:
+
+<Tree>
+  <Tree.Folder name="cursor-agent-vault" defaultOpen>
+    <Tree.File name="agent-vault-proxy.yaml" />
+    <Tree.Folder name="worker" defaultOpen>
+      <Tree.File name="agent-vault-ca.pem" />
+      <Tree.File name="agent-vault-env.sh" />
+      <Tree.File name="entrypoint.sh" />
+      <Tree.File name="Dockerfile" />
+    </Tree.Folder>
+    <Tree.Folder name="controller" defaultOpen>
+      <Tree.File name="Dockerfile" />
+    </Tree.Folder>
+    <Tree.File name="cursor-workers.yaml" />
+    <Tree.File name="cursor-controller.yaml" />
+    <Tree.File name="spawn-worker.sh" />
+  </Tree.Folder>
+</Tree>
+
+## Prerequisites
+
+- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent's commands call, such as GitHub
+- A Kubernetes cluster that enforces NetworkPolicies, such as Amazon EKS with network policy support turned on in the Amazon VPC CNI add-on, or GKE with Dataplane V2
+- A container registry your cluster can pull from
+- `kubectl`, `docker`, `curl`, `jq`, and `openssl` on your machine
+- A Cursor Enterprise plan, with a team pool and a service account API key
+- **Require Self-Hosted Machines** turned on in the **Self-Hosted** section of the Cursor dashboard, so that no Cloud Agent run goes to Cursor's machines
+
+## Step 1: Set up Agent Vault
+
+### Create a proxy
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Proxies** and select **Create Proxy**. Enter a **Name**, then select **Create**.
+
+    <Tip>
+    Under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the agent's requests to any public host.
+    
+    To allow only the hosts your access bundle covers, expand **Advanced Options** and select **Service hosts only**, then enter the hosts every run needs without a credential in **Exceptions**, such as your package registries (for example, `registry.npmjs.org,pypi.org,files.pythonhosted.org`).
+    </Tip>
+  </Step>
+  <Step>
+    Copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.
+  </Step>
+</Steps>
+
+### Create a machine identity
+
+Your [spawn hook](https://cursor.com/docs/cloud-agent/self-hosted/pool#claim-then-spawn) creates sessions as a [machine identity](/documentation/platform/identities/machine-identities). To create the machine identity:
+
+<MachineIdentitySetup />
+
+## Step 2: Deploy the proxy
+
+All of your workers share one proxy. Each worker sends the proxy its own session token, so the proxy attaches only the credentials from that worker's session. The proxy runs as two replicas that use the same token and certificate authority, and the Service spreads connections across them ([high availability](/documentation/platform/agent-vault/proxies#high-availability)).
+
+Save this manifest as `agent-vault-proxy.yaml` and apply it to your cluster. It creates the `agent-vault` namespace and runs the proxy in it:
+
+```yaml expandable
+# agent-vault-proxy.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-vault
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-vault-proxy
+  template:
+    metadata:
+      labels:
+        app: agent-vault-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent-vault-proxy
+          image: infisical/cli
+          args: ["agent-vault", "proxy", "--domain", "https://app.infisical.com"]
+          envFrom:
+            - secretRef:
+                name: agent-vault-proxy
+          env:
+            # The proxy saves its cache under the home directory.
+            - name: HOME
+              value: /tmp
+          ports:
+            - containerPort: 17323
+          readinessProbe:
+            httpGet:
+              path: /_agent-vault/ca
+              port: 17323
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  selector:
+    app: agent-vault-proxy
+  ports:
+    - port: 17323
+      targetPort: 17323
+---
+# Only worker pods can connect. The proxy can reach DNS and public HTTP and HTTPS
+# hosts, but not private networks or your cloud's metadata service.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  podSelector:
+    matchLabels:
+      app: agent-vault-proxy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cursor-workers
+      ports:
+        - port: 17323
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values: [kube-dns, node-local-dns]
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - port: 443
+        - port: 80
+```
+
+- **Instance URL:** if you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance
+- **Egress:** the proxy can only reach public addresses on ports 443 and 80, so add an egress rule for anything else, such as a self-hosted Infisical instance on a private address or a service at `api.example.com:8443`
+- **DNS:** the policy allows DNS lookups through `kube-dns` and NodeLocal DNSCache (`node-local-dns`), which GKE runs, so change the rule if your cluster's DNS runs elsewhere
+
+Store the proxy token from [Step 1](#create-a-proxy) in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. The proxy's pods start once the Secret exists.
+
+On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects.
+
+## Step 3: Build the images
+
+The worker and the controller each need an image. Cursor doesn't publish either one.
+
+### Download the proxy's certificate
+
+The proxy decrypts each HTTPS request to attach the credential, so the worker's commands have to trust the proxy's certificate authority. The certificate isn't secret, so the worker's image can include it.
+
+<Steps>
+  <Step>
+    Forward the proxy's port to your machine:
+
+    ```bash
+    kubectl -n agent-vault port-forward svc/agent-vault-proxy 17323:17323
+    ```
+  </Step>
+  <Step>
+    In another terminal, download the certificate:
+
+    ```bash
+    curl -fsS http://localhost:17323/_agent-vault/ca | jq -er .certificate > worker/agent-vault-ca.pem
+    ```
+  </Step>
+  <Step>
+    Print the certificate's fingerprint:
+
+    ```bash
+    openssl x509 -in worker/agent-vault-ca.pem -noout -fingerprint -sha256
+    ```
+
+    Compare the output with the fingerprint in the proxy's **Certificate Authority** column on the **Proxies** page in Agent Vault, where you can hover over the value to see all of it. If the values don't match, don't use the file.
+  </Step>
+</Steps>
+
+### Build the worker's image
+
+The worker and the agent's commands need different proxy settings. The worker keeps a connection open to Cursor over HTTP/2, which the proxy can't carry because it only supports HTTP/1.1. However, the agent's commands have to go through the proxy to get credentials. 
+
+To satisfy both of these constraints, the worker starts with no proxy settings, and each of the agent's commands sets them up for itself. The agent runs each command in a bash shell, and bash first runs any script specified by the `BASH_ENV` variable.
+
+Save this script as `worker/agent-vault-env.sh`. It reads the session token and sends the command's requests through the proxy:
+
+```bash
+# worker/agent-vault-env.sh
+case "${0##*/}" in agent|cursor-agent) return 0 ;; esac
+
+SESSION_TOKEN=$(cat /var/run/worker/session-token)
+PROXY_URL="http://x-agent-vault:${SESSION_TOKEN}@agent-vault-proxy.agent-vault.svc.cluster.local:17323"
+export HTTPS_PROXY="$PROXY_URL" HTTP_PROXY="$PROXY_URL" https_proxy="$PROXY_URL" http_proxy="$PROXY_URL"
+export NODE_USE_ENV_PROXY=1
+unset SESSION_TOKEN PROXY_URL
+```
+
+<Note>
+The `agent` command is itself a bash script, so bash runs this script for the worker too. The first line skips it there, which keeps the worker's connection to Cursor direct.
+</Note>
+
+Save this script as `worker/entrypoint.sh`. It points `BASH_ENV` at the script, sets the certificate file for the worker and the agent's commands, then starts the worker:
+
+```bash
+#!/bin/sh
+# worker/entrypoint.sh
+set -eu
+
+export BASH_ENV=/etc/agent-vault/env.sh
+
+export SSL_CERT_FILE=/etc/agent-vault/ca.pem
+export NODE_EXTRA_CA_CERTS=/etc/agent-vault/ca.pem
+export REQUESTS_CA_BUNDLE=/etc/agent-vault/ca.pem
+export CURL_CA_BUNDLE=/etc/agent-vault/ca.pem
+export GIT_SSL_CAINFO=/etc/agent-vault/ca.pem
+
+exec agent worker --pool "$CURSOR_POOL" --idle-release-timeout 600 \
+  --worker-dir /workspace --auth-token-file /var/run/worker/cursor-token start
+```
+
+After a run ends, the worker waits `--idle-release-timeout` seconds for a follow-up message, then exits. A lower value ends the worker sooner after the last message. Don't set it to `0`, which keeps the worker waiting forever.
+
+Save this Dockerfile as `worker/Dockerfile`, then build the image from the `worker` directory and push it to your registry:
+
+```dockerfile
+# worker/Dockerfile
+FROM ubuntu:24.04
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl git \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY agent-vault-ca.pem /tmp/agent-vault-ca.pem
+RUN mkdir -p /etc/agent-vault \
+  && cat /etc/ssl/certs/ca-certificates.crt /tmp/agent-vault-ca.pem > /etc/agent-vault/ca.pem
+
+COPY agent-vault-env.sh /etc/agent-vault/env.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+RUN useradd --create-home --uid 2000 agent \
+  && mkdir /workspace && chown agent /workspace
+USER 2000
+
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/home/agent/.local/bin:${PATH}"
+
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+```
+
+- **The certificate file:** `/etc/agent-vault/ca.pem` combines the proxy's certificate with the image's own certificates, because `SSL_CERT_FILE` replaces the certificates a tool trusts instead of adding to them
+- **The `agent` user:** the spawn hook runs the worker as the user ID `2000`, so the image installs Cursor's CLI in that user's home directory
+- **The repository:** unlike Cursor-hosted Cloud Agents, workers start with an empty `/workspace`, so the agent needs to clone the repository during the run, unless you add a clone to the entrypoint. Either way, `git` clones through the proxy, so the GitHub service in your access bundle needs to cover `github.com` as well as `api.github.com`
+
+If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token), download the certificate again and rebuild the worker's image.
+
+### Build the controller's image
+
+The controller runs Cursor's `agent` CLI and your spawn hook, which uses `kubectl`, `curl`, and `jq`. Save this Dockerfile as `controller/Dockerfile`, then build the image from the `controller` directory and push it to your registry:
+
+```dockerfile
+# controller/Dockerfile
+FROM ubuntu:24.04
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl jq \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSLo /usr/local/bin/kubectl \
+    "https://dl.k8s.io/release/<kubectl-version>/bin/linux/amd64/kubectl" \
+  && chmod +x /usr/local/bin/kubectl
+
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/root/.local/bin:${PATH}"
+```
+
+Replace `<kubectl-version>` with your cluster's Kubernetes version, such as `v1.35.0`, because `kubectl` only supports clusters within one minor version of its own. If your nodes use Arm processors, replace `amd64` with `arm64`.
+
+## Step 4: Create the workers' namespace
+
+Save this manifest as `cursor-workers.yaml` and apply it to your cluster before you deploy the controller in the next step. It creates the `cursor-workers` namespace that workers run in. It also blocks incoming connections to workers, and their connections to private networks and your cloud's metadata service.
+
+```yaml expandable
+# cursor-workers.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cursor-workers
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+# Workers can reach DNS, the proxy, and public addresses, but not private networks
+# or your cloud's metadata service.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cursor-workers
+  namespace: cursor-workers
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values: [kube-dns, node-local-dns]
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agent-vault
+          podSelector:
+            matchLabels:
+              app: agent-vault-proxy
+      ports:
+        - port: 17323
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+```
+
+<Warning>
+This guide only blocks outgoing connections from the worker to private networks and your cloud's metadata service. [It doesn't block connections to the public internet](#workers’-outgoing-connections).
+
+This means that even if you set your proxy's traffic policy to **[Service hosts only](/documentation/platform/agent-vault/proxies#traffic-policy)**, any request that skips the proxy (such as with `curl --noproxy '*'`) can still reach any public host.
+</Warning>
+
+## Step 5: Deploy the worker controller
+
+The controller runs in the `cursor` namespace, and it starts workers in the `cursor-workers` namespace. Workers can't reach the controller or read its credentials.
+
+### Create the namespace and the controller
+
+Save this manifest as `cursor-controller.yaml` and apply it to your cluster:
+
+```yaml expandable
+# cursor-controller.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cursor
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor-workers
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [create, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor-workers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cursor-worker-controller
+subjects:
+  - kind: ServiceAccount
+    name: cursor-worker-controller
+    namespace: cursor
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cursor-worker-controller
+  namespace: cursor
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cursor-worker-controller
+  template:
+    metadata:
+      labels:
+        app: cursor-worker-controller
+    spec:
+      serviceAccountName: cursor-worker-controller
+      containers:
+        - name: controller
+          image: <controller-image>
+          command:
+            - agent
+            - worker
+            - controller
+            - --spawn
+            - /hooks/spawn-worker.sh
+            - --pool
+            - <pool-name>
+            - --session-token
+          envFrom:
+            - secretRef:
+                name: cursor-worker-controller
+          volumeMounts:
+            - name: hooks
+              mountPath: /hooks
+              readOnly: true
+      volumes:
+        - name: hooks
+          configMap:
+            name: cursor-spawn-hook
+            defaultMode: 0755
+```
+
+Replace `<controller-image>` with the controller's image and `<pool-name>` with your pool. With `--session-token`, the controller gives the spawn hook a Cursor token that only serves one run, so the team's API key stays in the controller.
+
+### Store the controller's credentials
+
+Store your Cursor service account API key and the machine identity's client ID and client secret in a Secret named `cursor-worker-controller` in the `cursor` namespace, under the keys `CURSOR_API_KEY`, `INFISICAL_CLIENT_ID`, and `INFISICAL_CLIENT_SECRET`.
+
+### Add the spawn hook
+
+The controller runs the spawn hook each time it claims a request. The hook logs in as the machine identity, creates a session with the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint, and starts a worker pod. It passes the worker two tokens in a Secret that the pod owns: the Infisical session token, and the Cursor token that the controller got for this run. Kubernetes deletes the Secret with the pod.
+
+Save this script as `spawn-worker.sh`:
+
+```bash expandable
+#!/bin/sh
+# spawn-worker.sh
+set -eu
+
+NAMESPACE=cursor-workers
+
+case "$CURSOR_AGENT_WORKER_ID$CURSOR_POOL" in
+  *[!a-zA-Z0-9._-]*) echo "Unexpected characters in the worker ID or pool" >&2; exit 1 ;;
+esac
+
+WORKER_SLUG=$(printf '%s' "$CURSOR_AGENT_WORKER_ID" | tr 'A-Z._' 'a-z--' | cut -c1-40)
+POD_NAME="worker-$WORKER_SLUG-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+
+# Logs in with Universal Auth. For Kubernetes Auth, call /api/v1/auth/kubernetes-auth/login instead.
+ACCESS_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"clientId\": \"$INFISICAL_CLIENT_ID\", \"clientSecret\": \"$INFISICAL_CLIENT_SECRET\"}" \
+  | jq -er .accessToken)
+
+SESSION_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"24h\", \"label\": \"cursor $POD_NAME\"}" \
+  | jq -er .session.token)
+
+POD_UID=$(kubectl create -f - -o 'jsonpath={.metadata.uid}' <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $POD_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: cursor-worker
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  # To isolate workers from the node, set your cluster's RuntimeClass, such as gvisor.
+  # runtimeClassName: gvisor
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: worker
+      image: <worker-image>
+      env:
+        - name: CURSOR_POOL
+          value: "$CURSOR_POOL"
+        - name: CURSOR_AGENT_WORKER_ID
+          value: "$CURSOR_AGENT_WORKER_ID"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          memory: 4Gi
+      volumeMounts:
+        - name: tokens
+          mountPath: /var/run/worker
+          readOnly: true
+  volumes:
+    - name: tokens
+      secret:
+        secretName: $POD_NAME
+EOF
+)
+
+if ! kubectl create -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $POD_NAME
+  namespace: $NAMESPACE
+  ownerReferences:
+    - apiVersion: v1
+      kind: Pod
+      name: $POD_NAME
+      uid: $POD_UID
+stringData:
+  cursor-token: "$CURSOR_AUTH_TOKEN"
+  session-token: "$SESSION_TOKEN"
+EOF
+then
+  kubectl -n "$NAMESPACE" delete pod "$POD_NAME" --wait=false
+  exit 1
+fi
+```
+
+Replace `<access-bundle-name>` with your access bundle's name and `<worker-image>` with the worker's image. If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance. Size the worker's `resources` for the builds and tests your agents run.
+
+<Tip>
+To give runs different access, such as by repository or by user, choose the access bundle in the hook using `CURSOR_REPO_NAME`, the repository the run works on, or `CURSOR_USER_ID`, the ID of the Cursor user who started the run. For example, add this before the session request:
+
+```bash
+case "$CURSOR_REPO_NAME" in
+  payments-api) ACCESS_BUNDLE=payments ;;
+  *) ACCESS_BUNDLE=<access-bundle-name> ;;
+esac
+```
+
+Then replace `\"<access-bundle-name>\"` in the session request with `\"$ACCESS_BUNDLE\"`. The machine identity needs access to every access bundle that the hook can choose.
+</Tip>
+
+Then store the hook in the ConfigMap that the controller mounts:
+
+```bash
+kubectl -n cursor create configmap cursor-spawn-hook --from-file=spawn-worker.sh
+```
+
+The controller starts once its Secret and ConfigMap exist. Check that it connected to your pool:
+
+```bash
+kubectl -n cursor logs deploy/cursor-worker-controller
+```
+
+<Warning>
+  Keep the client secret in the `cursor` namespace. The worker gets only the session token and its own Cursor token, never the client secret, the proxy token, or the team's API key.
+</Warning>
+
+When a worker exits, its pod stays in the `Succeeded` state (or `Failed` if the worker exited with an error) until you delete it. To delete finished workers, run these commands, or run them on a schedule:
+
+```bash
+kubectl -n cursor-workers delete pods --field-selector=status.phase=Succeeded
+kubectl -n cursor-workers delete pods --field-selector=status.phase=Failed
+```
+
+## Step 6: Verify it works
+
+Start a Cloud Agent on your pool and ask it to run these commands:
+
+```bash
+curl -sS https://api.github.com/user
+curl -sS -o /dev/null -w "%{http_code}\n" https://example.com
+curl -sS --noproxy '*' --max-time 10 https://example.com
+env
+```
+
+If the setup works, each command shows this:
+
+1. GitHub returns the account that the service's token belongs to, even though the worker has no GitHub token
+2. The request reaches `example.com` without a credential and returns `200`, or, under **Service hosts only**, the proxy refuses it with `403`
+3. The request reaches `example.com` without going through the proxy, because this guide [only blocks the workers' connections to private networks and your cloud's metadata service](#workers’-outgoing-connections). If you limited them further, the request fails instead
+4. The environment has no API keys, and the only token is the session token in `HTTPS_PROXY`
+
+In Agent Vault, go to **Sessions** and find the run's session by its label, `cursor <pod-name>`, where `<pod-name>` is the name of the worker pod. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
+
+<Check>
+  Your Cloud Agents now run in worker pods with no credentials. Each run gets its own session, and the proxy stops attaching credentials when the session's `ttl` runs out.
+</Check>
+
+## Security considerations
+
+### Credentials outside Agent Vault
+
+Agent Vault protects the credentials that the agent's commands use, such as tokens for GitHub, your cloud provider, and internal APIs. It doesn't handle these:
+
+- **The model's API key:** Cursor calls the model from its own servers, so the key never reaches the worker
+- **MCP servers that Cursor connects to over HTTP:** Cursor connects to HTTP and SSE MCP servers from its own servers, with credentials you give Cursor, so their requests don't go through the proxy, unlike those of MCP servers that run as a command on the worker
+- **The worker's connection to Cursor:** the proxy only supports HTTP/1.1, and the worker connects to Cursor over HTTP/2, so the worker reaches Cursor directly
+- **The worker's Cursor token:** the worker needs a Cursor token to connect to the pool, so the token is on the worker, but it only serves that worker's run, and the team's API key stays in the controller
+
+Don't start workers with `--sync-dashboard-secrets`, which passes your Cursor secrets to the worker as environment variables, or with `--clone-git-repos` or `--mint-github-token`, which give the worker a GitHub token. Don't put credentials in the worker's image either.
+
+### Sessions that outlive their workers
+
+Cursor doesn't tell the controller when a worker exits, so the session keeps working until its `ttl` runs out. If someone copies the session token during a run, they can use the access bundle's services through the proxy until then, from any pod that can reach the proxy. Keep the `ttl` as short as your conversations allow, and if you think a session token leaked, [revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) in Agent Vault.
+
+### Workers' outgoing connections
+
+The agent's commands run in the same pod as Cursor's worker process, which needs a direct connection to Cursor's hosts, `api2.cursor.sh` and `api2direct.cursor.sh`. That connection can't go through the proxy, even with Cursor's hosts as **[Exceptions](/documentation/platform/agent-vault/proxies#exceptions)** in the proxy's traffic policy, because the proxy decrypts every connection and only supports HTTP/1.1, while the worker connects over HTTP/2. This is why [only the agent's commands use the proxy](#build-the-worker’s-image), while the worker connects to Cursor directly.
+
+A standard NetworkPolicy can't allow hosts by name, so the policy in [Step 4](#step-4-create-the-workers’-namespace) only blocks workers from private networks and your cloud's metadata service. Workers can still reach any public host. To limit where workers can connect, use a feature that can allow hosts by name, such as Cilium's `toFQDNs` or GKE's FQDN network policies.
+
+<Warning>
+If you limit where workers can connect, don't allow Cursor's artifact hosts, `agent-stores.s3.us-east-1.amazonaws.com` and `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`. Both are Amazon S3 hosts, so if you allow them by IP address, the agent can upload data to any S3 bucket.
+
+Without these hosts, artifacts such as screenshots won't appear in pull requests or the Cursor dashboard. However, all of the agent's tool calls will still work as expected.
+</Warning>
+
+### Compromised workers
+
+If an agent takes control of its worker pod, it has the session token and the worker's Cursor token for that run. It can call the access bundle's services through the proxy and [connect to other hosts](#workers’-outgoing-connections).
+
+<Note>
+The worker has no Kubernetes service account token, so it can't read the controller's Secret in the `cursor` namespace.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The spawn hook fails with &quot;CURSOR_AUTH_TOKEN: parameter not set&quot;">
+    The controller didn't give the hook a Cursor token for the run. Check that the controller's command includes `--session-token` and doesn't include `--warm-idle`, which starts workers before any run and so has no token to give them.
+  </Accordion>
+  <Accordion title="The worker's logs show &quot;tlsv1 alert no application protocol&quot;">
+    The worker sent its connection to Cursor through the proxy, which doesn't support HTTP/2. The worker ignores `NO_PROXY`, so check that nothing sets `HTTPS_PROXY` in the worker's own environment, such as the entrypoint or the Pod's `env`, and that the first line of `agent-vault-env.sh` is unchanged.
+  </Accordion>
+  <Accordion title="The worker doesn't connect to Cursor">
+    Check that the worker's Secret has a `cursor-token` key. If you limited where workers can connect, check that your rules allow `api2.cursor.sh` and `api2direct.cursor.sh` on port `443`, and DNS lookups for both.
+  </Accordion>
+  <Accordion title="A command or MCP server reaches an API without a credential">
+    The process didn't start from a bash shell, so it didn't run `agent-vault-env.sh` and doesn't use the proxy. For an MCP server that runs on the worker, start it through bash, such as with `bash -c '<command>'`.
+  </Accordion>
+  <Accordion title="The worker pod is rejected or stays in ContainerCreating">
+    The `restricted` Pod Security Standard rejects pods without the `securityContext` settings in the spawn hook's Pod, such as `runAsNonRoot` and `allowPrivilegeEscalation: false`, so check that the Pod in your spawn hook still has them. If the pod stays in `ContainerCreating`, it's waiting for its Secret, so check the controller's logs for the error from the spawn hook.
+  </Accordion>
+  <Accordion title="The agent's commands fail with &quot;Could not resolve proxy&quot;">
+    The worker couldn't look up the proxy's name, `agent-vault-proxy.agent-vault.svc.cluster.local`. If your cluster's domain isn't `cluster.local`, change the address in `agent-vault-env.sh`. If you limited where workers can connect, check that your rules allow DNS lookups for the proxy's name.
+  </Accordion>
+  <Accordion title="The agent's commands fail with a 407 from the proxy">
+    The request reached the proxy without the session token. Check that the worker's Secret has a `session-token` key, and that the session was created.
+  </Accordion>
+  <Accordion title="The agent's commands fail with a 403 from the proxy">
+    The session ended, or, under **Service hosts only**, no service in the access bundle covers the host. To let every run reach the host without a credential, add the host to the proxy's **Exceptions**. If sessions expire while people are still using their workers, raise the `ttl` in the spawn hook.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+    Record every request an agent makes during a session.
+  </Card>
+  <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
+    Limit the methods and paths an agent can use.
+  </Card>
+</CardGroup>

@@ -8,11 +8,11 @@ import { createNotification } from "@app/components/notifications";
 import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
+  Combobox,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Tabs,
@@ -407,20 +407,19 @@ export const IdentityOidcAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="oidc-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="oidc-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="oidc-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

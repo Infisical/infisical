@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -32,6 +32,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  RowLink,
   Select,
   SelectContent,
   SelectItem,
@@ -85,7 +86,6 @@ type Filter = {
 };
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
@@ -310,20 +310,15 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                   const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
                   return (
-                    <TableRow
-                      key={`org-group-${id}`}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/groups/$groupId",
-                          params: {
-                            orgId,
-                            groupId: id
-                          }
-                        })
-                      }
-                    >
-                      <TableCell isTruncatable>{name}</TableCell>
+                    <TableRow key={`org-group-${id}`} linked>
+                      <TableCell isTruncatable>
+                        <RowLink
+                          to="/organizations/$orgId/groups/$groupId"
+                          params={{ orgId, groupId: id }}
+                        >
+                          {name}
+                        </RowLink>
+                      </TableCell>
                       <TableCell isTruncatable>{slug}</TableCell>
                       <TableCell>
                         <OrgPermissionCan
@@ -432,20 +427,17 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 a={OrgPermissionSubjects.Groups}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      navigate({
-                                        to: "/organizations/$orgId/groups/$groupId",
-                                        params: {
-                                          orgId,
-                                          groupId: id
-                                        }
-                                      })
-                                    }
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <UsersIcon />
-                                    Manage Members
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link
+                                      to="/organizations/$orgId/groups/$groupId"
+                                      params={{
+                                        orgId,
+                                        groupId: id
+                                      }}
+                                    >
+                                      <UsersIcon />
+                                      Manage Members
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>

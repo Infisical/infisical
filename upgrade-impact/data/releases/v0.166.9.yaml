@@ -1,0 +1,99 @@
+version: v0.166.9
+releasedAt: 2026-10-20T16:46:38-03:00
+sourceTag: v0.166.9
+previousTag: v0.166.8
+impactLevel: low
+summary: Startup runs several additive schema and data migrations, including
+  approval-policy moves to the global model and new PKI, Agent Vault, and Secret
+  Scanning columns.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Approval policies migration
+    description: Startup migrates legacy secret access and secret change approval
+      policies and requests into the global approval tables. The migrations run
+      outside a transaction and can skip records that fail validation checks.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261013120000_migrate-access-approval-policies-to-global.ts
+        path: backend/src/db/migrations/20261013120000_migrate-access-approval-policies-to-global.ts
+        description: Migrates access approvals to global tables
+      - type: file
+        ref: backend/src/db/migrations/20261014120100_migrate-secret-approval-policies-to-global.ts
+        path: backend/src/db/migrations/20261014120100_migrate-secret-approval-policies-to-global.ts
+        description: Migrates secret change approvals to global tables
+  - title: Agent Vault variables scope
+    description: Agent Vault variables gain a projectId column and a new unique key
+      on projectId plus key. Existing rows are backfilled from access bundles,
+      and duplicate keys are renamed during migration.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261012120000_agent-vault-variables-product-scope.ts
+        path: backend/src/db/migrations/20261012120000_agent-vault-variables-product-scope.ts
+        description: Adds projectId and renames duplicate keys
+  - title: PKI CA external key metadata
+    description: Certificate authority secrets gain appConnectionId, externalKeyId,
+      and publicKeySpki columns. Existing HSM-backed rows are backfilled, and
+      the key-source constraint expands to cover AWS KMS-backed keys.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261012152847_ca-secret-external-key.ts
+        path: backend/src/db/migrations/20261012152847_ca-secret-external-key.ts
+        description: Adds external key columns for CA secrets
+  - title: Secret scanning scan options
+    description: Secret scanning data sources gain three non-null boolean columns
+      for historical scans, new-commit scans, and discovery. Existing rows are
+      backfilled from current auto-scan and include-list settings.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261014170000_secret-scanning-data-source-scan-options.ts
+        path: backend/src/db/migrations/20261014170000_secret-scanning-data-source-scan-options.ts
+        description: Adds and backfills scan option columns
+  - title: Secret scanning resource indexes
+    description: Startup creates new concurrent indexes for secret scanning resource
+      lists and secret approval request links. These are additive but can extend
+      startup time on large Postgres datasets.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261014120000_add-secret-approval-secrets-v2-request-id-index.ts
+        path: backend/src/db/migrations/20261014120000_add-secret-approval-secrets-v2-request-id-index.ts
+        description: Creates concurrent requestId index
+      - type: file
+        ref: backend/src/db/migrations/20261015235556_add-secret-scanning-v2-resource-list-indexes.ts
+        path: backend/src/db/migrations/20261015235556_add-secret-scanning-v2-resource-list-indexes.ts
+        description: Creates concurrent secret scanning indexes
+  - title: Super admin storage hostnames
+    description: The super admin table gains an allowedStorageHostnames text array
+      column for storage hostname controls. The change is additive.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261008120000_super-admin-allowed-storage-hostnames.ts
+        path: backend/src/db/migrations/20261008120000_super-admin-allowed-storage-hostnames.ts
+        description: Adds allowedStorageHostnames column
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-20T20:28:10.059Z
+  sourceRange:
+    from: v0.166.8
+    to: v0.166.9

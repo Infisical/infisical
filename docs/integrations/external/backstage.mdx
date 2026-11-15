@@ -1,87 +1,115 @@
 ---
-title: Backstage Infisical plugin
-description: A powerful plugin that integrates Infisical secrets management into your Backstage developer portal.
+title: "Manage secrets in Backstage"
+sidebarTitle: "Backstage plugin"
+description: "Install the Infisical Backstage plugin to view and edit an Infisical project's secrets from entity pages in Backstage."
 ---
 
-Integrate secrets management into your developer portal with the Backstage Infisical plugin suite. This plugin provides a seamless interface to manage your [Infisical](https://infisical.com) secrets directly within Backstage, including full support for environments and folder structure.
+Manage your Infisical secrets from your developer portal with the Infisical plugin for [Backstage](https://backstage.io). The plugin adds a **Secrets** tab to entity pages, with support for environments and folders. For the full reference, see the [plugin repository](https://github.com/Infisical/infisical-backstage-plugin) on GitHub.
 
 ## Features
 
-- **Secrets Management**: View, create, update, and delete secrets from Infisical
-- **Folder Navigation**: Explore the full folder structure of your Infisical projects
-- **Multi-Environment Support**: Easily switch between and manage different environments
-- **Entity Linking**: Map Backstage entities to specific Infisical projects via annotations
+- **Secrets management:** View, create, update, and delete secrets in Infisical
+- **Folder navigation:** Browse the folder structure of your Infisical projects
+- **Multiple environments:** Switch between the environments of a project
+- **Search:** Find secrets by key, value, or comment
+- **Entity linking:** Link Backstage entities to Infisical projects with annotations
+- **Access control:** Control who can view and change secrets with the [Backstage permission framework](https://backstage.io/docs/permissions/overview)
+- **Multiple machine identities:** Give each entity or environment its own Infisical [machine identity](/documentation/platform/identities/machine-identities)
 
----
-## Installation
+<Info>
+    Access control, RBAC plugin support, and multiple machine identities need version 1.0.0 or later of the frontend and backend plugins. Earlier versions don't check permissions, so any user who can see an entity can read and change its secrets. To upgrade, see [Upgrade from version 0.1.1 or earlier](#upgrade-from-version-0-1-1-or-earlier).
+</Info>
 
-### Frontend plugin
+## Prerequisites
+
+- An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
+- An Infisical [project](/documentation/platform/secrets-mgmt/project) with the secrets you want to show in Backstage
+- A Backstage app on version 1.36 or later that uses the [new backend system](https://backstage.io/docs/backend-system/) and has the [software catalog](https://backstage.io/docs/features/software-catalog/) installed
+
+## Step 1: Create a machine identity
+
+The plugin authenticates to Infisical with a machine identity that has access to your project.
+
+<Steps>
+    <Step>
+        Create a machine identity that uses [Universal Auth](/documentation/platform/identities/universal-auth), and copy its **Client ID** and a **Client Secret**.
+    </Step>
+    <Step>
+        In your Infisical project, go to **Access Control** > **Machine Identities** and add the identity with the **Viewer** role. If Backstage users should create, update, or delete secrets, use the **Member** role instead.
+    </Step>
+    <Step>
+        In the project sidebar, select **Settings** > **General**, and copy the **Project ID**.
+    </Step>
+</Steps>
+
+You need the client ID and client secret in [Step 3](#step-3-configure-the-backend), and the project ID in [Step 5](#step-5-link-an-entity-to-a-project).
+
+## Step 2: Install the plugins
+
+From the root of your Backstage app, install the frontend plugin, the backend plugin, and the common package that defines the plugin's permissions:
 
 ```bash
-# From your Backstage root directory
 yarn --cwd packages/app add @infisical/backstage-plugin-infisical
-```
-
-### Backend plugin
-
-```bash
-# From your Backstage root directory
 yarn --cwd packages/backend add @infisical/backstage-backend-plugin-infisical
+yarn --cwd packages/backend add @infisical/backstage-plugin-infisical-common
 ```
 
-## Configuration
+## Step 3: Configure the backend
 
-### Backend
-
-Update your `app-config.yaml`:
+Add the machine identity's credentials to `app-config.yaml`, and turn on the permission framework:
 
 ```yaml
 infisical:
+  # If you self-host Infisical, replace this with the URL of your instance
   baseUrl: https://app.infisical.com
-
   authentication:
-    # Option 1: API Token Authentication
-    auth_token:
-      token: ${INFISICAL_API_TOKEN}
-
-    # Option 2: Client Credentials Authentication
     universalAuth:
       clientId: ${INFISICAL_CLIENT_ID}
       clientSecret: ${INFISICAL_CLIENT_SECRET}
+
+permission:
+  # Without this, anyone who can see an entity can read and change its secrets
+  enabled: true
 ```
 
-<Tip>
-    If you haven't created a machine identity yet, you can do so in [Identities](/documentation/platform/identities/machine-identities)
-</Tip>
+<Accordion title="Authenticate with an access token instead">
+    To use an existing access token, such as one from [Token Auth](/documentation/platform/identities/token-auth), replace the `universalAuth` block with `auth_token`. The plugin doesn't renew the token, so the plugin stops working when the token expires.
 
-Register the plugin in `packages/backend/src/index.ts`:
+    ```yaml
+    infisical:
+      authentication:
+        auth_token:
+          token: ${INFISICAL_TOKEN}
+    ```
+</Accordion>
+
+Then add the backend plugin to `packages/backend/src/index.ts`:
 
 ```ts
-import { createBackend } from '@backstage/backend-defaults';
-
 const backend = createBackend();
 
+// ...other plugins
 backend.add(import('@infisical/backstage-backend-plugin-infisical'));
 
 backend.start();
 ```
 
-### Frontend
+## Step 4: Add the tab to entity pages
 
-Update `packages/app/src/App.tsx` to include the plugin:
+Add the plugin to your app in `packages/app/src/App.tsx`:
 
 ```tsx
 import { infisicalPlugin } from '@infisical/backstage-plugin-infisical';
 
 const app = createApp({
   plugins: [
-    infisicalPlugin,
     // ...other plugins
+    infisicalPlugin,
   ],
 });
 ```
 
-Modify `packages/app/src/components/catalog/EntityPage.tsx`:
+Then add the tab to an entity page in `packages/app/src/components/catalog/EntityPage.tsx`. This example adds the tab to the page for services:
 
 ```tsx
 import { EntityInfisicalContent } from '@infisical/backstage-plugin-infisical';
@@ -96,28 +124,192 @@ const serviceEntityPage = (
 );
 ```
 
-### Entity annotation
+## Step 5: Link an entity to a project
 
-Add the Infisical project ID to your entity yaml settings:
+Add the `infisical/projectId` annotation to the entity's `catalog-info.yaml`, with the project ID from [Step 1](#step-1-create-a-machine-identity):
 
 ```yaml
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: example-service
+  name: payments-service
   annotations:
-    infisical/projectId: <your-infisical-project-id>
+    infisical/projectId: <project-id>
 ```
 
-> Replace `<your-infisical-project-id>` with the actual project ID from Infisical.
+The other annotations are optional:
 
-## Usage
+| Annotation | Description |
+| --- | --- |
+| `infisical/environment` | The slug of the only environment the tab shows, such as `prod` |
+| `infisical/secretPath` | The folder the tab opens. Without a `+` prefix, such as `/api`, users can only see that folder. With the prefix, such as `+/api`, users can also open its subfolders |
+| `infisical/identity` | The name of the [machine identity](#use-a-different-machine-identity-per-entity-or-environment) the entity uses |
+| `infisical/identity.<environment>` | The name of the machine identity the entity uses for one environment, such as `infisical/identity.prod` |
 
-Once installed and configured, you can:
+To check the setup, open the entity in Backstage and select the **Secrets** tab.
 
-1. **View and manage secrets** in Infisical from within Backstage
-2. **Create, update, and delete** secrets using the Infisical tab in entity pages
-3. **Navigate environments and folders**
-4. **Search and filter** secrets by key, value, or comments
+![The Secrets tab in Backstage](/images/integrations/external/backstage/backstage-plugin-infisical.png)
 
-![Backstage Plugin Table](/images/integrations/external/backstage/backstage-plugin-infisical.png)
+<Check>
+    The **Secrets** tab shows the secrets in your Infisical project.
+</Check>
+
+## Control access with permissions
+
+The plugin checks each request against five permissions, with the entity as the resource. Because the resource is a catalog entity, your permission policy can use catalog rules such as `isEntityOwner`. The **Secrets** tab hides the buttons for actions the user isn't allowed to take.
+
+| Permission | Allows the user to |
+| --- | --- |
+| `infisical.secret.read` | List secrets, folders, and environments |
+| `infisical.secret.value.read` | Reveal secret values (without it, values are empty) |
+| `infisical.secret.create` | Create secrets |
+| `infisical.secret.update` | Update secrets (without `infisical.secret.value.read`, the edit dialog hides the current value) |
+| `infisical.secret.delete` | Delete secrets |
+
+<Warning>
+    If `permission.enabled` isn't `true`, or your policy allows every permission, any user who can see an entity can reveal and change its secrets.
+</Warning>
+
+Whatever your policy allows, the plugin only gives access to the project, environment, and folder that the entity's annotations allow.
+
+<AccordionGroup>
+    <Accordion title="Limit changes to the entity's owners">
+        To let every user list secrets but let only the entity's owners reveal and change them, return a conditional decision with `catalogConditions.isEntityOwner` for the other four permissions. The plugin's README has an [example policy](https://github.com/Infisical/infisical-backstage-plugin#example-policy) that you can copy.
+    </Accordion>
+    <Accordion title="Grant permissions with the RBAC plugin">
+        If you manage permissions with the [RBAC plugin](https://github.com/backstage/community-plugins/tree/main/workspaces/rbac), add `infisical-backend` to `pluginsWithPermission`, so that the five permissions appear in the role editor:
+
+        ```yaml
+        permission:
+          enabled: true
+          rbac:
+            pluginsWithPermission:
+              - catalog
+              - infisical-backend
+        ```
+
+        Grant catalog access with the `catalog.entity.read` permission, not with the `catalog-entity` resource type. The Infisical permissions also use the `catalog-entity` resource type, so a role with `catalog-entity` and the `read` action can also list secrets and reveal their values. For example:
+
+        ```csv
+        p, role:default/everyone, catalog.entity.read, read, allow
+        p, role:default/everyone, infisical.secret.read, read, allow
+        p, role:default/secret-editors, infisical.secret.value.read, read, allow
+        p, role:default/secret-editors, infisical.secret.create, create, allow
+        p, role:default/secret-editors, infisical.secret.update, update, allow
+        p, role:default/secret-editors, infisical.secret.delete, delete, allow
+        ```
+
+        The built-in RBAC admin role has `catalog-entity` with the `read` action, so RBAC admins can always reveal secret values.
+    </Accordion>
+</AccordionGroup>
+
+## Use a different machine identity per entity or environment
+
+By default, every entity uses the machine identity under `infisical.authentication`. To give a team or an environment its own access in Infisical, add more identities under `infisical.identities`. Each identity appears as a separate actor in Infisical [audit logs](/documentation/platform/audit-logs).
+
+```yaml
+infisical:
+  baseUrl: https://app.infisical.com
+  # Optional when you configure identities
+  authentication:
+    universalAuth:
+      clientId: ${INFISICAL_CLIENT_ID}
+      clientSecret: ${INFISICAL_CLIENT_SECRET}
+  identities:
+    payments-dev:
+      universalAuth:
+        clientId: ${INFISICAL_PAYMENTS_DEV_CLIENT_ID}
+        clientSecret: ${INFISICAL_PAYMENTS_DEV_CLIENT_SECRET}
+    payments-prod:
+      universalAuth:
+        clientId: ${INFISICAL_PAYMENTS_PROD_CLIENT_ID}
+        clientSecret: ${INFISICAL_PAYMENTS_PROD_CLIENT_SECRET}
+      # Optional: only these entities can use this identity
+      allowedEntityRefs:
+        - component:default/payments-service
+```
+
+Then name the identities in the entity's annotations:
+
+```yaml
+metadata:
+  annotations:
+    infisical/projectId: <project-id>
+    infisical/identity: payments-dev
+    infisical/identity.prod: payments-prod
+```
+
+For each request, the plugin uses the first identity that's set:
+
+1. `infisical/identity.<environment>`, if the request is for that environment
+2. `infisical/identity`
+3. `infisical.authentication`
+
+When you add identities:
+
+- Add each identity to the entity's Infisical project, as in [Step 1](#step-1-create-a-machine-identity)
+- Name each identity with letters and digits, optionally separated by `-` or `_`, with each part starting with a letter (`payments-dev` works, `team-1` doesn't)
+- Set `allowedEntityRefs` on identities with broad access, because anyone who can edit an entity's `catalog-info.yaml` can name any identity
+
+<Note>
+    To list a project's environments, the plugin uses the identity from `infisical/identity` or `infisical.authentication`, unless `infisical/environment` locks the entity to one environment. Give that identity access to the project too.
+</Note>
+
+## Upgrade from version 0.1.1 or earlier
+
+<Warning>
+    Upgrade the frontend and backend plugins to version 1.0.0 together, because version 1.0.0 of each plugin doesn't work with earlier versions of the other.
+</Warning>
+
+When you upgrade:
+
+- Install `@infisical/backstage-plugin-infisical-common`, as in [Step 2](#step-2-install-the-plugins)
+- Install the software catalog backend if your app doesn't have it, because the plugin reads entity annotations from the catalog
+- If your permission policy denies permissions by default, or you use the RBAC plugin, grant the `infisical.secret.*` permissions so users keep access to the **Secrets** tab
+- If your permission policy allows every permission, nothing changes for users, and you can now [restrict access to secrets](#control-access-with-permissions)
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title="The Secrets tab shows No Infisical project configured">
+        The entity doesn't have an `infisical/projectId` annotation. Add the annotation as in [Step 5](#step-5-link-an-entity-to-a-project).
+    </Accordion>
+    <Accordion title="Secret values are empty and can't be revealed">
+        The user doesn't have the `infisical.secret.value.read` permission. Grant the permission in your [permission policy](#control-access-with-permissions).
+    </Accordion>
+    <Accordion title="Requests fail with a 403 error">
+        The plugin rejects a request with a 403 error if:
+
+        - The user doesn't have the permission for the action
+        - The entity has an `infisical/environment` annotation, and the request is for a different environment
+        - The request is for a folder outside the entity's `infisical/secretPath`
+        - The entity isn't in the `allowedEntityRefs` of the identity it names
+    </Accordion>
+    <Accordion title="Requests fail with a 404 error">
+        The plugin rejects a request with a 404 error if:
+
+        - The entity doesn't exist, or doesn't have an `infisical/projectId` annotation
+        - The entity names an identity that isn't under `infisical.identities`
+        - The entity doesn't name an identity, and `infisical.authentication` isn't set
+    </Accordion>
+    <Accordion title="How do I see which Backstage user made a change in Infisical?">
+        The plugin sends the Backstage user and entity in the user agent of each request to Infisical, for example:
+
+        ```text
+        backstage-plugin-infisical (user=user:default/jane; entity=component:default/payments-service)
+        ```
+
+        In Infisical [audit logs](/documentation/platform/audit-logs), select an event to see its `userAgent`. If another Backstage backend plugin made the request, the user shows as `service:<subject>`. Your Backstage backend sets this value, so use it to trace requests, not as proof of who made them.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Plugin repository" icon="github" href="https://github.com/Infisical/infisical-backstage-plugin">
+        Read the full configuration reference and an example permission policy.
+    </Card>
+    <Card title="Machine identities" icon="server" href="/documentation/platform/identities/machine-identities">
+        Learn how machine identities authenticate to Infisical.
+    </Card>
+</CardGroup>

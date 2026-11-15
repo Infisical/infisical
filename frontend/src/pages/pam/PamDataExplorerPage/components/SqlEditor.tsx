@@ -168,7 +168,6 @@ export function SqlEditor({
       view.destroy();
       viewRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return <div ref={containerRef} className="h-full w-full" />;

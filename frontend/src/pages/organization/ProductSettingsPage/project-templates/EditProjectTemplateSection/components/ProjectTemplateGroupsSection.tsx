@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +27,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Table,
   TableBody,
@@ -279,22 +279,19 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
 
                                 return (
                                   <Field className="mb-0 max-w-[786px]">
-                                    <FilterableSelect
-                                      isMulti
+                                    <Combobox
+                                      multiple
                                       isDisabled={!isAllowed}
                                       options={allOptions}
                                       value={selectedValues}
-                                      onChange={(selected) => {
-                                        field.onChange(
-                                          (selected as { slug: string; name: string }[]).map(
-                                            (s) => s.slug
-                                          )
-                                        );
+                                      onValueChange={(selected) => {
+                                        field.onChange(selected.map((s) => s.slug));
                                       }}
                                       getOptionValue={(option) => option.slug}
+                                      getOptionKeywords={(option) => [option.slug]}
                                       getOptionLabel={(option) => option.name}
                                       placeholder="Select roles..."
-                                      menuPosition="fixed"
+                                      searchAriaLabel="Search roles"
                                     />
                                     {error?.message && <FieldError>{error.message}</FieldError>}
                                   </Field>
@@ -355,15 +352,17 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Select groups</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableOrgGroups}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select one or more groups..."
-                      noOptionsMessage={() =>
+                      searchAriaLabel="Search groups"
+                      emptyMessage={() =>
                         availableOrgGroups.length === 0
                           ? "All organization groups have been added"
                           : "No matching groups found"
@@ -381,14 +380,16 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Select roles</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableRoles}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select roles..."
+                      searchAriaLabel="Search roles"
                     />
                     {addGroupErrors.roles?.message && (
                       <FieldError>{addGroupErrors.roles.message}</FieldError>

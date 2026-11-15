@@ -85,13 +85,14 @@ func TestSecret_Get(t *testing.T) {
 		created := secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "postgres://app", secretmanager.WithPath("/app"))
 
 		// Action
-		res, err := tn.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID)
+		res, err := tn.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "reading by id returned %d: %s", res.StatusCode(), res.Body)
 		require.Equal(t, "DB_URL", res.JSON200.Secret.SecretKey)
 		require.Equal(t, "postgres://app", res.JSON200.Secret.SecretValue)
+		require.False(t, res.JSON200.Secret.SecretValueHidden)
 		require.Equal(t, "/app", res.JSON200.Secret.SecretPath)
 	})
 
@@ -104,7 +105,7 @@ func TestSecret_Get(t *testing.T) {
 		created := secretmanager.CreateSecret(t, target, "dev", "THEIRS", "their-value")
 
 		// Action
-		res, err := mine.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID)
+		res, err := mine.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -125,12 +126,32 @@ func TestSecret_Get(t *testing.T) {
 			secretmanager.As(owner), secretmanager.WithPersonal())
 
 		// Action
-		res, err := other.API.GetSecretByIdV4WithResponse(t.Context(), personal.ID)
+		res, err := other.API.GetSecretByIdV4WithResponse(t.Context(), personal.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Equal(t, "You are not allowed to access this secret", res.JSON403.Message)
 		require.NotContains(t, string(res.Body), "owner-only")
+	})
+
+	t.Run("should return not found for a version that does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "first")
+		secretmanager.UpdateSecret(t, proj, "dev", "API_KEY", "second")
+
+		// Action
+		res, err := tn.Admin.API.GetSecretByNameV4WithResponse(t.Context(), "API_KEY",
+			&api.GetSecretByNameV4Params{ProjectId: proj.ID, Environment: new("dev"), Version: new(float32(3))})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, res.StatusCode())
+		require.Equal(t, "Secret with name 'API_KEY' not found", res.JSON404.Message)
+		require.NotContains(t, string(res.Body), "second")
 	})
 }

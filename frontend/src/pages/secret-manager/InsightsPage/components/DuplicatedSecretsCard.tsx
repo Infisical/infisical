@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
@@ -55,7 +55,6 @@ const overviewRoute =
 export const DuplicatedSecretsCard = () => {
   const { projectId } = useProject();
   const { orgId } = useParams({ strict: false });
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [migrationTriggered, setMigrationTriggered] = useState(false);
 
@@ -265,25 +264,22 @@ export const DuplicatedSecretsCard = () => {
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <IconButton
+                                        asChild
                                         variant="ghost"
                                         size="sm"
-                                        aria-label="Go to secret"
-                                        className="opacity-0 transition-opacity group-hover/row:opacity-100"
-                                        onClick={() =>
-                                          navigate({
-                                            to: overviewRoute,
-                                            params: {
-                                              orgId: orgId as string,
-                                              projectId
-                                            },
-                                            search: {
-                                              secretPath: entry.secretPath,
-                                              environments: [entry.environment.slug]
-                                            }
-                                          })
-                                        }
+                                        className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                                       >
-                                        <ArrowRightIcon className="size-3.5" />
+                                        <Link
+                                          to={overviewRoute}
+                                          params={{ orgId: orgId as string, projectId }}
+                                          search={{
+                                            secretPath: entry.secretPath,
+                                            environments: [entry.environment.slug]
+                                          }}
+                                          aria-label="Go to secret"
+                                        >
+                                          <ArrowRightIcon className="size-3.5" />
+                                        </Link>
                                       </IconButton>
                                     </TooltipTrigger>
                                     <TooltipContent>Go to secret folder</TooltipContent>

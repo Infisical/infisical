@@ -1,9 +1,8 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
-import { Field, FieldError, FilterableSelect } from "@app/components/v3";
+import { Combobox, Field, FieldError } from "@app/components/v3";
 import {
   TSupabaseProject,
   useSupabaseConnectionListProjects
@@ -51,21 +50,20 @@ export const SupabaseApiKeyRotationParametersFields = () => {
             >
               Project
             </FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="supabase-project"
+            <Combobox
+              id="supabase-project"
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={projects.find((p) => p.id === value) ?? null}
               onBlur={onBlur}
-              onChange={(option) => {
-                const v = option as SingleValue<TSupabaseProject>;
-                onChange(v?.id ?? null);
-              }}
+              onValueChange={(option) => onChange(option.id)}
+              isClearable={false}
               options={projects}
               placeholder="Select a project..."
               getOptionLabel={(option) => `${option.name} (id: ${option.id})`}
               getOptionValue={(option) => option.id}
-              formatOptionLabel={formatProjectOptionLabel}
+              renderOption={formatProjectOptionLabel}
+              renderValue={formatProjectOptionLabel}
               isError={Boolean(error)}
             />
             <FieldError>{error?.message}</FieldError>
@@ -83,16 +81,12 @@ export const SupabaseApiKeyRotationParametersFields = () => {
             >
               Key Type
             </FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="supabase-key-type"
+            <Combobox
+              id="supabase-key-type"
               value={KEY_TYPE_OPTIONS.find((o) => o.value === value) ?? null}
               onBlur={onBlur}
-              onChange={(option) =>
-                onChange(
-                  (option as SingleValue<{ label: string; value: SupabaseApiKeyType }>)?.value ??
-                    null
-                )
-              }
+              onValueChange={(option) => onChange(option.value)}
+              isClearable={false}
               options={KEY_TYPE_OPTIONS}
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}

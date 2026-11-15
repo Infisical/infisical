@@ -105,7 +105,6 @@ apiRequest.interceptors.response.use(
         const newToken = await refreshPromise;
 
         // Retry the original request with the new token
-        // eslint-disable-next-line no-param-reassign
         config.headers.Authorization = `Bearer ${newToken}`;
         return await apiRequest(config);
       } catch {

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
@@ -19,6 +19,7 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -31,7 +32,7 @@ import { TProjectTemplateIdentityMembershipDALFactory } from "./project-template
 import { TProjectTemplateUserMembershipDALFactory } from "./project-template-user-membership-dal";
 
 type TProjectTemplatesServiceFactoryDep = {
-  licenseService: TLicenseServiceFactory;
+  licenseService: TLicenseService;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
   projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
@@ -40,6 +41,22 @@ type TProjectTemplatesServiceFactoryDep = {
   orgMembershipDAL: TOrgMembershipDALFactory;
   groupDAL: Pick<TGroupDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
+};
+
+const $validateProjectManagedIdentityNames = (
+  projectManagedIdentities: TProjectTemplateProjectManagedIdentity[],
+  existingNames: string[] = []
+) => {
+  const existing = new Set(existingNames);
+  projectManagedIdentities.forEach(({ name }) => {
+    if (existing.has(name)) return;
+    if (name.length > 255) {
+      throw new BadRequestError({ message: `Project-managed identity name "${name.slice(0, 32)}..." is too long` });
+    }
+    if (containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: `Project-managed identity name: ${LOG_UNSAFE_TEXT_MESSAGE}` });
+    }
+  });
 };
 
 const $unpackProjectTemplate = (
@@ -117,7 +134,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to access project templates due to plan restriction. Upgrade plan to access project templates."
       });
@@ -168,7 +185,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to access project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -206,7 +223,7 @@ export const projectTemplateServiceFactory = ({
   const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to access project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -247,7 +264,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to create project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -277,14 +294,17 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });
     }
 
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({ message: "Agent Vault project templates are not supported" });
+    }
+
     if (environments && type !== ProjectType.SecretManager) {
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }
 
-    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+    if (environments && plan.exceeds(PlanLimit.Environments, environments.length, 0)) {
       throw new BadRequestError({
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        message: `Failed to create project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+        message: `Failed to create project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
 
@@ -416,6 +436,7 @@ export const projectTemplateServiceFactory = ({
           message: "Project-managed identity names must be unique within the template"
         });
       }
+      $validateProjectManagedIdentityNames(projectManagedIdentities);
     }
 
     const projectTemplateEnvironments =
@@ -494,7 +515,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to update project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -532,10 +553,9 @@ export const projectTemplateServiceFactory = ({
     if (projectTemplate.type === ProjectType.SecretManager && environments === null)
       throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
 
-    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+    if (environments && plan.exceeds(PlanLimit.Environments, environments.length, 0)) {
       throw new BadRequestError({
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        message: `Failed to update project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+        message: `Failed to update project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
 
@@ -716,6 +736,12 @@ export const projectTemplateServiceFactory = ({
           message: "Project-managed identity names must be unique within the template"
         });
       }
+      $validateProjectManagedIdentityNames(
+        projectManagedIdentities,
+        ((projectTemplate.projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || []).map(
+          (i) => i.name
+        )
+      );
     }
 
     if (params.name && projectTemplate.name !== params.name) {
@@ -821,7 +847,7 @@ export const projectTemplateServiceFactory = ({
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to delete project template due to plan restriction. Upgrade plan to access project templates."
       });

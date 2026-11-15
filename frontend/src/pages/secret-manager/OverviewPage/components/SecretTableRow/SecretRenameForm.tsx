@@ -25,6 +25,7 @@ import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/con
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
@@ -82,11 +83,14 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
 
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
 
   const {
     handleSubmit,
     control,
+    setError,
     watch,
     formState: { isDirty, isSubmitting }
   } = useForm<TFormSchema>({
@@ -104,42 +108,44 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
   }, [isSecNameCopied]);
 
   const handleFormSubmit = async (data: TFormSchema) => {
-    if (!data.key) {
-      createNotification({
-        type: "error",
-        text: "Secret name cannot be empty"
-      });
-      return;
-    }
-
-    const promises = secrets
-      .filter((secret) => !!secret)
-      .map((secret) => {
-        if (!secret) return null;
-
-        return updateSecretV3({
-          environment: secret?.env,
+    const secretsToRename = secrets.filter((secret) => !!secret);
+    const results = await Promise.allSettled(
+      secretsToRename.map((secret) =>
+        updateSecretV3({
+          environment: secret.env,
           projectId,
           secretPath,
           secretKey: secret.key,
           type: SecretType.Shared,
           newSecretName: data.key
-        });
-      });
+        })
+      )
+    );
 
-    await Promise.all(promises)
-      .then(() => {
-        createNotification({
-          type: "success",
-          text: "Successfully renamed the secret"
-        });
-      })
-      .catch(() => {
-        createNotification({
-          type: "error",
-          text: "Error renaming the secret"
-        });
+    if (results.every((result) => result.status === "fulfilled")) {
+      createNotification({
+        type: "success",
+        text: "Successfully renamed the secret"
       });
+    }
+
+    showSecretWriteErrors(
+      secretsToRename.flatMap((secret, index) => {
+        const result = results[index];
+        if (result.status === "fulfilled") return [];
+        return [
+          {
+            error: result.reason as unknown,
+            field: "key" as const,
+            environmentName:
+              secretsToRename.length > 1
+                ? (environments.find((env) => env.slug === secret.env)?.name ?? secret.env)
+                : undefined
+          }
+        ];
+      }),
+      (field, message) => setError(field, { type: "server", message })
+    );
   };
 
   const currentSecretValue = watch("key");
@@ -202,7 +208,7 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
                     </InputGroupAddon>
                   )}
               </InputGroup>
-              <FieldError>{error?.message}</FieldError>
+              <FieldError className="whitespace-pre-line">{error?.message}</FieldError>
             </FieldContent>
           </Field>
         )}

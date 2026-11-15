@@ -2,11 +2,11 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { PlanLimit, PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -31,6 +31,17 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import {
+  HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE,
+  pausesHeartbeatForRoutingChange
+} from "../pam-account-heartbeat/pam-heartbeat-fns";
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessType,
@@ -58,17 +69,6 @@ import {
   validateGatewayAttachment,
   validateRecordingConnection
 } from "../pam/pam-validators";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
-import {
-  HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE,
-  pausesHeartbeatForRoutingChange
-} from "../pam-account-heartbeat/pam-heartbeat-fns";
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
-import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
@@ -134,7 +134,7 @@ type TPamAccountServiceFactoryDep = {
   >;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
@@ -145,7 +145,7 @@ type TPamAccountServiceFactoryDep = {
     | "cleanupAccountResources"
     | "checkGrant"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 const assertOraclePasswordIsUsable = (accountType: PamAccountType, credentials: unknown) => {
@@ -325,6 +325,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     templateId,
     accountType,
     search,
+    filterByAction,
     ...ctx
   }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
@@ -333,7 +334,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
+      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
@@ -403,12 +404,26 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
-      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
-        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
-      }
+      const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval } = resolveAccessControls(
+        a.templatePolicies
+      );
       const statusEntry = accessStatusMap.get(a.id);
       const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
+      const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
+      const hasGrant =
+        statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+        credentialStatusEntry?.accessStatus === ApprovalAccessStatus.Granted;
+      // Break-glass users and current grant holders can still reach a folder whose approvers and rules can't
+      // grant this account; only new requests are blocked
+      if (
+        requiresApproval &&
+        a.folderId &&
+        !canBreakGlass &&
+        !hasGrant &&
+        !foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+      ) {
+        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
+      }
       return {
         id: a.id,
         name: a.name,
@@ -436,7 +451,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           : ApprovalAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         pendingRequestId: statusEntry?.pendingRequestId ?? null,
-        canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
+        canBreakGlass,
         credentialAccessStatus: requiresApproval
           ? (credentialStatusEntry?.accessStatus ?? ApprovalAccessStatus.None)
           : ApprovalAccessStatus.None,
@@ -624,6 +639,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return true;
     }
 
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: gateway.gatewayId ?? gateway.templateGatewayId,
+      gatewayPoolId: gateway.gatewayPoolId ?? gateway.templateGatewayPoolId,
+      orgId
+    });
+
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayId,
@@ -688,7 +709,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     const plan = await licenseService.getPlan(ctx.actorOrgId);
-    if (typeof plan.pam === "boolean" && !plan.pam) {
+    if (!plan.allows(PlanProduct.Pam)) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."
       });
@@ -696,19 +717,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     if (
       (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
-      typeof plan.enterprisePamAccount === "boolean" &&
-      !plan.enterprisePamAccount
+      !plan.allows(PlanProduct.PamEnterpriseAccounts)
     ) {
       throw new BadRequestError({
         message: "Windows PAM accounts are not available on your current plan. Please upgrade to continue."
       });
     }
 
-    // maxPamAccounts is uncapped by default (null); only enforce a cap when the plan configures a numeric
-    // limit. Counted org-wide right before creation.
-    if (typeof plan.maxPamAccounts === "number") {
+    if (plan.isLimited(PlanLimit.PamAccounts)) {
       const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
-      if (currentPamAccountCount >= plan.maxPamAccounts) {
+      if (plan.exceeds(PlanLimit.PamAccounts, currentPamAccountCount)) {
         throw new BadRequestError({
           name: "PAM_ACCOUNT_LIMIT_REACHED",
           message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."
@@ -735,7 +753,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(
       deps,
       effectiveGatewayId,
-      effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
+      gatewayPoolId ?? (effectiveGatewayId ? null : template.gatewayPoolId),
       ctx,
       { inheritedFrom: gatewayId ? undefined : `Account template '${template.name}'` }
     );
@@ -926,7 +944,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       await validateGatewayAttachment(
         deps,
         effectiveGatewayId,
-        effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
+        gatewayPoolId ?? (effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId)),
         ctx,
         {
           previousGatewayId: existing.gatewayId ?? existing.templateGatewayId,
@@ -1323,11 +1341,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason, requireMfa, allowBreakGlass } = resolveAccessControls(
-          a.templatePolicies
-        );
+        const { requiresApproval, requireReason, requireMfa, allowBreakGlass, allowAutoApproval } =
+          resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
-        const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
+        const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
+        const hasPolicyConfigured = a.folderId
+          ? canBreakGlass ||
+            statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+            foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+          : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
           disabledReason =
@@ -1354,7 +1376,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
             : ApprovalAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           pendingRequestId: statusEntry?.pendingRequestId ?? null,
-          canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
+          canBreakGlass,
           disabledReason,
           createdAt: a.createdAt,
           updatedAt: a.updatedAt

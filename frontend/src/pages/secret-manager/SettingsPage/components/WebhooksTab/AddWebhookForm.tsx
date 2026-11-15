@@ -1,8 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { components, OptionProps } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon } from "lucide-react";
 import z from "zod";
 
 import {
@@ -11,11 +9,11 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  Combobox,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   SecretPathInput,
   Select,
@@ -50,21 +48,12 @@ const EVENT_OPTIONS: TWebhookEventOption[] = WEBHOOK_EVENTS.map((event) => ({
   description: WEBHOOK_EVENT_METADATA[event].description
 }));
 
-const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
-  const { data, children, isSelected } = props;
-
-  return (
-    <components.Option {...props}>
-      <div className="flex flex-row items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{children}</p>
-          <p className="truncate text-xs leading-4 text-muted">{data.description}</p>
-        </div>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
+const renderEventOption = (option: TWebhookEventOption) => (
+  <div className="min-w-0">
+    <p className="truncate font-medium">{option.label}</p>
+    <p className="truncate text-xs leading-4 text-muted">{option.description}</p>
+  </div>
+);
 
 const formSchema = z
   .object({
@@ -117,7 +106,6 @@ export const AddWebhookForm = ({
 
   const selectedWebhookType = watch("type");
   const selectedEnvironment = watch("environment");
-  const modalContainer = useRef<HTMLDivElement>(null);
 
   const generalFormFields = (
     <>
@@ -191,7 +179,7 @@ export const AddWebhookForm = ({
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-lg">
-        <div ref={modalContainer} className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <form onSubmit={handleSubmit(onCreateWebhook)} className="flex h-full min-h-0 flex-col">
             <SheetHeader>
               <SheetTitle>Create a new webhook</SheetTitle>
@@ -300,23 +288,17 @@ export const AddWebhookForm = ({
                         return (
                           <Field>
                             <FieldLabel htmlFor="webhook-events">Events</FieldLabel>
-                            <FilterableSelect
-                              isMulti
-                              inputId="webhook-events"
+                            <Combobox
+                              multiple
+                              id="webhook-events"
                               options={EVENT_OPTIONS}
                               value={selectedOptions}
-                              onChange={(selected) =>
-                                handleChange(selected as readonly TWebhookEventOption[])
-                              }
+                              onValueChange={handleChange}
                               getOptionValue={(option) => option.value}
+                              getOptionKeywords={(option) => [option.value]}
                               getOptionLabel={(option) => option.label}
                               placeholder="Select events..."
-                              menuPortalTarget={modalContainer.current}
-                              menuPosition="fixed"
-                              menuPlacement="bottom"
-                              closeMenuOnSelect={false}
-                              hideSelectedOptions={false}
-                              components={{ Option: OptionWithDescription }}
+                              renderOption={renderEventOption}
                             />
                             <FieldDescription>
                               {!hasSelection

@@ -1,0 +1,65 @@
+---
+title: "ClickHouse connection"
+sidebarTitle: "ClickHouse"
+description: "Learn how to configure a ClickHouse connection for Infisical."
+---
+
+import CreateUser from "/snippets/app-connections/clickhouse/create-user.mdx";
+import ConnectionFormFields from "/snippets/app-connections/clickhouse/form-fields.mdx";
+
+A ClickHouse connection authenticates Infisical to your ClickHouse server with the username and password of a [ClickHouse user](https://clickhouse.com/docs/operations/access-rights), so Infisical can change the passwords of other ClickHouse users.
+
+<Note>
+    This guide only authenticates Infisical with ClickHouse. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A ClickHouse user that can create users and grant privileges, such as `default`
+- Network access from Infisical to the HTTP interface of your ClickHouse server, or a [Gateway](/documentation/platform/gateways/overview) that can reach it
+
+## Step 1: Create a ClickHouse user for Infisical
+
+Infisical needs a ClickHouse user with the `ALTER USER` privilege, which lets it change the passwords of other users.
+
+<CreateUser />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create ClickHouse Connection](/api-reference/endpoints/app-connections/clickhouse/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **ClickHouse**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to Database**.
+    </Step>
+</Steps>
+
+When you select **Connect to Database**, Infisical signs in to ClickHouse with the username and password, and doesn't save the connection if ClickHouse rejects them. Infisical doesn't check the `ALTER USER` privilege until you create a rotation.
+
+<Check>
+    Your ClickHouse app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your ClickHouse app connection is configured, you can use it to set up the following integrations:
+
+<Card title="ClickHouse credentials" icon="rotate-cw" href="/documentation/platform/secret-rotation/clickhouse-credentials">
+    Rotate the passwords of two ClickHouse users on a schedule.
+</Card>

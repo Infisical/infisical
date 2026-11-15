@@ -33,7 +33,10 @@ const buildPqcEnv = (): NodeJS.ProcessEnv => {
   };
 };
 
-const execOpenSSL = (args: string[], stdin?: Buffer): Promise<{ stdout: Buffer; stderr: string; code: number }> => {
+const execOpenSSL = (
+  args: string[],
+  stdin?: Buffer
+): Promise<{ stdout: Buffer<ArrayBuffer>; stderr: string; code: number }> => {
   return new Promise((resolve, reject) => {
     const proc = spawn(getPqcOpenSSLBinPath(), args, {
       stdio: ["pipe", "pipe", "pipe"],
@@ -65,7 +68,7 @@ const execOpenSSL = (args: string[], stdin?: Buffer): Promise<{ stdout: Buffer; 
   });
 };
 
-const execOpenSSLOrThrow = async (args: string[], stdin?: Buffer): Promise<Buffer> => {
+const execOpenSSLOrThrow = async (args: string[], stdin?: Buffer): Promise<Buffer<ArrayBuffer>> => {
   const { stdout, stderr, code } = await execOpenSSL(args, stdin);
   if (code !== 0) {
     throw new Error(`PQC OpenSSL command failed (exit ${code}): ${stderr}`);
@@ -82,11 +85,11 @@ const withTempDir = async <T>(fn: (dir: string) => Promise<T>): Promise<T> => {
   }
 };
 
-export const opensslGenpkey = async (algorithm: string): Promise<Buffer> => {
+export const opensslGenpkey = async (algorithm: string): Promise<Buffer<ArrayBuffer>> => {
   return execOpenSSLOrThrow(["genpkey", "-algorithm", algorithm, "-outform", "DER"]);
 };
 
-export const opensslDerivePublicKey = async (privateDer: Buffer): Promise<Buffer> => {
+export const opensslDerivePublicKey = async (privateDer: Buffer): Promise<Buffer<ArrayBuffer>> => {
   return withTempDir(async (dir) => {
     const keyPath = join(dir, "key.der");
     await writeFile(keyPath, privateDer, { mode: 0o600 });
@@ -94,7 +97,7 @@ export const opensslDerivePublicKey = async (privateDer: Buffer): Promise<Buffer
   });
 };
 
-export const opensslSign = async (privateDer: Buffer, data: Buffer): Promise<Buffer> => {
+export const opensslSign = async (privateDer: Buffer, data: Buffer): Promise<Buffer<ArrayBuffer>> => {
   return withTempDir(async (dir) => {
     const keyPath = join(dir, "key.der");
     const dataPath = join(dir, "data.bin");

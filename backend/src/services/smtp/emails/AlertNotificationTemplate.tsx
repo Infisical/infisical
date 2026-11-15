@@ -2,6 +2,7 @@ import { Column, Heading, Hr, Row, Section, Text } from "@react-email/components
 
 import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   alertName: string;
@@ -11,7 +12,13 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   summary: string;
   severity?: string;
   viewUrl: string;
-  items: { id: string; title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
+  items: {
+    id: string;
+    title: string;
+    identifier?: string;
+    fields?: { label: string; value: string }[];
+    url?: string;
+  }[];
   remainingCount?: number;
 }
 
@@ -68,7 +75,9 @@ export const AlertNotificationTemplate = ({
             key={item.id}
             className="mb-[12px] px-[20px] pt-[16px] pb-[8px] border border-solid border-gray-200 rounded-lg bg-gray-50"
           >
-            <Text className="text-[15px] font-semibold text-black m-0 mb-[2px]">{item.title}</Text>
+            <Text className="text-[15px] font-semibold text-black m-0 mb-[2px]">
+              {item.url ? <BaseLink href={item.url}>{item.title}</BaseLink> : item.title}
+            </Text>
             {item.identifier && <Text className="text-[12px] text-gray-500 m-0 mb-[10px]">{item.identifier}</Text>}
             {!item.identifier && <div className="mb-[10px]" />}
             {(item.fields ?? []).map((field) => (

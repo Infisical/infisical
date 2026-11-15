@@ -1,6 +1,7 @@
 ---
-title: "PM2"
-description: "How to use Infisical to inject environment variables and secrets with PM2 into a Node.js app"
+title: "Inject secrets into a PM2 app"
+sidebarTitle: "PM2"
+description: "How to use Infisical to inject environment variables and secrets with PM2 into a Node.js app."
 ---
 
 Prerequisites:
@@ -23,7 +24,7 @@ infisical init
 <CodeGroup>
 
 ```bash infisical-run.sh
-infisical sm run -- npm start
+infisical secrets-manager run -- npm start
 ```
 
 ```js infisical-run.js

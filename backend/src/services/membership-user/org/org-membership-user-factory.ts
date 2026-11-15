@@ -1,11 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
@@ -16,9 +15,9 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { matchesAllowedEmailDomain } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { ActorType } from "@app/services/auth/auth-type";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs
@@ -40,7 +39,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">;
+  licenseService: TLicenseService;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -129,10 +128,10 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(dto.permission.orgId));
-    if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= identityLimit) {
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (plan.isLimited(PlanLimit.Identities)) {
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",
           message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."

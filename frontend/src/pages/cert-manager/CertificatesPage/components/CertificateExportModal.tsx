@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DownloadIcon } from "lucide-react";
 import { z } from "zod";
 
+import { PasswordField } from "@app/components/auth/PasswordField";
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   Button,
   Dialog,
@@ -24,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { useServerConfig } from "@app/context";
+import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -54,62 +58,45 @@ export type ExportOptions = {
   };
 };
 
-const exportFormSchema = z
-  .object({
-    format: z.enum(["pem", "pkcs12"]),
-    pkcs12Password: z.string().optional(),
-    pkcs12Alias: z.string().optional()
-  })
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Password && data.pkcs12Alias && data.pkcs12Alias.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "PKCS12 password and alias are required when using PKCS12 format",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Password && data.pkcs12Password.length >= 6;
-      }
-      return true;
-    },
-    {
-      message: "PKCS12 password must be 6 characters or longer",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12" && data.pkcs12Password) {
-        return data.pkcs12Password.length >= 6;
-      }
-      return true;
-    },
-    {
-      message: "Password must be at least 6 characters long",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Alias && data.pkcs12Alias.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "Certificate alias is required",
-      path: ["pkcs12Alias"]
-    }
-  );
+const createExportFormSchema = (pkcs12PasswordPolicy: TPasswordPolicy) => {
+  const pkcs12PasswordSchema = createPasswordSchema(pkcs12PasswordPolicy);
 
-type ExportFormData = z.infer<typeof exportFormSchema>;
+  return z
+    .object({
+      format: z.enum(["pem", "pkcs12"]),
+      pkcs12Password: z.string().optional(),
+      pkcs12Alias: z.string().optional()
+    })
+    .superRefine((data, context) => {
+      if (data.format !== "pkcs12") return;
+
+      const passwordCheck = pkcs12PasswordSchema.safeParse(data.pkcs12Password ?? "");
+      if (!passwordCheck.success) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: passwordCheck.error.issues[0]?.message ?? "Invalid keystore password",
+          path: ["pkcs12Password"]
+        });
+      }
+
+      const alias = data.pkcs12Alias?.trim() ?? "";
+      if (!alias) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Certificate alias is required",
+          path: ["pkcs12Alias"]
+        });
+      } else if (alias.length > 255) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Certificate alias must be at most 255 characters",
+          path: ["pkcs12Alias"]
+        });
+      }
+    });
+};
+
+type ExportFormData = z.infer<ReturnType<typeof createExportFormSchema>>;
 
 export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelected }: Props) => {
   const { certificateId, serialNumber } =
@@ -118,12 +105,19 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
       serialNumber: string;
     }) || {};
 
+  const { config } = useServerConfig();
+  const exportFormSchema = useMemo(
+    () => createExportFormSchema(config.pkcs12PasswordPolicy),
+    [config.pkcs12PasswordPolicy]
+  );
+
   const {
     control,
+    register,
     handleSubmit,
     reset,
     watch,
-    formState: { isSubmitting }
+    formState: { isSubmitting, errors, submitCount }
   } = useForm<ExportFormData>({
     resolver: zodResolver(exportFormSchema),
     defaultValues: {
@@ -134,6 +128,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   });
 
   const selectedFormat = watch("format");
+  const pkcs12Password = watch("pkcs12Password") ?? "";
 
   // Reset form whenever the modal opens
   useEffect(() => {
@@ -213,34 +208,18 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
 
           {selectedFormat === "pkcs12" && (
             <>
-              <Controller
-                control={control}
-                name="pkcs12Password"
-                render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
-                    <FieldLabel htmlFor="certificate-export-pkcs12-password">
-                      Keystore Password
-                      <span aria-hidden className="text-danger">
-                        *
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id="certificate-export-pkcs12-password"
-                      type="password"
-                      placeholder="Enter keystore password"
-                      autoComplete="new-password"
-                      aria-required
-                      isError={Boolean(error)}
-                    />
-                    <FieldDescription>
-                      Password to protect the PKCS12 keystore (minimum 6 characters)
-                    </FieldDescription>
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
+              <PasswordField
+                id="certificate-export-pkcs12-password"
+                label="Keystore Password"
+                placeholder="Enter keystore password"
+                value={pkcs12Password}
+                policy={config.pkcs12PasswordPolicy}
+                breachStatus="idle"
+                registration={register("pkcs12Password")}
+                error={errors.pkcs12Password}
+                submitCount={submitCount}
+                isRequired
               />
-
               <Controller
                 control={control}
                 name="pkcs12Alias"

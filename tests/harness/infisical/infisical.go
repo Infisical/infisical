@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -37,9 +38,21 @@ const (
 	encryptionKey = "6c1fe4e407b8911c104518103505b218"
 )
 
+// OAuthClients are the OAuth app credentials the instance boots with, one pair per
+// login provider. A provider fake checks a token request against these.
+var OAuthClients = map[string]string{
+	"CLIENT_ID_GOOGLE_LOGIN":     oauth.GoogleClientID,
+	"CLIENT_SECRET_GOOGLE_LOGIN": oauth.GoogleClientSecret,
+	"CLIENT_ID_GITHUB_LOGIN":     oauth.GitHubClientID,
+	"CLIENT_SECRET_GITHUB_LOGIN": oauth.GitHubClientSecret,
+	"CLIENT_ID_GITLAB_LOGIN":     oauth.GitLabClientID,
+	"CLIENT_SECRET_GITLAB_LOGIN": oauth.GitLabClientSecret,
+}
+
 type module struct {
 	image    Image
 	env      map[string]string
+	files    []infra.File
 	runModes string
 }
 
@@ -50,6 +63,10 @@ func WithImage(img Image) Option { return func(m *module) { m.image = img } }
 
 // WithEnv overrides or adds an environment variable.
 func WithEnv(k, v string) Option { return func(m *module) { m.env[k] = v } }
+
+func WithFile(src, dst string) Option {
+	return func(m *module) { m.files = append(m.files, infra.File{Src: src, Dst: dst}) }
+}
 
 // WithRunModes sets INFISICAL_RUN_MODES. A pod that does not include "api" serves
 // /api/status and no product routes, which is a thing worth asserting.
@@ -96,7 +113,27 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// every call it makes and has no hand-written client to fall back on, so a
 		// route missing from the spec is a route no test can reach.
 		"OPENAPI_FULL_SPEC": "true",
-		"SITE_URL":          fmt.Sprintf("http://%s:%d", self, port),
+		// https although the server listens on plain http: nothing dials SITE_URL, and a
+		// delegated approval system refuses a callback URL that is not https.
+		"SITE_URL": fmt.Sprintf("https://%s:%d", self, port),
+		// The backend signs with ML-DSA, the post-quantum algorithm KMS keys offer, by running
+		// an `openssl` binary: PQC_OPENSSL_BIN_PATH, else /opt/openssl-pqc/bin/openssl. The
+		// release images (Dockerfile.standalone-infisical, the FIPS image) build an OpenSSL
+		// 3.5 into that path; backend/Dockerfile, which the harness builds, does not, so every
+		// ML-DSA call would fail with a 500. The image's own Debian OpenSSL is also 3.5 and
+		// supports ML-DSA, so the suites run the same backend code against that build instead
+		// of the release's.
+		"PQC_OPENSSL_BIN_PATH": "/usr/bin/openssl",
+		// bcrypt cost for passwords, email and invite codes, and client secrets. Every
+		// tenant and user the harness creates pays several hashes and compares, and at
+		// the default cost they saturate the server's CPU and the libuv pool its other
+		// crypto shares. 4 is bcrypt's minimum; nothing a test asserts depends on it.
+		"SALT_ROUNDS": "4",
+		// At info the instance logs several lines per request, mostly plan lookups. Under
+		// a full run that was hundreds of lines a second, serialized by the server and
+		// again by Docker's log driver, for nothing a failing test reads. Warnings and
+		// errors still reach the container log.
+		"PINO_LOG_LEVEL": "warn",
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes
@@ -117,6 +154,14 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	// NODE_EXTRA_CA_CERTS and carries on, so the mounted CA is not optional: without
 	// it HTTP keeps working and every real provider breaks.
 	env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
+	// Audit log streams run their own SSRF check with a separate switch.
+	env["AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP"] = "true"
+
+	// OAuth login strategies are registered only at boot, so a test cannot turn one on
+	// later. The fakes answer for the real hosts; these only have to be non-empty.
+	for k, v := range OAuthClients {
+		env[k] = v
+	}
 
 	// The License Server is one more fake, reached the same way as any other third
 	// party: by name, over TLS fakenet terminates. It is what makes entitlements
@@ -141,7 +186,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Image: m.image.Ref,
 		Env:   env,
 		Ports: []int{port},
-		Files: []infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}},
+		Files: append([]infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}}, m.files...),
 		DNS:   []string{fn.Resolver()},
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and
@@ -171,7 +216,7 @@ func (h *Handle) BaseURL(m infra.Mode) string { return h.Endpoint(m).URL("http")
 
 // SiteURL is the SITE_URL the server was started with: the SAML audience, and the
 // origin of every redirect it builds. Not reachable from the test process.
-func (h *Handle) SiteURL() string { return h.BaseURL(infra.Internal) }
+func (h *Handle) SiteURL() string { return h.Endpoint(infra.Internal).URL("https") }
 
 // Logs is what a failure dumps. Under a Shared profile one instance serves every
 // parallel tenant, so a caller filters by org id rather than printing all of it.

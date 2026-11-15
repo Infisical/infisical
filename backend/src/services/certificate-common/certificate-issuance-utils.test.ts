@@ -1,5 +1,5 @@
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { validateAlgorithmCompatibility } from "./certificate-issuance-utils";
 

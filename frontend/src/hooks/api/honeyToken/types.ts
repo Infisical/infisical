@@ -1,11 +1,11 @@
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  AwsHoneyTokenDeploymentUnavailableReason,
+  HoneyTokenConfigStatus,
+  HoneyTokenManagedBy,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 
-export { HoneyTokenType };
-
-export enum HoneyTokenConfigStatus {
-  VerificationPending = "VERIFICATION_PENDING",
-  Complete = "COMPLETE"
-}
+export { HoneyTokenConfigStatus, HoneyTokenType };
 
 export type THoneyTokenConfig = {
   id: string;
@@ -20,6 +20,11 @@ export type THoneyTokenConfig = {
     stackName: string;
     awsRegion: string;
   } | null;
+};
+
+export type TAwsHoneyTokenDeploymentOption = {
+  managedBy: HoneyTokenManagedBy;
+  unavailableReason: AwsHoneyTokenDeploymentUnavailableReason | null;
 };
 
 export type TUpsertHoneyTokenConfigDTO = {

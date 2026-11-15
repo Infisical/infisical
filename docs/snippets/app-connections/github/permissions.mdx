@@ -1,0 +1,70 @@
+{/*
+Props:
+- method: "github-app" or "personal-access-token", so each step shows the instructions and screenshots for its own GitHub screen.
+*/}
+
+{method === "github-app" && (
+    <MDX>
+        Under **Permissions**, set the permissions for every [type of GitHub secret](/integrations/secret-syncs/github#secret-types) you plan to sync:
+    </MDX>
+)}
+
+{method === "personal-access-token" && (
+    <MDX>
+        Under **Permissions**, select **Add permissions** and add the permissions for every [type of GitHub secret](/integrations/secret-syncs/github#secret-types) you plan to sync:
+    </MDX>
+)}
+
+<AccordionGroup>
+    <Accordion title="Actions secrets">
+        - To sync to a repository, set the repository permission **Secrets** to Read and write
+        - To sync to a repository environment, also set the repository permission **Environments** to Read and write, and **Actions** to Read-only
+        - To sync to an organization, set the organization permission **Secrets** to Read and write
+
+        {method === "github-app" && (
+            <MDX>
+                ![integrations github app organization](/images/integrations/github/app/self-hosted-github-app-organization.png)
+            </MDX>
+        )}
+
+        {method === "personal-access-token" && (
+            <MDX>
+                ![Secrets set to Read and write on a fine-grained personal access token](/images/app-connections/github/create-pat-form.png)
+            </MDX>
+        )}
+    </Accordion>
+    <Accordion title="Dependabot secrets">
+        - To sync to a repository, set the repository permission **Dependabot secrets** to Read and write
+        - To sync to an organization, set the organization permission **Organization dependabot secrets** to Read and write
+
+        {method === "github-app" && (
+            <MDX>
+                ![Dependabot secrets set to Read and write in the GitHub App's repository permissions](/images/app-connections/github/github-app-dependabot-secrets-permission.png)
+            </MDX>
+        )}
+
+        {method === "personal-access-token" && (
+            <MDX>
+                ![Dependabot secrets set to Read and write on a fine-grained personal access token](/images/app-connections/github/pat-dependabot-secrets-permission.png)
+            </MDX>
+        )}
+    </Accordion>
+    <Accordion title="Codespaces secrets">
+        GitHub Enterprise Server doesn't include Codespaces, so you can't sync Codespaces secrets through a GitHub Enterprise Server connection.
+
+        - To sync to a repository, set the repository permission **Codespaces secrets** to Read and write
+        - To sync to an organization, set the organization permission **Organization codespaces secrets** to Read and write
+
+        {method === "github-app" && (
+            <MDX>
+                ![Codespaces secrets set to Read and write in the GitHub App's repository permissions](/images/app-connections/github/github-app-codespaces-secrets-permission.png)
+            </MDX>
+        )}
+
+        {method === "personal-access-token" && (
+            <MDX>
+                ![Codespaces secrets set to Read and write on a fine-grained personal access token](/images/app-connections/github/pat-codespaces-secrets-permission.png)
+            </MDX>
+        )}
+    </Accordion>
+</AccordionGroup>

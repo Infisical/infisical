@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { refineNoDuplicates } from "./agent-vault-list-schema-fns";
+
 export const AGENT_VAULT_MAX_PATH_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 
@@ -48,13 +50,5 @@ export const agentVaultPathPrefixListSchema = z
   .array(pathPrefixSchema)
   .min(1, "Add at least one path prefix, or leave this unset to allow every path.")
   .max(AGENT_VAULT_MAX_PATH_PREFIXES)
-  .superRefine((prefixes, ctx) => {
-    const seen = new Set<string>();
-    prefixes.forEach((prefix, index) => {
-      if (seen.has(prefix)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${prefix}" is listed twice.`, path: [index] });
-      }
-      seen.add(prefix);
-    });
-  })
+  .superRefine(refineNoDuplicates)
   .nullable();

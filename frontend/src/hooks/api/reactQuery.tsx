@@ -43,7 +43,10 @@ function ValidationErrorModal({
   requestBody?: Record<string, unknown> | null;
   toastIdRef: { current: string | number | undefined };
 }) {
-  if (serverResponse.error !== ApiErrorTypes.ValidationError) {
+  if (
+    serverResponse.error !== ApiErrorTypes.ValidationError ||
+    !Array.isArray(serverResponse.message)
+  ) {
     return null;
   }
 
@@ -58,8 +61,7 @@ function ValidationErrorModal({
         }
       }}
     >
-      {/* z-[70] keeps this dialog above v2 Modals (z-[60]) hosting the form that errored */}
-      <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Validation Error Details</DialogTitle>
           <DialogDescription>These fields did not pass validation.</DialogDescription>
@@ -134,12 +136,19 @@ function PermissionConditionsList({
   );
 }
 
+const reportedErrors = new WeakSet<object>();
+
+export const wasErrorReported = (error: unknown) =>
+  typeof error === "object" && error !== null && reportedErrors.has(error);
+
 export const onRequestError = (
   error: unknown,
   _variables?: unknown,
   _context?: unknown,
   mutation?: { meta?: Record<string, unknown> }
 ) => {
+  // For a mutation whose caller shows every failure in place, where a toast would repeat it.
+  if (mutation?.meta?.skipErrorToast) return;
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
     const handledErrorCodes = mutation?.meta?.handledErrorCodes;
@@ -152,10 +161,16 @@ export const onRequestError = (
       return;
     }
 
+    if (
+      serverResponse?.error === ApiErrorTypes.ValidationError &&
+      mutation?.meta?.skipValidationToast
+    ) {
+      return;
+    }
+    reportedErrors.add(error);
+
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-      if (mutation?.meta?.skipValidationToast) {
-        return;
-      }
+      const validationMessage: unknown = serverResponse.message;
       let requestBody: Record<string, unknown> | undefined;
       try {
         const configData = error.config?.data;
@@ -171,7 +186,10 @@ export const onRequestError = (
       toastIdRef.current = createNotification({
         title: "Validation Error",
         type: "error",
-        text: "Please check the input and try again.",
+        text:
+          typeof validationMessage === "string"
+            ? validationMessage
+            : "Please check the input and try again.",
         callToAction: (
           <ValidationErrorModal
             serverResponse={serverResponse}
@@ -210,8 +228,7 @@ export const onRequestError = (
                 Show more
               </Button>
             </DialogTrigger>
-            {/* z-[70] keeps this dialog above v2 Modals (z-[60]) hosting the form that errored */}
-            <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Validation Rules</DialogTitle>
                 <DialogDescription>Please review the allowed rules below.</DialogDescription>
@@ -279,7 +296,7 @@ export const onRequestError = (
                 Show more
               </Button>
             </DialogTrigger>
-            <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Missing Permissions</DialogTitle>
                 <DialogDescription>
@@ -323,8 +340,14 @@ export const onRequestError = (
     const errorMessage =
       serverResponse?.message || "An unexpected error occurred. Please try again.";
 
+    const status = error.response?.status;
+    let title = "Request failed";
+    if (status === 400) title = "Bad Request";
+    else if (status === 429) title = "Too many requests";
+    else if (status && status >= 500) title = "Server error";
+
     createNotification({
-      title: "Bad Request",
+      title,
       type: "error",
       text: `${errorMessage}${errorMessage.endsWith(".") ? "" : "."}`,
       copyActions: serverResponse?.reqId

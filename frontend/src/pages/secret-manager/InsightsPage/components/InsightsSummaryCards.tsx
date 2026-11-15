@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
   AlertTriangleIcon,
@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   IconButton,
+  RowLink,
   Separator,
   Skeleton,
   Table,
@@ -130,7 +131,6 @@ const RotationTable = ({
   orgId: string;
   projectId: string;
 }) => {
-  const navigate = useNavigate();
   const allItems = [
     ...failed.map((item) => ({ ...item, status: "failed" as const })),
     ...upcoming.map((item) => ({ ...item, status: "upcoming" as const }))
@@ -151,22 +151,19 @@ const RotationTable = ({
       </TableHeader>
       <TableBody>
         {allItems.map((item) => (
-          <TableRow
-            key={`${item.status}-${item.name}-${item.environment}`}
-            onClick={() =>
-              navigate({
-                to: overviewRoute,
-                params: { orgId, projectId },
-                search: {
+          <TableRow key={`${item.status}-${item.name}-${item.environment}`} linked>
+            <TableCell className="max-w-[200px] truncate font-medium" title={item.name}>
+              <RowLink
+                to={overviewRoute}
+                params={{ orgId, projectId }}
+                search={{
                   search: item.name,
                   environments: [item.environment],
                   filterBy: "rotation"
-                }
-              })
-            }
-          >
-            <TableCell className="max-w-[200px] truncate font-medium" title={item.name}>
-              {item.name}
+                }}
+              >
+                {item.name}
+              </RowLink>
             </TableCell>
             <TableCell className="text-muted" title={item.environment}>
               {item.environment}
@@ -217,7 +214,6 @@ const ReminderTable = ({
   orgId: string;
   projectId: string;
 }) => {
-  const navigate = useNavigate();
   const allItems = [
     ...overdue.map((item) => ({ ...item, status: "overdue" as const })),
     ...upcoming.map((item) => ({ ...item, status: "upcoming" as const }))
@@ -238,22 +234,19 @@ const ReminderTable = ({
       </TableHeader>
       <TableBody>
         {allItems.map((item) => (
-          <TableRow
-            key={`${item.status}-${item.secretKey}-${item.environment}`}
-            onClick={() =>
-              navigate({
-                to: overviewRoute,
-                params: { orgId, projectId },
-                search: {
+          <TableRow key={`${item.status}-${item.secretKey}-${item.environment}`} linked>
+            <TableCell className="max-w-[200px] truncate font-medium" title={item.secretKey}>
+              <RowLink
+                to={overviewRoute}
+                params={{ orgId, projectId }}
+                search={{
                   search: item.secretKey,
                   environments: [item.environment],
                   filterBy: "secret"
-                }
-              })
-            }
-          >
-            <TableCell className="max-w-[200px] truncate font-medium" title={item.secretKey}>
-              {item.secretKey}
+                }}
+              >
+                {item.secretKey}
+              </RowLink>
             </TableCell>
             <TableCell className="text-muted" title={item.environment}>
               {item.environment}
@@ -293,7 +286,6 @@ const StaleSecretsTable = ({
   orgId: string;
   projectId: string;
 }) => {
-  const navigate = useNavigate();
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   if (!totalCount) return <p className="p-4 text-center text-xs text-muted">No stale secrets</p>;
@@ -312,22 +304,19 @@ const StaleSecretsTable = ({
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <TableRow
-              key={`${item.key}-${item.environment}-${item.secretPath}`}
-              onClick={() =>
-                navigate({
-                  to: overviewRoute,
-                  params: { orgId, projectId },
-                  search: {
+            <TableRow key={`${item.key}-${item.environment}-${item.secretPath}`} linked>
+              <TableCell className="max-w-[200px] truncate font-medium" title={item.key}>
+                <RowLink
+                  to={overviewRoute}
+                  params={{ orgId, projectId }}
+                  search={{
                     search: item.key,
                     environments: [item.environment],
                     filterBy: "secret"
-                  }
-                })
-              }
-            >
-              <TableCell className="max-w-[200px] truncate font-medium" title={item.key}>
-                {item.key}
+                  }}
+                >
+                  {item.key}
+                </RowLink>
               </TableCell>
               <TableCell className="text-muted" title={item.environment}>
                 {item.environment}

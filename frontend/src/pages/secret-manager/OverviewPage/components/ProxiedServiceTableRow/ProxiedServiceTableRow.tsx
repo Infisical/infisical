@@ -28,7 +28,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { formatDateTime } from "@app/helpers/datetime";
-import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -58,6 +57,8 @@ type Props = {
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
   onEdit: (proxiedService: TDashboardProxiedService) => void;
   onDelete: (proxiedService: TDashboardProxiedService) => void;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const ProxiedServiceTableRow = ({
@@ -66,10 +67,10 @@ export const ProxiedServiceTableRow = ({
   isProxiedServiceInEnv,
   getProxiedServiceByName,
   onEdit,
-  onDelete
+  onDelete,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
-
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
 
@@ -185,7 +186,7 @@ export const ProxiedServiceTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className="group hover:z-10"
       >
         <TableCell

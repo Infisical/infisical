@@ -13,7 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
@@ -26,6 +26,10 @@ import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import {
+  AutoApprovalResults,
+  LinkedRecordValue
+} from "../../components/auto-approval/AutoApprovalResults";
 import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { isMachineIdentityRequest } from "../../components/requesterDisplay";
@@ -89,7 +93,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   return (
     <>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isRevokeConfirmOpen}
         onOpenChange={setIsRevokeConfirmOpen}
         title="Revoke Access"
@@ -142,7 +146,11 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                 }
               ]
             : []),
-          { label: "Reason", value: requestData?.reason || "No reason provided" }
+          { label: "Reason", value: requestData?.reason || "No reason provided" },
+          ...(request?.autoApproval?.inputs ?? []).map((input) => ({
+            label: input.label,
+            value: <LinkedRecordValue input={input} />
+          }))
         ]}
         contentFooter={
           (isPending || canRevoke) && (
@@ -246,6 +254,13 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
               <p className="text-sm text-muted">
                 This request has been {status.label.toLowerCase()} and can no longer be actioned.
               </p>
+            )}
+
+            {request?.autoApproval && (
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Auto-approval status</p>
+                <AutoApprovalResults outcome={request.autoApproval} />
+              </div>
             )}
           </div>
         </div>

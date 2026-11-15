@@ -14,6 +14,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "redactSecretVersionValue",
       params: z.object({
         versionId: z.string()
       }),

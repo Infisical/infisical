@@ -7,7 +7,7 @@ on:
       - "backend/**"
       - "!backend/README.md"
       - "!backend/.*"
-      - "backend/.eslintrc.js"
+      - "backend/.oxlintrc.json"
       - "build-versions.env"
   workflow_call:
 
@@ -61,6 +61,9 @@ jobs:
         run: docker compose -f docker-compose.e2e-dbs.yml up -d
       - name: Run unit tests
         run: npm run test:unit
+        working-directory: backend
+      - name: Run integration tests
+        run: npm run test:integration
         working-directory: backend
       - name: Log in to GHCR
         continue-on-error: true

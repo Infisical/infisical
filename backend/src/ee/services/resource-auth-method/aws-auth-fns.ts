@@ -1,32 +1,14 @@
 import RE2 from "re2";
 
-import { isValidAwsRegion } from "@app/lib/aws/region";
 import { request } from "@app/lib/config/request";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { extractPrincipalArn } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
+import {
+  extractPrincipalArn,
+  parseSignedGetCallerIdentityRequest
+} from "@app/services/identity-aws-auth/identity-aws-auth-fns";
 
-import { TAwsGetCallerIdentityHeaders, TGetCallerIdentityResponse } from "./aws-auth-types";
-
-// Parses the AWS region from the SigV4 Authorization header's Credential=… segment.
-// Same approach as identity-aws-auth (services/identity-aws-auth/identity-aws-auth-service.ts).
-// We trust the caller-provided region because the signature itself is bound to it; if the
-// region is wrong, AWS STS will reject the proxied request.
-const awsRegionFromHeader = (authorizationHeader: string): string | null => {
-  // Authorization: AWS4-HMAC-SHA256 Credential=AKIA.../<date>/<region>/sts/aws4_request, ...
-  try {
-    const fields = authorizationHeader.split(" ");
-    for (const field of fields) {
-      if (field.startsWith("Credential=")) {
-        const parts = field.split("/");
-        if (parts.length >= 3) return parts[2];
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
-};
+import { TGetCallerIdentityResponse } from "./aws-auth-types";
 
 type TVerifyStsCallerInput = {
   iamHttpRequestMethod: string;
@@ -45,34 +27,21 @@ export const verifyStsAndExtractCaller = async ({
   iamRequestHeaders,
   errorContext
 }: TVerifyStsCallerInput) => {
-  let headers: TAwsGetCallerIdentityHeaders;
-  let body: string;
+  let signedRequest: ReturnType<typeof parseSignedGetCallerIdentityRequest>;
   try {
-    headers = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString()) as TAwsGetCallerIdentityHeaders;
-    body = Buffer.from(iamRequestBody, "base64").toString();
-  } catch {
+    signedRequest = parseSignedGetCallerIdentityRequest({ iamHttpRequestMethod, iamRequestBody, iamRequestHeaders });
+  } catch (err) {
     throw new UnauthorizedError({
-      message: "Malformed signed STS request",
+      message: err instanceof BadRequestError ? err.message : "Malformed signed STS request",
       detail: { reasonCode: "malformed_request", ...errorContext }
     });
   }
-
-  const authHeader = headers.Authorization || headers.authorization;
-  const region = authHeader ? awsRegionFromHeader(authHeader) : null;
-
-  if (!isValidAwsRegion(region)) {
-    throw new UnauthorizedError({
-      message: "Invalid AWS region",
-      detail: { reasonCode: "invalid_region", ...errorContext }
-    });
-  }
-
-  const url = `https://sts.${region}.amazonaws.com`;
+  const { url, headers, body } = signedRequest;
 
   let stsResponse: { data: TGetCallerIdentityResponse };
   try {
     stsResponse = await request({
-      method: iamHttpRequestMethod,
+      method: "POST",
       url,
       headers,
       data: body

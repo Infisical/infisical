@@ -93,6 +93,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
         .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -116,6 +117,30 @@ export const secretImportDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
+    }
+  };
+
+  // Holds the import, its folder and the folder's environment against deletion until tx ends, and
+  // returns undefined if any of them is already gone. Deleting an environment or a folder locks its row
+  // and then cascades down to the imports, so the locks here go environment, folder, import: taking the
+  // import first would let a concurrent delete of its folder deadlock with tx. The environment and folder
+  // take KEY SHARE, which conflicts only with deletes and key updates. The import takes NO KEY UPDATE so
+  // that two transactions holding the same import also wait for each other: the replication lock in redis
+  // can expire mid-job, and secret_folders has no unique (parentId, name), so nothing else stops two
+  // workers from both creating the import's reserved folder.
+  const lockWithFolderAgainstDelete = async (
+    { importId, folderId, envId }: { importId: string; folderId: string; envId: string },
+    tx: Knex
+  ) => {
+    try {
+      const env = await tx(TableName.Environment).where({ id: envId }).forKeyShare().first("id");
+      if (!env) return undefined;
+      const folder = await tx(TableName.SecretFolder).where({ id: folderId }).forKeyShare().first("id");
+      if (!folder) return undefined;
+      const doc = await tx(TableName.SecretImport).where({ id: importId, folderId }).forNoKeyUpdate().first();
+      return doc as TSecretImports | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock with folder against delete" });
     }
   };
 
@@ -223,13 +248,19 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Bypasses the soft-deleted source filter of find. Positions are unique per folder across every
+  // stored row, so renumbering must see imports whose source environment or project is soft-deleted.
+  const findIncludingExpired = (folderId: string, tx?: Knex) => secretImportOrm.find({ folderId }, { tx });
+
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .whereIn("folderId", folderIds)
         .where("isReplication", false)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -264,6 +295,20 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // no flag filters or joins: the change policy guards treat any import row as protected content, so a NULL
+  // isReplication or a source environment pending deletion must not hide one.
+  const findFolderIdsWithImports = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return [];
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .whereIn("folderId", folderIds)
+        .distinct("folderId");
+      return (docs as { folderId: string }[]).map((doc) => doc.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find folder ids with imports" });
+    }
+  };
+
   const getFolderImports = async (secretPath: string, environmentId: string, tx?: Knex) => {
     try {
       const folderImports = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -291,12 +336,16 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where({ importPath: secretPath, importEnv: environmentId })
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           db.ref("name").withSchema(TableName.Environment).as("envName"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
-          db.ref("id").withSchema(TableName.SecretFolder).as("folderId")
+          db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("slug").withSchema(TableName.Project).as("sourceProjectSlug"),
+          db.ref("id").withSchema(TableName.Project).as("sourceProjectId")
         );
 
       const secretReferences = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
@@ -340,12 +389,16 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Project).as("sourceProjectId")
         );
 
-      const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
-        envName,
-        envSlug,
-        folderName,
-        folderId
-      }));
+      const crossProjectImports = folderImports.filter((el) => el.sourceProjectId !== projectId);
+
+      const folderResults = folderImports
+        .filter((el) => el.sourceProjectId === projectId)
+        .map(({ envName, envSlug, folderName, folderId }) => ({
+          envName,
+          envSlug,
+          folderName,
+          folderId
+        }));
 
       const secretResults = secretReferences.map(
         ({ envName, envSlug, secretId, folderName, folderId, referencedSecretKey, referencedSecretEnv }) => ({
@@ -435,7 +488,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         };
       });
 
-      // Group cross-project references by (sourceProjectId, envName)
+      // Group cross-project imports and references by (sourceProjectId, envName)
       type CrossProjEnvFolderMap = {
         [key: string]: {
           envName: string;
@@ -448,12 +501,19 @@ export const secretImportDALFactory = (db: TDbClient) => {
               secrets: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
               folderId: string;
               folderName: string;
+              folderImported: boolean;
             };
           };
         };
       };
 
-      const groupedCrossProj = crossProjectSecretReferences.reduce<CrossProjEnvFolderMap>((acc, item) => {
+      const crossProjItems: (ResultItem & {
+        projectName: string;
+        sourceProjectSlug: string;
+        sourceProjectId: string;
+      })[] = [...crossProjectImports, ...crossProjectSecretReferences];
+
+      const groupedCrossProj = crossProjItems.reduce<CrossProjEnvFolderMap>((acc, item) => {
         const key = `${item.sourceProjectId}::${item.envName}`;
         const updatedAcc = { ...acc };
 
@@ -472,15 +532,20 @@ export const secretImportDALFactory = (db: TDbClient) => {
           updatedAcc[key].folders[item.folderId] = {
             secrets: [],
             folderId: item.folderId,
-            folderName: item.folderName
+            folderName: item.folderName,
+            folderImported: false
           };
         }
 
-        updatedAcc[key].folders[item.folderId].secrets.push({
-          secretId: item.secretId,
-          referencedSecretKey: item.referencedSecretKey,
-          referencedSecretEnv: item.referencedSecretEnv
-        });
+        if ("secretId" in item) {
+          updatedAcc[key].folders[item.folderId].secrets.push({
+            secretId: item.secretId,
+            referencedSecretKey: item.referencedSecretKey,
+            referencedSecretEnv: item.referencedSecretEnv
+          });
+        } else {
+          updatedAcc[key].folders[item.folderId].folderImported = true;
+        }
 
         return updatedAcc;
       }, {});
@@ -494,7 +559,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         folders: Object.values(group.folders).map((folderData) => ({
           folderName: folderData.folderName,
           folderId: folderData.folderId,
-          folderImported: false,
+          folderImported: folderData.folderImported,
           ...(folderData.secrets.length > 0 && { secrets: folderData.secrets })
         }))
       }));
@@ -563,9 +628,12 @@ export const secretImportDALFactory = (db: TDbClient) => {
     ...secretImportOrm,
     find,
     findById,
+    lockWithFolderAgainstDelete,
     findByIds,
+    findIncludingExpired,
     findByFolderIds,
     findImportByFolderIds,
+    findFolderIdsWithImports,
     findLastImportPosition,
     updateAllPosition,
     bulkUpdatePosition,

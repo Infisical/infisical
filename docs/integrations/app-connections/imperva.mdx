@@ -1,0 +1,91 @@
+---
+title: "Imperva connection"
+sidebarTitle: "Imperva"
+description: "Learn how to configure an Imperva Connection for Infisical."
+---
+
+Infisical connects to Imperva Cloud WAF with an account API key, which it uses to read the websites in your account and to manage their custom certificates.
+
+## Setup
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Create an Imperva API key">
+        In the Imperva Cloud Security Console, go to **Account Management > User Management > My Profile** and add an API key under **API keys**. Copy the **API ID** and **API key**; the key is shown only once.
+
+        <Note>
+          A new key is created disabled. Switch it on in the API keys list, or every call fails as an invalid API ID or key.
+        </Note>
+
+        <Note>
+          The key needs the **Manage SSL Certificates** permission. Without it, Imperva rejects certificate uploads for every website in the account.
+        </Note>
+      </Step>
+      <Step title="Note the account ID for a sub-account">
+        An API key acts on the account it was created in. To manage websites that belong to a sub-account, copy that sub-account's numeric account ID from the Cloud Security Console under **Account Management > User Management > My Profile**.
+      </Step>
+      <Step title="Navigate to App Connections">
+        In Certificate Manager, go to **Settings > App Connections** and select **Add Connection**.
+      </Step>
+      <Step title="Select Imperva">
+        Select the **Imperva** option from the list of available connections.
+      </Step>
+      <Step title="Fill in Connection Details">
+        - **API ID**: the API ID from the Imperva Cloud Security Console
+        - **API Key**: the API key paired with that ID
+        - **Account ID** (Optional): the numeric ID of the sub-account whose websites this connection manages, left empty to use the account the key belongs to
+
+        Optionally select a **Gateway** to send the Imperva API calls through an [Infisical Gateway](/documentation/platform/gateways/overview), which makes outbound traffic leave from a network you control.
+
+        Select **Connect to Imperva** to validate and save your connection.
+      </Step>
+      <Step title="Connection Created">
+        Your Imperva Connection is now available for use with certificate syncs.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create an Imperva Connection, make an API request to the [Create App Connection](/api-reference/endpoints/app-connections/imperva/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/imperva \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-imperva-connection",
+        "method": "api-key",
+        "credentials": {
+          "apiId": "12345",
+          "apiKey": "<api-key>",
+          "accountId": "678901"
+        }
+      }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+      "appConnection": {
+        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "name": "my-imperva-connection",
+        "description": null,
+        "version": 1,
+        "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "createdAt": "2026-09-15T00:00:00.000Z",
+        "updatedAt": "2026-09-15T00:00:00.000Z",
+        "app": "imperva",
+        "method": "api-key",
+        "credentials": {
+          "apiId": "12345",
+          "accountId": "678901"
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -46,6 +46,15 @@ import {
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
 
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
+import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
+import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
+import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
+import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
+import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
 import {
   isPaloAltoNetworksTemplateMissing,
@@ -57,15 +66,6 @@ import {
   removeUnusedKeystoreOptions,
   TPkiSyncForm
 } from "./schemas/pki-sync-schema";
-import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
-import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
-import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
-import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
-import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
-import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
-import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
-import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
-import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;

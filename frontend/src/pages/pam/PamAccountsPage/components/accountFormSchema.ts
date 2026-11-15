@@ -99,6 +99,12 @@ export const isFieldVisible = (
   values: TPamFieldGroupValues
 ) => !field.showWhen || conditionHolds(field.showWhen, group, values);
 
+export const isDescriptionVisible = (
+  field: TPamFieldDescriptor,
+  group: TPamFieldGroup,
+  values: TPamFieldGroupValues
+) => !field.descriptionWhen || conditionHolds(field.descriptionWhen, group, values);
+
 export const getMissingRequiredFields = (
   fields: TPamFieldDescriptor[],
   group: TPamFieldGroup,

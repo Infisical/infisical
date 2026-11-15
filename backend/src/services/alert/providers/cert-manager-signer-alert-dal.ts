@@ -22,13 +22,16 @@ export type TSignerAlertCertificate = {
 };
 
 export const certManagerSignerAlertDALFactory = (db: TDbClient) => {
-  const $selectSignerCertificates = (reader: Knex, projectId: string) =>
+  const $selectSignerCertificates = (reader: Knex, projectId: string, signerIds?: string[]) =>
     reader(TableName.Certificate)
       .join(
         reader(TableName.PkiSigners)
           .where(`${TableName.PkiSigners}.projectId`, projectId)
           .where(`${TableName.PkiSigners}.status`, SignerStatus.Active)
           .whereNotNull(`${TableName.PkiSigners}.certificateId`)
+          .modify((query) => {
+            if (signerIds?.length) void query.whereIn(`${TableName.PkiSigners}.id`, signerIds);
+          })
           .groupBy(`${TableName.PkiSigners}.certificateId`)
           .select(`${TableName.PkiSigners}.certificateId`)
           .select(
@@ -56,14 +59,14 @@ export const certManagerSignerAlertDALFactory = (db: TDbClient) => {
       );
 
   const findExpiringSignerCertificates = async (
-    scope: { projectId: string } & TExpiringCertificatesScan,
+    scope: { projectId: string; signerIds?: string[] } & TExpiringCertificatesScan,
     tx?: Knex
   ): Promise<TSignerAlertCertificate[]> => {
     try {
       const reader = tx || db.replicaNode();
       return await scanExpiringCertificates<TSignerAlertCertificate>(
         reader,
-        () => $selectSignerCertificates(reader, scope.projectId),
+        () => $selectSignerCertificates(reader, scope.projectId, scope.signerIds),
         scope
       );
     } catch (error) {
@@ -71,5 +74,29 @@ export const certManagerSignerAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findExpiringSignerCertificates };
+  const findProjectSignerIds = async (projectId: string, signerIds: string[], tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.PkiSigners)
+        .where({ projectId })
+        .whereIn("id", signerIds)
+        .pluck("id")) as string[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProjectSignerIds" });
+    }
+  };
+
+  const findSignerNamesByIds = async (projectId: string, signerIds: string[]) => {
+    if (signerIds.length === 0) return [];
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSigners)
+        .where({ projectId })
+        .whereIn("id", signerIds)
+        .select("id", "name")) as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignerNamesByIds" });
+    }
+  };
+
+  return { findExpiringSignerCertificates, findProjectSignerIds, findSignerNamesByIds };
 };

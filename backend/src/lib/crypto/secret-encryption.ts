@@ -3,12 +3,10 @@ import { z } from "zod";
 
 import {
   IntegrationAuthsSchema,
-  SecretApprovalRequestsSecretsSchema,
   SecretsSchema,
   SecretVersionsSchema,
   TIntegrationAuths,
   TProjectKeys,
-  TSecretApprovalRequestsSecrets,
   TSecrets,
   TSecretVersions
 } from "../../db/schemas";
@@ -41,14 +39,8 @@ const DecryptedSecretVersionsSchema = z.object({
   original: SecretVersionsSchema
 });
 
-const DecryptedSecretApprovalsSchema = z.object({
-  decrypted: DecryptedValuesSchema,
-  original: SecretApprovalRequestsSecretsSchema
-});
-
 type DecryptedSecret = z.infer<typeof DecryptedSecretSchema>;
 type DecryptedSecretVersions = z.infer<typeof DecryptedSecretVersionsSchema>;
-type DecryptedSecretApprovals = z.infer<typeof DecryptedSecretApprovalsSchema>;
 type DecryptedIntegrationAuths = z.infer<typeof DecryptedIntegrationAuthsSchema>;
 
 type TLatestKey = TProjectKeys & {
@@ -193,62 +185,6 @@ export const decryptSecretVersions = (
     };
 
     decryptedSecrets.push(DecryptedSecretVersionsSchema.parse(decryptedSecret));
-  });
-
-  return decryptedSecrets;
-};
-
-export const decryptSecretApprovals = (
-  encryptedSecretApprovals: TSecretApprovalRequestsSecrets[],
-  privateKey: string,
-  latestKey: TLatestKey
-) => {
-  if (!latestKey.sender.publicKey) {
-    throw new Error("Latest key sender public key not found");
-  }
-
-  const key = crypto.encryption().asymmetric().decrypt({
-    ciphertext: latestKey.encryptedKey,
-    nonce: latestKey.nonce,
-    publicKey: latestKey.sender.publicKey,
-    privateKey
-  });
-
-  const decryptedSecrets: DecryptedSecretApprovals[] = [];
-
-  encryptedSecretApprovals.forEach((encApproval) => {
-    const [secretKey, secretValue, secretComment] = getDecryptedValues(
-      [
-        {
-          ciphertext: encApproval.secretKeyCiphertext,
-          iv: encApproval.secretKeyIV,
-          tag: encApproval.secretKeyTag
-        },
-        {
-          ciphertext: encApproval.secretValueCiphertext,
-          iv: encApproval.secretValueIV,
-          tag: encApproval.secretValueTag
-        },
-        {
-          ciphertext: encApproval.secretCommentCiphertext || "",
-          iv: encApproval.secretCommentIV || "",
-          tag: encApproval.secretCommentTag || ""
-        }
-      ],
-      key
-    );
-
-    const decryptedSecret: DecryptedSecretApprovals = {
-      decrypted: {
-        secretKey,
-        secretValue,
-        secretComment,
-        id: encApproval.id
-      },
-      original: encApproval
-    };
-
-    decryptedSecrets.push(DecryptedSecretApprovalsSchema.parse(decryptedSecret));
   });
 
   return decryptedSecrets;

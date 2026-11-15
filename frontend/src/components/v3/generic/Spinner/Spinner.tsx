@@ -3,10 +3,12 @@ import type { ComponentProps } from "react";
 import { cn } from "../../utils";
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg";
+type SpinnerVariant = "project" | "av";
 
 type SpinnerProps = Omit<ComponentProps<"svg">, "children"> & {
   label?: string;
   size?: SpinnerSize;
+  variant?: SpinnerVariant;
 };
 
 const sizeStyles: Record<SpinnerSize, string> = {
@@ -16,13 +18,29 @@ const sizeStyles: Record<SpinnerSize, string> = {
   lg: "size-12"
 };
 
-function Spinner({ className, label = "Loading", size = "md", ...props }: SpinnerProps) {
+const variantStyles: Record<SpinnerVariant, string> = {
+  project: "fill-project",
+  av: "fill-product-av"
+};
+
+function Spinner({
+  className,
+  label = "Loading",
+  size = "md",
+  variant = "project",
+  ...props
+}: SpinnerProps) {
   return (
     <svg
       role="status"
       aria-label={label}
       data-slot="spinner"
-      className={cn("m-1 animate-spin fill-project text-muted/25", sizeStyles[size], className)}
+      className={cn(
+        "m-1 animate-spin text-muted/25",
+        variantStyles[variant],
+        sizeStyles[size],
+        className
+      )}
       viewBox="0 0 100 101"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -40,4 +58,4 @@ function Spinner({ className, label = "Loading", size = "md", ...props }: Spinne
   );
 }
 
-export { Spinner, type SpinnerProps, type SpinnerSize };
+export { Spinner, type SpinnerProps, type SpinnerSize, type SpinnerVariant };

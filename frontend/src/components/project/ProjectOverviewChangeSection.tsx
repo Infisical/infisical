@@ -25,6 +25,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateProject } from "@app/hooks/api";
 
 const baseFormSchema = z.object({
@@ -49,6 +50,7 @@ type BaseFormData = z.infer<typeof baseFormSchema>;
 export const ProjectOverviewChangeSection = () => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateProject();
+  const scopeVariant = useScopeVariant();
   const {
     handleSubmit,
     control,
@@ -201,7 +203,7 @@ export const ProjectOverviewChangeSection = () => {
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
             {(isAllowed) => (
               <Button
-                variant="project"
+                variant={scopeVariant}
                 size="sm"
                 type="submit"
                 isPending={isPending}

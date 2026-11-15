@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -14,6 +15,20 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  buildCrlDistributionPointUrls,
+  createSerialNumber,
+  expandInternalCa,
+  getCaCertChain,
+  getCaCredentials,
+  getIssuedCaCertChain,
+  keyAlgorithmToAlgCfg,
+  parseDistinguishedName
+} from "@app/services/certificate-authority/certificate-authority-fns";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
@@ -24,19 +39,6 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
-import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
-import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  buildCrlDistributionPointUrls,
-  createSerialNumber,
-  expandInternalCa,
-  getCaCertChain,
-  getCaCredentials,
-  keyAlgorithmToAlgCfg,
-  parseDistinguishedName
-} from "@app/services/certificate-authority/certificate-authority-fns";
-import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -45,10 +47,10 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { getCertificateCredentials } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
+import { getCertificateCredentials } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import {
   PkiSubscriberStatus,
   TCreatePkiSubscriberDTO,
@@ -72,6 +74,10 @@ type TPkiSubscriberServiceFactoryDep = {
     "findByIdWithAssociatedCa" | "findById" | "transaction" | "create" | "updateById" | "findWithAssociatedCa"
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidInCaHierarchy"
+  >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityQueue: Pick<TCertificateAuthorityQueueFactory, "orderCertificateForSubscriber">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
@@ -95,6 +101,7 @@ export const pkiSubscriberServiceFactory = ({
   pkiSubscriberDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateDAL,
@@ -645,15 +652,15 @@ export const pkiSubscriberServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -696,7 +703,7 @@ export const pkiSubscriberServiceFactory = ({
 
     return {
       certificate: leafCert.toString("pem"),
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
       ca: expandInternalCa(ca),

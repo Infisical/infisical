@@ -344,6 +344,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.notAfter`, ">=", yesterday)
         .where(`${TableName.Certificate}.notAfter`, "<", today)
         .whereNotNull(`${TableName.Certificate}.pkiSubscriberId`)
+        .whereNull(`${TableName.Certificate}.deletedAt`)
         .whereNotNull(`${TableName.PkiSync}.subscriberId`)
         .groupBy(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.subscriberId`)) as Array<{
         id: string;

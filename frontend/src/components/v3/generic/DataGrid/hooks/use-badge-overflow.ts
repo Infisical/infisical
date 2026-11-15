@@ -122,7 +122,6 @@ export function useBadgeOverflow<T>({
     let currentLine = 1;
     const visible: T[] = [];
 
-    // eslint-disable-next-line no-restricted-syntax
     for (const item of items) {
       const label = getLabel(item);
       const cacheKey = cacheKeyPrefix ? `${cacheKeyPrefix}:${label}` : label;

@@ -2,6 +2,8 @@ import * as x509 from "@peculiar/x509";
 import * as asn1js from "asn1js";
 import { describe, expect, it } from "vitest";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
+
 import { CertExtensionCriticality, certificateExtensionOidSchema } from "./certificate-constants";
 import {
   appendCustomExtensions,
@@ -43,7 +45,7 @@ const buildCertificateWithExtension = async (oid: string, der: Buffer) => {
     notAfter: new Date(Date.now() + 60 * 60 * 1000),
     keys,
     signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    extensions: [new x509.Extension(oid, false, der)]
+    extensions: [new x509.Extension(oid, false, asNonSharedBuffer(der))]
   });
 
   return Buffer.from(certificate.toString("pem"));

@@ -1,5 +1,6 @@
-import dns from "node:dns/promises";
 import net from "node:net";
+
+import dns from "node:dns/promises";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";

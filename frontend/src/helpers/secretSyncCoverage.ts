@@ -5,7 +5,7 @@
 type TCoverageSync = {
   environment?: { slug: string } | null;
   folder?: { path: string } | null;
-  syncOptions?: { includeAllSubFolders?: boolean } | null;
+  includeAllSubFolders?: boolean;
 };
 
 export type TPathRef = { environment: string; secretPath: string };
@@ -30,9 +30,7 @@ export const isPathCoveredBySecretSync = (
   if (syncSegments.length > pathSegments.length) return false;
   if (syncSegments.some((segment, index) => segment !== pathSegments[index])) return false;
 
-  return (
-    syncSegments.length === pathSegments.length || Boolean(sync.syncOptions?.includeAllSubFolders)
-  );
+  return syncSegments.length === pathSegments.length || Boolean(sync.includeAllSubFolders);
 };
 
 // The syncs that would start sending items to their destination if they were moved or copied as described.

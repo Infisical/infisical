@@ -13,6 +13,11 @@ export enum AuthMethod {
   OIDC = "oidc"
 }
 
+export enum SsoMfaTrust {
+  None = "none",
+  Signal = "signal"
+}
+
 export enum AuthTokenType {
   ACCESS_TOKEN = "accessToken",
   REFRESH_TOKEN = "refreshToken",
@@ -53,7 +58,8 @@ export enum AuthMode {
   AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken"
 }
 
-export enum ActorType { // would extend to AWS, Azure, ...
+export enum ActorType {
+  // would extend to AWS, Azure, ...
   PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
   KMIP_CLIENT = "kmipClient",
   USER = "user", // userIdentity
@@ -110,8 +116,13 @@ export type AuthModeJwtTokenPayload = {
   accessVersion: number;
   organizationId?: string;
   subOrganizationId?: string;
+  // Root org whose IdP issued this session. Set only by SAML, OIDC and LDAP logins; absent on
+  // own-credential sessions and on tokens issued before the claim existed, which are taken at
+  // their auth method as before.
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  idpMfaOrgId?: string;
   // Present only on delegated OAuth 2.0 access tokens. Its presence marks the token as
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
@@ -128,7 +139,9 @@ export type AuthModeMfaJwtTokenPayload = {
   authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
+  issuingRootOrgId?: string;
   requiredMfaMethod: MfaMethod;
+  idpMfaOrgId?: string;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
@@ -140,8 +153,10 @@ export type AuthModeRefreshJwtTokenPayload = {
   refreshVersion: number;
   organizationId?: string;
   subOrganizationId?: string;
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  idpMfaOrgId?: string;
   oauthClientId?: string;
   scopes?: string[];
 };
@@ -153,6 +168,8 @@ export type AuthModeSignUpTokenPayload = {
   isEmailVerified: boolean;
   aliasId?: string;
   organizationId?: string;
+  issuingRootOrgId?: string;
+  idpMfaOrgId?: string;
   callbackPort?: string;
   // User profile fields for the frontend signup page
   email?: string;

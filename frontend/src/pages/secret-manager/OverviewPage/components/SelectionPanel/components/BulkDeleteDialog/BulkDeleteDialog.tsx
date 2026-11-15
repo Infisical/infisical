@@ -52,8 +52,6 @@ const BulkDeleteDialogContent = ({
   secretsToDeleteKeys,
   usedBySecretSyncsFiltered
 }: Omit<BulkDeleteDialogProps, "isOpen">) => {
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const hasAffectedResources =
     (usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
     (importedBy &&
@@ -90,15 +88,6 @@ const BulkDeleteDialogContent = ({
     return items;
   }, [selectedEntries]);
 
-  const onConfirmDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await onDeleteApproved();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   return (
     <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
       <AlertDialogHeader>
@@ -134,13 +123,12 @@ const BulkDeleteDialogContent = ({
       <AlertDialogConfirmationField inputProps={{ placeholder: "Type delete here" }} />
 
       <AlertDialogFooter>
-        <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
         <AlertDialogAction
           variant="danger"
-          isPending={isDeleting}
           onClick={(event) => {
             event.preventDefault();
-            onConfirmDelete();
+            onDeleteApproved();
           }}
         >
           Delete
@@ -150,10 +138,37 @@ const BulkDeleteDialogContent = ({
   );
 };
 
-export const BulkDeleteDialog = ({ isOpen, onOpenChange, ...props }: BulkDeleteDialogProps) => {
+export const BulkDeleteDialog = ({
+  isOpen,
+  onOpenChange,
+  onDeleteApproved,
+  ...props
+}: BulkDeleteDialogProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDeleteApproved();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <AlertDialog open={isOpen} confirmationValue={CONFIRMATION_KEYWORD} onOpenChange={onOpenChange}>
-      {isOpen && <BulkDeleteDialogContent onOpenChange={onOpenChange} {...props} />}
+    <AlertDialog
+      open={isOpen}
+      isPending={isDeleting}
+      confirmationValue={CONFIRMATION_KEYWORD}
+      onOpenChange={onOpenChange}
+    >
+      {isOpen && (
+        <BulkDeleteDialogContent
+          onOpenChange={onOpenChange}
+          onDeleteApproved={onConfirmDelete}
+          {...props}
+        />
+      )}
     </AlertDialog>
   );
 };

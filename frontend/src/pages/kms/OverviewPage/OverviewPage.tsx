@@ -1,6 +1,4 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
-
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -9,13 +7,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CmekTable } from "./components";
 
 export const OverviewPage = () => {
-  const { t } = useTranslation();
-
   return (
     <div className="h-full bg-page">
-      <Helmet>
-        <title>{t("common.head-title", { title: "KMS" })}</title>
-      </Helmet>
+      <PageTitle title="KMS" />
       <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader

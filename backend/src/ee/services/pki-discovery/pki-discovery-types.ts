@@ -1,7 +1,73 @@
-import { TProjectPermission } from "@app/lib/types";
+import { z } from "zod";
+
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+
+import type { LinuxServerTargetConfigSchema, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
 
 export enum PkiDiscoveryType {
-  Network = "network"
+  Network = "network",
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server"
+}
+
+export enum WindowsCertificateStore {
+  Personal = "My",
+  WebHosting = "WebHosting",
+  RemoteDesktop = "Remote Desktop",
+  IntermediateCertificationAuthorities = "CA",
+  TrustedRootCertificationAuthorities = "Root"
+}
+
+export enum PkiKeystoreStatus {
+  Locked = "locked",
+  Readable = "readable",
+  PasswordFailed = "password_failed"
+}
+
+export enum PkiCertificateFileFormat {
+  Pem = "pem",
+  Der = "der",
+  Pkcs7 = "pkcs7",
+  Pkcs12 = "pkcs12",
+  Jks = "jks",
+  Jceks = "jceks"
+}
+
+export enum HostCertificateFileStatus {
+  Ok = "ok",
+  Locked = "locked",
+  PasswordFailed = "passwordFailed",
+  AccessDenied = "accessDenied",
+  NotFound = "notFound",
+  TooLarge = "tooLarge",
+  ParseError = "parseError",
+  Unsupported = "unsupported",
+  NoCertificates = "noCertificates",
+  ReadFailed = "readFailed"
+}
+
+export enum HostScanTruncationReason {
+  FileList = "fileList",
+  MaxFiles = "maxFiles",
+  ResponseSize = "responseSize",
+  TimeLimit = "timeLimit",
+  Incomplete = "incomplete"
+}
+
+export enum PkiKeystorePasswordChange {
+  Set = "set",
+  Cleared = "cleared"
+}
+
+export enum HostFileImportAction {
+  Skip = "skip",
+  Refresh = "refresh",
+  Upsert = "upsert"
+}
+
+export enum HostCertificateChainKind {
+  Leaf = "leaf",
+  Ca = "ca"
 }
 
 export enum PkiDiscoveryScanStatus {
@@ -41,7 +107,11 @@ export type TNetworkTargetConfig = {
   ports?: string;
 };
 
-export type TPkiDiscoveryTargetConfig = TNetworkTargetConfig;
+export type TLinuxServerTargetConfig = z.infer<typeof LinuxServerTargetConfigSchema>;
+
+export type TWindowsServerTargetConfig = z.infer<typeof WindowsServerTargetConfigSchema>;
+
+export type TPkiDiscoveryTargetConfig = TNetworkTargetConfig | TLinuxServerTargetConfig | TWindowsServerTargetConfig;
 
 export type TPkiInstallationLocationDetails = {
   ipAddress?: string;
@@ -51,6 +121,20 @@ export type TPkiInstallationLocationDetails = {
   filePath?: string;
   protocol?: string;
   gatewayName?: string;
+  hostname?: string;
+  connectionId?: string;
+  format?: PkiCertificateFileFormat;
+  storeLocation?: string;
+  storeName?: WindowsCertificateStore;
+  thumbprint?: string;
+  hasPrivateKey?: boolean;
+};
+
+export type TPkiInstallationMetadata = {
+  keystoreStatus?: PkiKeystoreStatus;
+  lastReadAt?: string;
+  lastCheckedAt?: string;
+  lastError?: string;
 };
 
 export type TCreatePkiDiscoveryDTO = {
@@ -63,6 +147,7 @@ export type TCreatePkiDiscoveryDTO = {
   scanIntervalDays?: number;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdatePkiDiscoveryDTO = {
@@ -75,6 +160,7 @@ export type TUpdatePkiDiscoveryDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   isActive?: boolean;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeletePkiDiscoveryDTO = {
@@ -122,6 +208,7 @@ export type TGetPkiInstallationDTO = {
 export type TUpdatePkiInstallationDTO = {
   installationId: string;
   name?: string;
+  keystorePassword?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeletePkiInstallationDTO = {

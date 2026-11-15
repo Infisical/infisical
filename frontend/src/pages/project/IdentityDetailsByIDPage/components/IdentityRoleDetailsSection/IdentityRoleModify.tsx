@@ -44,7 +44,7 @@ import {
   useSubscription
 } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 
@@ -160,7 +160,7 @@ export const IdentityRoleAssignmentRow = ({
               <SelectTrigger id={selectId} className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-[70]">
+              <SelectContent position="popper">
                 {getRolesForSelect(field.value).map(({ name, slug, id }) => {
                   const isAssignable = assignableRoleSlugs.has(slug);
                   return (
@@ -204,7 +204,6 @@ export const IdentityRoleAssignmentRow = ({
           </Tooltip>
           <PopoverContent
             side="right"
-            className="z-[70]"
             onWheel={(event) => event.stopPropagation()}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
@@ -261,6 +260,7 @@ type Props = {
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
   const { filteredRoles, isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
@@ -360,7 +360,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
         </Button>
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >

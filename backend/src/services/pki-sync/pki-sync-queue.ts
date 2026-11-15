@@ -14,22 +14,26 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { hydratePkiSyncCredentials } from "@app/services/pki-sync/pki-sync-credentials-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import {
+  releaseAppConnectionConcurrency,
+  tryAdmitAppConnectionConcurrency
+} from "../app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
-import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
@@ -98,6 +102,7 @@ type TPkiSyncQueueFactoryDep = {
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type PkiSyncActionJob = Job<
@@ -135,7 +140,8 @@ export const pkiSyncQueueFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
   gatewayPoolService,
-  telemetryService
+  telemetryService,
+  oidcIssuerService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -154,10 +160,10 @@ export const pkiSyncQueueFactory = ({
   });
 
   const $tryAdmitConnectionConcurrency = (connectionId: string, targetHost?: string) =>
-    tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
+    tryAdmitAppConnectionConcurrency(keyStore, connectionId, targetHost);
 
   const $releaseConnectionConcurrency = (connectionId: string, targetHost?: string) =>
-    releasePkiSyncConcurrency(keyStore, connectionId, targetHost);
+    releaseAppConnectionConcurrency(keyStore, connectionId, targetHost);
 
   const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
     buildCertificateMap(pkiSync, {
@@ -288,7 +294,8 @@ export const pkiSyncQueueFactory = ({
         certificateSyncDAL,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       });
 
       logger.info(
@@ -661,7 +668,8 @@ export const pkiSyncQueueFactory = ({
         removalOptions,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       });
 
       isSuccess = true;

@@ -111,6 +111,7 @@ export const buildSyncPayload = async (
     sourcePath: string;
     sourceFolderId: string;
     syncOptions: Pick<TSecretSync["syncOptions"], "includeAllSubFolders" | "keySchema"> | undefined;
+    includeAllSubFolders: boolean;
     includeImports: boolean;
   },
   deps: {
@@ -125,8 +126,9 @@ export const buildSyncPayload = async (
 ): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeImports } = args;
-  const { includeAllSubFolders, keySchema } = syncOptions ?? {};
+  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeAllSubFolders, includeImports } =
+    args;
+  const { keySchema } = syncOptions ?? {};
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -135,7 +137,7 @@ export const buildSyncPayload = async (
     environment,
     sourcePath,
     sourceFolderId,
-    includeAllSubFolders: Boolean(includeAllSubFolders)
+    includeAllSubFolders
   });
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));

@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
+import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
@@ -18,6 +19,7 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TRevokeCertResponse,
   TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
@@ -52,23 +54,22 @@ export const useDeleteCert = () => {
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
     }
   });
 };
 
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, TRevokeCertDTO>({
+  return useMutation<TRevokeCertResponse, object, TRevokeCertDTO>({
     mutationFn: async ({ id, revocationReason }) => {
-      const {
-        data: { certificate }
-      } = await apiRequest.post<{ certificate: TCertificate }>(
+      const { data } = await apiRequest.post<TRevokeCertResponse>(
         `/api/v1/cert-manager/certificates/${id}/revoke`,
         {
           revocationReason
         }
       );
-      return certificate;
+      return data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({

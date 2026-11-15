@@ -6,8 +6,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { PkiSync } from "./pki-sync-enums";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";

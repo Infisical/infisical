@@ -8,6 +8,7 @@ export type TPkiCollection = {
 };
 
 export type TCreatePkiCollectionDTO = {
+  projectId: string;
   name: string;
   description: string;
 };

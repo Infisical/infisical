@@ -1,7 +1,9 @@
 package approvals_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -199,7 +201,7 @@ func newProtectedProject(t *testing.T, configs ...policyConfig) protectedProject
 func approve(t *testing.T, reviewer *harness.Principal, id uuid.UUID) {
 	t.Helper()
 	res, err := reviewer.API.ReviewSecretApprovalRequestWithResponse(t.Context(), id,
-		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "approving %s returned %s", id, apierr.Body(res.Body))
 }
@@ -211,6 +213,45 @@ func merge(t *testing.T, actor *harness.Principal, id uuid.UUID) {
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "merging %s returned %s", id, apierr.Body(res.Body))
 }
 
+// replaceApprovers swaps the policy's approvers, keeping one required approval.
+func replaceApprovers(t *testing.T, proj *fixture.Project, policyID uuid.UUID, approvers []policyMember) {
+	t.Helper()
+	items := make([]api.UpdateSecretApprovalPolicyJSONBody_Approvers_Item, len(approvers))
+	for i, a := range approvers {
+		if a.group != nil {
+			require.NoError(t, items[i].FromUpdateSecretApprovalPolicyJSONBodyApprovers0(api.UpdateSecretApprovalPolicyJSONBodyApprovers0{
+				Type: api.UpdateSecretApprovalPolicyJSONBodyApprovers0TypeGroup,
+				Id:   a.group.ID.String(),
+			}))
+			continue
+		}
+		require.NoError(t, items[i].FromUpdateSecretApprovalPolicyJSONBodyApprovers1(api.UpdateSecretApprovalPolicyJSONBodyApprovers1{
+			Type: api.UpdateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
+			Id:   new(a.user.ID.String()),
+		}))
+	}
+	res, err := proj.Tenant().Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+		api.UpdateSecretApprovalPolicyJSONRequestBody{Approvers: items})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "replacing the approvers returned %s", apierr.Body(res.Body))
+}
+
+func closeRequest(t *testing.T, actor *harness.Principal, id uuid.UUID) {
+	t.Helper()
+	res, err := actor.API.UpdateSecretApprovalRequestStatusWithResponse(t.Context(), id,
+		api.UpdateSecretApprovalRequestStatusJSONRequestBody{Status: api.UpdateSecretApprovalRequestStatusJSONBodyStatusClose})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "closing %s returned %s", id, apierr.Body(res.Body))
+}
+
+func requestSlug(t *testing.T, proj *fixture.Project, id uuid.UUID) string {
+	t.Helper()
+	res, err := proj.Tenant().Admin.API.GetSecretApprovalRequestWithResponse(t.Context(), id)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "reading request %s returned %d: %s", id, res.StatusCode(), apierr.Body(res.Body))
+	return res.JSON200.Approval.Slug
+}
+
 func createSecret(t *testing.T, actor *harness.Principal, proj *fixture.Project, name, value string) *api.CreateSecretV4Response {
 	t.Helper()
 	res, err := actor.API.CreateSecretV4WithResponse(t.Context(), name, api.CreateSecretV4JSONRequestBody{
@@ -218,4 +259,25 @@ func createSecret(t *testing.T, actor *harness.Principal, proj *fixture.Project,
 	})
 	require.NoError(t, err)
 	return res
+}
+
+// newDelegatedApprovalSystem connects the tenant to a delegated approval system.
+//
+// The rules these tests pin belong to delegated approval, not to any one system, so
+// this is the only place a system is named. Supporting another one needs no new tests.
+func newDelegatedApprovalSystem(t *testing.T, tn *harness.Tenant) *fixture.AppConnection {
+	t.Helper()
+	return fixture.NewAppConnection(t, tn, fixture.ServiceNowBasicAuthAppConnection)
+}
+
+// delegatedApproval builds the delegatedApproval field that hands a policy to conn.
+func delegatedApproval(conn *fixture.AppConnection) map[string]any {
+	return map[string]any{"type": "servicenow", "connectionId": conn.ID}
+}
+
+func jsonBody(t *testing.T, v any) io.Reader {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	require.NoError(t, err)
+	return bytes.NewReader(raw)
 }

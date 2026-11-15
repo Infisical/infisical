@@ -16,7 +16,7 @@ type Props = {
 };
 
 export const CreateUserStatementAlert = ({ statement }: Props) => {
-  const [, isCopied, setCopyState] = useTimedReset({ initialState: false });
+  const [, isCopied, setCopyState] = useTimedReset<boolean>({ initialState: false });
 
   const handleCopy = () => {
     navigator.clipboard.writeText(statement);

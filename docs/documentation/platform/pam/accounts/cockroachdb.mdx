@@ -1,0 +1,111 @@
+---
+title: "CockroachDB accounts"
+sidebarTitle: "CockroachDB"
+description: "Give people and agents access to a CockroachDB database without sharing its credentials."
+---
+
+A CockroachDB [account](/documentation/platform/pam/accounts/overview) stores the credentials for one CockroachDB SQL user. Members connect to the database in the browser or through the Infisical CLI, and Infisical records every query they run.
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the cluster
+- A CockroachDB [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
+  </Step>
+  <Step>
+    Select the **Folder** and a CockroachDB **Account Template**, then select **Next**.
+  </Step>
+  <Step>
+    Enter a **Name** and the connection details:
+
+    | Field | Description |
+    | --- | --- |
+    | **Host** | The hostname or IP address of a node, or of a load balancer in front of the cluster |
+    | **Port** | The cluster's SQL port (defaults to `26257`) |
+    | **Database** | The database that sessions connect to |
+    | **SSL Enabled** | Whether to connect over TLS (on by default) |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (on by default, shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the cluster's node certificates (shown when **SSL Enabled** is on) |
+
+    By default, CockroachDB only accepts passwords over TLS, so leave **SSL Enabled** on. If a private certificate authority (CA) signed the cluster's node certificates, paste the CA certificate into **SSL Certificate**. For a cluster you set up with `cockroach cert`, the CA certificate is the `ca.crt` file in the cluster's certificates directory.
+
+    If you have a connection string, such as `postgresql://user:password@host:26257/defaultdb?sslmode=verify-full`, paste it into **Host**. Infisical fills in the other fields from the connection string, including the credentials and the SSL settings.
+  </Step>
+  <Step>
+    Enter the **Username** and **Password** of the CockroachDB user.
+  </Step>
+  <Step>
+    Select **Create**.
+  </Step>
+</Steps>
+
+## Credential rotation
+
+[Credential rotation](/documentation/platform/pam/credential-rotation/overview) changes the account's password on a schedule or on demand. The rotation account needs permission to change that password:
+
+- **The account itself:** The account needs the `CREATEROLE` and `CREATELOGIN` role options, unless you run `SET CLUSTER SETTING sql.auth.change_own_password.enabled = true`
+- **A different account:** The rotation account needs the `CREATEROLE` and `CREATELOGIN` role options, or the `admin` role
+
+If the account you rotate has the `admin` role, the rotation account needs the `admin` role too.
+
+For example, to create a rotation user and a user for it to rotate:
+
+```sql
+-- the user that Infisical signs in as to rotate passwords
+CREATE USER infisical_rotator WITH CREATEROLE CREATELOGIN PASSWORD '<temporary-password>';
+
+-- the user whose password Infisical rotates
+CREATE USER app_user WITH PASSWORD '<temporary-password>';
+```
+
+Add both users to Infisical PAM as CockroachDB accounts with the same host and port, then select `infisical_rotator` as the rotation account on the `app_user` account's **Rotation** tab.
+
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
+
+<Tabs>
+  <Tab title="Browser">
+    The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries.
+  </Tab>
+  <Tab title="CLI">
+    Start the local proxy:
+
+    ```bash
+    infisical pam access backend-team/orders-db
+    ```
+
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your PostgreSQL client to that port:
+
+    ```bash
+    psql "postgresql://localhost:<port>/orders"
+    ```
+
+    The proxy signs in for you, so the client doesn't need a password.
+
+    To use `cockroach sql`, add `sslmode=disable` to the URL, because the local proxy doesn't accept TLS:
+
+    ```bash
+    cockroach sql --url "postgresql://localhost:<port>/orders?sslmode=disable"
+    ```
+
+    Only the connection between your client and the proxy on your machine is unencrypted.
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/overview">
+    Change the passwords of your PAM accounts on a schedule.
+  </Card>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+</CardGroup>

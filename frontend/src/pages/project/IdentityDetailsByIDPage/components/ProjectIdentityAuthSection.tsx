@@ -17,6 +17,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { IdentityAuthMethod, TProjectIdentity } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "identityAuthMethod",
     "upgradePlan"
@@ -111,7 +113,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                 >
                   {(isAllowed) => (
                     <Button
-                      variant="project"
+                      variant={scopeVariant}
                       size="xs"
                       isDisabled={!isAllowed}
                       onClick={() => {

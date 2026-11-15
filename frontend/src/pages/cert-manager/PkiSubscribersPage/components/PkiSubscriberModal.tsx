@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,17 +11,30 @@ import {
   AccordionTrigger,
   Button,
   Checkbox,
-  FormControl,
+  Combobox,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaType,
@@ -38,8 +51,10 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { convertTimeUnitValueToDays, TimeUnit } from "@app/lib/fn/date";
+import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
 
 type Props = {
   popUp: UsePopUpState<["pkiSubscriber"]>;
@@ -155,16 +170,19 @@ export type FormData = z.infer<typeof schema>;
 
 export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
+  const formId = useId();
   const projectId = currentProject.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
   const { data: cas } = useListCasByProjectId();
   const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);
 
+  const subscriberName =
+    (popUp?.pkiSubscriber?.data as { subscriberName?: string })?.subscriberName || "";
   const { data: pkiSubscriber } = useGetPkiSubscriber({
-    subscriberName:
-      (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || "",
+    subscriberName,
     projectId
   });
+  const isSubscriberReady = !subscriberName || pkiSubscriber?.name === subscriberName;
 
   const { mutateAsync: createMutateAsync } = useCreatePkiSubscriber();
   const { mutateAsync: updateMutateAsync } = useUpdatePkiSubscriber();
@@ -173,9 +191,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    resetField,
+    getValues,
     setValue,
     watch,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -203,6 +223,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const selectedCaId = watch("caId");
+  const { creation: caCreation, caCreationModals } = useCaCreation<NonNullable<typeof cas>[number]>(
+    (ca) => {
+      setValue("caId", ca.id, { shouldDirty: true, shouldValidate: true });
+    }
+  );
   const selectedCa = cas?.find((ca) => ca.id === selectedCaId);
   const selectedAutoRenewalState = watch("enableAutoRenewal");
 
@@ -212,46 +237,37 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     isAzureAdcsCa: true
   });
 
-  // Initialize form with ALL subscriber data including template
   useEffect(() => {
-    if (pkiSubscriber) {
-      // Set all values directly and immediately
-      setValue("name", pkiSubscriber.name);
-      setValue("caId", pkiSubscriber.caId || "");
-      setValue("commonName", pkiSubscriber.commonName);
-      setValue("subjectAlternativeNames", pkiSubscriber.subjectAlternativeNames.join(", "));
-      setValue("ttl", pkiSubscriber.ttl || "");
-      setValue(
-        "keyUsages",
-        Object.fromEntries((pkiSubscriber.keyUsages || []).map((name) => [name, true]))
-      );
-      setValue(
-        "extendedKeyUsages",
-        Object.fromEntries((pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true]))
-      );
-      setValue("enableAutoRenewal", pkiSubscriber.enableAutoRenewal || false);
-      setValue("renewalBefore", pkiSubscriber.autoRenewalPeriodInDays || 7);
-      setValue("renewalUnit", TimeUnit.DAY);
-
-      // Set Azure template immediately
-      setValue("azureTemplateType", pkiSubscriber.properties?.azureTemplateType || "");
-
-      // Set all Additional Subject Fields immediately
-      setValue("organization", pkiSubscriber.properties?.organization || "");
-      setValue("organizationalUnit", pkiSubscriber.properties?.organizationalUnit || "");
-      setValue("country", pkiSubscriber.properties?.country || "");
-      setValue("state", pkiSubscriber.properties?.state || "");
-      setValue("locality", pkiSubscriber.properties?.locality || "");
-      setValue("emailAddress", pkiSubscriber.properties?.emailAddress || "");
+    if (pkiSubscriber && popUp.pkiSubscriber.isOpen && isSubscriberReady) {
+      reset({
+        name: pkiSubscriber.name,
+        caId: pkiSubscriber.caId || "",
+        commonName: pkiSubscriber.commonName,
+        subjectAlternativeNames: pkiSubscriber.subjectAlternativeNames.join(", "),
+        ttl: pkiSubscriber.ttl || "",
+        keyUsages: Object.fromEntries((pkiSubscriber.keyUsages || []).map((name) => [name, true])),
+        extendedKeyUsages: Object.fromEntries(
+          (pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true])
+        ),
+        enableAutoRenewal: pkiSubscriber.enableAutoRenewal || false,
+        renewalBefore: pkiSubscriber.autoRenewalPeriodInDays || 7,
+        renewalUnit: TimeUnit.DAY,
+        azureTemplateType: pkiSubscriber.properties?.azureTemplateType || "",
+        organization: pkiSubscriber.properties?.organization || "",
+        organizationalUnit: pkiSubscriber.properties?.organizationalUnit || "",
+        country: pkiSubscriber.properties?.country || "",
+        state: pkiSubscriber.properties?.state || "",
+        locality: pkiSubscriber.properties?.locality || "",
+        emailAddress: pkiSubscriber.properties?.emailAddress || ""
+      });
     }
-  }, [pkiSubscriber, setValue]);
+  }, [pkiSubscriber, popUp.pkiSubscriber.isOpen, reset, isSubscriberReady]);
 
   useEffect(() => {
-    if (cas?.length && !pkiSubscriber) {
-      // Only auto-select first CA when creating new subscriber, not when updating
-      setValue("caId", cas[0].id);
+    if (cas?.length && !subscriberName && popUp.pkiSubscriber.isOpen && !getValues("caId")) {
+      resetField("caId", { defaultValue: cas[0].id });
     }
-  }, [cas, setValue, pkiSubscriber]);
+  }, [cas, subscriberName, popUp.pkiSubscriber.isOpen]);
 
   const onFormSubmit = async ({
     name,
@@ -272,7 +288,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     locality,
     emailAddress
   }: FormData) => {
-    if (!projectId) return;
+    if (!projectId || !isSubscriberReady) return;
 
     if (!caId) {
       createNotification({
@@ -387,436 +403,539 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
   };
 
-  return (
-    <Modal
-      isOpen={popUp?.pkiSubscriber?.isOpen}
-      onOpenChange={(isOpen) => {
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => {
         reset();
-        handlePopUpToggle("pkiSubscriber", isOpen);
-      }}
-    >
-      <ModalContent title={`${pkiSubscriber ? "Update" : "Add"} PKI Subscriber`}>
-        <form key={pkiSubscriber?.id || "new"} onSubmit={handleSubmit(onFormSubmit)}>
-          <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as FormTab)}>
-            <TabList>
-              <Tab value={FormTab.Configuration}>Configuration</Tab>
-              <Tab value={FormTab.Advanced}>Advanced</Tab>
-            </TabList>
-            <TabPanel value={FormTab.Configuration}>
-              {pkiSubscriber && (
-                <FormControl label="Subscriber ID">
-                  <Input
-                    value={pkiSubscriber.id}
-                    isDisabled
-                    className="bg-foreground-inverse/[0.07]"
-                  />
-                </FormControl>
-              )}
-              <Controller
-                control={control}
-                name="name"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Subscriber Name"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input
-                      {...field}
-                      placeholder="web-service"
-                      autoComplete="off"
-                      name="pki-subscriber-name"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="caId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Issuing CA"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    isRequired
-                  >
-                    <Select
-                      value={field.value}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                    >
-                      {(cas || []).map(({ id, name, type, configuration }) => {
-                        const displayName =
-                          type === CaType.INTERNAL ? `${name} (${configuration.dn})` : name;
+        handlePopUpToggle("pkiSubscriber", false);
+      }
+    });
 
-                        return (
-                          <SelectItem value={id} key={`ca-${id}`}>
-                            {displayName}
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              {selectedCa?.type === CaType.AZURE_AD_CS && (
-                <Controller
-                  control={control}
-                  name="azureTemplateType"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Certificate Template"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                      isRequired
-                    >
-                      <Select
-                        value={field.value}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full"
-                      >
-                        {(azureTemplates?.templates || []).map(
-                          (template: { id: string; name: string }) => (
-                            <SelectItem value={template.id} key={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          )
-                        )}
-                      </Select>
-                    </FormControl>
+  return (
+    <>
+      <Sheet
+        open={popUp?.pkiSubscriber?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) requestDiscard();
+        }}
+      >
+        <SheetContent size="form" isPending={isSubmitting}>
+          <SheetHeader>
+            <SheetTitle>{`${subscriberName ? "Update" : "Add"} PKI Subscriber`}</SheetTitle>
+            <SheetDescription>Configure the subscriber certificate settings.</SheetDescription>
+          </SheetHeader>
+          <form
+            key={pkiSubscriber?.id || "new"}
+            onSubmit={handleSubmit(onFormSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <fieldset
+              disabled={isSubmitting || !isSubscriberReady}
+              className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
+            >
+              <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as FormTab)}>
+                <TabsList>
+                  <TabsTrigger value={FormTab.Configuration}>Configuration</TabsTrigger>
+                  <TabsTrigger value={FormTab.Advanced}>Advanced</TabsTrigger>
+                </TabsList>
+                <TabsContent className="flex flex-col gap-4" value={FormTab.Configuration}>
+                  {pkiSubscriber && (
+                    <Field>
+                      <FieldLabel>Subscriber ID</FieldLabel>
+                      <Input value={pkiSubscriber.id} disabled />
+                    </Field>
                   )}
-                />
-              )}
-              <Controller
-                control={control}
-                name="commonName"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Common Name"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="web.example.com" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="subjectAlternativeNames"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Subject Alternative Names (SANs)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="app1.example.com, app2.example.com, ..." />
-                  </FormControl>
-                )}
-              />
-
-              {/* Additional Subject Fields - Only for Azure ADCS CAs */}
-              {selectedCa?.type === CaType.AZURE_AD_CS && (
-                <Accordion type="single" collapsible className="mb-4 w-full">
-                  <AccordionItem value="subject-fields" className="data-[state=open]:border-none">
-                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                      <div className="order-1 ml-3">Additional Subject Fields</div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-1 gap-4">
-                        <Controller
-                          control={control}
-                          name="organization"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Organization (O)"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                              tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
-                            >
-                              <Input {...field} placeholder="Example Corp" maxLength={64} />
-                            </FormControl>
-                          )}
-                        />
-                        <Controller
-                          control={control}
-                          name="organizationalUnit"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Organizational Unit (OU)"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                              tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
-                            >
-                              <Input {...field} placeholder="IT Department" maxLength={64} />
-                            </FormControl>
-                          )}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <Controller
-                            control={control}
-                            name="country"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Country (C)"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                tooltipText="Exactly 2 uppercase letters (ISO 3166-1 alpha-2 code). Examples: US, CA, GB, DE"
-                              >
-                                <Input
-                                  {...field}
-                                  placeholder="US"
-                                  maxLength={2}
-                                  style={{ textTransform: "uppercase" }}
-                                />
-                              </FormControl>
-                            )}
-                          />
-                          <Controller
-                            control={control}
-                            name="state"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="State/Province (ST)"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
-                              >
-                                <Input {...field} placeholder="California" maxLength={64} />
-                              </FormControl>
-                            )}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Controller
-                            control={control}
-                            name="locality"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Locality (L)"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
-                              >
-                                <Input {...field} placeholder="San Francisco" maxLength={64} />
-                              </FormControl>
-                            )}
-                          />
-                          <Controller
-                            control={control}
-                            name="emailAddress"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label="Email Address"
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                tooltipText="Valid email format, 6-64 characters. Example: admin@example.com"
-                              >
-                                <Input
-                                  {...field}
-                                  type="email"
-                                  placeholder="admin@example.com"
-                                  maxLength={64}
-                                />
-                              </FormControl>
-                            )}
-                          />
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-
-              {selectedCa?.type !== CaType.ACME && (
-                <Controller
-                  control={control}
-                  name="ttl"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="TTL"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      isRequired
-                    >
-                      <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-                    </FormControl>
-                  )}
-                />
-              )}
-              {selectedCa?.type !== CaType.ACME && selectedCa?.type !== CaType.AZURE_AD_CS && (
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                      <div className="order-1 ml-3">Key Usage</div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <Controller
-                        control={control}
-                        name="keyUsages"
-                        render={({ field: { onChange, value }, fieldState: { error } }) => {
-                          return (
-                            <FormControl
-                              label="Key Usage"
-                              errorText={error?.message}
-                              isError={Boolean(error)}
-                            >
-                              <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                                {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                                  return (
-                                    <Checkbox
-                                      id={optionValue}
-                                      key={optionValue}
-                                      isChecked={value[optionValue]}
-                                      onCheckedChange={(state) => {
-                                        onChange({
-                                          ...value,
-                                          [optionValue]: state
-                                        });
-                                      }}
-                                    >
-                                      {label}
-                                    </Checkbox>
-                                  );
-                                })}
-                              </div>
-                            </FormControl>
-                          );
-                        }}
-                      />
-                      <Controller
-                        control={control}
-                        name="extendedKeyUsages"
-                        render={({ field: { onChange, value }, fieldState: { error } }) => {
-                          return (
-                            <FormControl
-                              label="Extended Key Usage"
-                              errorText={error?.message}
-                              isError={Boolean(error)}
-                            >
-                              <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                                {EXTENDED_KEY_USAGES_OPTIONS.map(
-                                  ({ label, value: optionValue }) => {
-                                    return (
-                                      <Checkbox
-                                        id={optionValue}
-                                        key={optionValue}
-                                        isChecked={value[optionValue]}
-                                        onCheckedChange={(state) => {
-                                          onChange({
-                                            ...value,
-                                            [optionValue]: state
-                                          });
-                                        }}
-                                      >
-                                        {label}
-                                      </Checkbox>
-                                    );
-                                  }
-                                )}
-                              </div>
-                            </FormControl>
-                          );
-                        }}
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-            </TabPanel>
-            <TabPanel value={FormTab.Advanced}>
-              <Controller
-                control={control}
-                name="enableAutoRenewal"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    tooltipText="If enabled, a new certificate will be issued automatically X days before the current certificate expires."
-                  >
-                    <Checkbox id="enableAutoRenewal" isChecked={value} onCheckedChange={onChange}>
-                      Enable Certificate Auto Renewal
-                    </Checkbox>
-                  </FormControl>
-                )}
-              />
-              {selectedAutoRenewalState && (
-                <div className="flex items-center">
                   <Controller
                     control={control}
-                    defaultValue={7}
-                    name="renewalBefore"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Renewal Before"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        className="w-full"
-                        isRequired
-                      >
+                    name="name"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor={`${formId}-name`}>
+                          Subscriber Name <span className="text-danger">*</span>
+                        </FieldLabel>
                         <Input
+                          isError={Boolean(error)}
+                          id={`${formId}-name`}
                           {...field}
-                          placeholder="5"
-                          type="number"
-                          min={1}
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            onChange(val === "" ? "" : Number(val));
-                          }}
+                          placeholder="web-service"
+                          autoComplete="off"
+                          name="pki-subscriber-name"
                         />
-                      </FormControl>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
                     )}
                   />
                   <Controller
                     control={control}
-                    name="renewalUnit"
-                    defaultValue={TimeUnit.DAY}
+                    name="caId"
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl
-                        className="ml-4"
-                        label="Unit"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Select
-                          value={field.value}
-                          onValueChange={(e) => onChange(e)}
-                          className="w-48"
-                        >
-                          <SelectItem value={TimeUnit.DAY}>Days</SelectItem>
-                          <SelectItem value={TimeUnit.WEEK}>Weeks</SelectItem>
-                          <SelectItem value={TimeUnit.MONTH}>Months</SelectItem>
-                          <SelectItem value={TimeUnit.YEAR}>Years</SelectItem>
-                        </Select>
-                      </FormControl>
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor={`${formId}-caId`}>
+                          Issuing CA <span className="text-danger">*</span>
+                        </FieldLabel>
+                        <Combobox
+                          ref={field.ref}
+                          id={`${formId}-caId`}
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          value={cas?.find((ca) => ca.id === field.value) ?? null}
+                          onValueChange={(ca) => onChange(ca.id)}
+                          options={cas ?? []}
+                          getOptionValue={(ca) => ca.id}
+                          getOptionLabel={(ca) =>
+                            ca.type === CaType.INTERNAL
+                              ? `${ca.name} (${ca.configuration.dn})`
+                              : ca.name
+                          }
+                          isClearable={false}
+                          isError={Boolean(error)}
+                          creation={caCreation}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
                     )}
                   />
-                </div>
-              )}
-            </TabPanel>
-          </Tabs>
-          <div className="mt-4 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {pkiSubscriber ? "Update" : "Add"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("pkiSubscriber", false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+                  {selectedCa?.type === CaType.AZURE_AD_CS && (
+                    <Controller
+                      control={control}
+                      name="azureTemplateType"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabel htmlFor={`${formId}-azureTemplateType`}>
+                            Certificate Template <span className="text-danger">*</span>
+                          </FieldLabel>
+                          <Select value={field.value} onValueChange={onChange} name={field.name}>
+                            <SelectTrigger
+                              id={`${formId}-azureTemplateType`}
+                              ref={field.ref}
+                              onBlur={field.onBlur}
+                              className="w-full"
+                              isError={Boolean(error)}
+                            >
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(azureTemplates?.templates || []).map(
+                                (template: { id: string; name: string }) => (
+                                  <SelectItem value={template.id} key={template.id}>
+                                    {template.name}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                  )}
+                  <Controller
+                    control={control}
+                    name="commonName"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor={`${formId}-commonName`}>
+                          Common Name <span className="text-danger">*</span>
+                        </FieldLabel>
+                        <Input
+                          isError={Boolean(error)}
+                          id={`${formId}-commonName`}
+                          {...field}
+                          placeholder="web.example.com"
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="subjectAlternativeNames"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor={`${formId}-subjectAlternativeNames`}>
+                          Subject Alternative Names (SANs)
+                        </FieldLabel>
+                        <Input
+                          isError={Boolean(error)}
+                          id={`${formId}-subjectAlternativeNames`}
+                          {...field}
+                          placeholder="app1.example.com, app2.example.com, ..."
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  {/* Additional Subject Fields - Only for Azure ADCS CAs */}
+                  {selectedCa?.type === CaType.AZURE_AD_CS && (
+                    <Accordion type="single" collapsible variant="ghost">
+                      <AccordionItem value="subject-fields">
+                        <AccordionTrigger>
+                          <div className="order-1 ml-3">Additional Subject Fields</div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 gap-4">
+                            <Controller
+                              control={control}
+                              name="organization"
+                              render={({ field, fieldState: { error } }) => (
+                                <Field data-invalid={Boolean(error)}>
+                                  <FieldLabel htmlFor={`${formId}-organization`}>
+                                    Organization (O)
+                                  </FieldLabel>
+                                  <Input
+                                    isError={Boolean(error)}
+                                    id={`${formId}-organization`}
+                                    {...field}
+                                    placeholder="Example Corp"
+                                    maxLength={64}
+                                  />
+                                  <FieldDescription>
+                                    Maximum 64 characters. No special DN characters allowed. Cannot
+                                    start/end with spaces, hyphens, underscores, or periods.
+                                  </FieldDescription>
+                                  <FieldError>{error?.message}</FieldError>
+                                </Field>
+                              )}
+                            />
+                            <Controller
+                              control={control}
+                              name="organizationalUnit"
+                              render={({ field, fieldState: { error } }) => (
+                                <Field data-invalid={Boolean(error)}>
+                                  <FieldLabel htmlFor={`${formId}-organizationalUnit`}>
+                                    Organizational Unit (OU)
+                                  </FieldLabel>
+                                  <Input
+                                    isError={Boolean(error)}
+                                    id={`${formId}-organizationalUnit`}
+                                    {...field}
+                                    placeholder="IT Department"
+                                    maxLength={64}
+                                  />
+                                  <FieldDescription>
+                                    Maximum 64 characters. No special DN characters allowed. Cannot
+                                    start/end with spaces, hyphens, underscores, or periods.
+                                  </FieldDescription>
+                                  <FieldError>{error?.message}</FieldError>
+                                </Field>
+                              )}
+                            />
+                            <div className="grid grid-cols-2 gap-4">
+                              <Controller
+                                control={control}
+                                name="country"
+                                render={({ field, fieldState: { error } }) => (
+                                  <Field data-invalid={Boolean(error)}>
+                                    <FieldLabel htmlFor={`${formId}-country`}>
+                                      Country (C)
+                                    </FieldLabel>
+                                    <Input
+                                      isError={Boolean(error)}
+                                      id={`${formId}-country`}
+                                      {...field}
+                                      placeholder="US"
+                                      maxLength={2}
+                                      style={{ textTransform: "uppercase" }}
+                                    />
+                                    <FieldDescription>
+                                      Exactly 2 uppercase letters (ISO 3166-1 alpha-2 code).
+                                      Examples: US, CA, GB, DE
+                                    </FieldDescription>
+                                    <FieldError>{error?.message}</FieldError>
+                                  </Field>
+                                )}
+                              />
+                              <Controller
+                                control={control}
+                                name="state"
+                                render={({ field, fieldState: { error } }) => (
+                                  <Field data-invalid={Boolean(error)}>
+                                    <FieldLabel htmlFor={`${formId}-state`}>
+                                      State/Province (ST)
+                                    </FieldLabel>
+                                    <Input
+                                      isError={Boolean(error)}
+                                      id={`${formId}-state`}
+                                      {...field}
+                                      placeholder="California"
+                                      maxLength={64}
+                                    />
+                                    <FieldDescription>
+                                      Maximum 64 characters. No special DN characters allowed.
+                                      Cannot start/end with spaces, hyphens, underscores, or
+                                      periods.
+                                    </FieldDescription>
+                                    <FieldError>{error?.message}</FieldError>
+                                  </Field>
+                                )}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <Controller
+                                control={control}
+                                name="locality"
+                                render={({ field, fieldState: { error } }) => (
+                                  <Field data-invalid={Boolean(error)}>
+                                    <FieldLabel htmlFor={`${formId}-locality`}>
+                                      Locality (L)
+                                    </FieldLabel>
+                                    <Input
+                                      isError={Boolean(error)}
+                                      id={`${formId}-locality`}
+                                      {...field}
+                                      placeholder="San Francisco"
+                                      maxLength={64}
+                                    />
+                                    <FieldDescription>
+                                      Maximum 64 characters. No special DN characters allowed.
+                                      Cannot start/end with spaces, hyphens, underscores, or
+                                      periods.
+                                    </FieldDescription>
+                                    <FieldError>{error?.message}</FieldError>
+                                  </Field>
+                                )}
+                              />
+                              <Controller
+                                control={control}
+                                name="emailAddress"
+                                render={({ field, fieldState: { error } }) => (
+                                  <Field data-invalid={Boolean(error)}>
+                                    <FieldLabel htmlFor={`${formId}-emailAddress`}>
+                                      Email Address
+                                    </FieldLabel>
+                                    <Input
+                                      isError={Boolean(error)}
+                                      id={`${formId}-emailAddress`}
+                                      {...field}
+                                      type="email"
+                                      placeholder="admin@example.com"
+                                      maxLength={64}
+                                    />
+                                    <FieldDescription>
+                                      Valid email format, 6-64 characters. Example:
+                                      admin@example.com
+                                    </FieldDescription>
+                                    <FieldError>{error?.message}</FieldError>
+                                  </Field>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                  {selectedCa?.type !== CaType.ACME && (
+                    <Controller
+                      control={control}
+                      name="ttl"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabel htmlFor={`${formId}-ttl`}>
+                            TTL <span className="text-danger">*</span>
+                          </FieldLabel>
+                          <Input
+                            isError={Boolean(error)}
+                            id={`${formId}-ttl`}
+                            {...field}
+                            placeholder="2 days, 1d, 2h, 1y, ..."
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                  )}
+                  {selectedCa?.type !== CaType.ACME && selectedCa?.type !== CaType.AZURE_AD_CS && (
+                    <Accordion type="single" collapsible variant="ghost">
+                      <AccordionItem value="key-usages">
+                        <AccordionTrigger>
+                          <div className="order-1 ml-3">Key Usage</div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <Controller
+                            control={control}
+                            name="keyUsages"
+                            render={({ field: { onChange, value }, fieldState: { error } }) => {
+                              return (
+                                <Field data-invalid={Boolean(error)}>
+                                  <FieldLabel htmlFor={`${formId}-keyUsages`}>Key Usage</FieldLabel>
+                                  <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                                    {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                                      return (
+                                        <Field key={optionValue} orientation="horizontal">
+                                          <Checkbox
+                                            id={optionValue}
+                                            isChecked={value[optionValue]}
+                                            onCheckedChange={(state) => {
+                                              onChange({
+                                                ...value,
+                                                [optionValue]: state
+                                              });
+                                            }}
+                                            variant="project"
+                                          />
+                                          <FieldLabel htmlFor={optionValue}>{label}</FieldLabel>
+                                        </Field>
+                                      );
+                                    })}
+                                  </div>
+                                  <FieldError>{error?.message}</FieldError>
+                                </Field>
+                              );
+                            }}
+                          />
+                          <Controller
+                            control={control}
+                            name="extendedKeyUsages"
+                            render={({ field: { onChange, value }, fieldState: { error } }) => {
+                              return (
+                                <Field data-invalid={Boolean(error)}>
+                                  <FieldLabel htmlFor={`${formId}-extendedKeyUsages`}>
+                                    Extended Key Usage
+                                  </FieldLabel>
+                                  <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                                    {EXTENDED_KEY_USAGES_OPTIONS.map(
+                                      ({ label, value: optionValue }) => {
+                                        return (
+                                          <Field key={optionValue} orientation="horizontal">
+                                            <Checkbox
+                                              id={optionValue}
+                                              isChecked={value[optionValue]}
+                                              onCheckedChange={(state) => {
+                                                onChange({
+                                                  ...value,
+                                                  [optionValue]: state
+                                                });
+                                              }}
+                                              variant="project"
+                                            />
+                                            <FieldLabel htmlFor={optionValue}>{label}</FieldLabel>
+                                          </Field>
+                                        );
+                                      }
+                                    )}
+                                  </div>
+                                  <FieldError>{error?.message}</FieldError>
+                                </Field>
+                              );
+                            }}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                </TabsContent>
+                <TabsContent className="flex flex-col gap-4" value={FormTab.Advanced}>
+                  <Controller
+                    control={control}
+                    name="enableAutoRenewal"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <Field orientation="horizontal">
+                          <Checkbox
+                            id="enableAutoRenewal"
+                            isChecked={value}
+                            onCheckedChange={onChange}
+                            variant="project"
+                          />
+                          <FieldLabel htmlFor="enableAutoRenewal">
+                            Enable Certificate Auto Renewal
+                          </FieldLabel>
+                        </Field>
+                        <FieldDescription>
+                          If enabled, a new certificate will be issued automatically X days before
+                          the current certificate expires.
+                        </FieldDescription>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  {selectedAutoRenewalState && (
+                    <div className="flex items-center">
+                      <Controller
+                        control={control}
+                        defaultValue={7}
+                        name="renewalBefore"
+                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                          <Field className="w-full" data-invalid={Boolean(error)}>
+                            <FieldLabel htmlFor={`${formId}-renewalBefore`}>
+                              Renewal Before <span className="text-danger">*</span>
+                            </FieldLabel>
+                            <Input
+                              isError={Boolean(error)}
+                              id={`${formId}-renewalBefore`}
+                              {...field}
+                              placeholder="5"
+                              type="number"
+                              min={1}
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val === "" ? "" : Number(val));
+                              }}
+                            />
+                            <FieldError>{error?.message}</FieldError>
+                          </Field>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="renewalUnit"
+                        defaultValue={TimeUnit.DAY}
+                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                          <Field className="ml-4" data-invalid={Boolean(error)}>
+                            <FieldLabel htmlFor={`${formId}-renewalUnit`}>Unit</FieldLabel>
+                            <Select value={field.value} onValueChange={onChange} name={field.name}>
+                              <SelectTrigger
+                                id={`${formId}-renewalUnit`}
+                                ref={field.ref}
+                                onBlur={field.onBlur}
+                                className="w-full"
+                                isError={Boolean(error)}
+                              >
+                                <SelectValue placeholder="Select an option" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={TimeUnit.DAY}>Days</SelectItem>
+                                <SelectItem value={TimeUnit.WEEK}>Weeks</SelectItem>
+                                <SelectItem value={TimeUnit.MONTH}>Months</SelectItem>
+                                <SelectItem value={TimeUnit.YEAR}>Years</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FieldError>{error?.message}</FieldError>
+                          </Field>
+                        )}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </fieldset>
+            <SheetFooter className="justify-end border-t">
+              <SheetClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </SheetClose>
+              <Button
+                variant="project"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isSubscriberReady}
+              >
+                {subscriberName ? "Update" : "Add"}
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+      {caCreationModals}
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes will be lost."
+      />
+    </>
   );
 };

@@ -95,6 +95,7 @@ Here's some information about each field:
 
 - **CA Certificate:** A PEM encoded CA Certificate used to validate incoming TLS request client certificate. Any name constraints it asserts are honored, so a client certificate whose name falls outside the namespace the CA may certify is rejected. Both the CA Certificate and the client certificate must permit client authentication: a certificate that lists an Extended Key Usage without `clientAuth` (or `anyExtendedKeyUsage`) is rejected, since a CA's key usages also limit what the certificates beneath it may be used for. A certificate that lists no Extended Key Usage is unrestricted and is accepted.
 - **Verify Client Certificate Chain (default is disabled):** By default, the CA Certificate must be the **direct issuer** of the client's leaf certificate. Enable this to instead treat the CA Certificate as a **trust anchor** and accept any client whose presented chain (leaf followed by intermediates) builds a valid path up to it. This is helpful when the issuing intermediate rotates beneath a long-lived root, such as a **SPIRE X.509-SVID**: you can pin the stable root here once and let the workload present its current intermediate alongside its leaf, rather than updating the CA Certificate on every rotation. Either way the trust anchor is the only certificate trusted, the client certificate must still be an end-entity certificate, and the Common Name and Subject Alternative Name checks below still apply to the leaf. Restrictions that the CAs on the path place on their subordinates are honored: a client certificate whose name falls outside an issuing CA's name constraints is rejected, as is a chain with more intermediates than a CA's path length permits, or one that passes through a CA whose Extended Key Usage doesn't permit client authentication.
+- **Bind Access Tokens to Client Certificate (default is disabled):** Binds each issued access token to the client certificate used to log in. See [Certificate-bound access tokens](#certificate-bound-access-tokens).
 - **Allowed Common Names:** A comma separated list of client certificate common names allowed.
 - **Allowed Subject Alternative Names:** A comma separated list of client certificate subject alternative names (SANs) allowed. This is useful when the client certificate carries its identity in a SAN rather than the Subject Common Name, such as a SPIFFE X.509-SVID whose identity is a URI SAN (`spiffe://trust-domain/path`) with an empty Subject. Matching is type-aware, so an entry only matches a SAN of the same type:
   - **Type-prefixed entries** are matched against the corresponding SAN type, e.g. `URI:spiffe://example.org/svc`, `IP:10.0.0.1`, `EMAIL:svc@example.com`.
@@ -181,14 +182,50 @@ try {
 
 </Note>
 
+## Certificate-bound access tokens
+
+By default, an access token from TLS Certificate Auth is a bearer token: anyone holding it can use it. With **Bind Access Tokens to Client Certificate** enabled, the token also records the SHA-256 thumbprint of the client certificate used to log in, following [RFC 8705](https://www.rfc-editor.org/rfc/rfc8705) (the `cnf` claim with `x5t#S256`). A stolen token is then unusable without the certificate's private key.
+
+With binding enabled:
+
+- Every API request made with the token, including [token renewal](/api-reference/endpoints/universal-auth/renew-access-token), must present the same client certificate through the TLS-terminating proxy
+- A request with no client certificate, or a different one, is rejected with `401 Unauthorized`
+- Renewing the token keeps the binding
+- After the client certificate rotates, the client must log in again to get a token bound to the new certificate
+
+The client must present its certificate on every API call, not only on login. A custom client using the [login example](#accessing-the-infisical-api-with-the-identity) must reuse the same HTTPS agent for its later API calls. The [Infisical Issuer for cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer) supports this through the `tlsCert` method.
+
+On Infisical Cloud, send every API request made with a bound token to port `8443`, for example `https://app.infisical.com:8443`. Requests on port `443` carry no client certificate and are rejected.
+
+Turning the setting on revokes the identity's existing TLS Certificate Auth tokens, which were issued without a binding. Tokens issued while the setting was on stay bound until they expire, even after it's turned off.
+
 ## Security requirements for self-hosted deployments
 
 ALL TLS cert [login](/api-reference/endpoints/tls-cert-auth/login) requests **MUST** go through a load balancer/proxy that verifies certificate ownership:
 
 - **REQUIRED:** Configure your load balancer/proxy to **require a proper TLS handshake with client certificate presentation**
 - **REQUIRED:** Ensure the load balancer **verifies the client possesses the private key** corresponding to the certificate (standard TLS behavior)
-- **NEVER** allow direct connections to Infisical for TLS cert auth - this enables header injection attacks
+- **NEVER** allow direct connections to Infisical for TLS cert auth, since this enables header injection attacks
 - **NEVER** forward certificate headers without requiring proper TLS certificate presentation
+- **REQUIRED:** Always overwrite the client certificate header with the certificate from the TLS handshake, or with an empty value when none was presented (certificates are public, and a client-supplied header lets anyone claim any certificate)
+
+When **Bind Access Tokens to Client Certificate** is enabled on any identity, the proxy must set the header on **every** API request, not only on the login endpoint. Otherwise bound tokens are rejected on every request after login.
+
+```nginx
+server {
+    listen 443 ssl;
+    ssl_certificate /etc/nginx/tls/server.crt;
+    ssl_certificate_key /etc/nginx/tls/server.key;
+    ssl_verify_client optional_no_ca;
+
+    location /api {
+        proxy_set_header X-Identity-Tls-Cert-Auth-Client-Cert $ssl_client_escaped_cert;
+        proxy_pass http://infisical:8080;
+    }
+}
+```
+
+`$ssl_client_escaped_cert` is empty when the client presents no certificate, so the header is cleared rather than passed through. Apply the same `proxy_set_header` in every `location` that proxies to the Infisical API.
 
 ### Load balancer configuration examples
 

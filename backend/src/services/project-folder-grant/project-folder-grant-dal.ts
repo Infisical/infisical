@@ -20,6 +20,7 @@ export const projectFolderGrantDALFactory = (db: TDbClient) => {
         `${TableName.ProjectFolderGrant}.targetProjectId`,
         `targetProject.id`
       )
+      .whereNull(`targetProject.deleteAfter`)
       .select(
         `${TableName.ProjectFolderGrant}.*`,
         `${TableName.SecretFolder}.name as folderName`,
@@ -50,6 +51,7 @@ export const projectFolderGrantDALFactory = (db: TDbClient) => {
         `${TableName.ProjectFolderGrant}.sourceProjectId`,
         `sourceProject.id`
       )
+      .whereNull(`sourceProject.deleteAfter`)
       .select(
         `${TableName.ProjectFolderGrant}.*`,
         `${TableName.SecretFolder}.name as folderName`,

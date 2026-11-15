@@ -16,7 +16,7 @@ import { z } from "zod";
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
+import { isValidLdapFilter, pinLdapTarget } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -25,8 +25,8 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { AllowedFieldsSchema } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -43,25 +43,26 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       return done(new UnauthorizedError({ message: "LDAP configuration not found" }));
     }
 
-    const opts = {
-      server: {
-        url: ldapConfig.url,
-        bindDN: ldapConfig.bindDN,
-        bindCredentials: ldapConfig.bindPass,
-        searchBase: ldapConfig.searchBase,
-        searchFilter: ldapConfig.searchFilter,
-        ...(ldapConfig.caCert
-          ? {
-              tlsOptions: {
-                ca: [ldapConfig.caCert]
-              }
-            }
-          : {})
-      },
-      passReqToCallback: true
-    };
-
-    return done(null, opts);
+    process.nextTick(async () => {
+      let target: Awaited<ReturnType<typeof pinLdapTarget>>;
+      try {
+        target = await pinLdapTarget(ldapConfig.url, ldapConfig.caCert ? { ca: [ldapConfig.caCert] } : undefined);
+      } catch (err) {
+        done(err);
+        return;
+      }
+      done(null, {
+        server: {
+          url: target.url,
+          bindDN: ldapConfig.bindDN,
+          bindCredentials: ldapConfig.bindPass,
+          searchBase: ldapConfig.searchBase,
+          searchFilter: ldapConfig.searchFilter,
+          ...(target.tlsOptions ? { tlsOptions: target.tlsOptions } : {})
+        },
+        passReqToCallback: true
+      });
+    });
   };
 
   // Promise-based wrapper for passport authentication

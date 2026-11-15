@@ -19,6 +19,9 @@ export const Route = createFileRoute(
             },
             search: { selectedTab: "hsm-connectors" }
           })
+        },
+        {
+          label: "HSM Connector"
         }
       ]
     };

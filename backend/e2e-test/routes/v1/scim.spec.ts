@@ -4,11 +4,15 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
+import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
+import { createFolder } from "../../testUtils/folders";
+import { createOrgGroup, deleteGroups } from "../../testUtils/groups";
+import { createUser, deleteUsers } from "../../testUtils/users";
 
 const ORG_ID = seedData1.organization.id;
 const TEST_DOMAIN = "scim-test.local";
@@ -1239,6 +1243,68 @@ describe("SCIM v1 Router", () => {
       expect((events[0].event as { deleted: boolean; orgMembershipId: string }).orgMembershipId).toBe(
         unknownMembershipId
       );
+    });
+  });
+
+  describe("DELETE /Groups/:groupId - Group in another org", () => {
+    test("should leave a group owned by another org, and its members' folder grants, untouched", async () => {
+      const db = getDb();
+      const otherOrg = await createIsolatedOrgAndProject("scim-foreign-group");
+      const groupId = await createOrgGroup({
+        orgId: otherOrg.orgId,
+        name: `scim-foreign-${crypto.randomUUID().slice(0, 8)}`,
+        role: OrgMembershipRole.NoAccess
+      });
+      const { userId } = await createUser("scim-foreign-member");
+
+      try {
+        await db(TableName.UserGroupMembership).insert({ userId, groupId, isPending: false });
+        const [groupProjectRow] = await db(TableName.Membership)
+          .insert({
+            scope: AccessScope.Project,
+            scopeOrgId: otherOrg.orgId,
+            scopeProjectId: otherOrg.projectId,
+            actorGroupId: groupId
+          })
+          .returning("id");
+        await db(TableName.MembershipRole).insert({
+          membershipId: (groupProjectRow as { id: string }).id,
+          role: ProjectMembershipRole.Viewer
+        });
+        const folder = await createFolder({
+          workspaceId: otherOrg.projectId,
+          environmentSlug: "dev",
+          secretPath: "/",
+          name: "scim-foreign",
+          authToken: otherOrg.authToken
+        });
+        const [grant] = await db(TableName.AdditionalPrivilege)
+          .insert({
+            name: `scim-foreign-${crypto.randomUUID()}`,
+            actorUserId: userId,
+            projectId: otherOrg.projectId,
+            folderId: folder.id,
+            role: SecretFolderRole.Read
+          })
+          .returning("id");
+
+        const deleteRes = await testServer.inject({
+          method: "DELETE",
+          url: `/api/v1/scim/Groups/${groupId}`,
+          headers: { authorization: `Bearer ${scimToken}` }
+        });
+        // SCIM answers a miss with 204 too, so the IdP stops retrying a stale id.
+        expect(deleteRes.statusCode).toBe(204);
+
+        expect(await db(TableName.Groups).where({ id: groupId })).toHaveLength(1);
+        expect(await db(TableName.AdditionalPrivilege).where({ id: (grant as { id: string }).id })).toHaveLength(1);
+        const events = await db(TableName.EventOutbox).whereRaw(`payload->>'groupId' = ?`, [groupId]);
+        expect(events).toHaveLength(0);
+      } finally {
+        await deleteGroups([groupId]);
+        await deleteUsers([userId]);
+        await otherOrg.cleanup();
+      }
     });
   });
 });

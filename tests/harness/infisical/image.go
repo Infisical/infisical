@@ -86,7 +86,8 @@ func build(ctx context.Context, repoRoot string) (string, error) {
 	_ = iid.Close()
 	defer func() { _ = os.Remove(iidPath) }()
 
-	args := []string{"build", "-f", filepath.Join(backend, "Dockerfile"), "-t", localTag, "--iidfile", iidPath}
+	// See fakenet.ResolveImage: without this the id changes on every build.
+	args := []string{"build", "--provenance=false", "-f", filepath.Join(backend, "Dockerfile"), "-t", localTag, "--iidfile", iidPath}
 	if pin := cliVersion(repoRoot); pin != "" {
 		// Keep the pinned CLI version honest. The Dockerfile carries a matching ARG
 		// default, and check-dockerfile-pins.yml fails a PR when they drift.

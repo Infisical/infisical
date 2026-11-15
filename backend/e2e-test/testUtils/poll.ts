@@ -25,3 +25,19 @@ export const pollUntil = async <T>(dto: {
     });
   }
 };
+
+// Resolves once some query is waiting on a lock the backend `pid` holds, so a spec can prove a statement
+// blocked before it lets the holder commit.
+export const waitUntilBlockedBy = (pid: number) =>
+  pollUntil({
+    describe: `a query blocked by backend ${pid}`,
+    read: async () => {
+      const { rows } = await testDb.raw(
+        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+        [pid]
+      );
+      return rows[0].waiting as number;
+    },
+    done: (waiting) => waiting > 0,
+    timeoutMs: 5_000
+  });

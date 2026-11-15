@@ -1,10 +1,4 @@
 import { useMemo } from "react";
-import {
-  components as selectComponents,
-  MultiValueGenericProps,
-  OptionProps,
-  SingleValueProps
-} from "react-select";
 import { Bell, Trash2 } from "lucide-react";
 
 import {
@@ -14,7 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  FilterableSelect,
+  Combobox,
   IconButton,
   Tooltip,
   TooltipContent,
@@ -61,40 +55,25 @@ type IntegrationOption = { value: string; label: string };
 type ChannelOption = { id: string; name: string };
 type EventOption = (typeof EVENT_OPTIONS)[number];
 
-const WorkspaceOption = ({ children, ...props }: OptionProps<IntegrationOption>) => (
-  <selectComponents.Option {...props}>
-    <div className="flex items-center gap-2">
-      <SlackLogo className="size-4 shrink-0" />
-      <span className="truncate">{children}</span>
-    </div>
-  </selectComponents.Option>
+const renderWorkspace = (option: IntegrationOption) => (
+  <span className="flex min-w-0 items-center gap-2">
+    <SlackLogo className="size-4 shrink-0" />
+    <span className="truncate">{option.label}</span>
+  </span>
 );
 
-const WorkspaceSingleValue = ({ children, ...props }: SingleValueProps<IntegrationOption>) => (
-  <selectComponents.SingleValue {...props}>
-    <div className="flex items-center gap-2">
-      <SlackLogo className="size-4 shrink-0" />
-      <span className="truncate">{children}</span>
-    </div>
-  </selectComponents.SingleValue>
+const renderChannelChip = (option: ChannelOption) => (
+  <span className="flex items-center gap-1.5">
+    <SlackLogo className="size-3.5 shrink-0" />
+    {`#${option.name}`}
+  </span>
 );
 
-const ChannelMultiValueLabel = ({ children, ...props }: MultiValueGenericProps<ChannelOption>) => (
-  <selectComponents.MultiValueLabel {...props}>
-    <div className="flex items-center gap-1.5">
-      <SlackLogo className="size-3.5 shrink-0" />
-      {children}
-    </div>
-  </selectComponents.MultiValueLabel>
-);
-
-const EventMultiValueLabel = ({ children, ...props }: MultiValueGenericProps<EventOption>) => (
-  <selectComponents.MultiValueLabel {...props}>
-    <div className="flex items-center gap-1.5">
-      <Bell className="size-3.5 shrink-0 text-muted" />
-      {children}
-    </div>
-  </selectComponents.MultiValueLabel>
+const renderEventChip = (option: EventOption) => (
+  <span className="flex items-center gap-1.5">
+    <Bell className="size-3.5 shrink-0 text-muted" />
+    {option.label}
+  </span>
 );
 
 type ConfigCardProps = {
@@ -147,19 +126,20 @@ const NotificationConfigCard = ({
     <div className="flex flex-col gap-4 rounded-md border border-border p-4">
       <div className="flex items-start gap-2">
         <div className="flex-1">
-          <FilterableSelect
+          <Combobox
             isDisabled
+            isClearable={false}
             value={selectedIntegration}
             options={workspaceOptions}
-            onChange={(opt) => {
-              const next = opt as IntegrationOption | null;
-              if (!next || next.value === config.workflowIntegrationId) return;
+            onValueChange={(next) => {
+              if (next.value === config.workflowIntegrationId) return;
               // channels belong to the previous workspace, so a workspace change clears them
               onChange({ ...config, workflowIntegrationId: next.value, channels: [] });
             }}
             getOptionValue={(opt) => opt.value}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: WorkspaceOption, SingleValue: WorkspaceSingleValue }}
+            renderOption={renderWorkspace}
+            renderValue={renderWorkspace}
             placeholder="Select a Slack workspace..."
           />
         </div>
@@ -182,22 +162,19 @@ const NotificationConfigCard = ({
         <>
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Slack channels</span>
-            <FilterableSelect
-              isMulti
+            <Combobox
+              multiple
               isDisabled
               value={config.channels}
               options={channelOptions}
-              onChange={(selected) => {
-                const channels = (selected as ChannelOption[] | null) ?? [];
+              onValueChange={(channels) => {
                 onChange({ ...config, channels: channels.map(({ id, name }) => ({ id, name })) });
               }}
               getOptionValue={(opt) => opt.id}
               getOptionLabel={(opt) => `#${opt.name}`}
-              components={{ MultiValueLabel: ChannelMultiValueLabel }}
+              renderValue={renderChannelChip}
               placeholder="Add Slack channel..."
-              noOptionsMessage={() =>
-                "No channels found. Invite the Infisical Slack app to private channels to list them here."
-              }
+              emptyMessage="No channels found. Invite the Infisical Slack app to private channels to list them here."
             />
             {isChannelListError && (
               <p className="text-xs text-muted">
@@ -209,18 +186,17 @@ const NotificationConfigCard = ({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Notify on</span>
-            <FilterableSelect
-              isMulti
+            <Combobox
+              multiple
               isDisabled
               value={EVENT_OPTIONS.filter((opt) => config.events.includes(opt.value))}
               options={EVENT_OPTIONS}
-              onChange={(selected) => {
-                const events = ((selected as EventOption[] | null) ?? []).map((opt) => opt.value);
-                onChange({ ...config, events });
+              onValueChange={(selected) => {
+                onChange({ ...config, events: selected.map((opt) => opt.value) });
               }}
               getOptionValue={(opt) => opt.value}
               getOptionLabel={(opt) => opt.label}
-              components={{ MultiValueLabel: EventMultiValueLabel }}
+              renderValue={renderEventChip}
               placeholder="Add event..."
             />
           </div>

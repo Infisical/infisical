@@ -19,16 +19,6 @@ export type TProxiedServiceCredentialInput = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
 };
 
-export type TCreateProxiedServiceDTO = {
-  projectId: string;
-  environment: string;
-  secretPath: string;
-  name: string;
-  hostPattern: string;
-  isEnabled?: boolean;
-  credentials: TProxiedServiceCredentialInput[];
-};
-
 export type TUpdateProxiedServiceDTO = {
   serviceId: string;
   name?: string;

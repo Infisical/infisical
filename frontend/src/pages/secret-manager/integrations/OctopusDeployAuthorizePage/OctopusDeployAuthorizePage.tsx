@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -63,9 +63,7 @@ export const OctopusDeployAuthorizePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Helmet>
-        <title>Authorize Octopus Deploy Integration</title>
-      </Helmet>
+      <PageTitle title="Authorize Octopus Deploy Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

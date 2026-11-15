@@ -114,11 +114,11 @@ export const DiscoveryScanLogsSection = ({
                 {scans.map((scan) => {
                   const duration =
                     scan.completedAt && scan.startedAt
-                      ? Math.round(
+                      ? (
                           (new Date(scan.completedAt).getTime() -
                             new Date(scan.startedAt).getTime()) /
-                            1000
-                        )
+                          1000
+                        ).toFixed(1)
                       : null;
 
                   return (

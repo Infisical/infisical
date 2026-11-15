@@ -27,7 +27,11 @@ func TestIdentity_HonoursItsOrgRole(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	require.NotEqual(t, http.StatusOK, res.StatusCode(), "a no-access identity created a project")
+	require.Equalf(t, http.StatusForbidden, res.StatusCode(), "a no-access identity got %d: %s", res.StatusCode(), res.Body)
+	projects, err := tn.Admin.API.ListOrganizationProjectsWithResponse(t.Context(), nil)
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, projects.StatusCode(), "listing projects: %s", projects.Body)
+	require.NotContains(t, string(projects.Body), "should-not-exist")
 }
 
 func TestUser_IsInvitedThroughMail(t *testing.T) {

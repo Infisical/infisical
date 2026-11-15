@@ -6,11 +6,11 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/godaddy-connection-constants";
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
   getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";

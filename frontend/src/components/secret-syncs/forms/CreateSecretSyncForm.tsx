@@ -41,7 +41,6 @@ import {
 } from "@app/hooks/api/secretSyncs";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
-import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
@@ -49,6 +48,7 @@ import {
   InitialSyncAlerts,
   SecretSyncInitialSyncBehaviorFields
 } from "./SecretSyncInitialSyncBehaviorFields";
+import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { SecretSyncReviewFields } from "./SecretSyncReviewFields";
 import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 
@@ -76,8 +76,8 @@ type FormTab = {
 const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
-      ? ["secretPath", "environment", "syncOptions"]
-      : ["secretPath", "environment"];
+      ? ["secretPath", "environment", "includeAllSubFolders", "syncOptions"]
+      : ["secretPath", "environment", "includeAllSubFolders"];
 
   return [
     {
@@ -255,8 +255,7 @@ export const CreateSecretSyncForm = ({
     environment: watch("environment")?.slug,
     secretPath: watch("secretPath"),
     keySchema,
-    includeAllSubFolders:
-      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
+    includeAllSubFolders: Boolean(watch("includeAllSubFolders")) && !importsFromDestination
   });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);

@@ -9,9 +9,9 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { Integrations } from "@app/services/integration-auth/integration-list";
 import { NATIVE_INTEGRATION_DEPRECATION_MESSAGE } from "@app/services/integration/integration-deprecation-fns";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
-import { Integrations } from "@app/services/integration-auth/integration-list";
 import {
   PostHogEventTypes,
   TIntegrationDeletedEvent,

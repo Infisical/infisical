@@ -5,11 +5,11 @@ import {
 } from "./certificate-alert-events";
 
 const buildEmitter = () => {
-  const emitted: { eventType: string; payload: Record<string, unknown> }[] = [];
+  const emitted: { id: string; type: string; data: Record<string, unknown> }[] = [];
   const emitter = certificateAlertEventEmitterFactory({
     eventEmitter: {
-      emit: async (event: { eventType: string; payload: Record<string, unknown> }) => {
-        emitted.push(event);
+      emit: async (events: { id: string; type: string; data: Record<string, unknown> }[]) => {
+        emitted.push(...events);
       }
     } as never,
     projectDAL: { findById: async () => ({ orgId: "org-1" }) } as never
@@ -27,8 +27,9 @@ describe("certificate alert event emitter", () => {
 
     expect(emitted).toEqual([
       {
-        eventType: CertificateApplicationAlertEvent.Issuance,
-        payload: {
+        id: expect.any(String) as string,
+        type: CertificateApplicationAlertEvent.Issuance,
+        data: {
           orgId: "org-1",
           projectId: "proj-1",
           resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
@@ -52,7 +53,7 @@ describe("certificate alert event emitter", () => {
       {} as never
     );
 
-    expect(emitted.map((event) => [event.eventType, event.payload.resourceType, event.payload.resourceId])).toEqual([
+    expect(emitted.map((event) => [event.type, event.data.resourceType, event.data.resourceId])).toEqual([
       [CertificateApplicationAlertEvent.Revocation, CERT_MANAGER_APPLICATION_RESOURCE_TYPE, "app-1"]
     ]);
   });

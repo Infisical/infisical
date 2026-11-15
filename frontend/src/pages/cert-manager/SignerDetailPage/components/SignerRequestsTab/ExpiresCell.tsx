@@ -10,17 +10,22 @@ export const ExpiresCell = ({ req }: { req: TSignerRequest }) => {
   if (req.status === SignerRequestStatus.Pending) {
     return <span>Awaiting approval</span>;
   }
-  if (req.status !== SignerRequestStatus.Approved) return null;
+  if (!req.grantStatus) return null;
 
+  const accessStatus = req.accessStatus ?? req.status;
   const max = req.maxSignings ?? null;
   const used = req.usedSignings ?? 0;
   const left = max != null ? Math.max(0, max - used) : null;
-  const grantInactive = req.grantStatus != null && req.grantStatus !== "active";
+  const windowEnded = !!req.expiresAt && new Date(req.expiresAt).getTime() <= Date.now();
 
   let expiryLabel: string;
   let expiryTooltip: string;
-  if (grantInactive) {
-    expiryLabel = `Grant ${req.grantStatus}`;
+  if (
+    accessStatus === SignerRequestStatus.Cancelled ||
+    (req.grantStatus === "expired" && !windowEnded)
+  ) {
+    expiryLabel =
+      accessStatus === SignerRequestStatus.Cancelled ? "Grant revoked" : "Grant expired";
     expiryTooltip = req.expiresAt
       ? format(new Date(req.expiresAt), "MMM d, yyyy 'at' h:mm a")
       : "Grant no longer active";

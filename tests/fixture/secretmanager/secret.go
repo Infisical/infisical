@@ -161,9 +161,10 @@ func ListSecrets(tt *testing.T, p *fixture.Project, env string, opts ...SecretOp
 	return secrets
 }
 
-// CreateFolder creates a folder at an absolute path such as "/app/api". Missing
-// parents are created by the server.
-func CreateFolder(tt *testing.T, p *fixture.Project, env, folderPath string, opts ...SecretOption) {
+// CreateFolder creates a folder at an absolute path such as "/app/api" and returns its
+// ID, which the folder update, delete and move routes take. Missing parents are created
+// by the server.
+func CreateFolder(tt *testing.T, p *fixture.Project, env, folderPath string, opts ...SecretOption) string {
 	tt.Helper()
 	_, client := resolve(p, opts)
 
@@ -177,6 +178,26 @@ func CreateFolder(tt *testing.T, p *fixture.Project, env, folderPath string, opt
 	require.NoErrorf(tt, err, "creating folder %s", folderPath)
 	require.NotNilf(tt, res.JSON200, "creating folder %s in %s returned %d: %s",
 		folderPath, env, res.StatusCode(), apierr.Body(res.Body))
+	return res.JSON200.Folder.Id.String()
+}
+
+// FolderID looks up a folder by name under parent, for one created implicitly as a
+// parent, whose ID no create call returned.
+func FolderID(tt *testing.T, p *fixture.Project, env, parent, name string) string {
+	tt.Helper()
+	res, err := p.Tenant().Admin.API.ListSecretFoldersWithResponse(tt.Context(), &api.ListSecretFoldersParams{
+		ProjectId: p.ID, Environment: env, Path: parent,
+	})
+	require.NoError(tt, err)
+	require.NotNilf(tt, res.JSON200, "listing folders in %s:%s returned %d: %s",
+		env, parent, res.StatusCode(), apierr.Body(res.Body))
+	for _, f := range res.JSON200.Folders {
+		if f.Name == name {
+			return f.Id.String()
+		}
+	}
+	require.Failf(tt, "folder not found", "no folder %s under %s:%s", name, env, parent)
+	return ""
 }
 
 func GetSecret(tt *testing.T, p *fixture.Project, env, name string, opts ...SecretOption) Secret {

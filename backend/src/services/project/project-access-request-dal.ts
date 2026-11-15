@@ -15,9 +15,10 @@ export const projectAccessRequestDALFactory = (db: TDbClient) => {
       .where(`${TableName.ProjectAccessRequest}.requesterUserId`, requesterUserId)
       .where(`${TableName.ProjectAccessRequest}.status`, "pending")
       .where(`${TableName.Project}.orgId`, orgId)
-      .select<
-        { projectId: string; createdAt: Date }[]
-      >(`${TableName.ProjectAccessRequest}.projectId`, `${TableName.ProjectAccessRequest}.createdAt`);
+      .select<{ projectId: string; createdAt: Date }[]>(
+        `${TableName.ProjectAccessRequest}.projectId`,
+        `${TableName.ProjectAccessRequest}.createdAt`
+      );
   };
 
   const upsertPendingRequest = async ({

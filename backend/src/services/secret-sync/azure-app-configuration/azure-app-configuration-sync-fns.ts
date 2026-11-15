@@ -7,6 +7,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -16,6 +17,7 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 interface AzureAppConfigKeyValue {
@@ -26,7 +28,8 @@ interface AzureAppConfigKeyValue {
 
 export const azureAppConfigurationSyncFactory = ({
   kmsService,
-  appConnectionDAL
+  appConnectionDAL,
+  oidcIssuerService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
   const $getCompleteAzureAppConfigValues = async (accessToken: string, baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
@@ -76,7 +79,12 @@ export const azureAppConfigurationSyncFactory = ({
       });
     }
 
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connectionId, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
       secretSync.destinationConfig.label ? `&label=${secretSync.destinationConfig.label}` : "&label=%00"
@@ -159,7 +167,12 @@ export const azureAppConfigurationSyncFactory = ({
 
   const removeSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connectionId, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
       secretSync.destinationConfig.label ? `&label=${secretSync.destinationConfig.label}` : "&label=%00"
@@ -188,7 +201,12 @@ export const azureAppConfigurationSyncFactory = ({
   };
 
   const getSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials) => {
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connectionId, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const secretMap: TSecretMap = {};
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
@@ -8,11 +8,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  EmailInput,
   Field,
-  FieldFeedback,
-  TextArea
+  FieldFeedback
 } from "@app/components/v3";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -22,15 +22,14 @@ import { AuthPagePanel } from "./AuthPagePanel";
 import { EmailServiceSetupModal } from "./EmailServiceSetupModal";
 
 interface TeamInviteStepProps {
-  emails: string;
-  onEmailsChange: (emails: string) => void;
+  emails: string[];
+  onEmailsChange: (emails: string[]) => void;
   onBack: () => void;
   productName?: string;
   /** Signup-created projects the invitees get member access to. */
   projectIds?: string[];
   /** Also grant access to the org's PAM product (org-scoped, no project id). */
   grantPamAccess?: boolean;
-  grantAgentVaultAccess?: boolean;
   onComplete: () => void;
 }
 
@@ -41,11 +40,11 @@ export default function TeamInviteStep({
   productName,
   projectIds,
   grantPamAccess,
-  grantAgentVaultAccess,
   onComplete
 }: TeamInviteStepProps): JSX.Element {
   const { t } = useTranslation();
   const [validationError, setValidationError] = useState("");
+  const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -53,18 +52,17 @@ export default function TeamInviteStep({
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const orgId = String(localStorage.getItem("orgData.id"));
-  const grantCount =
-    (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0) + (grantAgentVaultAccess ? 1 : 0);
+  const grantCount = (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0);
 
   const inviteUsersAndContinue = async () => {
     if (isSending) return;
-    const result = emailListSchema.safeParse(emails);
+    const result = emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true }).safeParse(emails);
     if (!result.success) {
       setValidationError(result.error.issues[0].message);
       return;
     }
 
-    const parsed = Array.from(new Set(parseEmailList(result.data)));
+    const parsed = result.data;
     setValidationError("");
     const startedAt = Date.now();
     setIsSending(true);
@@ -75,8 +73,7 @@ export default function TeamInviteStep({
         organizationId: orgId,
         organizationRoleSlug: "member",
         ...(projectIds?.length ? { projectIds } : {}),
-        ...(grantPamAccess ? { grantPamAccess } : {}),
-        ...(grantAgentVaultAccess ? { grantAgentVaultAccess } : {})
+        ...(grantPamAccess ? { grantPamAccess } : {})
       });
 
       await waitForMinimumDuration(startedAt, 500);
@@ -100,7 +97,7 @@ export default function TeamInviteStep({
       return;
     }
 
-    onEmailsChange("");
+    onEmailsChange([]);
     onComplete();
   };
 
@@ -117,16 +114,17 @@ export default function TeamInviteStep({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Field data-invalid={Boolean(validationError)}>
-            <TextArea
+            <EmailInput
+              aria-label="Teammate emails"
               aria-describedby="signup-invite-feedback"
-              variant="outlined"
-              className="min-h-20"
               value={emails}
-              disabled={isSending}
-              onChange={(e) => {
-                onEmailsChange(e.target.value);
+              isDisabled={isSending}
+              onValueChange={(next) => {
+                onEmailsChange(next);
                 if (validationError) setValidationError("");
               }}
+              inputValue={draft}
+              onInputValueChange={setDraft}
               placeholder="email1@example.com, email2@example.com"
               isError={Boolean(validationError)}
             />
@@ -161,7 +159,7 @@ export default function TeamInviteStep({
                 }}
                 variant="project"
                 isPending={isSending}
-                isDisabled={!emails.trim()}
+                isDisabled={!emails.length && !draft.trim()}
               >
                 Send invites
               </Button>

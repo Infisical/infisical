@@ -9,6 +9,7 @@ import {
   requestWithAzureKeyVaultGateway
 } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -28,6 +29,7 @@ type TAzureKeyVaultSyncFactoryDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 // the effective gateway is resolved up front, so callers thread a connection that only carries a gatewayId
@@ -39,7 +41,8 @@ export const azureKeyVaultSyncFactory = ({
   kmsService,
   appConnectionDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  oidcIssuerService
 }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
     accessToken: string,
@@ -142,7 +145,12 @@ export const azureKeyVaultSyncFactory = ({
     });
     const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
-    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      connection.id,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
@@ -286,7 +294,12 @@ export const azureKeyVaultSyncFactory = ({
     });
     const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
-    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      connection.id,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
@@ -319,7 +332,12 @@ export const azureKeyVaultSyncFactory = ({
     });
     const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
-    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      connection.id,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,

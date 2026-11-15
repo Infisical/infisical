@@ -35,7 +35,6 @@ export type TRequestCustomExtension = {
 };
 
 type Props = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   declarations: TProfileCustomExtension[];
   policyRules?: TCustomExtensionRule[] | null;

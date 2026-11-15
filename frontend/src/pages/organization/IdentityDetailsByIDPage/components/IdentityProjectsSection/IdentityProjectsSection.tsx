@@ -1,6 +1,7 @@
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { AddToProductDialog } from "@app/components/organization/ProductAccess";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +21,14 @@ import {
   CardTitle
 } from "@app/components/v3";
 import {
+  useCreateProjectIdentityMembership,
   useDeleteProjectIdentityMembership,
   useGetIdentityProjectMemberships
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
-import { IdentityProjectsTable } from "./IdentityProjectsTable";
+import { getIdentityProjectsFirstPageParams, IdentityProjectsTable } from "./IdentityProjectsTable";
 
 type Props = {
   identityId: string;
@@ -36,17 +38,29 @@ type RemoveIdentityPopUpData = {
   identityId: string;
   identityName: string;
   projectId: string;
+  projectType: ProjectType;
   projectName: string;
 };
 
 export const IdentityProjectsSection = ({ identityId }: Props) => {
   const { mutateAsync: deleteMutateAsync, isPending: isRemoving } =
     useDeleteProjectIdentityMembership();
+  const { mutateAsync: addIdentityToProject } = useCreateProjectIdentityMembership();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "addIdentityToProject",
+    "addIdentityToProduct",
     "removeIdentityFromProject"
   ] as const);
+
+  const {
+    data: allProjectMemberships,
+    isPending: isAllMembershipsLoading,
+    isError: isAllMembershipsError
+  } = useGetIdentityProjectMemberships(
+    identityId,
+    {},
+    { enabled: popUp.addIdentityToProduct.isOpen }
+  );
 
   const removeIdentityData = popUp.removeIdentityFromProject.data as
     | RemoveIdentityPopUpData
@@ -57,36 +71,42 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
 
     await deleteMutateAsync({
       identityId: removeIdentityData.identityId,
-      projectId: removeIdentityData.projectId
+      projectId: removeIdentityData.projectId,
+      projectType: removeIdentityData.projectType
     });
 
     createNotification({
-      text: "Successfully removed identity from project",
+      text: "Successfully removed machine identity",
       type: "success"
     });
 
     handlePopUpClose("removeIdentityFromProject");
   };
 
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(
+    identityId,
+    getIdentityProjectsFirstPageParams()
+  );
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Projects</CardTitle>
-          <CardDescription>Manage machine identity project memberships</CardDescription>
-          {Boolean(projectMemberships?.length) && (
+          <CardTitle>Products</CardTitle>
+          <CardDescription>
+            Manage the products and projects this machine identity can access
+          </CardDescription>
+          {Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {
-                  handlePopUpOpen("addIdentityToProject");
+                  handlePopUpOpen("addIdentityToProduct");
                 }}
                 size="xs"
                 variant="outline"
               >
                 <PlusIcon />
-                Add to Project
+                Add to Product
               </Button>
             </CardAction>
           )}
@@ -96,16 +116,16 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
         </CardContent>
       </Card>
       <AlertDialog
+        isPending={isRemoving}
         open={popUp.removeIdentityFromProject.isOpen}
         confirmationValue="confirm"
         onOpenChange={(isOpen) => {
-          if (!isOpen && isRemoving) return;
           handlePopUpToggle("removeIdentityFromProject", isOpen);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Identity From Project</AlertDialogTitle>
+            <AlertDialogTitle>Remove Machine Identity</AlertDialogTitle>
             <AlertDialogDescription>
               Remove{" "}
               <span className="font-medium text-foreground">
@@ -115,32 +135,44 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
               <span className="font-medium text-foreground">
                 {removeIdentityData?.projectName ?? "this project"}
               </span>
-              . The identity loses all access it has through this project membership.
+              . The machine identity loses all access it has through this membership.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
-            inputProps={{ disabled: isRemoving }}
             onConfirm={() => onRemoveIdentitySubmit().catch(() => undefined)}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRemoving}
               onClick={(event) => {
                 event.preventDefault();
                 onRemoveIdentitySubmit().catch(() => undefined);
               }}
             >
-              Remove From Project
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <IdentityAddToProjectModal
-        identityId={identityId}
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
+      <AddToProductDialog
+        isOpen={popUp.addIdentityToProduct.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addIdentityToProduct", isOpen)}
+        title="Add Machine Identity to Product"
+        actorLabel="machine identity"
+        memberProjectIds={allProjectMemberships?.identityMemberships.map(
+          ({ project }) => project.id
+        )}
+        isMembershipsLoading={isAllMembershipsLoading}
+        isMembershipsError={isAllMembershipsError}
+        onAddToProject={(project, roleSlug) =>
+          addIdentityToProject({
+            identityId,
+            projectId: project.id,
+            projectType: project.type,
+            role: roleSlug
+          })
+        }
       />
     </>
   );

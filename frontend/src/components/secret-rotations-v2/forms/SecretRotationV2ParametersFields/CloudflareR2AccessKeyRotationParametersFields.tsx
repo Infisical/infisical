@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { MultiValue } from "react-select";
 
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldError,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -40,7 +39,7 @@ enum ParameterTab {
   Restrictions = "restrictions"
 }
 
-// One source for the picker label's content and order: the JSX dims the jurisdiction, and react-select
+// One source for the picker label's content and order: the JSX dims the jurisdiction, and Combobox
 // filters on the plain-text join, so the two must not drift apart.
 const bucketLabelParts = ({ name, jurisdiction }: TCloudflareR2BucketSelection) =>
   [name, CLOUDFLARE_R2_JURISDICTION_MAP[jurisdiction]] as const;
@@ -115,20 +114,22 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
               <FieldLabelWithTooltip tooltip="The R2 buckets the generated access key can act on. Buckets are granted by name, so renaming one in Cloudflare requires updating this rotation.">
                 Buckets
               </FieldLabelWithTooltip>
-              <FilterableSelect
-                isMulti
+              <Combobox
+                multiple
                 isLoading={isBucketsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 options={bucketOptions}
                 placeholder="Select buckets..."
-                formatOptionLabel={formatBucketOptionLabel}
+                renderOption={formatBucketOptionLabel}
+                renderValue={formatBucketOptionLabel}
                 getOptionLabel={getBucketSearchLabel}
                 getOptionValue={r2BucketKey}
-                // the form field holds the option shape itself, and react-select matches selections by
+                getOptionKeywords={(option) => [r2BucketKey(option)]}
+                // the form field holds the option shape itself, and Combobox matches selections by
                 // `getOptionValue`, so the stored value can be handed back as-is
                 value={value ?? []}
                 onBlur={onBlur}
-                onChange={(option) => onChange(option as MultiValue<TCloudflareR2BucketSelection>)}
+                onValueChange={onChange}
                 isError={Boolean(error)}
               />
               <FieldError>{error?.message}</FieldError>

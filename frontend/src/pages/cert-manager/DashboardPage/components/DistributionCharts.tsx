@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { twMerge } from "tailwind-merge";
 
@@ -23,10 +24,12 @@ import {
   formatShare,
   MAX_DONUT_SEGMENTS
 } from "./chart-theme";
+import type { InventoryFilters, InventoryLink } from "./inventory-link";
 
 type Props = {
   stats: TDashboardStats;
-  onNavigate: (filters: Record<string, string | undefined>) => void;
+  getLink: (filters: InventoryFilters) => InventoryLink;
+  onNavigate: (filters: InventoryFilters) => void;
 };
 
 type ChartKey = "enrollmentMethod" | "algorithm" | "ca";
@@ -61,13 +64,17 @@ const DonutChart = ({
   subtitle,
   data,
   chartKey,
-  onSegmentClick
+  getSegmentFilters,
+  getLink,
+  onNavigate
 }: {
   title: string;
   subtitle?: string;
   data: TDashboardDistribution[];
   chartKey: ChartKey;
-  onSegmentClick?: (entry: TDashboardDistribution) => void;
+  getSegmentFilters: (entry: TDashboardDistribution) => InventoryFilters | null;
+  getLink: (filters: InventoryFilters) => InventoryLink;
+  onNavigate: (filters: InventoryFilters) => void;
 }) => {
   const nonZeroData = foldTail(data);
   const total = data.reduce((sum, d) => sum + d.count, 0);
@@ -131,7 +138,8 @@ const DonutChart = ({
                     stroke="none"
                     onClick={(_entry, idx) => {
                       const segment = nonZeroData[idx];
-                      if (!segment.groupedCount) onSegmentClick?.(segment);
+                      const filters = segment.groupedCount ? null : getSegmentFilters(segment);
+                      if (filters) onNavigate(filters);
                     }}
                   >
                     {nonZeroData.map((entry, idx) => (
@@ -154,18 +162,13 @@ const DonutChart = ({
                 {nonZeroData.map((entry, idx) => {
                   const pct = formatShare(entry.count, total);
                   const isOther = Boolean(entry.groupedCount);
-                  return (
-                    <button
-                      key={segmentKey(entry)}
-                      type="button"
-                      className={twMerge(
-                        "flex w-full items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors",
-                        isOther ? "cursor-default" : "cursor-pointer hover:bg-foreground/5"
-                      )}
-                      onClick={() => {
-                        if (!isOther) onSegmentClick?.(entry);
-                      }}
-                    >
+                  const filters = isOther ? null : getSegmentFilters(entry);
+                  const legendClassName = twMerge(
+                    "flex w-full items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors",
+                    filters ? "cursor-pointer hover:bg-foreground/5" : "cursor-default"
+                  );
+                  const legendContent = (
+                    <>
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ backgroundColor: colorAt(entry, idx) }}
@@ -184,7 +187,16 @@ const DonutChart = ({
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {entry.count}
                       </span>
-                    </button>
+                    </>
+                  );
+                  return filters ? (
+                    <Link key={segmentKey(entry)} {...getLink(filters)} className={legendClassName}>
+                      {legendContent}
+                    </Link>
+                  ) : (
+                    <div key={segmentKey(entry)} className={legendClassName}>
+                      {legendContent}
+                    </div>
                   );
                 })}
               </div>
@@ -200,7 +212,7 @@ const DonutChart = ({
   );
 };
 
-export const DistributionCharts = ({ stats, onNavigate }: Props) => {
+export const DistributionCharts = ({ stats, getLink, onNavigate }: Props) => {
   const charts: {
     title: string;
     subtitle?: string;
@@ -236,14 +248,17 @@ export const DistributionCharts = ({ stats, onNavigate }: Props) => {
           subtitle={chart.subtitle}
           chartKey={chart.chartKey}
           data={chart.data}
-          onSegmentClick={(entry) => {
+          getLink={getLink}
+          onNavigate={onNavigate}
+          getSegmentFilters={(entry) => {
             if (chart.chartKey === "enrollmentMethod" && entry.label !== "Other") {
-              onNavigate({ filterEnrollmentType: entry.label });
-            } else if (chart.chartKey === "algorithm" && entry.label !== "Unknown") {
-              onNavigate({ filterKeyAlgorithm: entry.label });
-            } else if (chart.chartKey === "ca" && entry.id) {
-              onNavigate({ filterCaId: entry.id });
+              return { filterEnrollmentType: entry.label };
             }
+            if (chart.chartKey === "algorithm" && entry.label !== "Unknown") {
+              return { filterKeyAlgorithm: entry.label };
+            }
+            if (chart.chartKey === "ca" && entry.id) return { filterCaId: entry.id };
+            return null;
           }}
         />
       ))}

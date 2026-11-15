@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 
 import { CertificateSyncsUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
+import { TPkiSyncForm } from "@app/components/pki-syncs/forms";
 import {
   Button,
   Card,
@@ -20,15 +22,56 @@ import {
   PkiApplicationResourceSub,
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
-import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncsTable } from "../../IntegrationsListPage/components/PkiSyncsTab/PkiSyncTable";
 import { PkiDocsUrls } from "../../pki-docs-urls";
+import { ApplicationTab } from "../application-tabs";
 
 type Props = { applicationId: string; applicationName: string; projectId: string };
 
 export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId }: Props) => {
   const [isAddSyncOpen, setIsAddSyncOpen] = useState(false);
+  const [restoredSync, setRestoredSync] = useState<{
+    destination: PkiSync;
+    initialData: Partial<TPkiSyncForm>;
+  } | null>(null);
+  const navigate = useNavigate();
+  const {
+    location: { pathname, search }
+  } = useRouterState();
+  const { connectionId, connectionName } = search as {
+    connectionId?: string;
+    connectionName?: string;
+  };
+
+  useEffect(() => {
+    if (!connectionId || !connectionName) return;
+
+    const storedFormData = localStorage.getItem("pkiSyncFormData");
+
+    if (storedFormData) {
+      try {
+        const { returnUrl, ...form } = JSON.parse(storedFormData) as Partial<TPkiSyncForm> & {
+          returnUrl?: string;
+        };
+        if (form.destination && (!returnUrl || returnUrl.split("?")[0] === pathname)) {
+          localStorage.removeItem("pkiSyncFormData");
+          setRestoredSync({
+            destination: form.destination,
+            initialData: { ...form, connection: { id: connectionId, name: connectionName } }
+          });
+          setIsAddSyncOpen(true);
+        }
+      } catch {
+        localStorage.removeItem("pkiSyncFormData");
+        setRestoredSync(null);
+      }
+    }
+
+    navigate({ to: pathname, search: { selectedTab: ApplicationTab.Syncs }, replace: true });
+  }, [connectionId, connectionName]);
+
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
@@ -87,7 +130,12 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
       </CardContent>
       <CreatePkiSyncModal
         isOpen={isAddSyncOpen}
-        onOpenChange={setIsAddSyncOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setRestoredSync(null);
+          setIsAddSyncOpen(isOpen);
+        }}
+        selectSync={restoredSync?.destination ?? null}
+        initialData={restoredSync?.initialData}
         applicationId={applicationId}
       />
       {upgradeGate}

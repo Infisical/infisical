@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
+import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -26,6 +27,8 @@ import {
   SignupProductType
 } from "./signupProducts";
 
+const AGENT_VAULT_FIRST_PROJECT_NAME = "My first project";
+
 interface ProductSelectionStepProps {
   initialProducts: SignupProductType[];
   projectCache: { current: Partial<Record<SignupProductType, Project>> };
@@ -36,7 +39,7 @@ interface ProductSelectionStepProps {
 }
 
 const setUpProduct = async (product: SignupProductType): Promise<Project | undefined> => {
-  if (product === ProjectType.PAM || product === ProjectType.AgentVault) return undefined;
+  if (product === ProjectType.PAM) return undefined;
 
   // Locate before creating: a retry after a lost response or a mid-flow refresh can arrive
   // with the project already created (cert-manager is even bootstrapped server-side), and the
@@ -58,6 +61,13 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
       const { data } = await createWorkspace({
         projectName: "Certificate Manager",
         type: ProjectType.CertificateManager
+      });
+      return data.project;
+    }
+    case ProjectType.AgentVault: {
+      const { data } = await createWorkspace({
+        projectName: AGENT_VAULT_FIRST_PROJECT_NAME,
+        type: ProjectType.AgentVault
       });
       return data.project;
     }
@@ -102,7 +112,6 @@ export default function ProductSelectionStep({
     try {
       const projects = createdProjectsRef.current;
       // Projects are set up one at a time so a failure points at a specific product.
-      // eslint-disable-next-line no-restricted-syntax
       for (const type of orderedSelection) {
         if (!(type in projects)) {
           failedProduct = getSignupProduct(type)?.name;
@@ -133,12 +142,16 @@ export default function ProductSelectionStep({
       });
 
       onComplete(orderedSelection, selectedProjects);
-    } catch {
+    } catch (error) {
+      const serverMessage: unknown = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      const reason = typeof serverMessage === "string" ? ` ${serverMessage}` : "";
       createNotification({
         type: "error",
         text: failedProduct
-          ? `Could not set up ${failedProduct}. Please try again.`
-          : "Could not finish setting up your organization. Please try again."
+          ? `Could not set up ${failedProduct}.${reason} Please try again.`
+          : `Could not finish setting up your organization.${reason} Please try again.`
       });
       setIsSettingUp(false);
     }

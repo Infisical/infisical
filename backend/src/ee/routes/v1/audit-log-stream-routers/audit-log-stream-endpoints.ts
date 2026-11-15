@@ -27,6 +27,11 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
+  const providerNameForOpId = provider
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+
   // Product scoping is common to every provider, so it's merged onto each provider's body schema
   // here rather than duplicated across all five provider schemas.
   const FiltersBodySchema = z.object({
@@ -40,6 +45,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: `get${providerNameForOpId}AuditLogStream`,
       params: z.object({
         logStreamId: z.string().uuid()
       }),
@@ -66,6 +72,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${providerNameForOpId}AuditLogStream`,
       body: createSchema.and(FiltersBodySchema),
       response: {
         200: z.object({
@@ -106,6 +113,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${providerNameForOpId}AuditLogStream`,
       params: z.object({
         logStreamId: z.string().uuid()
       }),
@@ -152,6 +160,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${providerNameForOpId}AuditLogStream`,
       params: z.object({
         logStreamId: z.string().uuid()
       }),

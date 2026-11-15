@@ -117,7 +117,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     ```
   </Tab>
   <Tab title="Helm Chart">
-    When deploying Infisical using the official [Helm chart](/self-hosting/deployment-options/kubernetes-helm#kubernetes-via-helm-chart), you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
+    When deploying Infisical using the official [Helm chart](/self-hosting/deployment-options/kubernetes-helm), you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
 
     The bootstrapping process automatically generates a Kubernetes secret containing the instance admin token, which can then be referenced by Crossplane providers, Terraform operators, or other automation systems for further infrastructure provisioning and configuration.
 

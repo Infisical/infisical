@@ -40,8 +40,13 @@ func Module(opts ...Option) infra.Module {
 		image:    "postgres:14-alpine",
 		database: "infisical_test",
 		// max_locks_per_transaction matches the dev stack. The application holds
-		// enough locks in one transaction to need it.
-		command: []string{"postgres", "-c", "max_locks_per_transaction=512"},
+		// enough locks in one transaction to need it. Durability is off because the
+		// database is thrown away with its container, so waiting on the disk for every
+		// commit buys the suites nothing.
+		command: []string{
+			"postgres", "-c", "max_locks_per_transaction=512",
+			"-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off",
+		},
 	}
 	for _, o := range opts {
 		o(m)

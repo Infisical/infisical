@@ -10,7 +10,7 @@ import * as RealEventOutboxQueue from "../../src/services/event-outbox/event-out
 // The relay keeps running alongside. Claims are exclusive, so an event is delivered once whichever
 // side gets to it first, and a spec should still wait on the outcome rather than on the drain.
 //
-// The handle hangs off globalThis for the reason given in aws-parameter-store-sync-fns.ts.
+// The handle hangs off globalThis for the reason given in aws-iam-user-secret-rotation-fns.ts.
 const globalScope = globalThis as typeof globalThis & {
   infisicalEventOutboxService?: Pick<TEventOutboxServiceFactory, "drain">;
 };

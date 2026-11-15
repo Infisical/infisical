@@ -156,3 +156,8 @@ export type TGatewayConnectedResources = {
   pamAccounts?: TGatewayConnectedPamAccount[];
   pamAccountTemplates?: TGatewayConnectedPamAccountTemplate[];
 };
+
+export enum GatewayCapability {
+  CertificateScan = "certificateScan",
+  WindowsCertificateScan = "windowsCertificateScan"
+}

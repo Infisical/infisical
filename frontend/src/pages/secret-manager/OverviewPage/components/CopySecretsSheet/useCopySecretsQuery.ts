@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { fetchSecretMetadata } from "@app/hooks/api/dashboard/queries";
 
@@ -16,7 +16,7 @@ export const copySecretsQueryKeys = {
   }) => ["copy-secrets-preview", { projectId, environment, secretPath }] as const
 };
 
-export const useCopySecretsQuery = ({
+export const getCopySecretsQueryOptions = ({
   projectId,
   environment,
   secretPath,
@@ -27,7 +27,7 @@ export const useCopySecretsQuery = ({
   secretPath: string;
   enabled: boolean;
 }) =>
-  useQuery({
+  queryOptions({
     queryKey: copySecretsQueryKeys.preview({ projectId, environment, secretPath }),
     enabled: enabled && Boolean(projectId && environment),
     staleTime: 0,
@@ -49,3 +49,6 @@ export const useCopySecretsQuery = ({
         signal
       )
   });
+
+export const useCopySecretsQuery = (params: Parameters<typeof getCopySecretsQueryOptions>[0]) =>
+  useQuery(getCopySecretsQueryOptions(params));

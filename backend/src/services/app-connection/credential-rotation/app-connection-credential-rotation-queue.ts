@@ -8,8 +8,8 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";

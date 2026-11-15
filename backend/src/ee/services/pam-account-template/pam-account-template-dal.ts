@@ -5,8 +5,8 @@ import { TableName, TPamAccountTemplates } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
-import { PamAccountType } from "../pam/pam-enums";
 import { ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL, ACCOUNT_WILL_ROTATE_SQL } from "../pam-account-rotation/pam-rotation-fns";
+import { PamAccountType } from "../pam/pam-enums";
 
 export type TPamAccountTemplateWithCount = TPamAccountTemplates & { accountCount: number };
 

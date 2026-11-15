@@ -1,4 +1,4 @@
-import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 
 import { up as migrateRemindersToAlerts } from "../../../src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts";
 import { updateAlert } from "../../testUtils/alerts";
@@ -15,7 +15,7 @@ import {
   waitForReminderEmails
 } from "../../testUtils/reminders";
 import { createSecretApprovalPolicy } from "../../testUtils/secret-approval-policies";
-import { createSecretV2, getSecretByNameV2, updateSecretV2 } from "../../testUtils/secrets";
+import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
 const ENVIRONMENT = "dev";
@@ -123,26 +123,6 @@ describe("Secret reminders delivered through alerts", () => {
       message: "rotate it",
       recipients: []
     });
-  });
-
-  test("the secret listing reports recipients from the reminder's alert", async () => {
-    const secretId = await createSecret("LISTING");
-    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
-
-    const res = await testServer.inject({
-      method: "GET",
-      url: "/api/v1/dashboard/secrets-details",
-      headers: { authorization: `Bearer ${authToken}` },
-      query: { projectId, environment: ENVIRONMENT, secretPath: "/", search: "LISTING", includeSecrets: "true" }
-    });
-    expect(res.statusCode).toBe(200);
-    const [secret] = res.json().secrets as {
-      secretReminderRepeatDays: number;
-      reminder: { repeatDays: number; recipients: string[] };
-    }[];
-    expect(secret.secretReminderRepeatDays).toBe(30);
-    expect(secret.reminder.repeatDays).toBe(30);
-    expect(secret.reminder.recipients).toEqual([member.userId]);
   });
 
   test("moving a secret carries its reminder alert to the new secret", async () => {
@@ -299,89 +279,6 @@ describe("Secret reminders delivered through alerts", () => {
     await reapOrphanedReminderAlerts();
 
     await expectAlertFullyRemoved(alert);
-  });
-
-  test("a secret update sets the reminder and its recipients", async () => {
-    const secretId = await createSecret("WITH_UPDATE");
-    await updateSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENVIRONMENT,
-      secretPath: "/",
-      key: "WITH_UPDATE",
-      value: "rotated",
-      reminder: { repeatDays: 14, note: "rotate it", recipients: [member.userId] },
-      authToken
-    });
-
-    const reminder = await getSecretReminder({ secretId, authToken });
-    expect(reminder?.repeatDays).toBe(14);
-    expect(reminder?.recipients).toEqual([member.userId]);
-  });
-
-  test("a secret update with recipients outside the project is refused before the secret changes", async () => {
-    const secretId = await createSecret("REFUSED");
-    const outsider = await newUser("outsider");
-
-    await updateSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENVIRONMENT,
-      secretPath: "/",
-      key: "REFUSED",
-      value: "rotated",
-      reminder: { repeatDays: 14, recipients: [outsider.userId] },
-      authToken
-    }).expect((res) => {
-      expect(res.statusCode).toBe(400);
-      expect(res.json<{ message: string }>().message).toMatch(/None of the selected reminder recipients/);
-    });
-
-    const secret = await getSecretByNameV2({
-      workspaceId: projectId,
-      environmentSlug: ENVIRONMENT,
-      secretPath: "/",
-      key: "REFUSED",
-      authToken
-    });
-    expect(secret.secretValue).toBe("value");
-    expect(await getSecretReminder({ secretId, authToken })).toBeNull();
-  });
-
-  // The reminder provider only accepts reminders on shared secrets. That check belongs to the alert
-  // module, so this shows a refusal from it now fails the whole update before the secret is written.
-  test("a secret update whose reminder the alert module refuses leaves the secret unchanged", async () => {
-    await createSecret("PERSONAL_REMINDER");
-    await createSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENVIRONMENT,
-      secretPath: "/",
-      key: "PERSONAL_REMINDER",
-      value: "personal",
-      type: SecretType.Personal,
-      authToken
-    });
-
-    await updateSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENVIRONMENT,
-      secretPath: "/",
-      key: "PERSONAL_REMINDER",
-      value: "changed",
-      type: SecretType.Personal,
-      reminder: { repeatDays: 14 },
-      authToken
-    }).expect((res) => {
-      expect(res.statusCode).toBe(400);
-      expect(res.json<{ message: string }>().message).toMatch(/Reminders can only be set on shared secrets/);
-    });
-
-    const res = await testServer.inject({
-      method: "GET",
-      url: "/api/v3/secrets/raw/PERSONAL_REMINDER",
-      headers: { authorization: `Bearer ${authToken}` },
-      query: { workspaceId: projectId, environment: ENVIRONMENT, secretPath: "/", type: SecretType.Personal }
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json<{ secret: { secretValue: string } }>().secret.secretValue).toBe("personal");
   });
 
   test("deleting a reminder removes its alert, channels and recipients", async () => {

@@ -1,320 +1,68 @@
 ---
-title: "Overview"
-description: "Learn more about integrating with Infisical KMS using KMIP (Key Management Interoperability Protocol)."
+title: "KMIP"
+sidebarTitle: "Overview"
+description: "Let devices and software that support KMIP manage their keys."
 ---
 
-<Note>
-  KMIP integration is an Enterprise-only feature. Please reach out to
-  sales@infisical.com if you have any questions.
-</Note>
-
-Infisical KMS provides Key Management Interoperability Protocol (KMIP) support for integration with KMIP-compatible clients. This allows for enhanced key management across various applications that support the KMIP 1.4 protocol.
-
-## How KMIP works with Infisical
-
-At a high level, the KMIP integration follows this architecture:
-
-
-![KMIP Architecture Diagram](/images/kmip-diagram.png)
-
-At a high level, the KMIP integration works as follows:
-
-1. KMIP clients (your applications or tools) communicate with the KMIP server
-2. The KMIP server acts as a proxy and forwards requests to Infisical KMS
-3. The KMIP server authenticates to Infisical using an enrollment-based access token
-
-The KMIP server itself is deployed using the Infisical CLI (`infisical kmip start` command) and serves as an intermediary between your KMIP clients and Infisical's key management system.
-
-You create a KMIP server entity in Infisical, then enroll a deployed server against it using a one-time enrollment token or AWS authentication. This is the same enrollment model used by [Gateways](/documentation/platform/gateways/overview) and [Relays](/documentation/platform/gateways/relay-deployment).
-
-### Supported operations
-
-The Infisical KMIP server supports the following operations for symmetric keys:
-
-- **Create** - Generate symmetric keys
-- **Register** - Register externally created keys
-- **Locate** - Find keys using attributes
-- **Get** - Retrieve keys securely
-- **Activate** - Enable keys for usage
-- **Revoke** - Revoke existing keys
-- **Destroy** - Permanently remove keys
-- **Get Attributes** - Retrieve metadata associated with keys
-- **Query** - Query server capabilities and supported operations
-
-### Compatibility
-
-Infisical KMIP supports KMIP versions 1.0 to 1.4, ensuring compatibility with a wide range of clients and security tools.
-
-### Network requirements
-
-Ensure the following network connectivity is in place:
-
-- **KMIP Client → KMIP Server**: KMIP clients must be able to reach the KMIP server on port 5696 (or your configured port). Ensure firewalls allow this traffic and DNS resolution works if using hostnames.
-
-- **KMIP Server → Infisical Platform**: The KMIP server needs outbound HTTPS access to Infisical. For self-hosted instances, ensure connectivity to your custom domain.
-
-All connections from the KMIP server are outbound; no inbound ports need to be opened on the server's network for it to reach Infisical.
-
-## Configure and deploy the KMIP server
-
-A KMIP server is created as an organization-wide entity in Infisical and then enrolled from the host where you run it.
-
-<Steps>
-  <Step title="Create the KMIP Server in the UI">
-    1. In the Infisical dashboard, open **Infisical KMS** and select **KMIP Servers**.
-    2. Select **Create KMIP Server** and fill in:
-        - **Name** of the server.
-        - **Hostnames or IPs**: a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server (for example `kmip.example.com` or `10.0.1.50`). These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
-        - **Key Algorithm**: key algorithm used to sign the server certificate.
-
-        The server certificate is issued with a one-year validity period and renews automatically before it expires, so there is no TTL to configure. If you need a custom validity period (for example, to meet a compliance requirement), set `ttl` via the [API](/api-reference/endpoints/kmip-servers/update).
-
-        This certificate configuration is stored on the server entity. The CLI reads it on start, so you do not pass it on the command line. You can change it later from the server's detail page (edit the **Certificate Configuration** card); changes apply at the server's next automatic certificate renewal, or immediately if you restart it.
-    3. (Optional) Open the new server's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
-        - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the server.
-        - **AWS**: the server authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
-    4. Click **Show deploy command** in the **Deployment** card and copy the generated CLI command.
-  </Step>
-
-  <Step title="Install the Infisical CLI">
-    Make sure the Infisical CLI is installed on the target machine where you want to run the KMIP server. See the [CLI Installation Guide](/cli/install) for instructions.
-
-    You can run the KMIP server on any infrastructure that can reach the Infisical platform, such as a VM or container.
-  </Step>
-
-  <Step title="Configure Network & Firewall">
-    Ensure your network and firewall settings allow the required traffic.
-
-    | Protocol | Direction | Port | Purpose                                          |
-    | -------- | --------- | ---- | ------------------------------------------------ |
-    | TCP      | Inbound   | 5696 | KMIP client connections to the KMIP server       |
-    | TCP      | Outbound  | 443  | API communication and certificate requests       |
-
-    Only the KMIP client port (default `5696`) needs to be reachable by your clients. All traffic from the server to Infisical is outbound.
-  </Step>
-
-  <Step title="Run the CLI Command">
-    Run the command you copied from the UI on the target machine. This single command enrolls the KMIP server and starts it immediately.
-
-    <AccordionGroup>
-      <Accordion title="Token Auth">
-        A one-time enrollment token (1h expiry) bootstraps the KMIP server.
-
-        <Tabs>
-          <Tab title="Linux (Production)">
-            ```bash
-            sudo infisical kmip systemd install <server-name> \
-              --enroll-method=token \
-              --token=<enrollment-token> \
-              --listen-address="0.0.0.0:5696" \
-              --domain=<your-infisical-domain>
-            sudo systemctl start infisical-kmip
-            ```
-          </Tab>
-          <Tab title="Foreground">
-            ```bash
-            infisical kmip start <server-name> \
-              --enroll-method=token \
-              --token=<enrollment-token> \
-              --listen-address="0.0.0.0:5696" \
-              --domain=<your-infisical-domain>
-            ```
-          </Tab>
-        </Tabs>
-      </Accordion>
-      <Accordion title="AWS Auth">
-        The host must have AWS credentials whose principal matches your allowlist. The server re-authenticates via STS on every start.
-
-        <Tabs>
-          <Tab title="Linux (Production)">
-            ```bash
-            sudo infisical kmip systemd install <server-name> \
-              --enroll-method=aws \
-              --kmip-server-id=<kmip-server-id> \
-              --listen-address="0.0.0.0:5696" \
-              --domain=<your-infisical-domain>
-            sudo systemctl start infisical-kmip
-            ```
-          </Tab>
-          <Tab title="Foreground">
-            ```bash
-            infisical kmip start <server-name> \
-              --enroll-method=aws \
-              --kmip-server-id=<kmip-server-id> \
-              --listen-address="0.0.0.0:5696" \
-              --domain=<your-infisical-domain>
-            ```
-          </Tab>
-        </Tabs>
-      </Accordion>
-    </AccordionGroup>
-
-    <Warning>
-      The systemd install command requires Linux with root/sudo privileges.
-    </Warning>
-
-    <Note>
-      The server's certificate configuration (hostnames/IPs, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page. Changes apply at the next automatic certificate renewal, or restart the server to apply them immediately.
-    </Note>
-
-    <Note>
-      By default the server listens on `localhost:5696`, which only accepts connections from the same host. To accept connections from your KMIP clients, set `--listen-address="0.0.0.0:5696"` (or bind to a specific interface).
-    </Note>
-
-    <Info>
-      Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, click **Show deploy command** again on the detail page to generate a new one.
-    </Info>
-
-    <Info>
-      You can safely re-run the same command to restart the server. For token auth the CLI reuses the locally stored access token and skips enrollment; for AWS auth it re-authenticates via STS on each start.
-    </Info>
-  </Step>
-
-  <Step title="Verify the KMIP Server">
-    After deployment, verify the server is running:
-    1. **Check logs** for a "Listening on ..." message, confirmation that the certificates loaded successfully, and a "Next certificate renewal scheduled in ..." line showing auto-renewal is active.
-    2. For systemd installations, check the service status:
-        ```bash
-        sudo systemctl status infisical-kmip
-        sudo journalctl -u infisical-kmip -f
-        ```
-
-    Once started, your KMIP server is running and ready to accept client connections. It proxies all KMIP operations to Infisical KMS.
-  </Step>
-</Steps>
-
-## Managing a KMIP server
-
-From the KMIP server's detail page (under **Infisical KMS > KMIP Servers**):
-
-- **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. For token-method servers this doesn't disconnect a running server; the next enrollment with the new token supersedes the old one.
-- **Edit certificate configuration**: Update the hostnames/IPs or key algorithm used for the server's TLS certificate. Changes take effect at the next automatic certificate renewal; restart the server to apply them immediately.
-- **Edit authentication** — Switch between Token and AWS, or update the AWS allowlists.
-- **Options → Revoke Access** — Invalidates the server's outstanding access tokens and enrollment tokens. The server must re-enroll to reconnect.
-- **Options → Delete** — Permanently removes the KMIP server entity.
-
-### Renewal failures
-
-The server's TLS certificate renews automatically in the background; no action is needed and existing client connections are never interrupted. You only need to step in if renewal fails, which the server reports with `Certificate renewal failed` warnings and errors in its logs.
-
-If the failure is transient (for example, the Infisical platform is temporarily unreachable), the server keeps serving its current certificate and retries with increasing frequency as expiry approaches. Once the platform is reachable again, the next retry succeeds and normal operation resumes on its own.
-
-If the failure is an authentication error (for example, after revoking the server's access), recovery depends on the auth method. AWS-enrolled servers recover automatically by re-authenticating via STS. Token-enrolled servers can't, since enrollment tokens are single-use; the server logs an error asking you to re-enroll. Generate a new enrollment token via **Show deploy command** and restart the server with it to recover.
-
-## Register a KMIP client
-
-Once the KMIP server is running, register the KMIP clients that will connect to it. Clients are managed per-project from a KMS project's KMIP settings and authenticate via mTLS certificates.
-
-<Steps>
-  <Step title="Navigate to Your KMS Project">
-    Navigate to the desired KMS project if you already have one or create a new project of type KMS, then select **KMIP** once inside the project, and select **Add KMIP Client**.
-
-    ![KMIP client overview](/images/platform/kms/kmip/kmip-client-overview.png)
-  </Step>
-
-  <Step title="Configure the KMIP Client">
-    Define the client and its permissions.
-
-    In the modal, provide the details of your client. The selected permissions determine what KMIP operations (Create, Get, Revoke, etc.) can be performed in your KMS project.
-
-    ![KMIP client modal](/images/platform/kms/kmip/kmip-client-modal.png)
-
-    This creates a KMIP client entity in Infisical that will be authenticated via mTLS certificates.
-  </Step>
-
-  <Step title="Generate Client Certificate">
-    Each KMIP client needs its own certificate for mTLS authentication.
-
-    Click **Generate Certificate** for your newly created client. Select the request method:
-    - **Managed**: Infisical generates the key pair and certificate for you. Provide the TTL and key algorithm.
-    - **CSR**: Provide your own Certificate Signing Request if your device generates keys internally (e.g., Dell iDRAC). See the [Dell PowerEdge SEKM](/documentation/platform/kms/kmip-dell-poweredge) guide for details.
-
-    Download the generated certificate and certificate chain (and private key if using Managed mode). Configure your KMIP-compatible applications or tools to use these credentials when connecting to the KMIP server.
-  </Step>
-</Steps>
-
-## Connecting your KMIP client to Infisical
-
-After completing the setup, configure your KMIP compatible application to connect to the KMIP server.
-
-While exact configuration steps vary by application, you'll generally need to provide:
-
-1. **KMIP Server Address**: The hostname or IP and port where your KMIP server is listening (e.g., `my-kmip-server.com:5696`)
-
-2. **Client Certificates**: The certificate credentials generated from your Infisical KMS project:
-   - **Client Certificate** (`client-cert.pem`) - Identifies your KMIP client
-   - **Client Private Key** (`client-key.pem`) - Used for mTLS authentication
-   - **Certificate Chain** (`cert-chain.pem`) - Verifies the KMIP server
-
-### General configuration steps
-<Steps>
-  <Step title="Identify Your KMIP Server Endpoint">
-    Determine the address where your KMIP server is accessible. This should match one of the hostnames or IPs configured on the server entity in the UI.
-
-    **Example endpoints:**
-    - `my-kmip-server.com:5696`
-    - `10.0.1.50:5696`
-    - `kmip.example.com:5696`
-
-    The default port is `5696`, but this can be changed using the `--listen-address` flag when starting the server.
-  </Step>
-
-  <Step title="Prepare Certificate Files">
-    Organize the certificate materials you downloaded when generating the client certificate from the Infisical KMS project. You should have three files:
-
-    - **client-cert.pem** - The client certificate
-    - **cert-chain.pem** - The certificate chain (includes intermediate and root CA certificates)
-    - **client-key.pem** - The private key
-
-    Most KMIP clients require these files in PEM format, which is what Infisical provides by default.
-  </Step>
-
-  <Step title="Configure Your KMIP Client Application">
-    The exact configuration steps vary depending on your KMIP client application. Generally, you'll need to specify:
-
-    **Common configuration parameters:**
-    - **Server hostname/IP**: Your KMIP server address (e.g., `my-kmip-server.com`)
-    - **Server port**: Default is `5696`
-    - **Client certificate**: Path to `client-cert.pem`
-    - **Client private key**: Path to `client-key.pem`
-    - **CA certificate**: Path to `cert-chain.pem` (used to verify the server)
-    - **Protocol version**: KMIP 1.0 through 1.4 are supported
-
-    **Example configuration for PyKMIP:**
-    ```ini
-    [client]
-    host=my-kmip-server.com
-    port=5696
-    certfile=/path/to/client-cert.pem
-    keyfile=/path/to/client-key.pem
-    ca_certs=/path/to/cert-chain.pem
-    ```
-
-  </Step>
-
-  <Step title="Test the Connection">
-    Once configured, test the connection by performing a simple KMIP operation, such as:
-    - Querying server capabilities
-    - Creating a test key
-    - Listing available keys
-
-    If the connection is successful, your KMIP client is now integrated with Infisical KMS and can perform key management operations according to the permissions you assigned.
-
-    **Troubleshooting connection issues:**
-    - Verify network connectivity between your KMIP client and the KMIP server
-    - Check that certificate files are readable and in the correct format
-    - Ensure the KMIP server is running and accessible
-    - Review KMIP server logs for authentication errors
-    - Confirm the client certificate has not expired
-
-    If you require further verification of your certificate details and connectivity to the KMIP server from your KMIP client, you can use the following command from your client machine:
-
-    ```bash
-    openssl s_client -connect kmip-server-ip-here:5696 --cert /path/to/client-cert.pem --key /path/to/client-cert.pem --CAfile /path/to/cert-chain.pem --tls1_2 --showcerts --state --debug
-    ```
-
-    This command attempts to establish a TLS connection to the KMIP server using your client certificate and key, displaying detailed information about the handshake process.
-    If the connection is successful, you'll see the server's certificate chain and a message indicating that the handshake was completed.
-
-  </Step>
-</Steps>
+The Key Management Interoperability Protocol (KMIP) is a standard protocol that storage arrays, databases, servers, and backup tools use to get their encryption keys from a key manager. With KMIP, these clients can create and fetch keys in Infisical KMS.
+
+<Info>
+  KMIP is available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+</Info>
+
+<Accordion title="How it works">
+  KMIP clients don't connect to Infisical directly. They connect to a KMIP server that you run on your own network with the Infisical CLI, and the KMIP server passes each request on to Infisical:
+
+  ```mermaid
+  flowchart LR
+    subgraph network["Your network"]
+      client["KMIP client"]
+      server["KMIP server"]
+    end
+    client -- "KMIP request, port 5696" --> server
+    server -- "HTTPS, port 443" --> infisical["Infisical KMS"]
+    style network fill:#ffffde,stroke:#aaaa33,color:#000
+    style client fill:#ececff,stroke:#9370db,color:#000
+    style server fill:#e1f5fe,stroke:#01579b,color:#000
+    style infisical fill:#ffffff,stroke:#757575,color:#000
+  ```
+
+  1. A KMIP client connects to the KMIP server on port 5696, and authenticates with a client certificate that Infisical issued
+  2. The KMIP server sends the request to Infisical over HTTPS
+  3. Infisical runs the request against the keys in the client's KMS project
+
+  You create a KMIP server once for your organization, and any KMS project can use it. You register each client in the KMS project whose keys the client uses.
+
+  Unlike the Infisical API, KMIP gives the client the key material, and the client encrypts data itself. This means you shouldn't [rotate](/documentation/platform/kms/key-rotation) a key that a KMIP client uses.
+</Accordion>
+
+## Set up KMIP
+
+<CardGroup cols={2}>
+  <Card title="Deploy a KMIP server" icon="server" href="/documentation/platform/kms/kmip-server">
+    Run the KMIP server that your KMIP clients connect to.
+  </Card>
+  <Card title="Connect KMIP clients" icon="plug" href="/documentation/platform/kms/kmip-clients">
+    Connect a KMIP client to the keys in a KMS project.
+  </Card>
+</CardGroup>
+
+To set up a specific client, see [Dell PowerEdge SEKM](/documentation/platform/kms/kmip-dell-poweredge).
+
+## Supported KMIP versions and operations
+
+The KMIP server supports KMIP versions 1.0 to 1.4, and the following operations on symmetric keys:
+
+| Operation | What it does |
+| --- | --- |
+| Create | Creates a symmetric key |
+| Register | Adds a key that was created outside Infisical |
+| Locate | Finds keys by their attributes |
+| Get | Returns a key |
+| Activate | Makes a key available for use |
+| Revoke | Revokes a key |
+| Destroy | Deletes a key |
+| Get Attributes | Returns a key's attributes |
+| Query | Returns the operations and objects that the server supports |
+
+When you register a client, you choose which of these operations the client can run.

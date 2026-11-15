@@ -120,13 +120,16 @@ export const useUpdatePkiInstallation = () => {
       );
       return data;
     },
-    onSuccess: (installation, { projectId }) => {
+    onSuccess: (installation, { projectId, keystorePassword }) => {
       queryClient.invalidateQueries({ queryKey: pkiInstallationKeys.list(projectId) });
       queryClient.invalidateQueries({
         queryKey: pkiInstallationKeys.installation(installation.id)
       });
       createNotification({
-        text: "Successfully updated installation",
+        text:
+          keystorePassword === undefined
+            ? "Successfully updated installation"
+            : "Password saved. Rescanning this file.",
         type: "success"
       });
     }

@@ -1,22 +1,24 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
-import { AgentVaultIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
@@ -24,7 +26,7 @@ type TOrgAdminServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: TUsageMeteringService;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -37,7 +39,8 @@ export const orgAdminServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  usageMeteringService
+  usageMeteringService,
+  orgDAL
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -100,6 +103,7 @@ export const orgAdminServiceFactory = ({
     // Reads inside this transaction so it sees the primary, not a possibly-lagging replica, in
     // case a caller (e.g. PAM's bootstrap) just wrote this actor's membership moments earlier.
     const { isExistingMember, membership: updatedMembership } = await membershipUserDAL.transaction(async (tx) => {
+      await lockAndAssertActiveOrgAccess({ orgDAL, orgId: actorOrgId, userIds: [actorId] }, tx);
       const projectMembership = await membershipUserDAL.findOne(
         { scopeProjectId: projectId, scope: AccessScope.Project, actorUserId: actorId },
         tx
@@ -131,7 +135,7 @@ export const orgAdminServiceFactory = ({
 
     // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
     if (project.type === ProjectType.AgentVault) {
-      usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

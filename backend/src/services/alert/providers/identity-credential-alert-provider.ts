@@ -212,8 +212,6 @@ export const identityCredentialAlertProviderFactory = ({
         return `${siteUrl}/organizations/${orgId}/projects/secret-management/${projectId}`;
       case ProjectType.PAM:
         return `${siteUrl}/organizations/${orgId}/pam`;
-      case ProjectType.AgentVault:
-        return `${siteUrl}/organizations/${orgId}/agent-vault`;
       default:
         return `${siteUrl}/organizations/${orgId}/projects/${projectType}/${projectId}`;
     }

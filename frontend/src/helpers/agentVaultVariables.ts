@@ -1,6 +1,8 @@
 export const VARIABLE_KEY_MAX_LENGTH = 64;
 export const VARIABLE_VALUE_MAX_LENGTH = 8192;
 export const MAX_REFERENCES_PER_FIELD = 3;
+export const MAX_VARIABLES = 500;
+export const MAX_PERSONAL_VARIABLES = 100;
 
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -70,10 +72,14 @@ export const findVariableReferenceAtCaret = (text: string, caret: number) => {
 };
 
 /**
- * The first problem with the references in a field, or null. Without `keys`, which is the case while
- * the list loads, only the shape of each reference is checked.
+ * The first problem with the references in a field, or null. A key counts as unknown only once it is in
+ * `missingKeys`, so one still being looked up passes.
  */
-export const variableReferenceError = (text: string, keys?: ReadonlySet<string>): string | null => {
+export const variableReferenceError = (
+  text: string,
+  missingKeys?: ReadonlySet<string>,
+  { isPersonal = false }: { isPersonal?: boolean } = {}
+): string | null => {
   const refs = findVariableReferences(text);
 
   if (refs.length > MAX_REFERENCES_PER_FIELD) {
@@ -85,8 +91,12 @@ export const variableReferenceError = (text: string, keys?: ReadonlySet<string>)
     return `"${toVariableReference(malformed)}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`;
   }
 
-  const missing = keys ? refs.find((ref) => !keys.has(ref)) : undefined;
-  if (missing) return `This bundle has no variable named ${missing}. Add it under Variables first.`;
+  const missing = refs.find((ref) => missingKeys?.has(ref));
+  if (missing) {
+    return isPersonal
+      ? `You have no personal variable named '${missing}'. Add it as a personal variable, or correct the name.`
+      : `There's no global variable named '${missing}'. Add it under Variables, or correct the name.`;
+  }
 
   return null;
 };

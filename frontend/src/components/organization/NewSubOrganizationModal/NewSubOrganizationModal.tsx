@@ -46,6 +46,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
     handleSubmit,
     control,
     setValue,
+    getFieldState,
     reset,
     formState: { isSubmitting }
   } = useForm({
@@ -101,6 +102,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
                     value={value}
                     onChange={(e) => {
                       onChange(e);
+                      if (getFieldState("slug").isDirty) return;
                       setValue("slug", slugify(e.target.value, { lowercase: true }), {
                         shouldValidate: true
                       });

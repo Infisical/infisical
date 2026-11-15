@@ -13,9 +13,9 @@ import {
   emailDispatchRequestCounter
 } from "@app/lib/telemetry/metrics";
 import { isAliasedEmail, normalizeEmail, sanitizeEmail } from "@app/lib/validator";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -196,12 +196,12 @@ export const accountRecoveryServiceFactory = ({
     } catch {
       // If we were going to reject anyway, throw the generic message.
       // If the user was valid but the token failed, same generic message.
-      throw new Error("Invalid or expired verification request");
+      throw new BadRequestError({ message: "Invalid or expired verification request" });
     }
 
     // Reject *after* the constant-time token validation work.
     if (shouldReject) {
-      throw new Error("Invalid or expired verification request");
+      throw new BadRequestError({ message: "Invalid or expired verification request" });
     }
 
     await emailDispatchGuard.clearMailboxThrottle({

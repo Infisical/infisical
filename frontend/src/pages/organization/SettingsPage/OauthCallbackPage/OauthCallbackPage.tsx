@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
@@ -82,5 +83,10 @@ export const OAuthCallbackPage = () => {
     })();
   }, [isReady]);
 
-  return <PageLoader text="Please wait! Authentication in process." />;
+  return (
+    <>
+      <PageTitle title="Connecting Microsoft Teams" />
+      <PageLoader text="Please wait! Authentication in process." />
+    </>
+  );
 };

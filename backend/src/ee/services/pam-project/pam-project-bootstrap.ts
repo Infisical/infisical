@@ -7,9 +7,10 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { accountTypeSupportsSessionLogMasking, PamAccountType } from "../pam/pam-enums";
 import { TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { accountTypeSupportsSessionLogMasking, PamAccountType } from "../pam/pam-enums";
+import { defaultTemplatePolicies } from "../pam/pam-policies";
 
 type TBootstrapDeps = {
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -28,6 +29,7 @@ export type TDefaultTemplate = {
   name: string;
   type: PamAccountType;
   settings: TPamTemplateSettings;
+  policies?: Record<string, unknown>;
 };
 
 const defaultTemplateSettings = (type: PamAccountType): TPamTemplateSettings => ({
@@ -41,6 +43,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
   [
     { name: "ssh", type: PamAccountType.SSH },
     { name: "postgres", type: PamAccountType.Postgres },
+    { name: "cockroachdb", type: PamAccountType.CockroachDB },
     { name: "mysql", type: PamAccountType.MySQL },
     { name: "mssql", type: PamAccountType.MsSQL },
     { name: "oracledb", type: PamAccountType.OracleDB },
@@ -55,7 +58,12 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
     { name: "snowflake", type: PamAccountType.Snowflake },
     { name: "clickhouse", type: PamAccountType.ClickHouse }
   ] as const
-).map(({ name, type }) => ({ name, type, settings: defaultTemplateSettings(type) }));
+).map(({ name, type }) => ({
+  name,
+  type,
+  settings: defaultTemplateSettings(type),
+  policies: defaultTemplatePolicies(type)
+}));
 
 export const bootstrapPamProject = async (
   { orgId, adminUserIds = [], adminIdentityIds = [], adminGroupIds = [] }: TBootstrapInput,
@@ -116,7 +124,8 @@ export const bootstrapPamProject = async (
       projectId: project.id,
       name: template.name,
       type: template.type,
-      settings: template.settings
+      settings: template.settings,
+      policies: template.policies
     });
   }
 

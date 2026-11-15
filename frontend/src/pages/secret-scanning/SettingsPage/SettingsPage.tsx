@@ -1,7 +1,6 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { LookingForOrgPageLink, PageLoader } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
@@ -14,7 +13,6 @@ import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/Pr
 import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab";
 
 export const SettingsPage = () => {
-  const { t } = useTranslation();
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings"
   });
@@ -34,9 +32,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Secret Scanning Settings" })}</title>
-      </Helmet>
+      <PageTitle title="Secret Scanning Settings" />
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretScanning}

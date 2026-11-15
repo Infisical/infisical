@@ -34,9 +34,7 @@ const EMPTY_CUSTOM_EXTENSION_ROWS: { oid: string; value: string }[] = [];
 
 type UsePolicyGuidanceParams = {
   policy?: TCertificatePolicy | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   watch: UseFormWatch<any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clearErrors: UseFormClearErrors<any>;
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;

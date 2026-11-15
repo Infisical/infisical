@@ -1,5 +1,5 @@
 import * as React from "react";
-import { forwardRef } from "react";
+import { forwardRef, type JSX } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
@@ -41,6 +41,7 @@ const buttonVariants = cva(
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30 [--control-variant-color:var(--color-danger)] [--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_25%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_30%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_30%,transparent)]",
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35 [--control-variant-color:var(--color-product-pam)] [--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_35%,transparent)]",
         av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35 [--control-variant-color:var(--color-product-av)] [--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_35%,transparent)]",
+        ss: "border-product-ss/30 bg-product-ss/25 text-foreground hover:bg-product-ss/30 hover:border-product-ss/35 data-[state=open]:bg-product-ss/30 data-[state=open]:border-product-ss/35 [--control-variant-color:var(--color-product-ss)] [--control-variant-border-color:color-mix(in_oklab,var(--color-product-ss)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-ss)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-ss)_35%,transparent)]",
         // Tinted from --product-color, which the caller must set inline (e.g. a billing catalog
         // product's color) since the palette isn't knowable at build time.
         product:

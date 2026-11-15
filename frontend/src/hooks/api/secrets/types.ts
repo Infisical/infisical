@@ -1,7 +1,8 @@
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Reminder } from "@app/hooks/api/reminders/types";
 
-import { PendingAction } from "../secretFolders/types";
+import type { TSecretApprovalRequest } from "../secretApprovalRequest/types";
+import { PendingAction, TSecretFolder } from "../secretFolders/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -160,6 +161,16 @@ export type TGetSecretAccessListDTO = {
   includeAllEntities?: boolean;
 };
 
+export type TCreateCommitResponse = {
+  commitId: string | null;
+  approval: Pick<
+    TSecretApprovalRequest,
+    "id" | "slug" | "folderId" | "status" | "hasMerged" | "createdAt" | "updatedAt"
+  > | null;
+  secrets: { created: SecretV3Raw[]; updated: SecretV3Raw[]; deleted: SecretV3Raw[] };
+  folders: { created: TSecretFolder[]; updated: TSecretFolder[]; deleted: TSecretFolder[] };
+};
+
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;
@@ -294,6 +305,13 @@ export type TDuplicateSecretResult =
 
 export type TDuplicateSecretResponse = {
   results: TDuplicateSecretResult[];
+};
+
+export type TGetExpandedSecretValueDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
 };
 
 export type TGetSecretReferenceTreeDTO = {

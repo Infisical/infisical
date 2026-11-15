@@ -15,6 +15,14 @@ const MemberSchema = z.object({
   userId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   groupId: z.string().uuid().nullable().optional(),
+  email: z.string().nullable().optional().describe("The user's email. Null for group and identity members."),
+  username: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "The user's username, which adding members by email matches against. Null for group and identity members."
+    ),
   role: z.string(),
   isActive: z.boolean(),
   expiresAt: z.date().nullable().optional(),

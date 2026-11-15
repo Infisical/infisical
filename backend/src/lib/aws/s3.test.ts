@@ -28,4 +28,22 @@ describe("presignCreateOnlyPut", () => {
     expect(signed).toContain("x-amz-checksum-sha256");
     expect(url.searchParams.has("x-amz-checksum-sha256")).toBe(false);
   });
+
+  test("carries a tag in the query, so an uploader sending only its usual headers still matches the signature", async () => {
+    const presign = async (tagging?: string) =>
+      new URL(
+        await bucket.presignCreateOnlyPut({
+          key: "logs/a.json.enc",
+          contentLength: 42,
+          sha256Base64: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          expiresInSeconds: 300,
+          tagging
+        })
+      );
+    const untagged = await presign();
+    const tagged = await presign("retention=30d");
+
+    expect(tagged.searchParams.get("x-amz-tagging")).toBe("retention=30d");
+    expect(tagged.searchParams.get("X-Amz-SignedHeaders")).toBe(untagged.searchParams.get("X-Amz-SignedHeaders"));
+  });
 });

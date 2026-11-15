@@ -95,6 +95,7 @@ I
 (?i)backends
 (?i)bool
 (?i)boolean
+(?i)booleans
 (?i)breakpoint
 (?i)bubblewrap
 (?i)bursty
@@ -197,6 +198,7 @@ I
 (?i)runbook
 (?i)runbooks
 (?i)sandboxed
+(?i)sandboxing
 (?i)sarif
 (?i)serverless
 (?i)signup
@@ -227,6 +229,7 @@ I
 (?i)uncredentialed
 (?i)unencrypted
 (?i)unproxied
+(?i)unpublish
 (?i)unreplicated
 (?i)unreviewed
 (?i)unrotated
@@ -409,3 +412,7 @@ sm
 (?i)unscoped
 (?i)rsync
 (?i)zsh
+
+# GitHub product name that GitHub itself lowercases in permission labels, such as
+# "Organization dependabot secrets".
+(?i)Dependabot

@@ -39,6 +39,7 @@ import {
 import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-badge-overflow";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 export type TVaultSecretImportArgs = {
@@ -54,15 +55,17 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   appConnections: TAvailableAppConnection[];
   destinationPath: string;
-  onImport: (args: TVaultSecretImportArgs) => void;
+  onImport: (args: TVaultSecretImportArgs) => Promise<void>;
 };
 
 type ContentProps = {
   onClose: () => void;
   appConnections: TAvailableAppConnection[];
   destinationPath: string;
-  onImport: (args: TVaultSecretImportArgs) => void;
+  onImport: (args: TVaultSecretImportArgs) => Promise<void>;
   onDirtyChange: (isDirty: boolean) => void;
+  isImporting: boolean;
+  setIsImporting: (isImporting: boolean) => void;
 };
 
 const MAX_PATH_LENGTH = 30;
@@ -102,7 +105,9 @@ const Content = ({
   appConnections,
   destinationPath,
   onImport,
-  onDirtyChange
+  onDirtyChange,
+  isImporting,
+  setIsImporting
 }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
   const [keepVaultStructure, setKeepVaultStructure] = useState(false);
@@ -172,7 +177,7 @@ const Content = ({
   const { invalidPaths } = preview;
   const isOverPathLimit = selectedPaths.length > MAX_IMPORT_PATHS;
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (isOverPathLimit) {
       createNotification({
         type: "error",
@@ -207,8 +212,21 @@ const Content = ({
       return;
     }
 
-    onImport({ vaultPaths: selectedPaths, namespace, mountPath, connectionId, keepVaultStructure });
-    onClose();
+    setIsImporting(true);
+    try {
+      await onImport({
+        vaultPaths: selectedPaths,
+        namespace,
+        mountPath,
+        connectionId,
+        keepVaultStructure
+      });
+      onClose();
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -426,6 +444,7 @@ const Content = ({
         <Button
           variant="project"
           onClick={handleImport}
+          isPending={isImporting}
           isDisabled={
             !selectedPaths.length ||
             isOverPathLimit ||
@@ -449,6 +468,7 @@ export const VaultSecretImportModal = ({
   onImport
 }: Props) => {
   const [isDirty, setIsDirty] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const closeSheet = useCallback(() => {
     setIsDirty(false);
@@ -472,6 +492,7 @@ export const VaultSecretImportModal = ({
         {isOpen && (
           <SheetContent
             className="sm:max-w-2xl"
+            isPending={isImporting}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
             <SheetHeader>
@@ -492,6 +513,8 @@ export const VaultSecretImportModal = ({
               destinationPath={destinationPath}
               onImport={onImport}
               onDirtyChange={setIsDirty}
+              isImporting={isImporting}
+              setIsImporting={setIsImporting}
             />
           </SheetContent>
         )}

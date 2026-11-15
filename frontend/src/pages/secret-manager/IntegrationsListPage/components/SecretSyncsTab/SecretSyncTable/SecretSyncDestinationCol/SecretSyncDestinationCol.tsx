@@ -29,6 +29,7 @@ import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { JenkinsSyncDestinationCol } from "./JenkinsSyncDestinationCol";
 import { KeeperSyncDestinationCol } from "./KeeperSyncDestinationCol";
 import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol";
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
@@ -163,6 +164,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <KeeperSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

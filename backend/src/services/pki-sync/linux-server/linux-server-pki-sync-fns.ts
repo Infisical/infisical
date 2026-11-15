@@ -21,9 +21,9 @@ import {
   withSshConnection
 } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import {

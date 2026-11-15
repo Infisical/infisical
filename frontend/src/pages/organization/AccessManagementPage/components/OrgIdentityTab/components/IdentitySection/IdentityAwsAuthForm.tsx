@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -48,7 +49,15 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenTrustedIps: trustedIpsSchema
     })
     .required()
-    .superRefine(superRefineAccessTokenTtl);
+    .superRefine(superRefineAccessTokenTtl)
+    .superRefine((data, ctx) => {
+      if (!data.allowedPrincipalArns.trim() && !data.allowedAccountIds.trim()) {
+        const message = "Configure at least one allowed AWS account ID or principal ARN.";
+        ["allowedPrincipalArns", "allowedAccountIds"].forEach((path) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message })
+        );
+      }
+    });
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -207,9 +216,7 @@ export const IdentityAwsAuthForm = ({
               name="allowedPrincipalArns"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="allowedPrincipalArns">
-                    Allowed Principal ARNs (optional)
-                  </FieldLabel>
+                  <FieldLabel htmlFor="allowedPrincipalArns">Allowed Principal ARNs</FieldLabel>
                   <Input
                     {...field}
                     id="allowedPrincipalArns"
@@ -217,6 +224,9 @@ export const IdentityAwsAuthForm = ({
                     type="text"
                     isError={Boolean(error)}
                   />
+                  <FieldDescription>
+                    At least one of allowed principal ARNs or allowed account IDs is required.
+                  </FieldDescription>
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}
@@ -226,15 +236,16 @@ export const IdentityAwsAuthForm = ({
               name="allowedAccountIds"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="allowedAccountIds">
-                    Allowed Account IDs (optional)
-                  </FieldLabel>
+                  <FieldLabel htmlFor="allowedAccountIds">Allowed Account IDs</FieldLabel>
                   <Input
                     {...field}
                     id="allowedAccountIds"
                     placeholder="123456789012, ..."
                     isError={Boolean(error)}
                   />
+                  <FieldDescription>
+                    At least one of allowed principal ARNs or allowed account IDs is required.
+                  </FieldDescription>
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}

@@ -1,4 +1,3 @@
-import { ProxiedServiceTemplate } from "@app/helpers/proxiedServiceTemplates";
 import {
   ProxiedServiceCredentialRole,
   ProxiedServiceHeaderPurpose,
@@ -140,45 +139,4 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
   });
 
   return credentials;
-};
-
-// Appends a numeric suffix ("openai" -> "openai-2") until the name is unused in the folder.
-export const uniqueServiceName = (base: string, existingNames: string[]) => {
-  const taken = new Set(existingNames);
-  if (!taken.has(base)) return base;
-  let i = 2;
-  while (taken.has(`${base}-${i}`)) i += 1;
-  return `${base}-${i}`;
-};
-
-// Seeds the form from a template. Every source is left blank — the one thing the user picks.
-// Placeholders are generated once here so re-renders don't churn the value.
-export const buildTemplateFormValues = (
-  template: ProxiedServiceTemplate,
-  existingNames: string[]
-): TProxiedServiceForm => {
-  const isBasicAuth = Boolean(template.seed.basicAuth);
-
-  return {
-    name: uniqueServiceName(template.defaultName ?? template.key, existingNames),
-    hostPattern: template.hostPattern,
-    isEnabled: true,
-    headerMode: isBasicAuth ? HeaderRewritingMode.BasicAuth : HeaderRewritingMode.Headers,
-    // Substitution-only templates omit `headers`, which becomes an empty list here so the
-    // legacy Authorization row is dropped and the Header Rewrites step is genuinely empty.
-    headers: isBasicAuth
-      ? []
-      : (template.seed.headers ?? []).map((h) => ({
-          ...emptySource(),
-          headerName: h.headerName,
-          headerPrefix: h.headerPrefix ?? ""
-        })),
-    basicAuth: { username: emptySource(), password: emptySource() },
-    substitutions: (template.seed.substitutions ?? []).map((s) => ({
-      ...emptySource(),
-      placeholderKey: s.placeholderKey,
-      placeholderValue: s.generatePlaceholder(),
-      surfaces: s.surfaces
-    }))
-  };
 };

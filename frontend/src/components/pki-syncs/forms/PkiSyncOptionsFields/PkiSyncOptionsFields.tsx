@@ -1,7 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
-import { INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS } from "@app/helpers/pkiSyncs";
+import {
+  CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS,
+  INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -10,6 +13,7 @@ import { AwsElasticLoadBalancerSyncOptions } from "./AwsElasticLoadBalancerSyncO
 import { AwsSecretsManagerSyncOptions } from "./AwsSecretsManagerSyncOptions";
 import { AzureKeyVaultSyncOptions } from "./AzureKeyVaultSyncOptions";
 import { ChefSyncOptions } from "./ChefSyncOptions";
+import { CloudflareCustomCertificateSyncOptions } from "./CloudflareCustomCertificateSyncOptions";
 import { F5BigIpSyncOptions } from "./F5BigIpSyncOptions";
 import { GcpCertificateManagerSyncOptions } from "./GcpCertificateManagerSyncOptions";
 import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
@@ -37,6 +41,8 @@ const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolea
       return <AwsSecretsManagerSyncOptions />;
     case PkiSync.Chef:
       return <ChefSyncOptions />;
+    case PkiSync.CloudflareCustomCertificate:
+      return <CloudflareCustomCertificateSyncOptions />;
     case PkiSync.GcpCertificateManager:
       return <GcpCertificateManagerSyncOptions />;
     case PkiSync.NetScaler:
@@ -93,7 +99,7 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
 
       {renderDestinationOptions(currentDestination, isUpdate)}
 
-      {currentDestination !== PkiSync.NutanixPrismCentral && (
+      {!CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
         <Controller
           control={control}
           name="syncOptions.certificateNameSchema"

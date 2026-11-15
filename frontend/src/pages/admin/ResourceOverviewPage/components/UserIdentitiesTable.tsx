@@ -365,7 +365,7 @@ export const UserIdentitiesTable = () => {
   const { users, totalCount = 0 } = data ?? {};
 
   const handleRemoveUser = async () => {
-    const { id } = popUp?.removeUser?.data as { id: string; username: string };
+    const { id } = popUp.removeUser.data as { id: string; username: string };
 
     await deleteUser(id);
     createNotification({
@@ -377,7 +377,7 @@ export const UserIdentitiesTable = () => {
   };
 
   const handleGrantServerAdminAccess = async () => {
-    const { id } = popUp?.upgradeToServerAdmin?.data as {
+    const { id } = popUp.upgradeToServerAdmin.data as {
       id: string;
       username: string;
     };
@@ -392,7 +392,7 @@ export const UserIdentitiesTable = () => {
   };
 
   const handleRemoveServerAdminAccess = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as {
+    const { id } = popUp.removeServerAdmin.data as {
       id: string;
       username: string;
     };

@@ -15,6 +15,7 @@ import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
   getPaloAltoNetworksProfileLabel,
+  getSyncOptionDisplayValue,
   getUnusedExportOptionKeys,
   isPaloAltoNetworksPkiSync,
   KEY_VALUE_SYNC_OPTION_FIELDS,
@@ -23,7 +24,6 @@ import {
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  PKI_SYNC_EXPORT_FORMAT_LABELS,
   PkiSyncExportFormat,
   usePkiSyncOption,
   usePkiSyncPreviewCertificates
@@ -33,9 +33,9 @@ import {
   TPkiSyncFilters
 } from "@app/hooks/api/pkiSyncs/types";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
 import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const MATCHED_PAGE_SIZE = 20;
 
@@ -272,22 +272,16 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
             );
           })}
           {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
-            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
-            if (
-              optionValue === undefined ||
-              optionValue === null ||
-              optionValue === "" ||
-              inapplicableOptionKeys.has(key)
-            )
-              return null;
+            if (inapplicableOptionKeys.has(key)) return null;
+            const displayValue = getSyncOptionDisplayValue(
+              destination,
+              key,
+              (syncOptions as Record<string, unknown> | undefined)?.[key]
+            );
+            if (displayValue === null) return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
-                <Badge variant="neutral">
-                  {key === "exportFormat"
-                    ? (PKI_SYNC_EXPORT_FORMAT_LABELS[optionValue as PkiSyncExportFormat] ??
-                      String(optionValue))
-                    : String(optionValue)}
-                </Badge>
+                <Badge variant="neutral">{displayValue}</Badge>
               </ReviewFieldLabel>
             );
           })}

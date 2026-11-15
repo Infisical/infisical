@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -110,6 +111,7 @@ export const NorthflankConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Northflank Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Northflank Integration</CardTitle>
@@ -232,6 +234,9 @@ export const NorthflankConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Northflank Integration" />
+      <div />
+    </>
   );
 };

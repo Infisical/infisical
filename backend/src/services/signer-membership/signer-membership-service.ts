@@ -10,6 +10,8 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -33,6 +35,7 @@ import {
 } from "./signer-membership-types";
 
 type TSignerMembershipServiceFactoryDep = {
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   signerDAL: Pick<TSignerDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -82,7 +85,8 @@ export const signerMembershipServiceFactory = ({
   groupDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  orgDAL
 }: TSignerMembershipServiceFactoryDep) => {
   const $loadSignerOrThrow = async (signerId: string, projectId: string) => {
     const signer = await signerDAL.findById(signerId);
@@ -135,13 +139,26 @@ export const signerMembershipServiceFactory = ({
     else if (actor.identityId) where.actorIdentityId = actor.identityId;
     else if (actor.groupId) where.actorGroupId = actor.groupId;
 
-    const orgMembership = await membershipDAL.find(where);
-    if (!orgMembership.length) {
+    const [orgMembership] = await membershipDAL.find(where);
+    if (orgMembership && !orgMembership.isActive) {
       throw new BadRequestError({
-        message: "The actor is not a member of this organization. Invite them to the organization first."
+        message: "The actor is deactivated in this organization. Reactivate them before granting them access."
       });
     }
-    return orgMembership[0];
+    if (orgMembership) return;
+
+    if (actor.userId || actor.identityId) {
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess({
+        orgId,
+        userIds: actor.userId ? [actor.userId] : [],
+        identityIds: actor.identityId ? [actor.identityId] : []
+      });
+      if (withAccess.userIds.size || withAccess.identityIds.size) return;
+    }
+
+    throw new BadRequestError({
+      message: "The actor is not a member of this organization. Invite them to the organization first."
+    });
   };
 
   const $loadResourcePermission = (
@@ -194,7 +211,7 @@ export const signerMembershipServiceFactory = ({
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
     }
 
-    const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
+    await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingSignerMembershipFilter: Record<string, unknown> = {
@@ -232,10 +249,15 @@ export const signerMembershipServiceFactory = ({
         });
       }
 
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        tx
+      );
+
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: orgMembership.scopeOrgId,
+          scopeOrgId: actorOrgId,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import {
@@ -8,14 +8,6 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -23,10 +15,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge,
-  Field,
-  FieldLabel,
-  Input
+  ConfirmationAlertDialog,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -65,56 +55,17 @@ const ConfirmDeleteDialog = ({
   isPending,
   onOpenChange,
   onConfirm
-}: ConfirmDeleteDialogProps) => {
-  const [confirmation, setConfirmation] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) setConfirmation("");
-  }, [isOpen]);
-
-  return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        onOpenChange(open);
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. Type &quot;confirm&quot; to continue.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <Field>
-          <FieldLabel htmlFor="delete-identity-resource-confirmation">
-            Type &quot;confirm&quot; to confirm
-          </FieldLabel>
-          <Input
-            id="delete-identity-resource-confirmation"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            autoComplete="off"
-          />
-        </Field>
-        <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isDisabled={confirmation !== "confirm"}
-            isPending={isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              onConfirm();
-            }}
-          >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+}: ConfirmDeleteDialogProps) => (
+  <ConfirmationAlertDialog
+    isOpen={isOpen}
+    onOpenChange={onOpenChange}
+    title={`Delete ${name}?`}
+    description="This action cannot be undone."
+    confirmKey="confirm"
+    isPending={isPending}
+    onConfirm={onConfirm}
+  />
+);
 
 const IdentitySectionContent = ({ view = "identities" }: Props) => {
   const { subscription } = useSubscription();

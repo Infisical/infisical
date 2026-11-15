@@ -54,7 +54,6 @@ export const Route = createFileRoute(
         to: moved.to,
         params: { orgId: params.orgId },
         search: { selectedTab: moved.selectedTab }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
     }
   }

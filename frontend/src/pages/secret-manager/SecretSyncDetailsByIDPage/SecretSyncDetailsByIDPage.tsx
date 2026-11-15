@@ -1,7 +1,7 @@
-import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   EditSecretSyncModal,
@@ -148,10 +148,8 @@ const PageContent = () => {
 export const SecretSyncDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Secret Sync | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Secret Sync" />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

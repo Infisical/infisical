@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProxiedServiceCredentialRole } from "@app/ee/services/proxied-service/proxied-service-enums";
 import {
   CredentialsArraySchema,
   hostPatternSchema,
@@ -12,21 +11,20 @@ import {
 import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
-import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerProxiedServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },
+
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.ProxiedServices],
-      description: "Create a proxied service",
       body: z.object({
         projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.projectId),
         environment: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.environment),
@@ -40,58 +38,8 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         200: z.object({ service: ProxiedServiceWithCredentialsSchema })
       }
     },
-    handler: async (req) => {
-      const service = await server.services.proxiedService.create(req.body, req.permission);
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.body.projectId,
-        event: {
-          type: EventType.CREATE_PROXIED_SERVICE,
-          metadata: {
-            proxiedServiceId: service.id,
-            name: service.name,
-            hostPattern: service.hostPattern,
-            secretKeys: [
-              ...new Set(req.body.credentials.map((c) => c.secretKey).filter((k): k is string => Boolean(k)))
-            ],
-            dynamicSecretNames: [
-              ...new Set(req.body.credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))
-            ],
-            environment: req.body.environment,
-            secretPath: req.body.secretPath
-          }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.ProxiedServiceCreated,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            projectId: req.body.projectId,
-            headerRewriteCount: req.body.credentials.filter(
-              (c) => c.role === ProxiedServiceCredentialRole.HeaderRewrite
-            ).length,
-            substitutionCount: req.body.credentials.filter(
-              (c) => c.role === ProxiedServiceCredentialRole.CredentialSubstitution
-            ).length,
-            substitutionSurfaces: [
-              ...new Set(
-                req.body.credentials
-                  .filter((c) => c.role === ProxiedServiceCredentialRole.CredentialSubstitution)
-                  .flatMap((c) => c.substitutionSurfaces ?? [])
-              )
-            ].sort(),
-            hostPatternCount: req.body.hostPattern.split(",").filter((p) => p.trim()).length,
-            usesDynamicSecret: req.body.credentials.some((c) => Boolean(c.dynamicSecretName)),
-            usesBasicAuth: req.body.credentials.some((c) => Boolean(c.headerPurpose)),
-            isEnabled: service.isEnabled
-          }
-        })
-        .catch(() => {});
-
-      return { service };
+    handler: async () => {
+      return server.services.proxiedService.create();
     }
   });
 
@@ -192,7 +140,9 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Update a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId) }),
+      params: z.object({
+        serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId)
+      }),
       body: z.object({
         name: slugSchema({ field: "name" }).optional().describe(PROXIED_SERVICES.UPDATE.name),
         hostPattern: hostPatternSchema.optional().describe(PROXIED_SERVICES.UPDATE.hostPattern),
@@ -262,7 +212,9 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Delete a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId) }),
+      params: z.object({
+        serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId)
+      }),
       response: {
         200: z.object({ service: SanitizedProxiedServiceBaseSchema })
       }

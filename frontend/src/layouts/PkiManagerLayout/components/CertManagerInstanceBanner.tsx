@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
-import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { useImplicitProjectId } from "@app/hooks";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 
@@ -37,10 +36,9 @@ export const CertManagerInstanceBanner = () => {
           You&apos;re viewing a legacy Certificate Manager project.{" "}
           {activeProject ? (
             <Link
-              to="/organizations/$orgId/cert-manager/overview"
-              params={{ orgId: currentOrg.id }}
+              to="/organizations/$orgId/projects/cert-manager/$projectId/$"
+              params={{ orgId: currentOrg.id, projectId: activeProject.id, _splat: "overview" }}
               reloadDocument
-              onClick={() => setCertManagerActiveProjectCookie(currentOrg.id, activeProject.id)}
               className="underline underline-offset-2 hover:text-warning"
             >
               Switch to your active project →

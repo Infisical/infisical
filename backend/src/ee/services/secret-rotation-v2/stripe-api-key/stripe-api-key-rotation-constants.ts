@@ -4,7 +4,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 /**
  * Every permission the Managed API Keys API accepts. There is no wildcard, no unrestricted key type
- * and no endpoint that lists these, so full access means naming all 158. Verified by probing each
+ * and no endpoint that lists these, so full access means naming all of them. Verified by probing each
  * one against a gated sandbox.
  */
 export const STRIPE_API_KEY_PERMISSIONS = [
@@ -41,6 +41,7 @@ export const STRIPE_API_KEY_PERMISSIONS = [
   "confirmation_token_client_write",
   "confirmation_token_read",
   "connected_account_read",
+  "connected_account_write",
   "coupon_read",
   "coupon_write",
   "credit_note_read",
@@ -286,9 +287,9 @@ export const STRIPE_API_KEY_PERMISSION_GROUPS: TStripeApiKeyPermissionGroup[] = 
     resources: [
       { name: "Account links", write: "account_link_write" },
       { name: "Application fees", read: "application_fee_read", write: "application_fee_write" },
-      { name: "Connected accounts", read: "connected_account_read" },
-      { name: "Edit links", write: "edit_link_write" },
+      { name: "Connected accounts", read: "connected_account_read", write: "connected_account_write" },
       { name: "Fee domain resources", read: "fee_domain_resources_read" },
+      { name: "Login links", write: "edit_link_write" },
       { name: "Top-ups", read: "top_up_read", write: "top_up_write" },
       { name: "Transfers", read: "transfer_read", write: "transfer_write" }
     ]

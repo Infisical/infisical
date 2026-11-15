@@ -11,7 +11,7 @@ const AuditLogsPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/audit-logs"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/audit-logs"
 )({
   component: AgentVaultAuditLogsPage,
   validateSearch: zodValidator(AuditLogsPageQueryParams),

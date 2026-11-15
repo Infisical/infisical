@@ -54,7 +54,7 @@ describe("getAwsConnectionConfig External ID", () => {
   });
 
   test.each([
-    ["Agent Vault", { projectType: ProjectType.AgentVault }, ["org-1"]],
+    ["Agent Vault", { projectType: ProjectType.AgentVault }, ["proj-1"]],
     ["Certificate Manager", { projectType: ProjectType.CertificateManager }, ["org-1"]],
     ["Secret Manager", { projectType: ProjectType.SecretManager }, ["proj-1"]],
     ["organization", { projectId: null }, ["org-1"]],
@@ -65,13 +65,13 @@ describe("getAwsConnectionConfig External ID", () => {
     expect(sts.externalIds).toEqual(expected);
   });
 
-  test("Agent Vault connections do not retry with the project ID", async () => {
+  test("Agent Vault connections do not retry with the organization ID", async () => {
     sts.rejectionsLeft = 1;
 
     await expect(getAwsConnectionConfig(assumeRoleConnection({ projectType: ProjectType.AgentVault }))).rejects.toThrow(
       "sts:AssumeRole"
     );
-    expect(sts.externalIds).toEqual(["org-1"]);
+    expect(sts.externalIds).toEqual(["proj-1"]);
   });
 
   test("Certificate Manager connections retry with the project ID", async () => {

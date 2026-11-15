@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -18,9 +18,9 @@ import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TOrgAssetDALFactory } from "../org-asset/org-asset-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretShareBrandConfig } from "../org/org-types";
-import { TOrgAssetDALFactory } from "../org-asset/org-asset-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
@@ -45,7 +45,7 @@ type TSecretSharingServiceFactoryDep = {
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
@@ -866,7 +866,7 @@ export const secretSharingServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretShareExternalBranding) {
+    if (!plan.has(PlanFeature.SecretShareExternalBranding)) {
       return null;
     }
 
@@ -911,7 +911,7 @@ export const secretSharingServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretShareExternalBranding) {
+    if (!plan.has(PlanFeature.SecretShareExternalBranding)) {
       return null;
     }
 

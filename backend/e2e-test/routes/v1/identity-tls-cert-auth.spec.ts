@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import * as x509 from "@peculiar/x509";
 import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
 
@@ -376,6 +378,111 @@ describe("Identity TLS certificate auth v1", async () => {
         );
         expect(res.statusCode).toBe(401);
         expect(res.json().message).toContain("presented chain could not be decoded");
+      });
+    });
+  });
+  describe("certificate-bound access tokens", async () => {
+    const certHeader = (cert: x509.X509Certificate) => encodeURIComponent(toPem(cert));
+    const thumbprint = (cert: x509.X509Certificate) =>
+      crypto.createHash("sha256").update(Buffer.from(cert.rawData)).digest("base64url");
+    const cnfOf = (accessToken: string) =>
+      (JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString()) as { cnf?: Record<string, string> })
+        .cnf;
+
+    const setBinding = async (identityId: string, bindAccessTokenToCertificate: boolean) => {
+      const res = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body: { bindAccessTokenToCertificate }
+      });
+      expect(res.statusCode).toBe(200);
+    };
+
+    const getDetails = (accessToken: string, cert?: x509.X509Certificate) =>
+      testServer.inject({
+        method: "GET",
+        url: "/api/v1/identities/details",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          ...(cert ? { "x-identity-tls-cert-auth-client-cert": certHeader(cert) } : {})
+        }
+      });
+
+    const renew = (accessToken: string, cert?: x509.X509Certificate) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/auth/token/renew",
+        headers: cert ? { "x-identity-tls-cert-auth-client-cert": certHeader(cert) } : {},
+        body: { accessToken }
+      });
+
+    // Revocation compares second-precision iat against the marker, so a token signed in the same second is revoked too.
+    const waitPastRevocationSecond = () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 1100);
+      });
+
+    test("binds the token to the login certificate on every request and renewal", async () => {
+      const ca = await makeRoot("Binding CA");
+      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+      const other = await makeLeaf("other-workload", ca, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        await setBinding(identityId, true);
+        await waitPastRevocationSecond();
+
+        const loginRes = await login(identityId, [leaf.cert]);
+        expect(loginRes.statusCode).toBe(200);
+        const { accessToken } = loginRes.json() as { accessToken: string };
+        expect(cnfOf(accessToken)).toEqual({ "x5t#S256": thumbprint(leaf.cert) });
+
+        expect((await getDetails(accessToken, leaf.cert)).statusCode).toBe(200);
+
+        const missing = await getDetails(accessToken);
+        expect(missing.statusCode).toBe(401);
+        expect(missing.json().message).toContain("no client certificate was presented");
+
+        const mismatched = await getDetails(accessToken, other.cert);
+        expect(mismatched.statusCode).toBe(401);
+        expect(mismatched.json().message).toContain("does not match");
+
+        expect((await renew(accessToken)).statusCode).toBe(401);
+        expect((await renew(accessToken, other.cert)).statusCode).toBe(401);
+        const renewed = await renew(accessToken, leaf.cert);
+        expect(renewed.statusCode).toBe(200);
+        expect(cnfOf(renewed.json().accessToken as string)).toEqual({ "x5t#S256": thumbprint(leaf.cert) });
+      });
+    });
+
+    test("issues unbound tokens while the setting is off", async () => {
+      const ca = await makeRoot("Unbound CA");
+      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const { accessToken } = (await login(identityId, [leaf.cert])).json() as { accessToken: string };
+        expect(cnfOf(accessToken)).toBeUndefined();
+        expect((await getDetails(accessToken)).statusCode).toBe(200);
+      });
+    });
+
+    test("revokes existing tokens when binding is turned on, and not when it is saved again", async () => {
+      const ca = await makeRoot("Revocation CA");
+      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const { accessToken: unbound } = (await login(identityId, [leaf.cert])).json() as { accessToken: string };
+        expect((await getDetails(unbound)).statusCode).toBe(200);
+
+        await setBinding(identityId, true);
+        const revoked = await getDetails(unbound);
+        expect(revoked.statusCode).toBe(401);
+        expect(revoked.json().message).toContain("revoked");
+
+        await waitPastRevocationSecond();
+        const { accessToken: bound } = (await login(identityId, [leaf.cert])).json() as { accessToken: string };
+        await setBinding(identityId, true);
+        expect((await getDetails(bound, leaf.cert)).statusCode).toBe(200);
       });
     });
   });

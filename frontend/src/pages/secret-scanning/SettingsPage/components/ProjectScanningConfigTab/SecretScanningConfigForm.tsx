@@ -4,8 +4,19 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, TextArea } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  TextArea
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -50,16 +61,16 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
   };
 
   return (
-    <div className="rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="mb-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-normal text-foreground">Scanning Configuration</h2>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration" />
-        </div>
-        <p className="leading-5 text-muted">Configure rules and exceptions to customize scanning</p>
-      </div>
-      <div>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex w-full flex-col">
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Scanning Configuration
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration" />
+          </CardTitle>
+          <CardDescription>Configure rules and exceptions to customize scanning</CardDescription>
+        </CardHeader>
+        <CardContent>
           <ProjectPermissionCan
             I={ProjectPermissionSecretScanningConfigActions.Update}
             a={ProjectPermissionSub.SecretScanningConfigs}
@@ -68,41 +79,45 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
               <Controller
                 defaultValue=""
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Field data-invalid={Boolean(error)}>
                     <TextArea
+                      aria-label="Scanning configuration"
                       placeholder={
                         "[extend]\n\nuseDefault = true\n\n# See docs for configuration guide"
                       }
                       {...field}
                       rows={3}
-                      className="min-h-144 thin-scrollbar w-full resize-none! resize-y!"
-                      isDisabled={!isAllowed}
+                      className="min-h-144 resize-y"
+                      isError={Boolean(error)}
+                      disabled={!isAllowed}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
                 control={control}
                 name="content"
               />
             )}
           </ProjectPermissionCan>
+        </CardContent>
+        <CardFooter className="justify-end">
           <ProjectPermissionCan
             I={ProjectPermissionSecretScanningConfigActions.Update}
             a={ProjectPermissionSub.SecretScanningConfigs}
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="ss"
                 type="submit"
-                className="w-min"
-                isLoading={updateConfig.isPending}
+                isPending={updateConfig.isPending}
                 isDisabled={updateConfig.isPending || !isAllowed || !isDirty}
               >
                 Save
               </Button>
             )}
           </ProjectPermissionCan>
-        </form>
-      </div>
-    </div>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };

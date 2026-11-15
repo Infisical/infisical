@@ -2,12 +2,12 @@ import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
-import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSubjects
@@ -29,8 +29,8 @@ import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal"
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -71,7 +71,7 @@ import {
 
 export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
   clickhouseAuditLogDAL?: Pick<
     TClickHouseAuditLogDALFactory,
@@ -120,15 +120,15 @@ const assertInsightsPlanEnabled = async (
   orgId: string
 ) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.secretAccessInsights) {
+  if (!plan.has(PlanFeature.SecretAccessInsights)) {
     throw new BadRequestError({
       message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
     });
   }
 };
 
-const checkInsightsPermission = async (
-  permissionService: TInsightsServiceFactoryDep["permissionService"],
+export const checkInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
   licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
   actor: OrgServiceActor
@@ -748,7 +748,7 @@ export const insightsServiceFactory = ({
           folderDAL.countByProject(dto.projectId),
           dynamicSecretDAL.countByProject(dto.projectId),
           secretRotationV2DAL.countByProject(dto.projectId),
-          plan.honeyTokens ? honeyTokenDAL.countByProjectId(dto.projectId) : Promise.resolve(null)
+          plan.has(PlanFeature.HoneyTokens) ? honeyTokenDAL.countByProjectId(dto.projectId) : Promise.resolve(null)
         ]);
 
         return {

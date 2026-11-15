@@ -14,6 +14,8 @@ export type OIDCConfigData = {
   allowedEmailDomains?: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
+  mfaClaimName: string;
+  mfaAmrValues?: string[] | null;
 };
 
 export enum OIDCJWTSignatureAlgorithm {

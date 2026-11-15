@@ -19,7 +19,9 @@ export const SecretScanningScansSchema = z.object({
   progressUpdatedAt: z.date().nullable().optional(),
   lastScannedCommitDigest: z.string().nullable().optional(),
   triggeredByUserId: z.string().uuid().nullable().optional(),
-  completedAt: z.date().nullable().optional()
+  completedAt: z.date().nullable().optional(),
+  trigger: z.string().nullable().optional(),
+  metadata: z.unknown().nullable().optional()
 });
 
 export type TSecretScanningScans = z.infer<typeof SecretScanningScansSchema>;

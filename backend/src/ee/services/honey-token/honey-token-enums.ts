@@ -8,6 +8,11 @@ export enum HoneyTokenStatus {
   Revoked = "revoked"
 }
 
+export enum HoneyTokenManagedBy {
+  Instance = "instance",
+  Organization = "organization"
+}
+
 export enum HoneyTokenEventType {
   AWS = "aws"
 }

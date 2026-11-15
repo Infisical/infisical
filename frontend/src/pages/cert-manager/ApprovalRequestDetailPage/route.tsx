@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -18,10 +18,28 @@ export const Route = createFileRoute(
 )({
   component: ApprovalRequestDetailPage,
   validateSearch: zodValidator(ApprovalRequestSearchSchema),
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, params, search }) => {
+    const parent =
+      search.policyType === ApprovalPolicyType.CertCodeSigning
+        ? {
+            label: "Requests",
+            link: linkOptions({
+              to: "/organizations/$orgId/cert-manager/requests",
+              params: { orgId: params.orgId },
+              search: { selectedTab: "signing-requests" as const }
+            })
+          }
+        : {
+            label: "Approvals",
+            link: linkOptions({
+              to: "/organizations/$orgId/cert-manager/approvals",
+              params: { orgId: params.orgId }
+            })
+          };
     return {
       breadcrumbs: [
         ...context.breadcrumbs,
+        parent,
         {
           label: "Approval Request"
         }

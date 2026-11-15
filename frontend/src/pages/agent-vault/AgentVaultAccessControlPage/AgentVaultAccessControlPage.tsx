@@ -1,13 +1,13 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useProject
 } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -25,6 +25,7 @@ export enum AgentVaultAccessControlTab {
 }
 
 const AgentVaultAccessControlTabs = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -36,9 +37,9 @@ const AgentVaultAccessControlTabs = () => {
 
   const updateTab = (tab: string) => {
     navigate({
-      to: "/organizations/$orgId/agent-vault/access-management",
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/access-management",
       search: (prev) => ({ ...prev, selectedTab: tab }),
-      params: { orgId: currentOrg.id }
+      params: { orgId: currentOrg.id, projectId }
     });
   };
 
@@ -76,13 +77,9 @@ const AgentVaultAccessControlTabsWithPermission = withProjectPermission(
 );
 
 export const AgentVaultAccessControlPage = () => {
-  const { t } = useTranslation();
-
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Control" })}</title>
-      </Helmet>
+      <PageTitle title="Access Control" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={ShieldIcon}

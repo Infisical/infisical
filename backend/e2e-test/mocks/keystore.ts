@@ -86,6 +86,9 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     incrementByAndRefreshExpiryIfUnderLimit: async () => {
       return 1;
     },
+    incrementByIfUnderLimitWithFixedExpiry: async (_key, value) => {
+      return value;
+    },
     claimLeastLoaded: async (keys, baseOccupancies) => {
       if (keys.length === 0) return 0;
       if (keys.length !== baseOccupancies.length) {
@@ -105,6 +108,14 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       const current = typeof store[chosen] === "string" ? parseInt(store[chosen] as string, 10) : 0;
       store[chosen] = String(current + 1);
       return bestIdx;
+    },
+    decrementIfExists: async (key) => {
+      if (typeof store[key] !== "string") {
+        return null;
+      }
+      const next = parseInt(store[key] as string, 10) - 1;
+      store[key] = String(next);
+      return next;
     },
     decrementByOrDelete: async (key) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;

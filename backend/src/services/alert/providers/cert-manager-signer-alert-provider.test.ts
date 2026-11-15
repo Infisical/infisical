@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -18,6 +19,8 @@ vi.mock("@app/lib/config/env", () => ({
 const RESOURCE_TYPE = "cert-manager.signer";
 const EXPIRY_EVENT = "cert-manager.signer.certificate.expiry";
 const APPLICATION_ID = "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90";
+const SIGNER_ID = "2c9e4f1a-6b3d-4e8a-9f0c-1d5b7a3e6c24";
+const OTHER_SIGNER_ID = "8f1d3b6e-4a2c-4d9f-b7e0-3c5a9e1f2d68";
 
 const NOT_AFTER = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
 
@@ -58,6 +61,7 @@ const alertRules = [
 const buildProvider = (opts?: {
   certificates?: TSignerAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
+  onFindSignerIds?: (ids: string[]) => void;
   abilityRules?: { action: string; subject: string }[];
   projectRoles?: string[];
   pkiEnterpriseAlerting?: boolean;
@@ -67,7 +71,13 @@ const buildProvider = (opts?: {
       findExpiringSignerCertificates: async (args: Record<string, unknown>) => {
         opts?.onFindExpiring?.(args);
         return opts?.certificates ?? [];
-      }
+      },
+      findProjectSignerIds: async (_projectId: string, ids: string[]) => {
+        opts?.onFindSignerIds?.(ids);
+        return ids.filter((id) => id.toLowerCase() === SIGNER_ID);
+      },
+      findSignerNamesByIds: async (_projectId: string, ids: string[]) =>
+        ids.includes(SIGNER_ID) ? [{ id: SIGNER_ID, name: "release-signer" }] : []
     },
     permissionService: {
       getProjectPermission: async () => ({
@@ -75,12 +85,14 @@ const buildProvider = (opts?: {
         hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
       })
     },
-    licenseService: { getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false }) },
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
+    }),
     certManagerProjectResolver: { getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null) }
   } as unknown as TCertManagerSignerAlertProviderDep);
 
 describe("cert manager signer alert provider", () => {
-  test("owns one scheduled event that takes only alertBefore and dailyReminder", () => {
+  test("owns one scheduled event that takes alertBefore, dailyReminder and signerIds", () => {
     const provider = buildProvider();
     expect(provider.resourceType).toBe(RESOURCE_TYPE);
     expect(provider.events.map((event) => event.key)).toEqual([EXPIRY_EVENT]);
@@ -92,6 +104,12 @@ describe("cert manager signer alert provider", () => {
       false
     );
     expect(event.conditionSchema.safeParse({ alertBefore: "400d" }).success).toBe(false);
+    expect(event.conditionSchema.safeParse({ alertBefore: "30d", signerIds: [SIGNER_ID] }).success).toBe(true);
+    expect(event.conditionSchema.safeParse({ alertBefore: "30d", signerIds: [] }).success).toBe(false);
+    expect(event.conditionSchema.safeParse({ alertBefore: "30d", signerIds: ["not-a-uuid"] }).success).toBe(false);
+    expect(
+      event.conditionSchema.safeParse({ alertBefore: "30d", signerIds: [SIGNER_ID, SIGNER_ID.toUpperCase()] }).success
+    ).toBe(false);
   });
 
   test("scans every active signer's certificate, and nothing for a bound alert or one with no channels", async () => {
@@ -115,6 +133,9 @@ describe("cert manager signer alert provider", () => {
 
     await expect(provider.findScheduledTargets(input)).resolves.toEqual([signerCertificate()]);
     expect(scanArgs).toMatchObject({ projectId: "proj-1", alertBeforeInterval: "14 days", asOf, alreadyAlerted });
+    expect(scanArgs?.signerIds).toBeUndefined();
+    await provider.findScheduledTargets({ ...input, condition: { alertBefore: "2w", signerIds: [SIGNER_ID] } });
+    expect(scanArgs).toMatchObject({ signerIds: [SIGNER_ID] });
     await expect(provider.findScheduledTargets({ ...input, resourceId: APPLICATION_ID })).resolves.toEqual([]);
     await expect(
       provider.findScheduledTargets({ ...input, alreadyAlerted: { ...alreadyAlerted, channelIds: [] } })
@@ -147,16 +168,63 @@ describe("cert manager signer alert provider", () => {
     const bound = { action: AlertPermissionAction.Create, orgId: "org-1", projectId: "proj-1", actor };
 
     await expect(provider.assertPermission({ ...bound, resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to a resource"
+      "aren't bound to a single signer"
     );
     await expect(provider.assertResourceInScope({ orgId: "org-1", resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to a resource"
+      "aren't bound to a single signer"
     );
     await expect(provider.resolveProjectId?.({ orgId: "org-1", resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to a resource"
+      "aren't bound to a single signer"
     );
     await expect(provider.resolveProjectId?.({ orgId: "org-1" })).resolves.toBe("proj-1");
     await expect(provider.resolveProjectId?.({ orgId: "org-2" })).rejects.toThrow("Certificate Manager isn't set up");
+  });
+
+  test("assertConditionInScope rejects signers outside the project, checking only the IDs an update adds", async () => {
+    const lookups: string[][] = [];
+    const provider = buildProvider({ onFindSignerIds: (ids) => lookups.push(ids) });
+
+    await expect(
+      provider.assertConditionInScope?.({
+        projectId: "proj-1",
+        condition: { alertBefore: "30d", signerIds: [SIGNER_ID] }
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      provider.assertConditionInScope?.({
+        projectId: "proj-1",
+        condition: { alertBefore: "30d", signerIds: [OTHER_SIGNER_ID] }
+      })
+    ).rejects.toThrow(`Signer not found in Certificate Manager: '${OTHER_SIGNER_ID}'`);
+
+    lookups.length = 0;
+    await expect(
+      provider.assertConditionInScope?.({
+        projectId: "proj-1",
+        condition: { alertBefore: "30d", signerIds: [OTHER_SIGNER_ID, SIGNER_ID] },
+        previousCondition: { alertBefore: "30d", signerIds: [OTHER_SIGNER_ID] }
+      })
+    ).resolves.toBeUndefined();
+    expect(lookups).toEqual([[SIGNER_ID]]);
+  });
+
+  test("getFilters names each filtered signer, and a deleted one with a null name", async () => {
+    const filters = await buildProvider().getFilters?.({
+      orgId: "org-1",
+      projectId: "proj-1",
+      alerts: [
+        { id: "alert-1", condition: { alertBefore: "30d", signerIds: [SIGNER_ID, OTHER_SIGNER_ID] } },
+        { id: "alert-2", condition: { alertBefore: "30d" } }
+      ]
+    });
+
+    expect(filters?.get("alert-1")).toEqual({
+      signers: [
+        { id: SIGNER_ID, name: "release-signer" },
+        { id: OTHER_SIGNER_ID, name: null }
+      ]
+    });
+    expect(filters?.get("alert-2")).toEqual({ signers: [] });
   });
 
   test("buildPayload names the signer, links to Code Signing, and delivers under its own key", async () => {
@@ -177,6 +245,15 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
     expect(provider.dedupWindowHours?.({ alertBefore: "30d", dailyReminder: true })).toBe(20);
+  });
+
+  // A Product Member assigned only to a signer can open Code Signing but not the certificate page,
+  // which needs product-wide certificate access or assignment to the certificate's application.
+  test("buildPayload gives signer certificates no link to the certificate page", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(signerAlert);
+    const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
+    expect(payload.items[0]).not.toHaveProperty("url");
   });
 
   test("a certificate shared by several signers is one item naming every signer", () => {

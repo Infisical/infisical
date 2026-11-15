@@ -344,7 +344,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, local refresh, audit log, product analytics aggregation, alert dispatch, event outbox, permission cache, secret cache, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, local refresh, audit log, product analytics aggregation, alert dispatch, event outbox, permission cache, secret cache, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, secret sync, rotation, and dynamic secret outcomes, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you're a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -720,6 +720,138 @@ These metrics monitor secret synchronization operations between Infisical and ex
     
     - **Labels**: `version`, `destination`, `syncId`, `projectId`, `type`, `status`, `name`
     - **Example**: Track secret removal operation failures
+  </Accordion>
+</AccordionGroup>
+
+### Secret sync, rotation, and dynamic secret metrics (InfisicalCore)
+
+These metrics tell you whether secret syncs, secret rotations, and dynamic secret lease revocations are succeeding. Their only labels are the destination, rotation type, or provider, so they show which kind of integration is failing. To find the specific sync, rotation, or dynamic secret, check its status in Infisical or the [audit logs](/documentation/platform/audit-logs).
+
+Secret syncs and rotations retry a failed attempt automatically, and the outcome counters record every attempt. Use `attempts.exhausted` to tell a failure that Infisical will retry from one it won't:
+
+- `outcome="failure"` with `attempts.exhausted="false"`: the attempt failed, and Infisical will try again
+- `outcome="failure"` with `attempts.exhausted="true"`: the last attempt failed, so the sync or rotation failed
+
+The status change counters record a change only when a sync, rotation, or dynamic secret moves between working and failing. If a secret sync stays broken and fails on every run, it records one `failed` change, so the number of `failed` changes is the number of syncs that broke, not the number of failed attempts.
+
+<AccordionGroup>
+  <Accordion title="Secret Sync Outcome">
+    **Metric Name**: `infisical.secret_sync.outcome.count`
+
+    **Type**: Counter
+
+    **Unit**: `{attempt}`
+
+    **Description**: Secret sync attempts by operation and outcome. If a job can't start because another job for the same secret sync is still running, the job records a `failure` with `attempts.exhausted="true"` once Infisical stops waiting for the other job.
+
+    **Attributes**:
+      - `destination` (string): the sync destination, e.g. `aws-parameter-store`, `github`, `azure-key-vault`
+      - `operation` (string): `sync`, `import`, or `remove`
+      - `outcome` (string): `success` or `failure`
+      - `attempts.exhausted` (string): `"true"` or `"false"`
+  </Accordion>
+
+  <Accordion title="Secret Sync Status Change">
+    **Metric Name**: `infisical.secret_sync.status_change.count`
+
+    **Type**: Counter
+
+    **Unit**: `{change}`
+
+    **Description**: Secret syncs whose result changed from succeeded to failed, or from failed back to succeeded. Only the final result of a sync run counts, so retried attempts, imports, removes, and jobs that couldn't start don't record a change. If a secret sync has never succeeded, its first failure doesn't record a change.
+
+    **Attributes**:
+      - `destination` (string)
+      - `new_status` (string): `failed` or `healthy`
+  </Accordion>
+
+  <Accordion title="Secret Rotation Outcome">
+    **Metric Name**: `infisical.secret_rotation.outcome.count`
+
+    **Type**: Counter
+
+    **Unit**: `{attempt}`
+
+    **Description**: Secret rotation attempts by rotation type and outcome. If a user selects **Rotate Secrets** or calls the rotate secrets endpoint for the rotation type (such as [the one for PostgreSQL credentials](/api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets)), the rotation runs once without retries, so its outcome always has `attempts.exhausted="true"`.
+
+    **Attributes**:
+      - `type` (string): the rotation type, e.g. `postgres-credentials`, `mysql-credentials`
+      - `outcome` (string): `success` or `failure`
+      - `attempts.exhausted` (string): `"true"` or `"false"`
+  </Accordion>
+
+  <Accordion title="Secret Rotation Status Change">
+    **Metric Name**: `infisical.secret_rotation.status_change.count`
+
+    **Type**: Counter
+
+    **Unit**: `{change}`
+
+    **Description**: Secret rotations whose status changed from successful to failed, or from failed back to successful. A rotation records `failed` only when its last attempt fails. It records `healthy` when a later rotation succeeds, or when a local account rotation reconciles its credentials.
+
+    **Attributes**:
+      - `type` (string)
+      - `new_status` (string): `failed` or `healthy`
+  </Accordion>
+
+  <Accordion title="Dynamic Secret Revocation Outcome">
+    **Metric Name**: `infisical.dynamic_secret.revocation.outcome.count`
+
+    **Type**: Counter
+
+    **Unit**: `{revocation}`
+
+    **Description**: Dynamic secret lease revocations by provider, trigger, and outcome. A scheduled revocation records one outcome per lease, from its last attempt. A retry records every attempt, with `attempts.exhausted="true"` on the last one. If a user force-revokes a lease and the provider rejects the revocation, Infisical deletes the lease without recording an outcome.
+
+    **Attributes**:
+      - `provider` (string): the dynamic secret provider, e.g. `sql-database`, `aws-iam`, `redis`
+      - `trigger` (string): one of:
+        - `scheduled`: the lease expired
+        - `retry`: Infisical retried a revocation after a scheduled or manual revocation failed
+        - `manual`: a user revoked the lease
+        - `pruning`: a user deleted the dynamic secret, and Infisical revoked its remaining leases (one outcome per lease)
+      - `outcome` (string): `success` or `failure`
+      - `attempts.exhausted` (string): `"true"` or `"false"`
+  </Accordion>
+
+  <Accordion title="Dynamic Secret Status Change">
+    **Metric Name**: `infisical.dynamic_secret.status_change.count`
+
+    **Type**: Counter
+
+    **Unit**: `{change}`
+
+    **Description**: Dynamic secrets whose lease revocations changed between working and failing. A dynamic secret records `failed` when a scheduled revocation fails on its last attempt, and `healthy` when any later scheduled, retried, or manual revocation succeeds.
+
+    **Attributes**:
+      - `provider` (string)
+      - `new_status` (string): `failed` or `healthy`
+  </Accordion>
+
+  <Accordion title="Dynamic Secret Orphaned Lease">
+    **Metric Name**: `infisical.dynamic_secret.orphaned_lease.count`
+
+    **Type**: Counter
+
+    **Unit**: `{failure}`
+
+    **Description**: Dynamic secret leases that Infisical stopped trying to revoke after every automatic attempt failed. Infisical records one for each lease whose last retry fails, and one for each lease it can't revoke while deleting a dynamic secret. Each one is a live credential at the provider that you need to revoke manually.
+
+    **Attributes**:
+      - `provider` (string)
+  </Accordion>
+
+  <Accordion title="Dynamic Secret Unrecorded Credential">
+    **Metric Name**: `infisical.dynamic_secret.unrecorded_credential.count`
+
+    **Type**: Counter
+
+    **Unit**: `{credential}`
+
+    **Description**: Credentials that a provider created for a new lease when Infisical failed to save the lease and then also failed to revoke the credential. Each one is a live credential at the provider with no lease in Infisical, so nothing will revoke it automatically. Find and remove it at the provider.
+
+    **Attributes**:
+      - `provider` (string)
   </Accordion>
 </AccordionGroup>
 

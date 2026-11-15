@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { HTMLAttributes, useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,8 @@ import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/con
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
+
+import { AnnotationPopoverHeader } from "./AnnotationPopoverHeader";
 
 const formSchema = z.object({
   comment: z.string()
@@ -23,8 +25,12 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onCommentChange?: (comment: string) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
 export const SecretCommentForm = ({
@@ -33,8 +39,12 @@ export const SecretCommentForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
-  onCommentChange
+  onCommentChange,
+  onBatchSave,
+  isBatchSavePending,
+  dragHandleProps
 }: Props) => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
@@ -63,7 +73,7 @@ export const SecretCommentForm = ({
 
   // In batch mode, debounce comment changes to parent form
   const watchedComment = watch("comment");
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
@@ -104,6 +114,7 @@ export const SecretCommentForm = ({
         text: "Successfully updated secret"
       });
     }
+    onSaved?.(!data.comment);
     onClose?.();
   };
 
@@ -112,10 +123,12 @@ export const SecretCommentForm = ({
     onClose?.();
   };
 
+  const header = <AnnotationPopoverHeader title="Comment" dragHandleProps={dragHandleProps} />;
+
   if (!canEdit) {
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium">Comment</p>
+        {header}
         <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words whitespace-pre-wrap opacity-100">
           {comment}
         </p>
@@ -131,7 +144,7 @@ export const SecretCommentForm = ({
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium">Comment</p>
+        {header}
         <Controller
           name="comment"
           control={control}
@@ -139,15 +152,31 @@ export const SecretCommentForm = ({
             <TextArea
               {...field}
               autoFocus
+              disabled={isBatchSavePending}
               placeholder="Add a comment..."
               className="max-h-48 min-h-24 resize-none"
             />
           )}
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onCommentChange?.(watchedComment);
+                onBatchSave();
+              }}
+            >
+              Save Comment
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -155,7 +184,7 @@ export const SecretCommentForm = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-      <p className="text-sm font-medium">Comment</p>
+      {header}
       <Controller
         name="comment"
         control={control}

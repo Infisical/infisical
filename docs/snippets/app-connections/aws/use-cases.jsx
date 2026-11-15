@@ -326,7 +326,10 @@ export const awsUseCaseGroups = [
               Sid: "AllowAgentVaultSessionLogBucket",
               Effect: "Allow",
               Action: ["s3:ListBucket"],
-              Resource: "arn:aws:s3:::<session-logs-bucket>"
+              Resource: "arn:aws:s3:::<session-logs-bucket>",
+              Condition: {
+                StringLike: { "s3:prefix": "<key-prefix>/*" }
+              }
             }
           ]
         }

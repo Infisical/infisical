@@ -168,6 +168,15 @@ export class RateLimitError extends Error {
   }
 }
 
+// A usage quota for the day is used up. A 429 so a client retries later, kept apart from RateLimitError, which counts
+// toward the API rate-limit metric.
+export class DailyQuotaExceededError extends Error {
+  constructor({ message }: { message?: string }) {
+    super(message || "The daily quota has been used up. Try again after 00:00 UTC.");
+    this.name = "DailyQuotaExceeded";
+  }
+}
+
 export class NotFoundError extends Error {
   name: string;
 

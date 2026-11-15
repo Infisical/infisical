@@ -1,25 +1,30 @@
 import { RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { VirtualItem } from "@tanstack/react-virtual";
 
-import { sessionLogRecordKey } from "@app/hooks/api/agentVault";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
-import { findRowShift } from "./SessionLogsPanel.utils";
+import {
+  countSessionLogArrivals,
+  followSessionLogRowAnchor,
+  watchReturnToTop
+} from "./SessionLogsPanel.utils";
 
 type Params = {
   scrollRef: RefObject<HTMLDivElement | null>;
   visible: TAgentVaultSessionLogRecord[];
+  // The virtualizer's measurements for `visible`, so rows that were expanded count at their real height.
+  measuredRows: VirtualItem[];
   arrivals: Map<string, number>;
   resetKey: string;
-  rowHeight: number;
 };
 
 // Keeps the rows a reader has scrolled to in place as new ones land above them, and counts the new ones.
 export const useNewRequestsCounter = ({
   scrollRef,
   visible,
+  measuredRows,
   arrivals,
-  resetKey,
-  rowHeight
+  resetKey
 }: Params) => {
   const [newRequests, setNewRequests] = useState({ key: resetKey, count: 0 });
   if (newRequests.key !== resetKey) {
@@ -27,25 +32,29 @@ export const useNewRequestsCounter = ({
   }
 
   const shownBefore = useRef(visible);
+  const measuredBefore = useRef(measuredRows);
+  const returning = useRef<{ scroller: HTMLDivElement; stop: () => void } | null>(null);
   // Only arrivals stamped since the last change count, so rows a filter change reveals aren't new.
   const countedAt = useRef(Date.now());
   useLayoutEffect(() => {
-    const before = shownBefore.current;
+    const before = measuredBefore.current;
+    measuredBefore.current = measuredRows;
+    const scroller = scrollRef.current;
+    // An empty result replaces the list, and the scroll to the top was waiting on the old one's events.
+    if (returning.current && returning.current.scroller !== scroller) returning.current.stop();
+    if (shownBefore.current === visible) return;
     shownBefore.current = visible;
     const since = countedAt.current;
     countedAt.current = Date.now();
-    const scroller = scrollRef.current;
-    if (!scroller || scroller.scrollTop === 0) return;
-    const top = Math.floor(scroller.scrollTop / rowHeight);
-    const shift = findRowShift(before, visible, top);
-    if (!shift) return;
-    scroller.scrollTop += shift * rowHeight;
-    if (shift < 0) return;
-    const landedAbove = visible
-      .slice(0, top + shift)
-      .filter((record) => (arrivals.get(sessionLogRecordKey(record)) ?? 0) > since).length;
+    // Correcting for rows that land during the smooth scroll to the top would stop it short.
+    if (!scroller || scroller.scrollTop === 0 || returning.current) return;
+    // The scroll offset still describes the previous rows here, since overflow anchoring is off.
+    const moved = followSessionLogRowAnchor(before, measuredRows, scroller.scrollTop);
+    if (!moved) return;
+    if (Math.abs(moved.scrollTop - scroller.scrollTop) >= 1) scroller.scrollTop = moved.scrollTop;
+    const landedAbove = countSessionLogArrivals(visible.slice(0, moved.index), arrivals, since);
     if (landedAbove) setNewRequests((prev) => ({ ...prev, count: prev.count + landedAbove }));
-  }, [visible, arrivals, scrollRef, rowHeight]);
+  }, [visible, measuredRows, arrivals, scrollRef]);
 
   const hasNewRequests = newRequests.count > 0;
   useEffect(() => {
@@ -59,8 +68,16 @@ export const useNewRequestsCounter = ({
   }, [hasNewRequests, scrollRef]);
 
   const showNewRequests = () => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    const scroller = scrollRef.current;
     setNewRequests((prev) => ({ ...prev, count: 0 }));
+    if (!scroller || scroller.scrollTop < 1) return;
+    returning.current?.stop();
+    const run = { scroller, stop: () => {} };
+    run.stop = watchReturnToTop(scroller, () => {
+      if (returning.current === run) returning.current = null;
+    });
+    returning.current = run;
+    scroller.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return { newRequestCount: newRequests.count, showNewRequests };

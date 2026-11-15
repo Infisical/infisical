@@ -1,8 +1,7 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
@@ -24,7 +23,6 @@ export enum PamAccessControlTab {
 }
 
 export const PamAccessControlPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -52,9 +50,7 @@ export const PamAccessControlPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Control" })}</title>
-      </Helmet>
+      <PageTitle title="Access Control" />
       <PageHeader
         scope={ProjectType.PAM}
         icon={Shield}

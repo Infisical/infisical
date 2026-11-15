@@ -76,6 +76,7 @@ export const registerServeUI = async (
     const frontendPath = path.join(dir, frontendName);
 
     const indexHtmlPath = path.join(frontendPath, "index.html");
+    const localesPath = path.join(frontendPath, "locales", path.sep);
     let indexHtml = fs.readFileSync(indexHtmlPath, "utf-8");
 
     if (cdnHost) {
@@ -146,7 +147,12 @@ export const registerServeUI = async (
       wildcard: false,
       maxAge: "30d",
       immutable: true,
-      index: false
+      index: false,
+      // Locale files keep fixed paths, so a pod still on the previous release can answer a new
+      // build's request for them. Revalidating stops that stale copy from being cached for 30 days.
+      setHeaders: (reply, filePath) => {
+        if (filePath.startsWith(localesPath)) void reply.header("Cache-Control", "no-cache");
+      }
     });
 
     server.route({

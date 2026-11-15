@@ -1,5 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import { createSecretChangePolicy, seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -60,15 +60,13 @@ const moveSecrets = (destinationSecretPath: string, secretIds: string[]) =>
     }
   });
 
-const createPolicy = (url: string, secretPath: string, name: string) =>
-  testServer.inject({
-    method: "POST",
-    url,
-    headers: authHeaders(),
-    body: { workspaceId: projectId, projectId, environment: envSlug, secretPath, approvers, approvals: 1, name }
+const createPolicy = (secretPath: string, name: string) =>
+  createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers, approvals: 1, name },
+    authToken: jwtAuthToken
   });
 
-const requestsForFolder = (folderId: string) => getDb()(TableName.SecretApprovalRequest).where({ folderId });
+const changeRequestsForFolder = (folderId: string) => getDb()(TableName.SecretChangeRequests).where({ folderId });
 
 describe("Secret move under a secret approval policy", () => {
   const folderIds: Record<string, string> = {};
@@ -98,9 +96,7 @@ describe("Secret move under a secret approval policy", () => {
       })
     ).id;
 
-    const bridgeRes = await createPolicy("/api/v2/secret-approvals", `/${BRIDGE_FOLDER}`, "move-bridge-policy");
-    expect(bridgeRes.statusCode).toBe(200);
-    bridgePolicyId = bridgeRes.json().approval.id as string;
+    bridgePolicyId = (await createPolicy(`/${BRIDGE_FOLDER}`, "move-bridge-policy")).id;
 
     const tagRes = await createTag("sar-move-bridge-tag");
     expect(tagRes.statusCode).toBe(200);
@@ -109,7 +105,6 @@ describe("Secret move under a secret approval policy", () => {
 
   afterAll(async () => {
     const db = getDb();
-    await db(TableName.SecretApprovalRequest).whereIn("folderId", Object.values(folderIds)).del();
     await db(TableName.ApprovalRequests)
       .whereIn(
         "id",
@@ -132,39 +127,20 @@ describe("Secret move under a secret approval policy", () => {
     }
   });
 
-  test("a move into a path governed by a legacy policy opens a request on the legacy tables", async () => {
+  test("a move into a path only a legacy policy covers is applied directly", async () => {
     const createRes = await createSecret(`/${SOURCE_FOLDER}`, "MOVE_TO_LEGACY");
     expect(createRes.statusCode).toBe(200);
     const secretId = createRes.json().secret.id as string;
 
     const moveRes = await moveSecrets(`/${LEGACY_FOLDER}`, [secretId]);
     expect(moveRes.statusCode).toBe(200);
-    expect(moveRes.json()).toMatchObject({ isSourceUpdated: true, isDestinationUpdated: false });
+    expect(moveRes.json()).toMatchObject({ isSourceUpdated: true, isDestinationUpdated: true });
 
-    const requests = await requestsForFolder(folderIds[LEGACY_FOLDER]);
-    expect(requests).toHaveLength(1);
-    expect(requests[0]).toMatchObject({ policyId: legacyPolicyId, status: "open", committerUserId: seedData1.id });
-    const commits = await getDb()(TableName.SecretApprovalRequestSecretV2).where({ requestId: requests[0].id });
-    expect(commits).toMatchObject([{ key: "MOVE_TO_LEGACY", op: "create" }]);
-  });
-
-  test("a tagged secret moved into a path governed by a legacy policy carries its tag onto the request commit", async () => {
-    const createRes = await createSecret(`/${SOURCE_FOLDER}`, "MOVE_TAGGED_TO_LEGACY", [tagId]);
-    expect(createRes.statusCode).toBe(200);
-    const secretId = createRes.json().secret.id as string;
-
-    const moveRes = await moveSecrets(`/${LEGACY_FOLDER}`, [secretId]);
-    expect(moveRes.statusCode).toBe(200);
-
-    const requests = await requestsForFolder(folderIds[LEGACY_FOLDER]);
-    const requestIds = requests.map((request) => request.id);
-    const [commit] = await getDb()(TableName.SecretApprovalRequestSecretV2)
-      .whereIn("requestId", requestIds)
-      .where({ key: "MOVE_TAGGED_TO_LEGACY" });
-    expect(commit).toBeDefined();
-
-    const tagRows = await getDb()(TableName.SecretApprovalRequestSecretTagV2).where({ secretId: commit.id });
-    expect(tagRows).toMatchObject([{ secretId: commit.id, tagId }]);
+    expect(await changeRequestsForFolder(folderIds[LEGACY_FOLDER])).toHaveLength(0);
+    expect(await getDb()(TableName.SecretApprovalRequest).where({ policyId: legacyPolicyId })).toHaveLength(0);
+    expect(
+      await getDb()(TableName.SecretV2).where({ folderId: folderIds[LEGACY_FOLDER], key: "MOVE_TO_LEGACY" })
+    ).toHaveLength(1);
   });
 
   test("a move into a path governed by a policy on the global approval system opens a request there", async () => {
@@ -176,8 +152,7 @@ describe("Secret move under a secret approval policy", () => {
     expect(moveRes.statusCode).toBe(200);
     expect(moveRes.json()).toMatchObject({ isSourceUpdated: true, isDestinationUpdated: false });
 
-    expect(await requestsForFolder(folderIds[BRIDGE_FOLDER])).toHaveLength(0);
-    const changeRequests = await getDb()(TableName.SecretChangeRequests).where({ folderId: folderIds[BRIDGE_FOLDER] });
+    const changeRequests = await changeRequestsForFolder(folderIds[BRIDGE_FOLDER]);
     expect(changeRequests).toHaveLength(1);
     const [changeRequest] = changeRequests;
     expect(changeRequest).toMatchObject({ hasMerged: false, isReplicated: null });
@@ -209,5 +184,23 @@ describe("Secret move under a secret approval policy", () => {
     expect(
       await getDb()(TableName.SecretV2).where({ folderId: folderIds[BRIDGE_FOLDER], key: "MOVE_TO_BRIDGE" })
     ).toHaveLength(0);
+  });
+
+  test("a tagged secret moved into a path governed by a policy on the global approval system carries its tag onto the request commit", async () => {
+    const createRes = await createSecret(`/${SOURCE_FOLDER}`, "MOVE_TAGGED_TO_BRIDGE", [tagId]);
+    expect(createRes.statusCode).toBe(200);
+    const secretId = createRes.json().secret.id as string;
+
+    const moveRes = await moveSecrets(`/${BRIDGE_FOLDER}`, [secretId]);
+    expect(moveRes.statusCode).toBe(200);
+
+    const changeRequestIds = (await changeRequestsForFolder(folderIds[BRIDGE_FOLDER])).map((request) => request.id);
+    const [commit] = await getDb()(TableName.SecretApprovalRequestSecretV2)
+      .whereIn("secretChangeId", changeRequestIds)
+      .where({ key: "MOVE_TAGGED_TO_BRIDGE" });
+    expect(commit).toBeDefined();
+
+    const tagRows = await getDb()(TableName.SecretApprovalRequestSecretTagV2).where({ secretId: commit.id });
+    expect(tagRows).toMatchObject([{ secretId: commit.id, tagId }]);
   });
 });

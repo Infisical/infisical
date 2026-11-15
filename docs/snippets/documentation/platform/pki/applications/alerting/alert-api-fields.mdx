@@ -1,0 +1,30 @@
+Set `resourceType` and `resourceId` to the certificates the alert covers:
+
+| Alert | `resourceType` | `resourceId` |
+| --- | --- | --- |
+| Organization-wide | `cert-manager` | Leave out |
+| Application | `cert-manager.application` | The application's ID, from [the list applications endpoint](/api-reference/endpoints/pki/applications/configuration/list) |
+| Signer certificate expiration | `cert-manager.signer` | Leave out |
+
+Set `eventType` to the event the alert watches:
+
+| Event | Organization-wide alert | Application alert |
+| --- | --- | --- |
+| Expiration | `cert-manager.certificate.expiry` | `cert-manager.application.certificate.expiry` |
+| Issuance | `cert-manager.certificate.issuance` | `cert-manager.application.certificate.issuance` |
+| Renewal | `cert-manager.certificate.renewal` | `cert-manager.application.certificate.renewal` |
+| Revocation | `cert-manager.certificate.revocation` | `cert-manager.application.certificate.revocation` |
+| Signer certificate expiration | `cert-manager.signer.certificate.expiry` | Not available |
+
+Set `condition` to the same settings as the **Alert Before** field, the **Repeat daily until expiry** toggle, and the **Filters** step in Infisical:
+
+| Field | Applies to | Value |
+| --- | --- | --- |
+| `alertBefore` | Expiration alerts (required) | A number and a unit, such as `30d` or `2w`, up to 365 days |
+| `dailyReminder` | Expiration alerts | `true` to [repeat the alert every day](/documentation/platform/pki/applications/alerting/overview#how-often-expiration-alerts-repeat) until the certificate expires |
+| `applicationIds` | Organization-wide alerts | Up to 100 application IDs |
+| `profileIds` | Organization-wide alerts | Up to 100 certificate profile IDs |
+| `sources` | Organization-wide alerts | Any of `issued` (**Managed** in Infisical), `imported`, and `discovered` |
+| `signerIds` | Signer certificate expiration alerts | Up to 100 signer IDs |
+
+For issuance, renewal, and revocation alerts on an application, leave out `condition`.

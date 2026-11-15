@@ -6,12 +6,13 @@ import { ArrowRightIcon, CircleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,12 +23,11 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
   useGetProjectRoles,
@@ -53,6 +53,7 @@ type Props = {
 // TODO: update backend to support adding multiple roles at once
 
 const Content = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const productLabel = getProjectLabel(currentProject?.type);
@@ -146,7 +147,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="project" type="button" isPending isDisabled>
+          <Button variant={scopeVariant} type="button" isPending isDisabled>
             Add
           </Button>
         </DialogFooter>
@@ -205,24 +206,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="group">Group</FieldLabel>
-            <FilterableSelect
-              inputId="group"
+            <Combobox
+              id="group"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               placeholder="Select group..."
+              searchAriaLabel="Search groups"
               autoFocus
               isError={Boolean(error)}
               isLoading={isGroupsFetching || searchInput !== debouncedSearch}
               options={isGroupsFetching ? [] : filteredGroupMembershipOrgs}
-              onInputChange={(newValue, actionMeta) => {
-                if (actionMeta.action === "input-change") {
-                  setSearchInput(newValue);
-                }
-              }}
-              filterOption={() => true}
+              onSearchChange={setSearchInput}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
-              noOptionsMessage={noOptionsMessage}
+              emptyMessage={noOptionsMessage}
             />
             <FieldDescription>
               {isGroupListTruncated ? "Search by name to find groups that are not listed." : null}
@@ -237,16 +235,19 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="role">Role</FieldLabel>
-            <FilterableSelect
-              inputId="role"
+            <Combobox
+              id="role"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               options={roles ?? []}
               placeholder="Select role..."
+              searchAriaLabel="Search roles"
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
+              renderOption={(option) => <RoleOptionContent role={option} />}
             />
             <FieldError>{error?.message}</FieldError>
           </Field>
@@ -256,7 +257,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>

@@ -1,0 +1,23 @@
+{/* The tab titles match the tabs in Step 1 of the Jira connection page. Keep them identical. */}
+
+<Tabs>
+    <Tab title="Jira Cloud">
+        - **Name**: A descriptive name for the connection
+        - **Description** (optional): A note for future reference
+        - **Gateway** (optional): The [Gateway](/documentation/platform/gateways/overview) Infisical connects through, if Infisical can't reach your Jira site directly
+        - **Method**: **API Token (Jira Cloud)**
+        - **Instance URL**: The URL of your Jira site without a path, such as `https://your-domain.atlassian.net`
+        - **Email**: The email address of the Atlassian account that owns the API token
+        - **API Token**: The API token you [created in Step 1](#step-1-create-an-api-token-or-personal-access-token)
+    </Tab>
+    <Tab title="Jira Data Center">
+        - **Name**: A descriptive name for the connection
+        - **Description** (optional): A note for future reference
+        - **Gateway** (optional): The [Gateway](/documentation/platform/gateways/overview) Infisical connects through, if Infisical can't reach your Jira instance directly, such as when the instance is behind a firewall
+        - **Method**: **Personal Access Token (Jira Data Center)**
+        - **Instance URL**: The URL of your Jira instance, including the context path if Jira runs under one, such as `https://jira.example.com/jira`
+        - **Personal Access Token**: The personal access token you [created in Step 1](#step-1-create-an-api-token-or-personal-access-token)
+        - **SSL Certificate** (optional): On the **SSL** tab, the CA certificate in PEM format that signed your Jira instance's TLS certificate
+        - **Reject Unauthorized**: On the **SSL** tab, whether Infisical refuses to connect when it can't verify the instance's TLS certificate (on by default; for a self-signed certificate, enter its CA certificate in **SSL Certificate** instead of turning this off)
+    </Tab>
+</Tabs>

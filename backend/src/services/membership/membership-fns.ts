@@ -8,7 +8,7 @@ import {
   ProjectType,
   TableName
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
@@ -27,7 +27,7 @@ export const assertSecretsTemporaryAccessAllowed = async ({
   orgId,
   roles
 }: {
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   scope: AccessScope;
   projectId?: string;
@@ -49,7 +49,7 @@ export const assertSecretsTemporaryAccessAllowed = async ({
   }
 
   const plan = await licenseService.getPlan(orgId);
-  if (typeof plan.secretsTemporaryAccess === "boolean" && !plan.secretsTemporaryAccess) {
+  if (!plan.allows(PlanProduct.SecretsTemporaryAccess)) {
     throw new BadRequestError({
       message: "Temporary access is not available on your current plan. Please upgrade to continue."
     });
@@ -142,5 +142,11 @@ export const assertProductWillRetainAdmin = async ({
   if (!project) return;
   const productLabel = getAdminMemberOnlyProductLabel(project.type);
   if (!productLabel) return;
-  await assertWillRetainProjectAdmin({ scopeProjectId: project.id, excludeMembershipIds, productLabel, tx });
+  // An org holds many Agent Vault projects, so the message names the project rather than the product.
+  await assertWillRetainProjectAdmin({
+    scopeProjectId: project.id,
+    excludeMembershipIds,
+    productLabel: project.type === ProjectType.AgentVault ? "This project" : productLabel,
+    tx
+  });
 };

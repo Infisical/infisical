@@ -9,6 +9,7 @@ export const certificateImportSchema = z
     certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
     privateKeyPem: z.string().trim().optional(),
     chainPem: z.string().trim().optional(),
+    csr: z.string().trim().optional(),
     profileId: z.string().uuid().optional(),
     linkedCaType: z.nativeEnum(CaType).optional(),
     providerReference: z.string().trim().optional()

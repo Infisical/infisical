@@ -348,6 +348,7 @@ export const CommitDetailsView = ({
       </div>
 
       <AlertDialog
+        isPending={isReverting}
         open={isRevertOpen}
         confirmationValue={REVERT_CONFIRM_KEY}
         onOpenChange={setIsRevertOpen}
@@ -360,13 +361,11 @@ export const CommitDetailsView = ({
               resources it touched.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField inputProps={{ disabled: isReverting }} />
+          <AlertDialogConfirmationField />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isReverting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isDisabled={isReverting}
-              isPending={isReverting}
               onClick={(event) => {
                 event.preventDefault();
                 handleRevert();

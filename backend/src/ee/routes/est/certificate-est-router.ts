@@ -102,14 +102,10 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const params = (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
-    const isAppScoped = matchedRoute.startsWith("/applications/");
+    const { applicationId, profileId } = params;
 
     let estConfig;
-    if (isAppScoped) {
-      const { applicationId, profileId } = params;
-      if (!applicationId || !profileId) {
-        throw new NotFoundError({ message: "Certificate profile not found" });
-      }
+    if (applicationId && profileId) {
       estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
         profileId,
         applicationId,

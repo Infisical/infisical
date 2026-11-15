@@ -238,6 +238,7 @@ export const secretReminderAlertProviderFactory = ({
     targetId: (target) => `${target.secretId}:${target.occurrenceDate}`,
     assertPermission,
     assertResourceInScope,
+    recipientPolicy: { allowProjectAdmins: true },
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
         (await secretReminderAlertDAL.findSecretKeysByIds(resourceIds, orgId)).map((secret) => [secret.id, secret.key])

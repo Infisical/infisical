@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
@@ -31,6 +30,7 @@ import {
   EmptyTitle,
   IconButton,
   PageLoader,
+  RowLink,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -49,12 +49,13 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -78,9 +79,10 @@ export const IdentityRoleDetailsSection = ({
   identityMembershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
+  const scopeVariant = useScopeVariant();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole",
@@ -105,7 +107,7 @@ export const IdentityRoleDetailsSection = ({
   }, [assignRoleConditions, identityMembershipDetails?.identity?.id]);
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id } = popUp.deleteRole.data as TProjectRole;
     const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
     await updateIdentityProjectMembership({
       projectId: currentProject?.id || "",
@@ -239,46 +241,28 @@ export const IdentityRoleDetailsSection = ({
                       }
                     }
 
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${roleSlug}`) ??
+                      ({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          roleSlug
+                        }
+                      } as const);
+
                     return (
                       <TableRow
                         key={`user-project-identity-${roleDetails?.id}`}
-                        className={isStandaloneProduct ? "" : "cursor-pointer"}
-                        role={isStandaloneProduct ? undefined : "button"}
-                        tabIndex={isStandaloneProduct ? undefined : 0}
-                        onKeyDown={(event) => {
-                          if (
-                            isStandaloneProduct ||
-                            event.target !== event.currentTarget ||
-                            (event.key !== "Enter" && event.key !== " ")
-                          ) {
-                            return;
-                          }
-                          event.preventDefault();
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                            params: {
-                              projectId: currentProject.id,
-                              roleSlug
-                            }
-                          });
-                        }}
-                        onClick={
-                          isStandaloneProduct
-                            ? undefined
-                            : () =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                  params: {
-                                    projectId: currentProject.id,
-                                    roleSlug
-                                  }
-                                })
-                        }
+                        linked={!isStandaloneProduct}
                       >
                         <TableCell className="max-w-0 truncate">
-                          {roleDetails.role === "custom"
-                            ? roleDetails.customRoleName
-                            : formatProjectRoleName(roleDetails.role)}
+                          <RowLink {...roleLink} disabled={isStandaloneProduct}>
+                            {roleDetails.role === "custom"
+                              ? roleDetails.customRoleName
+                              : formatProjectRoleName(roleDetails.role)}
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           {isTemporary ? (
@@ -287,6 +271,7 @@ export const IdentityRoleDetailsSection = ({
                                 <Badge
                                   className="capitalize"
                                   variant={isExpired ? "danger" : "warning"}
+                                  data-row-interactive
                                 >
                                   {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}
@@ -376,7 +361,7 @@ export const IdentityRoleDetailsSection = ({
                         const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyRole");

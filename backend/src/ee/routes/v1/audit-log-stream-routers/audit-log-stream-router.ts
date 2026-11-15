@@ -54,6 +54,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAuditLogStreamOptions",
       response: {
         200: z.object({
           providerOptions: ProviderOptionsSchema.array()
@@ -75,6 +76,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAuditLogStreams",
       response: {
         200: z.object({
           auditLogStreams: SanitizedAuditLogStreamSchema.array()

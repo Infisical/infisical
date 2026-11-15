@@ -4,6 +4,8 @@ import { gunzipSync } from "node:zlib";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+
 import { PostHogEventTypes } from "./telemetry-types";
 
 // Deliberately NOT mocking posthog-node. The drain trims a shard on the strength of what the SDK did
@@ -73,7 +75,7 @@ const createHarness = (payloads: Record<string, unknown>[]) => {
 
   const telemetryService = telemetryServiceFactory({
     keyStore: keyStore as never,
-    licenseService: { getInstanceType: vi.fn(() => "cloud"), getPlan: vi.fn() } as never,
+    licenseService: new FakeLicenseService(),
     orgDAL: { findOrgById: vi.fn() } as never,
     emailDomainDAL: { find: vi.fn(async () => []) } as never
   });

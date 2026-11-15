@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { MfaMethod } from "@app/services/auth/auth-type";
 
-import { ensureStepUpMfa, MfaStepUpResource } from "./mfa-step-up-fns";
+import { ensureFactorEnrollmentStepUpMfa, ensureStepUpMfa, MfaStepUpResource } from "./mfa-step-up-fns";
 
 const USER_ID = "user-1";
 const ORG_ID = "org-1";
@@ -136,5 +136,51 @@ describe("ensureStepUpMfa binds prior proof to the factors the action would chal
     await expect(ensureStepUpMfa(server, baseArgs)).resolves.toBeUndefined();
     expect(user.getStepUpMfaMethod).not.toHaveBeenCalled();
     expect(mfaSession.isMfaSessionActive).not.toHaveBeenCalled();
+  });
+});
+
+describe("ensureFactorEnrollmentStepUpMfa", () => {
+  const enrollmentArgs = { userId: USER_ID, tokenVersionId: TOKEN_VERSION, enrollingMethod: MfaMethod.WEBAUTHN };
+
+  const withEnrollmentMethods = (enrollmentMethods: TResolved | null, patch: ServerPatch = {}) => {
+    const built = makeServer(patch);
+    const getFactorEnrollmentStepUpMfaMethods = vi.fn().mockResolvedValue(enrollmentMethods);
+    Object.assign(built.user, { getFactorEnrollmentStepUpMfaMethods });
+    return { ...built, getFactorEnrollmentStepUpMfaMethods };
+  };
+
+  test("lets the first factor through without a challenge", async () => {
+    const { server, mfaSession } = withEnrollmentMethods(null);
+
+    await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).resolves.toBeUndefined();
+    expect(mfaSession.createMfaSession).not.toHaveBeenCalled();
+  });
+
+  test("challenges an existing factor without needing an org", async () => {
+    const { server, mfaSession, user, getFactorEnrollmentStepUpMfaMethods } = withEnrollmentMethods({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+
+    await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).rejects.toMatchObject({
+      name: "SESSION_MFA_REQUIRED",
+      details: { mfaMethod: MfaMethod.WEBAUTHN }
+    });
+    expect(getFactorEnrollmentStepUpMfaMethods).toHaveBeenCalledWith(USER_ID, MfaMethod.WEBAUTHN);
+    expect(user.getStepUpMfaMethod).not.toHaveBeenCalled();
+    expect(mfaSession.hasRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, [
+      MfaMethod.WEBAUTHN,
+      MfaMethod.TOTP
+    ]);
+  });
+
+  test("a recent proof of any enrolled factor satisfies it", async () => {
+    const { server, mfaSession } = withEnrollmentMethods(
+      { challenge: MfaMethod.WEBAUTHN, accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] },
+      { recentAuthMethod: MfaMethod.TOTP }
+    );
+
+    await expect(ensureFactorEnrollmentStepUpMfa(server, enrollmentArgs)).resolves.toBeUndefined();
+    expect(mfaSession.createMfaSession).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,11 @@ import {
   PkiSyncExportFormat,
   PkiSyncStatus
 } from "@app/hooks/api/pkiSyncs";
+import { PKI_SYNC_EXPORT_FORMAT_LABELS } from "@app/hooks/api/pkiSyncs/enums";
+import {
+  CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL,
+  CLOUDFLARE_BUNDLE_METHOD_LABELS
+} from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -82,6 +87,12 @@ export const PKI_SYNC_MAP: Record<
     category: "Networking",
     description: "Sync certificates to F5 BIG-IP."
   },
+  [PkiSync.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "Networking",
+    description: "Sync certificates to Imperva Cloud WAF websites."
+  },
   [PkiSync.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -148,6 +159,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
+  [PkiSync.Imperva]: AppConnection.Imperva,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
@@ -194,6 +206,12 @@ export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
   PkiSync.PaloAltoNetworksSslTlsProfile
 ];
 
+// Destinations that name a certificate themselves, so a name schema has nothing to drive.
+export const CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.NutanixPrismCentral,
+  PkiSync.Imperva
+];
+
 export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
   PkiSync.CloudflareCustomCertificate,
   PkiSync.NutanixPrismCentral,
@@ -219,6 +237,7 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },
   { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
   { key: "exportFormat", label: "Export Format" },
+  { key: "bundleMethod", label: "Bundle Method" },
   { key: "pemCertificateExtension", label: "Certificate File Extension" },
   { key: "keystoreAlias", label: "Keystore Alias" },
   { key: "fileMode", label: "File Permissions" },
@@ -226,6 +245,26 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "owner", label: "Owner" },
   { key: "group", label: "Group" }
 ] as const;
+
+const SYNC_OPTION_VALUE_LABELS: Record<string, Record<string, string>> = {
+  exportFormat: PKI_SYNC_EXPORT_FORMAT_LABELS,
+  bundleMethod: CLOUDFLARE_BUNDLE_METHOD_LABELS
+};
+
+const UNSET_SYNC_OPTION_LABELS: Partial<Record<PkiSync, Record<string, string>>> = {
+  [PkiSync.CloudflareCustomCertificate]: { bundleMethod: CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL }
+};
+
+export const getSyncOptionDisplayValue = (
+  destination: PkiSync,
+  key: string,
+  value: unknown
+): string | null => {
+  if (value === undefined || value === null || value === "") {
+    return UNSET_SYNC_OPTION_LABELS[destination]?.[key] ?? null;
+  }
+  return SYNC_OPTION_VALUE_LABELS[key]?.[String(value)] ?? String(value);
+};
 
 export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): Set<string> => {
   if (!exportFormat) return new Set();

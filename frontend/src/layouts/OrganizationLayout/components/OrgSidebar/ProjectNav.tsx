@@ -15,7 +15,8 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   hasIntermediateProjectsView,
@@ -24,6 +25,7 @@ import {
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
 import { AgentVaultNav } from "./AgentVaultNav";
@@ -33,6 +35,7 @@ import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
 import { SecretScanningNav } from "./SecretScanningNav";
 import {
+  AGENT_VAULT_SETTINGS_SUBMENU,
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
@@ -64,6 +67,7 @@ export const ProjectNav = () => {
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
   const { permission } = useOrgPermission();
+  const { hasProjectRole } = useProjectPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -111,6 +115,12 @@ export const ProjectNav = () => {
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
+    if (
+      isOnProjectSettings &&
+      currentProject.type === ProjectType.AgentVault &&
+      hasProjectRole(ProjectMembershipRole.Admin)
+    )
+      return AGENT_VAULT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return getSecretScanningSettingsSubmenu(hasMultipleSecretScanningProjects);
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
@@ -122,7 +132,7 @@ export const ProjectNav = () => {
 
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
-  }, [pathname, hasMultipleSecretScanningProjects]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, hasMultipleSecretScanningProjects]);
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
@@ -135,13 +145,10 @@ export const ProjectNav = () => {
       : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       to: isOrgScoped
         ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
         : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       search: { selectedTab: submenu.defaultTab } as any
     });
   };
@@ -169,31 +176,28 @@ export const ProjectNav = () => {
         >
           <SidebarGroup className="flex-1">
             <SidebarGroupLabel asChild>
-              <button
-                className="cursor-pointer hover:bg-foreground/[0.025]"
-                type="button"
-                onClick={() => {
-                  if (intermediateAvailable) {
-                    navigate({
-                      to: "/organizations/$orgId/projects/$type",
-                      params: {
-                        orgId: currentOrg.id,
-                        type: projectTypeToUrlSlug(currentProject.type)
-                      }
-                    });
-                    return;
-                  }
-                  navigate({
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    to: "/organizations/$orgId/projects" as any,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    params: { orgId: currentOrg.id } as any
-                  });
-                }}
-              >
-                <ChevronLeft />
-                <span>{projectLabel}</span>
-              </button>
+              {intermediateAvailable ? (
+                <Link
+                  className="cursor-pointer hover:bg-foreground/[0.025]"
+                  to="/organizations/$orgId/projects/$type"
+                  params={{
+                    orgId: currentOrg.id,
+                    type: projectTypeToUrlSlug(currentProject.type)
+                  }}
+                >
+                  <ChevronLeft />
+                  <span>{projectLabel}</span>
+                </Link>
+              ) : (
+                <Link
+                  className="cursor-pointer hover:bg-foreground/[0.025]"
+                  to="/organizations/$orgId/projects"
+                  params={{ orgId: currentOrg.id }}
+                >
+                  <ChevronLeft />
+                  <span>{projectLabel}</span>
+                </Link>
+              )}
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
             {showProductSettings && (

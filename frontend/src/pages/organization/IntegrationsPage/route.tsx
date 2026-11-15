@@ -37,7 +37,6 @@ export const Route = createFileRoute(
       throw redirect({
         to: "/organizations/$orgId/oauth-applications",
         params: { orgId: params.orgId }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
     }
   }

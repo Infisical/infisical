@@ -5,6 +5,11 @@ Read this when a test needs an endpoint the client does not have.
 Every call goes through `clients/api`. A route the client cannot reach is missing an
 `operationId`; fix the router, not the test.
 
+`clients/api` is a Go module of its own, required from `tests/go.mod` through a `replace`
+to the folder. That keeps the generated code out of `./...`, so lint, vet and test do not
+analyse it; the suites still compile against it. A new import in the generated code goes in
+`clients/api/go.mod` (`go mod tidy` there), at the version `tests/go.mod` already uses.
+
 ## Adding an endpoint
 
 1. Add the `operationId` to `include-operation-ids` in `clients/api/oapi-codegen.yaml`.

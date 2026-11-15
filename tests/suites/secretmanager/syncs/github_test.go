@@ -2,13 +2,16 @@ package syncs_test
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -140,6 +143,61 @@ func TestGitHubSync_SyncSecrets(t *testing.T) {
 		require.Len(t, gh.OrgSecrets(t, "acme").Secrets, n)
 	})
 
+	t.Run("should deliver to Dependabot secrets and leave Actions secrets alone when the type is Dependabot", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, gh := setup(t)
+		dependabot := api.CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeDependabot
+		s := newSync(t, proj, conn, func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
+			var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
+			require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig1(
+				api.CreateGitHubSecretSyncJSONBodyDestinationConfig1{
+					Owner: "acme", Repo: "app", Scope: "repository", SecretType: &dependabot,
+				}))
+			return d
+		})
+		secretmanager.CreateSecret(t, proj, "dev", "NPM_TOKEN", "npm_abc")
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, "npm_abc", gh.RepoOfType(t, "acme/app", github.Dependabot).Secrets["NPM_TOKEN"].Value)
+		require.Nil(t, gh.Repo(t, "acme/app"), "a Dependabot sync touched the repository's Actions secrets")
+	})
+
+	t.Run("should share a Codespaces secret with only the selected repositories when visibility is selected", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, gh := setup(t)
+		codespaces := api.CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeCodespaces
+		s := newSync(t, proj, conn, func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
+			var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
+			require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig0(
+				api.CreateGitHubSecretSyncJSONBodyDestinationConfig0{
+					Org:                   "acme",
+					Scope:                 "organization",
+					Visibility:            api.CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilitySelected,
+					SelectedRepositoryIds: &[]float32{42},
+					SecretType:            &codespaces,
+				}))
+			return d
+		})
+		secretmanager.CreateSecret(t, proj, "dev", "DEV_DB_URL", "postgres://dev")
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		got := gh.OrgSecretsOfType(t, "acme", github.Codespaces).Secrets["DEV_DB_URL"]
+		require.Equal(t, "postgres://dev", got.Value)
+		require.Equal(t, "selected", got.Visibility)
+		require.Equal(t, []int{42}, got.SelectedRepositoryIDs)
+		require.Nil(t, gh.OrgSecrets(t, "acme"), "a Codespaces sync touched the organization's Actions secrets")
+	})
+
 	t.Run("should fail naming the limit when more than 100 go to a repository", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `Infisical checks before sending, so the sync fails rather than writing
@@ -192,6 +250,31 @@ func TestGitHubSync_Create(t *testing.T) {
 		newSync(t, proj, conn, repoScope("acme", "app"), autoSync(false))
 
 		// Assert
+		gh.ExpectNoEvent[github.SecretCreated](t, nil)
+	})
+
+	t.Run("should refuse a Dependabot sync to a repository environment and write nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, gh := setup(t)
+		secretmanager.CreateSecret(t, proj, "dev", "PRESENT", "1")
+		dependabot := api.CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot
+		dest := func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
+			var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
+			require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig2(
+				api.CreateGitHubSecretSyncJSONBodyDestinationConfig2{
+					Owner: "acme", Repo: "app", Env: "prod", Scope: "repository-environment", SecretType: &dependabot,
+				}))
+			return d
+		}
+
+		// Action
+		res := createSync(t, proj, conn, dest, autoSync(true))
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "Repository environment scope is only available for Actions secrets")
 		gh.ExpectNoEvent[github.SecretCreated](t, nil)
 	})
 }

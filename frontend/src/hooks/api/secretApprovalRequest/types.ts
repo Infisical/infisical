@@ -170,3 +170,22 @@ export type TPerformSecretApprovalRequestMerge = {
   secretPath: string;
   bypassReason?: string;
 };
+
+export enum BulkChangeRequestAction {
+  Approve = "approve",
+  Reject = "reject",
+  Merge = "merge"
+}
+
+export type TBulkActOnSecretApprovalRequestsDTO = {
+  projectId: string;
+  action: BulkChangeRequestAction;
+  comment?: string;
+  requestIds: string[];
+};
+
+export type TBulkChangeRequestResult = {
+  id: string;
+  isSuccess: boolean;
+  errorMessage?: string;
+};

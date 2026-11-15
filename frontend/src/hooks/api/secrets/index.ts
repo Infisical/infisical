@@ -14,6 +14,7 @@ export {
   useGetProjectSecrets,
   useGetProjectSecretsAllEnv,
   useGetSecretReferences,
+  useGetExpandedSecretValue,
   useGetSecretReferenceTree,
   useGetSecretVersion
 } from "./queries";

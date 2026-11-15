@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -171,7 +170,7 @@ export const StripeConnectionForm = ({ appConnection, projectId }: Props) => {
         />
 
         {!isLoading && isMissingConfig && (
-          <p className="mb-4 text-sm text-red">
+          <p className="mb-4 text-sm text-danger">
             Environment variables have not been configured.{" "}
             {isInfisicalCloud()
               ? "Please contact Infisical."

@@ -24,7 +24,6 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import {
   TGatewayConnectedResources,
@@ -48,18 +47,16 @@ const ResourceRow = ({
   subtitle,
   to,
   params,
-  search,
-  onClick
+  search
 }: {
   name: string;
   subtitle: string;
   to: string;
   params: Record<string, string>;
   search?: Record<string, unknown>;
-  onClick?: () => void;
 }) => (
   <Item asChild variant="outline" size="xs">
-    <Link to={to as "/"} params={params} search={search as never} onClick={onClick}>
+    <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
         <ItemDescription className="text-muted">{subtitle}</ItemDescription>
@@ -241,11 +238,12 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                             ? c.projectName
                             : "Certificate Manager"
                         }
-                        to="/organizations/$orgId/cert-manager/discovery/$discoveryId"
-                        params={{ orgId: currentOrg.id, discoveryId: c.id }}
-                        onClick={() =>
-                          setCertManagerActiveProjectCookie(currentOrg.id, c.projectId)
-                        }
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/$"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId: c.projectId,
+                          _splat: `discovery/${c.id}`
+                        }}
                       />
                     ))}
                   </ItemGroup>

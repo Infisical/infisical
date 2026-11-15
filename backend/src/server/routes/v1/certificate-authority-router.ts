@@ -9,17 +9,18 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   CaRenewalType,
   CaStatus,
   InternalCaType
 } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import { subjectAttributeSchema } from "@app/services/certificate-common/certificate-constants";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { InternalCertificateAuthorityResponseSchema } from "../sanitizedSchemas";
@@ -281,7 +282,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const ca = await server.services.internalCertificateAuthority.deleteCaById({
+      const { ca, keyDetails } = await server.services.internalCertificateAuthority.deleteCaById({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -297,7 +298,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           metadata: {
             name: ca.name,
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            ...getCaKeySourceAuditMetadata(keyDetails)
           }
         }
       });
@@ -898,7 +900,10 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         200: z.array(
           z.object({
             id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
-            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl)
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().nullable().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
           })
         )
       }
@@ -927,37 +932,4 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       return crls;
     }
   });
-
-  // TODO: implement this endpoint in the future
-  // server.route({
-  //   method: "GET",
-  //   url: "/:caId/crl/rotate",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-  //   schema: {
-  //     description: "Rotate CRLs of the CA",
-  //     params: z.object({
-  //       caId: z.string().trim()
-  //     }),
-  //     response: {
-  //       200: z.object({
-  //         message: z.string()
-  //       })
-  //     }
-  //   },
-  //   handler: async (req) => {
-  //     await server.services.certificateAuthority.rotateCaCrl({
-  //       caId: req.params.caId,
-  //       actor: req.permission.type,
-  //       actorId: req.permission.id,
-  //       actorAuthMethod: req.permission.authMethod,
-  //       actorOrgId: req.permission.orgId
-  //     });
-  //     return {
-  //       message: "Successfully rotated CA CRL"
-  //     };
-  //   }
-  // });
 };

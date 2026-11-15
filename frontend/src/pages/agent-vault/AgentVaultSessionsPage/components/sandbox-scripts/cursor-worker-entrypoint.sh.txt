@@ -1,0 +1,14 @@
+#!/bin/sh
+# worker/entrypoint.sh
+set -eu
+
+export BASH_ENV=/etc/agent-vault/env.sh
+
+export SSL_CERT_FILE=/etc/agent-vault/ca.pem
+export NODE_EXTRA_CA_CERTS=/etc/agent-vault/ca.pem
+export REQUESTS_CA_BUNDLE=/etc/agent-vault/ca.pem
+export CURL_CA_BUNDLE=/etc/agent-vault/ca.pem
+export GIT_SSL_CAINFO=/etc/agent-vault/ca.pem
+
+exec agent worker --pool "$CURSOR_POOL" --idle-release-timeout 600 \
+  --worker-dir /workspace --auth-token-file /var/run/worker/cursor-token start

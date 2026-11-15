@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useListWorkspaceGroups } from "@app/hooks/api";
@@ -219,7 +219,7 @@ export const GroupsTab = () => {
         }}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={!!groupToRemove}
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);

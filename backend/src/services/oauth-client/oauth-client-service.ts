@@ -17,13 +17,13 @@ import { getMinExpiresIn } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
-import { getRequiredMfaMethod } from "@app/services/auth/auth-fns";
-import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { getRequiredMfaMethod, isIdpMfaTrusted } from "@app/services/auth/auth-fns";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
@@ -100,6 +100,7 @@ type TOauthTokenClaims = {
   userId: string;
   tokenVersionId: string;
   organizationId: string;
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
 } & ({ scopes: string[]; delegation?: never } | { delegation: OauthDelegationMode.Full; scopes?: never });
@@ -132,6 +133,7 @@ const signOauthToken = (
       // refreshVersion. Emit whichever claim matches this token's type under its expected name.
       ...(isAccessToken ? { accessVersion: claims.version } : { refreshVersion: claims.version }),
       organizationId: claims.organizationId,
+      issuingRootOrgId: claims.issuingRootOrgId,
       isMfaVerified: claims.isMfaVerified,
       mfaMethod: claims.mfaMethod,
       // Marks this as a delegated OAuth token. extractAuth maps tokens carrying this claim to
@@ -542,14 +544,16 @@ export const oauthClientServiceFactory = ({
     // completed). Issuing a delegation code from such a session would let anyone holding only the
     // password mint OAuth tokens, bypassing MFA entirely. So we re-derive whether MFA is required
     // for this user in the client's organization and reject the request unless the session actually
-    // completed the matching MFA challenge.
+    // completed the matching MFA challenge, or the org trusts the MFA its IdP performed, the same waiver
+    // org selection applies.
     const org = await getClientOrg(client.orgId);
 
     const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(org, user);
-    if (isMfaRequired && (!dto.isMfaVerified || dto.mfaMethod !== requiredMfaMethod)) {
+    const isMfaSatisfiedByIdp = isIdpMfaTrusted({ org, authMethod: dto.authMethod, idpMfaOrgId: dto.idpMfaOrgId });
+    if (isMfaRequired && !isMfaSatisfiedByIdp && (!dto.isMfaVerified || dto.mfaMethod !== requiredMfaMethod)) {
       throw new UnauthorizedError({
         message: "Multi-factor authentication is required before authorizing this application"
       });
@@ -571,6 +575,7 @@ export const oauthClientServiceFactory = ({
         orgId: client.orgId,
         userId: dto.userId,
         authMethod: dto.authMethod,
+        issuingRootOrgId: dto.issuingRootOrgId,
         isMfaVerified: dto.isMfaVerified,
         mfaMethod: dto.mfaMethod,
         tokenVersionId: tokenSession.id,
@@ -761,6 +766,7 @@ export const oauthClientServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         organizationId: client.orgId,
+        issuingRootOrgId: client.orgId,
         isMfaVerified: client.tokenExchangeIdpSatisfiesMfa || undefined,
         delegation: OauthDelegationMode.Full,
         tokenType: AuthTokenType.ACCESS_TOKEN,
@@ -864,6 +870,7 @@ export const oauthClientServiceFactory = ({
         userId: codePayload.userId,
         tokenVersionId: tokenSession.id,
         organizationId: codePayload.orgId,
+        issuingRootOrgId: codePayload.issuingRootOrgId,
         isMfaVerified: codePayload.isMfaVerified,
         mfaMethod: codePayload.mfaMethod,
         scopes: grantedScopes
@@ -931,6 +938,7 @@ export const oauthClientServiceFactory = ({
       userId: decodedToken.userId,
       tokenVersionId: tokenVersion.id,
       organizationId: decodedToken.organizationId,
+      issuingRootOrgId: decodedToken.issuingRootOrgId,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod,
       scopes: grantedScopes

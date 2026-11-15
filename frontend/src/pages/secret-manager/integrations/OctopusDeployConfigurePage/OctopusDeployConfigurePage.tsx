@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -166,6 +167,7 @@ export const OctopusDeployConfigurePage = () => {
   if (isLoadingOctopusDeploySpaces || isOctopusDeployResourcesLoading)
     return (
       <div className="flex h-full w-full items-center justify-center p-24">
+        <PageTitle title="Set Up Octopus Deploy Integration" />
         <Spinner />
       </div>
     );
@@ -175,6 +177,7 @@ export const OctopusDeployConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
+      <PageTitle title="Set Up Octopus Deploy Integration" />
       <Card className="w-full max-w-4xl">
         <CardHeader>
           <CardTitle>

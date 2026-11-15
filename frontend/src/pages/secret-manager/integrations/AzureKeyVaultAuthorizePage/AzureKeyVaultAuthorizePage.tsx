@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
 import z from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -50,10 +50,8 @@ export function AzureKeyVaultAuthorizePage() {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Azure Key Vault Integration</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Authorize Azure Key Vault Integration" />
+      <link rel="icon" href="/infisical.ico" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

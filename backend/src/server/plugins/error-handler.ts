@@ -1,6 +1,6 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import { errorCodes, FastifyError } from "fastify";
+import { errorCodes, FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -12,6 +12,7 @@ import {
   ClientClosedRequestError,
   ConflictError,
   CryptographyError,
+  DailyQuotaExceededError,
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
@@ -34,6 +35,7 @@ import {
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
+import { toHttpError } from "@app/server/lib/domain-errors";
 import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
@@ -96,7 +98,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     });
   });
 
-  server.setErrorHandler((error: Error, req, res) => {
+  const respond = (error: Error, req: FastifyRequest, res: FastifyReply) => {
     // Expected client errors don't need stack traces. Log them without the Error object to
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
@@ -112,6 +114,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       isBodyParserError(error) ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
+      error instanceof DailyQuotaExceededError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
@@ -343,6 +346,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name
       });
+    } else if (error instanceof DailyQuotaExceededError) {
+      void res.status(HttpStatusCodes.TooManyRequests).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.TooManyRequests,
+        message: error.message,
+        error: error.name
+      });
     } else if (error instanceof ScimRequestError) {
       void res.status(error.status).send({
         reqId: req.id,
@@ -432,5 +442,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: "Something went wrong"
       });
     }
-  });
+  };
+
+  server.setErrorHandler((error: Error, req, res) => respond(toHttpError(error), req, res));
 });

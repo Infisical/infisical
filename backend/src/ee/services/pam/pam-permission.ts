@@ -9,6 +9,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { isActiveRole } from "../permission/permission-fns";
 import { resolveResourceRoleRules } from "../permission/permission-service";
 import {
   ResourcePermissionPamResourceActions,
@@ -128,6 +129,80 @@ export const checkAccountAccess = async (
   ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
 };
 
+const findActivePamMemberships = async (
+  membershipDAL: TMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  ctx: Pick<TActorContext, "actor" | "actorId">,
+  tx?: Knex,
+  isRelevant: (membership: { scopeResourceId?: string | null }) => boolean = () => true
+) => {
+  const [folderMemberships, accountMemberships] = await Promise.all([
+    membershipDAL.findResourceMembershipsForActor(
+      {
+        projectId,
+        resourceType: ResourceType.PamFolder,
+        actorType: ctx.actor,
+        actorId: ctx.actorId
+      },
+      tx
+    ),
+    membershipDAL.findResourceMembershipsForActor(
+      {
+        projectId,
+        resourceType: ResourceType.PamAccount,
+        actorType: ctx.actor,
+        actorId: ctx.actorId
+      },
+      tx
+    )
+  ]);
+
+  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive && isRelevant(m));
+  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive && isRelevant(m));
+
+  const allMemberships = [...activeFolderMemberships, ...activeAccountMemberships];
+  const roles = allMemberships.length
+    ? await membershipRoleDAL.find({ $in: { membershipId: allMemberships.map((m) => m.id) } }, { tx })
+    : [];
+
+  return { folderMemberships: activeFolderMemberships, accountMemberships: activeAccountMemberships, roles };
+};
+
+// How long the actor keeps LaunchSessions on the account: null while a granting role is permanent, 0 once none
+// grants it.
+export const getLaunchAccessRemainingMs = async (
+  membershipDAL: TMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  account: { id: string; folderId?: string | null },
+  ctx: Pick<TActorContext, "actor" | "actorId">
+): Promise<number | null> => {
+  const { folderMemberships, accountMemberships, roles } = await findActivePamMemberships(
+    membershipDAL,
+    membershipRoleDAL,
+    projectId,
+    ctx,
+    undefined,
+    (m) => m.scopeResourceId === account.id || (Boolean(account.folderId) && m.scopeResourceId === account.folderId)
+  );
+  const membershipIds = new Set(
+    [
+      ...folderMemberships.filter((m) => m.scopeResourceId === account.folderId),
+      ...accountMemberships.filter((m) => m.scopeResourceId === account.id)
+    ].map((m) => m.id)
+  );
+  if (membershipIds.size === 0) return 0;
+
+  const grantingRoles = roles.filter(
+    (r) => isActiveRole(r) && pamRoleHasAction(r.role, ResourcePermissionPamResourceActions.LaunchSessions)
+  );
+  if (grantingRoles.some((r) => !r.isTemporary)) return null;
+
+  const endsAt = Math.max(0, ...grantingRoles.map((r) => new Date(r.temporaryAccessEndTime ?? 0).getTime()));
+  return Math.max(0, endsAt - Date.now());
+};
+
 // Non-throwing counterpart to checkAccountAccess, for deciding what a caller may do.
 export const accountAccessAllows = async (
   permissionService: TPermissionDep,
@@ -156,41 +231,11 @@ export const getResourceIdsWithActions = async (
   ctx: TActorContext,
   tx?: Knex
 ) => {
-  const [folderMemberships, accountMemberships] = await Promise.all([
-    membershipDAL.findResourceMembershipsForActor(
-      {
-        projectId,
-        resourceType: ResourceType.PamFolder,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
-      },
-      tx
-    ),
-    membershipDAL.findResourceMembershipsForActor(
-      {
-        projectId,
-        resourceType: ResourceType.PamAccount,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
-      },
-      tx
-    )
-  ]);
-
-  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive);
-  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive);
-
-  const allMemberships = [...activeFolderMemberships, ...activeAccountMemberships];
-  if (allMemberships.length === 0) {
-    return { folderIds: [], accountIds: [] };
-  }
-
-  const roles = await membershipRoleDAL.find(
-    {
-      $in: { membershipId: allMemberships.map((m) => m.id) }
-    },
-    { tx }
-  );
+  const {
+    folderMemberships: activeFolderMemberships,
+    accountMemberships: activeAccountMemberships,
+    roles
+  } = await findActivePamMemberships(membershipDAL, membershipRoleDAL, projectId, ctx, tx);
   const roleByMembershipId = activeRoleByMembershipId(roles);
 
   const folderIds = activeFolderMemberships

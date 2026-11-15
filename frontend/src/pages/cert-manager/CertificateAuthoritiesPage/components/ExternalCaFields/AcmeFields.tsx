@@ -1,12 +1,11 @@
 import { Control, Controller, UseFormSetValue } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -127,7 +126,7 @@ export const AcmeFields = ({
         <Controller
           name="configuration.dnsProviderConfig.hostedZoneId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
+          render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
                 Zone <span className="text-danger">*</span>
@@ -141,15 +140,18 @@ export const AcmeFields = ({
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <FilterableSelect
+              <Combobox
+                isClearable={false}
+                includeMissingSelectedOptions={false}
+                ref={ref}
                 isLoading={isZonesPending && !!dnsAppConnection.id}
                 isDisabled={!dnsAppConnection.id}
                 value={
                   zones.find((zone) => zone.id === value) ||
                   (value ? { id: value, name: value } : null)
                 }
-                onChange={(option) => {
-                  onChange((option as SingleValue<TAcmeDnsZone>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id);
                 }}
                 options={zones}
                 placeholder="Select a zone..."

@@ -6,6 +6,7 @@ import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
   Combobox,
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
@@ -66,7 +67,7 @@ export const SecretScanningDataSourceConnectionField = ({
     <>
       <Controller
         render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
-          <Field className="mb-4" data-invalid={Boolean(error)} data-disabled={isUpdate}>
+          <Field data-invalid={Boolean(error)} data-disabled={isUpdate}>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor="secret-scanning-data-source-connection">
                 {connectionName} Connection
@@ -87,75 +88,77 @@ export const SecretScanningDataSourceConnectionField = ({
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Combobox<{ id: string; name: string; projectId?: string | null }>
-              id="secret-scanning-data-source-connection"
-              name={name}
-              onBlur={onBlur}
-              value={value}
-              modal
-              onPopupOpenChange={onPopupOpenChange}
-              isClearable={false}
-              onValueChange={(newValue) => {
-                if (newValue.id === "_create") {
-                  handlePopUpOpen("addConnection");
-                  onChange(null);
-                  // store for oauth callback connections
-                  localStorage.setItem("secretScanningDataSourceFormData", JSON.stringify(watch()));
-                  if (callback) callback();
-                  return;
-                }
+            <FieldContent>
+              <Combobox<{ id: string; name: string; projectId?: string | null }>
+                id="secret-scanning-data-source-connection"
+                name={name}
+                onBlur={onBlur}
+                value={value}
+                modal
+                onPopupOpenChange={onPopupOpenChange}
+                isClearable={false}
+                onValueChange={(newValue) => {
+                  if (newValue.id === "_create") {
+                    handlePopUpOpen("addConnection");
+                    // store for oauth callback connections
+                    localStorage.setItem(
+                      "secretScanningDataSourceFormData",
+                      JSON.stringify(watch())
+                    );
+                    if (callback) callback();
+                    return;
+                  }
 
-                onChange(newValue);
-                if (callback) callback();
-              }}
-              isLoading={isPending}
-              options={[
-                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                ...(availableConnections ?? [])
-              ]}
-              isDisabled={isUpdate}
-              isError={Boolean(error)}
-              aria-describedby={`secret-scanning-data-source-connection-help${error ? " secret-scanning-data-source-connection-error" : ""}`}
-              placeholder="Select connection..."
-              searchAriaLabel={`Search ${connectionName} connections`}
-              loadingMessage={`Loading ${connectionName} connections...`}
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              renderOption={(option) => (
-                <AppConnectionOptionContent
-                  data={option}
-                  isOnlyOption={option.id === "_create" && !availableConnections?.length}
-                />
-              )}
-            />
-            <FieldDescription id="secret-scanning-data-source-connection-help">
-              {isUpdate ? (
-                "Cannot be updated"
-              ) : (
-                <>
-                  Check out{" "}
-                  <a
-                    href={`https://infisical.com/docs/integrations/app-connections/${app}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    our docs
-                  </a>{" "}
-                  to ensure your connection has the required permissions for secret scanning.
-                </>
-              )}
-            </FieldDescription>
-            <FieldError id="secret-scanning-data-source-connection-error">
-              {error?.message}
-            </FieldError>
+                  onChange(newValue);
+                  if (callback) callback();
+                }}
+                isLoading={isPending}
+                options={[
+                  ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                  ...(availableConnections ?? [])
+                ]}
+                isDisabled={isUpdate}
+                isError={Boolean(error)}
+                aria-describedby={`secret-scanning-data-source-connection-help${error ? " secret-scanning-data-source-connection-error" : ""}`}
+                placeholder="Select connection..."
+                searchAriaLabel={`Search ${connectionName} connections`}
+                loadingMessage={`Loading ${connectionName} connections...`}
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                renderOption={(option) => (
+                  <AppConnectionOptionContent
+                    data={option}
+                    isOnlyOption={option.id === "_create" && !availableConnections?.length}
+                  />
+                )}
+              />
+              <FieldDescription id="secret-scanning-data-source-connection-help">
+                {isUpdate ? (
+                  "Cannot be updated"
+                ) : (
+                  <>
+                    Check out{" "}
+                    <a
+                      href={`https://infisical.com/docs/integrations/app-connections/${app}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      our docs
+                    </a>{" "}
+                    to ensure your connection has the required permissions for secret scanning.
+                  </>
+                )}
+              </FieldDescription>
+              <FieldError id="secret-scanning-data-source-connection-error" errors={[error]} />
+            </FieldContent>
           </Field>
         )}
         control={control}
         name="connection"
       />
       {!isUpdate && !isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="-mt-2.5 mb-2.5 text-xs text-warning">
-          <InfoIcon className="mr-1 inline size-3" />
+        <p className="flex items-center gap-1.5 text-xs text-warning">
+          <InfoIcon className="size-3.5" />
           You do not have access to any {connectionName} Connections. Contact an admin to create
           one.
         </p>
@@ -172,7 +175,7 @@ export const SecretScanningDataSourceConnectionField = ({
         app={app}
         onComplete={(connection) => {
           if (connection) {
-            setValue("connection", connection);
+            setValue("connection", connection, { shouldDirty: true, shouldValidate: true });
           }
         }}
       />

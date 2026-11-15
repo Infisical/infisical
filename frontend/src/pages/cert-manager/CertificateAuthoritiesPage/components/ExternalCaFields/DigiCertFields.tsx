@@ -1,12 +1,11 @@
 import { Control, Controller, UseFormSetValue } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
@@ -65,7 +64,7 @@ export const DigiCertFields = ({
     <Controller
       control={control}
       name="configuration.organizationId"
-      render={({ field: { value }, fieldState: { error } }) => (
+      render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel>
             Organization <span className="text-danger">*</span>
@@ -78,16 +77,16 @@ export const DigiCertFields = ({
               </TooltipContent>
             </Tooltip>
           </FieldLabel>
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             isLoading={isDigiCertOrgsPending && !!digicertConnectionId}
             isDisabled={!digicertConnectionId}
             value={digicertOrganizations.find((org) => org.id === value) ?? null}
-            onChange={(option) => {
-              setValue(
-                "configuration.organizationId",
-                (option as SingleValue<TDigiCertOrganization>)?.id ?? 0
-              );
+            onValueChange={(option) => {
+              onChange(option.id);
             }}
+            onBlur={onBlur}
+            ref={ref}
             options={digicertOrganizations}
             placeholder="Select an organization..."
             getOptionLabel={(option) => option.displayName || option.name}
@@ -101,7 +100,7 @@ export const DigiCertFields = ({
     <Controller
       control={control}
       name="configuration.purpose"
-      render={({ field: { value, onChange }, fieldState: { error } }) => (
+      render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel>
             Purpose <span className="text-danger">*</span>
@@ -115,19 +114,20 @@ export const DigiCertFields = ({
               </TooltipContent>
             </Tooltip>
           </FieldLabel>
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={
               PURPOSE_OPTIONS.find((o) => o.value === (value ?? DigiCertCaPurpose.Ssl)) ??
               PURPOSE_OPTIONS[0]
             }
-            onChange={(option) => {
-              const next = (option as SingleValue<{ value: DigiCertCaPurpose; label: string }>)
-                ?.value;
+            onValueChange={(option) => {
+              const next = option.value;
               if (next) {
                 onChange(next);
                 setValue("configuration.productNameId", "");
               }
             }}
+            ref={ref}
             options={PURPOSE_OPTIONS}
             getOptionLabel={(option) => option.label}
             getOptionValue={(option) => option.value}
@@ -140,7 +140,7 @@ export const DigiCertFields = ({
     <Controller
       control={control}
       name="configuration.productNameId"
-      render={({ field: { value, onChange }, fieldState: { error } }) => {
+      render={({ field: { value, onChange, ref }, fieldState: { error } }) => {
         const purpose =
           configuration && "purpose" in configuration
             ? (configuration.purpose ?? DigiCertCaPurpose.Ssl)
@@ -164,13 +164,15 @@ export const DigiCertFields = ({
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <FilterableSelect
+            <Combobox
+              isClearable={false}
               isLoading={isDigiCertProductsPending && !!digicertConnectionId}
               isDisabled={!digicertConnectionId}
               value={filteredProducts.find((product) => product.nameId === value) ?? null}
-              onChange={(option) => {
-                onChange((option as SingleValue<TDigiCertProduct>)?.nameId ?? "");
+              onValueChange={(option) => {
+                onChange(option.nameId);
               }}
+              ref={ref}
               options={filteredProducts}
               placeholder="Select a product..."
               getOptionLabel={(option) => `${option.name} (${option.nameId})`}

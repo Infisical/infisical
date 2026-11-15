@@ -4,7 +4,7 @@ import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@a
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -26,7 +26,7 @@ import {
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findById" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -211,11 +211,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
 
     // Now perform the logical checks *after* the constant-time work is done.
-    if (!token) throw new Error("Invalid token");
+    if (!token) throw new BadRequestError({ message: "Invalid token" });
 
     if (!token.expiresAt || new Date(token.expiresAt) < new Date()) {
       await tokenDAL.delete({ type, userId, orgId });
-      throw new Error("Invalid token");
+      throw new BadRequestError({ message: "Invalid token" });
     }
 
     if (!isValidToken) {
@@ -226,7 +226,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
           await tokenDAL.decrementTriesField({ type, userId, orgId: orgId || null });
         }
       }
-      throw new Error("Invalid token");
+      throw new BadRequestError({ message: "Invalid token" });
     }
 
     const deletedToken = await tokenDAL.delete({ type, userId, orgId: orgId || null });
@@ -348,8 +348,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         refreshVersion: updatedSession.refreshVersion,
         organizationId: decodedToken.organizationId,
         ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
+        issuingRootOrgId: decodedToken.issuingRootOrgId,
         isMfaVerified: decodedToken.isMfaVerified,
-        mfaMethod: decodedToken.mfaMethod
+        mfaMethod: decodedToken.mfaMethod,
+        idpMfaOrgId: decodedToken.idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: refreshTokenExpiresIn }
@@ -425,7 +427,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (!subOrganizationId) {
-      const organization = await orgDAL.findOne({ id: organizationId });
+      const organization = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+        orgDAL.findById(organizationId)
+      );
 
       if (!organization) {
         throw new UnauthorizedError({
@@ -442,7 +446,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       };
     }
 
-    const subOrganization = await orgDAL.findOne({ id: subOrganizationId });
+    const subOrganization = await requestMemoize(requestMemoKeys.orgFindById(subOrganizationId), () =>
+      orgDAL.findById(subOrganizationId)
+    );
     if (!subOrganization) {
       throw new UnauthorizedError({
         message: `The sub-organization with ID '${subOrganizationId}' no longer exists. Log in again.`

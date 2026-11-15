@@ -11,6 +11,8 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { filterToSharedSecretVersions } from "../secret-v2-bridge/secret-version-dal";
+
 export type TFolderCheckpointResourcesDALFactory = ReturnType<typeof folderCheckpointResourcesDALFactory>;
 
 export type ResourceWithCheckpointInfo = TFolderCheckpointResources & {
@@ -46,6 +48,7 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCheckpointResources}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .where(filterToSharedSecretVersions)
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),

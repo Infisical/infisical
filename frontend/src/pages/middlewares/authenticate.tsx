@@ -3,11 +3,14 @@ import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
+
+let identifiedUsername: string | undefined;
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context, location }) => {
@@ -77,6 +80,13 @@ export const Route = createFileRoute("/_authenticate")({
           to: "/login"
         });
       });
+
+    // A session that never passes through login or org selection would otherwise stay anonymous,
+    // and PostHog drops the organization group from anonymous events.
+    if (identifiedUsername !== user.username) {
+      identifiedUsername = user.username;
+      new Telemetry().getInstance().identify(user.username, user.email ?? user.username);
+    }
 
     const isOnAdminSetup = location.pathname === "/admin/setup";
 

@@ -57,7 +57,11 @@ export const CertificatesSchema = z.object({
   orderId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
   customExtensions: z.unknown().nullable().optional(),
   quotaKey: z.string().nullable().optional(),
-  hasWildcard: z.boolean().nullable().optional()
+  hasWildcard: z.boolean().nullable().optional(),
+  hsmKeyId: z.string().nullable().optional(),
+  deletedAt: z.date().nullable().optional(),
+  deletedByActorType: z.string().nullable().optional(),
+  deletedByActorId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

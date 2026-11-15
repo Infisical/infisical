@@ -12,6 +12,8 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -32,6 +34,7 @@ import {
 } from "./pki-application-types";
 
 type TPkiApplicationMembershipServiceFactoryDep = {
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -69,7 +72,8 @@ export const pkiApplicationMembershipServiceFactory = ({
   groupDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  orgDAL
 }: TPkiApplicationMembershipServiceFactoryDep) => {
   const $projectGroupIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
     const projectMemberships = await membershipDAL.find(
@@ -164,13 +168,26 @@ export const pkiApplicationMembershipServiceFactory = ({
     else if (actor.identityId) where.actorIdentityId = actor.identityId;
     else if (actor.groupId) where.actorGroupId = actor.groupId;
 
-    const orgMembership = await membershipDAL.find(where);
-    if (!orgMembership.length) {
+    const [orgMembership] = await membershipDAL.find(where);
+    if (orgMembership && !orgMembership.isActive) {
       throw new BadRequestError({
-        message: "The actor is not a member of this organization. Invite them to the organization first."
+        message: "The actor is deactivated in this organization. Reactivate them before granting them access."
       });
     }
-    return orgMembership[0];
+    if (orgMembership) return;
+
+    if (actor.userId || actor.identityId) {
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess({
+        orgId,
+        userIds: actor.userId ? [actor.userId] : [],
+        identityIds: actor.identityId ? [actor.identityId] : []
+      });
+      if (withAccess.userIds.size || withAccess.identityIds.size) return;
+    }
+
+    throw new BadRequestError({
+      message: "The actor is not a member of this organization. Invite them to the organization first."
+    });
   };
 
   const $loadResourcePermission = (
@@ -222,7 +239,7 @@ export const pkiApplicationMembershipServiceFactory = ({
       });
     }
 
-    const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
+    await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingAppMembershipFilter: Record<string, unknown> = {
@@ -270,10 +287,15 @@ export const pkiApplicationMembershipServiceFactory = ({
         });
       }
 
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        tx
+      );
+
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: orgMembership.scopeOrgId,
+          scopeOrgId: actorOrgId,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,

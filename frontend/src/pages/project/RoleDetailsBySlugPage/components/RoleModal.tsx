@@ -4,7 +4,11 @@ import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import {
+  CustomRolesUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -23,7 +27,9 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateProjectRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -43,6 +49,7 @@ type Props = {
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -52,13 +59,16 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     popUp: upgradePlanPopUp,
     handlePopUpOpen: handleUpgradePlanPopUpOpen,
     handlePopUpToggle: handleUpgradePlanPopUpToggle
-  } = usePopUp(["upgradePlan"] as const);
+  } = usePopUp(["upgradePlan", "folderAccessUpgrade"] as const);
+  const canOfferFolderAccess =
+    currentProject?.type === ProjectType.SecretManager && !subscription?.secretsFolderRbac;
 
   const {
     control,
     handleSubmit,
     reset,
     setValue,
+    getFieldState,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -139,6 +149,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         isError={Boolean(error)}
                         onChange={(e) => {
                           onChange(e);
+                          if (getFieldState("slug").isDirty) return;
                           setValue("slug", slugify(e.target.value, { lowercase: true }), {
                             shouldValidate: true
                           });
@@ -193,7 +204,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   Cancel
                 </Button>
               </SheetClose>
-              <Button type="submit" variant="project" isPending={isSubmitting}>
+              <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
                 Create Role
               </Button>
             </SheetFooter>
@@ -208,6 +219,26 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
           ...CustomRolesUpgradeIntent,
           isEnterpriseFeature: false
         }}
+        alternative={
+          canOfferFolderAccess
+            ? {
+                title: "Only Need Folder-Level Access?",
+                description:
+                  "Folder access controls grant users and machine identities access to specific environments and folders without a custom role. They're included with Secrets Management Pro.",
+                actionLabel: "View Pro Plan",
+                onSelect: () => {
+                  handleUpgradePlanPopUpToggle("upgradePlan", false);
+                  handleUpgradePlanPopUpOpen("folderAccessUpgrade");
+                }
+              }
+            : undefined
+        }
+      />
+      <UpgradeGate
+        paywallKey="project.role.folder-access"
+        isOpen={upgradePlanPopUp.folderAccessUpgrade.isOpen}
+        onOpenChange={(open) => handleUpgradePlanPopUpToggle("folderAccessUpgrade", open)}
+        intent={FolderAccessControlsUpgradeIntent}
       />
     </>
   );

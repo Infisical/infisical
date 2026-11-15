@@ -54,6 +54,7 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
       const certCountSub = knex(TableName.Certificate)
         .select("applicationId")
         .whereNotNull("applicationId")
+        .whereNull("deletedAt")
         .count<{ applicationId: string; count: string }[]>("* as count")
         .groupBy("applicationId")
         .as("cc");

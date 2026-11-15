@@ -1,4 +1,5 @@
 import { TGenericPermission } from "@app/lib/types";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
 export enum OIDCConfigurationType {
   CUSTOM = "custom",
@@ -23,6 +24,7 @@ export type TOidcLoginDTO = {
   callbackPort?: string;
   groups?: string[];
   manageGroupMemberships?: boolean | null;
+  idpMfa?: TIdpMfaSignal;
 };
 
 export type TGetOidcCfgDTO =
@@ -50,6 +52,8 @@ export type TCreateOidcCfgDTO = {
   organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
+  mfaClaimName?: string;
+  mfaAmrValues?: string[] | null;
 } & TGenericPermission;
 
 export type TUpdateOidcCfgDTO = Partial<{
@@ -67,5 +71,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
+  mfaClaimName: string;
+  mfaAmrValues: string[] | null;
 }> &
   TGenericPermission;

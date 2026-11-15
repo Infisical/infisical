@@ -62,7 +62,7 @@ const outboxDAL = auditLogStreamOutboxDALFactory(testDb as never);
 const eventOutboxRegistry = eventOutboxRegistryFactory();
 eventOutboxRegistry.register({
   name: CONSUMER,
-  payloadSchema: AuditLogStreamDeliveryFailedPayloadSchema as never,
+  dataSchema: AuditLogStreamDeliveryFailedPayloadSchema as never,
   subscribesTo: (eventType) => eventType === AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   handle: async () => []
 });

@@ -64,6 +64,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -73,6 +75,7 @@ export interface TPermissionDALFactory {
       }[];
       additionalPrivileges: {
         id: string;
+        name: string;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -108,9 +111,11 @@ export interface TPermissionDALFactory {
         temporaryAccessStartTime?: Date | null | undefined;
         temporaryAccessEndTime?: Date | null | undefined;
         customRoleSlug?: string | null | undefined;
+        customRoleName?: string | null | undefined;
       }[];
       additionalPrivileges: {
         id: string;
+        name: string;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -141,6 +146,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -155,6 +162,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -540,6 +549,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema("groupCustomRoles").as("groupProjectMembershipRoleCustomRoleSlug"),
+          db.ref("name").withSchema("groupCustomRoles").as("groupProjectMembershipRoleCustomRoleName"),
           db.ref("permissions").withSchema("groupCustomRoles").as("groupProjectMembershipRolePermission"),
           db.ref("id").withSchema(TableName.MembershipRole).as("groupProjectMembershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("groupProjectMembershipRole"),
@@ -574,6 +584,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               groupProjectMembershipRole,
               groupProjectMembershipRolePermission,
               groupProjectMembershipRoleCustomRoleSlug,
+              groupProjectMembershipRoleCustomRoleId,
+              groupProjectMembershipRoleCustomRoleName,
               groupProjectMembershipRoleIsTemporary,
               groupProjectMembershipRoleTemporaryMode,
               groupProjectMembershipRoleTemporaryAccessEndTime,
@@ -583,6 +595,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               id: groupProjectMembershipRoleId,
               role: groupProjectMembershipRole,
               customRoleSlug: groupProjectMembershipRoleCustomRoleSlug,
+              customRoleId: groupProjectMembershipRoleCustomRoleId as string | null,
+              customRoleName: groupProjectMembershipRoleCustomRoleName as string | null,
               permissions: groupProjectMembershipRolePermission,
               temporaryRange: groupProjectMembershipRoleTemporaryRange,
               temporaryMode: groupProjectMembershipRoleTemporaryMode,
@@ -660,6 +674,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("username").withSchema(TableName.Users).as("username"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("roleName"),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("membershipRoleCustomRoleId"),
           db.ref("permissions").withSchema(TableName.Role).as("customRolePermission"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
@@ -714,6 +730,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "additionalPrivileges" as const,
             mapper: ({
               additionalPrivilegeId,
+              additionalPrivilegeName,
               additionalPrivilegePermissions,
               additionalPrivilegeIsTemporary,
               additionalPrivilegeTemporaryMode,
@@ -724,6 +741,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               additionalPrivilegeUpdatedAt
             }) => ({
               id: additionalPrivilegeId,
+              name: additionalPrivilegeName,
               permissions: additionalPrivilegePermissions,
               temporaryRange: additionalPrivilegeTemporaryRange,
               temporaryMode: additionalPrivilegeTemporaryMode,
@@ -739,6 +757,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "roles" as const,
             mapper: ({
               roleSlug,
+              roleName,
+              membershipRoleCustomRoleId,
               customRolePermission,
               membershipRoleId,
               membershipRole,
@@ -754,6 +774,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               role: membershipRole,
               permissions: customRolePermission,
               customRoleSlug: roleSlug,
+              customRoleId: membershipRoleCustomRoleId as string | null,
+              customRoleName: roleName as string | null,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,
@@ -851,8 +873,10 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.Membership).as("membershipUpdatedAt"),
           db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
           db.ref("permissions").withSchema(TableName.Role),
           db.ref("id").withSchema(TableName.AdditionalPrivilege).as("identityApId"),
+          db.ref("name").withSchema(TableName.AdditionalPrivilege).as("identityApName"),
           db.ref("permissions").withSchema(TableName.AdditionalPrivilege).as("identityApPermissions"),
           db.ref("temporaryMode").withSchema(TableName.AdditionalPrivilege).as("identityApTemporaryMode"),
           db.ref("isTemporary").withSchema(TableName.AdditionalPrivilege).as("identityApIsTemporary"),
@@ -891,7 +915,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             mapper: (data) =>
               MembershipRolesSchema.extend({
                 permissions: z.unknown(),
-                customRoleSlug: z.string().optional().nullable()
+                customRoleSlug: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable()
               }).parse(data)
           },
           {
@@ -899,6 +924,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "additionalPrivileges" as const,
             mapper: ({
               identityApId,
+              identityApName,
               identityApPermissions,
               identityApIsTemporary,
               identityApTemporaryMode,
@@ -907,6 +933,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               identityApTemporaryAccessStartTime
             }) => ({
               id: identityApId,
+              name: identityApName,
               permissions: identityApPermissions,
               temporaryRange: identityApTemporaryRange,
               temporaryMode: identityApTemporaryMode,

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import {
   ArrowDownIcon,
@@ -10,14 +9,8 @@ import {
 } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { ProxiedServiceTemplate } from "@app/helpers/proxiedServiceTemplates";
 
 import { TProxiedServiceForm } from "./schema";
-
-type Props = {
-  template?: ProxiedServiceTemplate;
-};
 
 const truncate = (value: string, max = 16) =>
   value.length > max ? `${value.slice(0, max)}…` : value;
@@ -58,23 +51,7 @@ const Node = ({
   </div>
 );
 
-const ServiceIcon = ({ template }: { template?: ProxiedServiceTemplate }) => {
-  const [imgError, setImgError] = useState(false);
-
-  if (template && !imgError) {
-    return (
-      <ProviderIcon
-        icon={template.image}
-        alt=""
-        className="size-3.5 shrink-0 object-contain"
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-  return <GlobeIcon className="size-3.5 text-label-secondary" />;
-};
-
-export const ProxiedServiceSubstitutionDiagram = ({ template }: Props) => {
+export const ProxiedServiceSubstitutionDiagram = () => {
   const { watch } = useFormContext<TProxiedServiceForm>();
   const substitutions = watch("substitutions");
   const example = substitutions?.find((s) => s.placeholderKey) ?? substitutions?.[0];
@@ -129,7 +106,7 @@ export const ProxiedServiceSubstitutionDiagram = ({ template }: Props) => {
 
       <Connector label="Forwards the real request" />
 
-      <Node icon={<ServiceIcon template={template} />} title={template?.name || "External Service"}>
+      <Node icon={<GlobeIcon className="size-3.5 text-label-secondary" />} title="External Service">
         <p className="text-[11px] leading-tight text-muted">
           Receives the real credential. Your agent never held it.
         </p>

@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificatePolicyActions,
@@ -26,7 +25,7 @@ enum TabSections {
 }
 
 export const PoliciesPage = () => {
-  const { t } = useTranslation();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
@@ -35,7 +34,6 @@ export const PoliciesPage = () => {
   });
 
   const activeTab = (searchParams.selectedTab as TabSections) || TabSections.Certificates;
-  const [certificateFilter, setCertificateFilter] = useState<{ search?: string }>({});
 
   const dashboardFilters = useMemo(() => {
     const filters: Array<{
@@ -102,10 +100,9 @@ export const PoliciesPage = () => {
   }, [searchParams]);
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
-    setCertificateFilter({ search: certificateId });
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      search: { selectedTab: TabSections.Certificates } as any
+      to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+      params: { orgId: currentOrg.id, certificateId }
     });
   };
 
@@ -127,14 +124,17 @@ export const PoliciesPage = () => {
   };
 
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Certificate Manager" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
-      </Helmet>
+      <PageTitle title="Certificate Manager" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
@@ -145,7 +145,6 @@ export const PoliciesPage = () => {
           {activeTab === TabSections.Certificates &&
             (canReadCertificates ? (
               <CertificatesTab
-                externalFilter={certificateFilter}
                 dashboardFilters={dashboardFilters}
                 dashboardViewId={searchParams.viewId}
               />

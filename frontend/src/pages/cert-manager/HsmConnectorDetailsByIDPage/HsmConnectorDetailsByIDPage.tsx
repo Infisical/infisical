@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -129,10 +129,8 @@ const Page = () => {
 
 export const HsmConnectorDetailsByIDPage = () => (
   <>
-    <Helmet>
-      <title>HSM Connectors</title>
-      <link rel="icon" href="/infisical.ico" />
-    </Helmet>
+    <PageTitle title="HSM Connector" />
+    <link rel="icon" href="/infisical.ico" />
     <Page />
   </>
 );

@@ -8,9 +8,9 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamSessionStatus } from "../pam/pam-enums";
 import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-permission";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
@@ -47,8 +47,9 @@ type TTerminatePamSessionsWithoutLaunchAccessDTO = {
   projectId: string;
   // The actors whose access just changed, users and machine identities alike.
   actors: TPamSessionActor[];
-  // The admin who made the access change; named as the terminating actor on the gateway signal.
-  actorId: string;
+  // The admin who made the access change; named as the terminating actor on the gateway signal. Absent when
+  // SCIM or an IdP group sync made it.
+  actorId?: string;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
@@ -145,15 +146,66 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
   });
   if (revoked.length === 0) return noop;
 
-  const actor = await userDAL.findById(actorId, tx);
+  const actor = actorId ? await userDAL.findById(actorId, tx) : undefined;
   return terminatePamSessions({
     sessions: revoked,
-    actorId,
+    actorId: actorId ?? "",
     actorEmail: actor?.email ?? "",
     pamSessionDAL,
     gatewayV2Service,
     tx
   });
+};
+
+type TTerminatePamSessionsLosingGroupAccessDTO = Omit<
+  TTerminatePamSessionsWithoutLaunchAccessDTO,
+  "projectId" | "actors"
+> & {
+  userIds: string[];
+  identityIds?: string[];
+};
+
+// A group can reach PAM projects in sub-orgs it is linked into, so this re-checks every project the actors hold a
+// live session in. Same transaction contract as terminatePamSessionsWithoutLaunchAccess.
+export const terminatePamSessionsLosingGroupAccess = async ({
+  userIds,
+  identityIds = [],
+  pamSessionDAL,
+  tx,
+  ...deps
+}: TTerminatePamSessionsLosingGroupAccessDTO): Promise<() => void> => {
+  const userSessions = userIds.length
+    ? await pamSessionDAL.find({ $in: { userId: userIds, status: LIVE_PAM_SESSION_STATUSES } }, { tx })
+    : [];
+  const identitySessions = identityIds.length
+    ? await pamSessionDAL.find({ $in: { identityId: identityIds, status: LIVE_PAM_SESSION_STATUSES } }, { tx })
+    : [];
+
+  const actorsByProject = new Map<string, Map<string, TPamSessionActor>>();
+  for (const session of [...userSessions, ...identitySessions]) {
+    const sessionActor = resolveSessionActor(session);
+    if (sessionActor) {
+      const projectActors = actorsByProject.get(session.projectId) ?? new Map<string, TPamSessionActor>();
+      projectActors.set(pamActorKey(sessionActor), sessionActor);
+      actorsByProject.set(session.projectId, projectActors);
+    }
+  }
+
+  const sendCancellations: (() => void)[] = [];
+  for (const [projectId, projectActors] of actorsByProject) {
+    sendCancellations.push(
+      // eslint-disable-next-line no-await-in-loop
+      await terminatePamSessionsWithoutLaunchAccess({
+        ...deps,
+        projectId,
+        actors: [...projectActors.values()],
+        pamSessionDAL,
+        tx
+      })
+    );
+  }
+
+  return () => sendCancellations.forEach((send) => send());
 };
 
 type TTerminatePamSessionsForUsersDTO = {
@@ -215,7 +267,7 @@ export const assertUserStillActiveInOrg = async ({
   orgId: string;
   userId: string;
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   tx: Knex;
 }) => {
   const org = await orgDAL.findById(orgId, tx);
@@ -224,7 +276,16 @@ export const assertUserStillActiveInOrg = async ({
 
   for await (const id of orgIds) {
     const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
-    if (!membership || !membership.isActive) {
+    let isActive = Boolean(membership?.isActive);
+    if (!membership) {
+      await orgDAL.lockActorsForOrgAccess({ orgId: id, actorIds: [userId] }, tx);
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess(
+        { orgId: id, userIds: [userId], identityIds: [] },
+        tx
+      );
+      isActive = withAccess.userIds.has(userId);
+    }
+    if (!isActive) {
       throw new ForbiddenRequestError({
         message: "Your organization membership is no longer active. Contact an organization admin to restore access."
       });

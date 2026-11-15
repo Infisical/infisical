@@ -126,10 +126,8 @@ describe("Privilege boundary on project membership downgrade", () => {
     });
   });
 
-  describe.each([
-    { label: "legacy", newSystem: false },
-    { label: "new", newSystem: true }
-  ])("$label privilege system", ({ newSystem }) => {
+  // The new privilege system half is covered by tests/suites/secretmanager/access.
+  describe.each([{ label: "legacy", newSystem: false }])("$label privilege system", ({ newSystem }) => {
     beforeAll(async () => {
       await setNewPrivilegeSystem(newSystem);
     });

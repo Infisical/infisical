@@ -2,21 +2,23 @@ import { randomUUID } from "crypto";
 import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectServiceFactory } from "../project/project-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
@@ -36,6 +38,7 @@ import {
 const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
 
 export type TExternalMigrationQueueFactoryDep = {
+  licenseService: TLicenseService;
   smtpService: TSmtpService;
   queueService: TQueueServiceFactory;
 
@@ -53,17 +56,19 @@ export type TExternalMigrationQueueFactoryDep = {
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret" | "dispatchSecretCreateSideEffects">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "createSecretApprovalSideEffects">;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
 
 export const externalMigrationQueueFactory = ({
+  licenseService,
   queueService,
   projectService,
   smtpService,
@@ -78,10 +83,11 @@ export const externalMigrationQueueFactory = ({
   secretVersionTagDAL,
   folderDAL,
   folderCommitService,
+  eventEmitter,
   folderVersionDAL,
   resourceMetadataDAL,
   notificationService,
-  secretApprovalRequestService,
+  secretChangeRequestService,
   auditLogService
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
@@ -156,9 +162,12 @@ export const externalMigrationQueueFactory = ({
         projectEnvService,
         secretV2BridgeService,
         folderCommitService,
+        eventEmitter,
         folderVersionDAL,
         resourceMetadataDAL
       });
+      // The import committed its projects in one transaction, so the plan's cached project count is stale.
+      await licenseService.invalidatePlan(decryptedJson.actorOrgId);
 
       if (projectsNotImported.length) {
         logger.info(
@@ -274,7 +283,7 @@ export const externalMigrationQueueFactory = ({
         approvedFolders.map(({ folderPath, secretKeys, approval }) =>
           sideEffectLimit(async () => {
             try {
-              await secretApprovalRequestService.createSecretApprovalSideEffects({
+              await secretChangeRequestService.createSecretApprovalSideEffects({
                 secretApprovalRequest: {
                   id: approval.id,
                   policyId: approval.policyId,

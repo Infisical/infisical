@@ -17,7 +17,10 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks/databricks-connection-fns";
+import {
+  assertDatabricksGatewaySupported,
+  getDatabricksConnectionAccessToken
+} from "@app/services/app-connection/databricks/databricks-connection-fns";
 
 const DELAY_MS = 1000;
 const EXPIRY_PADDING_IN_DAYS = 3;
@@ -257,6 +260,8 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   > = async ({ clientId: activeClientId, clientSecret }) => {
+    assertDatabricksGatewaySupported(connection, {});
+
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
     await blockLocalAndPrivateIpAddresses(workspaceUrl);
     const tokenEndpoint = `${workspaceUrl}/oidc/v1/token`;

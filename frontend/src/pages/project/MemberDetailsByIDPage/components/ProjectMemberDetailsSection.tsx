@@ -29,12 +29,12 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
   const { currentProject } = useProject();
   const projectLabel = getProjectLabel(currentProject?.type);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_copyId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_copyEmail, isCopyingEmail, setCopyEmail] = useTimedReset<string>({
     initialState: "Copy email to clipboard"
   });

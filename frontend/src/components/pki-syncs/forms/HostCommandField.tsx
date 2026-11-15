@@ -5,9 +5,9 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@app/components
 import { buildHostCommandTooltipDescriptions } from "@app/helpers/pkiSyncs";
 import { HostCommandVariable, isKeystoreExportFormat } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { HostCommandInput } from "./HostCommandInput";
 import { HostCommandVariablesTooltip } from "./HostCommandVariablesTooltip";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type Props = {
   name: FieldPath<TPkiSyncForm>;

@@ -40,6 +40,7 @@
   },
   "common": {
     "head-title": "{{title}} | Infisical",
+    "head-title-scoped": "{{title}} · {{scope}} | Infisical",
     "error_project-already-exists": "Bu isimle bir proje zaten mevcut.",
     "email": "Email",
     "password": "Şifre",

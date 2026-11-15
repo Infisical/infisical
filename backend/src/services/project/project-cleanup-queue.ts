@@ -1,4 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -8,6 +9,8 @@ import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
+import { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
+import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -57,10 +60,13 @@ type TProjectCleanupQueueFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
   kmsService: Pick<TKmsServiceFactory, "deleteInternalKms">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
+  licenseService: TLicenseService;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -70,10 +76,13 @@ export const projectCleanupQueueFactory = ({
   membershipUserDAL,
   userDAL,
   kmsService,
+  certificateAuthoritySecretDAL,
+  caKeySourceService,
   keyStore,
   auditLogService,
   queueService,
-  cronJob
+  cronJob,
+  licenseService
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -177,6 +186,10 @@ export const projectCleanupQueueFactory = ({
         return;
       }
 
+      const releaseCaKeys = await caKeySourceService.prepareKeyReleases(
+        await certificateAuthoritySecretDAL.findExternallyKeyedByProjectId(projectId)
+      );
+
       // 4) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
@@ -221,7 +234,8 @@ export const projectCleanupQueueFactory = ({
         return;
       }
 
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
+      await releaseCaKeys();
+      await licenseService.invalidatePlan(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

@@ -27,6 +27,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "createGithubOrgSyncConfig",
       body: z.object({
         githubOrgName: GithubOrgNameCreateSchema,
         githubOrgAccessToken: z.string().trim().max(1000).optional(),
@@ -67,6 +68,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "updateGithubOrgSyncConfig",
       body: z
         .object({
           githubOrgName: GithubOrgNamePatchSchema,
@@ -112,6 +114,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteGithubOrgSyncConfig",
       response: {
         200: z.object({
           githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
@@ -146,6 +149,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "getGithubOrgSyncConfig",
       response: {
         200: z.object({
           githubOrgSyncConfig: SanitizedGithubOrgSyncSchema
@@ -169,6 +173,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "syncAllGithubOrgTeams",
       response: {
         200: z.object({
           totalUsers: z.number(),

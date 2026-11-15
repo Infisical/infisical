@@ -72,15 +72,12 @@ export const ProjectSubmenuView = ({
                 tooltip={sub.label}
               >
                 <Link
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   to={
                     isOrgScoped
                       ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
                       : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
                   }
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   search={{ selectedTab: sub.tab } as any}
                 >
                   <sub.icon className="size-4" />

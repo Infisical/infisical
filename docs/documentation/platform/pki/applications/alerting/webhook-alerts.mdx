@@ -1,9 +1,10 @@
 ---
-title: "Webhook alerts"
+title: "Certificate alerts by webhook"
 sidebarTitle: "Webhook"
 description: "Send certificate alert notifications to a webhook URL."
 ---
 
+import AlertApiFields from "/snippets/documentation/platform/pki/applications/alerting/alert-api-fields.mdx";
 import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
 
 A webhook channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) sends an HTTP POST request to your endpoint whenever the alert fires. Use a webhook to connect certificate alerts to your own systems or to services Infisical doesn't support directly.
@@ -14,35 +15,107 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
 ## Prerequisites
 
-- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
-- An HTTPS endpoint that accepts POST requests
+- The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- An HTTPS endpoint that accepts POST requests (if you self-host Infisical, an admin of your instance can [allow HTTP and internal endpoints](#http-and-internal-endpoints))
 
-## Step 1: Start an alert
+## Create the alert
 
-<StartAlert />
+<Tabs>
+  <Tab title="Infisical UI">
+    <StartAlert />
 
-## Step 2: Add the webhook channel
+    On the **Channels** step, add the webhook channel:
 
-<Steps>
-  <Step>
-    Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
-  </Step>
-  <Step>
-    If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
-  </Step>
-  <Step>
-    Optionally, select **Add Signing Secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
-  </Step>
-  <Step>
-    Optionally, select **Add Header** to send [custom headers](#custom-headers) with each request.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test request to your endpoint.
-  </Step>
-  <Step>
-    Select **Continue**, check the **Review** step, and select **Create Alert**.
-  </Step>
-</Steps>
+    <Steps>
+      <Step>
+        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS, unless your instance [allows HTTP](#http-and-internal-endpoints).
+      </Step>
+      <Step>
+        If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
+      </Step>
+      <Step>
+        Optionally, select **Add Signing Secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
+      </Step>
+      <Step>
+        Optionally, select **Add Header** to send [custom headers](#custom-headers) with each request.
+      </Step>
+      <Step>
+        Optionally, select **Send test** to send a test request to your endpoint.
+      </Step>
+      <Step>
+        Select **Continue**, check the **Review** step, and select **Create Alert**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a request to the create alert endpoint with an [access token](/api-reference/overview/authentication) and a `webhook` channel.
+
+    <AlertApiFields />
+
+    The channel's `config` takes these fields:
+
+    | Field | Value |
+    | --- | --- |
+    | `url` (required) | Your endpoint's URL, which must use HTTPS unless your instance [allows HTTP](#http-and-internal-endpoints) |
+    | `authType` | `bearer` (**Bearer Token**), `basic` (**Basic Auth**), or `header` (**API Key**), for [authentication](#authentication) |
+    | `authCredentials` | The token, if `authType` is `bearer` |
+    | `basicUsername`, `basicPassword` | The username and password, if `authType` is `basic` |
+    | `authHeaderName`, `authHeaderValue` | The header name and the API key, if `authType` is `header` |
+    | `signingSecret` | A secret to [sign each request](#verify-the-signature) with |
+    | `headers` | [Custom headers](#custom-headers), as an array of `{ "key": "<name>", "value": "<value>" }` objects |
+
+    <CodeGroup>
+    ```bash Organization-wide
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "imported-certificates-expiring",
+        "resourceType": "cert-manager",
+        "eventType": "cert-manager.certificate.expiry",
+        "condition": { "alertBefore": "30d", "sources": ["imported"] },
+        "channels": [
+          {
+            "name": "certificate-inventory",
+            "channelType": "webhook",
+            "config": {
+              "url": "https://alerts.example.com/infisical",
+              "authType": "bearer",
+              "authCredentials": "<token>",
+              "signingSecret": "<signing-secret>"
+            }
+          }
+        ]
+      }'
+    ```
+
+    ```bash Application
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "payments-api-renewals",
+        "resourceType": "cert-manager.application",
+        "resourceId": "<application-id>",
+        "eventType": "cert-manager.application.certificate.renewal",
+        "channels": [
+          {
+            "name": "payments-deploy-hook",
+            "channelType": "webhook",
+            "config": {
+              "url": "https://deploy.example.com/hooks/certificate-renewed",
+              "signingSecret": "<signing-secret>",
+              "headers": [{ "key": "X-Env", "value": "production" }]
+            }
+          }
+        ]
+      }'
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 <Check>
   Your alert is set up. Infisical sends a POST request to your endpoint whenever the alert fires.
@@ -70,11 +143,22 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 - A channel can have up to 20 custom headers, and header names, values, and authentication credentials can total up to 4,096 characters
 - Infisical sets `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` itself, so you can't add them
 
+## HTTP and internal endpoints
+
+By default, a webhook channel only sends requests to HTTPS URLs on public addresses. If you self-host Infisical, an admin of your instance can relax these rules for webhook channels with two [environment variables](/self-hosting/configuration/envars):
+
+- `ALERT_WEBHOOK_ALLOW_HTTP` lets a channel use an `http://` URL, such as a sidecar proxy that adds TLS before the request leaves your network
+- `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` lets a channel reach an internal or private IP address, such as `localhost` or a service inside your cluster
+
+An HTTP sidecar proxy that you reach at `localhost` or another private address needs both variables set to `true`.
+
+If an admin turns `ALERT_WEBHOOK_ALLOW_HTTP` off later, a channel with an `http://` URL fails each time its alert fires until you change the URL to HTTPS.
+
 ## Webhook event types
 
-Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and Certificate Manager alerts use different values:
+Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and organization-wide alerts use different values:
 
-| Event | Application alert `type` | Certificate Manager alert `type` |
+| Event | Application alert `type` | Organization-wide alert `type` |
 |-------|--------------------------|----------------------------------|
 | Expiration | `com.infisical.cert-manager.application.certificate.expiry` | `com.infisical.cert-manager.certificate.expiry` |
 | Issuance | `com.infisical.cert-manager.application.certificate.issuance` | `com.infisical.cert-manager.certificate.issuance` |
@@ -86,13 +170,13 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. Except in signer certificate expiration alerts, each item also has a `url` that opens the certificate in Infisical. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
 
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
 - `cert-manager.application`: an application alert, with the application's ID in `data.alert.resourceId`
-- `cert-manager`: a Certificate Manager alert
-- `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames`
+- `cert-manager`: an organization-wide alert
+- `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames` (only the selected signers, if the alert has a **Signers** filter)
 
 <Note>
   Alerts created before certificate alerts moved to applications keep sending the older `com.infisical.pki.certificate.*` event types with a `data.certificates` list. If one endpoint receives both, check the `type` field to tell them apart.
@@ -143,7 +227,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "<application-id>",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/<certificate-id>"
           }
         ],
         "metadata": {
@@ -199,7 +284,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "<application-id>",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/<certificate-id>"
           }
         ],
         "metadata": {
@@ -210,8 +296,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
     }
     ```
   </Tab>
-  <Tab title="Certificate Manager alert">
-    A Certificate Manager alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
+  <Tab title="Organization-wide alert">
+    An organization-wide alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
 
     ```json expandable
     {
@@ -255,7 +341,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "d6e7232b-ffa5-48bf-9133-4731c6d001a0",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/4f70e08e-ad7a-4f94-ac16-241126ab88ed"
           }
         ],
         "metadata": {

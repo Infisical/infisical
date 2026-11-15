@@ -16,11 +16,32 @@ export enum SecretScanningScanType {
   Realtime = "realtime"
 }
 
+export enum SecretScanningScanTrigger {
+  Manual = "manual",
+  ResourcesAdded = "resources-added",
+  Push = "push",
+  PullRequest = "pull-request"
+}
+
 export enum SecretScanningFindingStatus {
   Resolved = "resolved",
   Unresolved = "unresolved",
   FalsePositive = "false-positive",
   Ignore = "ignore"
+}
+
+export enum SecretScanningFindingOrderBy {
+  CreatedAt = "createdAt",
+  Rule = "rule",
+  ResourceName = "resourceName",
+  Author = "author",
+  Status = "status"
+}
+
+export enum SecretScanningResourceOrderBy {
+  Name = "name",
+  Status = "status",
+  LastScanned = "lastScanned"
 }
 
 export enum SecretScanningFindingSeverity {

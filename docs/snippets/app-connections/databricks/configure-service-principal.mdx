@@ -16,9 +16,19 @@
         ![Create Service Principal](/images/app-connections/databricks/create-service-principal.png)
     </Step>
     <Step title="Generate a secret" titleSize="h3">
-        Open the new service principal, select the **Secrets** tab, and select **Generate Secret**. Save the **Client ID** and **Secret** for the Infisical form.
+        Open the new service principal, select the **Secrets** tab, and select **Generate secret**. In the dialog:
+
+        1. Set **Lifetime (days)** to how long Infisical can use the secret (up to 730 days)
+        2. Under **Scope**, select **Other APIs**, then use **Add scope** to add the scopes for the features you plan to use:
+            - `secrets` for secret syncs
+            - `authentication` and `scim` for secret rotations
+        3. Select **Generate**, then save the **Client ID** and **Secret** for the Infisical form
 
         ![Generate Secret](/images/app-connections/databricks/service-principal-secrets.png)
         ![Copy IDs](/images/app-connections/databricks/service-principal-ids.png)
+
+        <Note>
+            You can't change a secret's scopes after you generate it. To use other scopes, or before the secret expires, generate a new secret and update the connection's **Client Secret** and **Scopes**.
+        </Note>
     </Step>
 </Steps>

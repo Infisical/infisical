@@ -1,18 +1,9 @@
-import { useState } from "react";
-import { KeyRound, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Plus } from "lucide-react";
 
 import { ExternalKmsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -20,12 +11,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Input,
-  Label,
   Skeleton,
   Table,
   TableBody,
@@ -58,7 +48,6 @@ type RemoveExternalKmsData = {
 
 export const OrgEncryptionTab = withPermission(
   () => {
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { currentOrg, isSubOrganization } = useOrganization();
     const { subscription } = useSubscription();
     const orgId = currentOrg?.id || "";
@@ -75,10 +64,9 @@ export const OrgEncryptionTab = withPermission(
     const { mutateAsync: removeExternalKms, isPending: isRemovingExternalKms } =
       useRemoveExternalKms(currentOrg.id);
     const removeExternalKmsData = popUp.removeExternalKms.data as RemoveExternalKmsData | undefined;
-    const isDeleteConfirmed = deleteConfirmation === removeExternalKmsData?.name;
 
     const handleRemoveExternalKms = async () => {
-      if (!removeExternalKmsData || !isDeleteConfirmed) return;
+      if (!removeExternalKmsData) return;
 
       try {
         await removeExternalKms({
@@ -207,51 +195,15 @@ export const OrgEncryptionTab = withPermission(
           }
           onOpenChange={(state) => handlePopUpToggle("editExternalKmsCredentials", state)}
         />
-        <AlertDialog
-          open={popUp.removeExternalKms.isOpen}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setDeleteConfirmation("");
-            handlePopUpToggle("removeExternalKms", isOpen);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogMedia>
-                <Trash2 />
-              </AlertDialogMedia>
-              <AlertDialogTitle>
-                Delete external KMS &quot;{removeExternalKmsData?.name}&quot;?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This removes the external KMS configuration from your organization. This cannot be
-                undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="delete-external-kms-confirmation">
-                Type &quot;{removeExternalKmsData?.name}&quot; to confirm
-              </Label>
-              <Input
-                id="delete-external-kms-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleRemoveExternalKms}
-                isPending={isRemovingExternalKms}
-                isDisabled={isRemovingExternalKms || !isDeleteConfirmed}
-              >
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmationAlertDialog
+          isOpen={popUp.removeExternalKms.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("removeExternalKms", isOpen)}
+          title={`Delete "${removeExternalKmsData?.name ?? "external KMS"}"`}
+          description="This removes the external KMS configuration from your organization. This cannot be undone."
+          confirmKey={removeExternalKmsData?.name ?? ""}
+          isPending={isRemovingExternalKms}
+          onConfirm={handleRemoveExternalKms}
+        />
       </Card>
     );
   },

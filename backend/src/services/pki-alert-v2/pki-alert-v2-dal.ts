@@ -466,7 +466,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         }
       }
 
-      certCountQuery = certCountQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+      certCountQuery = certCountQuery
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereNull(`${TableName.Certificate}.deletedAt`);
 
       if (options?.excludeAlerted && options?.alertId) {
         certCountQuery = certCountQuery.whereNotExists(
@@ -548,7 +550,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           }
         }
 
-        certificateQuery = certificateQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+        certificateQuery = certificateQuery
+          .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+          .whereNull(`${TableName.Certificate}.deletedAt`);
 
         if (options?.excludeAlerted && options?.alertId) {
           certificateQuery = certificateQuery.whereNotExists(

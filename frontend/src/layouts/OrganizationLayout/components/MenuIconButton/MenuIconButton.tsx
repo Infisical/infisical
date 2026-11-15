@@ -1,4 +1,4 @@
-import { ComponentPropsWithRef, ElementType, ReactNode, useRef } from "react";
+import { ComponentPropsWithRef, ElementType, type JSX, ReactNode, useRef } from "react";
 import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { twMerge } from "tailwind-merge";
 

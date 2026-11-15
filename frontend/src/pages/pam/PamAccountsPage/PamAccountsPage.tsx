@@ -1,10 +1,8 @@
 import { useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   ButtonGroup,
@@ -61,6 +59,7 @@ import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
+import { MY_ACCOUNTS_ACTION } from "../constants";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { AccountsBreadcrumb } from "./components/AccountsBreadcrumb";
@@ -71,13 +70,12 @@ import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
 import { JoinFolderAsAdminModal } from "./components/JoinFolderAsAdminModal";
+import { MyAccountsFolderRow } from "./components/MyAccountsFolderRow";
 import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +97,9 @@ export const PamAccountsPage = () => {
   });
   // Product admins qualify even with zero folders: the create sheet lets them add one inline.
   const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
+
+  const { data: myAccountFolders } = useListPamFolders({ filterByAction: MY_ACCOUNTS_ACTION });
+  const myAccountCount = myAccountFolders?.reduce((sum, folder) => sum + folder.accountCount, 0);
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
@@ -229,9 +230,7 @@ export const PamAccountsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Accounts" })}</title>
-      </Helmet>
+      <PageTitle title="Accounts" />
       <PageHeader
         title="Accounts"
         description="Access and manage privileged accounts."
@@ -358,18 +357,13 @@ export const PamAccountsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {!filterActive && <MyAccountsFolderRow accountCount={myAccountCount} />}
               {visibleFolders.map((folder) => (
                 <FolderAccountRows
                   key={folder.id}
                   folder={folder}
                   search={debouncedSearch}
                   accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
-                  onOpenFolderView={() =>
-                    navigate({
-                      to: "/organizations/$orgId/pam/accounts/$folderId",
-                      params: { orgId: currentOrg.id, folderId: folder.id }
-                    })
-                  }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={requestSessionAccess}

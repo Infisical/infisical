@@ -4,7 +4,7 @@ sidebarTitle: "Windows (WinRM)"
 description: "Learn how to configure a Windows (WinRM) Connection for Infisical."
 ---
 
-Infisical supports connecting to Windows hosts over WinRM to deliver certificates. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which keeps the certificate and key confidential without a server certificate. HTTPS is also supported.
+Infisical supports connecting to Windows hosts over WinRM to deliver certificates and to discover the certificates already installed on them. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which keeps the certificate and key confidential without a server certificate. HTTPS is also supported.
 
 ## Setup
 
@@ -20,7 +20,7 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
         - **Password**: The account password.
 
         <Note>
-          The account must be able to open a WinRM session and write to the destination directory used by the certificate sync. HTTP with NTLM message encryption works against the default WinRM listener with no extra setup. HTTPS additionally requires a WinRM HTTPS listener on the host.
+          The account must be able to open a WinRM session, for example as a member of the **Remote Management Users** group. A certificate sync also needs write access to its destination directory. Certificate discovery only reads the certificate stores. HTTP with NTLM message encryption works against the default WinRM listener with no extra setup. HTTPS additionally requires a WinRM HTTPS listener on the host.
         </Note>
       </Step>
       <Step title="Navigate to App Connections">
@@ -42,7 +42,7 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
         Click **Connect to Windows (WinRM)** to validate and save your connection.
       </Step>
       <Step title="Connection Created">
-        Your Windows (WinRM) Connection is now available for use with the [Windows Server Certificate Sync](/documentation/platform/pki/applications/certificate-syncs/windows-server).
+        Your Windows (WinRM) Connection is now available for use with the [Windows Server Certificate Sync](/documentation/platform/pki/applications/certificate-syncs/windows-server) and [Windows Server certificate discovery](/documentation/platform/pki/discovery/windows-server).
       </Step>
     </Steps>
   </Tab>

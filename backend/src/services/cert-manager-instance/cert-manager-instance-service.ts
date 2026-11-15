@@ -126,7 +126,12 @@ export const certManagerInstanceServiceFactory = ({
     const replica = db.replicaNode();
 
     const [certCounts, syncCounts, alertCounts] = await Promise.all([
-      replica(TableName.Certificate).whereIn("projectId", projectIds).groupBy("projectId").select("projectId").count(),
+      replica(TableName.Certificate)
+        .whereIn("projectId", projectIds)
+        .whereNull("deletedAt")
+        .groupBy("projectId")
+        .select("projectId")
+        .count(),
       replica(TableName.PkiSync).whereIn("projectId", projectIds).groupBy("projectId").select("projectId").count(),
       replica(TableName.PkiAlertsV2).whereIn("projectId", projectIds).groupBy("projectId").select("projectId").count()
     ]);

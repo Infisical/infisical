@@ -45,9 +45,23 @@ export const pkiDiscoveryInstallationDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLatestLinkByInstallationId = async (installationId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.PkiDiscoveryInstallation)
+        .where({ installationId })
+        .orderBy("lastScannedAt", "desc")
+        .first();
+
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find latest PKI discovery link by installation ID" });
+    }
+  };
+
   return {
     ...pkiDiscoveryInstallationOrm,
     findByDiscoveryId,
+    findLatestLinkByInstallationId,
     upsertLink
   };
 };

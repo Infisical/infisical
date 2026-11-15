@@ -12,9 +12,12 @@ import {
   Skeleton,
   VerificationCodeForm
 } from "@app/components/v3";
+import { getMfaStepUpChallenge, TMfaStepUpChallenge } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useEnrollMfa, useGetUserTotpRegistration } from "@app/hooks/api/users";
 import { useRegisterPasskey } from "@app/hooks/api/webauthn";
+
+import { EnrollmentStepUp } from "./EnrollmentStepUp";
 
 type Props = {
   method: MfaMethod;
@@ -30,8 +33,17 @@ const TotpVerify = ({
   variant: Props["variant"];
 }) => {
   const [hasRegistered, setHasRegistered] = useState(false);
-  const { data: registration, isPending } = useGetUserTotpRegistration({ enabled: !hasRegistered });
+  const {
+    data: registration,
+    isPending,
+    error: registrationError,
+    refetch: refetchRegistration
+  } = useGetUserTotpRegistration({ enabled: !hasRegistered });
   const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
+  const [enrollStepUpChallenge, setEnrollStepUpChallenge] = useState<TMfaStepUpChallenge | null>(
+    null
+  );
+  const stepUpChallenge = enrollStepUpChallenge ?? getMfaStepUpChallenge(registrationError);
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
   const [verificationError, setVerificationError] = useState<string>();
@@ -51,12 +63,30 @@ const TotpVerify = ({
       await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
       createNotification({ text: "Authenticator app configured", type: "success" });
       await onVerified();
-    } catch {
+    } catch (error) {
+      const challenge = getMfaStepUpChallenge(error);
+      if (challenge) {
+        setEnrollStepUpChallenge(challenge);
+        return;
+      }
       // The mutation's global error handler already surfaces the (more detailed)
       // failure toast; keep a local signal so the manual Retry action appears.
       setVerificationError("Invalid code. Please try again.");
     }
   };
+
+  if (stepUpChallenge) {
+    return (
+      <EnrollmentStepUp
+        challenge={stepUpChallenge}
+        variant={variant}
+        onVerified={async () => {
+          setEnrollStepUpChallenge(null);
+          if (registrationError) await refetchRegistration();
+        }}
+      />
+    );
+  }
 
   if (isPending) {
     return (
@@ -110,7 +140,10 @@ const WebAuthnVerify = ({
   onVerified: Props["onVerified"];
   variant: Props["variant"];
 }) => {
-  const { registerPasskey, isRegistering } = useRegisterPasskey();
+  const [stepUpChallenge, setStepUpChallenge] = useState<TMfaStepUpChallenge | null>(null);
+  const { registerPasskey, isRegistering } = useRegisterPasskey({
+    onStepUpRequired: setStepUpChallenge
+  });
   const { mutateAsync: enrollMfa } = useEnrollMfa();
   const [name, setName] = useState("");
 
@@ -126,6 +159,24 @@ const WebAuthnVerify = ({
       await onVerified();
     }
   };
+
+  // Browsers only open the passkey prompt from a user gesture, so after the step-up
+  // the user selects Register again instead of it retrying on its own.
+  if (stepUpChallenge) {
+    return (
+      <EnrollmentStepUp
+        challenge={stepUpChallenge}
+        variant={variant}
+        onVerified={() => {
+          setStepUpChallenge(null);
+          createNotification({
+            text: "Verified. Select Register passkey to continue.",
+            type: "success"
+          });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -16,6 +16,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { assertPathLengthMatchesCa } from "../certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-certificate-authority-dal";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
@@ -48,7 +49,7 @@ type TCaSigningConfigServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
     TCaAutoRenewalQueueFactory,
@@ -175,7 +176,7 @@ export const caSigningConfigServiceFactory = ({
     // one is refused. updateSigningConfig takes no type, so it cannot reach this.
     if (isExternalCa && !EXTERNAL_SIGNING_TYPES.includes(existing?.type ?? "")) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseCaIntegrations) {
+      if (!plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
         throw new BadRequestError({
           message:
             "Failed to sign this certificate authority through a third-party provider due to plan restriction. Upgrade plan to connect an external certificate authority."
@@ -551,6 +552,12 @@ export const caSigningConfigServiceFactory = ({
       throw new BadRequestError({ message: "Venafi signing config has invalid or missing destination configuration" });
     }
 
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
+
     await caAutoRenewalQueue.queueVenafiInstall(caId, maxPathLength);
 
     return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
@@ -608,6 +615,12 @@ export const caSigningConfigServiceFactory = ({
       });
     }
 
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
+
     await caAutoRenewalQueue.queueAdcsInstall(caId, maxPathLength);
 
     return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
@@ -664,6 +677,12 @@ export const caSigningConfigServiceFactory = ({
         message: "ADCS signing config has invalid or missing destination configuration"
       });
     }
+
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
 
     await caAutoRenewalQueue.queueNativeAdcsInstall(caId, maxPathLength);
 

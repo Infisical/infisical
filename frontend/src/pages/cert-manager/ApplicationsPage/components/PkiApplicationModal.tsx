@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -7,18 +7,20 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   TextArea
 } from "@app/components/v3";
@@ -28,8 +30,10 @@ import {
   useCreatePkiApplication,
   useUpdatePkiApplication
 } from "@app/hooks/api/pkiApplications";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
+import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 
@@ -57,6 +61,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
   const editing = (popUp?.application?.data as TPkiApplication | undefined) ?? null;
   const create = useCreatePkiApplication();
   const update = useUpdatePkiApplication();
+  const inputId = useId();
 
   const { data: profilesData } = useListCertificateProfiles({ limit: 100 });
 
@@ -73,13 +78,25 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    getValues,
+    setValue,
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", description: "", profileIds: [] }
   });
+  const profileCreation = useProfileCreation((profile) =>
+    setValue(
+      "profileIds",
+      [...(getValues("profileIds") ?? []), { value: profile.id, label: profile.slug }],
+      { shouldDirty: true }
+    )
+  );
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => handlePopUpToggle("application", false) });
 
   useEffect(() => {
+    if (!popUp.application.isOpen) return;
     if (editing) {
       reset({
         name: editing.name,
@@ -89,7 +106,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({ name: "", description: "", profileIds: [] });
     }
-  }, [editing, reset]);
+  }, [editing, reset, popUp.application.isOpen]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -129,97 +146,124 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Dialog
-      open={popUp?.application?.isOpen}
-      onOpenChange={(isOpen) => handlePopUpToggle("application", isOpen)}
-    >
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit Application" : "Create Application"}</DialogTitle>
-          <DialogDescription>
-            {editing
-              ? "Update this Application's name and description."
-              : "A logical grouping for a service or workload that needs certificates."}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={popUp?.application?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (isOpen) handlePopUpToggle("application", true);
+          else requestDiscard();
+        }}
+      >
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Application" : "Create Application"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update this Application's name and description."
+                : "A logical grouping for a service or workload that needs certificates."}
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    placeholder="my-service"
-                    autoComplete="off"
-                    name="pki-application-name"
+          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col gap-6">
+            <DialogBody>
+              <fieldset disabled={isSubmitting} className="flex min-w-0 flex-col gap-4">
+                <Controller
+                  control={control}
+                  name="name"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor={`${inputId}-name`}>Name</FieldLabel>
+                      <FieldContent>
+                        <Input
+                          {...field}
+                          id={`${inputId}-name`}
+                          isError={Boolean(error)}
+                          placeholder="my-service"
+                          autoComplete="off"
+                          name="pki-application-name"
+                        />
+                      </FieldContent>
+                      {error ? <FieldError>{error.message}</FieldError> : null}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="description"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor={`${inputId}-description`}>Description</FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          {...field}
+                          id={`${inputId}-description`}
+                          isError={Boolean(error)}
+                          placeholder="Issues and rotates certificates for my application stack."
+                        />
+                      </FieldContent>
+                      {error ? <FieldError>{error.message}</FieldError> : null}
+                    </Field>
+                  )}
+                />
+                {!editing ? (
+                  <Controller
+                    control={control}
+                    name="profileIds"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor={`${inputId}-profiles`}>
+                          Certificate Profiles
+                        </FieldLabel>
+                        <FieldContent>
+                          <Combobox
+                            ref={field.ref}
+                            id={`${inputId}-profiles`}
+                            multiple
+                            onBlur={field.onBlur}
+                            isError={Boolean(error)}
+                            value={field.value ?? []}
+                            onValueChange={field.onChange}
+                            getOptionValue={(option) => option.value}
+                            getOptionLabel={(option) => option.label}
+                            options={profileOptions}
+                            creation={profileCreation}
+                            placeholder="Select profiles to attach..."
+                          />
+                        </FieldContent>
+                        <FieldDescription>
+                          Select the profiles this application can issue certificates from. You can
+                          also attach them later from the application&apos;s settings.
+                        </FieldDescription>
+                        {error ? <FieldError>{error.message}</FieldError> : null}
+                      </Field>
+                    )}
                   />
-                </FieldContent>
-                {error ? <FieldError>{error.message}</FieldError> : null}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Description</FieldLabel>
-                <FieldContent>
-                  <TextArea
-                    {...field}
-                    placeholder="Issues and rotates certificates for my application stack."
-                  />
-                </FieldContent>
-                {error ? <FieldError>{error.message}</FieldError> : null}
-              </Field>
-            )}
-          />
-          {!editing && profileOptions.length > 0 ? (
-            <Controller
-              control={control}
-              name="profileIds"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel>Certificate Profiles</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      isMulti
-                      value={field.value ?? []}
-                      onChange={(val) =>
-                        field.onChange((val ?? []) as { value: string; label: string }[])
-                      }
-                      options={profileOptions}
-                      placeholder="Select profiles to attach..."
-                    />
-                  </FieldContent>
-                  <FieldDescription>
-                    Select the profiles this application can issue certificates from. You can also
-                    attach them later from the application&apos;s settings.
-                  </FieldDescription>
-                  {error ? <FieldError>{error.message}</FieldError> : null}
-                </Field>
-              )}
-            />
-          ) : null}
-
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => handlePopUpToggle("application", false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="project" isPending={isSubmitting}>
-              {editing ? "Save Changes" : "Create Application"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+                ) : null}
+              </fieldset>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                isDisabled={isSubmitting}
+                onClick={requestDiscard}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="project" isPending={isSubmitting}>
+                {editing ? "Save Changes" : "Create Application"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Application Changes?"
+        description="Your unsaved application settings will be lost."
+      />
+    </>
   );
 };

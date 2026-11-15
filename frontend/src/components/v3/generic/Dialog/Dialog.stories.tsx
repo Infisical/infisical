@@ -282,6 +282,54 @@ export const AlternativeScroll: Story = {
   )
 };
 
+export const FormWithExternalFooter: Story = {
+  name: "Example: Form With Footer Outside",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Prefer this shape for small Dialog forms (1 to 2 fields) whose content can still grow, such as an expandable advanced section. Multi-field or scrollable forms belong in a Sheet. The `<form>` wraps only the fields, `DialogFooter` stays a direct child of `DialogContent`, and the submit button points at the form with the `form` attribute. The dialog scrolls as one flow and the sticky footer stays at the bottom with content passing flush beneath it, so no scroll or position overrides are needed. Wrapping the footer inside the form still works for short, static content."
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Create Project</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Project</DialogTitle>
+          <DialogDescription>Name the project and review its settings.</DialogDescription>
+        </DialogHeader>
+        <form
+          id="dialog-external-footer-form"
+          className="flex flex-col gap-4"
+          onSubmit={(e) => e.preventDefault()}
+        >
+          {Array.from({ length: 2 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={i} className="flex flex-col gap-2">
+              <Label htmlFor={`dialog-external-field-${i}`}>Field {i + 1}</Label>
+              <Input id={`dialog-external-field-${i}`} />
+            </div>
+          ))}
+        </form>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button type="submit" form="dialog-external-footer-form">
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};
+
 const ROLES = [
   { slug: "admin", name: "Admin" },
   { slug: "member", name: "Member" },

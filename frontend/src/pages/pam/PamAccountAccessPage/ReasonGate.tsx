@@ -14,6 +14,7 @@ import {
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 type TAccessPolicy = {
   requireReason: boolean;
@@ -75,7 +76,6 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         response?: {
           data?: {
             error?: string;
-            message?: string;
             details?: { mfaSessionId?: string; mfaMethod?: string };
           };
         };
@@ -89,9 +89,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         }
       }
 
-      setErrorMessage(
-        axiosErr?.response?.data?.message ?? "Failed to access account. Please try again."
-      );
+      setErrorMessage(getAccessErrorMessage(err, "Failed to access account. Please try again."));
       setStep("error");
     }
   }, [reason, policy.requireMfa, account.id]);
@@ -218,7 +216,11 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <TextArea
-            placeholder="Optional, e.g. Running migration for release 2.4"
+            placeholder={
+              policy.requireReason
+                ? "e.g. Running migration for release 2.4"
+                : "Optional, e.g. Running migration for release 2.4"
+            }
             rows={3}
             maxLength={1000}
             value={reason}

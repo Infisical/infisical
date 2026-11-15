@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -48,6 +47,7 @@ import {
   OrgIcon,
   Pagination,
   ProjectIcon,
+  RowLink,
   Skeleton,
   Spinner,
   SubOrgIcon,
@@ -68,14 +68,19 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { withProjectPermission } from "@app/hoc";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { usePagination, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import {
   IdentityAuthMethod,
   identityAuthToNameMap,
@@ -96,8 +101,8 @@ import { CreateProjectIdentitySheet } from "./components/CreateProjectIdentity/C
 
 export const IdentityTab = withProjectPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { currentProject, projectId } = useProject();
-    const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
     const productLabel = getProjectLabel(currentProject?.type);
     const projectsHidden = hidesProjects(currentProject?.type);
@@ -230,7 +235,7 @@ export const IdentityTab = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => handlePopUpOpen("createIdentity")}
                     isDisabled={!isAllowed}
                   >
@@ -264,7 +269,7 @@ export const IdentityTab = withProjectPermission(
                   <DropdownMenuTrigger asChild>
                     <IconButton
                       aria-label="Filter machine identities"
-                      variant={isTableFiltered ? "project" : "outline"}
+                      variant={isTableFiltered ? scopeVariant : "outline"}
                     >
                       <FilterIcon />
                     </IconButton>
@@ -377,37 +382,26 @@ export const IdentityTab = withProjectPermission(
                             roles
                           } = identityMember;
                           return (
-                            <TableRow
-                              className="group cursor-pointer"
-                              key={`st-v3-${id}`}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(evt) => {
-                                if (evt.target !== evt.currentTarget) return;
-                                if (evt.key === "Enter" || evt.key === " ") {
-                                  evt.preventDefault();
-                                  navigate({
-                                    to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
-                                    params: {
-                                      orgId: currentOrg.id,
-                                      projectId: currentProject.id,
-                                      identityId: id
-                                    }
-                                  });
-                                }
-                              }}
-                              onClick={() =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
-                                  params: {
-                                    orgId: currentOrg.id,
-                                    projectId: currentProject.id,
-                                    identityId: id
-                                  }
-                                })
-                              }
-                            >
-                              <TableCell isTruncatable>{name}</TableCell>
+                            <TableRow linked key={`st-v3-${id}`}>
+                              <TableCell isTruncatable>
+                                <RowLink
+                                  {...(getInstancePinningLink(
+                                    currentOrg.id,
+                                    currentProject,
+                                    `identities/${id}`
+                                  ) ??
+                                    ({
+                                      to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId`,
+                                      params: {
+                                        orgId: currentOrg.id,
+                                        projectId: currentProject.id,
+                                        identityId: id
+                                      }
+                                    } as const))}
+                                >
+                                  {name}
+                                </RowLink>
+                              </TableCell>
                               <TableCell>
                                 <IdentityRoleBadges roles={roles} />
                               </TableCell>
@@ -416,7 +410,7 @@ export const IdentityTab = withProjectPermission(
                                   variant={
                                     // eslint-disable-next-line no-nested-ternary
                                     identityProjectId
-                                      ? "project"
+                                      ? scopeVariant
                                       : isSubOrganization && currentOrg.id === identityOrgId
                                         ? "sub-org"
                                         : "org"
@@ -441,7 +435,7 @@ export const IdentityTab = withProjectPermission(
                                   )}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell data-row-interactive>
                                 <div className="flex items-center justify-end gap-2">
                                   {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
                                     <Tooltip>

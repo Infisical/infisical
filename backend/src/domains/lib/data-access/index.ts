@@ -1,0 +1,1 @@
+export { toCount } from "./count";

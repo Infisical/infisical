@@ -12,11 +12,7 @@ import {
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-[calc(100%-2rem)] max-w-lg";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
-  Boolean(
-    (target as HTMLElement)?.closest?.(
-      "[data-sonner-toast], [data-slot='combobox-portal'], .react-select-menu-portal"
-    )
-  );
+  Boolean((target as HTMLElement)?.closest?.("[data-sonner-toast], [data-slot='combobox-portal']"));
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;

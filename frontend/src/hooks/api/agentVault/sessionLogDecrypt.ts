@@ -65,7 +65,41 @@ const SessionLogRecordsSchema = z.array(
     status: z.number().int(),
     decision: z.string(),
     service: z.string().nullable(),
-    accessBundle: z.string().nullable()
+    accessBundle: z.string().nullable(),
+    serviceType: z.string().nullish(),
+    // A malformed detail drops only the detail. Failing the parse would hide the whole chunk.
+    mcp: z
+      .object({
+        calls: z.array(z.object({ method: z.string(), tool: z.string().nullish() })),
+        parsed: z.boolean(),
+        truncated: z.boolean().optional()
+      })
+      .optional()
+      .catch(undefined),
+    native: z
+      .object({
+        statement: z.string().optional(),
+        command: z.string().optional(),
+        stdin: z.string().optional(),
+        file: z.string().optional(),
+        result: z.string().optional(),
+        output: z.string().optional(),
+        shell: z.boolean().optional(),
+        note: z.string().optional(),
+        truncated: z.boolean().optional()
+      })
+      .optional()
+      .catch(undefined),
+    hook: z
+      .object({
+        decision: z.string(),
+        reason: z.string().optional(),
+        cause: z.string().optional(),
+        durationMs: z.number().optional(),
+        deliveryId: z.string().optional()
+      })
+      .optional()
+      .catch(undefined)
   })
 );
 

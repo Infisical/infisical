@@ -1,0 +1,141 @@
+import { z } from "zod";
+
+import { AgentVaultOauthRegistration } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
+import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AGENT_VAULT } from "@app/lib/api-docs";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  AgentVaultOauthClientIdSchema,
+  AgentVaultOauthClientSecretSchema,
+  AgentVaultProjectIdSchema,
+  AgentVaultServerUrlSchema
+} from "./agent-vault-schemas";
+
+const AuthorizationViewSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+  status: z.nativeEnum(AgentVaultOauthAuthorizationStatus).describe(AGENT_VAULT.OAUTH.status),
+  error: z.string().nullable().describe(AGENT_VAULT.OAUTH.error),
+  scopes: z.string().array().describe(AGENT_VAULT.OAUTH.scopes)
+});
+
+// JWT only: an authorization ends in a browser redirect, so only a signed-in user can start or finish one.
+export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/authorizations",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "createAgentVaultOauthAuthorization",
+      description:
+        "Start an OAuth authorization for an MCP service: discovers the server's authorization server, registers a client, and returns the URL to sign in at.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      body: z.object({
+        projectId: AgentVaultProjectIdSchema,
+        serverUrl: AgentVaultServerUrlSchema.describe(AGENT_VAULT.OAUTH.serverUrl),
+        serviceId: z.string().uuid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
+        clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.OAUTH.clientId),
+        clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.OAUTH.clientSecret),
+        registration: z
+          .literal(AgentVaultOauthRegistration.Dynamic)
+          .optional()
+          .describe(AGENT_VAULT.OAUTH.registration),
+        personal: z.boolean().optional().describe(AGENT_VAULT.OAUTH.personal)
+      }),
+      response: {
+        200: z.object({
+          registrationRequired: z.boolean().describe(AGENT_VAULT.OAUTH.registrationRequired),
+          oauthAdvertised: z.boolean().describe(AGENT_VAULT.OAUTH.oauthAdvertised),
+          redirectUri: z.string().describe(AGENT_VAULT.OAUTH.redirectUri),
+          authorization: z
+            .object({
+              id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+              authorizeUrl: z.string().describe(AGENT_VAULT.OAUTH.authorizeUrl)
+            })
+            .nullable()
+            .describe(AGENT_VAULT.OAUTH.authorization)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
+      return server.services.agentVaultOauth.createAuthorization({
+        ...body,
+        projectId,
+        ctx: actorContext(req)
+      });
+    }
+  });
+
+  // An action sub-resource rather than a PATCH of the status: completing exchanges a one-time code with a third
+  // party, and the callback page only knows what the redirect carried.
+  server.route({
+    method: "POST",
+    url: "/authorizations/:authorizationId/complete",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "completeAgentVaultOauthAuthorization",
+      description:
+        "Finish an OAuth authorization with what the authorization server's redirect carried. An exchange failure returns 200 with status `failed`, so the callback page can show why.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({ authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
+      body: z.object({
+        state: z.string().min(1).max(256).describe(AGENT_VAULT.OAUTH.state),
+        code: z.string().min(1).max(4096).optional().describe(AGENT_VAULT.OAUTH.code),
+        iss: z.string().max(2048).optional().describe(AGENT_VAULT.OAUTH.iss),
+        // Provider text, accepted as sent so a long or multi-line reason still fails the authorization; the
+        // service normalizes it before storing it.
+        error: z.string().max(1024).optional().describe(AGENT_VAULT.OAUTH.callbackError),
+        errorDescription: z.string().max(4096).optional().describe(AGENT_VAULT.OAUTH.callbackErrorDescription)
+      }),
+      response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        actorContext(req),
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.completeAuthorization({
+        projectId,
+        ctx: actorContext(req),
+        authorizationId: req.params.authorizationId,
+        ...req.body
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/authorizations/:authorizationId",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getAgentVaultOauthAuthorization",
+      description: "Get an OAuth authorization's status. Tokens are never returned.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({ authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
+      response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        actorContext(req),
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.getAuthorization({
+        projectId,
+        ctx: actorContext(req),
+        authorizationId: req.params.authorizationId
+      });
+    }
+  });
+};

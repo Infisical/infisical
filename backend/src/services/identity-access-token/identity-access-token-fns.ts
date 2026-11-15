@@ -1,3 +1,8 @@
+import { IncomingHttpHeaders } from "node:http";
+
+import jwt from "jsonwebtoken";
+
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -6,6 +11,8 @@ import { TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
 import {
+  CERTIFICATE_THUMBPRINT_CLAIM,
+  TCertificateConfirmation,
   TComputeIssuedTtlInput,
   TCoreTokenClaims,
   TIdentityAccessTokenJwtPayload,
@@ -147,6 +154,53 @@ export const computeIssuedTtl = ({
 // small clock differences between servers and a slightly stale database replica
 // so a revoked token can't slip through by dropping the record too early.
 export const IDENTITY_REVOCATION_MARKER_SKEW_SECONDS = 300;
+
+// For a JWT that was verified earlier in the request and has expired since. Throws the same error
+// jwt.verify throws, so the caller gets the response any other expired token gets.
+export const assertJwtNotExpired = ({
+  exp,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  exp?: number;
+  nowSeconds?: number;
+}): void => {
+  if (typeof exp === "number" && nowSeconds >= exp) {
+    throw new jwt.TokenExpiredError("jwt expired", new Date(exp * 1000));
+  }
+};
+
+// The uses-remaining counter is read after the JWT is verified, so it has to outlive the JWT by
+// enough to cover a request in flight. A counter that vanishes mid-request reads as lost, and a lost
+// counter is reseeded with a fresh budget.
+export const computeUsesRemainingTtl = (jwtTtlSeconds: number): number =>
+  jwtTtlSeconds + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS;
+
+// A reseed rebuilds the one counter that every JWT for the token id shares (renewal keeps the id), so
+// it has to last until the latest of them could still be presented, not just the one in hand:
+//   - the presented JWT authenticates until its exp, or, for a legacy JWT with no exp, until the end of
+//     the legacy window (legacyEnforcedAt + ceiling). maxTTL does not bound that legacy window, it only
+//     bounds renewal.
+//   - a renewed JWT never outlives creationEpoch + maxTTL when there is one.
+//   - nothing outlives now + ceiling, since every JWT is issued no later than now with at most the ceiling.
+export const computeReseededUsesRemainingTtl = ({
+  exp,
+  accessTokenMaxTTL,
+  creationEpoch,
+  legacyEnforcedAt,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  exp?: number;
+  accessTokenMaxTTL: number;
+  creationEpoch: number;
+  legacyEnforcedAt: Date;
+  nowSeconds?: number;
+}): number => {
+  const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
+  const presentedJwtDeadline = typeof exp === "number" ? exp : Math.floor(legacyEnforcedAt.getTime() / 1000) + ceiling;
+  const renewedJwtDeadline = accessTokenMaxTTL > 0 ? creationEpoch + accessTokenMaxTTL : nowSeconds + ceiling;
+  const latest = Math.min(Math.max(presentedJwtDeadline, renewedJwtDeadline) - nowSeconds, ceiling);
+  return computeUsesRemainingTtl(Math.max(latest, 1));
+};
 
 // Longest lifetime (seconds) a single token can be handed out with the
 // requested lifetime, but never above the configured maximum. Periodic tokens
@@ -355,10 +409,64 @@ export const signIdentityAccessToken = (input: TSignIdentityAccessTokenInput): T
     payload.numUsesLimit = input.numUsesLimit;
   }
 
+  if (input.cnf) {
+    payload.cnf = input.cnf;
+  }
+
   const accessToken = crypto.jwt().sign(payload, appCfg.AUTH_SECRET, {
     jwtid: jti,
     expiresIn: input.ttlSeconds
   });
 
   return { accessToken, jti, expiresIn: input.ttlSeconds };
+};
+
+export const computeCertificateThumbprint = (certificateDer: Buffer): string =>
+  crypto.nativeCrypto.createHash("sha256").update(certificateDer).digest("base64url");
+
+const parsePresentedLeafCertificate = (clientCertificate: string): Buffer | null => {
+  try {
+    const [leaf] = extractX509CertFromChain(decodeURIComponent(clientCertificate));
+    return new crypto.nativeCrypto.X509Certificate(leaf).raw;
+  } catch {
+    return null;
+  }
+};
+
+export const assertCertificateBinding = ({
+  cnf,
+  clientCertificate,
+  messagePrefix
+}: {
+  cnf?: TCertificateConfirmation;
+  clientCertificate?: string;
+  messagePrefix: "Failed to authorize" | "Cannot renew";
+}) => {
+  if (!cnf) return;
+
+  if (!clientCertificate) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: access token is bound to a client certificate, but no client certificate was presented. Send every request through the TLS-terminating proxy with the same client certificate used to log in`
+    });
+  }
+
+  const leafDer = parsePresentedLeafCertificate(clientCertificate);
+  if (!leafDer) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: the client certificate header could not be read. The TLS-terminating proxy must forward the URL-encoded certificate chain`
+    });
+  }
+
+  const presented = Buffer.from(computeCertificateThumbprint(leafDer));
+  const expected = Buffer.from(cnf[CERTIFICATE_THUMBPRINT_CLAIM] ?? "");
+  if (presented.length !== expected.length || !crypto.nativeCrypto.timingSafeEqual(presented, expected)) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: the presented client certificate does not match the certificate the access token is bound to`
+    });
+  }
+};
+
+export const readClientCertificateHeader = (headers: IncomingHttpHeaders): string | undefined => {
+  const value = headers[getConfig().IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
+  return typeof value === "string" ? value : undefined;
 };

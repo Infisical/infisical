@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -120,7 +119,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
     secretEvents.includes(eventType)
   );
   const showSecretsSection =
-    !(selectedProject?.type && isOrgScopedProduct(selectedProject.type)) &&
+    !(
+      selectedProject?.type &&
+      (isOrgScopedProduct(selectedProject.type) || selectedProject.type === ProjectType.AgentVault)
+    ) &&
     (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
 
   const filteredEventTypes = useMemo(() => {

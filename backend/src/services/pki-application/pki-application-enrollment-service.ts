@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -23,6 +23,7 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -37,7 +38,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -111,13 +111,13 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  hsmConnectorService: THsmConnectorServiceFactory;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   kmsService: Pick<
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -142,7 +142,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
-  hsmConnectorService,
+  caKeySourceService,
   kmsService,
   projectDAL,
   permissionService
@@ -406,7 +406,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
     // an admin can act on it instead of surfacing as a device that silently fails to enroll.
     const estPlan = await licenseService.getPlan(actorOrgId);
-    if (!estPlan.pkiEst) {
+    if (!estPlan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
       });
@@ -684,7 +684,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
 
     const scepPlan = await licenseService.getPlan(actorOrgId);
-    if (!scepPlan.pkiScep) {
+    if (!scepPlan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."
       });
@@ -804,7 +804,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           certificateAuthorityCertDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService
+          caKeySourceService
         }
       });
     }

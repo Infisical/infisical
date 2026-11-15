@@ -12,7 +12,7 @@ import (
 // file; it is harvestable from `go test -json` into the generated spec document; and
 // it sits at the top of the test, so it still serves a reader of the code.
 //
-// Most tests should not have one. The bar is the same one CLAUDE.md sets for
+// Most tests should not have one. The bar is the same one AGENTS.md sets for
 // comments: it earns its place only by explaining why. A non-obvious constraint, a
 // past incident, a spec the behaviour has to match, or logic that looks wrong until
 // you know the reason. If the majority of your subtests need one, the names are

@@ -16,8 +16,8 @@ import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@a
 import { withPermission } from "@app/hoc";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 
-import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
 import { AddAuditLogStreamModal, AuditLogStreamAlertAction } from "./components";
+import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
 
 export const AuditLogStreamsTab = withPermission(
   () => {

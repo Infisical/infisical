@@ -38,10 +38,10 @@ import {
 import { useProject } from "@app/context";
 import { ProjectType, TPermissionAuditSource } from "@app/hooks/api/projects/types";
 
+import { buildAuditCsv, buildAuditCsvFilename, downloadCsv } from "./permission-audit-export";
 import { getAuditSubjects } from "./permission-audit.config";
 import { AuditState, ResourceAudit } from "./permission-audit.types";
 import { evaluateAllResources, resolveSources } from "./permission-audit.utils";
-import { buildAuditCsv, buildAuditCsvFilename, downloadCsv } from "./permission-audit-export";
 import { PermissionAuditSection } from "./PermissionAuditSection";
 
 export type PermissionAuditTargetType = "user" | "identity";

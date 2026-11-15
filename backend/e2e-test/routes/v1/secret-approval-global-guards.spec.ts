@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import {
+  createSecretChangePolicy,
+  seedLegacySecretApprovalPolicy,
+  updateSecretChangePolicy
+} from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
@@ -42,49 +46,17 @@ const createProjectUser = async (label: string) => {
   return { userId, username };
 };
 
-const createProjectGroup = async (label: string) => {
-  const slug = `${label}-${crypto.randomUUID().slice(0, 8)}`;
-  const [group] = await getDb()(TableName.Groups).insert({ orgId, name: slug, slug }).returning("id");
-  const groupId = (group as { id: string }).id;
-  await insertMembership({ scope: AccessScope.Organization, actorGroupId: groupId }, OrgMembershipRole.NoAccess);
-  await insertMembership(
-    { scope: AccessScope.Project, scopeProjectId: projectId, actorGroupId: groupId },
-    ProjectMembershipRole.Member
-  );
-  return groupId;
-};
-
 const createGlobalPolicy = async (name: string, secretPath: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: "/api/v2/secret-approvals",
-    headers: authHeaders(),
-    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name }
+  const { id: policyId } = await createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name },
+    authToken: jwtAuthToken
   });
-  expect(res.statusCode).toBe(200);
-  const policyId = (res.json() as { approval: { id: string } }).approval.id;
   expect(await getDb()(TableName.ApprovalPolicies).where({ id: policyId }).first()).toBeDefined();
   return policyId;
 };
 
-const replaceGlobalPolicyApprover = async (policyId: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "PATCH",
-    url: `/api/v2/secret-approvals/${policyId}`,
-    headers: authHeaders(),
-    body: { approvers: [approver], approvals: 1 }
-  });
-  expect(res.statusCode).toBe(200);
-};
-
-const deleteGlobalPolicy = async (policyId: string) => {
-  const res = await testServer.inject({
-    method: "DELETE",
-    url: `/api/v2/secret-approvals/${policyId}`,
-    headers: authHeaders()
-  });
-  expect(res.statusCode).toBe(200);
-};
+const replaceGlobalPolicyApprover = (policyId: string, approver: { type: ApproverType; id: string }) =>
+  updateSecretChangePolicy({ policyId, body: { approvers: [approver], approvals: 1 }, authToken: jwtAuthToken });
 
 const removeProjectUser = (username: string) =>
   testServer.inject({
@@ -94,13 +66,6 @@ const removeProjectUser = (username: string) =>
     body: { usernames: [username] }
   });
 
-const removeProjectGroup = (groupId: string) =>
-  testServer.inject({
-    method: "DELETE",
-    url: `/api/v1/projects/${projectId}/memberships/groups/${groupId}`,
-    headers: authHeaders()
-  });
-
 const deleteFolderRequest = (folderId: string, secretPath: string) =>
   testServer.inject({
     method: "DELETE",
@@ -108,68 +73,6 @@ const deleteFolderRequest = (folderId: string, secretPath: string) =>
     headers: authHeaders(),
     body: { workspaceId: projectId, environment: envSlug, path: secretPath, forceDelete: true }
   });
-
-const seedOpenSecretChangeRequest = async (folderId: string) => {
-  const [request] = await getDb()(TableName.ApprovalRequests)
-    .insert({
-      projectId,
-      organizationId: orgId,
-      policyId: null,
-      requesterId: seedData1.id,
-      requesterName: "test",
-      requesterEmail: seedData1.email,
-      type: ApprovalPolicyType.SecretChange,
-      status: "open",
-      currentStep: 0,
-      requestData: JSON.stringify({})
-    })
-    .returning("id");
-  const approvalRequestId = (request as { id: string }).id;
-  await getDb()(TableName.SecretChangeRequests).insert({
-    approvalRequestId,
-    folderId,
-    slug: `guard-${crypto.randomUUID().slice(0, 8)}`
-  });
-  return approvalRequestId;
-};
-
-const seedOpenRequestWithApprover = async (folderId: string, approver: { userId?: string; groupId?: string }) => {
-  const slug = `guard-${crypto.randomUUID().slice(0, 8)}`;
-  const [request] = await getDb()(TableName.ApprovalRequests)
-    .insert({
-      projectId,
-      organizationId: orgId,
-      policyId: null,
-      requesterId: seedData1.id,
-      requesterName: "test",
-      requesterEmail: seedData1.email,
-      type: ApprovalPolicyType.SecretChange,
-      status: "open",
-      currentStep: 1,
-      requestData: JSON.stringify({})
-    })
-    .returning("id");
-  const approvalRequestId = (request as { id: string }).id;
-  const [step] = await getDb()(TableName.ApprovalRequestSteps)
-    .insert({
-      requestId: approvalRequestId,
-      stepNumber: 1,
-      status: "in-progress",
-      requiredApprovals: 1
-    })
-    .returning("id");
-  await getDb()(TableName.ApprovalRequestStepEligibleApprovers).insert({
-    stepId: (step as { id: string }).id,
-    userId: approver.userId ?? null,
-    groupId: approver.groupId ?? null
-  });
-  await getDb()(TableName.SecretChangeRequests).insert({
-    approvalRequestId,
-    folderId,
-    slug
-  });
-  return { approvalRequestId, slug };
-};
 
 const seedOpenLegacyRequest = async (folderId: string, policyId: string) => {
   const [request] = await getDb()(TableName.SecretApprovalRequest)
@@ -226,146 +129,69 @@ describe("Global approval system guards outside the approval routes", () => {
     await db(TableName.Users).whereIn("id", userIds).del();
   });
 
-  test("a user who approves a global policy cannot be removed from the project until the policy is gone", async () => {
-    const { userId, username } = await createProjectUser("global-approver");
+  test("a user who approves a migrated policy's legacy twin is removable once the global policy drops them", async () => {
+    const { userId, username } = await createProjectUser("migrated-approver");
     userIds.push(userId);
-    const policyId = await createGlobalPolicy("global-user-guard", "/global-user-guard", {
+    const policyId = await createGlobalPolicy("migrated-user-guard", "/migrated-user-guard", {
       type: ApproverType.User,
       id: userId
     });
     policyIds.push(policyId);
+    await seedLegacySecretApprovalPolicy(getDb(), {
+      id: policyId,
+      projectId,
+      environment: envSlug,
+      secretPath: "/migrated-user-guard",
+      name: "migrated-user-guard",
+      approverUserId: userId
+    });
+    legacyPolicyIds.push(policyId);
 
     const blocked = await removeProjectUser(username);
     expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(
-      "Cannot remove user from project: user is an approver in secret approval policy: global-user-guard"
-    );
 
-    await deleteGlobalPolicy(policyId);
+    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
 
     const removed = await removeProjectUser(username);
     expect(removed.statusCode).toBe(200);
   });
 
-  test("a group that approves a global policy cannot be removed from the project until the policy is gone", async () => {
-    const groupId = await createProjectGroup("global-approver-group");
-    groupIds.push(groupId);
-    const policyId = await createGlobalPolicy("global-group-guard", "/global-group-guard", {
-      type: ApproverType.Group,
-      id: groupId
-    });
-    policyIds.push(policyId);
-
-    const blocked = await removeProjectGroup(groupId);
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(
-      "Cannot remove group from project: group is an approver in secret approval policy: global-group-guard"
-    );
-
-    await deleteGlobalPolicy(policyId);
-
-    const removed = await removeProjectGroup(groupId);
-    expect(removed.statusCode).toBe(200);
-  });
-
-  test("a user saved on an open request cannot be removed after the policy approver changes", async () => {
-    const { userId, username } = await createProjectUser("open-request-approver");
-    userIds.push(userId);
-    const folderName = `open-request-user-${crypto.randomUUID().slice(0, 8)}`;
-    const folder = await createFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: "/",
-      name: folderName,
-      authToken: jwtAuthToken
-    });
-    const policyId = await createGlobalPolicy("open-request-user-guard", `/${folderName}`, {
-      type: ApproverType.User,
-      id: userId
-    });
-    policyIds.push(policyId);
-    const { approvalRequestId, slug } = await seedOpenRequestWithApprover(folder.id, { userId });
-    requestIds.push(approvalRequestId);
-
-    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
-
-    const blocked = await removeProjectUser(username);
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(
-      `Cannot remove user from project: user is an approver on open secret approval request: ${slug}`
-    );
-
-    await getDb()(TableName.ApprovalRequests).where({ id: approvalRequestId }).update({ status: "close" });
-
-    const removed = await removeProjectUser(username);
-    expect(removed.statusCode).toBe(200);
-
-    await deleteFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: "/",
-      id: folder.id,
-      authToken: jwtAuthToken
-    });
-  });
-
-  test("a group saved on an open request cannot be removed after the policy approver changes", async () => {
-    const groupId = await createProjectGroup("open-request-approver-group");
-    groupIds.push(groupId);
-    const folderName = `open-request-group-${crypto.randomUUID().slice(0, 8)}`;
-    const folder = await createFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: "/",
-      name: folderName,
-      authToken: jwtAuthToken
-    });
-    const policyId = await createGlobalPolicy("open-request-group-guard", `/${folderName}`, {
-      type: ApproverType.Group,
-      id: groupId
-    });
-    policyIds.push(policyId);
-    const { approvalRequestId, slug } = await seedOpenRequestWithApprover(folder.id, { groupId });
-    requestIds.push(approvalRequestId);
-
-    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
-
-    const blocked = await removeProjectGroup(groupId);
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(
-      `Cannot remove group from project: group is an approver on open secret approval request: ${slug}`
-    );
-
-    await getDb()(TableName.ApprovalRequests).where({ id: approvalRequestId }).update({ status: "close" });
-
-    const removed = await removeProjectGroup(groupId);
-    expect(removed.statusCode).toBe(200);
-
-    await deleteFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: "/",
-      id: folder.id,
-      authToken: jwtAuthToken
-    });
-  });
-
-  test("a folder with an open global change request cannot be deleted, directly or through its parent", async () => {
+  test("a folder whose open legacy request was migrated is deletable once the global copy closes", async () => {
     const { parentName, parent, child } = await createFolderTree();
-    const requestId = await seedOpenSecretChangeRequest(child.id);
+    const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
+      projectId,
+      environment: envSlug,
+      secretPath: `/${parentName}/child`,
+      name: "migrated-folder-guard",
+      approverUserId: seedData1.id
+    });
+    legacyPolicyIds.push(legacyPolicy.id);
+    const requestId = await seedOpenLegacyRequest(child.id, legacyPolicy.id);
+    legacyRequestIds.push(requestId);
+    const globalTwin = {
+      id: requestId,
+      projectId,
+      organizationId: orgId,
+      policyId: null,
+      requesterId: seedData1.id,
+      requesterName: "test",
+      requesterEmail: seedData1.email,
+      type: ApprovalPolicyType.SecretChange,
+      status: "open",
+      currentStep: 1,
+      requestData: JSON.stringify({})
+    };
+    await getDb()(TableName.ApprovalRequests).insert(globalTwin);
+    await getDb()(TableName.SecretChangeRequests).insert({
+      approvalRequestId: requestId,
+      folderId: child.id,
+      slug: `guard-${crypto.randomUUID().slice(0, 8)}`
+    });
     requestIds.push(requestId);
 
-    const expectedMessage = openRequestMessage(`/${parentName}/child`);
-
-    const childBlocked = await deleteFolderRequest(child.id, `/${parentName}`);
-    expect(childBlocked.statusCode).toBe(400);
-    expect(childBlocked.json().message).toBe(expectedMessage);
-
-    const parentBlocked = await deleteFolderRequest(parent.id, "/");
-    expect(parentBlocked.statusCode).toBe(400);
-    expect(parentBlocked.json().message).toBe(expectedMessage);
-
-    expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeDefined();
+    const blocked = await deleteFolderRequest(parent.id, "/");
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().message).toBe(openRequestMessage(`/${parentName}/child`));
 
     await getDb()(TableName.ApprovalRequests).where({ id: requestId }).update({ status: "close" });
 
@@ -380,7 +206,7 @@ describe("Global approval system guards outside the approval routes", () => {
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
   });
 
-  test("a folder with an open legacy change request cannot be deleted until the request is closed", async () => {
+  test("a folder with an open request that only exists in the legacy tables is deletable", async () => {
     const { parentName, parent, child } = await createFolderTree();
     const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
       projectId,
@@ -390,14 +216,7 @@ describe("Global approval system guards outside the approval routes", () => {
       approverUserId: seedData1.id
     });
     legacyPolicyIds.push(legacyPolicy.id);
-    const legacyRequestId = await seedOpenLegacyRequest(child.id, legacyPolicy.id);
-    legacyRequestIds.push(legacyRequestId);
-
-    const blocked = await deleteFolderRequest(parent.id, "/");
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(openRequestMessage(`/${parentName}/child`));
-
-    await getDb()(TableName.SecretApprovalRequest).where({ id: legacyRequestId }).update({ status: "close" });
+    legacyRequestIds.push(await seedOpenLegacyRequest(child.id, legacyPolicy.id));
 
     await deleteFolder({
       workspaceId: projectId,
@@ -408,5 +227,21 @@ describe("Global approval system guards outside the approval routes", () => {
       forceDelete: true
     });
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
+  });
+
+  test("a user who only approves a policy in the legacy tables is removable", async () => {
+    const { userId, username } = await createProjectUser("legacy-approver");
+    userIds.push(userId);
+    const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
+      projectId,
+      environment: envSlug,
+      secretPath: "/legacy-user-guard",
+      name: "legacy-user-guard",
+      approverUserId: userId
+    });
+    legacyPolicyIds.push(legacyPolicy.id);
+
+    const removed = await removeProjectUser(username);
+    expect(removed.statusCode).toBe(200);
   });
 });

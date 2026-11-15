@@ -1,8 +1,7 @@
 import { useMemo } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -16,7 +15,6 @@ import type { FilterRule } from "../CertificatesPage/components/inventory-types"
 import { CertificatesTab } from "../PoliciesPage/components/CertificatesTab";
 
 export const InventoryPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const searchParams = useSearch({
@@ -88,14 +86,17 @@ export const InventoryPage = () => {
   );
 
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Inventory" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Inventory" })}</title>
-      </Helmet>
+      <PageTitle title="Inventory" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

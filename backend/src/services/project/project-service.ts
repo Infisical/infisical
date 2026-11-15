@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 
 import {
   AccessScope,
@@ -16,10 +17,26 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import {
+  getRestoredLeaseRevocationJobId,
+  TDynamicSecretLeaseQueueServiceFactory
+} from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import {
   OrgPermissionActions,
+  OrgPermissionAdminConsoleAction,
   OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSubjects
@@ -59,22 +76,22 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
@@ -84,6 +101,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { SOFT_DELETE_GRACE_MS } from "../project-env/project-env-queue";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -109,6 +127,7 @@ import {
   TGetProjectDTO,
   TGetProjectKmsKey,
   TGetProjectWorkflowIntegrationConfig,
+  TListDeletedProjectsDTO,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
@@ -137,6 +156,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  organizationsProjectsService: TOrganizationsProjectsService;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -179,10 +199,11 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -200,7 +221,15 @@ type TProjectServiceFactoryDep = {
     TProjectAccessRequestDALFactory,
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
+  dynamicSecretQueueService: Pick<
+    TDynamicSecretLeaseQueueServiceFactory,
+    "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
+  >;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId" | "countByProjectIdIncludingDeletedEnvironments">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "countByOrgId" | "countByProjectId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -213,12 +242,12 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SecretScanning]: "Secret Scanning",
-  [ProjectType.PAM]: "Privileged Access Manager",
-  [ProjectType.AgentVault]: "Agent Vault"
+  [ProjectType.PAM]: "Privileged Access Manager"
 };
 
 export const projectServiceFactory = ({
   projectDAL,
+  organizationsProjectsService,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -228,6 +257,7 @@ export const projectServiceFactory = ({
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
+  usageMeteringService,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
@@ -251,8 +281,27 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL,
   projectAccessRequestDAL,
-  usageMeteringService
+  honeyTokenCleanupService,
+  dynamicSecretLeaseDAL,
+  dynamicSecretQueueService,
+  secretV2BridgeDAL,
+  honeyTokenDAL,
+  secretSyncDAL
 }: TProjectServiceFactoryDep) => {
+  // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
+  // a project pending deletion.
+  const $throwIfSlugHeldByDeletedProject = async (orgId: string, slug: string, tx?: Knex) => {
+    const [slugHolder] = await projectDAL.findIncludingExpired({ orgId, slug }, { tx });
+    if (slugHolder?.deleteAfter) {
+      throw new BadRequestError({
+        message:
+          new Date(slugHolder.deleteAfter).getTime() > Date.now()
+            ? `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
+            : `Project slug '${slug}' is held by a project that is being permanently deleted. Try again in a few minutes.`
+      });
+    }
+  };
+
   /*
    * Create workspace. Make user the admin
    * */
@@ -271,10 +320,13 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault) {
+    if (type === ProjectType.PAM) {
       throw new BadRequestError({
-        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[type]} projects cannot be created directly. One is created for your organization automatically.`
       });
+    }
+    if (type === ProjectType.AgentVault && template !== InfisicalProjectTemplate.Default) {
+      throw new BadRequestError({ message: "Agent Vault projects don't use project templates" });
     }
 
     const organization = await orgDAL.findOne({ id: actorOrgId });
@@ -294,17 +346,19 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
-    // Read before the transaction: a plan cache miss queries on its own connection.
+    // Before the transaction: a plan cache miss calls the License Server.
     const plan = await licenseService.getPlan(organization.id);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
-      // Check workspace limit inside the transaction after acquiring the lock
-      // We count directly from the database to get the accurate count, not the cached plan value
-      if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
-        if (currentProjectCount >= plan.workspaceLimit) {
+      // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
+      // together, and an import creating many projects in one transaction counts the ones it already made.
+      if (plan.isLimited(PlanLimit.Projects) && type === ProjectType.SecretManager) {
+        const currentProjectCount = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountWorkspaces(organization.id);
+        if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
@@ -361,6 +415,10 @@ export const projectServiceFactory = ({
       }
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
+
+      // Checked up front because a failed insert aborts this transaction. Generated slugs carry a random suffix,
+      // so only a chosen one is worth the lookup.
+      if (projectSlug) await $throwIfSlugHeldByDeletedProject(organization.id, slug, tx);
 
       let project: TProjects;
       try {
@@ -680,7 +738,7 @@ export const projectServiceFactory = ({
             }
           }
         }
-      } else if (createDefaultEnvs) {
+      } else if (createDefaultEnvs && type !== ProjectType.AgentVault) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
           tx
@@ -751,10 +809,6 @@ export const projectServiceFactory = ({
         );
       }
 
-      // no need to invalidate if there was no limit
-      if (plan.workspaceLimit) {
-        await licenseService.invalidateGetPlan(organization.id);
-      }
       return {
         ...project,
         environments: envs,
@@ -780,17 +834,23 @@ export const projectServiceFactory = ({
       };
     });
 
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-    // A new project seeds its creator (plus any template members/identities); emit so a new
-    // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
-    // the just-committed row; the counter filters by project type.
-    usageMeteringService.emit(results.orgId, SecretIdentities.key);
-    usageMeteringService.emit(results.orgId, PamIdentities.key);
-    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
+    // The plan caches the project count, so drop it after commit (the caller's commit, if it passed a tx).
+    if (!trx) await licenseService.invalidatePlan(actorOrgId);
+    // New projects seed members, so re-meter seats. The counters filter by project type.
+    usageMeteringService.emit(results.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(results.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities);
     return results;
   };
 
-  const deleteProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, filter }: TDeleteProjectDTO) => {
+  const deleteProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    filter,
+    hardDelete = false
+  }: TDeleteProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
     const { permission } = await permissionService.getProjectPermission({
@@ -816,12 +876,6 @@ export const projectServiceFactory = ({
       });
     }
 
-    if (project.type === ProjectType.AgentVault) {
-      throw new BadRequestError({
-        message: "Agent Vault projects cannot be deleted."
-      });
-    }
-
     if (project.type === ProjectType.CertificateManager) {
       const certManagerProjects = await projectDAL.find({
         orgId: project.orgId,
@@ -842,6 +896,8 @@ export const projectServiceFactory = ({
       }
     }
 
+    const { allowCrossProjectSecretSharing } = (await orgDAL.findOne({ id: project.orgId })) ?? {};
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
       lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
@@ -854,42 +910,257 @@ export const projectServiceFactory = ({
     }
 
     try {
-      // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
-      // project disappears from every read, but the expensive cascade runs asynchronously in the
-      // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
-      // (no grace period). The slug is freed so a same-named project can be recreated right away.
+      // Deleting a project that shares folders with other projects would silently drop those secrets from
+      // their imports, references and syncs, so that access must be revoked first. With sharing off, grants
+      // are ignored.
+      const sharedWith = allowCrossProjectSecretSharing ? await projectDAL.findProjectsSharedWith(project.id) : [];
+      if (sharedWith.length) {
+        const preview = sharedWith
+          .slice(0, 5)
+          .map(({ name }) => `'${name}'`)
+          .join(", ");
+        const remaining = sharedWith.length - 5;
+        throw new BadRequestError({
+          message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Policies → Cross-Project Secret Sharing first, then retry.`
+        });
+      }
+
+      // Once soft-deleted the project's KMS key no longer resolves, so the honey token credentials can only
+      // be decrypted, and their provider users revoked, before this point.
+      await honeyTokenCleanupService.revokeProjectHoneyTokens(project.id);
+
+      // This returns immediately (one UPDATE) and the project disappears from every read, but the
+      // expensive cascade runs asynchronously in the hard-delete worker once deleteAfter passes. Only
+      // secret manager projects get a restore grace period; the rest (and hard deletes) are eligible on
+      // the next worker tick. Like an environment, a restorable project keeps its slug so it comes back
+      // unchanged; otherwise the slug is freed so a same-named project can be recreated right away.
       const now = new Date();
+      const hasGracePeriod = !hardDelete && project.type === ProjectType.SecretManager;
       const softDeletedProject = await projectDAL.softDeleteById(project.id, {
-        deleteAfter: now,
+        deleteAfter: hasGracePeriod ? new Date(now.getTime() + SOFT_DELETE_GRACE_MS) : now,
         softDeletedAt: now,
         deletedByActorType: actor,
         deletedByActorId: actorId,
-        slug: `del-${alphaNumericNanoId(20)}`
+        slug: hasGracePeriod ? project.slug : `del-${alphaNumericNanoId(20)}`
       });
 
       if (!softDeletedProject) {
         throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
       }
 
-      // refresh the cached plan so the freed workspace slot is reflected immediately
-      // (countOfOrgProjects now excludes soft-deleted projects)
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+      // The plan caches the project count, which leaves out soft-deleted projects, so drop it.
+      await licenseService.invalidatePlan(actorOrgId);
+      // Cached reads of this project and of the projects it shares with would keep serving its secrets.
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      usageMeteringService.emit(project.orgId, SecretIdentities.key);
-      usageMeteringService.emit(project.orgId, PamIdentities.key);
-      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
-      return { ...softDeletedProject, slug: project.slug };
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
+      return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
     }
   };
 
-  const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces = (
-      actor === ActorType.IDENTITY
-        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
-    ).map((workspace) => ({
+  // A deleted project can't be resolved through project permissions, so org admins manage it.
+  const $checkCanManageDeletedProjects = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: Omit<TProjectPermission, "projectId">) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAdminConsoleAction.AccessAllProjects,
+      OrgPermissionSubjects.AdminConsole
+    );
+  };
+
+  const $findDeletedProject = async (projectId: string, orgId: string) => {
+    const project = await projectDAL.findByIdIncludingExpired(projectId);
+    if (!project || project.orgId !== orgId || !project.deleteAfter) {
+      throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
+    }
+    return { ...project, deleteAfter: project.deleteAfter };
+  };
+
+  const listDeletedProjects = async ({ type, ...dto }: TListDeletedProjectsDTO) => {
+    await $checkCanManageDeletedProjects(dto);
+    return projectDAL.findDeletedProjects(dto.actorOrgId, type);
+  };
+
+  const restoreProject = async ({ projectId, ...dto }: TProjectPermission) => {
+    await $checkCanManageDeletedProjects(dto);
+    const project = await $findDeletedProject(projectId, dto.actorOrgId);
+
+    if (new Date(project.deleteAfter).getTime() <= Date.now()) {
+      throw new BadRequestError({
+        message: "Cannot restore project: its deletion grace period has already elapsed."
+      });
+    }
+
+    // The hard-delete worker holds this lock while it purges, so a restore can't land mid-purge.
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
+        retryCount: 0
+      });
+    } catch {
+      throw new BadRequestError({
+        message: "Cannot restore project: it is being permanently deleted."
+      });
+    }
+
+    try {
+      // Re-read under the lock: an overlapping restore may have just finished, and this one failing later
+      // would cancel the revocations it queued.
+      await $findDeletedProject(projectId, dto.actorOrgId);
+
+      // Revoking a lease that expired while the project was deleted fails because the project can't be
+      // resolved, and its retries may have run out, so queue those revocations again. They're queued
+      // before the restore so a queue failure leaves the project deleted and the restore retryable, and
+      // delayed so they run after it commits.
+      const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
+      const revokeAt = new Date(Date.now() + 60_000);
+      await Promise.all(
+        expiredLeases.map((lease) =>
+          dynamicSecretQueueService.setLeaseRevocation(
+            lease.id,
+            lease.dynamicSecretId,
+            revokeAt,
+            getRestoredLeaseRevocationJobId(lease.id)
+          )
+        )
+      );
+
+      let restoredProject: TProjects;
+      try {
+        const plan = await licenseService.getPlan(project.orgId);
+
+        // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
+        // exceed them.
+        if (plan.isLimited(PlanLimit.HoneyTokens)) {
+          const projectHoneyTokenCount = await honeyTokenDAL.countByProjectIdIncludingDeletedEnvironments(project.id);
+          if (
+            projectHoneyTokenCount &&
+            plan.exceeds(PlanLimit.HoneyTokens, await honeyTokenDAL.countByOrgId(project.orgId), projectHoneyTokenCount)
+          ) {
+            throw new BadRequestError({
+              message:
+                "Failed to restore project due to honey token limit reached. Upgrade plan or revoke an existing honey token."
+            });
+          }
+        }
+
+        if (plan.isLimited(PlanLimit.SecretSyncs)) {
+          const projectSecretSyncCount = await secretSyncDAL.countByProjectId(project.id);
+          if (
+            projectSecretSyncCount &&
+            plan.exceeds(PlanLimit.SecretSyncs, await secretSyncDAL.countByOrgId(project.orgId), projectSecretSyncCount)
+          ) {
+            throw new BadRequestError({
+              message:
+                "Failed to restore project due to secret sync limit reached. Upgrade plan or remove an existing secret sync."
+            });
+          }
+        }
+
+        const restored = await projectDAL.transaction(async (tx) => {
+          if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
+            const currentProjectCount = await organizationsProjectsService
+              .within(sealKnexTransaction(tx))
+              .lockAndCountWorkspaces(project.orgId);
+            if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
+              throw new BadRequestError({
+                message:
+                  "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
+              });
+            }
+          }
+
+          return projectDAL.restoreById(project.id, tx);
+        });
+
+        if (!restored) {
+          throw new BadRequestError({
+            message: "Cannot restore project: its deletion grace period has already elapsed."
+          });
+        }
+        restoredProject = restored;
+      } catch (error) {
+        // The project is still deleted, so the revocations queued above would only fail against it again.
+        await Promise.allSettled(
+          expiredLeases.map((lease) => dynamicSecretQueueService.unsetRestoredLeaseRevocation(lease.id))
+        );
+        throw error;
+      }
+
+      await licenseService.invalidatePlan(project.orgId);
+      // Cached reads from before the deletion can hold imports from projects deleted since.
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
+      return restoredProject;
+    } finally {
+      await lock.release();
+    }
+  };
+
+  const permanentlyDeleteProject = async ({ projectId, ...dto }: TProjectPermission) => {
+    await $checkCanManageDeletedProjects(dto);
+    const project = await $findDeletedProject(projectId, dto.actorOrgId);
+
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
+        retryCount: 0
+      });
+    } catch {
+      throw new BadRequestError({
+        message: "Project is already being deleted."
+      });
+    }
+
+    try {
+      // Ends the grace period so the hard-delete worker picks it up, and frees the slug right away.
+      const expiredProject = await projectDAL.expireSoftDeletedById(project.id, `del-${alphaNumericNanoId(20)}`);
+      if (!expiredProject) {
+        throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
+      }
+
+      return { ...expiredProject, slug: project.slug };
+    } finally {
+      await lock.release();
+    }
+  };
+
+  const getProjects = async ({
+    actorId,
+    actor,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type,
+    limit,
+    offset
+  }: TListProjectsDTO) => {
+    const { projects: actorProjects, totalCount } = await projectDAL.findActorProjects({
+      actorType: actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+      actorId,
+      orgIds: [actorOrgId],
+      projectType: type,
+      limit,
+      offset
+    });
+    const workspaces = actorProjects.map((workspace) => ({
       ...workspace,
       deletedEnvironments: [] as {
         id: string;
@@ -943,10 +1214,10 @@ export const projectServiceFactory = ({
         })
       );
 
-      return workspacesWithRoles;
+      return { projects: workspacesWithRoles, totalCount };
     }
 
-    return workspaces;
+    return { projects: workspaces, totalCount };
   };
 
   const getAccessibleProjectsWithSubOrgs = async ({
@@ -1002,9 +1273,9 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
-    // not the caller's to change. Create and delete are already guarded; this route was not.
-    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+    // PAM owns one implicit project per org, so its name, slug and delete protection are not the caller's to
+    // change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
       });
@@ -1036,7 +1307,7 @@ export const projectServiceFactory = ({
 
       const plan = await licenseService.getPlan(project.orgId);
 
-      if (!plan.auditLogs) {
+      if (!plan.has(PlanFeature.AuditLogs)) {
         throw new BadRequestError({
           message:
             "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
@@ -1072,6 +1343,7 @@ export const projectServiceFactory = ({
       if (err instanceof DatabaseError) {
         const code = (err.error as { code?: string })?.code;
         if (code === DatabaseErrorCode.UniqueViolation) {
+          if (update.slug) await $throwIfSlugHeldByDeletedProject(project.orgId, update.slug);
           throw new BadRequestError({
             message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
           });
@@ -1198,7 +1470,7 @@ export const projectServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
+    if (!plan.has(PlanFeature.AuditLogs) || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -1389,6 +1661,7 @@ export const projectServiceFactory = ({
     forPkiSync = false,
     search,
     status,
+    includeDeleted,
     profileIds,
     fromDate,
     toDate,
@@ -1461,6 +1734,7 @@ export const projectServiceFactory = ({
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
+      ...(includeDeleted && { includeDeleted }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
@@ -1796,7 +2070,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
@@ -1826,7 +2100,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
@@ -2305,8 +2579,7 @@ export const projectServiceFactory = ({
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
       [ProjectType.CertificateManager]: "cert-manager",
-      [ProjectType.PAM]: "pam",
-      [ProjectType.AgentVault]: "agent-vault"
+      [ProjectType.PAM]: "pam"
     };
     const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
 
@@ -2369,9 +2642,21 @@ export const projectServiceFactory = ({
   const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
     secretValueTrackingService.getProjectStatus(dto);
 
+  // Labels for audit metadata only, so no permission check. Scoped to the org, so an id from
+  // another org resolves to nothing.
+  const getProjectNamesByIds = async ({ orgId, projectIds }: { orgId: string; projectIds: string[] }) => {
+    if (!projectIds.length) return [];
+    const projects = await projectDAL.find({ orgId, $in: { id: projectIds } });
+    return projects.map(({ id, name }) => ({ id, name }));
+  };
+
   return {
     createProject,
     deleteProject,
+    listDeletedProjects,
+    restoreProject,
+    permanentlyDeleteProject,
+    getProjectNamesByIds,
     getProjects,
     getAccessibleProjectsWithSubOrgs,
     updateProject,

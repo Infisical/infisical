@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
 import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
+import { DelegatedApprovalPolicyType } from "@app/hooks/api/delegatedApprovals/enums";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 
 import { approvalPolicyFormSchema } from "./approvalPolicyFormSchema";
@@ -25,6 +26,15 @@ const basePolicy = {
   allowedSelfApprovals: true,
   bypassForMachineIdentities: false,
   sequenceApprovers: []
+};
+
+const delegatedPolicy = {
+  ...basePolicy,
+  policyType: PolicyType.AccessPolicy,
+  userApprovers: [],
+  allowedSelfApprovals: false,
+  isDelegated: true,
+  delegatedApproval: { type: DelegatedApprovalPolicyType.ServiceNow, connectionId: "connection-1" }
 };
 
 const getIssuePaths = (input: unknown) => {
@@ -133,5 +143,50 @@ describe("approval policy form schema", () => {
     });
 
     assert.ok(issuePaths.includes("userApprovers.0.username"));
+  });
+
+  it("accepts a delegated access policy without approval steps", () => {
+    const result = approvalPolicyFormSchema.safeParse(delegatedPolicy);
+
+    assert.equal(result.success, true);
+  });
+
+  it("rejects a delegated access policy without a provider or app connection", () => {
+    const issuePaths = getIssuePaths({ ...delegatedPolicy, delegatedApproval: {} });
+
+    assert.ok(issuePaths.includes("delegatedApproval.type"));
+    assert.ok(issuePaths.includes("delegatedApproval.connectionId"));
+  });
+
+  it("ignores hidden bypassers on a delegated access policy", () => {
+    const result = approvalPolicyFormSchema.safeParse({
+      ...delegatedPolicy,
+      userBypassers: [
+        {
+          type: BypasserType.User,
+          id: "inactive-bypasser",
+          isOrgMembershipActive: false
+        }
+      ]
+    });
+
+    assert.equal(result.success, true);
+  });
+
+  it("still requires approval steps when an access policy is not delegated", () => {
+    const issuePaths = getIssuePaths({ ...delegatedPolicy, isDelegated: false });
+
+    assert.ok(issuePaths.includes("sequenceApprovers"));
+  });
+
+  it("does not apply delegated rules to change policies", () => {
+    const issuePaths = getIssuePaths({
+      ...delegatedPolicy,
+      policyType: PolicyType.ChangePolicy,
+      delegatedApproval: {}
+    });
+
+    assert.ok(issuePaths.includes("userApprovers"));
+    assert.ok(!issuePaths.includes("delegatedApproval.connectionId"));
   });
 });

@@ -20,6 +20,7 @@ export const QuickSearchMetadataList = ({ metadata = [], onApplyFilter }: Props)
             <Badge
               variant="outline"
               tabIndex={0}
+              data-row-interactive
               aria-label={`${entry.key}: ${entry.value || "empty"}`}
               className="cursor-default gap-1.5 border-border font-mono font-normal"
             >

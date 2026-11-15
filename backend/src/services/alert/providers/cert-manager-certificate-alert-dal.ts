@@ -90,10 +90,9 @@ export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TAlertCertificate[]> => {
     try {
-      const certificates = (await $selectCertificates(tx || db, scope).whereIn(
-        `${TableName.Certificate}.id`,
-        scope.certificateIds
-      )) as TAlertCertificate[];
+      const certificates = (await $selectCertificates(tx || db, scope)
+        .whereIn(`${TableName.Certificate}.id`, scope.certificateIds)
+        .whereNull(`${TableName.Certificate}.deletedAt`)) as TAlertCertificate[];
 
       return certificates;
     } catch (error) {

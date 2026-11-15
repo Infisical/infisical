@@ -5,12 +5,12 @@ import { z } from "zod";
 import {
   Alert,
   AlertDescription,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -277,14 +277,13 @@ export const CredentialAccountsField = ({
       name="credentialAccountIds"
       render={({ field, fieldState }) => (
         <Field>
-          <FieldLabel>Credential Accounts</FieldLabel>
+          <FieldLabel htmlFor="discovery-credential-accounts">Credential Accounts</FieldLabel>
           <FieldContent>
-            <FilterableSelect
-              isMulti
+            <Combobox
+              id="discovery-credential-accounts"
+              multiple
               value={matchingAccounts.filter((a) => field.value?.includes(a.id))}
-              onChange={(val) =>
-                field.onChange(((val as typeof matchingAccounts | null) ?? []).map((a) => a.id))
-              }
+              onValueChange={(val) => field.onChange(val.map((a) => a.id))}
               options={matchingAccounts}
               getOptionValue={(a) => a.id}
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}
@@ -351,13 +350,13 @@ export const CredentialAccountField = ({
       name="credentialAccountId"
       render={({ field, fieldState }) => (
         <Field>
-          <FieldLabel>Credential Account</FieldLabel>
+          <FieldLabel htmlFor="discovery-credential-account">Credential Account</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="discovery-credential-account"
+              isClearable={false}
               value={credentialAccounts.find((a) => a.id === field.value) ?? null}
-              onChange={(val) =>
-                field.onChange((val as (typeof credentialAccounts)[number] | null)?.id ?? "")
-              }
+              onValueChange={(val) => field.onChange(val.id)}
               options={credentialAccounts}
               getOptionValue={(a) => a.id}
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}

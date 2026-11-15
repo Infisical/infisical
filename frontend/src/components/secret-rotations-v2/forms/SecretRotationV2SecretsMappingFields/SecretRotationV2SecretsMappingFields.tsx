@@ -63,7 +63,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationSecretsMappingFields,
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationSecretsMappingFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields,
-  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationSecretsMappingFields
+  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationSecretsMappingFields,
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

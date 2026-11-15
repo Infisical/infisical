@@ -94,9 +94,6 @@ export const explodePolicies = (
     permissionGroupIds.map((permissionGroupId) => ({ effect, scope, zoneIds, permissionGroupId }))
   );
 
-export const isStoredPolicy = (policy: unknown): policy is TCloudflareApiTokenPolicyStored =>
-  typeof policy === "object" && policy !== null && "permissionGroupIds" in policy;
-
 export const CloudflareApiTokenRotationSchema = z
   .object({
     type: z.literal(SecretRotation.CloudflareApiToken),

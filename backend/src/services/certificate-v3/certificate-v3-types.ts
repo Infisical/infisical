@@ -184,6 +184,9 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewalAttributes;
+  externalConfiguration?: {
+    reissue?: boolean;
+  };
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 

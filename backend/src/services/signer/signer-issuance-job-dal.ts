@@ -25,6 +25,19 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingForSignerForUpdate = async (
+    signerId: string,
+    tx: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
+    try {
+      return (await tx(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ signerId, status: SignerIssuanceJobStatus.Pending })
+        .forUpdate()) as TPkiSignerCertificateIssuanceJobs[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingSignerIssuanceJobsForUpdate" });
+    }
+  };
+
   const cancelOpenForSigner = async (signerId: string, reason: string, tx?: Knex) => {
     try {
       await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
@@ -36,6 +49,27 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
         } as Record<string, unknown>);
     } catch (error) {
       throw new DatabaseError({ error, name: "CancelOpenSignerIssuanceJobs" });
+    }
+  };
+
+  const completeIfPending = async (
+    jobId: string,
+    certificateId: string,
+    tx?: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs | null> => {
+    try {
+      const [row] = await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ id: jobId, status: SignerIssuanceJobStatus.Pending })
+        .update({
+          status: SignerIssuanceJobStatus.Completed,
+          certificateId,
+          failureReason: null,
+          updatedAt: new Date()
+        } as Record<string, unknown>)
+        .returning("*");
+      return row ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CompleteSignerIssuanceJob" });
     }
   };
 
@@ -76,5 +110,13 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findDuePending, cancelOpenForSigner, claimForAttempt, findLatestForSigner };
+  return {
+    ...orm,
+    findDuePending,
+    findPendingForSignerForUpdate,
+    cancelOpenForSigner,
+    completeIfPending,
+    claimForAttempt,
+    findLatestForSigner
+  };
 };

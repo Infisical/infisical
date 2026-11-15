@@ -16,6 +16,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   defaultMembershipRole: true,
   enforceMfa: true,
   selectedMfaMethod: true,
+  ssoMfaTrust: true,
   allowSecretSharingOutsideOrganization: true,
   shouldUseNewPrivilegeSystem: true,
   privilegeUpgradeInitiatedByUsername: true,

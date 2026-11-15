@@ -19,11 +19,11 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TIntegrationDALFactory } from "./integration-dal";
 import {
   TDeleteIntegrationDTO,

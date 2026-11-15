@@ -56,6 +56,14 @@ export const findReachableAccessBundleIds = async (
   return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
+// null reaches every bundle, so intersecting with it returns the other side unchanged.
+export const intersectAccessBundleIds = (a: string[] | null, b: string[] | null): string[] | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  const inB = new Set(b);
+  return a.filter((id) => inB.has(id));
+};
+
 const $loadAgentVaultPermission = async (
   { permissionService }: { permissionService: TPermissionDep },
   { projectId, ctx }: { projectId: string; ctx: TGenericPermission }
@@ -103,4 +111,29 @@ export const getAgentVaultReachability = async (
   );
 
   return { isAdmin: false, accessBundleIds, permission };
+};
+
+/**
+ * Reachability, plus the bundles the actor holds through a grant whatever their role. For a member the two are the
+ * same; for an admin, who reaches every bundle, the granted ones are what "mine" means.
+ */
+export const getAgentVaultGrantedReachability = async (
+  { permissionService, membershipDAL }: { permissionService: TPermissionDep; membershipDAL: TMembershipDep },
+  { projectId, ctx }: { projectId: string; ctx: TGenericPermission }
+): Promise<TAgentVaultReachability & { grantedAccessBundleIds: string[] }> => {
+  const { permission, isAdmin, memberships } = await $loadAgentVaultPermission(
+    { permissionService },
+    { projectId, ctx }
+  );
+  if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
+    return { isAdmin, accessBundleIds: isAdmin ? null : [], grantedAccessBundleIds: [], permission };
+  }
+
+  const grantedAccessBundleIds = await findReachableAccessBundleIds(membershipDAL, {
+    projectId,
+    actor: { type: ctx.actor, id: ctx.actorId },
+    groupIds: liveGroupIdsFrom(memberships)
+  });
+
+  return { isAdmin, accessBundleIds: isAdmin ? null : grantedAccessBundleIds, grantedAccessBundleIds, permission };
 };

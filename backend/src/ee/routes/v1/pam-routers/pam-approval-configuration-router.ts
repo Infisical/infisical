@@ -5,6 +5,10 @@ import { PamNotificationEvent } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  AutoApprovalConfigResponseSchema,
+  AutoApprovalConfigSchema
+} from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const ApproverSchema = z.object({
@@ -55,7 +59,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
             })
           ),
           notificationConfigs: z.array(NotificationConfigResponseSchema),
-          breakGlassUsers: z.array(ApproverSchema)
+          breakGlassUsers: z.array(ApproverSchema),
+          autoApproval: AutoApprovalConfigResponseSchema
         })
       }
     },
@@ -90,7 +95,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
           .optional()
           .describe(
             "Users and groups allowed to grant themselves access without an approver. Omitted leaves the stored list unchanged; an empty array clears it."
-          )
+          ),
+        autoApproval: AutoApprovalConfigSchema.optional()
       }),
       response: {
         200: z.object({
@@ -106,6 +112,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         steps: req.body.steps,
         notificationConfigs: req.body.notificationConfigs,
         breakGlassUsers: req.body.breakGlassUsers,
+        autoApproval: req.body.autoApproval,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -123,7 +130,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
             policyId: result.policyId,
             stepCount: result.stepCount,
             notificationConfigCount: result.notificationConfigCount,
-            breakGlassUserCount: result.breakGlassUserCount
+            breakGlassUserCount: result.breakGlassUserCount,
+            autoApprovalRuleCount: result.autoApprovalRuleCount
           }
         }
       });

@@ -11,6 +11,7 @@ export enum PkiSync {
   PaloAltoNetworksSslTlsProfile = "palo-alto-networks-ssl-tls-profile",
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
+  Imperva = "imperva",
   LinuxServer = "linux-server",
   WindowsServer = "windows-server",
   NutanixPrismCentral = "nutanix-prism-central"
@@ -34,12 +35,6 @@ export enum PkiSyncFailureKind {
   Sync = "sync",
   PostSyncCommand = "post-sync-command"
 }
-
-export const PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT = 3;
-
-export const PKI_SYNC_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT = 15;
-
-export const PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S = 15 * 60;
 
 export const PKI_SYNC_CONNECTION_LOCK_RETRY = { retryCount: 10, retryDelay: 3_000, retryJitter: 500 };
 

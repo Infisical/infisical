@@ -22,7 +22,8 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
     id: item.id,
     title: item.title,
     identifier: item.identifier,
-    fields: item.fields ?? []
+    fields: item.fields ?? [],
+    url: item.url
   })),
   remainingCount: Math.max(payload.items.length - MAX_ITEMS_DISPLAYED, 0)
 });

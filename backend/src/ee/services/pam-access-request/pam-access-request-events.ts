@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { ApprovalNotificationEvent } from "@app/services/approval-policy/approval-policy-enums";
 import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
@@ -14,7 +16,8 @@ const EVENT_BY_APPROVAL_EVENT: Record<ApprovalNotificationEvent, PamAccessReques
   [ApprovalNotificationEvent.Requested]: PamAccessRequestEvent.Requested,
   [ApprovalNotificationEvent.Approved]: PamAccessRequestEvent.Approved,
   [ApprovalNotificationEvent.Rejected]: PamAccessRequestEvent.Denied,
-  [ApprovalNotificationEvent.Bypassed]: PamAccessRequestEvent.Bypassed
+  [ApprovalNotificationEvent.Bypassed]: PamAccessRequestEvent.Bypassed,
+  [ApprovalNotificationEvent.AutoApproved]: PamAccessRequestEvent.Approved
 };
 
 export const buildPamAccessRequestEvent = ({
@@ -30,8 +33,9 @@ export const buildPamAccessRequestEvent = ({
   projectId: string;
   folderId: string;
 }): TEventInput => ({
-  eventType: EVENT_BY_APPROVAL_EVENT[event],
-  payload: {
+  id: crypto.randomUUID(),
+  type: EVENT_BY_APPROVAL_EVENT[event],
+  data: {
     orgId,
     projectId,
     resourceType: PAM_FOLDER_RESOURCE_TYPE,

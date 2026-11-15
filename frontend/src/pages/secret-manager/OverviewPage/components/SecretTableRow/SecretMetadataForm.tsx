@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { HTMLAttributes, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,8 @@ import {
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
+import { AnnotationPopoverHeader } from "./AnnotationPopoverHeader";
+
 const formSchema = (enforceEncryption?: boolean) =>
   z.object({
     metadata: z.array(
@@ -44,8 +46,12 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onMetadataChange?: (metadata: { key: string; value: string; isEncrypted?: boolean }[]) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
 export const SecretMetadataForm = ({
@@ -54,8 +60,12 @@ export const SecretMetadataForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
-  onMetadataChange
+  onMetadataChange,
+  onBatchSave,
+  isBatchSavePending,
+  dragHandleProps
 }: Props) => {
   const { projectId, currentProject } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
@@ -99,7 +109,7 @@ export const SecretMetadataForm = ({
   // array reference when nested field values change (typing in key/value inputs).
   const watchedMetadata = watch("metadata");
   const serializedMetadata = JSON.stringify(watchedMetadata);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
@@ -119,7 +129,6 @@ export const SecretMetadataForm = ({
         clearTimeout(debounceTimer.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, serializedMetadata, onMetadataChange]);
 
   const onSubmit = async (data: TFormSchema) => {
@@ -147,6 +156,7 @@ export const SecretMetadataForm = ({
         text: "Successfully updated metadata"
       });
     }
+    onSaved?.(data.metadata.length === 0);
     onClose?.();
   };
 
@@ -157,7 +167,7 @@ export const SecretMetadataForm = ({
   const metadataFields = (
     <>
       <div>
-        <p className="text-sm font-medium">Metadata</p>
+        <AnnotationPopoverHeader title="Metadata" dragHandleProps={dragHandleProps} />
         <p className="mt-1 text-xs text-accent">
           Encrypted Metadata will not be searchable via the UI or API.
         </p>
@@ -281,11 +291,34 @@ export const SecretMetadataForm = ({
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        {metadataFields}
-        <div className="flex justify-end">
+        <fieldset disabled={isBatchSavePending} className="contents">
+          {metadataFields}
+        </fieldset>
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && canEditSecret && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onMetadataChange?.(
+                  watchedMetadata.map((m) => ({
+                    key: m.key,
+                    value: m.value,
+                    isEncrypted: m.isEncrypted
+                  }))
+                );
+                onBatchSave();
+              }}
+            >
+              Save Metadata
+            </Button>
+          )}
         </div>
       </div>
     );

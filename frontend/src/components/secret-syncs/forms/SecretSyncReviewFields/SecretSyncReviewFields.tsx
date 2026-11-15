@@ -39,7 +39,10 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
+import {
+  CloudflarePagesSyncOptionsReviewFields,
+  CloudflarePagesSyncReviewFields
+} from "./CloudflarePagesReviewFields";
 import { CloudflareSecretsStoreSyncReviewFields } from "./CloudflareSecretsStoreSyncReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
@@ -57,6 +60,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { JenkinsSyncReviewFields } from "./JenkinsSyncReviewFields";
 import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
@@ -102,7 +106,8 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
+    includeAllSubFolders,
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -187,6 +192,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsReviewFields />;
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
@@ -280,6 +286,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Jenkins:
+      DestinationFieldsComponent = <JenkinsSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

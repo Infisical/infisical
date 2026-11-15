@@ -4,6 +4,12 @@ export enum GitHubSyncScope {
   RepositoryEnvironment = "repository-environment"
 }
 
+export enum GitHubSyncSecretType {
+  Actions = "actions",
+  Dependabot = "dependabot",
+  Codespaces = "codespaces"
+}
+
 export enum GitHubSyncVisibility {
   All = "all",
   Private = "private",

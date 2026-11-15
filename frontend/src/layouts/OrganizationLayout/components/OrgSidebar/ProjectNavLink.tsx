@@ -105,15 +105,12 @@ export const ProjectNavLink = ({
         tooltip={item.label}
       >
         <Link
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           to={
             isOrgScoped
               ? (`/organizations/$orgId/${typePath}/${item.pathSuffix}` as any)
               : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           search={item.search as any}
         >
           <item.icon className="size-4" />

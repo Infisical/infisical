@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { DiscriminativePick } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -19,9 +21,16 @@ export type TValidateDatabricksConnectionCredentialsSchema = typeof ValidateData
 
 export type TDatabricksConnectionConfig = DiscriminativePick<
   TDatabricksConnection,
-  "method" | "app" | "credentials"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
+};
+
+export type TDatabricksRequestConfig = Pick<TDatabricksConnectionConfig, "credentials" | "gatewayId" | "gatewayPoolId">;
+
+export type TDatabricksGatewayDeps = {
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TAuthorizeDatabricksConnection = {

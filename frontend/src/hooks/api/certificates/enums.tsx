@@ -2,7 +2,8 @@ export enum CertStatus {
   ACTIVE = "active",
   RENEWED = "renewed",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {

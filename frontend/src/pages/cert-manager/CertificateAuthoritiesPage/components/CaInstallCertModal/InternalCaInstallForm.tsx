@@ -30,6 +30,8 @@ import {
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { PATH_LENGTH_OPTIONS } from "./pathLengthOptions";
+
 const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
   return !Number.isNaN(date.getTime());
@@ -139,7 +141,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   function generatePathLengthOpts(parentCaMaxPathLength: number): number[] {
     if (parentCaMaxPathLength === -1) {
-      return [-1, 0, 1, 2, 3];
+      return PATH_LENGTH_OPTIONS;
     }
 
     return Array.from({ length: parentCaMaxPathLength }, (_, index) => index);

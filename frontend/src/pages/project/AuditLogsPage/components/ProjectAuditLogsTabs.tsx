@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { ScopeVariant } from "@app/hooks/useScopeVariant";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
 
 import { AuditLogSettingsTab } from "./AuditLogSettingsTab";
@@ -13,7 +14,7 @@ export enum ProjectAuditLogsTab {
 }
 
 type Props = {
-  variant: "project" | "pam" | "av";
+  variant: ScopeVariant | "pam";
 };
 
 export const ProjectAuditLogsTabs = ({ variant }: Props) => {

@@ -1,81 +1,78 @@
-import assert from "node:assert/strict";
-import { describe, it } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
-import { ApprovalStatus } from "@app/hooks/api/types";
+import { buildFolderTree } from "./AccessApprovalRequest.utils";
 
-import { getAccessRequestState } from "./AccessApprovalRequest.utils";
+const leaf = (path: string, label: string) => ({ path, label, children: [] });
 
-const createRequest = (
-  overrides: Omit<Partial<TAccessApprovalRequest>, "policy"> & {
-    policy?: Partial<TAccessApprovalRequest["policy"]>;
-  } = {}
-) => {
-  const { policy, ...requestOverrides } = overrides;
-
-  return {
-    status: ApprovalStatus.PENDING,
-    isApproved: false,
-    reviewers: [],
-    ...requestOverrides,
-    policy: {
-      deletedAt: null,
-      ...policy
-    }
-  } as TAccessApprovalRequest;
-};
-
-describe("access request state", () => {
-  const now = new Date("2026-08-27T12:00:00.000Z");
-
-  it("classifies every closed request status independently", () => {
-    assert.equal(getAccessRequestState(createRequest(), now), "pending");
-    assert.equal(
-      getAccessRequestState(createRequest({ status: ApprovalStatus.APPROVED }), now),
-      "approved"
-    );
-    assert.equal(
-      getAccessRequestState(
-        createRequest({
-          reviewers: [
-            { status: ApprovalStatus.REJECTED } as TAccessApprovalRequest["reviewers"][number]
-          ]
-        }),
-        now
-      ),
-      "rejected"
-    );
-    assert.equal(
-      getAccessRequestState(createRequest({ status: ApprovalStatus.REVOKED }), now),
-      "revoked"
-    );
-    assert.equal(
-      getAccessRequestState(
-        createRequest({ expiresAt: new Date("2026-08-27T11:00:00.000Z") }),
-        now
-      ),
-      "expired"
-    );
-    assert.equal(
-      getAccessRequestState(createRequest({ policy: { deletedAt: now } }), now),
-      "policy-deleted"
-    );
+describe("buildFolderTree", () => {
+  test("nests each folder under its parent, labelled by its own name, and keeps the root on its own", () => {
+    expect(buildFolderTree(["/database", "/aws/s3/credentials", "/", "/aws/s3", "/aws"])).toEqual([
+      leaf("/", "/"),
+      {
+        path: "/aws",
+        label: "/aws",
+        children: [
+          {
+            path: "/aws/s3",
+            label: "s3",
+            children: [leaf("/aws/s3/credentials", "credentials")]
+          }
+        ]
+      },
+      leaf("/database", "/database")
+    ]);
   });
 
-  it("keeps a finalized outcome when its policy is later deleted", () => {
-    assert.equal(
-      getAccessRequestState(
-        createRequest({ status: ApprovalStatus.APPROVED, policy: { deletedAt: now } }),
-        now
-      ),
-      "approved"
-    );
-    assert.equal(
-      getAccessRequestState(
-        createRequest({ status: ApprovalStatus.REVOKED, policy: { deletedAt: now } }),
-        now
-      ),
-      "revoked"
-    );
+  test("lists the root first, then groups, then single folders, each by name", () => {
+    expect(
+      buildFolderTree([
+        "/app",
+        "/vault/kv",
+        "/",
+        "/aws/s3",
+        "/vault",
+        "/aws",
+        "/billing",
+        "/aws/s3/keys"
+      ])
+    ).toEqual([
+      leaf("/", "/"),
+      {
+        path: "/aws",
+        label: "/aws",
+        children: [{ path: "/aws/s3", label: "s3", children: [leaf("/aws/s3/keys", "keys")] }]
+      },
+      { path: "/vault", label: "/vault", children: [leaf("/vault/kv", "kv")] },
+      leaf("/app", "/app"),
+      leaf("/billing", "/billing")
+    ]);
+  });
+
+  test("keeps a subfolder under its parent when a sibling name shares the parent's prefix", () => {
+    expect(buildFolderTree(["/aws", "/aws-prod", "/aws/s3", "/aws_dev"])).toEqual([
+      { path: "/aws", label: "/aws", children: [leaf("/aws/s3", "s3")] },
+      leaf("/aws_dev", "/aws_dev"),
+      leaf("/aws-prod", "/aws-prod")
+    ]);
+  });
+
+  test("nests under the closest listed folder when the folders between are not listed", () => {
+    expect(buildFolderTree(["/aws/s3/credentials", "/aws/rds/credentials", "/aws"])).toEqual([
+      {
+        path: "/aws",
+        label: "/aws",
+        children: [
+          leaf("/aws/rds/credentials", "rds/credentials"),
+          leaf("/aws/s3/credentials", "s3/credentials")
+        ]
+      }
+    ]);
+  });
+
+  test("shows full paths when no folder holds another", () => {
+    expect(buildFolderTree(["/aws/s3/credentials", "/aws/rds/credentials"])).toEqual([
+      leaf("/aws/rds/credentials", "/aws/rds/credentials"),
+      leaf("/aws/s3/credentials", "/aws/s3/credentials")
+    ]);
   });
 });

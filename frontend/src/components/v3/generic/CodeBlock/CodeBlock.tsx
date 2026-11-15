@@ -6,9 +6,18 @@ type CodeBlockProps = React.ComponentProps<"pre"> & {
   value: string;
   label?: React.ReactNode;
   isCopyable?: boolean;
+  // Renders in place of value, e.g. syntax-highlighted spans. Copying still uses value.
+  children?: React.ReactNode;
 };
 
-const CodeBlock = ({ value, label, isCopyable = true, className, ...props }: CodeBlockProps) => (
+const CodeBlock = ({
+  value,
+  label,
+  isCopyable = true,
+  className,
+  children,
+  ...props
+}: CodeBlockProps) => (
   <div
     data-slot="code-block"
     className="max-w-full min-w-0 overflow-hidden rounded-md border border-border bg-container"
@@ -24,7 +33,7 @@ const CodeBlock = ({ value, label, isCopyable = true, className, ...props }: Cod
         )}
         {...props}
       >
-        <code>{value}</code>
+        <code>{children ?? value}</code>
       </pre>
       {isCopyable && (
         <CopyButton

@@ -10,9 +10,7 @@ import {
 } from "@app/components/v3";
 
 type Props = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: UseFormSetValue<any>;
   isCA: boolean;
   templateRequiresCA: boolean;

@@ -510,8 +510,9 @@ export type IdentityKubernetesAuth = {
   templateId?: string | null;
   kubernetesHost: string;
   tokenReviewerJwt: string;
-  // template-sourced JWTs read back as ""; this flag marks that a hidden JWT is stored
+  // the JWT is write-only and reads back as ""
   isTokenReviewerJwtTemplateSourced?: boolean;
+  hasTokenReviewerJwt?: boolean;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
@@ -584,6 +585,7 @@ export type IdentityTlsCertAuth = {
   allowedCommonNames: string;
   allowedSubjectAltNames: string[] | null;
   verifyClientCertificateChain: boolean;
+  bindAccessTokenToCertificate: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -598,6 +600,7 @@ export type AddIdentityTlsCertAuthDTO = {
   allowedCommonNames?: string;
   allowedSubjectAltNames?: string[];
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -614,6 +617,7 @@ export type UpdateIdentityTlsCertAuthDTO = {
   allowedCommonNames?: string | null;
   allowedSubjectAltNames?: string[] | null;
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

@@ -267,6 +267,7 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
   } = {}) => {
     const orgDAL = {
       findOne: vi.fn(async ({ id }: { id: string }) => orgs[id]),
+      findById: vi.fn(async (id: string) => orgs[id]),
       // Mirrors the DAL: a status filter hides rows in any other status unless acceptAnyStatus is set.
       findEffectiveOrgMembership: vi.fn(
         async ({ orgId, status, acceptAnyStatus }: { orgId: string; status?: string; acceptAnyStatus?: boolean }) => {
@@ -374,7 +375,7 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
     const { service, orgDAL } = build();
     const identity = await service.fnValidateJwtIdentity(accessToken({}));
     expect(identity).toMatchObject({ orgId: "", rootOrgId: "" });
-    expect(orgDAL.findOne).not.toHaveBeenCalled();
+    expect(orgDAL.findById).not.toHaveBeenCalled();
   });
 
   test("a token for an org that no longer exists is refused with 401, not a 500", async () => {

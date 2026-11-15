@@ -1,0 +1,39 @@
+name: Release freeze check
+on:
+  workflow_call:
+    inputs:
+      freeze:
+        description: "Value of the DEPLOY_FREEZE org variable, passed by the caller"
+        type: string
+        required: true
+
+jobs:
+  freeze-check:
+    name: Release freeze check
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check DEPLOY_FREEZE
+        env:
+          FREEZE: ${{ inputs.freeze }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$FREEZE" ]; then
+            echo "::error::Org variable DEPLOY_FREEZE is not visible to this repository. Refusing to release."
+            exit 1
+          fi
+          if ! frozen=$(jq -rs 'if length == 1 and (.[0] | type) == "object" and (.[0].frozen | type) == "boolean" then .[0].frozen else error("expected one JSON object with a boolean frozen") end' <<<"$FREEZE"); then
+            echo "::error::DEPLOY_FREEZE is malformed. Fix it with '@bufo-ops freeze' or '@bufo-ops unfreeze'. Refusing to release."
+            exit 1
+          fi
+          if [ "$frozen" = "false" ]; then
+            echo "Releases are not frozen."
+            exit 0
+          fi
+          if [ "$frozen" != "true" ]; then
+            echo "::error::DEPLOY_FREEZE is malformed. Refusing to release."
+            exit 1
+          fi
+          echo "::error::Releases are $(jq -r '"frozen by \(.by // "unknown") at \(.at // "unknown"): \(.reason // "no reason given")"' <<<"$FREEZE")"
+          exit 1

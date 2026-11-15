@@ -1,6 +1,7 @@
 export { CaCertDetailsSection } from "./CaCertDetailsSection";
 export { CaCertificatesSection } from "./CaCertificatesSection/CaCertificatesSection";
 export { CaCrlsSection } from "./CaCrlsSection";
+export { CaCrossSignedCertSection } from "./CaCrossSignedCertSection/CaCrossSignedCertSection";
 export { CaDetailsSection } from "./CaDetailsSection";
 export { CaGenerateRootCertModal } from "./CaGenerateRootCertModal";
 export { CaIssuerUrlSection } from "./CaIssuerUrlSection";

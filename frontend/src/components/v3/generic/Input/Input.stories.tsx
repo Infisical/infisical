@@ -40,6 +40,10 @@ const meta = {
       control: "select",
       options: ["default", "outlined"]
     },
+    size: {
+      control: "select",
+      options: ["default", "sm"]
+    },
     isError: {
       control: "boolean"
     },
@@ -59,6 +63,7 @@ const meta = {
   args: {
     type: "text",
     variant: "default",
+    size: "default",
     placeholder: "Enter text...",
     isError: false,
     disabled: false,
@@ -99,6 +104,21 @@ export const Outlined: Story = {
       description: {
         story:
           "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
+      }
+    }
+  }
+};
+
+export const Small: Story = {
+  args: {
+    size: "sm",
+    placeholder: "File name"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Compact 24px input for inline editing inside dense UI, such as renaming an entry in a file tree. Use the default size in forms."
       }
     }
   }

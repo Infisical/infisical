@@ -1,137 +1,127 @@
 ---
 title: "ClickHouse accounts"
 sidebarTitle: "ClickHouse"
-description: "Add and connect to ClickHouse databases."
+description: "Give people and agents access to a ClickHouse database without sharing its credentials."
 ---
 
-ClickHouse accounts let you manage access to a ClickHouse database. Users connect through Web Access or the CLI, and every statement they run is recorded in the [session](/documentation/platform/pam/sessions/overview).
+A ClickHouse [account](/documentation/platform/pam/accounts/overview) stores the credentials for one ClickHouse user. Members connect in the browser or through the Infisical CLI, and Infisical records every statement they run.
 
-Sessions can use either of ClickHouse's interfaces: HTTP on port 8123 (8443 with TLS) and the native protocol on port 9000 (9440 with TLS). Each session gets one local port that works with both, and the credential never reaches the client.
+ClickHouse has two interfaces, and an account can use either or both:
 
-Set the ports your server serves and leave the other empty. An account needs at least one.
+- **HTTP**: port `8123`, or `8443` with TLS (the browser and HTTP clients, such as JDBC tools, `clickhouse-connect`, and `curl`, use this interface)
+- **Native protocol**: port `9000`, or `9440` with TLS (`clickhouse-client` and other native drivers use this interface)
 
 ## Prerequisites
 
-- A ClickHouse user for Infisical to connect as.
-- At least one interface enabled on the server. Both are on by default, and ClickHouse Cloud serves both.
-- TLS on both interfaces or neither, since **SSL Enabled** applies to both.
-- A [gateway](/documentation/platform/gateways/overview) that can reach those ports. A **Native Port** needs a gateway recent enough to support the native protocol.
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A ClickHouse user for Infisical to sign in as
+- TLS turned on for both interfaces or for neither, because **SSL Enabled** applies to both
+- A [gateway](/documentation/platform/gateways/overview) that can reach the ports you use (to use the native protocol, the gateway must be recent enough to support it)
+- A ClickHouse [account template](/documentation/platform/pam/templates/overview)
 
-## Creating an account
+## Grant the user permissions
 
-<Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
-  </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a ClickHouse [template](/documentation/platform/pam/templates/overview).
-  </Step>
-  <Step title="Enter connection details">
-    | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `analytics-prod`) |
-    | **Host** | ClickHouse host |
-    | **HTTP Port** | The HTTP interface port. 8123 for plain HTTP, 8443 for HTTPS. Leave empty if the server only serves the native protocol |
-    | **Native Port** | The native protocol port. 9000 for plain TCP, 9440 with SSL. Needed by `clickhouse-client` and other native drivers. Leave empty if the server only serves HTTP |
-    | **Database** | The database sessions open. Web Access lists the tables inside it |
-    | **SSL Enabled** | Use TLS for the connection. Applies to both interfaces, so pair it with ports 8443 and 9440. Required for ClickHouse Cloud |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
-  </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Username** | The ClickHouse user sessions connect as. Use `default` for the built-in user |
-    | **Password** | The user's password. Leave blank for a user created with `no_password` |
-  </Step>
-  <Step title="Save">
-    Select **Create**. Infisical checks the connection through the gateway before saving, and an error names the port that failed.
-  </Step>
-</Steps>
-
-## Permissions
-
-What a session can do comes from the ClickHouse grants on the account's user, so grant that user only what the people using the account need.
+A session can do whatever the ClickHouse user can do, so grant the user only what the account's users need:
 
 ```sql
 CREATE USER pam_service IDENTIFIED WITH sha256_password BY '<password>';
 GRANT SELECT ON analytics.* TO pam_service;
 ```
 
-Every session opens on the account's **Database**, whatever a client asks for. That is a starting point, not a limit: a session can still read any database the user has a grant on, and Web Access lists them all. Scope the grants, not the **Database** field.
+The account's **Database** only sets the database that a session starts in. A session can read every database that the user has a grant on, so limit access with grants instead.
 
-Sessions connect with the user's default roles. To use another role, run `SET ROLE` in the session.
+Sessions start with the user's default roles. To switch to another role, run `SET ROLE` in the session.
 
-Command blocking matches the text of each statement, so a statement that builds SQL at runtime can run something a pattern would otherwise reject. Use ClickHouse grants for restrictions that have to hold.
+## Create the account
 
-## Connecting
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
+  </Step>
+  <Step>
+    Select the **Folder** and a ClickHouse **Account Template**, then select **Next**.
+  </Step>
+  <Step>
+    Enter a **Name** and the connection details:
+
+    | Field | Description |
+    | --- | --- |
+    | **Host** | The server's hostname |
+    | **HTTP Port** | The HTTP interface's port (leave it empty if the server only serves the native protocol) |
+    | **Native Port** | The native protocol's port (leave it empty if the server only serves HTTP) |
+    | **Database** | The database that sessions start in (defaults to `default`) |
+    | **SSL Enabled** | Whether to connect over TLS (required for ClickHouse Cloud) |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
+
+    Set at least one of the two ports. If you turn on **SSL Enabled**, use the TLS ports.
+  </Step>
+  <Step>
+    Enter the credentials:
+
+    | Field | Description |
+    | --- | --- |
+    | **Username** | The ClickHouse user (defaults to `default`) |
+    | **Password** | The user's password (leave it empty for a user created with `no_password`) |
+  </Step>
+  <Step>
+    Select **Create**. Infisical checks the connection through the gateway before it saves the account, and if the check fails, the error names the port that failed.
+  </Step>
+</Steps>
+
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
 
 <Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based interface with two tools:
+  <Tab title="Browser">
+    The browser needs the account to have an **HTTP Port**. If the account only has a **Native Port**, use the CLI.
 
-    - **Data Explorer**: browse tables, view data, filter and sort, export to CSV/JSON
-    - **SQL Editor**: write and run SQL queries
+    The browser session has a table browser and a SQL editor:
 
-    To connect:
+    - The table browser lists databases where it lists schemas for other account types, because ClickHouse databases don't contain schemas
+    - The table browser can't edit rows, because ClickHouse applies row changes in the background; to change rows, run `ALTER TABLE ... UPDATE` or `DELETE FROM` in the SQL editor
+    - The table browser shows the first 1,000 rows of a result
+    - The browser stops a statement after 30 seconds
 
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and select the rocket icon (or select **Launch Session** from the menu)
-    3. Select **Connect in Browser**
-
-    ClickHouse has no schema layer inside a database, so the Data Explorer sidebar lists databases where it lists schemas for other account types.
-
-    Web Access speaks ClickHouse's HTTP interface, so it needs the account to have an **HTTP Port**. On an account with only a native port it is greyed out, and the CLI is the way in.
-
+    For a long query or a full result set, use the CLI.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy on `127.0.0.1` that serves both interfaces on one port. Connect with TLS off. The username and password a client sends are ignored, since the gateway signs in for you.
+    Start the local proxy. It serves both interfaces on one port on `127.0.0.1`, and prints the port and a connection string:
 
     ```bash
     infisical pam access analytics/clickhouse-prod
     ```
 
-    The command prints the port and a connection string. Native clients such as `clickhouse-client`, `clickhouse-driver` and `clickhouse-go`, and HTTP clients such as JDBC tools, `clickhouse-connect` and `curl`, all work on that port.
+    Connect your client to the port with TLS turned off:
 
     ```bash
     clickhouse-client --host 127.0.0.1 --port <port>
     curl 'http://127.0.0.1:<port>/?query=SELECT+1'
     ```
 
-    Native clients need the account to have a **Native Port**.
-
-    **Flags:**
-    - `--port <port>`: use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>`: provide an access reason (if required by template)
-
+    The gateway signs in for you, so the proxy ignores the username and password that your client sends. Native clients need the account to have a **Native Port**, and HTTP clients need an **HTTP Port**.
   </Tab>
 </Tabs>
 
-The Data Explorer shows the first 1,000 rows a statement produces and tells you when there are more, and caps a statement at 30 seconds. Neither limit applies to the CLI, so use it with your own client for a long query or a full result set.
+## Recording and command blocking
 
-<Note>
-  ClickHouse applies row changes as asynchronous mutations rather than as statements that take effect when they return, so the Data Explorer grid is read-only for every table. Run `ALTER TABLE ... UPDATE` or `DELETE FROM` from the SQL Editor instead. The column marked as a key in the grid is the table's sorting key, which ClickHouse calls the primary key: it's an index, not a unique constraint.
-</Note>
+Infisical records every statement in a session and its outcome. To see them, open the session and go to **Session Logs**.
 
-## Recording
+The template's **Command Blocking** patterns apply to ClickHouse statements. If a statement matches a pattern, Infisical rejects the statement before it reaches ClickHouse and records the rejection. Command blocking only matches the text of each statement, so it can't stop SQL that a statement builds while it runs. For restrictions that must always hold, use ClickHouse grants.
 
-Every statement a session runs is recorded, along with the outcome of each one, and appears under **Session Logs** on the session. Web Access and the CLI both reach ClickHouse through the gateway, so recording works the same for either. Recordings are encrypted with a per-session key and written to the storage backend the [template](/documentation/platform/pam/templates/overview) selects, the same as any other account type.
+If the template uses command blocking, Infisical also rejects an HTTP request if:
 
-The template's **Command Blocking** policy applies to ClickHouse as well: a statement matching one of its patterns is rejected before it reaches ClickHouse, and the rejection is recorded. **Session Log Masking** patterns are applied to the recording before it's written.
-
-On an account with command blocking, an HTTP request body over 1 MB is refused, as is one compressed with anything other than `gzip` or `deflate`. Send large inserts in smaller batches.
-
-## Servers with HTTP turned off
-
-Set the **Native Port** and leave **HTTP Port** empty. Native clients work as usual. Web Access and HTTP clients such as JDBC tools, `clickhouse-connect` and ODBC need an HTTP port, so Web Access is greyed out on such an account.
+- The request body is larger than 1 MB (send large inserts in smaller batches)
+- The request body is compressed with anything other than `gzip` or `deflate`
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
   </Card>
-  <Card title="Access requests" icon="user-check" href="/documentation/platform/pam/access-requests/overview">
-    Require approval before a session starts.
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
   </Card>
 </CardGroup>

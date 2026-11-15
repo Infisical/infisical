@@ -2,9 +2,9 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TAuditLogStreamProviderOption } from "./types/provider-options";
 import { LogProvider } from "./enums";
 import { TAuditLogStream, TAuditLogStreamProviderMap } from "./types";
+import { TAuditLogStreamProviderOption } from "./types/provider-options";
 
 export const auditLogStreamKeys = {
   all: ["audit-log-stream"] as const,

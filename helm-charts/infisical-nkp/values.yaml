@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: infisical/infisical
-  tag: "v0.162.11"
+  tag: "v0.167.0"
   pullPolicy: IfNotPresent
 
 # Non-secret application configuration (rendered into a ConfigMap).

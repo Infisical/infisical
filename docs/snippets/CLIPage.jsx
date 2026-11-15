@@ -17,13 +17,23 @@ export const CLIPage = ({ title, description, movedAnchors = {}, children }) => 
     let stopAligning = () => {};
     // Links to a command's old anchor are already published, so when a command moves under
     // another one, `movedAnchors` maps the old id prefix to the new one. The longest prefix wins,
-    // so a subcommand that moved somewhere other than its parent can have its own entry.
+    // so a subcommand that moved somewhere other than its parent can have its own entry. A link to
+    // an argument or flag that no longer exists opens its command instead of the top of the page.
+    // The command's own id is checked before the map, because an old prefix such as `secrets` also
+    // starts current ids such as `secrets-manager-run`.
+    const commandOf = (id) => {
+      const command = id.split("--")[0];
+      return command !== id && document.getElementById(command) ? command : null;
+    };
     const movedHash = (hash) => {
       if (!hash || document.getElementById(hash)) return null;
+      if (commandOf(hash)) return commandOf(hash);
       const movedFrom = Object.keys(movedAnchors)
         .filter((old) => hash === old || hash.startsWith(`${old}-`))
         .sort((a, b) => b.length - a.length)[0];
-      return movedFrom ? movedAnchors[movedFrom] + hash.slice(movedFrom.length) : null;
+      if (!movedFrom) return null;
+      const moved = movedAnchors[movedFrom] + hash.slice(movedFrom.length);
+      return document.getElementById(moved) ? moved : commandOf(moved);
     };
     let hash = decodeURIComponent(window.location.hash.slice(1));
     const movedOnLoad = movedHash(hash);

@@ -1,4 +1,4 @@
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import {
   TAwsHoneyToken,
@@ -26,6 +26,7 @@ export type THoneyTokenCredentialsResponseMap = {
 export type TCreateHoneyTokenDTO = {
   projectId: string;
   type: HoneyTokenType;
+  config: { managedBy: HoneyTokenManagedBy };
   name: string;
   description?: string | null;
   secretsMapping: Record<string, string>;

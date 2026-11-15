@@ -30,6 +30,7 @@ import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
   matchesPamAccessSubject,
   matchPamAccessGrants,
@@ -50,6 +51,16 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  hasRevealableCredential,
+  noRevealableCredentialMessage,
+  normalizeCredentialAuthMethod
+} from "../pam-account/pam-account-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   PamAccessType,
   PamAccountType,
@@ -64,16 +75,6 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import {
-  hasRevealableCredential,
-  noRevealableCredentialMessage,
-  normalizeCredentialAuthMethod
-} from "../pam-account/pam-account-schemas";
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
 import { TPamAccessRequestData } from "./pam-access-request-types";
@@ -87,7 +88,7 @@ type TPamAccessApprovalResourceDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create" | "updateById">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findTemplatePoliciesForShare" | "find">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
@@ -395,7 +396,9 @@ export const pamAccessApprovalResourceFactory = ({
     projectId,
     policy,
     requestData,
-    actor
+    actor,
+    hasAutoApprovalRules,
+    skipsAutoApproval
   }) => {
     const inputs = requestData as TPamAccessRequestData;
     const ctx = toActorContext(actor);
@@ -457,10 +460,18 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
-    if (policySteps.length === 0 || policySteps.some((step) => step.approvers.length === 0)) {
+    // A folder with rules and no approvers grants access only through its rules
+    const isRulesOnly = !policySteps.some((step) => step.approvers.length > 0) && hasAutoApprovalRules;
+    if (!isRulesOnly && (policySteps.length === 0 || policySteps.some((step) => step.approvers.length === 0))) {
       throw new BadRequestError({
         message:
           "This folder's approval policy has no approvers configured. Ask a folder admin to add approvers under the folder's Approvals tab, then submit your request again."
+      });
+    }
+    if (isRulesOnly && !skipsAutoApproval && !accessControls.allowAutoApproval) {
+      throw new BadRequestError({
+        message:
+          "Access to this account can't be requested. Its folder has no approvers. Its template also doesn't allow auto-approval. Ask an admin to add approvers to the folder or turn on Allow Auto-Approval in the template."
       });
     }
 
@@ -487,6 +498,24 @@ export const pamAccessApprovalResourceFactory = ({
           : "You already have a pending request for this account"
       });
     }
+  };
+
+  // The account's template opts it in with Allow Auto-Approval
+  const allowsAutoApproval: NonNullable<TPamAccessApprovalResource["allowsAutoApproval"]> = async ({
+    projectId,
+    requestData,
+    tx
+  }) => {
+    const { accountId, folderId } = requestData as { accountId?: string; folderId?: string };
+    if (!accountId) return false;
+
+    const account = tx
+      ? await pamAccountDAL.findTemplatePoliciesForShare(accountId, tx)
+      : await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) return false;
+    if (tx && (account.folderId ?? null) !== (folderId ?? null)) return false;
+
+    return resolveAccessControls(account.templatePolicies).allowAutoApproval;
   };
 
   const assertCanReview: NonNullable<TPamAccessApprovalResource["assertCanReview"]> = async ({
@@ -812,6 +841,51 @@ export const pamAccessApprovalResourceFactory = ({
       };
     }
 
+    if (event === ApprovalNotificationEvent.AutoApproved) {
+      const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
+      const ruleName = summary?.ruleName ?? "an auto-approval rule";
+      const linkedRecords = summary?.linkedRecords.map(({ label, value }) => `${label} ${value}`).join(", ");
+      const folderUrl = `${accountsUrl}/${encodeURIComponent(inputs.folderId)}`;
+
+      return {
+        inApp: {
+          type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
+          title: "Access auto-approved",
+          body: `**${escapeMarkdown(requesterName)}** was granted ${accessTypeLabel} to **${escapeMarkdown(accountName)}** by the auto-approval rule "${escapeMarkdown(ruleName)}".`,
+          link: folderUrl
+        },
+        email: {
+          subjectLine: "PAM Access Auto-Approved",
+          template: SmtpTemplates.AccessPamRequestAutoApproved,
+          substitutions: {
+            requesterFullName: requesterName,
+            requesterEmail,
+            folderName: folder?.name ?? undefined,
+            accountName,
+            accessDuration: formatDuration(inputs.duration),
+            accessTypeLabel,
+            ruleName,
+            linkedRecords: linkedRecords || undefined,
+            folderUrl
+          }
+        },
+        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequestApproved, inputs.folderId)).map((target) => ({
+          ...target,
+          notification: {
+            type: TriggerFeature.PAM_ACCESS_REQUEST_APPROVED,
+            payload: {
+              requesterFullName: requesterName,
+              requesterEmail,
+              accountName,
+              folderName,
+              autoApprovalRuleName: ruleName,
+              approvalUrl: folderUrl
+            }
+          }
+        }))
+      };
+    }
+
     // A decided request leaves the approver inbox, so its messages link to the accounts page instead
     const approved = event === ApprovalNotificationEvent.Approved;
     return {
@@ -995,6 +1069,26 @@ export const pamAccessApprovalResourceFactory = ({
       };
     }
 
+    if (action === ApprovalAuditAction.RequestAutoApproved) {
+      const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
+      if (!summary) return null;
+
+      const [grant] = grantId ? [] : await approvalRequestGrantsDAL.find({ requestId: request.id });
+      return {
+        type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED,
+        metadata: {
+          ...scope,
+          approvalRequestId: request.id,
+          grantId: grantId ?? grant?.id,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
+          duration: inputs?.duration,
+          accessType: inputs?.accessType ?? PamAccessType.Session,
+          ...summary
+        }
+      };
+    }
+
     if (action !== ApprovalAuditAction.RequestBypassed || !grantId) return null;
 
     const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : null;
@@ -1073,6 +1167,8 @@ export const pamAccessApprovalResourceFactory = ({
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
+    supportsAutoApproval: true,
+    allowsAutoApproval,
     isBreakGlassEligible,
     assertBreakGlassEligible,
     assertCanRevokeGrant,

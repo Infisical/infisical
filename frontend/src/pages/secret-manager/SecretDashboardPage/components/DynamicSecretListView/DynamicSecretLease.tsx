@@ -348,10 +348,11 @@ export const DynamicSecretLease = ({
       </Dialog>
 
       <AlertDialog
+        isPending={deleteDynamicSecretLease.isPending}
         open={popUp.deleteSecret.isOpen}
         confirmationValue="delete"
         onOpenChange={(isOpen) => {
-          if (!deleteDynamicSecretLease.isPending) handlePopUpToggle("deleteSecret", isOpen);
+          handlePopUpToggle("deleteSecret", isOpen);
         }}
       >
         <AlertDialogContent>
@@ -370,18 +371,14 @@ export const DynamicSecretLease = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField
             inputProps={{
-              disabled: deleteDynamicSecretLease.isPending,
               placeholder: "Type delete here"
             }}
             onConfirm={handleDeleteConfirmation}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={deleteDynamicSecretLease.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={deleteDynamicSecretLease.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleDeleteConfirmation();

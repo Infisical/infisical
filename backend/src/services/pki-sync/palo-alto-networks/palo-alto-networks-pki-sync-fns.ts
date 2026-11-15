@@ -19,10 +19,10 @@ import {
   withPanOsClient
 } from "@app/services/app-connection/palo-alto-networks/palo-alto-networks-connection-fns";
 import { TPaloAltoNetworksConnection } from "@app/services/app-connection/palo-alto-networks/palo-alto-networks-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateMap, TPkiSyncRemovalOptions } from "@app/services/pki-sync/pki-sync-types";
 
 import {

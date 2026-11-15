@@ -132,6 +132,42 @@ describe("Auth SSO Signup V3", () => {
     expect(user?.isEmailVerified).toBe(true);
   });
 
+  test("A trusted IdP MFA proof survives email verification onto the first session", async () => {
+    const email = `sso-mfa-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+    const result = await getServices().saml.samlLogin({
+      externalId: `sso-mfa-${crypto.randomUUID()}`,
+      email,
+      firstName: "SSO",
+      lastName: "Mfa",
+      authProvider: "okta-saml",
+      orgId: TEST_ORG_ID,
+      ip: "127.0.0.1",
+      userAgent: "test-agent",
+      idpMfa: { verified: true, evidence: ["amr=mfa"], received: ["amr=pwd", "amr=mfa"] }
+    });
+
+    expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+    createdUserIds.push(result.userId);
+    expect((decode(result.signupToken) as Record<string, unknown>).idpMfaOrgId).toBe(TEST_ORG_ID);
+
+    const verificationEmail = smtp()
+      .getEmails()
+      .find((e) => e.recipients?.includes(email));
+    const code = (verificationEmail?.substitutions as Record<string, string>)?.code;
+    expect(code).toBeDefined();
+
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/complete-account",
+      headers: { authorization: `Bearer ${result.signupToken}` },
+      body: { type: "alias", code }
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect((decode(res.json().token) as Record<string, unknown>).idpMfaOrgId).toBe(TEST_ORG_ID);
+  });
+
   test("Complete SSO account with wrong code fails", async () => {
     const email = `sso-wrongcode-${crypto.randomUUID()}@${TEST_DOMAIN}`;
 

@@ -11,7 +11,7 @@ export * from "./auditLogSettings";
 export * from "./auditLogStreams";
 export * from "./auditReports";
 export * from "./auth";
-export * from "./billingV2";
+export * from "./billing";
 export * from "./bots";
 export * from "./ca";
 export * from "./certificateCleanup";

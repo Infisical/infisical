@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -23,7 +24,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		body := configBody(tn, samlidp.New(t), okta)
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
 
 		// Action
 		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), body)
@@ -46,7 +47,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 		tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.SAMLSSO)))
 
 		// Action
-		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), configBody(tn, samlidp.New(t), okta))
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta))
 
 		// Assert
 		require.NoError(t, err)
@@ -63,7 +64,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 		member := tn.NewUser(t)
 
 		// Action
-		res, err := member.API.CreateSamlConfigWithResponse(t.Context(), configBody(tn, samlidp.New(t), okta))
+		res, err := member.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta))
 
 		// Assert
 		require.NoError(t, err)
@@ -78,7 +79,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 		mine, theirs := h.NewTenant(t), h.NewTenant(t)
 
 		// Action
-		res, err := theirs.Admin.API.CreateSamlConfigWithResponse(t.Context(), configBody(mine, samlidp.New(t), okta))
+		res, err := theirs.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(mine, samlidp.New(t), sso.Okta))
 
 		// Assert
 		require.NoError(t, err)
@@ -91,7 +92,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		body := configBody(tn, samlidp.New(t), okta)
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
 		body.EnableGroupSync = new(true)
 
 		// Action
@@ -129,8 +130,8 @@ func TestSAMLConfig_Read(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		body := configBody(tn, samlidp.New(t), okta)
-		createConfig(t, tn, body)
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
+		sso.CreateSAMLConfig(t, tn, body)
 		identity := tn.NewMachineIdentity(t, harness.OrgRole("admin"))
 
 		// Action
@@ -148,12 +149,12 @@ func TestSAMLConfig_Update(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 		replacement := samlidp.New(t)
 
 		// Action
-		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
+			OrganizationId: s.Tenant.OrgID.String(),
 			EntryPoint:     new(replacement.EntryPoint),
 			Cert:           new(replacement.CertPEM()),
 		})
@@ -161,10 +162,10 @@ func TestSAMLConfig_Update(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		stored := readConfig(t, s.tn, s.tn.Admin)
+		stored := readConfig(t, s.Tenant, s.Tenant.Admin)
 		require.Equal(t, replacement.EntryPoint, stored.EntryPoint)
 		require.Equal(t, strings.TrimSpace(replacement.CertPEM()), stored.Cert)
-		require.Equal(t, s.issuer, stored.Issuer)
+		require.Equal(t, s.Issuer, stored.Issuer)
 	})
 
 	t.Run("should turn off SSO enforcement when the config is updated", func(t *testing.T) {
@@ -173,19 +174,19 @@ func TestSAMLConfig_Update(t *testing.T) {
 			"so an admin who rotates a certificate silently drops SSO enforcement.")
 
 		// Setup
-		s := setup(t, okta)
-		s.enforce(t)
+		s := setup(t, sso.Okta)
+		s.Enforce(t)
 
 		// Action
-		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
-			Cert:           new(s.idp.CertPEM()),
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
+			OrganizationId: s.Tenant.OrgID.String(),
+			Cert:           new(s.IdP.CertPEM()),
 		})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		org, err := s.tn.Admin.API.GetOrganizationByIdWithResponse(t.Context(), s.tn.OrgID.String())
+		org, err := s.Tenant.Admin.API.GetOrganizationByIdWithResponse(t.Context(), s.Tenant.OrgID.String())
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, org.StatusCode(), "%s", apierr.Body(org.Body))
 		require.False(t, *org.JSON200.Organization.AuthEnforced)

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   CODE_SIGNING_SCOPE_API_DESCRIPTION,
@@ -69,7 +70,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       description: "Open a request to sign with this signer (operator self-serve)",
       params: SignerIdParamsSchema,
       body: z.object({
-        justification: z.string().trim().min(1).max(2048),
+        justification: auditSafeText(z.string().trim().min(1).max(2048), { allowMultiline: true }),
         requestedSignings: z.number().int().min(1).optional(),
         requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
           "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
@@ -117,7 +118,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       body: z.object({
         granteeUserId: z.string().uuid().optional(),
         granteeIdentityId: z.string().uuid().optional(),
-        justification: z.string().trim().min(1).max(2048),
+        justification: auditSafeText(z.string().trim().min(1).max(2048), { allowMultiline: true }),
         requestedSignings: z.number().int().min(1).optional(),
         requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
           "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."

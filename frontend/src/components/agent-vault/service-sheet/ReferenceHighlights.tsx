@@ -3,7 +3,7 @@ import { RefObject } from "react";
 import { cn } from "@app/components/v3/utils";
 import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
 
-import { useKnownVariableKeys } from "./ServiceVariablesContext";
+import { useMissingVariableKeys } from "./ServiceVariablesContext";
 import { chipTone } from "./VariableChips";
 
 /**
@@ -15,9 +15,9 @@ export const ReferenceHighlights = ({
   overlayRef
 }: {
   value: string;
-  overlayRef: RefObject<HTMLDivElement>;
+  overlayRef: RefObject<HTMLDivElement | null>;
 }) => {
-  const knownKeys = useKnownVariableKeys();
+  const missingKeys = useMissingVariableKeys();
 
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center px-2.5">
@@ -35,7 +35,7 @@ export const ReferenceHighlights = ({
               key={index}
               className={cn(
                 "rounded-[3px]",
-                chipTone(segment.isValid && (!knownKeys || knownKeys.has(segment.key)))
+                chipTone(segment.isValid && !missingKeys.has(segment.key))
               )}
             >
               {segment.text}

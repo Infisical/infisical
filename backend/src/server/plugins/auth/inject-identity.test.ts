@@ -1,4 +1,5 @@
 import type { FastifyRequest } from "fastify";
+import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto";
@@ -8,6 +9,11 @@ import { extractAuth } from "./inject-identity";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => ({ INFISICAL_CLOUD: true, INTERNAL_REGION: "us" })
 }));
 
 const AUTH_SECRET = "test-secret-for-extract-auth-unit-tests";
@@ -73,5 +79,31 @@ describe("extractAuth — OAuth access token classification", () => {
     const result = await extractAuth(makeReq(undefined), AUTH_SECRET);
 
     expect(result.authMode).toBeNull();
+  });
+});
+
+describe("extractAuth — token from another instance", () => {
+  beforeAll(async () => {
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize({} as never, {} as never, {} as never);
+  });
+
+  afterAll(() => {
+    delete process.env.FIPS_ENABLED;
+  });
+
+  test("a token signed with another instance's secret names the likely cause", async () => {
+    const token = crypto.jwt().sign(baseAccessClaims, "another-instance-secret", { expiresIn: "1h" });
+    const attempt = extractAuth(makeReq(`Bearer ${token}`), AUTH_SECRET);
+
+    // Still a JsonWebTokenError, so the error handler answers with the same 403 TokenError as before.
+    await expect(attempt).rejects.toBeInstanceOf(jwt.JsonWebTokenError);
+    await expect(attempt).rejects.toThrow("may have been issued by a different Infisical instance: this is US Cloud");
+  });
+
+  test("other token errors keep the library message", async () => {
+    const attempt = extractAuth(makeReq("Bearer not-a-jwt"), AUTH_SECRET);
+
+    await expect(attempt).rejects.toThrow("jwt malformed");
   });
 });

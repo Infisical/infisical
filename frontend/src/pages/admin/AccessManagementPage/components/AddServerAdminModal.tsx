@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,8 +15,7 @@ import {
   DialogTitle,
   Field,
   FieldError,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useAdminGrantServerAdminAccess } from "@app/hooks/api";
@@ -93,17 +93,18 @@ const Content = ({ onClose }: ContentProps) => {
         render={({ field, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor={userSelectId}>User</FieldLabel>
-            <FilterableSelect
-              inputId={userSelectId}
+            <Combobox
+              id={userSelectId}
               isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
-              className="w-full"
               placeholder="Search users..."
+              searchAriaLabel="Search users"
               options={users}
               getOptionLabel={(user) => getUserLabel(user)}
               getOptionValue={(user) => user.id}
               value={field.value}
-              onChange={field.onChange}
-              onInputChange={(value) => {
+              isClearable={false}
+              onValueChange={field.onChange}
+              onSearchChange={(value) => {
                 setSearchUserFilter(value);
                 if (!value) setDebouncedSearchTerm("");
               }}

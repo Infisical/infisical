@@ -107,7 +107,8 @@ export const useGetCertificateById = (certificateId: string) => {
     queryKey: certKeys.getCertificateById(certificateId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCertificateByIdResponse>(
-        `/api/v1/cert-manager/certificates/${certificateId}`
+        `/api/v1/cert-manager/certificates/${certificateId}`,
+        { params: { includeDeleted: true } }
       );
       return data;
     },

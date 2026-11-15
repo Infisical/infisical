@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
-import { Field, FieldError, Input } from "@app/components/v3";
+import { Field, FieldFeedback, Input } from "@app/components/v3";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
 import { CreateUserStatementAlert } from "./shared";
@@ -14,6 +14,7 @@ export const MongoRotationParametersFields = () => {
     }
   >();
   const type = watch("type");
+  const isUpdate = Boolean(watch("id"));
 
   const { rotationOption } = useSecretRotationV2Option(type);
 
@@ -28,13 +29,17 @@ export const MongoRotationParametersFields = () => {
             <Input
               ref={ref}
               id="mongodb-username-1"
+              disabled={isUpdate}
               value={value}
               onBlur={onBlur}
               onChange={onChange}
               placeholder="infisical_user_1"
               isError={Boolean(error)}
             />
-            <FieldError>{error?.message}</FieldError>
+            <FieldFeedback
+              description={isUpdate ? "Cannot be updated." : undefined}
+              error={error?.message}
+            />
           </Field>
         )}
         control={control}
@@ -49,13 +54,17 @@ export const MongoRotationParametersFields = () => {
             <Input
               ref={ref}
               id="mongodb-username-2"
+              disabled={isUpdate}
               value={value}
               onBlur={onBlur}
               onChange={onChange}
               placeholder="infisical_user_2"
               isError={Boolean(error)}
             />
-            <FieldError>{error?.message}</FieldError>
+            <FieldFeedback
+              description={isUpdate ? "Cannot be updated." : undefined}
+              error={error?.message}
+            />
           </Field>
         )}
         control={control}

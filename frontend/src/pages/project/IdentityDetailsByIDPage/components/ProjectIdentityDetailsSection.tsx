@@ -54,14 +54,13 @@ export const ProjectIdentityDetailsSection = ({
   const projectsHidden = hidesProjects(currentProject?.type);
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
+  const isSecretScanning = currentProject?.type === ProjectType.SecretScanning;
 
   let productLabel = "Project";
   if (projectsHidden) {
     productLabel = getProjectLabel(currentProject?.type);
   } else if (isPam) {
     productLabel = "PAM";
-  } else if (isAgentVault) {
-    productLabel = "Agent Vault";
   }
 
   let joinedLabel = "Joined project";
@@ -69,11 +68,9 @@ export const ProjectIdentityDetailsSection = ({
     joinedLabel = `Joined ${getProjectLabel(currentProject?.type).toLowerCase()}`;
   } else if (isPam) {
     joinedLabel = "Joined PAM";
-  } else if (isAgentVault) {
-    joinedLabel = "Joined Agent Vault";
   }
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -150,7 +147,10 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant={isAgentVault ? "av" : "project"}>
+                  <Badge
+                    // eslint-disable-next-line no-nested-ternary
+                    variant={isAgentVault ? "av" : isSecretScanning ? "ss" : "project"}
+                  >
                     {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
                     {productLabel}
                   </Badge>

@@ -1,0 +1,20 @@
+version: v0.165.11
+releasedAt: 2026-09-15T20:22:17-03:00
+sourceTag: v0.165.11
+previousTag: v0.165.10
+impactLevel: none
+summary: No self-hosted upgrade actions or risks require operator changes.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-16T00:21:43.781Z
+  sourceRange:
+    from: v0.165.10
+    to: v0.165.11

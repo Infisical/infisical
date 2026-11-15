@@ -347,12 +347,7 @@ export const SelectionPanel = ({
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
-        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
-      });
-    } else {
-      createNotification({
-        type: "error",
-        text: `Failed to delete selected ${resourceLabel}`
+        text: `Deletion partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
       });
     }
   };
@@ -375,10 +370,25 @@ export const SelectionPanel = ({
     (shouldShowDelete && (selectedKeysCount > 0 || selectedRotationCount > 0)) ||
     canMoveSelectedFolders;
 
-  const isMoveDisabled = isHoneyTokenSelected;
+  const visibleEnvSlugs = new Set(visibleEnvs.map((env) => env.slug));
+  const visibleSelectedSecrets = Object.values(selectedEntries.secret).flatMap((record) =>
+    Object.entries(record)
+      .filter(([env]) => visibleEnvSlugs.has(env))
+      .map(([, secret]) => secret)
+  );
+  const hasOnlyManagedSecretsToMove =
+    !areFoldersSelected &&
+    !areRotationsSelected &&
+    visibleSelectedSecrets.length > 0 &&
+    visibleSelectedSecrets.every((secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret);
+
+  const isMoveDisabled = isHoneyTokenSelected || hasOnlyManagedSecretsToMove;
   let moveDisabledReason = "";
   if (isHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
+  } else if (hasOnlyManagedSecretsToMove) {
+    moveDisabledReason =
+      "Rotated secrets are managed by their secret rotation. Move the rotation instead.";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;

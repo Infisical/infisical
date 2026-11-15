@@ -5,7 +5,7 @@ description: "Issue certificates using the Simple Certificate Enrollment Protoco
 ---
 
 <Tip>
-  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+  New to Infisical Certificate Management? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
 </Tip>
 
 Use the SCEP enrollment method to provision certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol. SCEP is widely used by MDM tools like Jamf Pro, Ivanti, and Microsoft Intune.
@@ -40,10 +40,14 @@ Infisical's SCEP service is based on [RFC 8894](https://datatracker.ietf.org/doc
 These SCEP endpoints are exposed under the `/scep` path and structured as:
 
 ```
-https://app.infisical.com/scep/{profile_id}/pkiclient.exe
+https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/pkiclient.exe
 ```
 
 For self-hosted Infisical instances, replace `app.infisical.com` with your instance's domain.
+
+<Note>
+  Windows adds `/pkiclient.exe` to the SCEP server URL itself. If you configure Windows devices, including through an MDM tool such as Microsoft Intune, remove `/pkiclient.exe` from the end of the URL. Other SCEP clients, such as Apple devices and sscep, use the full URL.
+</Note>
 
 ## Guides
 
@@ -94,7 +98,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
     When dynamic challenges are enabled, Infisical exposes a challenge endpoint at:
 
     ```
-    https://app.infisical.com/scep/{profile_id}/challenge
+    https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/challenge
     ```
 
     The endpoint accepts authenticated `POST` requests and returns a plain-text one-time challenge password. The caller must authenticate using a [Machine Identity](/documentation/platform/identities/machine-identities) access token.
@@ -160,7 +164,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
         ```bash
         sscep getca \
-          -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+          -u https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/pkiclient.exe \
           -c ca.pem
         ```
 
@@ -203,7 +207,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
         ```bash
         sscep enroll \
-          -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+          -u https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/pkiclient.exe \
           -c ca.pem-0 \
           -k device.key \
           -r device.csr \
@@ -231,7 +235,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
         ```bash
         curl -s -X POST \
-          https://app.infisical.com/scep/{profile_id}/challenge \
+          https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/challenge \
           -H "Authorization: Bearer <machine-identity-access-token>"
         ```
 
@@ -266,7 +270,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
     # Enroll using the issued certificate as the signing identity
     sscep enroll \
-      -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+      -u https://app.infisical.com/scep/applications/{application_id}/profiles/{profile_id}/pkiclient.exe \
       -c ca.pem-0 \
       -k device.key \
       -r device-renew.csr \

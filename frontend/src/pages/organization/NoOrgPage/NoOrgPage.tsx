@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import {
   fetchOrganizations,
@@ -100,10 +100,8 @@ export const NoOrgPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.create-organization")} />
+      <link rel="icon" href="/infisical.ico" />
       <div className="min-h-screen bg-page">
         {failed ? (
           <CreateOrgModal isOpen logoutOnClose />

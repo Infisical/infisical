@@ -168,6 +168,40 @@ func TestGitHubFake_Secrets(t *testing.T) {
 		require.Contains(t, first.Header.Get("Link"), `rel="last"`, "the client parses rel=last for a page count")
 		require.Len(t, seen, 150)
 	})
+
+	t.Run("should keep Dependabot secrets apart when Actions uses the same repository", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
+		const dependabot = "/repos/acme/app/dependabot/secrets"
+		enc, keyID := seal(t, ts, "ghp_a", dependabot, "registry-token")
+
+		// Action
+		code, body := do(t, ts, http.MethodPut, "ghp_a", dependabot+"/NPM_TOKEN",
+			map[string]string{"encrypted_value": enc, "key_id": keyID})
+
+		// Assert
+		require.Equalf(t, http.StatusCreated, code, "PUT: %s", body)
+		_, own := do(t, ts, http.MethodGet, "ghp_a", dependabot, nil)
+		require.Contains(t, string(own), "NPM_TOKEN")
+		_, actions := do(t, ts, http.MethodGet, "ghp_a", repo, nil)
+		require.NotContains(t, string(actions), "NPM_TOKEN", "a Dependabot secret leaked into Actions secrets")
+	})
+
+	t.Run("should refuse an organization secret when it has no visibility", func(t *testing.T) {
+		// Setup
+		ts := newServer(t)
+		const org = "/orgs/acme/codespaces/secrets"
+		enc, keyID := seal(t, ts, "ghp_a", org, "v")
+
+		// Action
+		code, body := do(t, ts, http.MethodPut, "ghp_a", org+"/TOKEN",
+			map[string]string{"encrypted_value": enc, "key_id": keyID})
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, code, "PUT without visibility: %s", body)
+		_, list := do(t, ts, http.MethodGet, "ghp_a", org, nil)
+		require.NotContains(t, string(list), "TOKEN")
+	})
 }
 
 func TestFakenet_Dispatch(t *testing.T) {

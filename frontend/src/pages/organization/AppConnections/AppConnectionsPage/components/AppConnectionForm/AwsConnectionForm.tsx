@@ -24,7 +24,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AwsConnectionMethod, TAwsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -40,6 +39,7 @@ type Props = {
   appConnection?: TAwsConnection;
   onSubmit: (formData: FormData) => Promise<void>;
   projectType?: ProjectType;
+  projectId?: string | null;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -72,23 +72,21 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-const OrgExternalIdHint = () => {
-  const { currentOrg } = useOrganization();
-
+const ProjectExternalIdHint = ({ projectId }: { projectId: string }) => {
   return (
     <FieldDescription>
       Infisical sends your{" "}
       <HoverCard openDelay={150} closeDelay={150}>
         <HoverCardTrigger asChild>
           <span className="cursor-help text-foreground underline decoration-muted decoration-dotted underline-offset-4">
-            organization ID
+            project ID
           </span>
         </HoverCardTrigger>
         <HoverCardContent align="start" className="w-auto max-w-sm">
           <p className="text-xs font-medium text-foreground">External ID</p>
           <div className="mt-1 flex items-center gap-1">
-            <span className="font-mono text-xs">{currentOrg.id}</span>
-            <CopyButton value={currentOrg.id} ariaLabel="Copy organization ID" />
+            <span className="font-mono text-xs">{projectId}</span>
+            <CopyButton value={projectId} ariaLabel="Copy project ID" />
           </div>
           <p className="mt-2 text-xs text-muted">
             Require it in the role&apos;s trust policy with the <Code>sts:ExternalId</Code>{" "}
@@ -101,7 +99,7 @@ const OrgExternalIdHint = () => {
   );
 };
 
-export const AwsConnectionForm = ({ appConnection, onSubmit, projectType }: Props) => {
+export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
@@ -171,7 +169,9 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType }: Prop
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  {projectType === ProjectType.AgentVault && <OrgExternalIdHint />}
+                  {projectType === ProjectType.AgentVault && projectId && (
+                    <ProjectExternalIdHint projectId={projectId} />
+                  )}
                   <FieldError id="app-connection-aws-role-arn-error" errors={[error]} />
                 </Field>
               )}

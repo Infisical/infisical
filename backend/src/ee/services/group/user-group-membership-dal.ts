@@ -202,6 +202,20 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteByUserIdsInGroupsOwnedByOrgs = async (
+    { userIds, orgIds }: { userIds: string[]; orgIds: string[] },
+    tx: Knex
+  ) => {
+    try {
+      await tx(TableName.UserGroupMembership)
+        .whereIn("userId", userIds)
+        .whereIn("groupId", tx(TableName.Groups).whereIn("orgId", orgIds).select("id"))
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user group memberships in groups owned by orgs" });
+    }
+  };
+
   const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
     try {
       // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
@@ -277,6 +291,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     findUserGroupMembershipsInProjectByUserIds,
     findGroupMembersNotInProject,
     deletePendingUserGroupMembershipsByUserIds,
+    deleteByUserIdsInGroupsOwnedByOrgs,
     findGroupMembershipsByUserIdInOrg,
     findGroupMembershipsByGroupIdInOrg
   };
