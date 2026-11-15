@@ -28,8 +28,8 @@ export const IndexPage = () => {
   return (
     <Navigate
       replace
-      to={v4Path("/organizations/$orgId/$")}
-      params={{ orgId, _splat: "cert-manager/applications" }}
+      to={v4Path("/organizations/$orgId/cert-manager/applications")}
+      params={{ orgId }}
     />
   );
 };

@@ -51,12 +51,14 @@ const Title = () => (
   </Inline>
 );
 
-const DeleteHsmConnectorDialog = ({
+export const DeleteHsmConnectorDialog = ({
   connector,
-  onClose
+  onClose,
+  onDeleted
 }: {
   connector?: THsmConnector;
   onClose: () => void;
+  onDeleted?: () => void;
 }) => {
   const remove = useV4Adapter("certManagerSettings").useDeleteHsmConnector();
   const [pending, setPending] = useState(false);
@@ -86,6 +88,7 @@ const DeleteHsmConnectorDialog = ({
               if (!deleted) return;
               saved(`HSM connector ${connector.name} deleted`);
               onClose();
+              onDeleted?.();
             }}
           >
             Delete
