@@ -16,16 +16,13 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
-import {
-  ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import type { TPkiApplication } from "@app/hooks/api/pkiApplications/types";
 
 import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useCertManagerProjectId } from "../components/certificate";
+import { canCreateAttachableProfile } from "../components/profile-model";
 import { CertificateProfileSheet } from "../components/profile-sheet";
 
 const nameSchema = z
@@ -57,12 +54,7 @@ export const useProfileCreation = (onCreated: (profileId: string) => void) => {
   const { projectId } = useCertManagerProjectId(useOrgId());
   const { permission } = useProjectPermission(projectId ?? "");
   const [query, setQuery] = useState<string>();
-  const canCreate =
-    Boolean(projectId) &&
-    permission.can(
-      ProjectPermissionCertificateProfileActions.Create,
-      ProjectPermissionSub.CertificateProfiles
-    );
+  const canCreate = Boolean(projectId) && canCreateAttachableProfile(permission);
   return {
     canCreate,
     comboboxProps: canCreate
@@ -76,6 +68,7 @@ export const useProfileCreation = (onCreated: (profileId: string) => void) => {
         <CertificateProfileSheet
           projectId={projectId}
           initialSlug={query}
+          requireAttach
           onCreated={(profile) => onCreated(profile.id)}
           onClose={() => setQuery(undefined)}
         />

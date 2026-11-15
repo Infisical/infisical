@@ -45,7 +45,6 @@ import { formatDistanceToNow } from "date-fns";
 
 import {
   ProjectPermissionAppConnectionActions,
-  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -77,6 +76,7 @@ import type { PkiApplicationPermission } from "../../data/pki-applications/contr
 import { orgHref, useGo } from "../../links";
 import { useProfileCreation, useProfileOptions } from "../ApplicationsPage/application-dialogs";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
+import { canCreateAttachableProfile } from "../components/profile-model";
 import { type EnrollmentMethod, EnrollmentSheet, METHOD_LABELS } from "./enrollment-sheet";
 import { APPLICATION_DOCS, appCan, copyId, formatAlertBefore } from "./shared";
 
@@ -292,10 +292,7 @@ const ProfilesCard = ({
     PkiApplicationResourceSub.ApplicationEnrollment
   );
   let attachBlocked: string | undefined;
-  const canCreateProfile = permission.can(
-    ProjectPermissionCertificateProfileActions.Create,
-    ProjectPermissionSub.CertificateProfiles
-  );
+  const canCreateProfile = canCreateAttachableProfile(permission);
   if (!canAttach) attachBlocked = RESTRICTED;
   else if (!canCreateProfile && totalCount === 0)
     attachBlocked = "No certificate profiles exist yet";
