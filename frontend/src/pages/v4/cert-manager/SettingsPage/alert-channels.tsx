@@ -513,13 +513,7 @@ const ChannelCard = ({
       }
       action={
         <Inline gap={8} align="center" wrap={false}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            loading={testChannel.isPending}
-            onClick={onTest}
-          >
+          <Button type="button" variant="outline" loading={testChannel.isPending} onClick={onTest}>
             Send test
           </Button>
           <Controller
@@ -533,14 +527,7 @@ const ChannelCard = ({
               />
             )}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            icon="trash"
-            iconOnly
-            onClick={onRemove}
-          >
+          <Button type="button" variant="ghost" icon="trash" iconOnly onClick={onRemove}>
             Remove channel
           </Button>
         </Inline>

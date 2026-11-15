@@ -797,6 +797,7 @@ export const CertificateProfileSheet = ({
   profile,
   mode = "create",
   initialSlug,
+  requireAttach,
   onCreated,
   onClose
 }: {
@@ -804,6 +805,7 @@ export const CertificateProfileSheet = ({
   profile?: TCertificateProfile;
   mode?: "create" | "edit" | "clone";
   initialSlug?: string;
+  requireAttach?: boolean;
   onCreated?: (profile: TCertificateProfile) => void;
   onClose: () => void;
 }) => {
@@ -867,6 +869,14 @@ export const CertificateProfileSheet = ({
       )
     )
       slugError = "Your role can't create a profile with this name. Choose an allowed name.";
+    else if (
+      requireAttach &&
+      !permission.can(
+        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        subject(ProjectPermissionSub.CertificateProfiles, { slug })
+      )
+    )
+      slugError = "Your role can't attach a profile with this name. Choose an allowed name.";
     return report({
       slug: slugError,
       description:

@@ -251,13 +251,7 @@ export const OrgIdentityDetail = () => {
 
   const addAuthButton = (
     <Gate allowed={canEditAuth}>
-      <Button
-        variant="accent"
-        size="xs"
-        icon="plus"
-        disabled={!canEditAuth}
-        onClick={() => setAuthForm({})}
-      >
+      <Button variant="accent" icon="plus" disabled={!canEditAuth} onClick={() => setAuthForm({})}>
         Add auth method
       </Button>
     </Gate>
@@ -373,13 +367,12 @@ export const OrgIdentityDetail = () => {
                 <Gate allowed={canEdit}>
                   <Button
                     variant="outline"
-                    size="icon"
+                    icon={PencilIcon}
+                    iconOnly
                     aria-label="Edit machine identity"
                     disabled={!canEdit}
                     onClick={() => setEditing(true)}
-                  >
-                    <Icon icon={PencilIcon} size={12} />
-                  </Button>
+                  />
                 </Gate>
               }
             >

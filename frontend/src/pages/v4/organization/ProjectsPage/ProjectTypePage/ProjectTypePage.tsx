@@ -200,7 +200,7 @@ const Toolbar = ({
         icon="search"
         aria-label="Search projects"
         placeholder="Search by project name..."
-        kbd="/"
+        slashShortcut
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
       />

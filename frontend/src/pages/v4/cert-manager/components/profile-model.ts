@@ -1,3 +1,8 @@
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub,
+  type TProjectPermission
+} from "@app/context/ProjectPermissionContext/types";
 import type { TCertificatePolicy } from "@app/hooks/api/certificatePolicies/types";
 import {
   IssuerType,
@@ -270,3 +275,9 @@ export const defaultsToApi = (
   }
   return Object.keys(result).length ? result : null;
 };
+
+export const canCreateAttachableProfile = (permission: TProjectPermission) =>
+  [
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionCertificateProfileActions.ManageApplicationAttachments
+  ].every((action) => permission.can(action, ProjectPermissionSub.CertificateProfiles));

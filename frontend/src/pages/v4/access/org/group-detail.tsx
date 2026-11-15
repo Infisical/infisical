@@ -216,13 +216,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   const hasRows = isPending || members.length > 0;
   const addButton = (
     <Gate allowed={canEdit}>
-      <Button
-        variant="accent"
-        size="xs"
-        icon="plus"
-        disabled={!canEdit}
-        onClick={() => setAdding(true)}
-      >
+      <Button variant="accent" icon="plus" disabled={!canEdit} onClick={() => setAdding(true)}>
         Add member
       </Button>
     </Gate>
@@ -492,13 +486,12 @@ export const OrgGroupDetail = () => {
                 <Gate allowed={canEdit}>
                   <Button
                     variant="outline"
-                    size="icon"
+                    icon={PencilIcon}
+                    iconOnly
                     aria-label="Edit group"
                     disabled={!canEdit}
                     onClick={() => setEditing(true)}
-                  >
-                    <Icon icon={PencilIcon} size={12} />
-                  </Button>
+                  />
                 </Gate>
               }
             >

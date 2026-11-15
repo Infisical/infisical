@@ -187,7 +187,7 @@ export const PamDiscoveryPage = () => {
               icon="search"
               aria-label="Search discovery sources"
               placeholder="Search by name..."
-              kbd="/"
+              slashShortcut
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

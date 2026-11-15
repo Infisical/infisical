@@ -200,7 +200,7 @@ const RequestsTable = ({
                 ? "Search by signer or requester"
                 : "Search by common name, profile or requester"
             }
-            kbd="/"
+            slashShortcut
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

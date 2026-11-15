@@ -16,8 +16,7 @@ export const Route = createFileRoute(
     readiness: "partial",
     missing: [
       "Create approval policies",
-      "Create and edit application alerts",
-      "Create a certificate profile from the profile picker"
+      "Create and edit application alerts"
     ]
   },
   component: ApplicationDetailsByIDPage,

@@ -103,7 +103,7 @@ export const AccountList = ({
             icon="search"
             aria-label="Search accounts"
             placeholder="Search accounts..."
-            kbd="/"
+            slashShortcut
             value={filters.searchInput}
             onChange={(event) => filters.setSearchInput(event.target.value)}
           />

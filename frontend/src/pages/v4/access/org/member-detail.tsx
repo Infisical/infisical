@@ -423,13 +423,12 @@ export const OrgMemberDetail = () => {
                   <Gate allowed={canEdit}>
                     <Button
                       variant="outline"
-                      size="icon"
+                      icon={PencilIcon}
+                      iconOnly
                       aria-label="Edit user"
                       disabled={!canEdit}
                       onClick={() => setEditing(true)}
-                    >
-                      <Icon icon={PencilIcon} size={12} />
-                    </Button>
+                    />
                   </Gate>
                 )
               }
