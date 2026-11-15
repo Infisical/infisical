@@ -45,6 +45,7 @@ import { formatDistanceToNow } from "date-fns";
 
 import {
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -74,7 +75,7 @@ import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { orgHref, useGo } from "../../links";
-import { useProfileOptions } from "../ApplicationsPage/application-dialogs";
+import { useProfileCreation, useProfileOptions } from "../ApplicationsPage/application-dialogs";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
 import { type EnrollmentMethod, EnrollmentSheet, METHOD_LABELS } from "./enrollment-sheet";
 import { APPLICATION_DOCS, appCan, copyId, formatAlertBefore } from "./shared";
@@ -178,6 +179,9 @@ const AttachProfilesDialog = ({
   const { options } = useProfileOptions();
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
+  const profileCreation = useProfileCreation((profileId) =>
+    setSelected((current) => [...current, profileId])
+  );
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: selected.length > 0,
     onDiscard: onClose
@@ -224,6 +228,7 @@ const AttachProfilesDialog = ({
                 options={available}
                 value={selected}
                 onValueChange={setSelected}
+                {...profileCreation.comboboxProps}
               />
             </Field>
           </form>
@@ -247,6 +252,7 @@ const AttachProfilesDialog = ({
         {...discardDialogProps}
         description="Your pending profile attachments will be lost."
       />
+      {profileCreation.sheet}
     </>
   );
 };
@@ -286,9 +292,15 @@ const ProfilesCard = ({
     PkiApplicationResourceSub.ApplicationEnrollment
   );
   let attachBlocked: string | undefined;
+  const canCreateProfile = permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
   if (!canAttach) attachBlocked = RESTRICTED;
-  else if (totalCount === 0) attachBlocked = "No certificate profiles exist yet";
-  else if (totalCount <= profiles.length) attachBlocked = "Every certificate profile is attached";
+  else if (!canCreateProfile && totalCount === 0)
+    attachBlocked = "No certificate profiles exist yet";
+  else if (!canCreateProfile && totalCount <= profiles.length)
+    attachBlocked = "Every certificate profile is attached";
   const profileHref = (profile: TPkiApplicationProfile) =>
     orgHref(
       orgId,

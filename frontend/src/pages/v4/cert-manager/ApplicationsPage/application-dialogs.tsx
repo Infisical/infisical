@@ -16,10 +16,17 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import type { TPkiApplication } from "@app/hooks/api/pkiApplications/types";
 
+import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { useCertManagerProjectId } from "../components/certificate";
+import { CertificateProfileSheet } from "../components/profile-sheet";
 
 const nameSchema = z
   .string()
@@ -46,6 +53,36 @@ export const useProfileOptions = () => {
   };
 };
 
+export const useProfileCreation = (onCreated: (profileId: string) => void) => {
+  const { projectId } = useCertManagerProjectId(useOrgId());
+  const { permission } = useProjectPermission(projectId ?? "");
+  const [query, setQuery] = useState<string>();
+  const canCreate =
+    Boolean(projectId) &&
+    permission.can(
+      ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionSub.CertificateProfiles
+    );
+  return {
+    canCreate,
+    comboboxProps: canCreate
+      ? {
+          onCreate: (next: string) => setQuery(next),
+          createLabel: (next: string) => `Create profile ${next}`
+        }
+      : {},
+    sheet:
+      projectId && query !== undefined ? (
+        <CertificateProfileSheet
+          projectId={projectId}
+          initialSlug={query}
+          onCreated={(profile) => onCreated(profile.id)}
+          onClose={() => setQuery(undefined)}
+        />
+      ) : null
+  };
+};
+
 const ApplicationForm = ({
   application,
   onClose,
@@ -64,6 +101,9 @@ const ApplicationForm = ({
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [profileIds, setProfileIds] = useState<string[]>([]);
+  const profileCreation = useProfileCreation((profileId) =>
+    setProfileIds((current) => [...current, profileId])
+  );
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [pending, setPending] = useState(false);
   const dirty = name !== initialName || description !== initialDescription || profileIds.length > 0;
@@ -167,6 +207,7 @@ const ApplicationForm = ({
                     options={profileOptions}
                     value={profileIds}
                     onValueChange={setProfileIds}
+                    {...profileCreation.comboboxProps}
                   />
                 </Field>
               )}
@@ -186,6 +227,7 @@ const ApplicationForm = ({
         {...discardDialogProps}
         description="Your unsaved application settings will be lost."
       />
+      {profileCreation.sheet}
     </>
   );
 };
@@ -224,6 +266,9 @@ const ProfilesForm = ({
   const detach = adapter.useDetachProfile();
   const { options, isPending: optionsPending } = useProfileOptions();
   const [selected, setSelected] = useState(initial);
+  const profileCreation = useProfileCreation((profileId) =>
+    setSelected((current) => [...current, profileId])
+  );
   const [pending, setPending] = useState(false);
   const initialSet = new Set(initial);
   const selectedSet = new Set(selected);
@@ -274,7 +319,7 @@ const ProfilesForm = ({
             <Field
               label="Certificate profiles"
               description={
-                !optionsPending && !options.length
+                !optionsPending && !options.length && !profileCreation.canCreate
                   ? "No certificate profiles exist yet. Create one in Certificate profiles first."
                   : undefined
               }
@@ -288,6 +333,7 @@ const ProfilesForm = ({
                 options={options}
                 value={selected}
                 onValueChange={setSelected}
+                {...profileCreation.comboboxProps}
               />
             </Field>
           </form>
@@ -310,6 +356,7 @@ const ProfilesForm = ({
         {...discardDialogProps}
         description="Your pending profile changes will be lost."
       />
+      {profileCreation.sheet}
     </>
   );
 };
