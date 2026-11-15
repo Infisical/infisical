@@ -42,12 +42,18 @@ export const resolveAccessPolicyForPath = (policies: TAccessApprovalPolicy[], se
 // A folder outside every policy is still offered when a covered folder sits below it, so the requester can
 // drill down to a policy that only covers a nested path.
 export const getNavigableFolders = (folderPaths: string[], policyPaths: string[]) => {
-  const covered = folderPaths.filter((folderPath) =>
-    policyPaths.some((policyPath) => isGlobSubsetOfGlob(policyPath, folderPath))
-  );
-  return folderPaths.filter((folderPath) =>
-    covered.some((path) => path === folderPath || path.startsWith(`${folderPath}/`))
-  );
+  const reachable = new Set<string>();
+  folderPaths
+    .filter((folderPath) =>
+      policyPaths.some((policyPath) => isGlobSubsetOfGlob(policyPath, folderPath))
+    )
+    .forEach((folderPath) => {
+      for (let path = folderPath; path && !reachable.has(path);) {
+        reachable.add(path);
+        path = path === "/" ? "" : path.slice(0, path.lastIndexOf("/")) || "/";
+      }
+    });
+  return folderPaths.filter((folderPath) => reachable.has(folderPath));
 };
 
 export const getChildFolderNames = (folderPaths: string[], parentPath: string) => {

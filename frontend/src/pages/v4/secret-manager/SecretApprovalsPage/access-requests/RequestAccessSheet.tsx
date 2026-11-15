@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
@@ -274,6 +274,10 @@ const SecretPathField = ({
   const [parentPath, setParentPath] = useState("/");
   const [isPathFocused, setIsPathFocused] = useState(false);
   const isFixedPathsOnly = policyPaths.length > 0 && !policyPaths.some(isGlobPath);
+  const navigableFolders = useMemo(
+    () => getNavigableFolders(folderPaths ?? [], policyPaths),
+    [folderPaths, policyPaths]
+  );
   const pathError = error ?? (isPathFocused ? undefined : pathIssue);
 
   return (
@@ -315,10 +319,7 @@ const SecretPathField = ({
             placeholder="/folder/subfolder"
             value={value}
             invalid={Boolean(pathError)}
-            folders={getChildFolderNames(
-              getNavigableFolders(folderPaths ?? [], policyPaths),
-              parentPath
-            )}
+            folders={getChildFolderNames(navigableFolders, parentPath)}
             onParentPathChange={setParentPath}
             onChange={onChange}
             onFocus={() => setIsPathFocused(true)}
@@ -375,10 +376,17 @@ export const RequestAccessSheet = ({
     onDiscard: onClose
   });
 
-  const environmentPolicies = policies.filter((policy) =>
-    policy.environments.some((env) => env.slug === draft.environment)
+  const environmentPolicies = useMemo(
+    () =>
+      policies.filter((policy) =>
+        policy.environments.some((env) => env.slug === draft.environment)
+      ),
+    [policies, draft.environment]
   );
-  const policyPaths = [...new Set(environmentPolicies.map((policy) => policy.secretPath))];
+  const policyPaths = useMemo(
+    () => [...new Set(environmentPolicies.map((policy) => policy.secretPath))],
+    [environmentPolicies]
+  );
   const { data: folderPaths } = approvals.useEnvironmentFolderPaths({
     projectId: project.id,
     environment: draft.environment,
