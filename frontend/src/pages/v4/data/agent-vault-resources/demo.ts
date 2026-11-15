@@ -9,11 +9,9 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField,
-  AgentVaultVariableScope,
-  isNativeServiceType
+  AgentVaultVariableScope
 } from "@app/hooks/api/agentVault/enums";
 import type {
-  TAgentVaultAccessBundleListItem,
   TAgentVaultActorIdsDTO,
   TAgentVaultBundleSkill,
   TAgentVaultMember,
@@ -25,14 +23,23 @@ import type {
   TAgentVaultService,
   TAgentVaultSkill,
   TAgentVaultSkillFile,
-  TAgentVaultSkillVersion,
   TAgentVaultVariable,
   TAgentVaultVariableReference,
   TCreateAgentVaultServiceDTO,
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
-import { createFixtureStore } from "../fixture-store";
+import {
+  agentVaultDemoStore,
+  demoBundleListItem,
+  demoBundleServices,
+  demoProject,
+  seedDemoProject,
+  type TDemoBundle,
+  type TDemoProject,
+  type TDemoSkill
+} from "../agent-vault-demo-store";
+import { fixtureMutation } from "../fixture-store";
 import type { AgentVaultResourcesAdapter } from "./contract";
 
 const uuid = (prefix: string, index: number) =>
@@ -301,17 +308,6 @@ const seedServices: TAgentVaultService[] = [
   }
 ];
 
-type BundleSeed = {
-  id: string;
-  name: string;
-  description: string | null;
-  createdAt: string;
-  updatedAt: string;
-  serviceIds: string[];
-  skillIds: string[];
-  members: TAgentVaultMember[];
-};
-
 const member = (actor: TAgentVaultProductMember, grantedDaysAgo: number): TAgentVaultMember => {
   const grantedAt = at(-grantedDaysAgo * DAY);
   if (actor.type === AgentVaultMemberType.User) {
@@ -324,7 +320,7 @@ const member = (actor: TAgentVaultProductMember, grantedDaysAgo: number): TAgent
 const serviceId = (index: number) => uuid("c2", index);
 const skillId = (index: number) => uuid("f1", index);
 
-const seedBundles: BundleSeed[] = [
+const seedBundles: TDemoBundle[] = [
   {
     id: uuid("b1", 1),
     name: "github-read-only",
@@ -413,18 +409,13 @@ const skillFiles = (name: string, description: string, extra: TAgentVaultSkillFi
   ...extra
 ];
 
-type SkillSeed = {
-  skill: Omit<TAgentVaultSkill, "accessBundles">;
-  versions: (TAgentVaultSkillVersion & { files: TAgentVaultSkillFile[] })[];
-};
-
 const skillSeed = (
   index: number,
   name: string,
   description: string,
   versionCount: number,
   extra: TAgentVaultSkillFile[] = []
-): SkillSeed => {
+): TDemoSkill => {
   const versions = Array.from({ length: versionCount }, (_, versionIndex) => {
     const files = skillFiles(name, description, versionIndex === 0 ? [] : extra);
     return {
@@ -454,7 +445,7 @@ const skillSeed = (
   };
 };
 
-const seedSkills: SkillSeed[] = [
+const seedSkills: TDemoSkill[] = [
   skillSeed(
     1,
     "incident-triage",
@@ -487,7 +478,7 @@ const seedSkills: SkillSeed[] = [
 
 const seedProxies: TAgentVaultProxy[] = [
   {
-    id: uuid("d1", 1),
+    id: uuid("d2", 1),
     name: "prod-us-east",
     description: "Kubernetes cluster for production agents",
     heartbeat: at(-1),
@@ -500,7 +491,7 @@ const seedProxies: TAgentVaultProxy[] = [
     createdAt: at(-80 * DAY)
   },
   {
-    id: uuid("d1", 2),
+    id: uuid("d2", 2),
     name: "staging",
     description: null,
     heartbeat: at(-3 * DAY),
@@ -513,7 +504,7 @@ const seedProxies: TAgentVaultProxy[] = [
     createdAt: at(-50 * DAY)
   },
   {
-    id: uuid("d1", 3),
+    id: uuid("d2", 3),
     name: "dev-laptop-sarah",
     description: "Local Docker proxy for testing sessions",
     heartbeat: null,
@@ -527,30 +518,65 @@ const seedProxies: TAgentVaultProxy[] = [
   }
 ];
 
-type State = {
-  bundles: BundleSeed[];
-  services: TAgentVaultService[];
-  variables: TAgentVaultVariable[];
-  skills: SkillSeed[];
-  proxies: TAgentVaultProxy[];
-  counter: number;
-};
+const supportProxies: TAgentVaultProxy[] = [
+  {
+    id: uuid("d2", 4),
+    name: "support-egress",
+    description: null,
+    heartbeat: at(-2),
+    isHealthy: true,
+    rootCaFingerprint: "7C:22:E9:10:5A:B3:4F:81:CC:06:9D:37:E2:58:1B:A4",
+    rootCaExpiresAt: at(200 * DAY),
+    trafficPolicy: AgentVaultTrafficPolicy.ServiceHosts,
+    allowedHosts: null,
+    pollInterval: 60,
+    createdAt: at(-6 * DAY)
+  },
+  {
+    id: uuid("d2", 5),
+    name: "support-egress-eu",
+    description: null,
+    heartbeat: null,
+    isHealthy: false,
+    rootCaFingerprint: null,
+    rootCaExpiresAt: null,
+    trafficPolicy: AgentVaultTrafficPolicy.ServiceHosts,
+    allowedHosts: null,
+    pollInterval: 60,
+    createdAt: at(-1 * DAY)
+  }
+];
 
-const store = createFixtureStore<State>({
+const supportBundles: TDemoBundle[] = [
+  {
+    id: uuid("b1", 6),
+    name: "support-escalations",
+    description: null,
+    createdAt: at(-1 * DAY),
+    updatedAt: at(-1 * DAY),
+    serviceIds: [],
+    skillIds: [],
+    members: []
+  }
+];
+
+type State = TDemoProject & { counter: number };
+
+seedDemoProject("agent-platform", {
   bundles: seedBundles,
   services: seedServices,
   variables: seedVariables,
   skills: seedSkills,
-  proxies: seedProxies,
-  counter: 100
+  proxies: seedProxies
 });
+seedDemoProject("support-agents", { proxies: supportProxies, bundles: supportBundles });
 
-const caches = new WeakMap<State, Map<string, unknown>>();
-const cached = <T>(state: State, key: string, compute: () => T): T => {
-  let map = caches.get(state);
+const caches = new WeakMap<object, Map<string, unknown>>();
+const cached = <T>(owner: object, key: string, compute: () => T): T => {
+  let map = caches.get(owner);
   if (!map) {
     map = new Map();
-    caches.set(state, map);
+    caches.set(owner, map);
   }
   if (!map.has(key)) map.set(key, compute());
   return map.get(key) as T;
@@ -559,11 +585,14 @@ const cached = <T>(state: State, key: string, compute: () => T): T => {
 const query =
   <TArgs extends unknown[], TData>(
     name: string,
-    compute: (state: State, ...args: TArgs) => TData
+    compute: (state: State, projectId: string, ...args: TArgs) => TData
   ) =>
-  (...args: TArgs) => {
-    const state = store.use();
-    const data = cached(state, `${name}:${JSON.stringify(args)}`, () => compute(state, ...args));
+  (projectId: string, ...args: TArgs) => {
+    const root = agentVaultDemoStore.use();
+    const project = demoProject(root, projectId);
+    const data = cached(project, `${name}:${JSON.stringify(args)}`, () =>
+      compute({ ...project, counter: root.counter }, projectId, ...args)
+    );
     return { data, isPending: false, error: null, isFetching: false };
   };
 
@@ -571,14 +600,24 @@ const mutation =
   <TVariables, TData>(
     run: (variables: TVariables, state: State) => { state: State; result: TData }
   ) =>
-  () => ({
+  (projectId: string) => ({
     isPending: false,
     mutateAsync: async (variables: TVariables) => {
-      const { state, result } = run(variables, store.get());
-      store.update(() => state);
+      const root = agentVaultDemoStore.get();
+      const { state, result } = run(variables, {
+        ...demoProject(root, projectId),
+        counter: root.counter
+      });
+      const { counter, ...project } = state;
+      agentVaultDemoStore.update((current) => ({
+        counter,
+        projects: { ...current.projects, [projectId]: project }
+      }));
       return result;
     }
   });
+
+const everyProject = () => Object.values(agentVaultDemoStore.get().projects);
 
 const nextId = (state: State, prefix: string) => uuid(prefix, state.counter + 1);
 const bump = (state: State): State => ({
@@ -613,42 +652,21 @@ const projectService = (state: State, service: TAgentVaultService): TAgentVaultP
   accessBundles: bundlesOf(state, service.id)
 });
 
-const servicesOf = (state: State, bundle: BundleSeed) =>
-  bundle.serviceIds
-    .map((id) => state.services.find((service) => service.id === id))
-    .filter((service): service is TAgentVaultService => Boolean(service));
+const servicesOf = demoBundleServices;
 
 const needsSetup = (service: TAgentVaultService) =>
   Boolean(service.personalValues && !service.personalValues.isConfigured);
 
-const listItem = (state: State, bundle: BundleSeed): TAgentVaultAccessBundleListItem => {
-  const services = servicesOf(state, bundle);
-  return {
-    id: bundle.id,
-    name: bundle.name,
-    description: bundle.description,
-    createdAt: bundle.createdAt,
-    updatedAt: bundle.updatedAt,
-    serviceCount: services.length,
-    memberCount: bundle.members.length,
-    hostPatterns: [...new Set(services.flatMap(hostPatternsOf))],
-    nativeServices: services
-      .filter((service) => isNativeServiceType(service.type))
-      .map((service) => ({ name: service.name, type: service.type })),
-    servicesRequiringSetup: services
-      .filter(needsSetup)
-      .map((service) => ({ id: service.id, name: service.name }))
-  };
-};
+const listItem = demoBundleListItem;
 
-const bundleSkill = ({ skill }: SkillSeed): TAgentVaultBundleSkill => ({
+const bundleSkill = ({ skill }: TDemoSkill): TAgentVaultBundleSkill => ({
   id: skill.id,
   name: skill.name,
   description: skill.description,
   latestVersion: skill.latestVersion
 });
 
-const skillWithBundles = (state: State, seed: SkillSeed): TAgentVaultSkill => ({
+const skillWithBundles = (state: State, seed: TDemoSkill): TAgentVaultSkill => ({
   ...seed.skill,
   accessBundles: state.bundles
     .filter((bundle) => bundle.skillIds.includes(seed.skill.id))
@@ -685,7 +703,7 @@ const memberName = (actor: TAgentVaultMember | TAgentVaultProductMember) =>
     ? [actor.firstName, actor.lastName, actor.email].filter(Boolean).join(" ")
     : actor.name;
 
-const updateBundle = (state: State, id: string, change: (bundle: BundleSeed) => BundleSeed) => ({
+const updateBundle = (state: State, id: string, change: (bundle: TDemoBundle) => TDemoBundle) => ({
   ...state,
   bundles: state.bundles.map((bundle) =>
     bundle.id === id ? { ...change(bundle), updatedAt: new Date().toISOString() } : bundle
@@ -967,7 +985,7 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     if (state.bundles.some((bundle) => bundle.name === dto.name))
       throw new Error(`An access bundle named ${dto.name} already exists in this project.`);
     const now = new Date().toISOString();
-    const created: BundleSeed = {
+    const created: TDemoBundle = {
       id: nextId(state, "b1"),
       name: dto.name,
       description: dto.description ?? null,
@@ -1010,7 +1028,12 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     return {
       state: {
         ...state,
-        bundles: state.bundles.filter((seed) => seed.id !== accessBundleId)
+        bundles: state.bundles.filter((seed) => seed.id !== accessBundleId),
+        sessions: state.sessions.map((session) =>
+          session.accessBundle?.id === accessBundleId
+            ? { ...session, accessBundle: { id: null, name: bundle.name } }
+            : session
+        )
       },
       result
     };
@@ -1190,16 +1213,13 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       return { state: next, result: projectService(next, service) };
     }
   ),
-  useListMcpTools: mutation((_dto: { serverUrl: string }, state) => ({
-    state,
-    result: [
-      { name: "list_issues", description: "List issues that match a filter" },
-      { name: "create_issue", description: "Create an issue in a team" },
-      { name: "update_issue", description: "Change an issue's state, assignee or labels" },
-      { name: "list_projects", description: "List the projects in the workspace" },
-      { name: "delete_issue", description: "Delete an issue" }
-    ]
-  })),
+  useListMcpTools: fixtureMutation(() => [
+    { name: "list_issues", description: "List issues that match a filter" },
+    { name: "create_issue", description: "Create an issue in a team" },
+    { name: "update_issue", description: "Change an issue's state, assignee or labels" },
+    { name: "list_projects", description: "List the projects in the workspace" },
+    { name: "delete_issue", description: "Delete an issue" }
+  ]),
   useSetPersonalValues: mutation(
     (
       { serviceId: id, values }: { serviceId: string; values: { field: string; value: string }[] },
@@ -1281,14 +1301,11 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       };
     }
   ),
-  useCreateOauthAuthorization: mutation((_dto: { serverUrl: string }, state) => ({
-    state: bump(state),
-    result: {
-      registrationRequired: false,
-      oauthAdvertised: true,
-      redirectUri: `${window.location.origin}/agent-vault/oauth/callback`,
-      authorization: { id: nextId(state, "d9"), authorizeUrl: "about:blank" }
-    }
+  useCreateOauthAuthorization: fixtureMutation(() => ({
+    registrationRequired: false as const,
+    oauthAdvertised: true,
+    redirectUri: `${window.location.origin}/agent-vault/oauth/callback`,
+    authorization: { id: crypto.randomUUID(), authorizeUrl: "about:blank" }
   })),
   useOauthAuthorization: (authorizationId: string) => ({
     data: authorizationId ? demoAuthorization(authorizationId) : undefined,
@@ -1313,8 +1330,8 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     );
     return { variables: page(sorted, params.limit, params.offset), totalCount: rows.length };
   }),
-  useVariableKeyStatus: (_projectId, keys, { scope = AgentVaultVariableScope.Global } = {}) => {
-    const state = store.use();
+  useVariableKeyStatus: (projectId, keys, { scope = AgentVaultVariableScope.Global } = {}) => {
+    const state = demoProject(agentVaultDemoStore.use(), projectId);
     return cached(state, `keyStatus:${scope}:${keys.join(",")}`, () => {
       const known = new Set(
         state.variables.filter((variable) => variable.scope === scope).map(({ key }) => key)
@@ -1369,9 +1386,12 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       result: variable
     };
   }),
-  useRevealVariableValue: mutation((variableId: string, state) => {
-    const variable = state.variables.find((seed) => seed.id === variableId) ?? notFound("Variable");
-    return { state, result: `demo-value-for-${variable.key.toLowerCase().replace(/_/g, "-")}` };
+  useRevealVariableValue: fixtureMutation((variableId: string) => {
+    const variable =
+      everyProject()
+        .flatMap((project) => project.variables)
+        .find((seed) => seed.id === variableId) ?? notFound("Variable");
+    return `demo-value-for-${variable.key.toLowerCase().replace(/_/g, "-")}`;
   }),
 
   useSkills: query("skills", (state, _projectId: string, params = {}) => {
@@ -1409,7 +1429,7 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     (state, _projectId: string, accessBundleId: string) =>
       (state.bundles.find((bundle) => bundle.id === accessBundleId)?.skillIds ?? [])
         .map((id) => state.skills.find((entry) => entry.skill.id === id))
-        .filter((seed): seed is SkillSeed => Boolean(seed))
+        .filter((seed): seed is TDemoSkill => Boolean(seed))
         .map(bundleSkill)
   ),
   useCreateSkill: mutation(({ files }: { files: TAgentVaultSkillFile[] }, state) => {
@@ -1587,7 +1607,7 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       if (state.proxies.some((proxy) => proxy.name === dto.name))
         throw new Error(`A proxy named ${dto.name} already exists in this project.`);
       const proxy: TAgentVaultProxy = {
-        id: nextId(state, "d1"),
+        id: nextId(state, "d2"),
         name: dto.name,
         description: dto.description ?? null,
         heartbeat: null,
@@ -1646,15 +1666,15 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       result: revoked
     };
   }),
-  useProxyCa: mutation((proxyId: string, state) => {
-    const proxy = state.proxies.find((seed) => seed.id === proxyId) ?? notFound("Proxy");
+  useProxyCa: fixtureMutation((proxyId: string) => {
+    const proxy =
+      everyProject()
+        .flatMap((project) => project.proxies)
+        .find((seed) => seed.id === proxyId) ?? notFound("Proxy");
     return {
-      state,
-      result: {
-        certificate: `demo-root-ca-for-${proxy.name}-not-a-real-certificate`,
-        fingerprint: proxy.rootCaFingerprint ?? "",
-        expiresAt: proxy.rootCaExpiresAt ?? new Date().toISOString()
-      }
+      certificate: `demo-root-ca-for-${proxy.name}-not-a-real-certificate`,
+      fingerprint: proxy.rootCaFingerprint ?? "",
+      expiresAt: proxy.rootCaExpiresAt ?? new Date().toISOString()
     };
   })
 };

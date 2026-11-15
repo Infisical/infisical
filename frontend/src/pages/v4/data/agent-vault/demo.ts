@@ -14,8 +14,6 @@ import { sessionLogChunkKey } from "@app/hooks/api/agentVault/sessionLogDecrypt"
 import type {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
-  TAgentVaultAccessBundleListItem,
-  TAgentVaultProxy,
   TAgentVaultActorIdsDTO,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
@@ -34,6 +32,14 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
+import {
+  agentVaultDemoStore,
+  demoBundleListItem,
+  demoProject,
+  seedDemoProject,
+  type TDemoProject,
+  updateDemoProject
+} from "../agent-vault-demo-store";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { AgentVaultAdapter, TAgentVaultSessionLogs } from "./contract";
 
@@ -74,34 +80,6 @@ const machines = [
   machine(uuid("a2", 2), "support-triage-bot"),
   machine(uuid("a2", 3), "nightly-eval-runner")
 ];
-
-const bundleSeeds: [name: string, description: string, hosts: string[]][] = [
-  ["GitHub read-only", "Repository metadata and pull requests", ["api.github.com"]],
-  ["Billing APIs", "Stripe test mode and the internal billing service", ["api.stripe.com"]],
-  ["Support tooling", "Zendesk and Linear for the support agents", ["acme.zendesk.com"]],
-  ["Observability", "Datadog and Sentry read access", ["api.datadoghq.com", "sentry.io"]]
-];
-
-const bundles: TAgentVaultAccessBundleListItem[] = bundleSeeds.map(
-  ([name, description, hostPatterns], index) => ({
-    id: uuid("b1", index + 1),
-    name,
-    description,
-    createdAt: at(-60 * 24 * 60),
-    updatedAt: at(-60 * 24 * 7),
-    serviceCount: hostPatterns.length + 1,
-    memberCount: 3 + index,
-    hostPatterns,
-    nativeServices: [],
-    servicesRequiringSetup:
-      index === 1
-        ? [
-            { id: uuid("c2", 1), name: "Stripe test mode" },
-            { id: uuid("c2", 2), name: "Billing service" }
-          ]
-        : []
-  })
-);
 
 const inline = (
   index: number,
@@ -192,32 +170,43 @@ const seeds: Seed[] = [
 ];
 
 const bundleRef = (bundle: number | null, index: number): TAgentVaultSession["accessBundle"] => {
-  if (bundle !== null) return { id: bundles[bundle].id, name: bundles[bundle].name };
+  if (bundle !== null) return { id: uuid("b1", bundle + 1), name: "" };
   return index === seeds.length - 1 ? { id: null, name: "Legacy billing" } : null;
 };
 
-const SUPPORT_BUNDLE = 2;
-const projectOf = (bundle: number | null, actor: TAgentVaultSessionActor) =>
-  bundle === SUPPORT_BUNDLE || actor === machines[1] ? "support-agents" : "agent-platform";
+seedDemoProject("agent-platform", {
+  sessions: seeds.map(
+    ([label, actor, onBehalfOf, bundle, services, status, created, expires], index) => ({
+      id: uuid("d1", index + 1),
+      label,
+      actor,
+      onBehalfOf,
+      status,
+      createdAt: at(-created),
+      expiresAt: expires === null ? null : at(expires),
+      revokedAt: status === Revoked ? at(-created + 30) : null,
+      accessBundle: bundleRef(bundle, index),
+      services,
+      stats: null
+    })
+  )
+});
 
-const store = createFixtureStore<(TAgentVaultSession & { projectId: string })[]>(
-  seeds.map(([label, actor, onBehalfOf, bundle, services, status, created, expires], index) => ({
-    projectId: projectOf(bundle, actor),
-    id: uuid("d1", index + 1),
-    label,
-    actor,
-    onBehalfOf,
-    status,
-    createdAt: at(-created),
-    expiresAt: expires === null ? null : at(expires),
-    revokedAt: status === Revoked ? at(-created + 30) : null,
-    accessBundle: bundleRef(bundle, index),
-    services,
-    stats: null
-  }))
-);
+const withBundleNames = (project: TDemoProject) => {
+  const names = new Map(project.bundles.map((bundle) => [bundle.id, bundle.name]));
+  return (session: TAgentVaultSession): TAgentVaultSession => {
+    const id = session.accessBundle?.id;
+    const name = id ? names.get(id) : undefined;
+    return id && name ? { ...session, accessBundle: { id, name } } : session;
+  };
+};
 
-const LOG_PROXY = uuid("e1", 1);
+const findSession = (sessionId: string) =>
+  Object.values(agentVaultDemoStore.get().projects)
+    .flatMap((project) => project.sessions.map(withBundleNames(project)))
+    .find((session) => session.id === sessionId);
+
+const LOG_PROXY = uuid("d2", 1);
 const LOG_CHUNK_SIZE = 25;
 const {
   Brokered,
@@ -425,7 +414,7 @@ const buildSessionLogPage = (
   sessionId: string
 ): TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogHistoryPage> => {
   const fixture = SESSION_LOG_FIXTURES[sessionId];
-  const session = store.get().find((entry) => entry.id === sessionId);
+  const session = findSession(sessionId);
   const start = fixture ? sessionStart(fixture.index) : 0;
   const records: TAgentVaultSessionLogRecord[] = (fixture?.entries() ?? []).map(
     ({ secondsIn, ...entry }, seq) => ({
@@ -500,31 +489,6 @@ const assignableIdentities = [
   { id: uuid("a2", 10), name: "github-actions-deployer" },
   { id: uuid("a2", 11), name: "data-pipeline-scheduler" }
 ];
-
-const proxySeeds: [projectId: string, name: string, connectedMinutesAgo: number | null][] = [
-  ["agent-platform", "prod-egress", 1],
-  ["agent-platform", "staging-egress", 3],
-  ["support-agents", "support-egress", null]
-];
-
-const proxies = createFixtureStore<(TAgentVaultProxy & { projectId: string })[]>(
-  proxySeeds.map(([projectId, name, connected], index) => ({
-    projectId,
-    id: uuid("e1", index + 1),
-    name,
-    description: null,
-    heartbeat: connected === null ? null : at(-connected),
-    isHealthy: connected !== null,
-    rootCaFingerprint: null,
-    rootCaExpiresAt: null,
-    createdAt: at(-60 * 24 * 45)
-  }))
-);
-
-const grants = createFixtureStore<Record<string, string[]>>({
-  [bundles[0].id]: [machines[0].id as string],
-  [bundles[3].id]: [machines[0].id as string, machines[2].id as string]
-});
 
 const universalAuthIdentities = new Set([machines[0].id, machines[2].id]);
 
@@ -623,7 +587,7 @@ const memberStore = createFixtureStore<DemoMember[]>([
 const delegations = createFixtureStore<Record<string, TAgentVaultDelegationDetail | null>>({});
 const delegationKey = (projectId: string, identityId: string) => `${projectId}:${identityId}`;
 const now = () => new Date().toISOString();
-const excluded = [{ id: uuid("b1", 2), name: "Billing APIs" }];
+const excluded = [{ id: uuid("b1", 2), name: "billing-apis" }];
 
 const delegationSubjects = (
   members: DemoMember[],
@@ -658,11 +622,11 @@ export const agentVaultDemo: AgentVaultAdapter = {
   }),
   useSessions: (_, projectId, { scope, statuses, search, limit = 20, offset = 0 }) => {
     const term = search?.toLowerCase();
-    const matched = store
-      .use()
+    const project = demoProject(agentVaultDemoStore.use(), projectId);
+    const matched = project.sessions
+      .map(withBundleNames(project))
       .filter(
         (session) =>
-          session.projectId === projectId &&
           (scope !== AgentVaultSessionScope.Mine || isMine(session)) &&
           (!statuses?.length || statuses.includes(session.status)) &&
           (!term ||
@@ -681,19 +645,22 @@ export const agentVaultDemo: AgentVaultAdapter = {
       error: null
     };
   },
-  useSession: (_, projectId, sessionId) => ({
-    data: store
-      .use()
-      .find((session) => session.projectId === projectId && session.id === sessionId),
-    isPending: false,
-    error: null
-  }),
+  useSession: (_, projectId, sessionId) => {
+    const project = demoProject(agentVaultDemoStore.use(), projectId);
+    const session = project.sessions.find((entry) => entry.id === sessionId);
+    return {
+      data: session && withBundleNames(project)(session),
+      isPending: false,
+      error: null
+    };
+  },
   useCreateSession: (_, projectId) =>
     fixtureMutation(({ accessBundle, ttl, label }: TCreateAgentVaultSessionDTO) => {
-      const bundle = bundles.find((entry) => entry.name === accessBundle);
+      const bundle = demoProject(agentVaultDemoStore.get(), projectId).bundles.find(
+        (entry) => entry.name === accessBundle
+      );
       const minutes = ttl === "never" ? null : ttlMinutes(ttl);
-      const session: TAgentVaultSession & { projectId: string } = {
-        projectId,
+      const session: TAgentVaultSession = {
         id: crypto.randomUUID(),
         label: label ?? null,
         actor: sarah,
@@ -706,7 +673,10 @@ export const agentVaultDemo: AgentVaultAdapter = {
         services: [],
         stats: null
       };
-      store.update((sessions) => [session, ...sessions]);
+      updateDemoProject(projectId, (project) => ({
+        ...project,
+        sessions: [session, ...project.sessions]
+      }));
       return {
         id: session.id,
         label: session.label,
@@ -720,25 +690,23 @@ export const agentVaultDemo: AgentVaultAdapter = {
     })(),
   useUpdateSessionLabel: (_, projectId) =>
     fixtureMutation(({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
-      store.update((sessions) =>
-        sessions.map((session) =>
-          session.projectId === projectId && session.id === sessionId
-            ? { ...session, label }
-            : session
+      updateDemoProject(projectId, (project) => ({
+        ...project,
+        sessions: project.sessions.map((session) =>
+          session.id === sessionId ? { ...session, label } : session
         )
-      );
-      return store.get().find((session) => session.id === sessionId) as TAgentVaultSession;
+      }));
+      return findSession(sessionId) as TAgentVaultSession;
     })(),
   useRevokeSession: (_, projectId) =>
     fixtureMutation((sessionId: string) => {
       const revokedAt = now();
-      store.update((sessions) =>
-        sessions.map((session) =>
-          session.projectId === projectId && session.id === sessionId
-            ? { ...session, status: Revoked, revokedAt }
-            : session
+      updateDemoProject(projectId, (project) => ({
+        ...project,
+        sessions: project.sessions.map((session) =>
+          session.id === sessionId ? { ...session, status: Revoked, revokedAt } : session
         )
-      );
+      }));
       return { id: sessionId, revokedAt };
     })(),
   useSessionLogs: (_, __, sessionId) => demoSessionLogs(sessionId),
@@ -776,23 +744,67 @@ export const agentVaultDemo: AgentVaultAdapter = {
       return { id, name, authAttachFailed: false };
     })(),
   useProxies: (_, projectId, { limit = 20, offset = 0 }) => {
-    const matched = proxies.use().filter((proxy) => proxy.projectId === projectId);
-    const { rows, totalCount } = slice(matched, limit, offset);
+    const { rows, totalCount } = slice(
+      demoProject(agentVaultDemoStore.use(), projectId).proxies,
+      limit,
+      offset
+    );
     return { data: { proxies: rows, totalCount }, isPending: false, error: null };
   },
-  useIsAccessBundleMember: (_, __, accessBundleId, actor) => {
-    const granted = grants.use()[accessBundleId] ?? [];
+  useIsAccessBundleMember: (_, projectId, accessBundleId, actor) => {
+    const bundle = demoProject(agentVaultDemoStore.use(), projectId).bundles.find(
+      (entry) => entry.id === accessBundleId
+    );
     return {
-      data: actor && accessBundleId ? granted.includes(actor.id) : undefined,
+      data:
+        actor && accessBundleId
+          ? Boolean(bundle?.members.some((member) => member.id === actor.id))
+          : undefined,
       isPending: false,
       error: null
     };
   },
   useGrantAccessBundle: () =>
     fixtureMutation(({ accessBundleId, machineIdentityIds = [] }: TAddAgentVaultMembersDTO) => {
-      grants.update((all) => ({
-        ...all,
-        [accessBundleId]: [...(all[accessBundleId] ?? []), ...machineIdentityIds]
+      const grantedAt = now();
+      const granted = machineIdentityIds.map((id) => ({
+        type: AgentVaultMemberType.MachineIdentity as const,
+        id,
+        name:
+          memberStore
+            .get()
+            .flatMap((member) =>
+              member.type === AgentVaultMemberType.MachineIdentity && member.id === id
+                ? [member.name]
+                : []
+            )[0] ??
+          assignableIdentities.find((identity) => identity.id === id)?.name ??
+          id,
+        grantedAt
+      }));
+      agentVaultDemoStore.update((state) => ({
+        ...state,
+        projects: Object.fromEntries(
+          Object.entries(state.projects).map(([projectId, project]) => [
+            projectId,
+            {
+              ...project,
+              bundles: project.bundles.map((bundle) =>
+                bundle.id === accessBundleId
+                  ? {
+                      ...bundle,
+                      members: [
+                        ...bundle.members,
+                        ...granted.filter(
+                          ({ id }) => !bundle.members.some((member) => member.id === id)
+                        )
+                      ]
+                    }
+                  : bundle
+              )
+            }
+          ])
+        )
       }));
     })(),
   useIdentityUniversalAuth: (identityId) => {
@@ -820,12 +832,10 @@ export const agentVaultDemo: AgentVaultAdapter = {
   },
   useAccessBundles: (_, projectId, { search, orderBy, orderDirection, limit = 20, offset = 0 }) => {
     const term = search?.trim().toLowerCase();
-    const reachable = bundles
-      .filter(
-        (bundle, index) =>
-          (index === SUPPORT_BUNDLE) === (projectId === "support-agents") &&
-          (!term || bundle.name.toLowerCase().includes(term))
-      )
+    const project = demoProject(agentVaultDemoStore.use(), projectId);
+    const reachable = project.bundles
+      .map((bundle) => demoBundleListItem(project, bundle))
+      .filter((bundle) => !term || bundle.name.toLowerCase().includes(term))
       .sort((a, b) => {
         const direction = orderDirection === "desc" ? -1 : 1;
         if (orderBy === "serviceCount") return (a.serviceCount - b.serviceCount) * direction;

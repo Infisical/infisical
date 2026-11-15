@@ -165,6 +165,11 @@ export const sessionLogSearchTerm = (search: string) =>
 export const nativeSessionLogSearchTerm = (search: string) =>
   search.trim().toLowerCase().replace(/\s+/g, " ");
 
+export const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
+  const host = record.host.includes(":") ? `[${record.host}]` : record.host;
+  return record.port === "443" ? host : `${host}:${record.port}`;
+};
+
 export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
   isNativeServiceType(record.serviceType) || record.native !== undefined;
 
