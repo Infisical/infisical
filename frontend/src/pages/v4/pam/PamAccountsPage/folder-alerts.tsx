@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import { FormProvider, useFieldArray, useForm, useFormContext, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -28,7 +26,6 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_RESOURCE_EVENT_TYPES,
-  type AlertChannelType,
   AlertEventType,
   AlertResourceType,
   channelFormSchema,
@@ -40,10 +37,15 @@ import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { ChannelsStep } from "../../cert-manager/SettingsPage/alert-channels";
 import {
-  buildNextChannel,
   MAX_CHANNELS,
+  type TDraftChannel,
+  type TFieldErrors,
   type TMemberEmails,
-  toMemberEmails
+  toDraftChannel,
+  toFieldErrors,
+  toMemberEmails,
+  validateChannels,
+  withoutErrors
 } from "../../cert-manager/SettingsPage/alert-model";
 import { useV4Adapter } from "../../data/adapters";
 import { ConfirmAction } from "./confirm-action";
@@ -71,12 +73,22 @@ const formSchema = z.object({
   enabled: z.boolean(),
   channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
 });
-type TForm = z.infer<typeof formSchema>;
+type TDraft = Omit<z.infer<typeof formSchema>, "channels"> & { channels: TDraftChannel[] };
 
-const DetailsStep = ({ isEditing, used }: { isEditing: boolean; used: AlertEventType[] }) => {
-  const { control, register, setValue, getValues, formState } = useFormContext<TForm>();
-  const [eventType, enabled] = useWatch({ control, name: ["eventType", "enabled"] });
-  const { errors } = formState;
+const DetailsStep = ({
+  isEditing,
+  used,
+  draft,
+  errors,
+  onChange
+}: {
+  isEditing: boolean;
+  used: AlertEventType[];
+  draft: TDraft;
+  errors: TFieldErrors;
+  onChange: (patch: Partial<TDraft>) => void;
+}) => {
+  const { eventType, enabled } = draft;
   return (
     <Stack gap={16}>
       <Field wide label="Event" description={ALERT_EVENT_TYPE_DESCRIPTIONS[eventType]}>
@@ -91,18 +103,25 @@ const DetailsStep = ({ isEditing, used }: { isEditing: boolean; used: AlertEvent
           }))}
           onChange={(value) => {
             const next = value as AlertEventType;
-            if (getValues("name") === DEFAULT_NAMES[eventType])
-              setValue("name", DEFAULT_NAMES[next] ?? "", { shouldDirty: true });
-            setValue("eventType", next, { shouldDirty: true });
+            onChange({
+              eventType: next,
+              ...(draft.name === DEFAULT_NAMES[eventType] && { name: DEFAULT_NAMES[next] ?? "" })
+            });
           }}
         />
       </Field>
-      <Field wide label="Name" error={errors.name?.message}>
-        <Input {...register("name")} invalid={Boolean(errors.name)} autoComplete="off" />
+      <Field wide label="Name" error={errors.name}>
+        <Input
+          value={draft.name}
+          onChange={(event) => onChange({ name: event.target.value })}
+          invalid={Boolean(errors.name)}
+          autoComplete="off"
+        />
       </Field>
-      <Field wide label="Description" optional error={errors.description?.message}>
+      <Field wide label="Description" optional error={errors.description}>
         <Textarea
-          {...register("description")}
+          value={draft.description}
+          onChange={(event) => onChange({ description: event.target.value })}
           rows={3}
           aria-invalid={Boolean(errors.description) || undefined}
         />
@@ -111,7 +130,7 @@ const DetailsStep = ({ isEditing, used }: { isEditing: boolean; used: AlertEvent
         layout="row"
         label="Enabled"
         checked={enabled}
-        onCheckedChange={(checked) => setValue("enabled", checked, { shouldDirty: true })}
+        onCheckedChange={(checked) => onChange({ enabled: checked })}
       />
     </Stack>
   );
@@ -140,16 +159,14 @@ const AlertWizard = ({
   const createAlert = settings.useCreateAlert();
   const updateAlert = settings.useUpdateAlert();
   const firstFree = PAM_EVENT_TYPES.find((event) => !used.includes(event)) ?? PAM_EVENT_TYPES[0];
-  const form = useForm<TForm>({
-    resolver: zodResolver(formSchema),
-    mode: "onChange",
-    defaultValues: alert
+  const [initial] = useState((): TDraft =>
+    alert
       ? {
           eventType: alert.eventType as AlertEventType,
           name: alert.name,
           description: alert.description ?? "",
           enabled: alert.enabled,
-          channels: alert.channels.map(toChannelForm)
+          channels: alert.channels.map((channel) => toDraftChannel(toChannelForm(channel)))
         }
       : {
           eventType: firstFree,
@@ -158,16 +175,25 @@ const AlertWizard = ({
           enabled: true,
           channels: []
         }
-  });
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
+  );
+  const [draft, setDraft] = useState(initial);
+  const [errors, setErrors] = useState<TFieldErrors>({});
+  const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
   const completed = useRef(false);
   const guard = useDiscardChangesGuard({
-    isDirty: form.formState.isDirty,
+    isDirty: JSON.stringify(draft) !== JSON.stringify(initial),
     onDiscard: () => onOpenChange(false)
   });
 
+  const update = (patch: Partial<TDraft>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setErrors((current) =>
+      Object.keys(patch).reduce((next, key) => withoutErrors(next, key), current)
+    );
+  };
+
   const onComplete = async () => {
-    const parsed = formSchema.safeParse(form.getValues());
+    const parsed = formSchema.safeParse(draft);
     if (!parsed.success) throw new Error("Fix the highlighted fields, then try again.");
     const { data } = parsed;
     const channels = data.channels.map(toChannelInput);
@@ -203,7 +229,7 @@ const AlertWizard = ({
   };
 
   return (
-    <FormProvider {...form}>
+    <>
       <MultiStep
         variant="dialog"
         open={open}
@@ -220,21 +246,40 @@ const AlertWizard = ({
         steps={[
           {
             title: "Details",
-            validate: async () =>
-              (await form.trigger(["eventType", "name", "description"])) || false,
-            content: <DetailsStep isEditing={Boolean(alert)} used={used} />
+            validate: () => {
+              const result = formSchema.safeParse(draft);
+              const next = toFieldErrors(result.success ? undefined : result.error, ([key]) =>
+                ["eventType", "name", "description"].includes(String(key))
+              );
+              setErrors(next);
+              return Object.keys(next).length === 0;
+            },
+            content: (
+              <DetailsStep
+                isEditing={Boolean(alert)}
+                used={used}
+                draft={draft}
+                errors={errors}
+                onChange={update}
+              />
+            )
           },
           {
             title: "Channels",
             heading: "Notification channels",
             description: "Add at least one destination for this alert.",
-            validate: async () => {
-              if (!form.getValues("channels").length)
-                return { message: "Add at least one channel." };
-              return (await form.trigger("channels")) || false;
+            validate: () => {
+              if (!draft.channels.length) return { message: "Add at least one channel." };
+              const next = validateChannels(draft.channels);
+              setChannelErrors(next);
+              return Object.keys(next).length === 0;
             },
             content: (
               <ChannelsStep
+                channels={draft.channels}
+                errors={channelErrors}
+                onChange={(channels) => setDraft((current) => ({ ...current, channels }))}
+                onErrorsChange={setChannelErrors}
                 projectId={projectId}
                 alertId={alert?.id}
                 members={members}
@@ -244,11 +289,6 @@ const AlertWizard = ({
                   intent: PamEnterpriseAlertingUpgradeIntent,
                   paywallKey: "pam.folder-alert-channels"
                 }}
-                fieldIds={fields.map((field) => field.id)}
-                onAdd={(channelType: AlertChannelType) =>
-                  append(buildNextChannel(form.getValues("channels"), channelType))
-                }
-                onRemove={remove}
               />
             )
           }
@@ -258,7 +298,7 @@ const AlertWizard = ({
         {...guard.discardDialogProps}
         description="Your unsaved changes to this alert will be lost."
       />
-    </FormProvider>
+    </>
   );
 };
 

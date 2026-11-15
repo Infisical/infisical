@@ -208,6 +208,10 @@ const initialCas = (): TUnifiedCertificateAuthority[] => [
 ];
 
 const cas = createFixtureStore<TUnifiedCertificateAuthority[]>(initialCas());
+const createdCaIds = new Set<string>();
+
+export const useDemoCreatedCas = () => cas.use().filter((ca) => createdCaIds.has(ca.id));
+export const demoCreatedCas = () => cas.get().filter((ca) => createdCaIds.has(ca.id));
 
 const certificates = createFixtureStore<Record<string, TCaCertificateVersion[]>>({
   [ROOT_ID]: [
@@ -558,6 +562,7 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
       projectId,
       enableDirectIssuance: true
     } as TUnifiedCertificateAuthority;
+    createdCaIds.add(created.id);
     if (created.type !== CaType.INTERNAL) {
       cas.update((entries) => [...entries, created]);
       return created;

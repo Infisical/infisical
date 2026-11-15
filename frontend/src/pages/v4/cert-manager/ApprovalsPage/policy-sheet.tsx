@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
@@ -17,6 +17,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   ApproverType,
   type CertRequestPolicyConditions,
@@ -137,25 +138,27 @@ const memberOptions = (
     return [{ value: id, label: name || username || email || id }];
   });
 
-export const PolicySheet = ({
-  projectId,
-  policy,
-  application,
-  onClose
-}: {
+type PolicySheetProps = {
   projectId: string;
   policy?: TApprovalPolicy;
   application?: { id: string; name: string };
   onClose: () => void;
-}) => {
+};
+
+const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProps) => {
   const approvals = useV4Adapter("approvalRequests");
-  const update = approvals.useUpdatePolicy();
-  const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({});
+  const applications = useV4Adapter("pkiApplications");
+  const updateProjectPolicy = approvals.useUpdatePolicy();
+  const updateApplicationPolicy = applications.useUpdatePolicy();
+  const update = application ? updateApplicationPolicy : updateProjectPolicy;
+  const create = applications.useCreatePolicy();
+  const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({
+    applicationId: application?.id
+  });
   const { data: directory } = approvals.useApprovers(projectId, { includeGroupMembers: false });
-  const { data: appMembers } = useV4Adapter("pkiApplications").useApplicationMembers(
-    application?.id ?? ""
-  );
-  const [draft, setDraft] = useState<Draft>(() => draftOf(policy));
+  const { data: appMembers } = applications.useApplicationMembers(application?.id ?? "");
+  const [initial] = useState(() => draftOf(policy));
+  const [draft, setDraft] = useState<Draft>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState(0);
   const [discarding, setDiscarding] = useState(false);
@@ -165,17 +168,8 @@ export const PolicySheet = ({
     ProjectPermissionSub.CertificateProfiles
   );
   const completed = useRef(false);
-  const initial = useRef(draftOf(policy));
 
-  useEffect(() => {
-    const next = draftOf(policy);
-    initial.current = next;
-    setDraft(next);
-    setErrors({});
-    setStep(0);
-  }, [policy]);
-
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial.current);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
@@ -236,8 +230,8 @@ export const PolicySheet = ({
       <MultiStep
         variant="sheet"
         size="lg"
-        title="Edit certificate approval policy"
-        open={Boolean(policy)}
+        title={policy ? "Edit certificate approval policy" : "Create certificate approval policy"}
+        open
         step={step}
         onStepChange={setStep}
         onOpenChange={(next) => {
@@ -254,31 +248,49 @@ export const PolicySheet = ({
           }
           close();
         }}
-        completeLabel="Update"
+        completeLabel={policy ? "Update" : "Create"}
         onComplete={async () => {
-          if (!policy) return;
-          const conditions = (policy.conditions.conditions as CertRequestPolicyConditions).slice(1);
-          await update
-            .mutateAsync({
-              policyType: ApprovalPolicyType.CertRequest,
-              policyId: policy.id,
-              name: draft.name.trim(),
-              maxRequestTtl: draft.maxRequestTtl || null,
-              conditions: [{ profileNames: draft.profileNames }, ...conditions],
-              constraints: {},
-              bypassForMachineIdentities: draft.bypassForMachineIdentities,
-              steps: draft.steps.map((entry) => ({
-                name: entry.name.trim() || null,
-                requiredApprovals: Number(entry.requiredApprovals),
-                notifyApprovers: entry.notifyApprovers,
-                approvers: [
-                  ...entry.users.map((id) => ({ type: ApproverType.User, id })),
-                  ...entry.groups.map((id) => ({ type: ApproverType.Group, id }))
-                ]
-              }))
-            })
-            .catch(readableFailure("Could not update the policy."));
-          saved("Policy updated");
+          const fields = {
+            name: draft.name.trim(),
+            maxRequestTtl: draft.maxRequestTtl || null,
+            constraints: {},
+            bypassForMachineIdentities: draft.bypassForMachineIdentities,
+            steps: draft.steps.map((entry) => ({
+              name: entry.name.trim() || null,
+              requiredApprovals: Number(entry.requiredApprovals),
+              notifyApprovers: entry.notifyApprovers,
+              approvers: [
+                ...entry.users.map((id) => ({ type: ApproverType.User, id })),
+                ...entry.groups.map((id) => ({ type: ApproverType.Group, id }))
+              ]
+            }))
+          };
+          if (policy) {
+            const conditions = (policy.conditions.conditions as CertRequestPolicyConditions).slice(
+              1
+            );
+            await update
+              .mutateAsync({
+                policyType: ApprovalPolicyType.CertRequest,
+                policyId: policy.id,
+                conditions: [{ profileNames: draft.profileNames }, ...conditions],
+                ...fields
+              })
+              .catch(readableFailure("Could not update the policy."));
+            saved("Policy updated");
+          } else {
+            if (!application) return;
+            await create
+              .mutateAsync({
+                policyType: ApprovalPolicyType.CertRequest,
+                scope: ApprovalPolicyScope.PkiApplication,
+                scopeId: application.id,
+                conditions: [{ profileNames: draft.profileNames }],
+                ...fields
+              })
+              .catch(readableFailure("Could not create the policy."));
+            saved("Policy created");
+          }
           completed.current = true;
         }}
         steps={[
@@ -476,4 +488,13 @@ export const PolicySheet = ({
       )}
     </>
   );
+};
+
+export const PolicySheet = ({
+  creating = false,
+  ...props
+}: PolicySheetProps & { creating?: boolean }) => {
+  if (props.policy) return <PolicyForm key={props.policy.id} {...props} />;
+  if (creating && props.application) return <PolicyForm key="create" {...props} />;
+  return null;
 };

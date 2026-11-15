@@ -1,4 +1,3 @@
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -25,6 +24,7 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
+  channelFormSchema,
   isWebhookUrlChanged,
   type TAlertChannelRecipient,
   WEBHOOK_AUTH_FIELDS,
@@ -36,17 +36,23 @@ import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import {
+  buildNextChannel,
   CHANNEL_ICONS,
   ENTERPRISE_CHANNEL_TYPES,
-  getAlertResourceType,
   KEEP_PLACEHOLDER,
   MAX_CHANNELS,
   normalizeEmail,
   pluralize,
-  type TAlertForm,
+  type TDraftChannel,
+  type TFieldErrors,
   type TMemberEmails,
+  toDraftChannel,
+  removeIndexedErrors,
+  toDraftHeader,
+  toFieldErrors,
   toRecipientEmails,
-  WEBHOOK_AUTH_COPY
+  WEBHOOK_AUTH_COPY,
+  withoutErrors
 } from "./alert-model";
 
 const NO_AUTH = "none";
@@ -180,22 +186,30 @@ const EmailRecipientsField = ({
   );
 };
 
-const WebhookAuthenticationField = ({ index }: { index: number }) => {
-  const { control, setValue, formState } = useFormContext<TAlertForm>();
-  const channel = useWatch({ control, name: `channels.${index}` });
-  const channelErrors = formState.errors.channels?.[index];
-  const authType = channel?.authType;
-  const isUrlChanged = isWebhookUrlChanged(channel ?? {});
+type TChannelFieldProps = {
+  channel: TDraftChannel;
+  error: (field: string) => string | undefined;
+  onChange: (
+    patch: Partial<TDraftChannel>,
+    fixErrors?: (errors: TFieldErrors) => TFieldErrors
+  ) => void;
+};
+
+const WebhookAuthenticationField = ({ channel, error, onChange }: TChannelFieldProps) => {
+  const { authType } = channel;
+  const isUrlChanged = isWebhookUrlChanged(channel);
   const fields = authType ? WEBHOOK_AUTH_FIELDS[authType] : undefined;
-  const hasSavedSecret = Boolean(fields && channel?.id && channel[fields.secret.hasSaved]);
+  const hasSavedSecret = Boolean(fields && channel.id && channel[fields.secret.hasSaved]);
   const needsReentry = hasSavedSecret && isUrlChanged;
   let description = "Requests are sent without authentication.";
   if (authType) {
     description =
-      needsReentry && fields && !channel?.[fields.secret.field]
+      needsReentry && fields && !channel[fields.secret.field]
         ? "The URL changed, so enter the credentials again. Saved credentials are only sent to the URL they were saved with."
         : WEBHOOK_AUTH_COPY[authType].description;
   }
+  const nameError = fields?.name ? error(fields.name.field) : undefined;
+  const secretError = fields ? error(fields.secret.field) : undefined;
 
   return (
     <Stack gap={12}>
@@ -211,105 +225,71 @@ const WebhookAuthenticationField = ({ index }: { index: number }) => {
             }))
           ]}
           onChange={(value) =>
-            setValue(
-              `channels.${index}.authType`,
-              value === NO_AUTH ? undefined : (value as WebhookAuthType),
-              { shouldDirty: true }
-            )
+            onChange({ authType: value === NO_AUTH ? undefined : (value as WebhookAuthType) })
           }
         />
       </Field>
       {fields && (
         <Inline gap={8} align="start" wrap={false}>
           {fields.name && (
-            <Controller
-              control={control}
-              name={`channels.${index}.${fields.name.field}`}
-              render={({ field }) => (
-                <Field
-                  wide
-                  label={fields.name?.label}
-                  error={channelErrors?.[fields.name!.field]?.message}
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  <Input
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    placeholder={fields.name?.placeholder}
-                    invalid={Boolean(channelErrors?.[fields.name!.field])}
-                    autoComplete="off"
-                  />
-                </Field>
-              )}
-            />
+            <Field
+              wide
+              label={fields.name.label}
+              error={nameError}
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <Input
+                value={channel[fields.name.field] ?? ""}
+                onChange={(event) => onChange({ [fields.name!.field]: event.target.value })}
+                placeholder={fields.name.placeholder}
+                invalid={Boolean(nameError)}
+                autoComplete="off"
+              />
+            </Field>
           )}
-          <Controller
-            control={control}
-            name={`channels.${index}.${fields.secret.field}`}
-            render={({ field }) => (
-              <Field
-                wide
-                label={fields.secret.label}
-                error={channelErrors?.[fields.secret.field]?.message}
-                style={{ flex: 1, minWidth: 0 }}
-              >
-                <SecretInput
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  placeholder={hasSavedSecret && !needsReentry ? KEEP_PLACEHOLDER : undefined}
-                  invalid={Boolean(channelErrors?.[fields.secret.field])}
-                />
-              </Field>
-            )}
-          />
+          <Field
+            wide
+            label={fields.secret.label}
+            error={secretError}
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            <SecretInput
+              value={channel[fields.secret.field] ?? ""}
+              onChange={(value) => onChange({ [fields.secret.field]: value })}
+              placeholder={hasSavedSecret && !needsReentry ? KEEP_PLACEHOLDER : undefined}
+              invalid={Boolean(secretError)}
+            />
+          </Field>
         </Inline>
       )}
     </Stack>
   );
 };
 
-const WebhookSigningSecretField = ({ index }: { index: number }) => {
-  const { control, setValue, formState } = useFormContext<TAlertForm>();
-  const [isEnabled, hasSigningSecret, channelId] = useWatch({
-    control,
-    name: [
-      `channels.${index}.signingSecretEnabled`,
-      `channels.${index}.hasSigningSecret`,
-      `channels.${index}.id`
-    ]
-  });
-  const error = formState.errors.channels?.[index]?.signingSecret?.message;
-  const setEnabled = (enabled: boolean) => {
-    setValue(`channels.${index}.signingSecretEnabled`, enabled, { shouldDirty: true });
-    setValue(`channels.${index}.signingSecret`, "");
-  };
+const WebhookSigningSecretField = ({ channel, error, onChange }: TChannelFieldProps) => {
+  const message = error("signingSecret");
+  const setEnabled = (enabled: boolean) =>
+    onChange({ signingSecretEnabled: enabled, signingSecret: "" });
 
   return (
     <Field
       wide
       label="Signing secret"
       optional
-      error={error}
+      error={message}
       description="Signs each request in the x-infisical-signature header so your endpoint can verify it came from Infisical."
     >
-      {isEnabled ? (
+      {channel.signingSecretEnabled ? (
         <Inline gap={8} align="start" wrap={false}>
-          <Controller
-            control={control}
-            name={`channels.${index}.signingSecret`}
-            render={({ field }) => (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <SecretInput
-                  aria-label="Signing secret"
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  placeholder={channelId && hasSigningSecret ? KEEP_PLACEHOLDER : undefined}
-                  invalid={Boolean(error)}
-                />
-              </div>
-            )}
-          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <SecretInput
+              aria-label="Signing secret"
+              value={channel.signingSecret ?? ""}
+              onChange={(value) => onChange({ signingSecret: value })}
+              placeholder={channel.id && channel.hasSigningSecret ? KEEP_PLACEHOLDER : undefined}
+              invalid={Boolean(message)}
+            />
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -338,77 +318,74 @@ const WebhookSigningSecretField = ({ index }: { index: number }) => {
   );
 };
 
-const WebhookHeadersField = ({ index }: { index: number }) => {
-  const { control, formState } = useFormContext<TAlertForm>();
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `channels.${index}.headers`
-  });
-  const headerErrors = formState.errors.channels?.[index]?.headers;
+const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) => {
+  const { headers } = channel;
+  const setHeader = (headerIndex: number, field: "key" | "value", value: string) =>
+    onChange(
+      {
+        headers: headers.map((header, position) =>
+          position === headerIndex ? { ...header, [field]: value } : header
+        )
+      },
+      (errors) => withoutErrors(errors, `headers.${headerIndex}.${field}`)
+    );
 
   return (
     <Field wide label="Custom headers" optional group>
       <Stack gap={8}>
-        {fields.map((header, headerIndex) => (
-          <Inline key={header.id} gap={8} align="start" wrap={false}>
-            <Controller
-              control={control}
-              name={`channels.${index}.headers.${headerIndex}.key`}
-              render={({ field }) => (
-                <Field
-                  wide
-                  error={headerErrors?.[headerIndex]?.key?.message}
-                  style={{ width: "40%" }}
-                >
-                  <Input
-                    mono
-                    aria-label="Header name"
-                    placeholder="X-Env"
-                    value={field.value}
-                    onChange={field.onChange}
-                    invalid={Boolean(headerErrors?.[headerIndex]?.key)}
-                  />
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name={`channels.${index}.headers.${headerIndex}.value`}
-              render={({ field }) => (
-                <Field
-                  wide
-                  error={headerErrors?.[headerIndex]?.value?.message}
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  <Input
-                    aria-label="Header value"
-                    placeholder="production"
-                    value={field.value}
-                    onChange={field.onChange}
-                    invalid={Boolean(headerErrors?.[headerIndex]?.value)}
-                  />
-                </Field>
-              )}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              icon="trash"
-              iconOnly
-              onClick={() => remove(headerIndex)}
-            >
-              Remove header
-            </Button>
-          </Inline>
-        ))}
+        {headers.map((header, headerIndex) => {
+          const keyError = error(`headers.${headerIndex}.key`);
+          const valueError = error(`headers.${headerIndex}.value`);
+          return (
+            <Inline key={header.uid} gap={8} align="start" wrap={false}>
+              <Field wide error={keyError} style={{ width: "40%" }}>
+                <Input
+                  mono
+                  aria-label="Header name"
+                  placeholder="X-Env"
+                  value={header.key}
+                  onChange={(event) => setHeader(headerIndex, "key", event.target.value)}
+                  invalid={Boolean(keyError)}
+                />
+              </Field>
+              <Field wide error={valueError} style={{ flex: 1, minWidth: 0 }}>
+                <Input
+                  aria-label="Header value"
+                  placeholder="production"
+                  value={header.value}
+                  onChange={(event) => setHeader(headerIndex, "value", event.target.value)}
+                  invalid={Boolean(valueError)}
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                icon="trash"
+                iconOnly
+                onClick={() =>
+                  onChange({ headers: headers.filter(({ uid }) => uid !== header.uid) }, (errors) =>
+                    removeIndexedErrors(errors, "headers.", headerIndex)
+                  )
+                }
+              >
+                Remove header
+              </Button>
+            </Inline>
+          );
+        })}
         <div>
           <Button
             type="button"
             variant="outline"
             size="sm"
             icon="plus"
-            onClick={() => append({ key: "", value: "" })}
+            onClick={() =>
+              onChange(
+                { headers: [...headers, toDraftHeader({ key: "", value: "" })] },
+                (errors) => errors
+              )
+            }
           >
             Add header
           </Button>
@@ -419,69 +396,67 @@ const WebhookHeadersField = ({ index }: { index: number }) => {
 };
 
 const SavedSecretField = ({
-  index,
+  channel,
+  error,
+  onChange,
   name,
   label,
   placeholder,
   hasSaved
-}: {
-  index: number;
+}: TChannelFieldProps & {
   name: "webhookUrl" | "integrationKey";
   label: string;
   placeholder: string;
   hasSaved: boolean;
 }) => {
-  const { control, formState } = useFormContext<TAlertForm>();
-  const error = formState.errors.channels?.[index]?.[name]?.message;
+  const message = error(name);
   return (
-    <Controller
-      control={control}
-      name={`channels.${index}.${name}`}
-      render={({ field }) => (
-        <Field wide label={label} error={error}>
-          <SecretInput
-            value={field.value ?? ""}
-            onChange={field.onChange}
-            placeholder={hasSaved ? KEEP_PLACEHOLDER : placeholder}
-            invalid={Boolean(error)}
-          />
-        </Field>
-      )}
-    />
+    <Field wide label={label} error={message}>
+      <SecretInput
+        value={channel[name] ?? ""}
+        onChange={(value) => onChange({ [name]: value })}
+        placeholder={hasSaved ? KEEP_PLACEHOLDER : placeholder}
+        invalid={Boolean(message)}
+      />
+    </Field>
   );
 };
 
 const ChannelCard = ({
-  index,
+  channel,
+  error,
+  onChange,
   projectId,
   alertId,
   members,
   resource,
+  onInvalid,
   onRemove
-}: {
-  index: number;
+}: TChannelFieldProps & {
   projectId: string;
   alertId?: string;
   members: TMemberEmails;
-  resource?: TChannelResource;
+  resource: TChannelResource;
+  onInvalid: (errors: TFieldErrors) => void;
   onRemove: () => void;
 }) => {
-  const { control, getValues, trigger, formState } = useFormContext<TAlertForm>();
   const testChannel = useV4Adapter("certManagerSettings").useTestAlertChannel();
-  const channel = useWatch({ control, name: `channels.${index}` });
-  const eventType = useWatch({ control, name: "eventType" });
-  const channelErrors = formState.errors.channels?.[index];
   const { channelType } = channel;
   const label = ALERT_CHANNEL_TYPE_LABELS[channelType];
   const isExisting = Boolean(channel.id);
   const glyph = CHANNEL_ICONS[channelType];
+  const fieldProps = { channel, error, onChange };
 
   const onTest = async () => {
-    if (!(await trigger(`channels.${index}`))) return;
-    const { config, recipients } = toChannelInput(getValues(`channels.${index}`));
+    const parsed = channelFormSchema.safeParse(channel);
+    if (!parsed.success) {
+      onInvalid(toFieldErrors(parsed.error, () => true));
+      return;
+    }
+    const { config, recipients } = toChannelInput(parsed.data);
     try {
       const result = await testChannel.mutateAsync({
-        ...(resource ?? { resourceType: getAlertResourceType(eventType), resourceId: null }),
+        ...resource,
         projectId,
         alertId,
         channelId: channel.id,
@@ -521,16 +496,10 @@ const ChannelCard = ({
           <Button type="button" variant="outline" loading={testChannel.isPending} onClick={onTest}>
             Send test
           </Button>
-          <Controller
-            control={control}
-            name={`channels.${index}.enabled`}
-            render={({ field }) => (
-              <Switch
-                aria-label={`${label} channel enabled`}
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            )}
+          <Switch
+            aria-label={`${label} channel enabled`}
+            checked={channel.enabled}
+            onCheckedChange={(enabled) => onChange({ enabled })}
           />
           <Button type="button" variant="ghost" icon="trash" iconOnly onClick={onRemove}>
             Remove channel
@@ -540,22 +509,16 @@ const ChannelCard = ({
     >
       <Stack gap={16}>
         {channelType === AlertChannelType.Email && (
-          <Controller
-            control={control}
-            name={`channels.${index}.recipients`}
-            render={({ field }) => (
-              <EmailRecipientsField
-                value={field.value ?? []}
-                onChange={field.onChange}
-                error={(channelErrors?.recipients as { message?: string } | undefined)?.message}
-                members={members}
-              />
-            )}
+          <EmailRecipientsField
+            value={channel.recipients ?? []}
+            onChange={(recipients) => onChange({ recipients })}
+            error={error("recipients")}
+            members={members}
           />
         )}
         {channelType === AlertChannelType.Slack && (
           <SavedSecretField
-            index={index}
+            {...fieldProps}
             name="webhookUrl"
             label="Webhook URL"
             placeholder="https://hooks.slack.com/..."
@@ -564,31 +527,24 @@ const ChannelCard = ({
         )}
         {channelType === AlertChannelType.Webhook && (
           <>
-            <Controller
-              control={control}
-              name={`channels.${index}.url`}
-              render={({ field }) => (
-                <Field wide label="URL" error={channelErrors?.url?.message}>
-                  <Input
-                    mono
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    placeholder="https://example.com/webhook"
-                    invalid={Boolean(channelErrors?.url)}
-                    autoComplete="off"
-                  />
-                </Field>
-              )}
-            />
-            <WebhookAuthenticationField index={index} />
-            <WebhookSigningSecretField index={index} />
-            <WebhookHeadersField index={index} />
+            <Field wide label="URL" error={error("url")}>
+              <Input
+                mono
+                value={channel.url ?? ""}
+                onChange={(event) => onChange({ url: event.target.value })}
+                placeholder="https://example.com/webhook"
+                invalid={Boolean(error("url"))}
+                autoComplete="off"
+              />
+            </Field>
+            <WebhookAuthenticationField {...fieldProps} />
+            <WebhookSigningSecretField {...fieldProps} />
+            <WebhookHeadersField {...fieldProps} />
           </>
         )}
         {channelType === AlertChannelType.PagerDuty && (
           <SavedSecretField
-            index={index}
+            {...fieldProps}
             name="integrationKey"
             label="Integration key"
             placeholder="32-character integration key"
@@ -601,39 +557,43 @@ const ChannelCard = ({
 };
 
 export const ChannelsStep = ({
+  channels,
+  errors,
+  onChange,
+  onErrorsChange,
   projectId,
   alertId,
   members,
   hasEnterprise,
   resource,
-  upgrade,
-  onAdd,
-  onRemove,
-  fieldIds
+  upgrade
 }: {
+  channels: TDraftChannel[];
+  errors: TFieldErrors;
+  onChange: (channels: TDraftChannel[]) => void;
+  onErrorsChange: (errors: TFieldErrors) => void;
   projectId: string;
   alertId?: string;
   members: TMemberEmails;
   hasEnterprise: boolean;
-  resource?: TChannelResource;
+  resource: TChannelResource;
   upgrade?: TUpgradeGateRequest;
-  onAdd: (channelType: AlertChannelType) => void;
-  onRemove: (index: number) => void;
-  fieldIds: string[];
 }) => (
   <Stack gap={16}>
     <Inline gap={12} justify="between" align="center" wrap={false}>
       <SmallText muted>
-        {fieldIds.length ? pluralize(fieldIds.length, "channel") : "No channels yet"}
+        {channels.length ? pluralize(channels.length, "channel") : "No channels yet"}
       </SmallText>
       <AddChannelMenu
-        channelCount={fieldIds.length}
+        channelCount={channels.length}
         hasEnterprise={hasEnterprise}
         upgrade={upgrade}
-        onAdd={onAdd}
+        onAdd={(channelType) =>
+          onChange([...channels, toDraftChannel(buildNextChannel(channels, channelType))])
+        }
       />
     </Inline>
-    {fieldIds.length === 0 ? (
+    {channels.length === 0 ? (
       <EmptyState
         size="sm"
         icon="bell"
@@ -641,15 +601,50 @@ export const ChannelsStep = ({
         description="Add a channel to choose where this alert is sent."
       />
     ) : (
-      fieldIds.map((id, index) => (
+      channels.map((channel, index) => (
         <ChannelCard
-          key={id}
-          index={index}
+          key={channel.uid}
+          channel={channel}
+          error={(field) => errors[`${index}.${field}`]}
+          onChange={(patch, fixErrors) => {
+            onChange(
+              channels.map((entry) => (entry.uid === channel.uid ? { ...entry, ...patch } : entry))
+            );
+            const prefix = `${index}.`;
+            const own = Object.fromEntries(
+              Object.entries(errors)
+                .filter(([key]) => key.startsWith(prefix))
+                .map(([key, message]) => [key.slice(prefix.length), message])
+            );
+            const fixed = fixErrors
+              ? fixErrors(own)
+              : Object.keys(patch).reduce((next, field) => withoutErrors(next, field), own);
+            onErrorsChange({
+              ...withoutErrors(errors, String(index)),
+              ...Object.fromEntries(
+                Object.entries(fixed).map(([key, message]) => [`${prefix}${key}`, message])
+              )
+            });
+          }}
+          onInvalid={(channelErrors) =>
+            onErrorsChange({
+              ...withoutErrors(errors, String(index)),
+              ...Object.fromEntries(
+                Object.entries(channelErrors).map(([field, message]) => [
+                  `${index}.${field}`,
+                  message
+                ])
+              )
+            })
+          }
           projectId={projectId}
           alertId={alertId}
           members={members}
           resource={resource}
-          onRemove={() => onRemove(index)}
+          onRemove={() => {
+            onChange(channels.filter(({ uid }) => uid !== channel.uid));
+            onErrorsChange(removeIndexedErrors(errors, "", index));
+          }}
         />
       ))
     )}

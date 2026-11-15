@@ -516,6 +516,48 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     );
     return { syncId };
   }),
+  useCreatePolicy: fixtureMutation(({ policyType, scope, scopeId, ...dto }) => {
+    const created = {
+      id: `pol-${crypto.randomUUID()}`,
+      projectId: DEMO_PROJECT_ID,
+      name: dto.name,
+      maxRequestTtl: dto.maxRequestTtl ?? null,
+      type: policyType,
+      conditions: { version: 1, conditions: dto.conditions },
+      constraints: { version: 1, constraints: dto.constraints },
+      steps: dto.steps,
+      bypassForMachineIdentities: dto.bypassForMachineIdentities ?? false,
+      enforcementLevel: EnforcementLevel.Hard,
+      bypassers: [],
+      scopeType: scope,
+      scopeId,
+      createdAt: now(),
+      updatedAt: now()
+    } as TApprovalPolicy;
+    policyApplication[created.id] = scopeId;
+    policies.update((current) => [created, ...current]);
+    return created;
+  }),
+  useUpdatePolicy: fixtureMutation(({ policyId, policyType: _type, ...changes }) => {
+    policies.update((current) =>
+      current.map((entry) =>
+        entry.id === policyId
+          ? ({
+              ...entry,
+              ...changes,
+              conditions: changes.conditions
+                ? { version: 1, conditions: changes.conditions }
+                : entry.conditions,
+              constraints: changes.constraints
+                ? { version: 1, constraints: changes.constraints }
+                : entry.constraints,
+              updatedAt: now()
+            } as TApprovalPolicy)
+          : entry
+      )
+    );
+    return policies.get().find((entry) => entry.id === policyId)!;
+  }),
   useDeletePolicy: fixtureMutation(({ policyId }) => {
     policies.update((current) => current.filter((entry) => entry.id !== policyId));
     return policyId;
