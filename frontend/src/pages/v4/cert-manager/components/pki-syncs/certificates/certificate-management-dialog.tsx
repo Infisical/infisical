@@ -40,7 +40,6 @@ const columns: DataTableColumn<TCertificate>[] = [
     header: "SAN / CN",
     primary: true,
     grow: true,
-    mono: true,
     text: (cert) => getCertificateDisplayName(cert).originalDisplayName,
     render: (cert) => getCertificateDisplayName(cert).originalDisplayName
   },

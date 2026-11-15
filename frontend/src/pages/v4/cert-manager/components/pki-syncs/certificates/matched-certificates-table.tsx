@@ -29,7 +29,6 @@ const columns: DataTableColumn<TMatchedCertificateRow>[] = [
     header: "SAN / CN",
     primary: true,
     grow: true,
-    mono: true,
     text: (row) => getCertificateDisplayName(row).originalDisplayName,
     render: (row) => getCertificateDisplayName(row).originalDisplayName
   },

@@ -69,6 +69,7 @@ export function GcpCertificateManagerFields({ isUpdate }: { isUpdate?: boolean }
     <Stack gap={16}>
       <PkiSyncConnectionField
         onChange={() => {
+          if (isUpdate) return;
           setValue("destinationConfig.gcpProjectId", "");
           setValue("destinationConfig.location", "");
           setValue("destinationConfig.certificateMapBinding", undefined);

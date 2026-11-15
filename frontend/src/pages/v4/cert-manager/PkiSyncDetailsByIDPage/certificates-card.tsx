@@ -90,7 +90,7 @@ const columns = (supportsDefault: boolean): DataTableColumn<TPkiSyncCertificate>
       ) : undefined,
     render: (cert) => (
       <Inline gap={8} align="center" wrap={false}>
-        <MiddleTruncate mono text={displayNameOf(cert)} />
+        <MiddleTruncate text={displayNameOf(cert)} />
         {supportsDefault && isDefault(cert) && <Badge tone="soft">Default</Badge>}
       </Inline>
     )

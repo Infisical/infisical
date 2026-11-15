@@ -1,22 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
-import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 
-import { failed, saved } from "../../../access/toast";
+import { readableFailure, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import { certificateName } from "../certificate";
 
@@ -58,7 +51,7 @@ const AutoRenewalForm = ({ cert, onClose }: { cert: TCertificate; onClose: () =>
   );
   const [value, setValue] = useState<string | null>(null);
   const [error, setError] = useState<string>();
-  const [isSaving, setIsSaving] = useState(false);
+  const submitting = useRef(false);
   const days = value ?? initial;
   const name = certificateName(cert);
 
@@ -68,20 +61,15 @@ const AutoRenewalForm = ({ cert, onClose }: { cert: TCertificate; onClose: () =>
   });
 
   const save = async () => {
-    const problem = validate(days, cert);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    setIsSaving(true);
+    submitting.current = true;
     try {
-      await update.mutateAsync({ certificateId: cert.id, renewBeforeDays: Number(days) });
+      await update
+        .mutateAsync({ certificateId: cert.id, renewBeforeDays: Number(days) })
+        .catch(readableFailure("Couldn't update auto renewal."));
       saved(isEnabled ? `Auto renewal updated for ${name}` : `Auto renewal enabled for ${name}`);
       onClose();
-    } catch (failure) {
-      failed("Failed to update auto renewal", failure);
     } finally {
-      setIsSaving(false);
+      submitting.current = false;
     }
   };
 
@@ -92,60 +80,54 @@ const AutoRenewalForm = ({ cert, onClose }: { cert: TCertificate; onClose: () =>
 
   return (
     <>
-      <Dialog open onOpenChange={(open) => !open && requestDiscard()}>
-        <DialogContent pending={isSaving}>
-          <DialogHeader>
-            <DialogTitle>{title()}</DialogTitle>
-          </DialogHeader>
-          <form
-            id="certificate-auto-renewal"
-            onSubmit={(event) => {
-              event.preventDefault();
-              save();
-            }}
-          >
-            <Stack gap={16}>
-              {cert.renewalError && (
-                <Alert tone="bad" title="Automatic renewal failed">
-                  {`The last automatic renewal attempt failed: ${cert.renewalError}`}
-                </Alert>
-              )}
-              <Field
-                label="Renew this many days before expiry"
-                error={error}
-                description={`From ${MIN_DAYS} to ${MAX_DAYS} days.`}
-              >
-                <Input
-                  type="number"
-                  width="xs"
-                  min={MIN_DAYS}
-                  max={MAX_DAYS}
-                  value={days}
-                  invalid={Boolean(error)}
-                  disabled={isSaving}
-                  onChange={(event) => {
-                    setValue(event.target.value);
-                    setError(undefined);
-                  }}
-                />
-              </Field>
-            </Stack>
-          </form>
-          <DialogFooter>
-            <Button variant="outline" disabled={isSaving} onClick={requestDiscard}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              form="certificate-auto-renewal"
-              loading={isSaving}
-            >
-              {isEnabled ? "Save changes" : "Enable auto renewal"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MultiStep
+        variant="dialog"
+        title={title()}
+        open
+        onOpenChange={(next) => {
+          if (next || submitting.current) return;
+          requestDiscard();
+        }}
+        completeLabel={isEnabled ? "Save changes" : "Enable auto renewal"}
+        onComplete={save}
+        steps={[
+          {
+            title: "Auto renewal",
+            validate: () => {
+              const problem = validate(days, cert);
+              setError(problem);
+              return !problem;
+            },
+            content: (
+              <Stack gap={16}>
+                {cert.renewalError && (
+                  <Alert tone="bad" title="Automatic renewal failed">
+                    {`The last automatic renewal attempt failed: ${cert.renewalError}`}
+                  </Alert>
+                )}
+                <Field
+                  label="Renew this many days before expiry"
+                  error={error}
+                  description={`From ${MIN_DAYS} to ${MAX_DAYS} days.`}
+                >
+                  <Input
+                    type="number"
+                    width="xs"
+                    min={MIN_DAYS}
+                    max={MAX_DAYS}
+                    value={days}
+                    invalid={Boolean(error)}
+                    onChange={(event) => {
+                      setValue(event.target.value);
+                      setError(undefined);
+                    }}
+                  />
+                </Field>
+              </Stack>
+            )
+          }
+        ]}
+      />
       <DiscardChangesAlertDialog
         {...discardDialogProps}
         title="Discard changes?"

@@ -1,5 +1,6 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
+import type { TCertificate } from "@app/hooks/api/certificates/types";
 import {
   CertificateSyncStatus,
   PkiSync,
@@ -9,12 +10,14 @@ import {
 import type {
   TPkiSync,
   TPkiSyncCertificate,
+  TPkiSyncFilters,
   TPkiSyncOption,
   TPkiSyncPreviewCertificate
 } from "@app/hooks/api/pkiSyncs/types";
 import { F5BigIpProfileType } from "@app/hooks/api/pkiSyncs/types/f5-big-ip-sync";
 import { GcpCertificateManagerScope } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
+import { demoCertificates } from "../certificates/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import { DEMO_PROJECT_ID, demoApplications } from "../pki-applications/demo-store";
 import type { PkiSyncsAdapter, TPkiSyncConnectionOption } from "./contract";
@@ -479,6 +482,46 @@ const syncCertificates = createFixtureStore<TPkiSyncCertificate[]>([
   syncCertificate(SYNC_IDS.windows, previewPool[1], CertificateSyncStatus.Succeeded)
 ]);
 
+const previewCertificates = (
+  certificates: TCertificate[],
+  filters?: TPkiSyncFilters | null,
+  applicationId?: string | null
+): TPkiSyncPreviewCertificate[] => {
+  if (
+    !filters?.profileIds?.length &&
+    !filters?.certificateOrderIds?.length &&
+    !filters?.metadata?.length
+  )
+    return [];
+  const applicationName = demoApplications.get().find((entry) => entry.id === applicationId)?.name;
+  const profileIds = new Set(filters.profileIds);
+  const orderIds = new Set(filters.certificateOrderIds);
+  return certificates
+    .filter((cert) => !cert.deletedAt)
+    .filter(
+      (cert) =>
+        !applicationId ||
+        cert.applicationId === applicationId ||
+        (Boolean(applicationName) && cert.applicationName === applicationName)
+    )
+    .filter((cert) => !profileIds.size || profileIds.has(cert.profileId ?? ""))
+    .filter((cert) => !orderIds.size || orderIds.has(cert.orderId ?? ""))
+    .filter((cert) =>
+      (filters.metadata ?? []).every(({ key, value }) =>
+        cert.metadata?.some((entry) => entry.key === key && (!value || entry.value === value))
+      )
+    )
+    .map((cert) => ({
+      id: cert.id,
+      commonName: cert.commonName,
+      altNames: cert.altNames,
+      serialNumber: cert.serialNumber,
+      notAfter: cert.notAfter,
+      orderId: cert.orderId,
+      profileName: cert.profileName
+    }));
+};
+
 const updateSync = (syncId: string, change: Record<string, unknown>) =>
   demoPkiSyncs.update((current) =>
     current.map((entry) =>
@@ -487,6 +530,27 @@ const updateSync = (syncId: string, change: Record<string, unknown>) =>
   );
 
 const findSync = (syncId: string) => demoPkiSyncs.get().find((entry) => entry.id === syncId);
+
+const relinkFilteredCertificates = (syncId: string, status?: CertificateSyncStatus) => {
+  const target = findSync(syncId);
+  if (!target?.filters) return;
+  const matched = previewCertificates(demoCertificates.get(), target.filters, target.applicationId);
+  syncCertificates.update((current) => {
+    const existing = new Map(
+      current
+        .filter((entry) => entry.pkiSyncId === syncId)
+        .map((entry) => [entry.certificateId, entry])
+    );
+    return [
+      ...current.filter((entry) => entry.pkiSyncId !== syncId),
+      ...matched.map((cert) => {
+        const row =
+          existing.get(cert.id) ?? syncCertificate(syncId, cert, CertificateSyncStatus.Pending);
+        return status ? { ...row, syncStatus: status, lastSyncedAt: now(), updatedAt: now() } : row;
+      })
+    ];
+  });
+};
 
 const healthCheck = (status: PkiSyncStatus, output: string) => ({
   status,
@@ -535,19 +599,8 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
     const rows = syncCertificates.use().filter((entry) => entry.pkiSyncId === syncId);
     return ready({ certificates: rows.slice(offset, offset + limit), totalCount: rows.length });
   },
-  usePreviewCertificates: ({ filters, offset = 0, limit = 20, enabled }) => {
-    const hasFilter = Boolean(
-      filters?.profileIds?.length ||
-      filters?.certificateOrderIds?.length ||
-      filters?.metadata?.length
-    );
-    const matched = hasFilter
-      ? previewPool.filter(
-          (entry) =>
-            !filters?.certificateOrderIds?.length ||
-            filters.certificateOrderIds.includes(entry.orderId ?? "")
-        )
-      : [];
+  usePreviewCertificates: ({ applicationId, filters, offset = 0, limit = 20, enabled }) => {
+    const matched = previewCertificates(demoCertificates.use(), filters, applicationId);
     return {
       ...idle(enabled, {
         certificates: matched.slice(offset, offset + limit),
@@ -563,7 +616,8 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
     const ids = new Set(certificateOrderIds);
     return ready(
       new Map(
-        previewPool
+        demoCertificates
+          .use()
           .filter((entry) => entry.orderId && ids.has(entry.orderId))
           .map((entry) => [entry.orderId!, entry.commonName])
       )
@@ -685,6 +739,7 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
       createdAt: now()
     } as TPkiSync;
     demoPkiSyncs.update((current) => [created, ...current]);
+    relinkFilteredCertificates(created.id);
     return created;
   }),
   useUpdateSync: fixtureMutation(
@@ -702,6 +757,7 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
             }
           : {})
       });
+      if ("filters" in dto) relinkFilteredCertificates(syncId);
       return findSync(syncId)!;
     }
   ),
@@ -710,6 +766,7 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
     return { syncId };
   }),
   useTriggerSync: fixtureMutation(({ syncId }) => {
+    relinkFilteredCertificates(syncId, CertificateSyncStatus.Succeeded);
     updateSync(syncId, {
       syncStatus: PkiSyncStatus.Succeeded,
       lastSyncedAt: now(),
@@ -747,13 +804,20 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
       "nginx: configuration file /etc/nginx/nginx.conf test is successful"
     );
   }),
-  usePreviewFilters: fixtureMutation(({ filters }) => ({
-    matchedCount: filters ? previewPool.length : 0,
-    certificates: filters ? previewPool : [],
-    toUnlink: [],
-    toUnlinkAtDestinationCount: 0,
-    willRemoveFromDestination: false
-  })),
+  usePreviewFilters: fixtureMutation(({ pkiSyncId, filters }) => {
+    const certificates = previewCertificates(
+      demoCertificates.get(),
+      filters,
+      findSync(pkiSyncId)?.applicationId
+    );
+    return {
+      matchedCount: certificates.length,
+      certificates,
+      toUnlink: [],
+      toUnlinkAtDestinationCount: 0,
+      willRemoveFromDestination: false
+    };
+  }),
   useAddCertificates: fixtureMutation(({ pkiSyncId, certificateIds }) => {
     const ids = new Set(certificateIds);
     const added = previewPool

@@ -373,19 +373,28 @@ const SyncLoader = ({ orgId, projectId }: { orgId: string; projectId: string }) 
     : orgHref(orgId, "/cert-manager/integrations");
   const backLabel = fromApplication ?? "Certificate syncs";
 
-  if (isPending && !error) return <Loader size="page" label="Loading certificate sync" />;
+  if (isPending && !error)
+    return (
+      <>
+        <PageTitle title="Certificate sync" />
+        <Loader size="page" label="Loading certificate sync" />
+      </>
+    );
   if (!sync)
     return (
-      <EmptyState
-        icon="alert-c"
-        title="Couldn't load this certificate sync"
-        description="It may have been deleted, or you may not have access to it."
-        actions={
-          <Button variant="outline" onClick={() => go(backHref)}>
-            Back to {fromApplication ?? "certificate syncs"}
-          </Button>
-        }
-      />
+      <>
+        <PageTitle title="Certificate sync" />
+        <EmptyState
+          icon="alert-c"
+          title="Couldn't load this certificate sync"
+          description="It may have been deleted, or you may not have access to it."
+          actions={
+            <Button variant="outline" onClick={() => go(backHref)}>
+              Back to {fromApplication ?? "certificate syncs"}
+            </Button>
+          }
+        />
+      </>
     );
 
   return (
@@ -405,7 +414,13 @@ const SyncLoader = ({ orgId, projectId }: { orgId: string; projectId: string }) 
 export const PkiSyncDetailsByIDPage = () => {
   const { orgId } = useParams({ from: route });
   const { projectId, isPending } = useCertManagerProjectId(orgId);
-  if (isPending) return <Loader size="page" label="Loading certificate sync" />;
+  if (isPending)
+    return (
+      <>
+        <PageTitle title="Certificate sync" />
+        <Loader size="page" label="Loading certificate sync" />
+      </>
+    );
   if (!projectId)
     return (
       <>

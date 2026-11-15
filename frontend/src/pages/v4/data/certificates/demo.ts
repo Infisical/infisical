@@ -131,6 +131,13 @@ const usages: Record<string, Pick<TCertificate, "keyUsages" | "extendedKeyUsages
   }
 };
 
+const demoOrderIds: Record<string, string> = {
+  "0f6b2d84-1e9a-4c37-b5d2-8a3e7c1f9d06": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e01",
+  "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e02",
+  "d84c1b6e-2f73-4a95-b0e8-7c5a3d9f1e26": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e03",
+  "8e4a1c07-2b9d-4f63-a5e0-6d3c9f1b7a42": "9a1c3e5f-7b2d-4e6a-8c0f-1d3b5a7c9e04"
+};
+
 const certificate = (
   id: string,
   commonName: string,
@@ -172,6 +179,7 @@ const certificate = (
     basicConstraints: { isCA: false },
     hasPrivateKey: true,
     source: CertSource.Issued,
+    orderId: demoOrderIds[id] ?? id,
     ...extra
   };
 };
@@ -496,6 +504,8 @@ const change = (id: string, patch: Partial<TCertificate>) => {
   store.update((certs) => certs.map((cert) => (cert.id === id ? { ...cert, ...patch } : cert)));
   return store.get().find((cert) => cert.id === id)!;
 };
+
+export const demoCertificates = store;
 
 export const certificatesDemo: CertificatesAdapter = {
   useInstanceState: () =>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
@@ -8,16 +8,8 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, InlineGrow, Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@infisical/cipher/ui/sheet";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
@@ -32,7 +24,7 @@ import {
   type TCodeSigningScope
 } from "@app/hooks/api/signers/types";
 
-import { failed } from "../../access/toast";
+import { readableFailure } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { CODE_SIGNING_DOCS } from "../CodeSigningPage/signer-shared";
 
@@ -223,7 +215,7 @@ const RequestSheet = ({
   const [scope, setScope] = useState<ScopeEntry[]>([]);
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<Errors>({ scope: {} });
-  const [submitting, setSubmitting] = useState(false);
+  const submitting = useRef(false);
   const dirty =
     Boolean(grantee || reason || scope.length) ||
     signings !== (maxSignings ? String(maxSignings) : "") ||
@@ -273,37 +265,38 @@ const RequestSheet = ({
   };
 
   const submit = async () => {
-    if (!validate()) return;
     const requestedSignings = signings.trim() === "" ? undefined : Number(signings);
     const requestedWindowDuration = windowDuration === NO_WINDOW ? undefined : windowDuration;
-    setSubmitting(true);
+    submitting.current = true;
     try {
       if (isPreApprove) {
         const [kind, ...rest] = grantee.split(":");
         const id = rest.join(":");
-        await preApprove.mutateAsync({
-          signerId,
-          granteeUserId: kind === "user" ? id : undefined,
-          granteeIdentityId: kind === "identity" ? id : undefined,
-          justification: reason.trim(),
-          requestedSignings,
-          requestedWindowDuration,
-          scope: declaredScope(scope)
-        });
+        await preApprove
+          .mutateAsync({
+            signerId,
+            granteeUserId: kind === "user" ? id : undefined,
+            granteeIdentityId: kind === "identity" ? id : undefined,
+            justification: reason.trim(),
+            requestedSignings,
+            requestedWindowDuration,
+            scope: declaredScope(scope)
+          })
+          .catch(readableFailure("Couldn't pre-approve signing."));
       } else {
-        await requestToSign.mutateAsync({
-          signerId,
-          justification: reason.trim(),
-          requestedSignings,
-          requestedWindowDuration,
-          scope: declaredScope(scope)
-        });
+        await requestToSign
+          .mutateAsync({
+            signerId,
+            justification: reason.trim(),
+            requestedSignings,
+            requestedWindowDuration,
+            scope: declaredScope(scope)
+          })
+          .catch(readableFailure("Couldn't send the request."));
       }
       onClose();
-    } catch (error) {
-      failed(isPreApprove ? "Couldn't pre-approve signing" : "Couldn't send the request", error);
     } finally {
-      setSubmitting(false);
+      submitting.current = false;
     }
   };
 
@@ -316,28 +309,33 @@ const RequestSheet = ({
 
   return (
     <>
-      <Sheet open onOpenChange={(open) => !open && !submitting && requestDiscard()}>
-        <SheetContent size="md" pending={submitting}>
-          <SheetHeader>
-            <SheetTitle>{isPreApprove ? "Pre-approve signing" : "Request to sign"}</SheetTitle>
-            <SheetDescription>
-              {isPreApprove
-                ? "Grant an operator or machine identity signing access without a review. It appears with the other approvals, and you can revoke it any time."
-                : "Your request goes to this signer's approvers. The approval window starts when it's approved, so waiting for a review doesn't use it up."}{" "}
-              <DocumentationLink
-                href={isPreApprove ? CODE_SIGNING_DOCS.preApprove : CODE_SIGNING_DOCS.requestToSign}
-                subject="Signer approvals"
-              />
-            </SheetDescription>
-          </SheetHeader>
-          <SheetBody>
-            <form
-              id="signer-request"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submit();
-              }}
-            >
+      <MultiStep
+        variant="sheet"
+        size="md"
+        title={isPreApprove ? "Pre-approve signing" : "Request to sign"}
+        description={
+          <>
+            {isPreApprove
+              ? "Grant an operator or machine identity signing access without a review. It appears with the other approvals, and you can revoke it any time."
+              : "Your request goes to this signer's approvers. The approval window starts when it's approved, so waiting for a review doesn't use it up."}{" "}
+            <DocumentationLink
+              href={isPreApprove ? CODE_SIGNING_DOCS.preApprove : CODE_SIGNING_DOCS.requestToSign}
+              subject="Signer approvals"
+            />
+          </>
+        }
+        open
+        onOpenChange={(next) => {
+          if (next || submitting.current) return;
+          requestDiscard();
+        }}
+        completeLabel={isPreApprove ? "Pre-approve" : "Send request"}
+        onComplete={submit}
+        steps={[
+          {
+            title: isPreApprove ? "Pre-approval" : "Request",
+            validate,
+            content: (
               <Stack gap={16}>
                 {isPreApprove && (
                   <Field label="Member" error={errors.grantee} wide>
@@ -403,18 +401,10 @@ const RequestSheet = ({
                   />
                 </Field>
               </Stack>
-            </form>
-          </SheetBody>
-          <SheetFooter>
-            <Button variant="ghost" onClick={requestDiscard} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" form="signer-request" loading={submitting}>
-              {isPreApprove ? "Pre-approve" : "Send request"}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            )
+          }
+        ]}
+      />
       <DiscardChangesAlertDialog
         {...discardDialogProps}
         description={

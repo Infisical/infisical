@@ -85,7 +85,8 @@ const SyncsDialog = ({
   const { data: pkiSyncs = [], isPending } = adapter.useSyncsWithCertificate(
     projectId,
     certificate.id,
-    { enabled: Boolean(projectId) && Boolean(certificate.id) }
+    { enabled: Boolean(projectId) && Boolean(certificate.id) },
+    certificate.applicationId ?? undefined
   );
 
   const initial = useMemo(

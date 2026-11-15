@@ -4,6 +4,7 @@ import {
   SignerPermissionActions,
   SignerPermissionSub
 } from "@app/context/SignerPermissionContext/types";
+import { parseDurationMs } from "@app/helpers/datetime";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 import {
   CertKeySource,
@@ -229,6 +230,11 @@ const policies = createFixtureStore<TSignerPolicy[]>([
     constraints: { maxSignings: 10, maxWindowDuration: "24h" }
   }
 ]);
+
+const windowExpiry = (duration?: string) => {
+  const span = parseDurationMs(duration);
+  return span ? new Date(Date.now() + span).toISOString() : null;
+};
 
 const request = (
   id: string,
@@ -587,23 +593,33 @@ export const codeSigningDemo: CodeSigningAdapter = {
     policies.update((rows) => [...rows.filter((entry) => entry.signerId !== signerId), next]);
     return next;
   }),
-  useRequestToSign: announce("Request sent", ({ signerId, justification, requestedSignings }) =>
-    requests.update((rows) => [
-      request(crypto.randomUUID(), {
-        status: SignerRequestStatus.Pending,
-        scopeId: signerId,
-        requesterId: "u-sarah",
-        requesterName: "Sarah Lin",
-        justification,
-        maxSignings: requestedSignings ?? null,
-        createdAt: new Date().toISOString()
-      }),
-      ...rows
-    ])
+  useRequestToSign: announce(
+    "Request sent",
+    ({ signerId, justification, requestedSignings, requestedWindowDuration }) =>
+      requests.update((rows) => [
+        request(crypto.randomUUID(), {
+          status: SignerRequestStatus.Pending,
+          scopeId: signerId,
+          requesterId: "u-sarah",
+          requesterName: "Sarah Lin",
+          justification,
+          maxSignings: requestedSignings ?? null,
+          requestData: { version: 1, requestData: { requestedWindowDuration } },
+          createdAt: new Date().toISOString()
+        }),
+        ...rows
+      ])
   ),
   usePreApproveSigning: announce(
     "Signing pre-approved",
-    ({ signerId, granteeUserId, granteeIdentityId, justification, requestedSignings }) =>
+    ({
+      signerId,
+      granteeUserId,
+      granteeIdentityId,
+      justification,
+      requestedSignings,
+      requestedWindowDuration
+    }) =>
       requests.update((rows) => [
         request(crypto.randomUUID(), {
           status: SignerRequestStatus.Approved,
@@ -615,6 +631,8 @@ export const codeSigningDemo: CodeSigningAdapter = {
           justification,
           maxSignings: requestedSignings ?? null,
           usedSignings: 0,
+          requestData: { version: 1, requestData: { requestedWindowDuration } },
+          expiresAt: windowExpiry(requestedWindowDuration),
           createdAt: new Date().toISOString()
         }),
         ...rows
