@@ -23,7 +23,11 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { format } from "date-fns";
 
-import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import {
+  hostOf,
+  hostPatternOf,
+  serverUrlOf
+} from "@app/components/agent-vault/service-sheet/serviceSchema";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -46,6 +50,7 @@ import type {
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { PersonalOAuthConnection } from "./service-oauth";
 
 const MAX_USERNAME_LENGTH = 256;
 const MAX_LENGTH = 8192;
@@ -70,6 +75,7 @@ const PersonalValuesForm = ({
   const resources = useV4Adapter("agentVaultResources");
   const setValues = resources.useSetPersonalValues(projectId);
   const deleteValues = resources.useDeletePersonalValues(projectId);
+  const connectOauth = resources.useConnectPersonalOauth(projectId);
   const { data: variablePage } = resources.useVariables(projectId, {
     scope: AgentVaultVariableScope.Personal,
     limit: MAX_PERSONAL_VARIABLES
@@ -96,11 +102,15 @@ const PersonalValuesForm = ({
   const [errors, setErrors] = useState<Partial<Record<TAgentVaultMemberProvidedField, string>>>({});
   const [pending, setPending] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   const hostPattern = hostPatternOf(service);
   const providerName =
     (hostPattern ? findTemplateForHostPattern(hostPattern)?.name : undefined) ?? service.name;
   const isOAuth = service.credential.type === AgentVaultCredentialType.OAuth;
+  const oauthConnection = personalValues?.fields.find((entry) => entry.oauth)?.oauth ?? null;
+  const host = hostOf(serverUrlOf(service) ?? "");
   const lastSetAt = personalValues?.fields.reduce<string | null>(
     (latest, { updatedAt }) => (updatedAt && (!latest || updatedAt > latest) ? updatedAt : latest),
     null
@@ -126,25 +136,50 @@ const PersonalValuesForm = ({
   };
 
   let description = `Your sessions use your personal ${providerName} values in every access bundle with this service. Only you can read them.`;
-  if (personalValues?.isConfigured && lastSetAt)
+  if (isOAuth)
+    description = `Your sessions use your own ${host} account in every access bundle with this service. Only your sessions can use this connection.`;
+  else if (personalValues?.isConfigured && lastSetAt)
     description = `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. A field you leave blank keeps its saved value.`;
 
-  const hasSavedValues = savedFields.size > 0;
+  const hasSavedValues = savedFields.size > 0 || Boolean(oauthConnection);
+
+  const saveConnection = async (authorizationId: string) => {
+    setConnecting(true);
+    try {
+      await connectOauth.mutateAsync({
+        serviceId: service.id,
+        credentialType: AgentVaultCredentialType.OAuth,
+        authorizationId
+      });
+      saved(`Connected your ${host} account for ${service.name}`);
+      onOpenChange(false);
+    } catch (error) {
+      failed(`Failed to connect your ${host} account`, error);
+    } finally {
+      setConnecting(false);
+    }
+  };
   const nothingTyped = fields.every((field) => savedFields.has(field) && !valueOf(field));
 
   return (
     <>
-      <DialogContent pending={pending}>
+      <DialogContent pending={pending || connecting || signingIn}>
         <DialogHeader>
           <DialogTitle>
             {`${personalValues?.isConfigured ? "Update" : "Set up"} personal values for ${service.name}`}
           </DialogTitle>
-          <DialogDescription>
-            {isOAuth
-              ? "This service signs each member in with their own account. Connecting an account isn't available in v4 yet."
-              : description}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {isOAuth && (
+          <PersonalOAuthConnection
+            projectId={projectId}
+            service={service}
+            connection={oauthConnection}
+            saving={connecting}
+            onAuthorized={saveConnection}
+            onWaitingChange={setSigningIn}
+          />
+        )}
         {!isOAuth && (
           <form
             id="agent-vault-personal-values"
@@ -201,14 +236,22 @@ const PersonalValuesForm = ({
         <DialogFooter>
           <Inline gap={8} justify="between" style={{ width: "100%" }}>
             {hasSavedValues ? (
-              <Button variant="destructive" disabled={pending} onClick={() => setRemoving(true)}>
+              <Button
+                variant="destructive"
+                disabled={pending || connecting || signingIn}
+                onClick={() => setRemoving(true)}
+              >
                 Remove
               </Button>
             ) : (
               <span />
             )}
             <Inline gap={8}>
-              <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
+              <Button
+                variant="ghost"
+                disabled={pending || connecting || signingIn}
+                onClick={() => onOpenChange(false)}
+              >
                 {isOAuth ? "Close" : "Cancel"}
               </Button>
               {!isOAuth && (
@@ -229,9 +272,15 @@ const PersonalValuesForm = ({
       <AlertDialog open={removing} onOpenChange={setRemoving}>
         <AlertDialogContent tone="danger">
           <AlertDialogHeader>
-            <AlertDialogTitle>{`Remove your personal values for ${service.name}?`}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isOAuth
+                ? `Disconnect your ${host} account?`
+                : `Remove your personal values for ${service.name}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Your sessions can&apos;t reach this service until you set them up again.
+              {isOAuth
+                ? `Until you connect again, your sessions can't reach ${service.name}.`
+                : "Your sessions can't reach this service until you set them up again."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -241,7 +290,11 @@ const PersonalValuesForm = ({
               onClick={async () => {
                 try {
                   await deleteValues.mutateAsync({ serviceId: service.id });
-                  saved(`Personal values removed for ${service.name}`);
+                  saved(
+                    isOAuth
+                      ? `Your ${host} account was disconnected from ${service.name}`
+                      : `Personal values removed for ${service.name}`
+                  );
                   onOpenChange(false);
                 } catch (error) {
                   failed("Failed to remove personal values", error);

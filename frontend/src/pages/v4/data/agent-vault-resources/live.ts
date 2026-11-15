@@ -5,10 +5,15 @@ import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
-import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
+import {
+  AgentVaultOauthAuthorizationStatus,
+  AgentVaultVariableScope
+} from "@app/hooks/api/agentVault/enums";
 import { SkillVersionConflictError } from "@app/hooks/api/agentVault/mutations";
 import {
   agentVaultKeys,
+  isTerminalOauthAuthorizationError,
+  fetchAgentVaultOauthAuthorization,
   fetchAgentVaultProxyCa,
   fetchAgentVaultSkillVersion,
   type TAgentVaultProxyList
@@ -24,6 +29,9 @@ import type {
   TAgentVaultMcpTool,
   TAgentVaultMember,
   TAgentVaultMemberWriteResult,
+  TConnectAgentVaultPersonalOauthDTO,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TCreateAgentVaultOauthAuthorizationResponse,
   TAgentVaultPersonalValues,
   TAgentVaultProductMember,
   TAgentVaultProjectService,
@@ -819,6 +827,51 @@ const useDeleteAgentVaultPersonalValues = (projectId: string) => {
   });
 };
 
+const useConnectAgentVaultPersonalOauth = (projectId: string) => {
+  const orgId = useOrgId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ serviceId, ...params }: TConnectAgentVaultPersonalOauthDTO) => {
+      const { data } = await apiRequest.post<{
+        personalValues: TAgentVaultPersonalValues;
+      }>(`/api/v1/agent-vault/services/${serviceId}/personal-values/oauth-connection`, params);
+      return data.personalValues;
+    },
+    onSuccess: () => invalidatePersonalValues(queryClient, orgId, projectId),
+    onError: (error) => reloadPersonalValuesOnConflict(queryClient, orgId, projectId, error)
+  });
+};
+
+const useCreateAgentVaultOauthAuthorization = () =>
+  useMutation({
+    mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
+        "/api/v1/agent-vault/oauth/authorizations",
+        params
+      );
+      return data;
+    }
+  });
+
+const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: agentVaultKeys.oauthAuthorization(orgId, authorizationId),
+    queryFn: ({ signal }) => fetchAgentVaultOauthAuthorization(authorizationId, signal),
+    enabled: Boolean(authorizationId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchInterval: (query) => {
+      const { data, error } = query.state;
+      if (error && isTerminalOauthAuthorizationError(error)) return false;
+      if (data && data.status !== AgentVaultOauthAuthorizationStatus.Pending) return false;
+      return error ? 5000 : 2000;
+    },
+    refetchIntervalInBackground: true
+  });
+};
+
 // Matches every access bundle's skill list, whose rows show each skill's latest version.
 const isAccessBundleSkillsKey =
   (orgId: string, projectId: string) => (query: { queryKey: readonly unknown[] }) => {
@@ -1041,6 +1094,9 @@ export const agentVaultResourcesLive: AgentVaultResourcesAdapter = {
   useListMcpTools: useListAgentVaultMcpTools,
   useSetPersonalValues: useSetAgentVaultPersonalValues,
   useDeletePersonalValues: useDeleteAgentVaultPersonalValues,
+  useConnectPersonalOauth: useConnectAgentVaultPersonalOauth,
+  useCreateOauthAuthorization: useCreateAgentVaultOauthAuthorization,
+  useOauthAuthorization: useGetAgentVaultOauthAuthorization,
 
   useVariables: useListAgentVaultVariables,
   useVariableKeyStatus: useAgentVaultVariableKeyStatus,
