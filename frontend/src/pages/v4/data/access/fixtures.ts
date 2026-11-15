@@ -635,6 +635,12 @@ const projects: DemoProject[] = [
     type: ProjectType.SecretScanning,
     environments: []
   },
+  {
+    id: "platform-scanning",
+    name: "platform-scanning",
+    type: ProjectType.SecretScanning,
+    environments: []
+  },
   { id: DEMO_PAM_PROJECT_ID, name: "pam", type: ProjectType.PAM, environments: [] },
   { id: "agent-platform", name: "agent-platform", type: ProjectType.AgentVault, environments: [] },
   { id: "support-agents", name: "support-agents", type: ProjectType.AgentVault, environments: [] }
@@ -1024,6 +1030,14 @@ const projectMemberships: DemoProjectMembership[] = [
     userId: "u-sarah",
     roles: [grant("ssmr-1", "admin")],
     createdAt: day("2025-03-10")
+  },
+  {
+    kind: "user",
+    id: "psm-sarah",
+    projectId: "platform-scanning",
+    userId: "u-sarah",
+    roles: [grant("psmr-1", "admin")],
+    createdAt: day("2024-07-02")
   },
   {
     kind: "user",

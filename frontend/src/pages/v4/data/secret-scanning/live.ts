@@ -1,6 +1,8 @@
+import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { useBitbucketConnectionListWorkspaces } from "@app/hooks/api/appConnections/bitbucket/queries";
 import { useGitLabConnectionListGroups } from "@app/hooks/api/appConnections/gitlab/queries";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import { useGetUserProjects } from "@app/hooks/api/projects/queries";
 import {
   useCreateSecretScanningDataSource,
   useAddAllSecretScanningResources,
@@ -30,8 +32,27 @@ import {
 
 import type { SecretScanningAdapter } from "./contract";
 
+// Matches main's Secret Scanning layout: the instance the user last opened (the cookie), while they
+// are still a member of it, otherwise the org's active project.
+const useResolvedProjectId: SecretScanningAdapter["useProjectId"] = (orgId) => {
+  const active = useGetSecretScanningProjectId(orgId);
+  const memberProjects = useGetUserProjects();
+  const isPending = active.isPending || (memberProjects.isPending && !memberProjects.error);
+  if (!active.data || isPending) return { data: undefined, isPending, error: active.error };
+  return {
+    data:
+      resolveSecretScanningProjectId({
+        orgId,
+        activeProjectId: active.data,
+        memberProjectIds: (memberProjects.data ?? []).map((project) => project.id)
+      }) ?? active.data,
+    isPending: false,
+    error: null
+  };
+};
+
 export const secretScanningLive: SecretScanningAdapter = {
-  useProjectId: useGetSecretScanningProjectId,
+  useProjectId: useResolvedProjectId,
   useInstanceState: (orgId) => useGetSecretScanningInstanceState(orgId),
   useFindings: useListSecretScanningFindings,
   useUnresolvedFindingCount: useGetSecretScanningUnresolvedFindingCount,

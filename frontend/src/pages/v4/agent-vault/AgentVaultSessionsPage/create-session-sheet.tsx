@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, type UseFormReturn, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
@@ -272,12 +272,16 @@ const createNowSchema = z
 
 type TCreateNowForm = z.infer<typeof createNowSchema>;
 
+const CREATE_NOW_DEFAULTS: TCreateNowForm = { label: "", ttlPreset: "7d", customTtl: "" };
+
 const CreateNowForm = ({
+  form,
   orgId,
   projectId,
   accessBundle,
   onCreate
 }: {
+  form: UseFormReturn<TCreateNowForm>;
   orgId: string;
   projectId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
@@ -287,10 +291,7 @@ const CreateNowForm = ({
     control,
     handleSubmit,
     formState: { errors }
-  } = useForm<TCreateNowForm>({
-    resolver: zodResolver(createNowSchema),
-    defaultValues: { label: "", ttlPreset: "7d", customTtl: "" }
-  });
+  } = form;
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
   const needsSetup = accessBundle?.servicesRequiringSetup ?? [];
   const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
@@ -845,6 +846,7 @@ const CreateSessionFooter = ({
 );
 
 const OwnSandboxBody = ({
+  form,
   fields,
   tab,
   onTabChange,
@@ -858,6 +860,7 @@ const OwnSandboxBody = ({
   accessBundle,
   onCreate
 }: {
+  form: UseFormReturn<TCreateNowForm>;
   fields: React.ReactNode;
   tab: TCreateTab;
   onTabChange: (value: string) => void;
@@ -888,6 +891,7 @@ const OwnSandboxBody = ({
     {created && <CreatedSessionCommand session={created} siteUrl={siteUrl} />}
     {!created && isCreateNow && (
       <CreateNowForm
+        form={form}
         orgId={orgId}
         projectId={projectId}
         accessBundle={accessBundle}
@@ -935,10 +939,16 @@ export const CreateSessionSheet = ({
   const [accessBundle, setAccessBundle] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [identity, setIdentity] = useState<TIdentity | null>(null);
 
+  const createNowForm = useForm<TCreateNowForm>({
+    resolver: zodResolver(createNowSchema),
+    defaultValues: CREATE_NOW_DEFAULTS
+  });
+
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
+      createNowForm.reset(CREATE_NOW_DEFAULTS);
       setPlatform(null);
       setCreated(null);
       setAccessBundle(null);
@@ -1012,6 +1022,7 @@ export const CreateSessionSheet = ({
 
   const ownSandbox = (
     <OwnSandboxBody
+      form={createNowForm}
       fields={values}
       tab={tab}
       onTabChange={onTabChange}

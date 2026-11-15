@@ -1,3 +1,4 @@
+import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -513,8 +514,8 @@ const availableFor = (dataSourceId: string, included: TSecretScanningResource[])
 const instanceProjects: TSecretScanningInstanceProject[] = [
   { id: projectId, name: "Secret Scanning", slug: "secret-scanning", createdAt: ago(60 * 24 * 90) },
   {
-    id: uuid("a7", 1),
-    name: "Platform scanning",
+    id: "platform-scanning",
+    name: "platform-scanning",
     slug: "platform-scanning",
     createdAt: ago(60 * 24 * 240)
   }
@@ -527,7 +528,16 @@ const instanceState: TSecretScanningInstanceState = {
 };
 
 export const secretScanningDemo: SecretScanningAdapter = {
-  useProjectId: () => ({ data: projectId, isPending: false, error: null }),
+  useProjectId: (orgId) => ({
+    data:
+      resolveSecretScanningProjectId({
+        orgId,
+        activeProjectId: projectId,
+        memberProjectIds: instanceProjects.map((project) => project.id)
+      }) ?? projectId,
+    isPending: false,
+    error: null
+  }),
   useInstanceState: () => ({ data: instanceState, isPending: false, error: null }),
   useFindings: ({ status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit }) => {
     const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
