@@ -1,9 +1,19 @@
 import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
-import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
+import type { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
+
+// registerRoutes publishes its services for the e2e suite; writes through the service also refresh the shared cache.
+const instanceConfig = () =>
+  (globalThis as unknown as { testServices: { instanceConfigService: TInstanceConfigService } }).testServices
+    .instanceConfigService;
+
+// The service cannot mark the instance uninitialized, so this writes the row and drops the shared copy.
+const markUninitialized = async () => {
+  await testDb(TableName.SuperAdmin).update({ initialized: false });
+  await testRedis.del("infisical-admin-cfg");
+};
 
 const updateServerConfig = (body: Record<string, unknown>) =>
   testServer.inject({
@@ -28,8 +38,7 @@ describe("Admin V1 Router", () => {
       createdUserId = undefined;
       createdOrganizationId = undefined;
 
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, { initialized: false });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await markUninitialized();
     });
 
     afterEach(async () => {
@@ -46,11 +55,8 @@ describe("Admin V1 Router", () => {
         await testDb(TableName.Users).where({ id: user }).delete();
       }
 
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, {
-        initialized: true,
-        allowSignUp: true
-      });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await instanceConfig().completeSetup({ closeSignUp: false });
+      await instanceConfig().updateConfig({ allowSignUp: true });
     });
 
     test("creates the initial organization with the supplied name", async () => {
@@ -101,8 +107,7 @@ describe("Admin V1 Router", () => {
 
   describe("allowed signup domains", () => {
     afterEach(async () => {
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, { allowedSignUpDomain: null });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await instanceConfig().updateConfig({ allowedSignUpDomain: null });
     });
 
     test("normalizes valid domains before persisting them", async () => {

@@ -1,4 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService, TKmsDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -286,6 +287,7 @@ import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckC
 import {
   getS3CompatibleConnectionListItem,
   S3CompatibleConnectionMethod,
+  TS3CompatibleConnectionConfig,
   validateS3CompatibleConnectionCredentials
 } from "./s3-compatible";
 import {
@@ -667,6 +669,7 @@ export const validateAppConnectionCredentials = async (
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
     kmsDataKeyService: TKmsDataKeyService;
+    instanceConfigService: TInstanceConfigService;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
@@ -787,7 +790,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: ((config: TAppConnectionConfig) =>
+      validateS3CompatibleConnectionCredentials(
+        config as TS3CompatibleConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
