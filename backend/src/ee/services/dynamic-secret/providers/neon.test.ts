@@ -3,15 +3,19 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
 import { DynamicSecretNeonSchema, DynamicSecretProviders, NeonLeaseType } from "./models";
 import { NeonProvider } from "./neon";
 import { redactStoredInputs, restoreOmittedSecretFields } from "./redact";
 
 vi.mock("@app/lib/validator", () => ({
+  blockLocalAndPrivateIpAddresses: vi.fn(),
   safeRequest: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }
 }));
+
+const appConfig = { isDevelopmentMode: false };
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => appConfig }));
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -108,6 +112,8 @@ const connectionUriRoute = (host: string, password: string) => (call: TCall) => 
 beforeEach(() => {
   routes = {};
   calls = [];
+  appConfig.isDevelopmentMode = false;
+  vi.mocked(blockLocalAndPrivateIpAddresses).mockReset();
   vi.mocked(safeRequest.get).mockImplementation(dispatch("GET") as never);
   vi.mocked(safeRequest.post).mockImplementation(dispatch("POST") as never);
   vi.mocked(safeRequest.patch).mockImplementation(dispatch("PATCH") as never);
@@ -143,6 +149,75 @@ describe("DynamicSecretNeonSchema", () => {
   test("rejects IDs that could escape the API path", async () => {
     const result = await DynamicSecretNeonSchema.safeParseAsync({ ...roleInputs, projectId: "../../users/me" });
     expect(result.success).toBe(false);
+  });
+
+  test("accepts an optional API base URL and rejects one that isn't a URL", async () => {
+    await expect(DynamicSecretNeonSchema.parseAsync(roleInputs)).resolves.not.toHaveProperty("baseUrl");
+    await expect(
+      DynamicSecretNeonSchema.parseAsync({ ...roleInputs, baseUrl: " https://neon.example.com/api/v2 " })
+    ).resolves.toMatchObject({ baseUrl: "https://neon.example.com/api/v2" });
+    const result = await DynamicSecretNeonSchema.safeParseAsync({ ...roleInputs, baseUrl: "neon.example.com" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("NeonProvider API base URL", () => {
+  const SELF_HOSTED = "https://neon.example.com/api/v2";
+  const SELF_HOSTED_API = `${SELF_HOSTED}/projects/shiny-wind-028834`;
+
+  test("sends every request to a self-hosted base URL", async () => {
+    routes[`GET ${SELF_HOSTED_API}`] = () => ({ project: {} });
+    routes[`GET ${SELF_HOSTED_API}/branches/br-main-123456`] = () => ({ branch: {} });
+    routes[`GET ${SELF_HOSTED_API}/branches/br-main-123456/databases/neondb`] = () => ({ database: {} });
+    routes[`POST ${SELF_HOSTED_API}/branches/br-main-123456/roles`] = (call) => ({
+      role: { name: (call.body as { role: { name: string } }).role.name },
+      operations: [{ id: "op-1", status: "running" }]
+    });
+    routes[`GET ${SELF_HOSTED_API}/operations/op-1`] = () => ({ operation: { id: "op-1", status: "finished" } });
+    routes[`GET ${SELF_HOSTED_API}/connection_uri`] = connectionUriRoute("pg.neon.example.com", ROLE_CRED_ENCODED);
+    routes[`DELETE ${SELF_HOSTED_API}/branches/br-main-123456/roles/some-role`] = () => ({});
+
+    // a trailing slash is dropped rather than doubled
+    const inputs = { ...roleInputs, baseUrl: `${SELF_HOSTED}/` };
+    await expect(provider().validateConnection(inputs, { projectId: "p" })).resolves.toBe(true);
+    await provider().create(createArgs(inputs));
+    await provider().revoke(inputs, "some-role", { projectId: "p" });
+
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((c) => !c.url.startsWith(`${SELF_HOSTED_API}`) || c.url.includes("//projects"))).toEqual([]);
+  });
+
+  test("requires https outside development mode", async () => {
+    const inputs = { ...roleInputs, baseUrl: "http://neon.example.com/api/v2" };
+    await expect(provider().validateProviderInputs(inputs, { projectId: "p" })).rejects.toThrow(
+      "Neon API base URL must use https"
+    );
+    await expect(provider().create(createArgs(inputs))).rejects.toThrow("Neon API base URL must use https");
+    expect(calls).toEqual([]);
+
+    appConfig.isDevelopmentMode = true;
+    await expect(provider().validateProviderInputs(inputs, { projectId: "p" })).resolves.toMatchObject({
+      baseUrl: "http://neon.example.com/api/v2"
+    });
+  });
+
+  test("rejects a base URL with a query string or fragment", async () => {
+    await expect(
+      provider().validateProviderInputs({ ...roleInputs, baseUrl: `${SELF_HOSTED}?x=1` }, { projectId: "p" })
+    ).rejects.toThrow("can't include a query string or fragment");
+  });
+
+  test("checks the base URL against local and private addresses on save", async () => {
+    await provider().validateProviderInputs(roleInputs, { projectId: "p" });
+    expect(blockLocalAndPrivateIpAddresses).not.toHaveBeenCalled();
+
+    vi.mocked(blockLocalAndPrivateIpAddresses).mockRejectedValueOnce(
+      new BadRequestError({ message: "Local IPs not allowed as URL" })
+    );
+    await expect(
+      provider().validateProviderInputs({ ...roleInputs, baseUrl: "https://10.0.0.5/api/v2" }, { projectId: "p" })
+    ).rejects.toThrow("Local IPs not allowed as URL");
+    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith("https://10.0.0.5/api/v2");
   });
 });
 
@@ -406,6 +481,13 @@ describe("NeonProvider.validateProviderInputs", () => {
       "The branch can't be changed"
     );
     await expect(validate(branchInputs, { ...roleInputs }, true)).rejects.toThrow("The lease type can't be changed");
+    await expect(
+      validate({ ...roleInputs, baseUrl: "https://neon.example.com/api/v2" }, roleInputs, true)
+    ).rejects.toThrow("The API base URL can't be changed");
+    // spelling out the default URL, or adding a trailing slash, is not a change
+    await expect(
+      validate({ ...roleInputs, baseUrl: "https://console.neon.tech/api/v2/" }, roleInputs, true)
+    ).resolves.toMatchObject({ projectId: roleInputs.projectId });
 
     await expect(validate({ ...roleInputs, branchId: "br-other-1" }, roleInputs, false)).resolves.toMatchObject({
       branchId: "br-other-1"

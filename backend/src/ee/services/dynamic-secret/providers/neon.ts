@@ -1,9 +1,10 @@
 import { isAxiosError } from "axios";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { sanitizeString } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { removeTrailingSlash, sanitizeString } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
 import {
   DynamicSecretNeonSchema,
@@ -55,17 +56,36 @@ export const NeonProvider = ({
   operationTimeoutMs = 60_000,
   lockedRetries = 5
 }: TNeonOptions = {}): TDynamicProviderFns => {
-  const $parseInputs = async (inputs: unknown) => DynamicSecretNeonSchema.parseAsync(inputs);
+  const $apiBaseUrl = ({ baseUrl }: Pick<Partial<TNeonProviderInputs>, "baseUrl">) =>
+    baseUrl ? removeTrailingSlash(baseUrl) : NEON_API_BASE_URL;
+
+  const $parseInputs = async (inputs: unknown) => {
+    const providerInputs = await DynamicSecretNeonSchema.parseAsync(inputs);
+    if (providerInputs.baseUrl) {
+      // the API key is sent as a bearer token, so only allow plain http for local development
+      const { protocol, search, hash } = new URL(providerInputs.baseUrl);
+      if (protocol !== "https:" && !(protocol === "http:" && getConfig().isDevelopmentMode)) {
+        throw new BadRequestError({ message: "Neon API base URL must use https" });
+      }
+      if (search || hash) {
+        throw new BadRequestError({ message: "Neon API base URL can't include a query string or fragment" });
+      }
+    }
+    return providerInputs;
+  };
 
   const validateProviderInputs = async (inputs: object, metadata?: TDynamicProviderValidateMetadata) => {
     const providerInputs = await $parseInputs(inputs);
+    // safeRequest checks every request as well; this rejects a private or local address on save
+    if (providerInputs.baseUrl) await blockLocalAndPrivateIpAddresses(providerInputs.baseUrl);
     if (!metadata?.hasActiveLeases || !metadata.previousInputs) return providerInputs;
 
-    // Revocation reads the project, lease type and (for role leases) branch from the current
-    // config, so changing them would orphan the roles or branches of existing leases.
+    // Revocation reads the API base URL, project, lease type and (for role leases) branch from the
+    // current config, so changing them would orphan the roles or branches of existing leases.
     const previous = metadata.previousInputs as Partial<TNeonProviderInputs>;
     const previousLeaseType = previous.leaseType ?? NeonLeaseType.Role;
     const lockedFields: [string, boolean][] = [
+      ["API base URL", $apiBaseUrl(previous) !== $apiBaseUrl(providerInputs)],
       ["project ID", previous.projectId !== undefined && previous.projectId !== providerInputs.projectId],
       ["lease type", previousLeaseType !== providerInputs.leaseType],
       [
@@ -93,7 +113,8 @@ export const NeonProvider = ({
     timeout: 30_000
   });
 
-  const $projectUrl = (projectId: string) => `${NEON_API_BASE_URL}/projects/${encodeURIComponent(projectId)}`;
+  const $projectUrl = ({ baseUrl, projectId }: Pick<TNeonProviderInputs, "baseUrl" | "projectId">) =>
+    `${$apiBaseUrl({ baseUrl })}/projects/${encodeURIComponent(projectId)}`;
 
   const $status = (err: unknown) => (isAxiosError(err) ? err.response?.status : undefined);
 
@@ -133,7 +154,7 @@ export const NeonProvider = ({
 
   // Role and branch changes are applied asynchronously. Wait for them so the credentials returned
   // to the caller work immediately, and so the next request on the branch isn't rejected as locked.
-  const $waitForOperations = async (apiKey: string, projectId: string, operations: TNeonOperation[] = []) => {
+  const $waitForOperations = async (providerInputs: TNeonProviderInputs, operations: TNeonOperation[] = []) => {
     let pending = operations.filter((op) => !NEON_OPERATION_DONE_STATUSES.has(op.status));
     const deadline = Date.now() + operationTimeoutMs;
 
@@ -156,8 +177,8 @@ export const NeonProvider = ({
       pending = await Promise.all(
         pending.map(async (op) => {
           const { data } = await safeRequest.get<{ operation: TNeonOperation }>(
-            `${$projectUrl(projectId)}/operations/${encodeURIComponent(op.id)}`,
-            $requestConfig(apiKey)
+            `${$projectUrl(providerInputs)}/operations/${encodeURIComponent(op.id)}`,
+            $requestConfig(providerInputs.apiKey)
           );
           return { ...op, ...data.operation };
         })
@@ -166,7 +187,7 @@ export const NeonProvider = ({
   };
 
   const $getConnectionUri = async (providerInputs: TNeonProviderInputs, branchId: string, roleName: string) => {
-    const { data } = await safeRequest.get<{ uri: string }>(`${$projectUrl(providerInputs.projectId)}/connection_uri`, {
+    const { data } = await safeRequest.get<{ uri: string }>(`${$projectUrl(providerInputs)}/connection_uri`, {
       ...$requestConfig(providerInputs.apiKey),
       params: {
         branch_id: branchId,
@@ -198,7 +219,7 @@ export const NeonProvider = ({
     do {
       // eslint-disable-next-line no-await-in-loop
       const { data } = await safeRequest.get<{ branches: TNeonBranch[]; pagination?: { next?: string } }>(
-        `${$projectUrl(providerInputs.projectId)}/branches`,
+        `${$projectUrl(providerInputs)}/branches`,
         { ...$requestConfig(providerInputs.apiKey), params: { limit: 100, ...(cursor ? { cursor } : {}) } }
       );
       const defaultBranch = data.branches.find((branch) => branch.default);
@@ -212,7 +233,7 @@ export const NeonProvider = ({
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await $parseInputs(inputs);
     const config = $requestConfig(providerInputs.apiKey);
-    const projectUrl = $projectUrl(providerInputs.projectId);
+    const projectUrl = $projectUrl(providerInputs);
 
     try {
       // Confirms the API key can see the project, the branch exists, and the database (and for
@@ -236,7 +257,7 @@ export const NeonProvider = ({
     { usernameTemplate, inputs, dynamicSecret, identity }: Parameters<TDynamicProviderFns["create"]>[0]
   ) => {
     const branchId = providerInputs.branchId as string;
-    const rolesUrl = `${$projectUrl(providerInputs.projectId)}/branches/${encodeURIComponent(branchId)}/roles`;
+    const rolesUrl = `${$projectUrl(providerInputs)}/branches/${encodeURIComponent(branchId)}/roles`;
     const roleName = await generateUsername(usernameTemplate, {
       decryptedDynamicSecretInputs: inputs,
       dynamicSecret,
@@ -255,7 +276,7 @@ export const NeonProvider = ({
           )
         )
       ).data;
-      await $waitForOperations(providerInputs.apiKey, providerInputs.projectId, created.operations);
+      await $waitForOperations(providerInputs, created.operations);
       const uri = await $getConnectionUri(providerInputs, branchId, created.role.name);
       return { entityId: created.role.name, data: $leaseData(uri) };
     } catch (err) {
@@ -274,7 +295,8 @@ export const NeonProvider = ({
     providerInputs: TNeonProviderInputs,
     { usernameTemplate, inputs, dynamicSecret, identity, expireAt }: Parameters<TDynamicProviderFns["create"]>[0]
   ) => {
-    const { apiKey, projectId } = providerInputs;
+    const { apiKey } = providerInputs;
+    const projectUrl = $projectUrl(providerInputs);
     const roleName = providerInputs.roleName as string;
     const branchName = await generateUsername(usernameTemplate, {
       decryptedDynamicSecretInputs: inputs,
@@ -288,7 +310,7 @@ export const NeonProvider = ({
     try {
       const { data } = await $withLockedRetry(() =>
         safeRequest.post<TNeonCreateBranchResponse>(
-          `${$projectUrl(projectId)}/branches`,
+          `${projectUrl}/branches`,
           {
             branch: {
               name: branchName,
@@ -301,9 +323,9 @@ export const NeonProvider = ({
         )
       );
       branch = data.branch;
-      await $waitForOperations(apiKey, projectId, data.operations);
+      await $waitForOperations(providerInputs, data.operations);
 
-      const branchUrl = `${$projectUrl(projectId)}/branches/${encodeURIComponent(branch.id)}`;
+      const branchUrl = `${projectUrl}/branches/${encodeURIComponent(branch.id)}`;
       if (providerInputs.resetRolePassword) {
         // A branch inherits its parent's roles and passwords. Rotating the password on the new
         // branch keeps the lease from handing out credentials that also work on the parent.
@@ -315,7 +337,7 @@ export const NeonProvider = ({
           )
         );
         resetPassword = reset.role.password ?? "";
-        await $waitForOperations(apiKey, projectId, reset.operations);
+        await $waitForOperations(providerInputs, reset.operations);
       }
 
       const uri = await $getConnectionUri(providerInputs, branch.id, roleName);
@@ -327,10 +349,7 @@ export const NeonProvider = ({
       if (branch) {
         const branchId = branch.id;
         await $withLockedRetry(() =>
-          safeRequest.delete(
-            `${$projectUrl(projectId)}/branches/${encodeURIComponent(branchId)}`,
-            $requestConfig(apiKey)
-          )
+          safeRequest.delete(`${projectUrl}/branches/${encodeURIComponent(branchId)}`, $requestConfig(apiKey))
         ).catch(() => undefined);
       }
       throw $toBadRequest(err, "Failed to create Neon branch", [apiKey, resetPassword]);
@@ -346,7 +365,7 @@ export const NeonProvider = ({
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await $parseInputs(inputs);
-    const projectUrl = $projectUrl(providerInputs.projectId);
+    const projectUrl = $projectUrl(providerInputs);
     const url =
       providerInputs.leaseType === NeonLeaseType.Branch
         ? `${projectUrl}/branches/${encodeURIComponent(entityId)}`
@@ -375,7 +394,7 @@ export const NeonProvider = ({
     try {
       await $withLockedRetry(() =>
         safeRequest.patch(
-          `${$projectUrl(providerInputs.projectId)}/branches/${encodeURIComponent(entityId)}`,
+          `${$projectUrl(providerInputs)}/branches/${encodeURIComponent(entityId)}`,
           { branch: { expires_at: toNeonTimestamp(expireAt) } },
           $requestConfig(providerInputs.apiKey)
         )

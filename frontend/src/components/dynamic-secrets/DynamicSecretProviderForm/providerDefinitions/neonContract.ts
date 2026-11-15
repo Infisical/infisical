@@ -34,6 +34,16 @@ const optionalResourceId = (message: string) =>
 
 const neonInputsObjectSchema = z.object({
   apiKey: z.string().trim().min(1, "API key is required"),
+  // empty means Neon's hosted API
+  baseUrl: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined)
+    .refine(
+      (value) => value === undefined || z.string().url().safeParse(value).success,
+      "Must be a valid URL"
+    ),
   projectId: z
     .string()
     .trim()
@@ -116,6 +126,7 @@ export const getNeonCreateDefaultValues = (
   usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
   inputs: {
     apiKey: "",
+    baseUrl: undefined,
     projectId: "",
     leaseType: NeonLeaseType.Role,
     branchId: undefined,

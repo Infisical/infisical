@@ -71,6 +71,7 @@ describe("Neon dynamic secret form", () => {
     assert.equal(payload.provider.type, DynamicSecretProviders.Neon);
     assert.deepEqual(payload.provider.inputs, {
       apiKey: "napi_key",
+      baseUrl: undefined,
       projectId: "shiny-wind-028834",
       leaseType: NeonLeaseType.Role,
       branchId: "br-main-1",
@@ -91,6 +92,26 @@ describe("Neon dynamic secret form", () => {
     assert.equal(payload.provider.inputs.branchId, undefined);
     assert.equal(payload.provider.inputs.roleName, "neondb_owner");
     assert.equal(payload.provider.inputs.setBranchExpiration, true);
+  });
+
+  it("sends a self-hosted API base URL and treats an empty one as Neon's hosted API", () => {
+    const selfHosted = getNeonCreatePayload(
+      formValues({ branchId: "br-main-1", baseUrl: " https://neon.example.com/api/v2 " }),
+      createContext
+    );
+    assert.equal(selfHosted.provider.inputs.baseUrl, "https://neon.example.com/api/v2");
+
+    const hosted = getNeonCreatePayload(
+      formValues({ branchId: "br-main-1", baseUrl: "" }),
+      createContext
+    );
+    assert.equal(hosted.provider.inputs.baseUrl, undefined);
+
+    const invalid = neonCreateFormSchema.safeParse(
+      formValues({ branchId: "br-main-1", baseUrl: "neon.example.com" })
+    );
+    assert.equal(invalid.success, false);
+    assert.deepEqual(invalid.error?.issues[0].path, ["inputs", "baseUrl"]);
   });
 
   it("keeps the stored API key when the edit form leaves it blank", () => {

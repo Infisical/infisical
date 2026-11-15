@@ -1232,6 +1232,15 @@ const NEON_RESOURCE_ID_REGEX = /^[a-z0-9-]{1,60}$/;
 export const DynamicSecretNeonSchema = z
   .object({
     apiKey: z.string().trim().min(1).max(1024).describe("Neon API key used to manage roles and branches."),
+    baseUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .url("Must be a valid URL")
+      .optional()
+      .describe(
+        "Base URL of the Neon API, for a self-hosted Neon. Defaults to Neon's hosted API, https://console.neon.tech/api/v2."
+      ),
     projectId: z
       .string()
       .trim()

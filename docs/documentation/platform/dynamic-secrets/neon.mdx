@@ -1,12 +1,12 @@
 ---
 title: "Neon dynamic secrets"
 sidebarTitle: "Neon"
-description: "Learn how to dynamically generate Neon Postgres roles and short-lived database branches."
+description: "Learn how to dynamically generate Neon PostgreSQL roles and short-lived database branches."
 ---
 
-The Infisical Neon dynamic secret generates Postgres credentials for [Neon](https://neon.com) on demand through the Neon API. Each lease creates one of two things, depending on how you configure the dynamic secret:
+The Infisical Neon dynamic secret generates PostgreSQL credentials for [Neon](https://neon.com) on demand through the Neon API. Each lease creates one of two things, depending on how you configure the dynamic secret:
 
-- **A Postgres role** on an existing branch. Use this for short-lived credentials to a shared database.
+- **A PostgreSQL role** on an existing branch. Use this for short-lived credentials to a shared database.
 - **A database branch** with its own compute. Neon branches are copy-on-write, so each lease gets an isolated copy of the parent branch's schema and data in seconds. Use this for preview environments, CI runs and debugging against a copy of production data.
 
 Every lease returns a ready-to-use `DATABASE_URL`. Infisical deletes the role or branch when the lease expires or is revoked.
@@ -53,12 +53,16 @@ Every lease returns a ready-to-use `DATABASE_URL`. Infisical deletes the role or
       The Neon API key from the prerequisites.
     </ParamField>
 
+    <ParamField path="API Base URL" type="string" default="https://console.neon.tech/api/v2">
+      Only needed for a self-hosted Neon whose control plane serves the Neon v2 API. Leave it empty to use Neon's hosted API. The URL must use `https`, and Infisical refuses `localhost` and private IP addresses. If you self-host Infisical and Neon runs on your private network, set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` on your Infisical instance. The URL can't be changed while the dynamic secret has active leases.
+    </ParamField>
+
     <ParamField path="Project ID" type="string" required>
       The ID of your Neon project.
     </ParamField>
 
     <ParamField path="Each Lease Creates" type="string" required default="A Postgres role">
-      Whether each lease creates a Postgres role on an existing branch or a new database branch. The remaining parameters depend on this choice.
+      Whether each lease creates a PostgreSQL role on an existing branch or a new database branch. The remaining parameters depend on this choice.
     </ParamField>
 
     <Tabs>
@@ -118,13 +122,13 @@ Every lease returns a ready-to-use `DATABASE_URL`. Infisical deletes the role or
     Infisical checks that the API key can access the project, that the branch and database exist and, for branch leases, that the role exists. You'll then see the dynamic secret in the dashboard.
   </Step>
   <Step title="Generate dynamic secrets">
-    Select the **Generate** button that appears when hovering over the dynamic secret item, or select **New Lease** from the dynamic secret lease list. Specify the Time to Live (TTL) for the lease, then click `Submit`.
+    Select the **Generate** button that appears when hovering over the dynamic secret item, or select **New Lease** from the dynamic secret lease list. Specify the Time to Live (TTL) for the lease, then select `Submit`.
 
     ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
     Infisical waits for Neon to finish creating the role or branch before returning the lease, so the credentials work immediately. Each lease returns:
 
-    - `DATABASE_URL`: the full Postgres connection string.
+    - `DATABASE_URL`: the full PostgreSQL connection string.
     - `DB_HOST`, `DB_NAME`, `DB_USERNAME` and `DB_PASSWORD`: the same connection details as separate values.
     - `BRANCH_ID` and `BRANCH_NAME`: for branch leases, the branch that was created.
 

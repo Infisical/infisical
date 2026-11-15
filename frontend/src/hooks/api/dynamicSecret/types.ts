@@ -685,6 +685,7 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.Neon;
       inputs: {
         apiKey: string;
+        baseUrl?: string;
         projectId: string;
         leaseType: NeonLeaseType;
         branchId?: string;
