@@ -1,6 +1,4 @@
-import { useRef } from "react";
-import { FormProvider, useFieldArray, useForm, useFormContext, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -25,7 +23,6 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
   ALERT_CHANNEL_TYPE_LABELS,
-  type AlertChannelType,
   type TAlert,
   type TCertificateAlertEventType
 } from "@app/hooks/api/alerts/types";
@@ -40,7 +37,6 @@ import {
   ALERT_EVENT_GROUPS,
   ALERT_EVENT_LABELS,
   alertFormSchema,
-  buildNextChannel,
   CertificateFilterKind,
   DETAILS_FIELDS,
   describeChannel,
@@ -53,11 +49,17 @@ import {
   getNoFiltersDescription,
   isExpiryEventType,
   isSignerEventType,
+  type TAlertDraft,
   type TAlertForm,
+  type TFieldErrors,
   type TMemberEmails,
+  toAlertDraft,
   toAlertForm,
   toApiEventType,
-  toCondition
+  toCondition,
+  toFieldErrors,
+  validateChannels,
+  withoutErrors
 } from "./alert-model";
 
 const OnOff = ({ on, labels = ["Enabled", "Disabled"] }: { on: boolean; labels?: string[] }) => (
@@ -135,17 +137,10 @@ export const AlertReview = ({
         <DataList
           variant="props"
           items={values.channels.map(
-            (channel, index) =>
+            (channel) =>
               [
                 ALERT_CHANNEL_TYPE_LABELS[channel.channelType],
-                <Inline
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={`${channel.channelType}-${index}`}
-                  gap={8}
-                  align="center"
-                  justify="between"
-                  wrap={false}
-                >
+                <Inline key={channel.name} gap={8} align="center" justify="between" wrap={false}>
                   <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {describeChannel(channel, members)}
                   </span>
@@ -159,10 +154,18 @@ export const AlertReview = ({
   );
 };
 
-const DetailsStep = ({ isEditing }: { isEditing: boolean }) => {
-  const { control, register, setValue, formState } = useFormContext<TAlertForm>();
-  const [eventType, dailyReminder] = useWatch({ control, name: ["eventType", "dailyReminder"] });
-  const { errors } = formState;
+const DetailsStep = ({
+  isEditing,
+  draft,
+  errors,
+  onChange
+}: {
+  isEditing: boolean;
+  draft: TAlertDraft;
+  errors: TFieldErrors;
+  onChange: (patch: Partial<TAlertDraft>) => void;
+}) => {
+  const { eventType, dailyReminder } = draft;
   return (
     <Stack gap={16}>
       <Field wide label="Alert type" description={ALERT_EVENT_DESCRIPTIONS[eventType]}>
@@ -179,25 +182,31 @@ const DetailsStep = ({ isEditing }: { isEditing: boolean }) => {
           )}
           onChange={(value) => {
             const next = value as TCertificateAlertEventType;
-            setValue("eventType", next, { shouldDirty: true });
-            const nextKinds = getFilterKinds(next);
-            Object.values(CertificateFilterKind)
-              .filter((kind) => !nextKinds.includes(kind))
-              .forEach((kind) => setValue(kind, undefined, { shouldDirty: true }));
+            const nextKinds = new Set(getFilterKinds(next));
+            onChange({
+              eventType: next,
+              ...Object.fromEntries(
+                Object.values(CertificateFilterKind)
+                  .filter((kind) => !nextKinds.has(kind))
+                  .map((kind) => [kind, undefined])
+              )
+            });
           }}
         />
       </Field>
-      <Field wide label="Name" error={errors.name?.message}>
+      <Field wide label="Name" error={errors.name}>
         <Input
-          {...register("name")}
+          value={draft.name}
+          onChange={(event) => onChange({ name: event.target.value })}
           placeholder="tls-expiry-alert"
           invalid={Boolean(errors.name)}
           autoComplete="off"
         />
       </Field>
-      <Field wide label="Description" optional error={errors.description?.message}>
+      <Field wide label="Description" optional error={errors.description}>
         <Textarea
-          {...register("description")}
+          value={draft.description}
+          onChange={(event) => onChange({ description: event.target.value })}
           rows={3}
           aria-invalid={Boolean(errors.description) || undefined}
         />
@@ -208,10 +217,11 @@ const DetailsStep = ({ isEditing }: { isEditing: boolean }) => {
             wide
             label="Alert before"
             description="A number and a unit: d for days, w for weeks, m for months or y for years."
-            error={errors.alertBefore?.message}
+            error={errors.alertBefore}
           >
             <Input
-              {...register("alertBefore")}
+              value={draft.alertBefore}
+              onChange={(event) => onChange({ alertBefore: event.target.value })}
               mono
               placeholder="30d"
               invalid={Boolean(errors.alertBefore)}
@@ -223,7 +233,7 @@ const DetailsStep = ({ isEditing }: { isEditing: boolean }) => {
             label="Repeat daily until expiry"
             description="Sends a reminder every day from the alert threshold until the certificate expires."
             checked={dailyReminder}
-            onCheckedChange={(checked) => setValue("dailyReminder", checked, { shouldDirty: true })}
+            onCheckedChange={(checked) => onChange({ dailyReminder: checked })}
           />
         </>
       )}
@@ -251,23 +261,38 @@ export const AlertWizard = ({
   const settings = useV4Adapter("certManagerSettings");
   const createAlert = settings.useCreateAlert();
   const updateAlert = settings.useUpdateAlert();
-  const form = useForm<TAlertForm>({
-    resolver: zodResolver(alertFormSchema),
-    mode: "onChange",
-    defaultValues: alert ? toAlertForm(alert, members) : emptyAlertForm()
-  });
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: "channels" });
-  const eventType = useWatch({ control: form.control, name: "eventType" });
-  const values = useWatch({ control: form.control }) as TAlertForm;
+  const [initial] = useState(() =>
+    toAlertDraft(alert ? toAlertForm(alert, members) : emptyAlertForm())
+  );
+  const [draft, setDraft] = useState(initial);
+  const [errors, setErrors] = useState<TFieldErrors>({});
+  const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
   const completed = useRef(false);
   const guard = useDiscardChangesGuard({
-    isDirty: form.formState.isDirty,
+    isDirty: JSON.stringify(draft) !== JSON.stringify(initial),
     onDiscard: () => onOpenChange(false)
   });
+  const { eventType } = draft;
   const isSignerEvent = isSignerEventType(eventType);
 
+  const update = (patch: Partial<TAlertDraft>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setErrors((current) =>
+      Object.keys(patch).reduce((next, key) => withoutErrors(next, key), current)
+    );
+  };
+
+  const validateFields = (keys: string[]) => {
+    const result = alertFormSchema.safeParse(draft);
+    const next = toFieldErrors(result.success ? undefined : result.error, ([key]) =>
+      keys.includes(String(key))
+    );
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const onComplete = async () => {
-    const parsed = alertFormSchema.safeParse(form.getValues());
+    const parsed = alertFormSchema.safeParse(draft);
     if (!parsed.success) throw new Error("Fix the highlighted fields, then try again.");
     const { data } = parsed;
     const channels = data.channels.map(toChannelInput);
@@ -304,7 +329,7 @@ export const AlertWizard = ({
   };
 
   return (
-    <FormProvider {...form}>
+    <>
       <MultiStep
         variant="sheet"
         size="lg"
@@ -323,8 +348,15 @@ export const AlertWizard = ({
           {
             title: "Details",
             summary: ALERT_EVENT_LABELS[eventType],
-            validate: async () => (await form.trigger(DETAILS_FIELDS)) || false,
-            content: <DetailsStep isEditing={Boolean(alert)} />
+            validate: () => validateFields(DETAILS_FIELDS),
+            content: (
+              <DetailsStep
+                isEditing={Boolean(alert)}
+                draft={draft}
+                errors={errors}
+                onChange={update}
+              />
+            )
           },
           {
             title: "Filters",
@@ -332,36 +364,38 @@ export const AlertWizard = ({
             description: isSignerEvent
               ? "Narrow which signers this alert covers, or leave it on every active signer."
               : "Narrow which certificates this alert covers, or leave it on every certificate.",
-            validate: async () =>
-              (await form.trigger(Object.values(CertificateFilterKind))) || false,
-            content: <FiltersStep projectId={projectId} />
+            validate: () => validateFields(Object.values(CertificateFilterKind)),
+            content: (
+              <FiltersStep projectId={projectId} draft={draft} errors={errors} onChange={update} />
+            )
           },
           {
             title: "Channels",
             heading: "Notification channels",
             description: "Add at least one destination for this alert.",
-            validate: async () => {
-              if (!form.getValues("channels").length)
-                return { message: "Add at least one channel." };
-              return (await form.trigger("channels")) || false;
+            validate: () => {
+              if (!draft.channels.length) return { message: "Add at least one channel." };
+              const next = validateChannels(draft.channels);
+              setChannelErrors(next);
+              return Object.keys(next).length === 0;
             },
             content: (
               <ChannelsStep
+                channels={draft.channels}
+                errors={channelErrors}
+                onChange={(channels) => setDraft((current) => ({ ...current, channels }))}
+                onErrorsChange={setChannelErrors}
                 projectId={projectId}
                 alertId={alert?.id}
                 members={members}
                 hasEnterprise={hasEnterprise}
-                fieldIds={fields.map((field) => field.id)}
-                onAdd={(channelType: AlertChannelType) =>
-                  append(buildNextChannel(form.getValues("channels"), channelType))
-                }
-                onRemove={remove}
+                resource={{ resourceType: getAlertResourceType(eventType), resourceId: null }}
               />
             )
           },
           {
             title: "Review",
-            content: <AlertReview values={values} members={members} />
+            content: <AlertReview values={draft} members={members} />
           }
         ]}
       />
@@ -369,7 +403,7 @@ export const AlertWizard = ({
         {...guard.discardDialogProps}
         description="Your unsaved changes to this alert will be lost."
       />
-    </FormProvider>
+    </>
   );
 };
 

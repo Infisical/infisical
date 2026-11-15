@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -33,7 +32,9 @@ import {
   isSignerEventType,
   pluralize,
   SOURCE_OPTIONS,
-  type TAlertForm
+  type TAlertDraft,
+  type TAlertForm,
+  type TFieldErrors
 } from "./alert-model";
 
 const MATCHED_PAGE_SIZE = 20;
@@ -106,7 +107,10 @@ const FilterSelect = ({
             value={value}
             invalid={Boolean(error)}
             placeholder={`Select ${noun}s`}
-            onChange={(ids) => onChange(options.filter((option) => ids.includes(option.value)))}
+            onChange={(ids) => {
+              const selected = new Set(ids);
+              onChange(options.filter((option) => selected.has(option.value)));
+            }}
           />
         </Field>
       </div>
@@ -240,20 +244,23 @@ const MatchedCertificatesPreview = ({
   );
 };
 
-export const FiltersStep = ({ projectId }: { projectId: string }) => {
-  const { control, setValue, formState } = useFormContext<TAlertForm>();
-  const [eventType, applicationIds, profileIds, sources, signerIds, conditionNames] = useWatch({
-    control,
-    name: ["eventType", "applicationIds", "profileIds", "sources", "signerIds", "conditionNames"]
-  });
+export const FiltersStep = ({
+  projectId,
+  draft,
+  errors,
+  onChange
+}: {
+  projectId: string;
+  draft: TAlertDraft;
+  errors: TFieldErrors;
+  onChange: (patch: Partial<TAlertDraft>) => void;
+}) => {
+  const { eventType, applicationIds, profileIds, sources, signerIds, conditionNames } = draft;
   const filters = { applicationIds, profileIds, sources, signerIds };
   const isSignerEvent = isSignerEventType(eventType);
   const filterKinds = getFilterKinds(eventType);
   const presentKinds = filterKinds.filter((kind) => filters[kind] !== undefined);
   const addableKinds = filterKinds.filter((kind) => filters[kind] === undefined);
-
-  const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
-    setValue(kind, ids as TAlertForm[typeof kind], { shouldDirty: true, shouldValidate: true });
 
   return (
     <Stack gap={24}>
@@ -271,20 +278,19 @@ export const FiltersStep = ({ projectId }: { projectId: string }) => {
               projectId={projectId}
               value={filters[kind] ?? []}
               conditionNames={conditionNames}
-              error={formState.errors[kind]?.message}
-              onRemove={() => setFilter(kind, undefined)}
-              onChange={(selected) => {
-                if (kind !== CertificateFilterKind.Sources) {
-                  setValue("conditionNames", {
-                    ...conditionNames,
-                    ...Object.fromEntries(selected.map(({ value, label }) => [value, label]))
-                  });
-                }
-                setFilter(
-                  kind,
-                  selected.map(({ value }) => value)
-                );
-              }}
+              error={errors[kind]}
+              onRemove={() => onChange({ [kind]: undefined })}
+              onChange={(selected) =>
+                onChange({
+                  [kind]: selected.map(({ value }) => value) as TAlertForm[typeof kind],
+                  ...(kind !== CertificateFilterKind.Sources && {
+                    conditionNames: {
+                      ...conditionNames,
+                      ...Object.fromEntries(selected.map(({ value, label }) => [value, label]))
+                    }
+                  })
+                })
+              }
             />
           ))
         ) : (
@@ -308,7 +314,7 @@ export const FiltersStep = ({ projectId }: { projectId: string }) => {
                   <DropdownMenuItem
                     key={kind}
                     description={FILTER_DEFINITIONS[kind].hint}
-                    onSelect={() => setValue(kind, [], { shouldDirty: true })}
+                    onSelect={() => onChange({ [kind]: [] })}
                   >
                     {FILTER_DEFINITIONS[kind].label}
                   </DropdownMenuItem>
