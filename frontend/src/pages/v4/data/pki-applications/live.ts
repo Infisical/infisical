@@ -3,7 +3,11 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { useDeleteAlert, useUpdateAlert } from "@app/hooks/api/alerts/mutations";
 import { useListAlerts } from "@app/hooks/api/alerts/queries";
-import { useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies/mutations";
+import {
+  useCreateApprovalPolicy,
+  useDeleteApprovalPolicy,
+  useUpdateApprovalPolicy
+} from "@app/hooks/api/approvalPolicies/mutations";
 import { approvalPolicyQuery } from "@app/hooks/api/approvalPolicies/queries";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import {
@@ -134,6 +138,8 @@ export const pkiApplicationsLive: PkiApplicationsAdapter = {
   useCancelCertificateRequest,
   useTriggerRequestValidation: useTriggerCertificateRequestValidation,
   useTriggerSync: useTriggerPkiSyncSyncCertificates,
+  useCreatePolicy: useCreateApprovalPolicy,
+  useUpdatePolicy: useUpdateApprovalPolicy,
   useDeletePolicy: useDeleteApprovalPolicy,
   useUpdateAlert,
   useDeleteAlert,

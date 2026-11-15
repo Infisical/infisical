@@ -225,7 +225,7 @@ const request = (
   profileSlug: string,
   hoursAgo: number,
   extra: Partial<TCertificateRequestListItem> = {}
-): TCertificateRequestListItem & { applicationId: string } => {
+): TCertificateRequestListItem & { applicationId: string | null } => {
   const profileId =
     Object.keys(demoProfileSlugs).find((key) => demoProfileSlugs[key] === profileSlug) ?? null;
   return {

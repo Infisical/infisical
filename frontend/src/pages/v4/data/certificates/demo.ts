@@ -37,6 +37,7 @@ import {
   type TSigningOperation
 } from "@app/hooks/api/signers/types";
 
+import { useDemoCreatedCas } from "../certificate-authorities/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import { demoApplications, demoCertificateRequests } from "../pki-applications/demo-store";
 import { demoCertificateProfiles } from "../pki-policies/demo";
@@ -651,7 +652,7 @@ export const certificatesDemo: CertificatesAdapter = {
       error: found ? null : new Error("Certificate not found")
     };
   },
-  useCertificateAuthorities: () => result(authorities),
+  useCertificateAuthorities: () => result([...authorities, ...useDemoCreatedCas()]),
   useCertificateProfiles: () => {
     const rows = demoCertificateProfiles.use();
     return result({ certificateProfiles: rows, totalCount: rows.length });
@@ -776,29 +777,27 @@ export const certificatesDemo: CertificatesAdapter = {
       )
     );
     const certificateRequestId = crypto.randomUUID();
-    if (applicationId) {
-      const createdAt = new Date().toISOString();
-      demoCertificateRequests.update((current) => [
-        {
-          id: certificateRequestId,
-          applicationId,
-          status: CertificateRequestStatus.ISSUED,
-          commonName,
-          altNames: issued.altNames ?? commonName,
-          profileId: issued.profileId ?? null,
-          profileName: issued.profileName ?? null,
-          caId: issued.caId ?? null,
-          certificateId: issued.id,
-          approvalRequestId: null,
-          errorMessage: null,
-          pendingMessage: null,
-          createdAt,
-          updatedAt: createdAt,
-          certificate: { id: issued.id, serialNumber: issued.serialNumber, status: issued.status }
-        },
-        ...current
-      ]);
-    }
+    const createdAt = new Date().toISOString();
+    demoCertificateRequests.update((current) => [
+      {
+        id: certificateRequestId,
+        applicationId: applicationId ?? null,
+        status: CertificateRequestStatus.ISSUED,
+        commonName,
+        altNames: issued.altNames ?? commonName,
+        profileId: issued.profileId ?? null,
+        profileName: issued.profileName ?? null,
+        caId: issued.caId ?? null,
+        certificateId: issued.id,
+        approvalRequestId: null,
+        errorMessage: null,
+        pendingMessage: null,
+        createdAt,
+        updatedAt: createdAt,
+        certificate: { id: issued.id, serialNumber: issued.serialNumber, status: issued.status }
+      },
+      ...current
+    ]);
     return { certificate: issuedResponse(issued), certificateRequestId };
   }),
   useDigiCertOrders: () => result([])

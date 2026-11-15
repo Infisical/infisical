@@ -16,6 +16,7 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import {
   ApprovalRequestStatus,
@@ -257,7 +258,7 @@ const RequestsTable = ({
   );
 };
 
-export const RequestsPage = () => {
+const RequestsContent = () => {
   const { orgId } = useParams({ from: routeId });
   const { selectedTab } = useSearch({ from: routeId });
   const navigate = useNavigate({ from: routeId });
@@ -308,7 +309,9 @@ export const RequestsPage = () => {
             />
           }
         />
-        {tab === "certificate-requests" && <CertificateRequestsTab orgId={orgId} />}
+        {tab === "certificate-requests" && (
+          <CertificateRequestsTab orgId={orgId} projectId={projectId} />
+        )}
         {tab === "application-requests" && (
           <RequestsTable
             key="application-requests"
@@ -331,3 +334,10 @@ export const RequestsPage = () => {
     </TooltipProvider>
   );
 };
+
+export const RequestsPage = () => (
+  <>
+    <PageTitle title="Requests" />
+    <RequestsContent />
+  </>
+);
