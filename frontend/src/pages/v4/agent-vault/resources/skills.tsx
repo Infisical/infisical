@@ -234,7 +234,7 @@ export const CreateSkillDialog = ({
   const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
   const [uploading, setUploading] = useState(false);
   const completed = useRef(false);
-  const [nameTaken, setNameTaken] = useState<string>();
+  const [nameTaken, setNameTaken] = useState<{ name: string; message: string }>();
   const dirty =
     fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -260,7 +260,6 @@ export const CreateSkillDialog = ({
   };
 
   const changeField = (key: (typeof HEADER_KEYS)[number], value: string) => {
-    if (key === "name") setNameTaken(undefined);
     const nextText = setSkillHeaderValue(getEntryText(files), key, value);
     if (headerError) syncFieldsFromHeader(nextText);
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -269,10 +268,7 @@ export const CreateSkillDialog = ({
 
   const changeFiles = (next: TSkillDraftFile[]) => {
     const text = getEntryText(next);
-    if (text !== getEntryText(files)) {
-      syncFieldsFromHeader(text);
-      setNameTaken(undefined);
-    }
+    if (text !== getEntryText(files)) syncFieldsFromHeader(text);
     setFiles(next);
   };
 
@@ -338,7 +334,7 @@ export const CreateSkillDialog = ({
       .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
       .catch((error: unknown) => {
         const message = errorMessage(error);
-        if (message?.startsWith("A skill named")) setNameTaken(message);
+        if (message?.startsWith("A skill named")) setNameTaken({ name: fields.name, message });
         return readableFailure("Failed to create skill")(error);
       });
     saved(`Skill ${skill.name} created`);
@@ -368,7 +364,12 @@ export const CreateSkillDialog = ({
             validate,
             content: (
               <Stack gap={16}>
-                <Field label="Name" name="name" error={nameTaken} wide>
+                <Field
+                  label="Name"
+                  name="name"
+                  error={nameTaken?.name === fields.name ? nameTaken.message : undefined}
+                  wide
+                >
                   <Input
                     value={fields.name}
                     maxLength={SKILL_NAME_MAX_LENGTH}
