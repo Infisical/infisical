@@ -586,7 +586,7 @@ export const ProjectIdentityAuthSection = ({
   const methods = identity.authMethods;
   const addButton = (
     <Gate allowed={canEditAuth}>
-      <Button variant="accent" size="xs" icon="plus" disabled={!canEditAuth} onClick={flows.add}>
+      <Button variant="accent" icon="plus" disabled={!canEditAuth} onClick={flows.add}>
         Add auth method
       </Button>
     </Gate>
