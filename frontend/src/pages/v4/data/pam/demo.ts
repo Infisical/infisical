@@ -39,6 +39,7 @@ import {
   pamOperationsDemo,
   templateStore
 } from "./operations/demo";
+import { pamWebAccessDemo } from "./web-access/demo";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -448,6 +449,8 @@ const detailsFor = (account: TPamAccountListItem): AccountDetails => {
       return [field.key, field.defaultValue ?? ""];
     })
   );
+  if (type === PamAccountType.WindowsAd)
+    connection.hosts = ["dc01.corp.acme.dev", "dc02.corp.acme.dev", "fs01.corp.acme.dev"];
   const credentials: Record<string, unknown> = {};
   credentialFieldsFor(type).forEach((field) => {
     if (field.key === "username") credentials.username = `svc_${account.name.replace(/-/g, "_")}`;
@@ -811,6 +814,7 @@ const PAM_PROJECT_TYPE = ProjectType.PAM;
 
 export const pamDemo: PamAdapter = {
   ...pamOperationsDemo,
+  ...pamWebAccessDemo,
   useAccessCapabilities: () => ({
     data: {
       isProductAdmin: true,
