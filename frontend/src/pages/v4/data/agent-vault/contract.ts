@@ -9,8 +9,11 @@ import type {
 import type {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
+  TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
   TAgentVaultMintedSession,
+  TAgentVaultSessionLogHistoryPage,
+  TAgentVaultSessionLogTailPage,
   TAgentVaultOauthAuthorization,
   TAgentVaultSession,
   TCompleteAgentVaultOauthAuthorizationDTO,
@@ -55,6 +58,30 @@ export type TAgentVaultAvailableList<T extends AgentVaultMemberType> = {
   totalCount: number;
 };
 
+export type TAgentVaultSessionLogs = {
+  history: {
+    data:
+      | { pages: TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogHistoryPage>[] }
+      | undefined;
+    error: unknown;
+    isPending: boolean;
+    isPlaceholderData: boolean;
+    isError: boolean;
+    isFetching: boolean;
+    isRefetching: boolean;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    isFetchNextPageError: boolean;
+    refetch: (options?: { cancelRefetch?: boolean }) => Promise<unknown>;
+    fetchNextPage: (options?: { cancelRefetch?: boolean }) => Promise<unknown>;
+  };
+  live: { isError: boolean; isFetching: boolean; refetch: () => Promise<unknown> };
+  arrived: TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage> | undefined;
+  isLiveGapUnfilled: boolean;
+};
+
+export type TAgentVaultCreatedIdentity = { id: string; name: string; authAttachFailed: boolean };
+
 export type AgentVaultAdapter = {
   useProjectPermission: (
     dto: TGetUserProjectPermissionDTO
@@ -82,6 +109,19 @@ export type AgentVaultAdapter = {
     orgId: string,
     projectId: string
   ) => ReturnType<V4Mutation<string, { id: string; revokedAt: string | null }>>;
+  useSessionLogs: (
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    options: { isLive: boolean; from?: Date; to?: Date }
+  ) => TAgentVaultSessionLogs;
+  useAssignableIdentities: (
+    projectId: string,
+    enabled: boolean
+  ) => V4QueryResult<{ id: string; name: string }[]>;
+  useCreateManagedIdentity: (
+    projectId: string
+  ) => ReturnType<V4Mutation<{ name: string; role: string }, TAgentVaultCreatedIdentity>>;
   useProxies: (
     orgId: string,
     projectId: string,

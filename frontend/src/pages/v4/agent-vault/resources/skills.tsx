@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
@@ -14,12 +14,20 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
-import { Select } from "@infisical/cipher/ui/select";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetBody,
@@ -30,35 +38,180 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Heading, Meta } from "@infisical/cipher/ui/text";
-import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
   formatSkillBytes,
   fromDraftFiles,
   getChangedSkillPaths,
+  getReservedSkillNameMessage,
+  getSkillFileChanges,
+  getSkillHeaderError,
+  getSkillHeaderText,
+  isReservedSkillName,
+  newDraftFile,
+  parseSkillHeader,
   setSkillHeaderValue,
   SKILL_DESCRIPTION_MAX_LENGTH,
   SKILL_ENTRY_FILE,
   SKILL_NAME_MAX_LENGTH,
   SKILL_NAME_MESSAGE,
   SKILL_NAME_RE,
+  sortSkillFiles,
+  splitFrontmatter,
   toDraftFiles,
-  toSkillFile,
-  type TSkillDraftFile
+  type TSkillDraftFile,
+  type TSkillFileChange
 } from "@app/helpers/agentVaultSkills";
 import { SkillVersionConflictError } from "@app/hooks/api/agentVault/mutations";
-import type { TAgentVaultSkillVersion } from "@app/hooks/api/agentVault/types";
+import type {
+  TAgentVaultSkillDetail,
+  TAgentVaultSkillFile,
+  TAgentVaultSkillVersion
+} from "@app/hooks/api/agentVault/types";
 
-import { failed, saved, toast } from "../../access/toast";
+import { errorMessage, failed, readableFailure, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { DateCell } from "./shared";
+import { downloadSkillVersion } from "./skill-download";
+import { SkillFilesEditor } from "./skill-files-editor";
+import { SaveSkillVersionSheet } from "./skill-review-sheet";
+import { SkillUploadDialog, type TSkillUpload } from "./skill-upload-dialog";
 
-const entryText = (name: string, description: string, instructions: string) =>
-  setSkillHeaderValue(
-    setSkillHeaderValue(`---\n---\n\n${instructions.trim()}\n`, "name", name),
-    "description",
-    description
+import styles from "./skills.module.css";
+
+const HEADER_KEYS = ["name", "description"] as const;
+type THeaderFields = Record<(typeof HEADER_KEYS)[number], string>;
+
+const withHeader = (text: string, values: THeaderFields) =>
+  HEADER_KEYS.reduce((next, key) => setSkillHeaderValue(next, key, values[key]), text);
+
+const toFieldText = (value: unknown) =>
+  getSkillHeaderText(value)
+    .replace(/\n+$/, "")
+    .replace(/[ \t]*\n[ \t]*/g, " ");
+
+const readHeaderFields = (text: string): THeaderFields | null => {
+  const { frontmatter } = splitFrontmatter(text);
+  const header = frontmatter === null ? null : parseSkillHeader(frontmatter);
+  if (!header) return null;
+  return { name: getSkillHeaderText(header.name), description: toFieldText(header.description) };
+};
+
+const getEntryText = (files: TSkillDraftFile[]) =>
+  files.find((file) => file.path === SKILL_ENTRY_FILE)?.text ?? "";
+
+const setEntryText = (files: TSkillDraftFile[], text: string) =>
+  files.map((file) => (file.path === SKILL_ENTRY_FILE ? { ...file, text } : file));
+
+const getNameError = (name: string) => {
+  if (!name) return "Enter a name.";
+  if (name.length > SKILL_NAME_MAX_LENGTH)
+    return `A name can be at most ${SKILL_NAME_MAX_LENGTH} characters.`;
+  if (!SKILL_NAME_RE.test(name)) return SKILL_NAME_MESSAGE;
+  if (isReservedSkillName(name)) return getReservedSkillNameMessage(name);
+  return undefined;
+};
+
+const getDescriptionError = (description: string) => {
+  if (!description.trim()) return "Describe when an agent should use this skill.";
+  if (description.trim().length > SKILL_DESCRIPTION_MAX_LENGTH)
+    return `A description can be at most ${SKILL_DESCRIPTION_MAX_LENGTH} characters.`;
+  return undefined;
+};
+
+const VersionPending = ({
+  failed: hasFailed,
+  retrying,
+  onRetry
+}: {
+  failed: boolean;
+  retrying: boolean;
+  onRetry?: () => unknown;
+}) =>
+  hasFailed ? (
+    <EmptyState
+      size="sm"
+      media="bare"
+      icon="alert"
+      title="Couldn't load this version"
+      actions={
+        onRetry ? (
+          <Button variant="outline" icon="sync" loading={retrying} onClick={() => onRetry()}>
+            Try again
+          </Button>
+        ) : undefined
+      }
+    />
+  ) : (
+    <Loader label="Loading version" />
   );
+
+const SaveActions = ({
+  hasChanges,
+  saving,
+  onDiscard,
+  onSave
+}: {
+  hasChanges: boolean;
+  saving: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+}) => (
+  <Inline gap={8} align="center">
+    {hasChanges && (
+      <span className={styles.unsaved}>
+        <span className={styles.dot} aria-hidden />
+        Unsaved changes
+      </span>
+    )}
+    <Button variant="outline" disabled={!hasChanges || saving} onClick={onDiscard}>
+      Discard
+    </Button>
+    <Button variant="primary" disabled={!hasChanges} onClick={onSave}>
+      Save version
+    </Button>
+  </Inline>
+);
+
+const OlderVersionAlert = ({
+  viewed,
+  latest,
+  canRollBack,
+  loaded,
+  onRollBack,
+  onViewLatest
+}: {
+  viewed: number | null;
+  latest: number;
+  canRollBack: boolean;
+  loaded: boolean;
+  onRollBack: () => void;
+  onViewLatest: () => void;
+}) => (
+  <Alert
+    tone="info"
+    actions={
+      <Inline gap={8}>
+        {canRollBack && (
+          <Button
+            variant="outline"
+            size="sm"
+            icon="history"
+            disabled={!loaded}
+            onClick={onRollBack}
+          >
+            Roll back to this version
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={onViewLatest}>
+          View latest
+        </Button>
+      </Inline>
+    }
+  >
+    {`You are viewing v${viewed}. Agents get v${latest}.`}
+  </Alert>
+);
 
 export const CreateSkillDialog = ({
   projectId,
@@ -68,131 +221,209 @@ export const CreateSkillDialog = ({
 }: {
   projectId: string;
   initialName?: string;
-  onCreated?: (skill: { id: string; name: string }) => void;
+  onCreated?: (skill: { id: string; name: string }) => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
 }) => {
   const create = useV4Adapter("agentVaultResources").useCreateSkill(projectId);
-  const [name, setName] = useState(initialName);
-  const [description, setDescription] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const [pending, setPending] = useState(false);
-  const dirty = name !== initialName || Boolean(description || instructions);
+  const initialFiles = useMemo(
+    () => [newDraftFile(SKILL_ENTRY_FILE, withHeader("", { name: initialName, description: "" }))],
+    [initialName]
+  );
+  const [fields, setFields] = useState<THeaderFields>({ name: initialName, description: "" });
+  const [files, setFiles] = useState(initialFiles);
+  const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
+  const [uploading, setUploading] = useState(false);
+  const completed = useRef(false);
+  const [nameTaken, setNameTaken] = useState<{ name: string; message: string }>();
+  const dirty =
+    fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: dirty,
     onDiscard: () => onOpenChange(false)
   });
 
+  const entryHeader = splitFrontmatter(getEntryText(files)).frontmatter;
+  const headerError = entryHeader === null ? null : getSkillHeaderError(entryHeader);
+  const changedPaths = useMemo(
+    () =>
+      new Set(
+        files
+          .filter((file) => file.path !== SKILL_ENTRY_FILE || file.text !== initialFiles[0].text)
+          .map((file) => file.path)
+      ),
+    [files, initialFiles]
+  );
+
+  const syncFieldsFromHeader = (text: string) => {
+    const next = readHeaderFields(text);
+    if (next) setFields(next);
+  };
+
+  const changeField = (key: (typeof HEADER_KEYS)[number], value: string) => {
+    const nextText = setSkillHeaderValue(getEntryText(files), key, value);
+    if (headerError) syncFieldsFromHeader(nextText);
+    setFields((prev) => ({ ...prev, [key]: value }));
+    setFiles((prev) => setEntryText(prev, setSkillHeaderValue(getEntryText(prev), key, value)));
+  };
+
+  const changeFiles = (next: TSkillDraftFile[]) => {
+    const text = getEntryText(next);
+    if (text !== getEntryText(files)) syncFieldsFromHeader(text);
+    setFiles(next);
+  };
+
+  const loadUpload = ({ files: uploaded, isEntryOnly }: TSkillUpload) => {
+    const drafts = toDraftFiles(uploaded);
+    const next = isEntryOnly
+      ? [drafts[0], ...files.filter((file) => file.path !== SKILL_ENTRY_FILE)]
+      : drafts;
+    const entry = next.find((file) => file.path === SKILL_ENTRY_FILE);
+    let withEntry: TSkillDraftFile[];
+    if (entry?.text && splitFrontmatter(entry.text).frontmatter !== null) {
+      syncFieldsFromHeader(entry.text);
+      withEntry = next;
+    } else if (entry && entry.text !== null) {
+      withEntry = setEntryText(next, withHeader(entry.text, fields));
+    } else {
+      withEntry = [
+        newDraftFile(SKILL_ENTRY_FILE, withHeader("", fields)),
+        ...next.filter((file) => file.path !== SKILL_ENTRY_FILE)
+      ];
+    }
+    setFiles(sortSkillFiles(withEntry));
+    setSelectedPath(SKILL_ENTRY_FILE);
+  };
+
+  const validate = () => {
+    if (headerError) {
+      setSelectedPath(SKILL_ENTRY_FILE);
+      return { fields: { files: headerError } };
+    }
+    const next = {
+      name: getNameError(fields.name),
+      description: getDescriptionError(fields.description),
+      files: splitFrontmatter(getEntryText(files)).body.trim()
+        ? undefined
+        : `Write the instructions in ${SKILL_ENTRY_FILE}.`
+    };
+    if (next.files) setSelectedPath(SKILL_ENTRY_FILE);
+    if (!Object.values(next).some(Boolean)) return true;
+    return {
+      fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
+        string,
+        string
+      >
+    };
+  };
+
+  const complete = async () => {
+    const text = getEntryText(files);
+    const { frontmatter } = splitFrontmatter(text);
+    const header = (frontmatter === null ? {} : parseSkillHeader(frontmatter)) ?? {};
+    const entryText = HEADER_KEYS.reduce(
+      (current, key) =>
+        header[key] === fields[key] ||
+        (key === "description" &&
+          typeof header[key] === "string" &&
+          toFieldText(header[key]) === fields[key])
+          ? current
+          : setSkillHeaderValue(current, key, fields[key]),
+      text
+    );
+    const { skill } = await create
+      .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
+      .catch((error: unknown) => {
+        const message = errorMessage(error);
+        if (message?.startsWith("A skill named")) setNameTaken({ name: fields.name, message });
+        return readableFailure("Failed to create skill")(error);
+      });
+    saved(`Skill ${skill.name} created`);
+    completed.current = true;
+    await onCreated?.(skill);
+  };
+
   return (
     <>
-      <Sheet open onOpenChange={(open) => !open && requestDiscard()}>
-        <SheetContent size="lg" pending={pending}>
-          <SheetHeader>
-            <SheetTitle>Create skill</SheetTitle>
-          </SheetHeader>
-          <SheetBody>
-            <form
-              id="agent-vault-create-skill"
-              autoComplete="off"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                const next = {
-                  name:
-                    SKILL_NAME_RE.test(name) && name.length <= SKILL_NAME_MAX_LENGTH
-                      ? undefined
-                      : SKILL_NAME_MESSAGE,
-                  description: description.trim()
-                    ? undefined
-                    : "Describe when an agent should use this skill.",
-                  instructions: instructions.trim()
-                    ? undefined
-                    : `Write the instructions in ${SKILL_ENTRY_FILE}.`
-                };
-                setErrors(next);
-                if (Object.values(next).some(Boolean)) return;
-                setPending(true);
-                try {
-                  const { skill } = await create.mutateAsync({
-                    files: [
-                      toSkillFile(
-                        SKILL_ENTRY_FILE,
-                        entryText(name, description.trim(), instructions)
-                      )
-                    ]
-                  });
-                  saved(`Skill ${skill.name} created`);
-                  onOpenChange(false);
-                  onCreated?.(skill);
-                } catch (error) {
-                  failed("Failed to create skill", error);
-                } finally {
-                  setPending(false);
-                }
-              }}
-            >
+      <MultiStep
+        variant="sheet"
+        size="lg"
+        open
+        onOpenChange={(next) => {
+          if (next || completed.current) {
+            onOpenChange(next);
+            return;
+          }
+          requestDiscard();
+        }}
+        title="Create skill"
+        completeLabel="Create skill"
+        onComplete={complete}
+        steps={[
+          {
+            title: "Skill",
+            validate,
+            content: (
               <Stack gap={16}>
                 <Field
                   label="Name"
-                  description="Lower case letters, numbers and single hyphens."
-                  error={errors.name}
+                  name="name"
+                  error={nameTaken?.name === fields.name ? nameTaken.message : undefined}
                   wide
                 >
                   <Input
-                    value={name}
+                    value={fields.name}
                     maxLength={SKILL_NAME_MAX_LENGTH}
                     placeholder="code-review"
-                    invalid={Boolean(errors.name)}
-                    onChange={(event) => setName(event.target.value)}
+                    spellCheck={false}
+                    onChange={(event) => changeField("name", event.target.value)}
                   />
                 </Field>
                 <Field
                   label="Description"
+                  name="description"
                   description="Agents read this to decide when to use the skill."
-                  error={errors.description}
                   wide
                 >
-                  <Textarea
-                    rows={2}
+                  <Input
+                    value={fields.description}
                     maxLength={SKILL_DESCRIPTION_MAX_LENGTH}
-                    value={description}
-                    aria-invalid={Boolean(errors.description) || undefined}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => changeField("description", event.target.value)}
                   />
                 </Field>
                 <Field
-                  label="Instructions"
-                  description={`Saved as ${SKILL_ENTRY_FILE}. Markdown.`}
-                  error={errors.instructions}
+                  group
+                  label="Files"
+                  name="files"
+                  error={headerError ?? undefined}
+                  help={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="upload"
+                      onClick={() => setUploading(true)}
+                    >
+                      Upload
+                    </Button>
+                  }
                   wide
                 >
-                  <Textarea
-                    mono
-                    rows={14}
-                    value={instructions}
-                    aria-invalid={Boolean(errors.instructions) || undefined}
-                    onChange={(event) => setInstructions(event.target.value)}
+                  <SkillFilesEditor
+                    files={files}
+                    selectedPath={selectedPath}
+                    onSelect={setSelectedPath}
+                    editable
+                    onChange={changeFiles}
+                    changedPaths={changedPaths}
                   />
                 </Field>
               </Stack>
-            </form>
-          </SheetBody>
-          <SheetFooter>
-            <Inline gap={8} justify="end">
-              <Button variant="outline" disabled={pending} onClick={requestDiscard}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                form="agent-vault-create-skill"
-                loading={pending}
-              >
-                Create skill
-              </Button>
-            </Inline>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            )
+          }
+        ]}
+      />
+      {uploading && (
+        <SkillUploadDialog projectId={projectId} onOpenChange={setUploading} onLoad={loadUpload} />
+      )}
       <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
   );
@@ -244,99 +475,33 @@ export const DeleteSkillDialog = ({
   );
 };
 
-type TSkillEdit = {
-  skillId: string;
-  baseVersion: number;
-  base: TSkillDraftFile[];
-  draft: TSkillDraftFile[];
-};
-
-const SkillSheetBody = ({
-  projectId,
-  skillId,
-  canEdit,
-  canDelete,
-  edit,
-  setEdit,
-  hasChanges,
-  requestDiscard,
-  onClose
+const SkillVersionsTable = ({
+  skill,
+  versions,
+  loading,
+  viewed,
+  disabled,
+  onView
 }: {
-  projectId: string;
-  skillId: string;
-  canEdit: boolean;
-  canDelete: boolean;
-  edit?: TSkillEdit;
-  setEdit: Dispatch<SetStateAction<TSkillEdit | undefined>>;
-  hasChanges: boolean;
-  requestDiscard: () => void;
-  onClose: () => void;
+  skill: { name: string; latestVersion: number };
+  versions: TAgentVaultSkillVersion[];
+  loading: boolean;
+  viewed: number | null;
+  disabled: boolean;
+  onView: (version: number) => void;
 }) => {
-  const resources = useV4Adapter("agentVaultResources");
-  const { data: skill, isPending } = resources.useSkill(projectId, skillId);
-  const { data: versions = [], isPending: isVersionsPending } = resources.useSkillVersions(
-    projectId,
-    skillId
-  );
-  const update = resources.useUpdateSkill(projectId);
-  const restore = resources.useRestoreSkillVersion(projectId);
-  const [viewed, setViewed] = useState<number | null>(null);
-  const [path, setPath] = useState(SKILL_ENTRY_FILE);
-  const [rollingBack, setRollingBack] = useState<number>();
-  const [deleting, setDeleting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [conflict, setConflict] = useState<number>();
-
-  const latest = skill?.latestVersion;
-  const isOlder = viewed !== null && viewed !== latest;
-  const { data: olderVersion } = resources.useSkillVersion(
-    projectId,
-    skillId,
-    isOlder ? viewed : undefined
-  );
-  const latestFiles = useMemo(() => toDraftFiles(skill?.files ?? []), [skill]);
-  const shownFiles = useMemo(() => {
-    if (isOlder) return toDraftFiles(olderVersion?.files ?? []);
-    return edit ? edit.draft : latestFiles;
-  }, [isOlder, olderVersion, edit, latestFiles]);
-  const file = shownFiles.find((entry) => entry.path === path) ?? shownFiles[0];
-  const isEditable = canEdit && !isOlder && file?.text !== null && file?.text !== undefined;
-
-  if (isPending) return <Loader size="page" label="Loading skill" />;
-  if (!skill)
-    return (
-      <SheetBody>
-        <EmptyState
-          icon="file"
-          title="Skill not found"
-          description="This skill was deleted, or you don't have access to it."
-        />
-      </SheetBody>
-    );
-
-  const changeText = (text: string) => {
-    if (!file) return;
-    setEdit((prev) => {
-      const current = (prev?.skillId === skill.id ? prev : undefined) ?? {
-        skillId: skill.id,
-        baseVersion: skill.latestVersion,
-        base: latestFiles,
-        draft: latestFiles
-      };
-      return {
-        ...current,
-        draft: current.draft.map((entry) => (entry.path === file.path ? { ...entry, text } : entry))
-      };
-    });
-  };
-
-  const versionColumns: DataTableColumn<TAgentVaultSkillVersion>[] = [
+  const columns: DataTableColumn<TAgentVaultSkillVersion>[] = [
     {
       id: "version",
       header: "Version",
       width: 96,
       render: (version) => (
-        <Button variant="link" underline="hover" onClick={() => setViewed(version.version)}>
+        <Button
+          variant="link"
+          underline="hover"
+          disabled={disabled}
+          onClick={() => onView(version.version)}
+        >
           {`v${version.version}${version.version === skill.latestVersion ? " (latest)" : ""}`}
         </Button>
       )
@@ -362,6 +527,255 @@ const SkillSheetBody = ({
       render: (version) => <Meta>{formatSkillBytes(version.sizeBytes)}</Meta>
     }
   ];
+  return (
+    <DataTable
+      label={`Versions of ${skill.name}`}
+      rows={versions}
+      columns={columns}
+      getRowId={(version) => version.id}
+      rowLabel={(version) => `v${version.version}`}
+      loading={loading}
+      loadingRows={2}
+      focusedRowId={
+        versions.find((version) => version.version === (viewed ?? skill.latestVersion))?.id
+      }
+    />
+  );
+};
+
+const RollBackSkillDialog = ({
+  projectId,
+  skill,
+  version,
+  onClose,
+  onRolledBack
+}: {
+  projectId: string;
+  skill: { id: string; name: string };
+  version?: number;
+  onClose: () => void;
+  onRolledBack: () => void;
+}) => {
+  const restore = useV4Adapter("agentVaultResources").useRestoreSkillVersion(projectId);
+  return (
+    <AlertDialog open={version !== undefined} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Roll back to v${version ?? ""}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            Its files are published as a new version, and agents get them the next time they start.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              if (version === undefined) return;
+              try {
+                const result = await restore.mutateAsync({ skillId: skill.id, version });
+                if (result.unchanged)
+                  toast({ tone: "neutral", title: "This version already matches the latest." });
+                else
+                  saved(`Rolled ${skill.name} back to v${version} as v${result.version.version}`);
+                onRolledBack();
+              } catch (error) {
+                failed("Failed to roll back skill", error);
+              }
+              onClose();
+            }}
+          >
+            Roll back
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const SkillOptionsMenu = ({
+  skillName,
+  version,
+  isOlder,
+  locked,
+  canUpload,
+  canDelete,
+  onUpload,
+  onDelete
+}: {
+  skillName: string;
+  version?: { version: number; files: TAgentVaultSkillFile[] };
+  isOlder: boolean;
+  locked: boolean;
+  canUpload: boolean;
+  canDelete: boolean;
+  onUpload: () => void;
+  onDelete: () => void;
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="outline"
+        layout="trigger"
+        disabled={locked}
+        disabledReason={locked ? "Save or discard your changes first." : undefined}
+      >
+        Options
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="start">
+      {canUpload && (
+        <DropdownMenuItem onSelect={onUpload}>
+          <Icon name="upload" />
+          Upload new version
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuItem
+        disabled={!version}
+        onSelect={() => version && downloadSkillVersion(skillName, version)}
+      >
+        <Icon name="download" />
+        {version && isOlder ? `Download v${version.version}` : "Download"}
+      </DropdownMenuItem>
+      {canDelete && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+            <Icon name="trash" />
+            Delete skill
+          </DropdownMenuItem>
+        </>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
+
+type TSkillEdit = {
+  skillId: string;
+  baseVersion: number;
+  base: TSkillDraftFile[];
+  draft: TSkillDraftFile[];
+};
+
+type TSkillSheetProps = {
+  projectId: string;
+  canEdit: boolean;
+  canDelete: boolean;
+  edit?: TSkillEdit;
+  setEdit: Dispatch<SetStateAction<TSkillEdit | undefined>>;
+  saving: boolean;
+  setSaving: (saving: boolean) => void;
+  onClose: () => void;
+};
+
+const SkillSheetEditor = ({
+  projectId,
+  skill,
+  canEdit,
+  canDelete,
+  edit,
+  setEdit,
+  saving,
+  setSaving,
+  onClose
+}: TSkillSheetProps & { skill: TAgentVaultSkillDetail }) => {
+  const resources = useV4Adapter("agentVaultResources");
+  const skillId = skill.id;
+  const { data: versions = [], isPending: isVersionsPending } = resources.useSkillVersions(
+    projectId,
+    skillId
+  );
+  const update = resources.useUpdateSkill(projectId);
+  const [viewed, setViewed] = useState<number | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(SKILL_ENTRY_FILE);
+  const [rollingBack, setRollingBack] = useState<number>();
+  const [deleting, setDeleting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewChanges, setReviewChanges] = useState<TSkillFileChange[]>([]);
+  const [conflict, setConflict] = useState<number>();
+
+  const isOlder = viewed !== null && viewed !== skill.latestVersion;
+  const olderVersionQuery = resources.useSkillVersion(
+    projectId,
+    skillId,
+    isOlder ? viewed : undefined
+  );
+  const olderVersion = olderVersionQuery.data;
+  const latestFiles = useMemo(() => toDraftFiles(skill.files), [skill]);
+  const editable = canEdit && !isOlder;
+  const shownFiles = useMemo(() => {
+    if (isOlder) return toDraftFiles(olderVersion?.files ?? []);
+    return edit ? edit.draft : latestFiles;
+  }, [isOlder, olderVersion, edit, latestFiles]);
+  const { changedPaths, hasChanges } = useMemo(
+    () =>
+      edit
+        ? getChangedSkillPaths(edit.base, edit.draft)
+        : { changedPaths: new Set<string>(), hasChanges: false },
+    [edit]
+  );
+  const discardablePaths = useMemo(() => {
+    const savedPaths = new Set(edit?.base.map((file) => file.path));
+    return new Set([...changedPaths].filter((path) => savedPaths.has(path)));
+  }, [edit, changedPaths]);
+  const { requestDiscard: requestDiscardEdits, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: hasChanges,
+    onDiscard: () => setEdit(undefined)
+  });
+
+  const latestKnownVersion = Math.max(skill.latestVersion, conflict ?? 0);
+  const newerVersion = edit && latestKnownVersion > edit.baseVersion ? latestKnownVersion : null;
+  const shownVersion = isOlder
+    ? olderVersion
+    : { version: skill.latestVersion, files: skill.files };
+
+  const changeFiles = (draft: TSkillDraftFile[]) =>
+    setEdit((prev) => {
+      const current = (prev?.skillId === skill.id ? prev : undefined) ?? {
+        skillId: skill.id,
+        baseVersion: skill.latestVersion,
+        base: latestFiles,
+        draft: latestFiles
+      };
+      return { ...current, draft };
+    });
+
+  const discardFile = (path: string) =>
+    setEdit((prev) => {
+      const savedFile = prev?.base.find((file) => file.path === path);
+      if (!prev || !savedFile) return prev;
+      return {
+        ...prev,
+        draft: prev.draft.map((file) => (file.path === path ? savedFile : file))
+      };
+    });
+
+  const save = async () => {
+    if (!edit) return;
+    setSaving(true);
+    try {
+      const { version, unchanged } = await update.mutateAsync({
+        skillId: skill.id,
+        files: fromDraftFiles(edit.draft),
+        ...(newerVersion === null && { baseVersion: edit.baseVersion })
+      });
+      if (unchanged)
+        toast({
+          tone: "neutral",
+          title: `No changes. Version ${version.version} already has these files.`
+        });
+      else saved(`Saved version ${version.version} of ${skill.name}`);
+      setConflict(undefined);
+      setReviewing(false);
+      setEdit(undefined);
+      setViewed(null);
+    } catch (error) {
+      if (error instanceof SkillVersionConflictError) setConflict(error.latestVersion);
+      failed("Failed to save skill", error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -371,67 +785,37 @@ const SkillSheetBody = ({
       </SheetHeader>
       <SheetBody>
         <Stack gap={24}>
-          {conflict !== undefined && (
-            <Alert tone="warn">
-              {`Version ${conflict} was published while you were editing. Saving again publishes your files over it.`}
-            </Alert>
-          )}
           {isOlder && (
-            <Alert
-              tone="info"
-              actions={
-                <Inline gap={8}>
-                  {canEdit && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setRollingBack(viewed ?? undefined)}
-                    >
-                      Roll back to this version
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => setViewed(null)}>
-                    View latest
-                  </Button>
-                </Inline>
-              }
-            >
-              {`You are viewing v${viewed}. Agents get v${skill.latestVersion}.`}
-            </Alert>
+            <OlderVersionAlert
+              viewed={viewed}
+              latest={skill.latestVersion}
+              canRollBack={canEdit}
+              loaded={Boolean(olderVersion)}
+              onRollBack={() => setRollingBack(viewed ?? undefined)}
+              onViewLatest={() => setViewed(null)}
+            />
           )}
           <Stack gap={8}>
-            <Inline gap={8} align="center" justify="between">
-              <Heading level={3} size="subsection">
-                Files
-              </Heading>
-              {shownFiles.length > 1 && (
-                <Select
-                  label="File"
-                  size="sm"
-                  value={file?.path}
-                  options={shownFiles.map((entry) => ({
-                    value: entry.path,
-                    label: entry.path
-                  }))}
-                  onChange={setPath}
-                />
-              )}
-            </Inline>
-            {file && file.text !== null ? (
-              <Textarea
-                mono
-                rows={18}
-                aria-label={file.path}
-                readOnly={!isEditable}
-                value={file.text}
-                onChange={(event) => changeText(event.target.value)}
+            <Heading level={3} size="subsection">
+              Files
+            </Heading>
+            {isOlder && !olderVersion ? (
+              <VersionPending
+                failed={Boolean(olderVersionQuery.error)}
+                retrying={Boolean(olderVersionQuery.isFetching)}
+                onRetry={olderVersionQuery.refetch}
               />
             ) : (
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon="file"
-                title={file ? `${file.path} is a binary file` : "No files"}
+              <SkillFilesEditor
+                key={shownVersion?.version}
+                files={shownFiles}
+                selectedPath={selectedPath}
+                onSelect={setSelectedPath}
+                editable={editable}
+                onChange={changeFiles}
+                changedPaths={changedPaths}
+                discardablePaths={discardablePaths}
+                onDiscardFile={discardFile}
               />
             )}
           </Stack>
@@ -439,121 +823,96 @@ const SkillSheetBody = ({
             <Heading level={3} size="subsection">
               Versions
             </Heading>
-            <DataTable
-              label={`Versions of ${skill.name}`}
-              rows={versions}
-              columns={versionColumns}
-              getRowId={(version) => version.id}
-              rowLabel={(version) => `v${version.version}`}
+            <SkillVersionsTable
+              skill={skill}
+              versions={versions}
               loading={isVersionsPending}
-              loadingRows={2}
-              focusedRowId={
-                versions.find((version) => version.version === (viewed ?? skill.latestVersion))?.id
-              }
+              viewed={viewed}
+              disabled={hasChanges}
+              onView={setViewed}
             />
           </Stack>
         </Stack>
       </SheetBody>
       <SheetFooter>
-        <Inline gap={8} justify="between" style={{ width: "100%" }}>
-          {canDelete ? (
-            <Button variant="destructive" disabled={hasChanges} onClick={() => setDeleting(true)}>
-              Delete skill
-            </Button>
-          ) : (
-            <span />
+        <Inline gap={8} justify="between" align="center" style={{ width: "100%" }}>
+          <SkillOptionsMenu
+            skillName={skill.name}
+            version={shownVersion}
+            isOlder={isOlder}
+            locked={hasChanges}
+            canUpload={canEdit}
+            canDelete={canDelete}
+            onUpload={() => setUploading(true)}
+            onDelete={() => setDeleting(true)}
+          />
+          {editable && (
+            <SaveActions
+              hasChanges={hasChanges}
+              saving={saving}
+              onDiscard={requestDiscardEdits}
+              onSave={() => {
+                if (!edit) return;
+                setReviewChanges(getSkillFileChanges(edit.base, edit.draft));
+                setReviewing(true);
+              }}
+            />
           )}
-          <Inline gap={8}>
-            <Button variant="outline" disabled={saving} onClick={requestDiscard}>
-              {hasChanges ? "Cancel" : "Close"}
-            </Button>
-            {canEdit && (
-              <Button
-                variant="primary"
-                loading={saving}
-                disabled={!hasChanges}
-                onClick={async () => {
-                  if (!edit) return;
-                  setSaving(true);
-                  try {
-                    const { version, unchanged } = await update.mutateAsync({
-                      skillId: skill.id,
-                      files: fromDraftFiles(edit.draft),
-                      ...(conflict === undefined && {
-                        baseVersion: edit.baseVersion
-                      })
-                    });
-                    if (unchanged)
-                      toast({
-                        tone: "neutral",
-                        title: `No changes. Version ${version.version} already has these files.`
-                      });
-                    else saved(`Saved version ${version.version} of ${skill.name}`);
-                    setConflict(undefined);
-                    setEdit(undefined);
-                  } catch (error) {
-                    if (error instanceof SkillVersionConflictError)
-                      setConflict(error.latestVersion);
-                    failed("Failed to save skill", error);
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              >
-                Save new version
-              </Button>
-            )}
-          </Inline>
         </Inline>
       </SheetFooter>
-      <AlertDialog
-        open={rollingBack !== undefined}
-        onOpenChange={(open) => !open && setRollingBack(undefined)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Roll back to v${rollingBack ?? ""}?`}</AlertDialogTitle>
-            <AlertDialogDescription>
-              Its files are published as a new version, and agents get them the next time they
-              start.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (rollingBack === undefined) return;
-                try {
-                  const { version, unchanged } = await restore.mutateAsync({
-                    skillId: skill.id,
-                    version: rollingBack
-                  });
-                  if (unchanged)
-                    toast({
-                      tone: "neutral",
-                      title: "This version already matches the latest."
-                    });
-                  else saved(`Rolled ${skill.name} back to v${rollingBack} as v${version.version}`);
-                  setViewed(null);
-                } catch (error) {
-                  failed("Failed to roll back skill", error);
-                }
-                setRollingBack(undefined);
-              }}
-            >
-              Roll back
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SaveSkillVersionSheet
+        open={reviewing}
+        onOpenChange={setReviewing}
+        skillName={skill.name}
+        nextVersion={latestKnownVersion + 1}
+        newerVersion={newerVersion}
+        changes={reviewChanges}
+        pending={saving}
+        onSave={save}
+      />
+      {uploading && (
+        <SkillUploadDialog
+          projectId={projectId}
+          skill={skill}
+          onOpenChange={setUploading}
+          onSaved={() => setViewed(null)}
+        />
+      )}
+      <RollBackSkillDialog
+        projectId={projectId}
+        skill={skill}
+        version={rollingBack}
+        onClose={() => setRollingBack(undefined)}
+        onRolledBack={() => setViewed(null)}
+      />
       <DeleteSkillDialog
         projectId={projectId}
         skill={deleting ? skill : undefined}
         onOpenChange={setDeleting}
         onDeleted={onClose}
       />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
   );
+};
+
+const SkillSheetBody = ({ skillId, ...props }: TSkillSheetProps & { skillId: string }) => {
+  const { data: skill, isPending } = useV4Adapter("agentVaultResources").useSkill(
+    props.projectId,
+    skillId
+  );
+  if (isPending) return <Loader size="page" label="Loading skill" />;
+  if (!skill)
+    return (
+      <SheetBody>
+        <EmptyState
+          icon="file"
+          title="Skill not found"
+          description="This skill was deleted, or you don't have access to it."
+        />
+      </SheetBody>
+    );
+  return <SkillSheetEditor skill={skill} {...props} />;
 };
 
 export const SkillSheet = ({
@@ -570,6 +929,7 @@ export const SkillSheet = ({
   onOpenChange: (open: boolean) => void;
 }) => {
   const [storedEdit, setEdit] = useState<TSkillEdit>();
+  const [saving, setSaving] = useState(false);
   const edit = storedEdit?.skillId === skillId ? storedEdit : undefined;
   const hasChanges = edit ? getChangedSkillPaths(edit.base, edit.draft).hasChanges : false;
   const close = () => {
@@ -584,7 +944,7 @@ export const SkillSheet = ({
   return (
     <>
       <Sheet open={Boolean(skillId)} onOpenChange={(open) => !open && requestDiscard()}>
-        <SheetContent size="lg">
+        <SheetContent size="lg" pending={saving}>
           {skillId && (
             <SkillSheetBody
               key={skillId}
@@ -594,8 +954,8 @@ export const SkillSheet = ({
               canDelete={canDelete}
               edit={edit}
               setEdit={setEdit}
-              hasChanges={hasChanges}
-              requestDiscard={requestDiscard}
+              saving={saving}
+              setSaving={setSaving}
               onClose={close}
             />
           )}

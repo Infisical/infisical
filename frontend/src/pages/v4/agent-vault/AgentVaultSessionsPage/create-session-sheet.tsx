@@ -11,6 +11,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListFooter, ListRow } from "@infisical/cipher/ui/list";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
 import {
@@ -22,26 +23,37 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
 import ms from "ms";
 import { z } from "zod";
 
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useTimedReset } from "@app/hooks";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
   TAgentVaultAccessBundleListItem,
-  TAgentVaultMintedSession
+  TAgentVaultMintedSession,
+  TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { isNoUniversalAuthError } from "../../data/agent-vault/contract";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
+import { PersonalValuesDialog } from "../resources/personal-values-dialog";
+import { ServiceIcon } from "../resources/shared";
+import { CreateIdentityForm } from "./create-identity-form";
 import {
   codeLanguageForFile,
   createSessionSnippet,
@@ -293,8 +305,26 @@ const CreateNowForm = ({
     formState: { errors }
   } = form;
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
-  const needsSetup = accessBundle?.servicesRequiringSetup ?? [];
+  const details = useV4Adapter("agentVaultResources").useAccessBundle(
+    projectId,
+    accessBundle?.id ?? ""
+  );
+  const detailedNeedsSetup =
+    accessBundle && details.data?.id === accessBundle.id
+      ? details.data.services.filter(
+          (service) => service.personalValues && !service.personalValues.isConfigured
+        )
+      : undefined;
+  const isDetailsFailed = !detailedNeedsSetup && Boolean(details.error);
+  const needsSetup: (Pick<TAgentVaultService, "id" | "name"> & Partial<TAgentVaultService>)[] =
+    detailedNeedsSetup ?? accessBundle?.servicesRequiringSetup ?? [];
   const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
+  const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
+  const [settingUp, setSettingUp] = useState<TAgentVaultService>();
+  const setUpBlockedReason = (type?: TAgentVaultService["type"]) => {
+    if (type) return undefined;
+    return isDetailsFailed ? "Couldn't load this service" : "Loading this service";
+  };
 
   const submit = (values: TCreateNowForm) =>
     onCreate({
@@ -303,82 +333,146 @@ const CreateNowForm = ({
     });
 
   return (
-    <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
-      <Stack gap={16}>
-        <Controller
-          control={control}
-          name="label"
-          render={({ field, fieldState }) => (
-            <Field label="Label" optional error={fieldState.error?.message}>
-              <Input {...field} placeholder="Nightly deploy" invalid={Boolean(fieldState.error)} />
-            </Field>
-          )}
-        />
-        <Field
-          label="Expires"
-          error={errors.customTtl?.message}
-          description={
-            ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
-          }
-        >
-          <Stack gap={8}>
-            <Controller
-              control={control}
-              name="ttlPreset"
-              render={({ field }) => (
-                <Select
-                  label="Expires"
-                  value={field.value}
-                  options={TTL_PRESETS}
-                  onChange={field.onChange}
+    <>
+      <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
+        <Stack gap={16}>
+          <Controller
+            control={control}
+            name="label"
+            render={({ field, fieldState }) => (
+              <Field label="Label" optional error={fieldState.error?.message}>
+                <Input
+                  {...field}
+                  placeholder="Nightly deploy"
+                  invalid={Boolean(fieldState.error)}
                 />
-              )}
-            />
-            {ttlPreset === CUSTOM_TTL && (
+              </Field>
+            )}
+          />
+          <Field
+            label="Expires"
+            error={errors.customTtl?.message}
+            description={
+              ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
+            }
+          >
+            <Stack gap={8}>
               <Controller
                 control={control}
-                name="customTtl"
-                render={({ field, fieldState }) => (
-                  <DurationInput
-                    aria-label="Custom expiry"
+                name="ttlPreset"
+                render={({ field }) => (
+                  <Select
+                    label="Expires"
                     value={field.value}
-                    invalid={Boolean(fieldState.error)}
-                    placeholder="90"
+                    options={TTL_PRESETS}
                     onChange={field.onChange}
                   />
                 )}
               />
-            )}
-          </Stack>
-        </Field>
-        {needsSetup.length > 0 && accessBundle && (
-          <Alert
-            tone="warn"
-            title={
-              needsSetup.length === 1
-                ? "1 service requires your personal values"
-                : `${needsSetup.length} services require your personal values`
-            }
-            actions={
-              <Button variant="outline" size="sm" asChild>
-                <Link
-                  to={v4Path(
-                    "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+              {ttlPreset === CUSTOM_TTL && (
+                <Controller
+                  control={control}
+                  name="customTtl"
+                  render={({ field, fieldState }) => (
+                    <DurationInput
+                      aria-label="Custom expiry"
+                      value={field.value}
+                      invalid={Boolean(fieldState.error)}
+                      placeholder="90"
+                      onChange={field.onChange}
+                    />
                   )}
-                  params={{ orgId, projectId, accessBundleId: accessBundle.id }}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                />
+              )}
+            </Stack>
+          </Field>
+          {needsSetup.length > 0 && accessBundle && (
+            <Stack gap={8}>
+              <Alert
+                tone="warn"
+                title={
+                  needsSetup.length === 1
+                    ? "1 service requires your personal values"
+                    : `${needsSetup.length} services require your personal values`
+                }
+              >
+                {needsSetup.length === 1
+                  ? "Until you set it up, this session can't reach it."
+                  : "Until you set them up, this session can't reach them."}
+              </Alert>
+              {isDetailsFailed && (
+                <Alert
+                  tone="bad"
+                  actions={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={details.isFetching}
+                      onClick={() => details.refetch?.()}
+                    >
+                      Retry
+                    </Button>
+                  }
                 >
-                  Set up
-                </Link>
-              </Button>
-            }
-          >
-            {`Until you set ${needsSetup.length === 1 ? "it" : "them"} up, this session can't reach ${shownNeedsSetup.map((service) => service.name).join(", ")}${needsSetup.length > shownNeedsSetup.length ? ` and ${needsSetup.length - shownNeedsSetup.length} more` : ""}.`}
-          </Alert>
-        )}
-      </Stack>
-    </form>
+                  Couldn&apos;t load these services, so they can&apos;t be set up here yet.
+                </Alert>
+              )}
+              <List label="Services that require your personal values" variant="framed" size="sm">
+                {shownNeedsSetup.map((service) => (
+                  <ListRow
+                    key={service.id}
+                    value={service.id}
+                    label={service.name}
+                    title={service.name}
+                    media={
+                      service.type ? (
+                        <ServiceIcon
+                          hostPattern={hostPatternOf(service as TAgentVaultService)}
+                          serviceType={service.type}
+                        />
+                      ) : (
+                        <Skeleton width={24} height={24} />
+                      )
+                    }
+                    actions={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabledReason={setUpBlockedReason(service.type)}
+                        onClick={() => service.type && setSettingUp(service as TAgentVaultService)}
+                      >
+                        Set up
+                      </Button>
+                    }
+                  />
+                ))}
+                {hiddenNeedsSetupCount > 0 && (
+                  <ListFooter>
+                    <Button variant="link" underline="hover" asChild>
+                      <Link
+                        to={v4Path(
+                          "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                        )}
+                        params={{ orgId, projectId, accessBundleId: accessBundle.id }}
+                      >
+                        {`${hiddenNeedsSetupCount} more in ${accessBundle.name}`}
+                      </Link>
+                    </Button>
+                  </ListFooter>
+                )}
+              </List>
+            </Stack>
+          )}
+        </Stack>
+      </form>
+      <PersonalValuesDialog
+        projectId={projectId}
+        service={
+          settingUp && (detailedNeedsSetup?.find(({ id }) => id === settingUp.id) ?? settingUp)
+        }
+        onOpenChange={(isOpen) => !isOpen && setSettingUp(undefined)}
+      />
+    </>
   );
 };
 
@@ -451,6 +545,11 @@ const MachineIdentityFields = ({
   universalAuthError: unknown;
 }) => {
   const agentVault = useV4Adapter("agentVault");
+  const { permission } = useProjectPermission(projectId);
+  const canCreateIdentity = permission.can(
+    ProjectPermissionIdentityActions.Create,
+    ProjectPermissionSub.Identity
+  );
   const [identitySearch, setIdentitySearch] = useState("");
   const [debouncedIdentitySearch] = useDebounce(identitySearch);
   const { data: identities, isPending: isSearchingIdentities } = agentVault.useMembers(
@@ -498,11 +597,31 @@ const MachineIdentityFields = ({
           onSearch={setIdentitySearch}
           clearable
           onChange={(id) => {
+            if (!id) {
+              onIdentityChange(null);
+              return;
+            }
             const member = identities?.members.find((entry) => entry.id === id);
-            onIdentityChange(
-              member ? { id: member.id, name: member.name, role: member.role } : null
-            );
+            if (member) onIdentityChange({ id: member.id, name: member.name, role: member.role });
           }}
+          creation={
+            canCreateIdentity
+              ? {
+                  mode: "dialog",
+                  label: "Create machine identity",
+                  title: "Add machine identity to Agent Vault",
+                  submitLabel: "Create",
+                  discardTitle: "Discard this machine identity?",
+                  renderForm: (form) => (
+                    <CreateIdentityForm
+                      {...form}
+                      projectId={projectId}
+                      onCreated={onIdentityChange}
+                    />
+                  )
+                }
+              : undefined
+          }
         />
       </Field>
       {identity && hasNoUniversalAuth && (

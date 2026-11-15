@@ -16,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
@@ -26,6 +27,7 @@ import type { TAgentVaultSession, TAgentVaultSessionActor } from "@app/hooks/api
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { SessionLogsPanel } from "./session-logs-panel";
 import {
   actorName,
   actorSubtitle,
@@ -273,6 +275,7 @@ export const SessionDetailsSheet = ({
   sessionId,
   loaded,
   focusLabel,
+  isAdmin,
   onClose,
   onRevoke
 }: {
@@ -281,6 +284,7 @@ export const SessionDetailsSheet = ({
   sessionId: string | undefined;
   loaded: TAgentVaultSession | undefined;
   focusLabel: boolean;
+  isAdmin: boolean;
   onClose: () => void;
   onRevoke: (session: TAgentVaultSession) => void;
 }) => {
@@ -291,11 +295,17 @@ export const SessionDetailsSheet = ({
   );
   const session = fetched ?? loaded;
   const labelRef = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState<"logs" | "details">("logs");
+  const [openedFor, setOpenedFor] = useState(sessionId);
+  if (openedFor !== sessionId) {
+    setOpenedFor(sessionId);
+    if (sessionId) setTab(focusLabel ? "details" : "logs");
+  }
 
   return (
     <Sheet open={Boolean(sessionId)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
-        size="md"
+        size="lg"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           if (focusLabel) labelRef.current?.focus();
@@ -306,7 +316,33 @@ export const SessionDetailsSheet = ({
         </SheetHeader>
         <SheetBody>
           {session && (
-            <Details orgId={orgId} projectId={projectId} session={session} inputRef={labelRef} />
+            <Stack gap={16}>
+              <Tabs
+                label="Session"
+                value={tab}
+                onValueChange={(value) => setTab(value as "logs" | "details")}
+                tabs={[
+                  { value: "logs", label: "Logs" },
+                  { value: "details", label: "Details" }
+                ]}
+              />
+              {tab === "logs" ? (
+                <SessionLogsPanel
+                  key={session.id}
+                  orgId={orgId}
+                  projectId={projectId}
+                  session={session}
+                  isAdmin={isAdmin}
+                />
+              ) : (
+                <Details
+                  orgId={orgId}
+                  projectId={projectId}
+                  session={session}
+                  inputRef={labelRef}
+                />
+              )}
+            </Stack>
           )}
           {!session && isPending && <Loader label="Loading session" />}
           {!session && !isPending && (

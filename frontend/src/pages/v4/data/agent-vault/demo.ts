@@ -5,16 +5,22 @@ import {
   AgentVaultMemberType,
   AgentVaultOauthAuthorizationStatus,
   AgentVaultServiceType,
+  AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
+import { sessionLogChunkKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import type {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundleListItem,
   TAgentVaultProxy,
   TAgentVaultActorIdsDTO,
+  TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
+  TAgentVaultSessionLogHistoryPage,
+  TAgentVaultSessionLogRecord,
   TAgentVaultProductMember,
   TAgentVaultSession,
   TAgentVaultSessionActor,
@@ -29,7 +35,7 @@ import type {
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
-import type { AgentVaultAdapter } from "./contract";
+import type { AgentVaultAdapter, TAgentVaultSessionLogs } from "./contract";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -210,6 +216,290 @@ const store = createFixtureStore<(TAgentVaultSession & { projectId: string })[]>
     stats: null
   }))
 );
+
+const LOG_PROXY = uuid("e1", 1);
+const LOG_CHUNK_SIZE = 25;
+const {
+  Brokered,
+  Passthrough,
+  Blocked,
+  Error: Failed,
+  Discovery,
+  Skills
+} = AgentVaultSessionLogDecision;
+
+type TLogEntry = Omit<TAgentVaultSessionLogRecord, "ts" | "seq" | "proxyId" | "accessBundle"> & {
+  secondsIn: number;
+};
+
+const http = (
+  secondsIn: number,
+  method: string,
+  host: string,
+  path: string,
+  status: number,
+  decision: AgentVaultSessionLogDecision,
+  service: string | null = null
+): TLogEntry => ({
+  secondsIn,
+  method,
+  host,
+  port: "443",
+  path,
+  status,
+  decision,
+  service,
+  serviceType: service ? AgentVaultServiceType.Http : null
+});
+
+const sessionStart = (index: number) => {
+  const [, , , , , , created] = seeds[index];
+  return loadedAt - created * 60_000;
+};
+
+const releaseNotesLog = (): TLogEntry[] => [
+  http(4, "GET", "app.infisical.com", "/api/v1/agent-vault/session/services", 200, Discovery),
+  http(5, "GET", "app.infisical.com", "/api/v1/agent-vault/session/skills", 200, Skills),
+  ...Array.from({ length: 34 }, (_, step) =>
+    http(
+      20 + step * 28,
+      step % 5 === 4 ? "POST" : "GET",
+      "api.github.com",
+      [
+        "/repos/acme/web/pulls?state=closed",
+        "/repos/acme/web/pulls/1482/commits",
+        "/repos/acme/api/releases/latest",
+        "/search/issues?q=label:release-note",
+        "/repos/acme/web/issues/1482/comments"
+      ][step % 5],
+      step === 17 ? 404 : 200,
+      Brokered,
+      "github-api"
+    )
+  ),
+  http(640, "GET", "registry.npmjs.org", "/@acme%2fchangelog-kit", 200, Passthrough),
+  http(702, "POST", "api.openai.com", "/v1/chat/completions", 403, Blocked),
+  http(905, "GET", "uploads.github.com", "/repos/acme/web/releases/assets", 502, Failed)
+];
+
+const refundTriageLog = (): TLogEntry[] => [
+  http(3, "GET", "app.infisical.com", "/api/v1/agent-vault/session/services", 200, Discovery),
+  ...Array.from({ length: 12 }, (_, step) =>
+    http(
+      30 + step * 140,
+      step % 3 === 2 ? "POST" : "GET",
+      "api.stripe.com",
+      ["/v1/charges?limit=20", "/v1/refunds/re_demo_0042", "/v1/refunds"][step % 3],
+      step === 7 ? 402 : 200,
+      Brokered,
+      "stripe-test"
+    )
+  ),
+  {
+    ...http(260, "POST", "mcp.linear.app", "/mcp", 200, Brokered, "linear-mcp"),
+    serviceType: AgentVaultServiceType.Mcp,
+    mcp: {
+      parsed: true,
+      calls: [
+        { method: "tools/call", tool: "search_issues" },
+        { method: "tools/call", tool: "get_issue" },
+        { method: "tools/call", tool: "get_issue" }
+      ]
+    }
+  },
+  {
+    secondsIn: 410,
+    method: "POSTGRES",
+    host: "orders-db.internal.acme.dev",
+    port: "5432",
+    path: "",
+    status: 0,
+    decision: Brokered,
+    service: "orders-db",
+    serviceType: AgentVaultServiceType.Postgres,
+    native: {
+      statement:
+        "SELECT id, amount, status FROM refunds WHERE created_at > now() - interval '1 day'",
+      result: "SELECT 14"
+    }
+  },
+  {
+    secondsIn: 470,
+    method: "POSTGRES",
+    host: "orders-db.internal.acme.dev",
+    port: "5432",
+    path: "",
+    status: 0,
+    decision: Failed,
+    service: "orders-db",
+    serviceType: AgentVaultServiceType.Postgres,
+    native: {
+      statement: "UPDATE refunds SET status = 'reviewed' WHERE id = 'rf_demo_19'",
+      result: "ERROR: permission denied for table refunds",
+      note: "The service only allows read-only statements."
+    }
+  },
+  http(
+    1900,
+    "GET",
+    "billing.internal.acme.dev",
+    "/v2/customers/cus_demo_7/invoices",
+    200,
+    Passthrough
+  )
+];
+
+const LONG_PATH_SEGMENT = "aggregate-latency-percentiles-by-region-and-service-tier";
+
+const incidentLog = (): TLogEntry[] =>
+  Array.from({ length: 1200 }, (_, step) => {
+    const secondsIn = 10 + step * 10;
+    if (step % 97 === 50)
+      return {
+        secondsIn,
+        method: "SSH",
+        host: "bastion-us-east-1-production-observability.internal.acme.dev",
+        port: "22",
+        path: "",
+        status: 0,
+        decision: Brokered,
+        service: "production-observability-bastion-us-east-1",
+        serviceType: AgentVaultServiceType.Ssh,
+        native: {
+          command:
+            "journalctl -u checkout-api --since '30 minutes ago' --no-pager | grep -i timeout",
+          output: Array.from(
+            { length: 12 },
+            (__, line) =>
+              `Nov 15 09:${String(10 + line).padStart(2, "0")}:04 checkout-api[2214]: upstream request timeout after 30000ms on /v1/checkout/sessions/cs_demo_${line}`
+          ).join("\n"),
+          truncated: true
+        }
+      };
+    if (step % 41 === 7)
+      return http(
+        secondsIn,
+        "POST",
+        "hooks.slack.com",
+        "/services/T0DEMO/B0DEMO/incident-updates",
+        403,
+        Blocked
+      );
+    if (step % 53 === 11)
+      return http(secondsIn, "GET", "api.datadoghq.com", "/api/v1/query", 504, Failed);
+    return step % 3 === 0
+      ? http(
+          secondsIn,
+          "GET",
+          "sentry.io",
+          `/api/0/organizations/acme/issues/?query=is:unresolved+release:checkout-api@4.18.${step % 9}&statsPeriod=24h`,
+          step % 29 === 0 ? 429 : 200,
+          Brokered,
+          "sentry-production-error-tracking-read-only"
+        )
+      : http(
+          secondsIn,
+          "GET",
+          "api.datadoghq.com",
+          `/api/v2/metrics/checkout-api/${LONG_PATH_SEGMENT}/${LONG_PATH_SEGMENT}?from=${step}`,
+          200,
+          Brokered,
+          "datadog-metrics-and-monitors-read-only"
+        );
+  });
+
+const SESSION_LOG_FIXTURES: Record<string, { index: number; entries: () => TLogEntry[] }> = {
+  [uuid("d1", 1)]: { index: 0, entries: releaseNotesLog },
+  [uuid("d1", 2)]: { index: 1, entries: refundTriageLog },
+  [uuid("d1", 5)]: { index: 4, entries: incidentLog }
+};
+
+const LOGS_OFF_SESSION = uuid("d1", 8);
+
+const chunkIdAt = (time: number, index: number) => {
+  const hex = time.toString(16).padStart(12, "0");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-7000-8000-${String(index).padStart(12, "0")}`;
+};
+
+const buildSessionLogPage = (
+  sessionId: string
+): TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogHistoryPage> => {
+  const fixture = SESSION_LOG_FIXTURES[sessionId];
+  const session = store.get().find((entry) => entry.id === sessionId);
+  const start = fixture ? sessionStart(fixture.index) : 0;
+  const records: TAgentVaultSessionLogRecord[] = (fixture?.entries() ?? []).map(
+    ({ secondsIn, ...entry }, seq) => ({
+      ...entry,
+      ts: new Date(start + secondsIn * 1000).toISOString(),
+      seq,
+      proxyId: LOG_PROXY,
+      accessBundle: session?.accessBundle?.name ?? null
+    })
+  );
+  const chunks = Array.from({ length: Math.ceil(records.length / LOG_CHUNK_SIZE) }, (_, index) => {
+    const slice = records.slice(index * LOG_CHUNK_SIZE, (index + 1) * LOG_CHUNK_SIZE);
+    return {
+      chunk: {
+        chunkId: chunkIdAt(Date.parse(slice[slice.length - 1].ts), index),
+        proxyId: LOG_PROXY,
+        ciphertextBytes: slice.length * 400,
+        presignedGetUrl: ""
+      },
+      records: slice
+    };
+  });
+  const isOff = sessionId === LOGS_OFF_SESSION;
+  return {
+    sessionLogs: {
+      enabled: !isOff,
+      disabledReason: isOff ? "off" : null,
+      storageType: AgentVaultSessionLogStorageType.Default,
+      isRecordable: true,
+      sessionKey: null
+    },
+    chunks: chunks.map(({ chunk }) => chunk),
+    nextCursor: null,
+    decrypted: Object.fromEntries(
+      chunks.map(({ chunk, records: chunkRecords }) => [
+        sessionLogChunkKey(chunk),
+        { records: chunkRecords, gap: null, arrivedAt: null }
+      ])
+    )
+  };
+};
+
+const resolved = () => Promise.resolve();
+const sessionLogCache = new Map<string, TAgentVaultSessionLogs>();
+const demoSessionLogs = (sessionId: string): TAgentVaultSessionLogs => {
+  const cached = sessionLogCache.get(sessionId);
+  if (cached) return cached;
+  const logs: TAgentVaultSessionLogs = {
+    history: {
+      data: { pages: [buildSessionLogPage(sessionId)] },
+      error: null,
+      isPending: false,
+      isPlaceholderData: false,
+      isError: false,
+      isFetching: false,
+      isRefetching: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isFetchNextPageError: false,
+      refetch: resolved,
+      fetchNextPage: resolved
+    },
+    live: { isError: false, isFetching: false, refetch: resolved },
+    arrived: undefined,
+    isLiveGapUnfilled: false
+  };
+  sessionLogCache.set(sessionId, logs);
+  return logs;
+};
+
+const assignableIdentities = [
+  { id: uuid("a2", 10), name: "github-actions-deployer" },
+  { id: uuid("a2", 11), name: "data-pipeline-scheduler" }
+];
 
 const proxySeeds: [projectId: string, name: string, connectedMinutesAgo: number | null][] = [
   ["agent-platform", "prod-egress", 1],
@@ -451,6 +741,40 @@ export const agentVaultDemo: AgentVaultAdapter = {
       );
       return { id: sessionId, revokedAt };
     })(),
+  useSessionLogs: (_, __, sessionId) => demoSessionLogs(sessionId),
+  useAssignableIdentities: (projectId) => {
+    const taken = new Set(
+      memberStore
+        .use()
+        .filter((member) => member.projectId === projectId)
+        .map((member) => member.id)
+    );
+    return {
+      data: assignableIdentities.filter((identity) => !taken.has(identity.id)),
+      isPending: false,
+      error: null
+    };
+  },
+  useCreateManagedIdentity: (projectId) =>
+    fixtureMutation(({ name, role }: { name: string; role: string }) => {
+      const id = crypto.randomUUID();
+      memberStore.update((members) => [
+        ...members,
+        {
+          type: AgentVaultMemberType.MachineIdentity,
+          id,
+          name,
+          isManagedByAgentVault: true,
+          orgId: null,
+          role,
+          isActive: true,
+          addedAt: now(),
+          projectId
+        }
+      ]);
+      universalAuthIdentities.add(id);
+      return { id, name, authAttachFailed: false };
+    })(),
   useProxies: (_, projectId, { limit = 20, offset = 0 }) => {
     const matched = proxies.use().filter((proxy) => proxy.projectId === projectId);
     const { rows, totalCount } = slice(matched, limit, offset);
@@ -555,54 +879,77 @@ export const agentVaultDemo: AgentVaultAdapter = {
     return { data: { actors: rows as never, totalCount }, isPending: false, error: null };
   },
   useAddMembers: (projectId) =>
-    fixtureMutation(({ userIds = [], groupIds = [], role }: TAddAgentVaultProductMembersDTO) => {
-      const taken = new Set(
-        memberStore
-          .get()
-          .filter((member) => member.projectId === projectId)
-          .map((member) => member.id)
-      );
-      const additions: DemoMember[] = [];
-      const skipped: { type: AgentVaultMemberType; id: string; identifier: string }[] = [];
-      const addedAt = new Date().toISOString();
-      const consider = (
-        type: AgentVaultMemberType,
-        id: string,
-        found: TAgentVaultProductMember | undefined
-      ) => {
-        if (!found || taken.has(id)) {
-          skipped.push({ type, id, identifier: id });
-          return;
-        }
-        additions.push({ ...found, role, addedAt, projectId });
-      };
-      userIds.forEach((id) =>
-        consider(
-          AgentVaultMemberType.User,
-          id,
-          orgUsers.find((user) => user.id === id)
-        )
-      );
-      groupIds.forEach((id) => {
-        const group = orgGroups.find((entry) => entry.id === id);
-        consider(
-          AgentVaultMemberType.Group,
-          id,
-          group && {
-            type: AgentVaultMemberType.Group,
-            ...group,
-            role,
-            isActive: true,
-            addedAt
-          }
+    fixtureMutation(
+      ({
+        userIds = [],
+        groupIds = [],
+        machineIdentityIds = [],
+        role
+      }: TAddAgentVaultProductMembersDTO) => {
+        const taken = new Set(
+          memberStore
+            .get()
+            .filter((member) => member.projectId === projectId)
+            .map((member) => member.id)
         );
-      });
-      memberStore.update((members) => [...members, ...additions]);
-      return {
-        members: additions.map(({ type, id }) => ({ type, id, role, addedAt })),
-        skipped
-      };
-    })(),
+        const additions: DemoMember[] = [];
+        const skipped: { type: AgentVaultMemberType; id: string; identifier: string }[] = [];
+        const addedAt = new Date().toISOString();
+        const consider = (
+          type: AgentVaultMemberType,
+          id: string,
+          found: TAgentVaultProductMember | undefined
+        ) => {
+          if (!found || taken.has(id)) {
+            skipped.push({ type, id, identifier: id });
+            return;
+          }
+          additions.push({ ...found, role, addedAt, projectId });
+        };
+        userIds.forEach((id) =>
+          consider(
+            AgentVaultMemberType.User,
+            id,
+            orgUsers.find((user) => user.id === id)
+          )
+        );
+        groupIds.forEach((id) => {
+          const group = orgGroups.find((entry) => entry.id === id);
+          consider(
+            AgentVaultMemberType.Group,
+            id,
+            group && {
+              type: AgentVaultMemberType.Group,
+              ...group,
+              role,
+              isActive: true,
+              addedAt
+            }
+          );
+        });
+        machineIdentityIds.forEach((id) => {
+          const identity = assignableIdentities.find((entry) => entry.id === id);
+          consider(
+            AgentVaultMemberType.MachineIdentity,
+            id,
+            identity && {
+              type: AgentVaultMemberType.MachineIdentity,
+              ...identity,
+              isManagedByAgentVault: false,
+              orgId: "demo",
+              role,
+              isActive: true,
+              addedAt
+            }
+          );
+        });
+        memberStore.update((members) => [...members, ...additions]);
+        return {
+          members: additions.map(({ type, id }) => ({ type, id, role, addedAt })),
+          skipped
+        };
+      }
+    )(),
   useUpdateMemberRoles: (projectId) =>
     fixtureMutation(
       ({

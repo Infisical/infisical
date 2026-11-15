@@ -526,6 +526,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           sessionId={sessionId}
           loaded={sessions.find((session) => session.id === sessionId)}
           focusLabel={focusLabel}
+          isAdmin={isAdmin}
           onClose={() => setSessionId(undefined)}
           onRevoke={setSessionToRevoke}
         />

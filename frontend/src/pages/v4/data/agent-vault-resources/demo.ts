@@ -465,6 +465,13 @@ const seedSkills: SkillSeed[] = [
         path: "scripts/collect-context.sh",
         mode: "0755",
         contentBase64: text('#!/bin/sh\necho "Collecting recent deploys and alerts"\n')
+      },
+      {
+        path: "references/escalation.md",
+        mode: "0644",
+        contentBase64: text(
+          "# Escalation\n\nPage the on-call lead when an incident affects checkout for more than 10 minutes.\n"
+        )
       }
     ]
   ),

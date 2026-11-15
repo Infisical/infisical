@@ -11,11 +11,7 @@ export const Route = createFileRoute(
 )({
   staticData: {
     readiness: "partial",
-    missing: [
-      "Session logs",
-      "Personal values setup from Create session",
-      "Create machine identity from Create session"
-    ]
+    missing: ["Add a service from a session log"]
   },
   component: AgentVaultSessionsPage,
   validateSearch: zodValidator(
