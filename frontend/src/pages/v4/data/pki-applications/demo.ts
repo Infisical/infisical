@@ -538,6 +538,26 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     policies.update((current) => [created, ...current]);
     return created;
   }),
+  useUpdatePolicy: fixtureMutation(({ policyId, policyType: _type, ...changes }) => {
+    policies.update((current) =>
+      current.map((entry) =>
+        entry.id === policyId
+          ? ({
+              ...entry,
+              ...changes,
+              conditions: changes.conditions
+                ? { version: 1, conditions: changes.conditions }
+                : entry.conditions,
+              constraints: changes.constraints
+                ? { version: 1, constraints: changes.constraints }
+                : entry.constraints,
+              updatedAt: now()
+            } as TApprovalPolicy)
+          : entry
+      )
+    );
+    return policies.get().find((entry) => entry.id === policyId)!;
+  }),
   useDeletePolicy: fixtureMutation(({ policyId }) => {
     policies.update((current) => current.filter((entry) => entry.id !== policyId));
     return policyId;

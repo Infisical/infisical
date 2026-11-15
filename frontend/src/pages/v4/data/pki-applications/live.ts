@@ -5,7 +5,8 @@ import { useDeleteAlert, useUpdateAlert } from "@app/hooks/api/alerts/mutations"
 import { useListAlerts } from "@app/hooks/api/alerts/queries";
 import {
   useCreateApprovalPolicy,
-  useDeleteApprovalPolicy
+  useDeleteApprovalPolicy,
+  useUpdateApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/mutations";
 import { approvalPolicyQuery } from "@app/hooks/api/approvalPolicies/queries";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
@@ -138,6 +139,7 @@ export const pkiApplicationsLive: PkiApplicationsAdapter = {
   useTriggerRequestValidation: useTriggerCertificateRequestValidation,
   useTriggerSync: useTriggerPkiSyncSyncCertificates,
   useCreatePolicy: useCreateApprovalPolicy,
+  useUpdatePolicy: useUpdateApprovalPolicy,
   useDeletePolicy: useDeleteApprovalPolicy,
   useUpdateAlert,
   useDeleteAlert,

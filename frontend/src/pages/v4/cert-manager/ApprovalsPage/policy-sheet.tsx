@@ -147,14 +147,18 @@ type PolicySheetProps = {
 
 const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProps) => {
   const approvals = useV4Adapter("approvalRequests");
-  const update = approvals.useUpdatePolicy();
-  const create = useV4Adapter("pkiApplications").useCreatePolicy();
-  const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({});
+  const applications = useV4Adapter("pkiApplications");
+  const updateProjectPolicy = approvals.useUpdatePolicy();
+  const updateApplicationPolicy = applications.useUpdatePolicy();
+  const update = application ? updateApplicationPolicy : updateProjectPolicy;
+  const create = applications.useCreatePolicy();
+  const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({
+    applicationId: application?.id
+  });
   const { data: directory } = approvals.useApprovers(projectId, { includeGroupMembers: false });
-  const { data: appMembers } = useV4Adapter("pkiApplications").useApplicationMembers(
-    application?.id ?? ""
-  );
-  const [draft, setDraft] = useState<Draft>(() => draftOf(policy));
+  const { data: appMembers } = applications.useApplicationMembers(application?.id ?? "");
+  const [initial] = useState(() => draftOf(policy));
+  const [draft, setDraft] = useState<Draft>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState(0);
   const [discarding, setDiscarding] = useState(false);
@@ -164,7 +168,6 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
     ProjectPermissionSub.CertificateProfiles
   );
   const completed = useRef(false);
-  const [initial] = useState(() => draftOf(policy));
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
