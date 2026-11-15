@@ -1,4 +1,6 @@
-import { useId, useState } from "react";
+import { useId } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
@@ -37,7 +39,6 @@ export type WorkflowSheetState =
   | { mode: "edit"; platform: WorkflowIntegrationPlatform; id: string };
 
 type Draft = { slug: string; description: string; tenantId: string };
-type Errors = Partial<Record<keyof Draft, string>>;
 
 const aliasSchema = slugSchema({ min: 1, field: "Alias" });
 const tenantSchema = z
@@ -46,10 +47,12 @@ const tenantSchema = z
   .min(1, { message: "Tenant ID is required" })
   .uuid("Tenant ID must be a valid UUID");
 
-const issue = (schema: z.ZodTypeAny, value: string) => {
-  const result = schema.safeParse(value);
-  return result.success ? undefined : result.error.issues[0]?.message;
-};
+const draftSchema = (needsTenant: boolean) =>
+  z.object({
+    slug: aliasSchema,
+    description: z.string(),
+    tenantId: needsTenant ? tenantSchema : z.string()
+  });
 
 const hex = (bytes: number) =>
   Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (byte) =>
@@ -158,35 +161,25 @@ const WorkflowForm = ({
   const isTeams = state.platform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS;
   const isAdd = state.mode === "add";
   const formId = useId();
-  const [draft, setDraft] = useState(initial);
-  const [errors, setErrors] = useState<Errors>({});
-  const [pending, setPending] = useState(false);
-  const dirty = (Object.keys(initial) as (keyof Draft)[]).some(
-    (key) => draft[key] !== initial[key]
-  );
+  const {
+    control,
+    handleSubmit,
+    formState: { isDirty, isSubmitting }
+  } = useForm<Draft>({
+    resolver: zodResolver(draftSchema(isTeams && isAdd)),
+    defaultValues: initial
+  });
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: dirty,
+    isDirty,
     onDiscard: onClose
   });
   const name = PLATFORM_NAMES[state.platform];
   const { connect, teamsUnconfigured: unconfigured } = useConnect(state.platform, onClose);
   const teamsUnconfigured = isAdd && unconfigured;
 
-  const set = (key: keyof Draft) => (value: string) => {
-    setDraft((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: undefined }));
-  };
-
-  const submit = async () => {
-    const next: Errors = {
-      slug: issue(aliasSchema, draft.slug),
-      tenantId: isTeams && isAdd ? issue(tenantSchema, draft.tenantId) : undefined
-    };
-    setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
+  const submit = handleSubmit(async (draft) => {
     const slug = draft.slug.trim();
     const { description } = draft;
-    setPending(true);
     try {
       if (state.mode === "add") {
         await connect({ slug, description, tenantId: draft.tenantId.trim() });
@@ -198,17 +191,15 @@ const WorkflowForm = ({
       onClose();
     } catch (error) {
       failed(isAdd ? `Failed to connect ${name}` : `Failed to update ${name} integration`, error);
-    } finally {
-      setPending(false);
     }
-  };
+  });
 
-  const blocked = blockedReason({ isAdd, canEdit, dirty, teamsUnconfigured });
+  const blocked = blockedReason({ isAdd, canEdit, dirty: isDirty, teamsUnconfigured });
 
   return (
     <>
       <Sheet open onOpenChange={(next) => !next && requestDiscard()}>
-        <SheetContent pending={pending}>
+        <SheetContent pending={isSubmitting}>
           <SheetHeader>
             <Inline gap={8} align="center">
               <SheetTitle>{isAdd ? `Connect ${name}` : `Edit ${name} integration`}</SheetTitle>
@@ -223,15 +214,7 @@ const WorkflowForm = ({
             )}
           </SheetHeader>
           <SheetBody>
-            <form
-              id={formId}
-              noValidate
-              autoComplete="off"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submit();
-              }}
-            >
+            <form id={formId} noValidate autoComplete="off" onSubmit={submit}>
               <Stack gap={16}>
                 {teamsUnconfigured && (
                   <Alert tone="warn" title="Microsoft Teams isn't configured">
@@ -239,32 +222,35 @@ const WorkflowForm = ({
                     admin to configure it.
                   </Alert>
                 )}
-                <Field label="Alias" error={errors.slug}>
-                  <Input
-                    value={draft.slug}
-                    invalid={Boolean(errors.slug)}
-                    autoComplete="off"
-                    onChange={(event) => set("slug")(event.target.value)}
-                  />
-                </Field>
+                <Controller
+                  control={control}
+                  name="slug"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field label="Alias" error={error?.message}>
+                      <Input {...field} invalid={Boolean(error)} autoComplete="off" />
+                    </Field>
+                  )}
+                />
                 {isTeams && isAdd && (
-                  <Field label="Tenant ID" error={errors.tenantId}>
-                    <Input
-                      mono
-                      value={draft.tenantId}
-                      invalid={Boolean(errors.tenantId)}
-                      autoComplete="off"
-                      onChange={(event) => set("tenantId")(event.target.value)}
-                    />
-                  </Field>
-                )}
-                <Field label="Description" optional>
-                  <Textarea
-                    rows={2}
-                    value={draft.description}
-                    onChange={(event) => set("description")(event.target.value)}
+                  <Controller
+                    control={control}
+                    name="tenantId"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field label="Tenant ID" error={error?.message}>
+                        <Input {...field} mono invalid={Boolean(error)} autoComplete="off" />
+                      </Field>
+                    )}
                   />
-                </Field>
+                )}
+                <Controller
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <Field label="Description" optional>
+                      <Textarea {...field} rows={2} />
+                    </Field>
+                  )}
+                />
                 {connected && <DataList variant="props" items={[connected]} />}
               </Stack>
             </form>
@@ -274,12 +260,12 @@ const WorkflowForm = ({
               variant="primary"
               type="submit"
               form={formId}
-              loading={pending}
+              loading={isSubmitting}
               disabledReason={blocked}
             >
               {isAdd ? `Connect ${name}` : "Save changes"}
             </Button>
-            <Button variant="outline" onClick={requestDiscard} disabled={pending}>
+            <Button variant="outline" onClick={requestDiscard} disabled={isSubmitting}>
               Cancel
             </Button>
           </SheetFooter>

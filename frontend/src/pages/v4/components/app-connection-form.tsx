@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Controller, type FieldValues, get, useForm, useWatch } from "react-hook-form";
+import {
+  Controller,
+  type FieldValues,
+  get,
+  useForm,
+  type UseFormReturn,
+  useWatch
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import type { ComboboxCreation } from "@infisical/cipher/ui/combobox";
@@ -110,7 +117,7 @@ export type AppConnectionFormProps = {
   handleRef?: React.Ref<AppConnectionFormHandle>;
 };
 
-export type AppConnectionFormHandle = { getValues: () => FieldValues };
+export type AppConnectionFormHandle = Pick<UseFormReturn<FieldValues>, "getValues" | "setValue">;
 
 const storedKeys = (stored: unknown, keys: readonly string[]) => {
   const record = (stored ?? {}) as Record<string, unknown>;
@@ -167,7 +174,11 @@ export function AppConnectionForm({
       ...(editing && edit ? editDefaults(editing, edit.values) : {})
     }
   });
-  React.useImperativeHandle(handleRef, () => ({ getValues: form.getValues }), [form]);
+  React.useImperativeHandle(
+    handleRef,
+    () => ({ getValues: form.getValues, setValue: form.setValue }),
+    [form]
+  );
   const { control, formState } = form;
   const values = useWatch({ control });
   const method = methods.find((entry) => entry.value === values.method) ?? first;

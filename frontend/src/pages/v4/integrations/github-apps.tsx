@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { type Control, Controller, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -8,7 +11,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -24,6 +28,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { List, ListRow } from "@infisical/cipher/ui/list";
 import slugify from "@sindresorhus/slugify";
+import { z } from "zod";
 
 import { buildGitHubAppUrl, buildGitHubHostUrl } from "@app/helpers/appConnections";
 import type { TGitHubApp } from "@app/hooks/api/gitHubApps/types";
@@ -33,79 +38,71 @@ import { failed, saved } from "../access/toast";
 import { useV4Adapter } from "../data/adapters";
 
 const NAME_PREFIX = "infisical-";
+const FORM_ID = "create-github-app";
 
-const appUrl = (app: TGitHubApp, host?: string, instanceType?: "cloud" | "server") =>
-  buildGitHubAppUrl(app.slug, app.host ?? host, app.instanceType ?? instanceType);
+const createSchema = z.object({
+  name: z.string().trim().min(1, { message: "Enter an app name" }),
+  githubOrg: z.string().trim()
+});
+
+type CreateDraft = z.infer<typeof createSchema>;
+
+/** The GitHub instance the connection form points at, which the new app is created on. */
+export type GitHubInstance = { host?: string; instanceType?: "cloud" | "server" };
+
+const appUrl = (app: TGitHubApp, instance: GitHubInstance) =>
+  buildGitHubAppUrl(app.slug, app.host ?? instance.host, app.instanceType ?? instance.instanceType);
 
 const CreateGitHubApp = ({
-  host,
-  instanceType,
+  control,
+  instance,
   throughGateway,
-  onBack,
-  onCreate
+  pending
 }: {
-  host?: string;
-  instanceType?: "cloud" | "server";
+  control: Control<CreateDraft>;
+  instance: GitHubInstance;
   throughGateway: boolean;
-  onBack: () => void;
-  onCreate: (input: { name: string; githubOrg: string }) => Promise<void>;
+  pending: boolean;
 }) => {
-  const [name, setName] = useState("");
-  const [org, setOrg] = useState("");
-  const [pending, setPending] = useState(false);
-  const hostName = buildGitHubHostUrl(host).replace("https://", "");
+  const name = useWatch({ control, name: "name" });
+  const hostName = buildGitHubHostUrl(
+    instance.instanceType === "server" ? instance.host : undefined
+  ).replace("https://", "");
   const slug = `${NAME_PREFIX}${name.trim() ? slugify(name, { lowercase: true }) : "your-app"}`;
   return (
-    <>
-      <form
-        id="create-github-app"
-        noValidate
-        onSubmit={async (event) => {
-          event.preventDefault();
-          if (!name.trim()) return;
-          setPending(true);
-          await onCreate({ name: slug, githubOrg: org.trim() }).finally(() => setPending(false));
-        }}
-      >
-        <FieldSet disabled={pending}>
+    <FieldSet disabled={pending}>
+      <Controller
+        control={control}
+        name="name"
+        render={({ field, fieldState: { error } }) => (
           <Field
             label="App name"
-            description={`${hostName}/${instanceType === "server" ? "github-apps" : "apps"}/${slug}`}
+            error={error?.message}
+            description={`${hostName}/${instance.instanceType === "server" ? "github-apps" : "apps"}/${slug}`}
           >
-            <Input
-              value={name}
-              placeholder="deploy-bot"
-              onChange={(event) => setName(event.target.value)}
-            />
+            <Input {...field} invalid={Boolean(error)} placeholder="deploy-bot" />
           </Field>
+        )}
+      />
+      <Controller
+        control={control}
+        name="githubOrg"
+        render={({ field }) => (
           <Field
             label="GitHub organization"
             optional
             description="Needed to install the app on the organization's repositories. Leave blank for your personal account."
           >
-            <Input mono value={org} onChange={(event) => setOrg(event.target.value)} />
+            <Input {...field} mono />
           </Field>
-          <Alert tone="info">
-            The app is created on {hostName}
-            {throughGateway ? " through the selected gateway" : ""}. GitHub fails the setup if
-            you&apos;re signed out, so sign in to {hostName} first.
-          </Alert>
-        </FieldSet>
-      </form>
-      <DialogFooter>
-        <Button
-          type="submit"
-          form="create-github-app"
-          loading={pending}
-          disabledReason={name.trim() ? undefined : "Enter an app name."}
-        >
-          Continue to GitHub
-        </Button>
-        <Button variant="outline" onClick={onBack} disabled={pending}>
-          Back
-        </Button>
-      </DialogFooter>
-    </>
+        )}
+      />
+      <Alert tone="info">
+        The app is created on {hostName}
+        {throughGateway ? " through the selected gateway" : ""}. GitHub fails the setup if
+        you&apos;re signed out, so sign in to {hostName} first.
+      </Alert>
+    </FieldSet>
   );
 };
 
@@ -114,31 +111,57 @@ const CreateGitHubApp = ({
  * connection uses, and creating a new one through GitHub's manifest flow.
  */
 const GitHubAppsDialog = ({
-  open,
-  onOpenChange,
+  onClose,
   projectId,
-  host,
-  instanceType,
+  instance,
   throughGateway,
-  onCreate
+  onCreate,
+  onDeleted
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
   projectId?: string;
-  host?: string;
-  instanceType?: "cloud" | "server";
+  instance: GitHubInstance;
   throughGateway: boolean;
   onCreate: (input: { name: string; githubOrg: string }) => Promise<void>;
+  onDeleted: (appId: string) => void;
 }) => {
   const orgId = useOrgId();
   const { data: apps = [], isPending } = useV4Adapter("integrations").useGitHubApps(
-    open ? orgId : undefined,
+    orgId,
     projectId ?? null
   );
   const deleteApp = useV4Adapter("appConnections").useDeleteGitHubApp();
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<TGitHubApp>();
   const [deletePending, setDeletePending] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isDirty, isSubmitting }
+  } = useForm<CreateDraft>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { name: "", githubOrg: "" }
+  });
+  const [discardAction, setDiscardAction] = useState<() => void>(() => onClose);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: creating && isDirty,
+    onDiscard: () => discardAction()
+  });
+  const request = (action: () => void) => {
+    setDiscardAction(() => action);
+    requestDiscard();
+  };
+  const back = () => {
+    reset();
+    setCreating(false);
+  };
+  const submit = handleSubmit(async (draft) => {
+    await onCreate({
+      name: `${NAME_PREFIX}${slugify(draft.name, { lowercase: true })}`,
+      githubOrg: draft.githubOrg
+    });
+  });
   const privateApps = apps.filter((app) => app.id !== null);
   const deleteBlock = (app: TGitHubApp) => {
     if (projectId && !app.projectId)
@@ -149,82 +172,92 @@ const GitHubAppsDialog = ({
   };
   return (
     <>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          onOpenChange(next);
-          if (!next) setCreating(false);
-        }}
-      >
-        <DialogContent>
+      <Dialog open onOpenChange={(next) => !next && !isSubmitting && request(onClose)}>
+        <DialogContent pending={isSubmitting}>
           <DialogHeader>
             <DialogTitle>{creating ? "Create GitHub App" : "Manage GitHub Apps"}</DialogTitle>
           </DialogHeader>
           {creating ? (
-            <CreateGitHubApp
-              host={host}
-              instanceType={instanceType}
-              throughGateway={throughGateway}
-              onBack={() => setCreating(false)}
-              onCreate={onCreate}
-            />
+            <form id={FORM_ID} noValidate onSubmit={submit}>
+              <CreateGitHubApp
+                control={control}
+                instance={instance}
+                throughGateway={throughGateway}
+                pending={isSubmitting}
+              />
+            </form>
           ) : (
-            <>
-              <List
-                label="Private GitHub Apps"
-                size="sm"
-                loading={isPending}
-                empty={
-                  <EmptyState
-                    size="sm"
-                    media="bare"
-                    icon="apps"
-                    title="No private GitHub Apps yet"
-                  />
-                }
-              >
-                {privateApps.map((app) => (
-                  <ListRow
-                    key={app.id}
-                    value={app.id as string}
-                    label={app.name}
-                    title={app.name}
-                    description={`${app.owner ? `${app.owner}, ` : ""}${app.connectionCount} connection${app.connectionCount === 1 ? "" : "s"}`}
-                    actions={
-                      <>
-                        <Button variant="ghost" size="sm" icon="external" asChild>
-                          <a
-                            href={appUrl(app, host, instanceType)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Open ${app.name} on GitHub`}
-                          />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon="trash"
-                          aria-label={`Delete ${app.name}`}
-                          disabledReason={deleteBlock(app)}
-                          onClick={() => setDeleting(app)}
+            <List
+              label="Private GitHub Apps"
+              size="sm"
+              loading={isPending}
+              empty={
+                <EmptyState size="sm" media="bare" icon="apps" title="No private GitHub Apps yet" />
+              }
+            >
+              {privateApps.map((app) => (
+                <ListRow
+                  key={app.id}
+                  value={app.id as string}
+                  label={app.name}
+                  title={app.name}
+                  description={`${app.owner ? `${app.owner}, ` : ""}${app.connectionCount} connection${app.connectionCount === 1 ? "" : "s"}`}
+                  actions={
+                    <>
+                      <Button variant="ghost" size="sm" icon="external" asChild>
+                        <a
+                          href={appUrl(app, instance)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${app.name} on GitHub`}
                         />
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-              <DialogFooter>
-                <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="trash"
+                        aria-label={`Delete ${app.name}`}
+                        disabledReason={deleteBlock(app)}
+                        onClick={() => setDeleting(app)}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </List>
+          )}
+          <DialogFooter>
+            {creating ? (
+              <>
+                <Button key="continue" type="submit" form={FORM_ID} loading={isSubmitting}>
+                  Continue to GitHub
+                </Button>
+                <Button variant="outline" onClick={() => request(back)} disabled={isSubmitting}>
+                  Back
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  key="create"
+                  variant="primary"
+                  icon="plus"
+                  onClick={() => setCreating(true)}
+                >
                   Create GitHub App
                 </Button>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                <Button variant="outline" onClick={onClose}>
                   Close
                 </Button>
-              </DialogFooter>
-            </>
-          )}
+              </>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="The GitHub App details you entered will be lost."
+      />
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(next) => !next && setDeleting(undefined)}
@@ -248,6 +281,7 @@ const GitHubAppsDialog = ({
                 try {
                   await deleteApp.mutateAsync(deleting.id);
                   saved(`${deleting.name} deleted`);
+                  onDeleted(deleting.id);
                   setDeleting(undefined);
                 } catch (error) {
                   failed("Couldn't delete this GitHub App", error);
@@ -270,14 +304,18 @@ export const GitHubAppsField = ({
   projectId,
   throughGateway,
   disabled,
-  onCreate
+  readInstance,
+  onCreate,
+  onDeleted
 }: {
   projectId?: string;
   throughGateway: boolean;
   disabled: boolean;
+  readInstance: () => GitHubInstance;
   onCreate: (input: { name: string; githubOrg: string }) => Promise<void>;
+  onDeleted: (appId: string) => void;
 }) => {
-  const [open, setOpen] = useState(false);
+  const [instance, setInstance] = useState<GitHubInstance>();
   return (
     <Inline>
       <Button
@@ -285,17 +323,20 @@ export const GitHubAppsField = ({
         size="sm"
         icon="settings"
         disabled={disabled}
-        onClick={() => setOpen(true)}
+        onClick={() => setInstance(readInstance())}
       >
         Manage GitHub Apps
       </Button>
-      <GitHubAppsDialog
-        open={open}
-        onOpenChange={setOpen}
-        projectId={projectId}
-        throughGateway={throughGateway}
-        onCreate={onCreate}
-      />
+      {instance && (
+        <GitHubAppsDialog
+          onClose={() => setInstance(undefined)}
+          projectId={projectId}
+          instance={instance}
+          throughGateway={throughGateway}
+          onCreate={onCreate}
+          onDeleted={onDeleted}
+        />
+      )}
     </Inline>
   );
 };

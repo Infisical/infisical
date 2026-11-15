@@ -98,7 +98,13 @@ import {
   NOT_IN_V4,
   storedScopes
 } from "./app-connection-model";
-import { useGitHubAppCreation, useResumedGitHubForm } from "./github-app-model";
+import {
+  clearDeletedGitHubApp,
+  gitHubInstanceOf,
+  hasResumedGitHubForm,
+  useGitHubAppCreation,
+  useResumedGitHubForm
+} from "./github-app-model";
 import { GitHubAppsField } from "./github-apps";
 
 const scopesPayload = (scopes: string[]) => (scopes.length ? { scopes } : {});
@@ -311,10 +317,10 @@ const ConnectionExtras = ({
   scopes: string[];
   onScopesChange: (scopes: string[]) => void;
   gateway?: GatewayState;
-  gitHubApps?: {
-    projectId?: string;
-    onCreate: (input: { name: string; githubOrg: string }) => Promise<void>;
-  };
+  gitHubApps?: Pick<
+    React.ComponentProps<typeof GitHubAppsField>,
+    "projectId" | "readInstance" | "onCreate" | "onDeleted"
+  >;
   pending: boolean;
 }) => (
   <>
@@ -323,10 +329,9 @@ const ConnectionExtras = ({
     )}
     {app === AppConnection.GitHub && gitHubApps && (
       <GitHubAppsField
-        projectId={gitHubApps.projectId}
+        {...gitHubApps}
         throughGateway={Boolean(gateway?.value.gatewayId || gateway?.value.gatewayPoolId)}
         disabled={pending}
-        onCreate={gitHubApps.onCreate}
       />
     )}
     {gateway && (
@@ -406,7 +411,7 @@ const PresetStep = ({
   resumeApp?: AppConnection;
   pending: boolean;
   onDirtyChange: (dirty: boolean) => void;
-  onExtrasChange: () => void;
+  onExtrasChange: (dirty: boolean) => void;
   onPendingChange: (pending: boolean) => void;
   onSubmitLabelChange: (label: string) => void;
   onCreated: (connection: TAppConnection) => void;
@@ -415,7 +420,11 @@ const PresetStep = ({
   const app = preset.app as AppConnection;
   const formHandle = useRef<AppConnectionFormHandle>(null);
   const resumed = useResumedGitHubForm(resumeApp);
-  const [gateway, setGateway] = useState<GatewayPickerValue>(() => resumed?.gateway ?? NO_GATEWAY);
+  const [initialGateway] = useState<GatewayPickerValue>(() => resumed?.gateway ?? NO_GATEWAY);
+  const [gateway, setGateway] = useState(initialGateway);
+  const isGatewayChanged = (next: GatewayPickerValue) =>
+    next.gatewayId !== initialGateway.gatewayId ||
+    next.gatewayPoolId !== initialGateway.gatewayPoolId;
   const [gatewayError, setGatewayError] = useState<string>();
   const [scopes, setScopes] = useState<string[]>([]);
   const creation = usePresetCreation(projectId);
@@ -464,7 +473,7 @@ const PresetStep = ({
         scopes={scopes}
         onScopesChange={(next) => {
           setScopes(next);
-          onExtrasChange();
+          onExtrasChange(next.length > 0 || isGatewayChanged(gateway));
         }}
         gateway={
           gatewaySupport && {
@@ -474,11 +483,16 @@ const PresetStep = ({
             onChange: (next) => {
               setGateway(next);
               setGatewayError(undefined);
-              onExtrasChange();
+              onExtrasChange(scopes.length > 0 || isGatewayChanged(next));
             }
           }
         }
-        gitHubApps={{ projectId, onCreate: createGitHubApp }}
+        gitHubApps={{
+          projectId,
+          onCreate: createGitHubApp,
+          readInstance: () => gitHubInstanceOf(formHandle.current),
+          onDeleted: (appId) => clearDeletedGitHubApp(formHandle.current, preset, appId)
+        }}
         pending={pending}
       />
       {creation.dialog}
@@ -509,7 +523,7 @@ export const AddConnectionSheet = ({
   const formId = useId();
   const [selected, setSelected] = useState(app);
   const [dirty, setDirty] = useState(false);
-  const [extrasDirty, setExtrasDirty] = useState(false);
+  const [extrasDirty, setExtrasDirty] = useState(() => hasResumedGitHubForm(app));
   const [pending, setPending] = useState(false);
   const [submitLabel, setSubmitLabel] = useState("Create connection");
   const discardAction = useRef<() => void>(() => undefined);
@@ -588,7 +602,7 @@ export const AddConnectionSheet = ({
                     resumeApp={app}
                     pending={pending}
                     onDirtyChange={setDirty}
-                    onExtrasChange={() => setExtrasDirty(true)}
+                    onExtrasChange={setExtrasDirty}
                     onPendingChange={setPending}
                     onSubmitLabelChange={setSubmitLabel}
                     onCreated={(connection) => {
