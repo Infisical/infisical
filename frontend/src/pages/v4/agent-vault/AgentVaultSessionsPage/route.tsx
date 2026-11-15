@@ -10,8 +10,7 @@ export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions"
 )({
   staticData: {
-    readiness: "partial",
-    missing: ["Add a service from a session log"]
+    readiness: "full"
   },
   component: AgentVaultSessionsPage,
   validateSearch: zodValidator(
