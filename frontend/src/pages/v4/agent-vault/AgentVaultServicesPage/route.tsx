@@ -9,17 +9,7 @@ import { AgentVaultServicesPage } from "./AgentVaultServicesPage";
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/agent-vault/$projectId/services"
 )({
-  staticData: {
-    readiness: "partial",
-    missing: [
-      "Service templates",
-      "OAuth credentials",
-      "Custom headers and substitutions",
-      "MCP tool allow-list",
-      "Create a variable from a service field",
-      "Personal OAuth connection"
-    ]
-  },
+  staticData: { readiness: "full" },
   component: AgentVaultServicesPage,
   validateSearch: zodValidator(
     agentVaultCreateIntentSearchParams.extend({
