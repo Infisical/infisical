@@ -36,6 +36,11 @@ const useScenario = (): Scenario => {
   return SCENARIOS.find((scenario) => scenario === value) ?? "optimal";
 };
 
+const scenarioFromUrl = (): Scenario => {
+  const value = new URLSearchParams(window.location.search).get("scenario");
+  return SCENARIOS.find((scenario) => scenario === value) ?? "optimal";
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
 const iso = (offsetDays: number) => new Date(now + offsetDays * DAY_MS).toISOString();
@@ -324,9 +329,12 @@ const auditReport = (index: number, stressed: boolean): TAuditReport => {
   };
 };
 
-const reportsStore = createFixtureStore<Record<"optimal" | "stress", TAuditReport[]>>({
+const reportsStore = createFixtureStore<Record<Scenario, TAuditReport[]>>({
   optimal: repeat(4, (index) => auditReport(index, false)),
-  stress: repeat(37, (index) => auditReport(index, true))
+  empty: [],
+  stress: repeat(37, (index) => auditReport(index, true)),
+  locked: [],
+  loading: []
 });
 
 const blindIndexStore = createFixtureStore<"completed" | "pending">("completed");
@@ -468,11 +476,23 @@ const orgDuplicateGroups = (scenario: Scenario): TOrgDuplicatedSecretGroup[] => 
   });
 };
 
-const valueTrackingStore = createFixtureStore<TGetOrgSecretValueTrackingStatusResponse>({
-  status: "completed",
+const trackingStatus = (
+  status: TGetOrgSecretValueTrackingStatusResponse["status"]
+): TGetOrgSecretValueTrackingStatusResponse => ({
+  status,
   projectsTotal: 7,
-  projectsDone: 7,
-  secretsProcessed: 1840
+  projectsDone: status === "completed" ? 7 : 0,
+  secretsProcessed: status === "completed" ? 1840 : 0
+});
+
+const valueTrackingStore = createFixtureStore<
+  Record<Scenario, TGetOrgSecretValueTrackingStatusResponse>
+>({
+  optimal: trackingStatus("completed"),
+  empty: trackingStatus("not-found"),
+  stress: trackingStatus("completed"),
+  locked: trackingStatus("completed"),
+  loading: trackingStatus("completed")
 });
 
 const orgReport = (index: number, stressed: boolean): TOrgAuditReport => ({
@@ -488,12 +508,13 @@ const orgReport = (index: number, stressed: boolean): TOrgAuditReport => ({
   updatedAt: iso(-3 - index * 7)
 });
 
-const orgReportsStore = createFixtureStore<TOrgAuditReport[]>([
-  orgReport(0, false),
-  orgReport(1, false)
-]);
-
-const reportKey = (scenario: Scenario) => (scenario === "stress" ? "stress" : "optimal");
+const orgReportsStore = createFixtureStore<Record<Scenario, TOrgAuditReport[]>>({
+  optimal: [orgReport(0, false), orgReport(1, false)],
+  empty: [],
+  stress: [orgReport(0, true), orgReport(0, false), orgReport(1, false)],
+  locked: [orgReport(0, false), orgReport(1, false)],
+  loading: []
+});
 
 export const secretInsightsDemo: SecretInsightsAdapter = {
   useSubscription: () => result(subscription(useScenario() === "locked")),
@@ -583,13 +604,14 @@ export const secretInsightsDemo: SecretInsightsAdapter = {
     const scenario = useScenario();
     const all = reportsStore.use();
     if (scenario === "loading") return pending;
-    const reports = scenario === "empty" ? [] : all[reportKey(scenario)];
+    const reports = all[scenario];
     return result({ reports: reports.slice(offset, offset + limit), totalCount: reports.length });
   },
   useRequestAuditReport: fixtureMutation(({ reports, emailRecipients }) => {
+    const scenario = scenarioFromUrl();
     reportsStore.update((current) => ({
       ...current,
-      optimal: [
+      [scenario]: [
         {
           ...auditReport(0, false),
           id: `report-${Date.now()}`,
@@ -598,14 +620,15 @@ export const secretInsightsDemo: SecretInsightsAdapter = {
           emailRecipients: emailRecipients ?? ["you@acme.example"],
           createdAt: new Date().toISOString()
         },
-        ...current.optimal
+        ...current[scenario]
       ]
     }));
   }),
   useDeleteAuditReport: fixtureMutation(({ auditReportId }) => {
+    const scenario = scenarioFromUrl();
     reportsStore.update((current) => ({
-      optimal: current.optimal.filter((report) => report.id !== auditReportId),
-      stress: current.stress.filter((report) => report.id !== auditReportId)
+      ...current,
+      [scenario]: current[scenario].filter((report) => report.id !== auditReportId)
     }));
   }),
 
@@ -649,18 +672,19 @@ export const secretInsightsDemo: SecretInsightsAdapter = {
   },
   useOrgValueTrackingStatus: () => {
     const scenario = useScenario();
-    const status = valueTrackingStore.use();
-    if (scenario === "empty") return result({ ...status, status: "not-found" as const });
-    return result(status);
+    return result(valueTrackingStore.use()[scenario]);
   },
   useEnableOrgValueTracking: fixtureMutation(() => {
-    valueTrackingStore.update((current) => ({ ...current, status: "pending", projectsDone: 2 }));
+    const scenario = scenarioFromUrl();
+    valueTrackingStore.update((current) => ({
+      ...current,
+      [scenario]: { ...current[scenario], status: "pending", projectsDone: 2 }
+    }));
     setTimeout(
       () =>
         valueTrackingStore.update((current) => ({
           ...current,
-          status: "completed",
-          projectsDone: current.projectsTotal
+          [scenario]: trackingStatus("completed")
         })),
       2500
     );
@@ -668,22 +692,24 @@ export const secretInsightsDemo: SecretInsightsAdapter = {
   }),
   useOrgAuditReports: () => {
     const scenario = useScenario();
-    const reports = orgReportsStore.use();
-    if (scenario === "empty") return result({ reports: [], totalCount: 0 });
-    const list = scenario === "stress" ? [orgReport(0, true), ...reports] : reports;
-    return result({ reports: list, totalCount: list.length });
+    const reports = orgReportsStore.use()[scenario];
+    return result({ reports, totalCount: reports.length });
   },
   useRequestOrgAuditReport: fixtureMutation(({ reports, emailRecipients }) => {
-    orgReportsStore.update((current) => [
-      {
-        ...orgReport(0, false),
-        id: `org-report-${Date.now()}`,
-        status: AuditReportStatus.Pending,
-        reportConfigs: reports.map(({ type }) => ({ type, inputs: {} })),
-        emailRecipients: emailRecipients ?? ["you@acme.example"],
-        createdAt: new Date().toISOString()
-      },
-      ...current
-    ]);
+    const scenario = scenarioFromUrl();
+    orgReportsStore.update((current) => ({
+      ...current,
+      [scenario]: [
+        {
+          ...orgReport(0, false),
+          id: `org-report-${Date.now()}`,
+          status: AuditReportStatus.Pending,
+          reportConfigs: reports.map(({ type }) => ({ type, inputs: {} })),
+          emailRecipients: emailRecipients ?? ["you@acme.example"],
+          createdAt: new Date().toISOString()
+        },
+        ...current[scenario]
+      ]
+    }));
   })
 };

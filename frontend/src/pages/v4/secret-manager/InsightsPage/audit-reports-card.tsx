@@ -208,7 +208,7 @@ export const AuditReportsCard = ({ projectId }: { projectId: string }) => {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}
       >
-        <AlertDialogContent tone="danger">
+        <AlertDialogContent tone="danger" pending={deleteReport.isPending}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this report?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -219,6 +219,7 @@ export const AuditReportsCard = ({ projectId }: { projectId: string }) => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
+              loading={deleteReport.isPending}
               onClick={async (event) => {
                 event.preventDefault();
                 if (!deleting) return;

@@ -170,8 +170,8 @@ export const DuplicatedSecretsCard = ({
   const migrationStatus = status?.status;
 
   useEffect(() => {
-    if (migrationStatus === "completed" && triggered) refreshDuplication(projectId);
-  }, [migrationStatus, triggered, projectId, refreshDuplication]);
+    if (migrationStatus === "completed" && !blindIndexEnabled) refreshDuplication(projectId);
+  }, [migrationStatus, blindIndexEnabled, projectId, refreshDuplication]);
 
   const enable = async () => {
     setTriggered(true);

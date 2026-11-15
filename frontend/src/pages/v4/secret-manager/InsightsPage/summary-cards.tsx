@@ -42,7 +42,7 @@ const ViewTable = ({
       id: "name",
       header: "Name",
       grow: true,
-      mono: true,
+      mono: rows[0]?.filterBy === "secret",
       text: (row) => row.name,
       render: (row) => (
         <RowLink
