@@ -5,7 +5,7 @@ import {
   AgentVaultSetupStep,
   agentVaultSetupStepLink,
   useAgentVaultSetupProgress
-} from "./setup-progress";
+} from "../../agent-vault/setup-checklist/setup-progress";
 
 export const AgentVaultIndexRedirect = () => {
   const { orgId, projectId } = useParams({
