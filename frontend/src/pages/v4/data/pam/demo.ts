@@ -1061,19 +1061,28 @@ export const pamDemo: PamAdapter = {
           );
           const found = discovered.find(({ id }) => id === discoveredAccountId);
           if (status !== "imported" || !accountId || !entry || !found) return;
-          accountStore.update((current) => [
+          const account = newAccount({
+            id: accountId,
+            name: entry.name ?? found.name,
+            description: null,
+            accountType: found.accountType,
+            folderId: input.folderId,
+            templateId: entry.templateId,
+            gatewayId: null,
+            gatewayPoolId: null
+          });
+          const [username, host] = found.name.includes("@")
+            ? found.name.split("@", 2)
+            : [undefined, found.name];
+          const defaults = detailsFor(account);
+          accountStore.update((current) => [...current, account]);
+          accountDetailStore.update((current) => ({
             ...current,
-            newAccount({
-              id: accountId,
-              name: entry.name ?? found.name,
-              description: null,
-              accountType: found.accountType,
-              folderId: input.folderId,
-              templateId: entry.templateId,
-              gatewayId: null,
-              gatewayPoolId: null
-            })
-          ]);
+            [accountId]: {
+              connectionDetails: { ...defaults.connectionDetails, host },
+              credentials: { ...defaults.credentials, ...(username ? { username } : {}) }
+            }
+          }));
           moveTemplateCount(null, entry.templateId);
         });
         return results;
