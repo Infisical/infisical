@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 
 import { useLocalStorageState } from "@app/hooks";
 import { AgentVaultSessionScope } from "@app/hooks/api/agentVault/enums";
@@ -26,11 +26,13 @@ export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => 
     projectId
   });
   const isPermissionLoaded = Boolean(permission) || Boolean(permissionError);
-  const isAdmin = Boolean(
-    permission?.memberships.some((membership) =>
-      membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)
-    )
-  );
+  const isAdmin =
+    Boolean(projectId) &&
+    Boolean(
+      permission?.memberships.some((membership) =>
+        membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)
+      )
+    );
 
   const proxies = agentVault.useProxies(
     orgId,
@@ -143,12 +145,18 @@ export const useOpenAgentVaultSetupStep = (
   progress: Pick<TAgentVaultSetupProgress, "hasProxy" | "newestBundle">
 ) => {
   const navigate = useNavigate();
+  const matchRoute = useMatchRoute();
   return (step: AgentVaultSetupStep) => {
     const link = agentVaultSetupStepLink(step, orgId, projectId, progress.newestBundle?.id);
+    const opensCreate = doesStepOpenCreate(step, progress);
+    const isHere = Boolean(matchRoute({ to: link.to, params: link.params as never }));
+    if (isHere && !opensCreate) return;
     navigate({
       to: link.to,
       params: link.params as never,
-      search: (doesStepOpenCreate(step, progress) ? { create: true } : {}) as never
+      search: (opensCreate ? { create: true } : {}) as never,
+      // The same URL again would push a duplicate history entry.
+      replace: isHere
     });
   };
 };
