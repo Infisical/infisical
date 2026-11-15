@@ -139,6 +139,10 @@ const transport: TWebAccessTransport = {
               .withDesktopSize(DESKTOP_SIZE)
               .build();
             ui.connect(config).then((session) => {
+              if (signal.aborted) {
+                shutdown();
+                return;
+              }
               ui?.setVisibility(true);
               resolve({ ended: session.run().then(() => undefined) });
             }, reject);
