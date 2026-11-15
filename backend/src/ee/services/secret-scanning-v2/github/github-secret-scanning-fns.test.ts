@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus
@@ -32,11 +33,13 @@ vi.mock("probot", () => ({
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
   getConfig: () => ({
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1",
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key",
     SECRET_SCANNING_SCAN_TIMEOUT: 60_000
   })
 }));
+
+const instanceConfigService = new FakeInstanceConfigService({
+  env: { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1", INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key" }
+});
 
 const scanContents =
   vi.fn<(contents: string[], configPath?: string) => Promise<{ index: number; finding: Record<string, unknown> }[]>>();
@@ -252,6 +255,7 @@ describe("completePullRequestCheckRun", () => {
       installationId: "1",
       repositoryFullName: "acme/api",
       checkRunId: 99,
+      instanceConfigService,
       result: getPullRequestScanCheckRunResult({ findings, scannedCommitCount: 1, totalCommitCount: 1 })
     });
 
@@ -274,6 +278,7 @@ describe("completePullRequestCheckRun", () => {
       installationId: "1",
       repositoryFullName: "acme/api",
       checkRunId: 99,
+      instanceConfigService,
       result: getPullRequestScanCheckRunResult({
         findings: [makeFinding(0)],
         scannedCommitCount: 1,
@@ -570,7 +575,8 @@ describe("createSkippedPullRequestCheckRun", () => {
     repositoryFullName: "acme/api",
     headSha: "b".repeat(40),
     title: "Fork not scanned",
-    summary: "summary"
+    summary: "summary",
+    instanceConfigService
   };
 
   beforeEach(() => {

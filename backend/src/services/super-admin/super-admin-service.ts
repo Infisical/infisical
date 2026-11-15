@@ -21,7 +21,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { applyOverridableEnv, getConfig } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
@@ -184,8 +184,6 @@ export const superAdminServiceFactory = ({
     }
 
     const config = await instanceConfigService.updateConfig(data);
-
-    if (data.envOverrides !== undefined) applyOverridableEnv(await instanceConfigService.getInstanceConfig());
 
     if (data.microsoftTeamsAppId || data.microsoftTeamsClientSecret || data.microsoftTeamsBotId) {
       const { credentials, configUpdatedAt } = await instanceConfigService.getMicrosoftTeamsCredentials({

@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
@@ -124,10 +125,14 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 };
 
 export const GcpSyncFns = {
-  syncSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+  syncSecrets: async (
+    secretSync: TGcpSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
 
@@ -230,18 +235,25 @@ export const GcpSyncFns = {
     }
   },
 
-  getSecrets: async (secretSync: TGcpSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (
+    secretSync: TGcpSyncWithCredentials,
+    instanceConfigService: TInstanceConfigService
+  ): Promise<TSecretMap> => {
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
     return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+  removeSecrets: async (
+    secretSync: TGcpSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const secretMap = payload.flatten();
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
     for await (const [key] of Object.entries(gcpSecrets)) {

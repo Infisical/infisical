@@ -220,7 +220,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayPoolService,
     gatewayPoolMembershipDAL,
     gatewayV2DAL,
-    licenseService
+    licenseService,
+    instanceConfigService
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
@@ -631,7 +632,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
       try {
-        await validateCloud({ connectionDetails, credentials, orgId });
+        await validateCloud({ connectionDetails, credentials, orgId, instanceConfigService });
       } catch (err) {
         throw new BadRequestError({
           message: `Connection test failed: ${err instanceof Error ? err.message : "unable to validate credentials"}`

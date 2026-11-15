@@ -44,16 +44,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { email } = req.body;
 
-      const serverCfg = await server.services.instanceConfigService.getInstanceConfig();
-      if (!serverCfg.allowSignUp) {
+      const { allowSignUp, allowedSignUpDomain } = await server.services.instanceConfigService.getInstanceConfig();
+      if (!allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
       }
 
-      if (serverCfg?.allowedSignUpDomain) {
+      if (allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain)) {
+        if (!matchesAllowedEmailDomain(email, allowedSignUpDomain)) {
           throw new ForbiddenRequestError({
             message: `Email with a domain (@${domain}) is not supported`
           });
@@ -94,8 +94,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const serverCfg = await server.services.instanceConfigService.getInstanceConfig();
-      if (!serverCfg.allowSignUp) {
+      const { allowSignUp } = await server.services.instanceConfigService.getInstanceConfig();
+      if (!allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });

@@ -673,9 +673,9 @@ export const samlConfigServiceFactory = ({
     metadata,
     idpMfa
   }) => {
-    const serverCfg = await instanceConfigService.getInstanceConfig();
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
+    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.SAML)) {
       throw new ForbiddenRequestError({
         message: "Login with SAML is disabled by administrator."
       });

@@ -1,3 +1,4 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
@@ -558,6 +559,7 @@ export type TRotationFactory<
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   keyStore: Pick<TKeyStoreFactory, "acquireLock">,
+  instanceConfigService: TInstanceConfigService,
   passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;

@@ -228,9 +228,9 @@ import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { applyOverridableEnv, getConfig, TEnvConfig } from "@app/lib/config/env";
+import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
-import { startLocalRefresh, TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
+import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { RunMode } from "@app/lib/types";
@@ -612,7 +612,6 @@ import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
-import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
@@ -670,7 +669,8 @@ export const registerRoutes = async (
 
   if (envConfig.isApiRunModeEnabled) {
     await server.register(registerSecretScanningV2Webhooks, {
-      prefix: "/secret-scanning/webhooks"
+      prefix: "/secret-scanning/webhooks",
+      instanceConfigService
     });
   }
 
@@ -1162,6 +1162,7 @@ export const registerRoutes = async (
     honeyTokenConfigDAL,
     appConnectionDAL,
     kmsDataKeyService,
+    instanceConfigService,
     alertService
   });
   const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
@@ -1215,6 +1216,7 @@ export const registerRoutes = async (
 
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
+    instanceConfigService,
     queueService,
     projectDAL,
     licenseService,
@@ -1232,6 +1234,7 @@ export const registerRoutes = async (
 
   const auditLogService = auditLogServiceFactory({
     auditLogDAL,
+    instanceConfigService,
     clickhouseAuditLogDAL,
     permissionService,
     auditLogQueue,
@@ -2341,7 +2344,8 @@ export const registerRoutes = async (
     gatewayPoolService,
     gatewayV2DAL,
     auditLogService,
-    userDAL
+    userDAL,
+    instanceConfigService
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2371,6 +2375,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     appConnectionDAL,
     gitHubAppDAL,
+    instanceConfigService,
     licenseService,
     gatewayV2Service,
     gatewayPoolService,
@@ -2449,7 +2454,8 @@ export const registerRoutes = async (
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayV2Service,
     gatewayPoolService,
-    projectDAL
+    projectDAL,
+    instanceConfigService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -3409,7 +3415,12 @@ export const registerRoutes = async (
     delegatedApprovalService
   });
 
-  const objectStorageService = objectStorageServiceFactory({ appConnectionDAL, kmsDataKeyService, keyStore });
+  const objectStorageService = objectStorageServiceFactory({
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService,
+    keyStore
+  });
   objectStorageService.registerNamespaces([AgentVaultSessionLogsNamespace]);
   // Not awaited: a misconfigured instance bucket is logged, and must not hold up boot. Only pods that serve the API use
   // default storage, so only they check it.
@@ -3459,6 +3470,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     kmsDataKeyService,
+    instanceConfigService,
     projectDAL,
     licenseService
   });
@@ -3504,6 +3516,7 @@ export const registerRoutes = async (
     honeyTokenConfigDAL,
     permissionService,
     kmsDataKeyService,
+    instanceConfigService,
     licenseService,
     appConnectionDAL,
     appConnectionService
@@ -3517,6 +3530,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsDataKeyService,
+    instanceConfigService,
     appConnectionDAL,
     projectDAL,
     folderDAL,
@@ -3575,6 +3589,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     kmsDataKeyService,
+    instanceConfigService,
     permissionService,
     orgDAL,
     folderDAL,
@@ -3606,6 +3621,7 @@ export const registerRoutes = async (
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
     eventEmitter: eventOutboxService,
+    instanceConfigService,
     alertService,
     secretRotationV2DAL,
     permissionService,
@@ -3715,6 +3731,7 @@ export const registerRoutes = async (
 
   const pkiSyncQueue = pkiSyncQueueFactory({
     queueService,
+    instanceConfigService,
     kmsDataKeyService,
     kmsKeyService,
     appConnectionDAL,
@@ -3797,6 +3814,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    instanceConfigService,
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -3909,6 +3927,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
+    instanceConfigService,
     pkiApplicationDAL,
     certificateAuthorityDAL,
     permissionService,
@@ -4061,6 +4080,7 @@ export const registerRoutes = async (
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
+    instanceConfigService,
     certificateAuthorityDAL,
     appConnectionDAL,
     appConnectionService,
@@ -4301,6 +4321,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     kmsDataKeyService,
+    instanceConfigService,
     permissionService,
     projectDAL
   });
@@ -4313,6 +4334,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     permissionService,
     kmsDataKeyService,
+    instanceConfigService,
     gatewayV2Service,
     gatewayV2DAL,
     gatewayPoolService,
@@ -4774,6 +4796,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     kmsDataKeyService,
+    instanceConfigService,
     keyStore,
     appConnectionDAL,
     notificationService,
@@ -4800,6 +4823,7 @@ export const registerRoutes = async (
     secretScanningV2DAL,
     secretScanningV2Queue,
     kmsDataKeyService,
+    instanceConfigService,
     appConnectionDAL,
     keyStore
   });
@@ -5075,9 +5099,9 @@ export const registerRoutes = async (
     globalThis.testServices = server.services;
   }
 
-  // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
-  // (env overrides, license plan, admin integration config), so an API pod that stopped
-  // running them would serve stale config rather than shed background work.
+  // Not gated by run mode, unlike the cron manager above: these refresh this process's own state
+  // (license plan, Microsoft Teams bot), so an API pod that stopped running them would serve stale
+  // config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
     const licenseSyncJob = domains.license.startBackgroundSync();
@@ -5089,17 +5113,6 @@ export const registerRoutes = async (
     if (microsoftTeamsSyncJob) {
       cronJobs.push(microsoftTeamsSyncJob);
     }
-  }
-
-  // Until every reader takes overridable values from instanceConfigService, this process's env holder gets them at
-  // boot and every five minutes.
-  const syncOverridableEnv = async () => applyOverridableEnv(await instanceConfigService.getInstanceConfig());
-  await syncOverridableEnv();
-  cronJobs.push(startLocalRefresh({ name: "env-config-sync", intervalMs: 5 * 60 * 1000, task: syncOverridableEnv }));
-
-  const oauthConfigSyncJob = await initializeOauthConfigSync();
-  if (oauthConfigSyncJob) {
-    cronJobs.push(oauthConfigSyncJob);
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -5181,7 +5194,7 @@ export const registerRoutes = async (
     },
     handler: async () => {
       const cfg = getConfig();
-      const { allowSignUp } = await instanceConfigService.getInstanceConfig();
+      const { allowSignUp, DISABLE_POSTGRES_AUDIT_LOG_STORAGE } = await instanceConfigService.getInstanceConfig();
 
       const meanLagMs = histogram.mean / 1e6;
       const maxLagMs = histogram.max / 1e6;
@@ -5203,7 +5216,7 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
+        auditLogStorageDisabled: Boolean(DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
         maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
       };
     }

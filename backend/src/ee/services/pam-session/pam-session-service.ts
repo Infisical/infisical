@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -105,6 +106,7 @@ type TPamSessionServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -132,6 +134,7 @@ export const pamSessionServiceFactory = ({
   membershipRoleDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   gatewayV2Service,
   gatewayV2DAL,
   gatewayPoolService,
@@ -291,6 +294,7 @@ export const pamSessionServiceFactory = ({
         authMethod: credentials.authMethod as string,
         serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
         orgId,
+        instanceConfigService,
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
