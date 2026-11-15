@@ -175,7 +175,7 @@ const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPre
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
   [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
-  [SecretSync.Vercel]: vercelPreSaveTransformDestinationConfig
+  [SecretSync.Vercel]: vercelPreSaveTransformDestinationConfig,
   [SecretSync.GitHub]: gitHubPreSaveTransformDestinationConfig
 };
 

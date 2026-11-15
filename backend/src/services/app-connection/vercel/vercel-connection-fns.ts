@@ -50,7 +50,8 @@ export const validateVercelConnectionCredentials = async (config: TVercelConnect
     if (error instanceof AxiosError) {
       if (error.response?.status === 401 || error.response?.status === 403) {
         throw new BadRequestError({
-          message: `Failed to validate the Vercel API token using '${IntegrationUrls.VERCEL_API_URL}/v10/projects'. Verify that the token is valid, has not expired, and has access to the projects you want to sync.`
+          message:
+            "Failed to validate the Vercel API token. Verify that the token is valid, has not expired, and has access to the projects you want to sync."
         });
       }
 
@@ -100,7 +101,7 @@ async function fetchAllPages<T>({
     pageCount += 1;
     if (pageCount > VERCEL_MAX_PAGES) {
       throw new BadRequestError({
-        message: `Vercel returned too many pages of results from '${apiUrl}'. Try again later.`
+        message: "Vercel returned too many pages of results. Try again later."
       });
     }
 
@@ -115,7 +116,7 @@ async function fetchAllPages<T>({
 
       if (!response?.data) {
         throw new InternalServerError({
-          message: `Failed to fetch Vercel resources from '${apiUrl}': the response was empty or malformed. Try again later.`
+          message: "Vercel returned an empty or invalid response while loading resources. Try again later."
         });
       }
 
@@ -131,7 +132,7 @@ async function fetchAllPages<T>({
 
       if (!Array.isArray(itemsData)) {
         throw new InternalServerError({
-          message: `Failed to fetch Vercel resources from '${apiUrl}': the response did not contain a resource list. Expected array but got ${typeof itemsData}.`
+          message: "Vercel returned an invalid resource list. Try again later."
         });
       }
 
@@ -146,7 +147,7 @@ async function fetchAllPages<T>({
       if (error instanceof AxiosError) {
         throw new BadRequestError({
           error,
-          message: `Failed to fetch Vercel resources from '${apiUrl}': ${error.message || "Unknown error"}. Verify the API token's permissions and try again.`
+          message: "Failed to load Vercel resources. Verify the API token's permissions and try again."
         });
       }
       throw error;

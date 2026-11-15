@@ -83,6 +83,7 @@ describe("validateVercelConnectionCredentials", () => {
     await expect(validation).rejects.toMatchObject({ name: "BadRequest" });
     await expect(validation).rejects.toThrow("has access to the projects");
     await expect(validation).rejects.not.toThrow(config.credentials.apiToken);
+    await expect(validation).rejects.not.toThrow("https://");
     expect(getMock).toHaveBeenCalledTimes(1);
   });
 
@@ -263,7 +264,7 @@ describe("Vercel connection project discovery service", () => {
 
       const result = service.listProjects(connection.id, actor);
       await expect(result).rejects.toMatchObject({ name: "BadRequest" });
-      await expect(result).rejects.toThrow("Failed to fetch Vercel resources");
+      await expect(result).rejects.toThrow("Failed to load Vercel resources");
       expect(logErrorMock).toHaveBeenCalledTimes(1);
     }
   );
@@ -297,6 +298,18 @@ describe("Vercel connection project discovery service", () => {
     });
     expect(logErrorMock).toHaveBeenCalledTimes(1);
   });
+
+  it("does not expose request URLs or provider details when loading projects fails", async () => {
+    getMock.mockRejectedValueOnce(
+      new AxiosError(`Request failed for https://api.vercel.com/v2/teams?token=${config.credentials.apiToken}`)
+    );
+
+    const result = service.listProjects(connection.id, actor);
+
+    await expect(result).rejects.toThrow("Failed to load Vercel resources");
+    await expect(result).rejects.not.toThrow("https://");
+    await expect(result).rejects.not.toThrow(config.credentials.apiToken);
+  });
 });
 
 describe("listTeams pagination", () => {
@@ -317,7 +330,10 @@ describe("listTeams pagination", () => {
   it("stops instead of looping forever if Vercel keeps returning a cursor", async () => {
     getMock.mockResolvedValue({ data: { teams: [], pagination: { next: 1000 } } });
 
-    await expect(listTeams(connection)).rejects.toThrow("Vercel returned too many pages");
+    const result = listTeams(connection);
+
+    await expect(result).rejects.toThrow("Vercel returned too many pages");
+    await expect(result).rejects.not.toThrow("https://");
     expect(getMock).toHaveBeenCalledTimes(100);
   });
 });
