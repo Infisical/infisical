@@ -32,7 +32,11 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
-import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import {
+  certKeyAlgorithmToNameMap,
+  NON_PQC_KEY_ALGORITHMS,
+  PQC_KEY_ALGORITHMS
+} from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm, CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 
@@ -78,6 +82,12 @@ type InventorySearch = {
   filterCaId?: string;
   filterExpiresDays?: string;
   filterExpiresAfterDays?: string;
+  viewId?: string;
+};
+
+const VIEW_KEY_ALGORITHMS: Partial<Record<string, readonly string[]>> = {
+  "system-pqc": PQC_KEY_ALGORITHMS,
+  "system-non-pqc": NON_PQC_KEY_ALGORITHMS
 };
 
 const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
@@ -88,11 +98,13 @@ const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
       field: "enrollmentType",
       values: [search.filterEnrollmentType]
     });
+  const viewAlgorithms = VIEW_KEY_ALGORITHMS[search.viewId ?? ""];
   if (search.filterKeyAlgorithm)
     filters.push({
       field: "keyAlgorithm",
       values: [search.filterKeyAlgorithm]
     });
+  else if (viewAlgorithms) filters.push({ field: "keyAlgorithm", values: [...viewAlgorithms] });
   if (search.filterCaId) filters.push({ field: "caId", values: [search.filterCaId] });
   if (search.filterExpiresDays)
     filters.push({
@@ -100,7 +112,7 @@ const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
       operator: "before",
       values: [dateIn(search.filterExpiresDays)]
     });
-  else if (search.filterExpiresAfterDays)
+  if (search.filterExpiresAfterDays)
     filters.push({
       field: "notAfter",
       operator: "after",

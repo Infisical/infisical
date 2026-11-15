@@ -385,6 +385,7 @@ export const ApprovalPolicies = ({
             icon="search"
             aria-label="Search approval policies"
             placeholder="Search by name, environment or secret path"
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

@@ -118,6 +118,7 @@ export const AgentVaultMembersTab = () => {
             icon="search"
             aria-label="Search users..."
             placeholder="Search users..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

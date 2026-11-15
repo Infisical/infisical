@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from "react";
+
 import {
   displayHostPattern,
   HTTP_METHODS,
@@ -7,18 +9,35 @@ import {
   type TServiceForm,
   UNCHANGED_SECRET
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
+import type {
+  AgentVaultHttpTemplate,
+  AgentVaultMcpTemplate,
+  AgentVaultTemplate
+} from "@app/helpers/agentVaultTemplates";
 import {
   AGENT_VAULT_NATIVE_DEFAULT_PORTS,
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   type TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault/enums";
 import type {
   TAgentVaultMemberProvidedField,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
+
+export type TServiceErrors = Record<string, string | undefined>;
+
+export type TServiceFormApi = {
+  form: TServiceForm;
+  set: <K extends keyof TServiceForm>(key: K, value: TServiceForm[K]) => void;
+  patch: (values: Partial<TServiceForm>) => void;
+  err: (key: string) => string | undefined;
+  setErrors: Dispatch<SetStateAction<TServiceErrors>>;
+};
 
 export const BLANK_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Http,
@@ -185,7 +204,52 @@ export const formFromService = (service: TAgentVaultService): TServiceForm => {
   };
 };
 
-export const editUnavailableReason = (service: TAgentVaultService) =>
-  service.credential.type === AgentVaultCredentialType.OAuth
-    ? "Editing an OAuth service isn't available in v4 yet"
-    : undefined;
+export const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
+  const blank = {
+    ...blankFormOf(AgentVaultServiceType.Mcp),
+    credentialType: AgentVaultCredentialType.OAuth
+  };
+  if (!picked) return blank;
+  const { credential } = picked;
+  return {
+    ...blank,
+    name: picked.key,
+    serverUrl: picked.serverUrl,
+    transport: picked.transport,
+    credentialType: credential.type,
+    ...(credential.type === AgentVaultCredentialType.Bearer && {
+      headerName: credential.headerName ?? "Authorization",
+      headerPrefix: credential.headerPrefix ?? "Bearer"
+    })
+  };
+};
+
+// A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
+export const httpFormFromTemplate = (picked: AgentVaultHttpTemplate | null): TServiceForm => {
+  if (!picked) return BLANK_SERVICE_FORM;
+  const hosts = picked.hostPattern.split(",").map((host) => host.trim());
+  const { credential } = picked;
+  return {
+    ...BLANK_SERVICE_FORM,
+    name: picked.key,
+    hosts: hosts.filter((host) => !hostError(host, [])),
+    hostDraft: hosts.find((host) => Boolean(hostError(host, []))) ?? "",
+    credentialType: credential.type,
+    ...(credential.type === AgentVaultCredentialType.Bearer && {
+      headerName: credential.headerName ?? "Authorization",
+      headerPrefix: credential.headerPrefix ?? "Bearer"
+    }),
+    ...(credential.type === AgentVaultCredentialType.Basic &&
+      credential.username && { username: credential.username })
+  };
+};
+
+export const formFromTemplate = (
+  picked: AgentVaultTemplate | null,
+  serviceType: AgentVaultServiceType
+): TServiceForm => {
+  if (isNativeServiceType(serviceType)) return blankFormOf(serviceType);
+  if (serviceType === AgentVaultServiceType.Mcp)
+    return mcpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Mcp ? picked : null);
+  return httpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Http ? picked : null);
+};

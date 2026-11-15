@@ -144,6 +144,7 @@ export const UsersTab = () => {
             icon="search"
             aria-label="Search users"
             placeholder="Search users..."
+            slashShortcut
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);

@@ -86,7 +86,7 @@ const RequestStatus = ({
 }: {
   request: TCertificateRequestListItem;
   orgId: string;
-  applicationName: string;
+  applicationName?: string;
 }) => {
   const meta = statusMeta[request.status] ?? { label: request.status, tone: "outline" };
   if (request.status === CertificateRequestStatus.PENDING_APPROVAL && request.approvalRequestId)
@@ -95,7 +95,7 @@ const RequestStatus = ({
         <a
           href={orgHref(
             orgId,
-            `/cert-manager/approvals/${request.approvalRequestId}?applicationName=${encodeURIComponent(applicationName)}`
+            `/cert-manager/approvals/${request.approvalRequestId}${applicationName ? `?applicationName=${encodeURIComponent(applicationName)}` : ""}`
           )}
         >
           Pending approval
@@ -123,15 +123,13 @@ export const RequestsTab = ({
   access
 }: {
   orgId: string;
-  application: TPkiApplication;
-  access: PkiApplicationPermission;
+  application?: TPkiApplication;
+  access?: PkiApplicationPermission;
 }) => {
   const [requesting, setRequesting] = useState(false);
-  const canRequest = appCan(
-    access,
-    PkiApplicationResourceActions.Create,
-    PkiApplicationResourceSub.Certificates
-  );
+  const canRequest =
+    access &&
+    appCan(access, PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Certificates);
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
@@ -144,8 +142,12 @@ export const RequestsTab = ({
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | StatusFilter
     | undefined;
-  const { data, isPending } = adapter.useCertificateRequests({
-    applicationId: application.id,
+  const {
+    data,
+    isPending,
+    error: loadError
+  } = adapter.useCertificateRequests({
+    applicationId: application?.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
     sortBy: "createdAt",
@@ -215,7 +217,7 @@ export const RequestsTab = ({
       header: "Status",
       width: 176,
       render: (request) => (
-        <RequestStatus request={request} orgId={orgId} applicationName={application.name} />
+        <RequestStatus request={request} orgId={orgId} applicationName={application?.name} />
       )
     },
     {
@@ -253,6 +255,7 @@ export const RequestsTab = ({
             icon="search"
             aria-label="Search certificate requests"
             placeholder="Search by SAN or CN"
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -261,17 +264,19 @@ export const RequestsTab = ({
           />
         }
         actions={
-          <Button
-            variant="primary"
-            icon="plus"
-            disabledReason={canRequest ? undefined : RESTRICTED}
-            onClick={() => setRequesting(true)}
-          >
-            Request certificate
-          </Button>
+          application && (
+            <Button
+              variant="primary"
+              icon="plus"
+              disabledReason={canRequest ? undefined : RESTRICTED}
+              onClick={() => setRequesting(true)}
+            >
+              Request certificate
+            </Button>
+          )
         }
       />
-      {requesting && (
+      {requesting && application && (
         <RequestCertificateSheet
           applicationId={application.id}
           applicationName={application.name}
@@ -279,7 +284,7 @@ export const RequestsTab = ({
         />
       )}
       <DataTable
-        label={`Certificate requests in ${application.name}`}
+        label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
         rows={rows}
         loading={isPending}
         columns={columns}
@@ -305,7 +310,7 @@ export const RequestsTab = ({
                       navigate({
                         to: certificatePath,
                         params: { orgId, certificateId: request.certificateId ?? "" },
-                        search: { fromApplication: application.name }
+                        search: application ? { fromApplication: application.name } : {}
                       })
                     }
                   >
@@ -334,7 +339,10 @@ export const RequestsTab = ({
           }
         }}
         empty={
-          filtered ? (
+          (Boolean(loadError) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load certificate requests" />
+          )) ||
+          (filtered ? (
             <EmptyState
               size="sm"
               icon="search"
@@ -354,7 +362,7 @@ export const RequestsTab = ({
             />
           ) : (
             <EmptyState size="sm" icon="inbox" title="No certificate requests yet" />
-          )
+          ))
         }
         persistentStatus={totalCount ? plural(totalCount, "request", "requests") : undefined}
         pagination={

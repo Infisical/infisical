@@ -122,6 +122,7 @@ export const AccessManagementPage = () => {
               icon="search"
               aria-label="Search server admins"
               placeholder="Search admins..."
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

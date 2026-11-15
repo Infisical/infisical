@@ -399,6 +399,7 @@ export const PamIdentitiesTab = () => {
             icon="search"
             aria-label="Search machine identities..."
             placeholder="Search machine identities..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

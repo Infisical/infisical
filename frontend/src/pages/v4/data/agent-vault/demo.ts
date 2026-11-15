@@ -3,6 +3,7 @@ import {
   AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
+  AgentVaultOauthAuthorizationStatus,
   AgentVaultServiceType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus
@@ -19,6 +20,7 @@ import type {
   TAgentVaultSessionActor,
   TAgentVaultSessionInlineService,
   TChangeAgentVaultDelegationSubjectsDTO,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
   TSetAgentVaultDelegationDTO,
   TUpdateAgentVaultMemberRolesDTO,
@@ -744,5 +746,15 @@ export const agentVaultDemo: AgentVaultAdapter = {
         users.length || groups.length ? { ...existing, users, groups, updatedAt: now() } : null;
       delegations.update((all) => ({ ...all, [key]: detail }));
       return detail;
-    })()
+    })(),
+  useCompleteOauthAuthorization: fixtureMutation(
+    ({ authorizationId, error, errorDescription }: TCompleteAgentVaultOauthAuthorizationDTO) => ({
+      id: authorizationId,
+      status: error
+        ? AgentVaultOauthAuthorizationStatus.Failed
+        : AgentVaultOauthAuthorizationStatus.Authorized,
+      error: error ? (errorDescription ?? error) : null,
+      scopes: []
+    })
+  )
 };

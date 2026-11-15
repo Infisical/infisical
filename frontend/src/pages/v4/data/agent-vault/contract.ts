@@ -11,7 +11,9 @@ import type {
   TAddAgentVaultProductMembersDTO,
   TAgentVaultDelegationDetail,
   TAgentVaultMintedSession,
+  TAgentVaultOauthAuthorization,
   TAgentVaultSession,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
   TListAgentVaultProxiesDTO,
   TUpdateAgentVaultSessionLabelDTO,
@@ -61,7 +63,7 @@ export type AgentVaultAdapter = {
     orgId: string,
     projectId: string,
     params: TListAgentVaultSessionsDTO,
-    options?: { enabled?: boolean }
+    options?: { enabled?: boolean; pollUntil?: (data: TAgentVaultSessionList) => boolean }
   ) => V4QueryResult<TAgentVaultSessionList>;
   useSession: (
     orgId: string,
@@ -84,7 +86,11 @@ export type AgentVaultAdapter = {
     orgId: string,
     projectId: string,
     params: TListAgentVaultProxiesDTO,
-    options?: { enabled?: boolean; refetchOnWindowFocus?: "always" }
+    options?: {
+      enabled?: boolean;
+      refetchOnWindowFocus?: "always";
+      pollUntil?: (data: TAgentVaultProxyList) => boolean;
+    }
   ) => V4QueryResult<TAgentVaultProxyList>;
   useAccessBundles: (
     orgId: string,
@@ -160,5 +166,9 @@ export type AgentVaultAdapter = {
     projectId: string
   ) => ReturnType<
     V4Mutation<TChangeAgentVaultDelegationSubjectsDTO, TAgentVaultDelegationDetail | null>
+  >;
+  useCompleteOauthAuthorization: V4Mutation<
+    TCompleteAgentVaultOauthAuthorizationDTO,
+    TAgentVaultOauthAuthorization
   >;
 };

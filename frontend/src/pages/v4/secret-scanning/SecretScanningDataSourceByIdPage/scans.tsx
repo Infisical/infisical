@@ -185,6 +185,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
             icon="search"
             aria-label={`Search scans by ${resource.singularNoun}`}
             placeholder={`Search by ${resource.singularNoun}...`}
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

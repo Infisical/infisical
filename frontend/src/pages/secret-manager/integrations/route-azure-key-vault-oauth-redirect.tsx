@@ -9,6 +9,7 @@ import { AzureKeyVaultOauthCallbackQueryParamsSchema } from "./AzureKeyVaultOaut
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(AzureKeyVaultOauthCallbackQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

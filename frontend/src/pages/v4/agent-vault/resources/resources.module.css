@@ -45,3 +45,54 @@
   flex: 0 1 auto;
   min-width: 0;
 }
+
+.variableKey {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--cipher-type-mono-font-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.templateSection {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 var(--cipher-space-12);
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-eyebrow-font-family);
+  font-size: var(--cipher-type-eyebrow-font-size);
+  line-height: var(--cipher-type-eyebrow-line-height);
+  font-weight: var(--cipher-type-eyebrow-font-weight);
+  letter-spacing: var(--cipher-type-eyebrow-letter-spacing);
+  text-transform: uppercase;
+}
+.fieldRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cipher-space-12);
+}
+.grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.prefixCell {
+  flex: none;
+  width: calc(var(--cipher-size-cell-min) * 1.75);
+}
+.miniLabel {
+  display: block;
+  margin-bottom: var(--cipher-space-field-label);
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.rowAction {
+  display: inline-flex;
+}
+.rowAction[data-first] {
+  margin-top: calc(var(--cipher-type-small-line-height) + var(--cipher-space-field-label));
+}

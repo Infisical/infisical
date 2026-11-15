@@ -85,6 +85,7 @@ export const DocsIntegrationsTab = ({ kind }: { kind: keyof typeof SOURCES }) =>
             icon="search"
             aria-label={`Search ${label.toLowerCase()}`}
             placeholder={`Search ${label.toLowerCase()}...`}
+            slashShortcut
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
