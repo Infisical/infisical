@@ -454,7 +454,7 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     const needle = search?.trim().toLowerCase();
     const matched = requests
       .use()
-      .filter((entry) => entry.applicationId === applicationId)
+      .filter((entry) => !applicationId || entry.applicationId === applicationId)
       .filter(
         (entry) =>
           !needle ||
