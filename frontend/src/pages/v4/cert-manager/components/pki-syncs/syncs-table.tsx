@@ -10,7 +10,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipText } from "@infisical/cipher/ui/tooltip";
 
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -53,39 +52,42 @@ export const pkiSyncHref = (orgId: string, sync: TPkiSync, fromApplication?: str
 const NameCell = ({ sync, href }: { sync: TPkiSync; href: string }) => {
   const go = useGo();
   const { canRead } = usePkiSyncPermissions(sync);
+  return (
+    <Inline gap={6} align="center" wrap={false}>
+      {canRead ? (
+        <RowLink link={go.link(href)} title={sync.name} chevron={false}>
+          {sync.name}
+        </RowLink>
+      ) : (
+        <TooltipText data-row-interactive content={RESTRICTED}>
+          {sync.name}
+        </TooltipText>
+      )}
+      {sync.description && (
+        <Tooltip content={sync.description}>
+          <span data-row-interactive aria-label="Description">
+            <Icon name="info" size="var(--cipher-size-icon-xs)" />
+          </span>
+        </Tooltip>
+      )}
+      {!sync.applicationId && (
+        <TooltipText
+          data-row-interactive
+          content="Created outside an application. It stays editable here."
+        >
+          <Badge tone="soft">Legacy</Badge>
+        </TooltipText>
+      )}
+    </Inline>
+  );
+};
+
+const DestinationCell = ({ sync }: { sync: TPkiSync }) => {
   const destination = PKI_SYNC_MAP[sync.destination];
   return (
     <Inline gap={8} align="center" wrap={false}>
-      <ProviderIcon icon={destination.image} alt={destination.name} size="sm" />
-      <Stack gap={2} style={{ minWidth: 0 }}>
-        <Inline gap={6} align="center" wrap={false}>
-          {canRead ? (
-            <RowLink link={go.link(href)} title={sync.name}>
-              {sync.name}
-            </RowLink>
-          ) : (
-            <TooltipText data-row-interactive content={RESTRICTED}>
-              {sync.name}
-            </TooltipText>
-          )}
-          {sync.description && (
-            <Tooltip content={sync.description}>
-              <span data-row-interactive aria-label="Description">
-                <Icon name="info" size="var(--cipher-size-icon-xs)" />
-              </span>
-            </Tooltip>
-          )}
-          {!sync.applicationId && (
-            <TooltipText
-              data-row-interactive
-              content="Created outside an application. It stays editable here."
-            >
-              <Badge tone="soft">Legacy</Badge>
-            </TooltipText>
-          )}
-        </Inline>
-        <Meta>{destination.name}</Meta>
-      </Stack>
+      <ProviderIcon icon={destination.image} alt="" size="sm" />
+      {destination.name}
     </Inline>
   );
 };
@@ -175,6 +177,10 @@ export const PkiSyncsTable = ({
       const order = (() => {
         switch (sort.columnId) {
           case "destination":
+            return destinationNameOf(a.destination)
+              .toLowerCase()
+              .localeCompare(destinationNameOf(b.destination).toLowerCase());
+          case "connection":
             return connectionNameOf(a)
               .toLowerCase()
               .localeCompare(connectionNameOf(b).toLowerCase());
@@ -238,9 +244,17 @@ export const PkiSyncsTable = ({
     },
     {
       id: "destination",
+      header: "Destination",
+      sortable: true,
+      width: 240,
+      text: (sync) => destinationNameOf(sync.destination),
+      render: (sync) => <DestinationCell sync={sync} />
+    },
+    {
+      id: "connection",
       header: "Connection",
       sortable: true,
-      width: 220,
+      width: 200,
       text: connectionNameOf,
       render: connectionNameOf
     },
@@ -264,7 +278,7 @@ export const PkiSyncsTable = ({
           { key: "status", label: "Status", type: "multi-select", options: STATUS_FILTERS },
           {
             key: "destination",
-            label: "Service",
+            label: "Destination",
             type: "multi-select",
             options: presentDestinations.map((destination) => ({
               value: destination,
