@@ -132,7 +132,6 @@ export const ServicesTable = ({
   onSortChange,
   empty,
   pagination,
-  editDisabledReason,
   onEdit,
   onSetUp
 }: {
@@ -146,7 +145,6 @@ export const ServicesTable = ({
   onSortChange: (sort: { columnId: string; direction: "asc" | "desc" }) => void;
   empty: ReactNode;
   pagination?: ReactNode;
-  editDisabledReason: (service: TAgentVaultService) => string | undefined;
   onEdit: (service: TAgentVaultService) => void;
   onSetUp: (service: TAgentVaultService) => void;
 }) => {
@@ -250,7 +248,6 @@ export const ServicesTable = ({
           {
             label: "Edit service",
             icon: PencilIcon,
-            disabledReason: editDisabledReason,
             onSelect: onEdit
           }
         ]
