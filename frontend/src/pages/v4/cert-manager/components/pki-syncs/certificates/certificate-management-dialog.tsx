@@ -102,6 +102,7 @@ export const CertificateManagementDialog = ({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selected, setSelected] = useState<string[]>(selectedOrderIds);
+  const selectedOrderSet = new Set(selected);
   const orderNamesSeen = useRef(new Map<string, string>());
   const initialSelection = new Set(selectedOrderIds);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -145,16 +146,20 @@ export const CertificateManagementDialog = ({
   };
 
   const changeSelection = (nextRowIds: string[]) => {
-    const pageOrderIds = certificates
-      .map((cert) => cert.orderId)
-      .filter((orderId): orderId is string => Boolean(orderId));
+    const pageOrderIds = new Set(
+      certificates
+        .map((cert) => cert.orderId)
+        .filter((orderId): orderId is string => Boolean(orderId))
+    );
+    const nextRowIdSet = new Set(nextRowIds);
+    const selectedSet = new Set(selected);
     const nextPageOrderIds = new Set(
       certificates
-        .filter((cert) => cert.orderId && nextRowIds.includes(cert.id))
+        .filter((cert) => cert.orderId && nextRowIdSet.has(cert.id))
         .map((cert) => cert.orderId as string)
     );
-    const kept = selected.filter((id) => !pageOrderIds.includes(id) || nextPageOrderIds.has(id));
-    const added = [...nextPageOrderIds].filter((id) => !selected.includes(id));
+    const kept = selected.filter((id) => !pageOrderIds.has(id) || nextPageOrderIds.has(id));
+    const added = [...nextPageOrderIds].filter((id) => !selectedSet.has(id));
 
     if (!added.length) {
       setSelected(kept);
@@ -232,7 +237,7 @@ export const CertificateManagementDialog = ({
               rowLabel={(cert) => getCertificateDisplayName(cert).originalDisplayName}
               selectable
               selectedIds={certificates
-                .filter((cert) => cert.orderId && selected.includes(cert.orderId))
+                .filter((cert) => cert.orderId && selectedOrderSet.has(cert.orderId))
                 .map((cert) => cert.id)}
               onSelectionChange={changeSelection}
               selectionDisabledReason={selectionBlock}

@@ -354,14 +354,15 @@ const result = <T>(data: T) => ({ data, isPending: false, error: null });
 const distribution = (
   certs: TCertificate[],
   key: (cert: TCertificate) => { id?: string; label: string }
-): TDashboardDistribution[] =>
-  Object.values(
-    certs.reduce<Record<string, TDashboardDistribution>>((groups, cert) => {
-      const { id, label } = key(cert);
-      const group = groups[label] ?? { id, label, count: 0 };
-      return { ...groups, [label]: { ...group, count: group.count + 1 } };
-    }, {})
-  );
+): TDashboardDistribution[] => {
+  const groups = new Map<string, TDashboardDistribution>();
+  certs.forEach((cert) => {
+    const { id, label } = key(cert);
+    const group = groups.get(label) ?? { id, label, count: 0 };
+    groups.set(label, { ...group, count: group.count + 1 });
+  });
+  return [...groups.values()];
+};
 
 const bucketCounts = (labels: string[], values: string[]) =>
   labels.map((bucket) => ({ bucket, count: values.filter((value) => value === bucket).length }));
@@ -517,6 +518,13 @@ export const certificatesDemo: CertificatesAdapter = {
     const sources = asList(dto.source);
     const direction = dto.sortOrder === "desc" ? -1 : 1;
     const sortKey = dto.sortBy === "notBefore" ? "notBefore" : "notAfter";
+    const statusSet = new Set<string>(statuses);
+    const algorithmSet = new Set<string>(algorithms);
+    const sourceSet = new Set<string>(sources);
+    const keySizeSet = new Set(dto.keySizes);
+    const caIdSet = new Set(dto.caIds);
+    const profileIdSet = new Set(dto.profileIds);
+    const enrollmentTypeSet = new Set<string>(dto.enrollmentTypes);
     const matched = store
       .use()
       .filter((cert) => dto.includeDeleted || !cert.deletedAt)
@@ -527,16 +535,13 @@ export const certificatesDemo: CertificatesAdapter = {
             value.toLowerCase().includes(needle)
           )
       )
-      .filter((cert) => !statuses.length || statuses.includes(cert.status))
-      .filter((cert) => !algorithms.length || algorithms.includes(cert.keyAlgorithm ?? ""))
-      .filter((cert) => !sources.length || sources.includes(cert.source ?? CertSource.Issued))
-      .filter((cert) => !dto.keySizes?.length || dto.keySizes.includes(keySize(cert.keyAlgorithm)))
-      .filter((cert) => !dto.caIds?.length || dto.caIds.includes(cert.caId))
-      .filter((cert) => !dto.profileIds?.length || dto.profileIds.includes(cert.profileId ?? ""))
-      .filter(
-        (cert) =>
-          !dto.enrollmentTypes?.length || dto.enrollmentTypes.includes(cert.enrollmentType ?? "")
-      )
+      .filter((cert) => !statusSet.size || statusSet.has(cert.status))
+      .filter((cert) => !algorithmSet.size || algorithmSet.has(cert.keyAlgorithm ?? ""))
+      .filter((cert) => !sourceSet.size || sourceSet.has(cert.source ?? CertSource.Issued))
+      .filter((cert) => !keySizeSet.size || keySizeSet.has(keySize(cert.keyAlgorithm)))
+      .filter((cert) => !caIdSet.size || caIdSet.has(cert.caId))
+      .filter((cert) => !profileIdSet.size || profileIdSet.has(cert.profileId ?? ""))
+      .filter((cert) => !enrollmentTypeSet.size || enrollmentTypeSet.has(cert.enrollmentType ?? ""))
       .filter((cert) => within(cert.notAfter, dto.notAfterFrom, dto.notAfterTo))
       .filter((cert) => within(cert.notBefore, dto.notBeforeFrom, dto.notBeforeTo))
       .sort((a, b) => a[sortKey].localeCompare(b[sortKey]) * direction);

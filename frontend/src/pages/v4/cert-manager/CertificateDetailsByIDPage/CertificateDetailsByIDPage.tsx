@@ -88,12 +88,15 @@ const algorithmLabel = (algorithm?: string | null) =>
   (algorithm && certKeyAlgorithmToNameMap[algorithm as CertKeyAlgorithm]) || algorithm || "None";
 
 const chainOf = (cert: TCertificate, authorities: TUnifiedCertificateAuthority[]) => {
+  const byId = new Map(authorities.map((ca) => [ca.id, ca]));
   const chain: TUnifiedCertificateAuthority[] = [];
-  let next = authorities.find((ca) => ca.id === cert.caId);
-  while (next && !chain.includes(next)) {
+  const seen = new Set<string>();
+  let next = byId.get(cert.caId);
+  while (next && !seen.has(next.id)) {
     chain.push(next);
+    seen.add(next.id);
     const parentId = next.type === CaType.INTERNAL ? next.configuration.parentCaId : undefined;
-    next = parentId ? authorities.find((ca) => ca.id === parentId) : undefined;
+    next = parentId ? byId.get(parentId) : undefined;
   }
   return chain;
 };

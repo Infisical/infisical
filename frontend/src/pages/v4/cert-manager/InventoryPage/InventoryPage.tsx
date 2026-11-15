@@ -169,6 +169,7 @@ export const InventoryPage = () => {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>(() => filtersFromSearch(search));
   const [hidden, setHidden] = useState<string[]>(["issued", "algorithm"]);
+  const hiddenSet = new Set(hidden);
   const [sort, setSort] = useState<{
     columnId: string;
     direction: "asc" | "desc";
@@ -481,7 +482,7 @@ export const InventoryPage = () => {
           label="Certificates"
           rows={rows}
           loading={isPending}
-          columns={columns.filter((column) => !hidden.includes(column.id))}
+          columns={columns.filter((column) => !hiddenSet.has(column.id))}
           getRowId={(r) => r.id}
           rowLabel={(r) => certificateName(r)}
           rowActions={{

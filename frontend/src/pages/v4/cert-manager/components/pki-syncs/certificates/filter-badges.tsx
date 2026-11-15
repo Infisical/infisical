@@ -125,8 +125,9 @@ export const buildPkiSyncFilterSummary = ({
     }
   ];
 
+  const visible = new Set(visibleKinds);
   return summary
-    .filter(({ kind }) => visibleKinds.includes(kind))
+    .filter(({ kind }) => visible.has(kind))
     .map(({ label, value }) => ({ label, value }));
 };
 

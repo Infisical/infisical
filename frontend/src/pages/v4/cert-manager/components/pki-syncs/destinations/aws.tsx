@@ -103,7 +103,7 @@ export function AwsElasticLoadBalancerFields() {
       replace([]);
     }
     previousRegion.current = region;
-  }, [region, setValue, replace]);
+  }, [region, loadBalancerArn, setValue, replace]);
 
   useEffect(() => {
     if (!loadBalancerArn || !listenerList || listenerList.length === 0) return;

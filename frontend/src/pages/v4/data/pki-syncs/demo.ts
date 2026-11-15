@@ -559,18 +559,20 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
       isFetching: false
     };
   },
-  useCertificateOrders: ({ certificateOrderIds }) =>
-    ready(
+  useCertificateOrders: ({ certificateOrderIds }) => {
+    const ids = new Set(certificateOrderIds);
+    return ready(
       new Map(
         previewPool
-          .filter((entry) => entry.orderId && certificateOrderIds.includes(entry.orderId))
+          .filter((entry) => entry.orderId && ids.has(entry.orderId))
           .map((entry) => [entry.orderId!, entry.commonName])
       )
-    ),
-  useAvailableConnections: (apps) => ({
-    connections: connections.filter((entry) => apps.includes(entry.app)),
-    isPending: false
-  }),
+    );
+  },
+  useAvailableConnections: (apps) => {
+    const wanted = new Set(apps);
+    return { connections: connections.filter((entry) => wanted.has(entry.app)), isPending: false };
+  },
   useAwsLoadBalancers: (_args, options) =>
     idle(options?.enabled, [
       {
@@ -753,20 +755,20 @@ export const pkiSyncsDemo: PkiSyncsAdapter = {
     willRemoveFromDestination: false
   })),
   useAddCertificates: fixtureMutation(({ pkiSyncId, certificateIds }) => {
+    const ids = new Set(certificateIds);
     const added = previewPool
-      .filter((entry) => certificateIds.includes(entry.id))
+      .filter((entry) => ids.has(entry.id))
       .map((entry) => syncCertificate(pkiSyncId, entry, CertificateSyncStatus.Pending));
-    syncCertificates.update((current) => [
-      ...current,
-      ...added.filter((entry) => !current.some((existing) => existing.id === entry.id))
-    ]);
+    syncCertificates.update((current) => {
+      const existing = new Set(current.map((entry) => entry.id));
+      return [...current, ...added.filter((entry) => !existing.has(entry.id))];
+    });
     return { pkiSyncId };
   }),
   useRemoveCertificates: fixtureMutation(({ pkiSyncId, certificateIds }) => {
+    const ids = new Set(certificateIds);
     syncCertificates.update((current) =>
-      current.filter(
-        (entry) => entry.pkiSyncId !== pkiSyncId || !certificateIds.includes(entry.certificateId)
-      )
+      current.filter((entry) => entry.pkiSyncId !== pkiSyncId || !ids.has(entry.certificateId))
     );
     return { pkiSyncId };
   }),

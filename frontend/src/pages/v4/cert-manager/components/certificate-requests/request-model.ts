@@ -102,9 +102,10 @@ export const usePolicyGuidance = ({
     ttlError,
     isRevealed: (field: PolicyField) => fields.has(field),
     reveal: (names: readonly string[]) =>
-      update((next) =>
-        POLICY_FIELDS.filter((field) => names.includes(field)).forEach((field) => next.add(field))
-      ),
+      update((next) => {
+        const wanted = new Set(names);
+        POLICY_FIELDS.filter((field) => wanted.has(field)).forEach((field) => next.add(field));
+      }),
     hide: (names: readonly PolicyField[]) =>
       update((next) => names.forEach((field) => next.delete(field))),
     findBlockedFields: (names: readonly string[]) =>
