@@ -237,6 +237,7 @@ export const WorkflowIntegrationsTab = () => {
             icon="search"
             aria-label="Search workflow integrations"
             placeholder="Search by alias, description or provider"
+            slashShortcut
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

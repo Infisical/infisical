@@ -186,6 +186,7 @@ export const EmailDomainsTab = () => {
             icon="search"
             aria-label="Search email domains"
             placeholder="Search by domain or organization name..."
+            slashShortcut
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);

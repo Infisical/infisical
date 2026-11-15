@@ -316,6 +316,7 @@ export const NativeIntegrationsTab = ({
             icon="search"
             aria-label="Search native integrations"
             placeholder="Search native integrations..."
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

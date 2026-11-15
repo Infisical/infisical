@@ -323,6 +323,7 @@ export const OrgRolesTab = () => {
             icon="search"
             aria-label="Search organization roles..."
             placeholder="Search organization roles..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

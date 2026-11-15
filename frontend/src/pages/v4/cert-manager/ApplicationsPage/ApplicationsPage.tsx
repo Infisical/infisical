@@ -164,6 +164,7 @@ const Page = () => {
           icon="search"
           aria-label="Search applications"
           placeholder="Search applications by name"
+          slashShortcut
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);

@@ -269,6 +269,7 @@ export const PamGroupsTab = () => {
             icon="search"
             aria-label="Search groups..."
             placeholder="Search groups..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />
