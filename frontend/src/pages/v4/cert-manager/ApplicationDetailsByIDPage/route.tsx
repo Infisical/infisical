@@ -19,8 +19,7 @@ export const Route = createFileRoute(
       "Request a certificate",
       "Add, edit and delete certificate syncs, and import or remove their certificates",
       "Create approval policies",
-      "Create and edit application alerts",
-      "Create a certificate profile from the profile picker"
+      "Create and edit application alerts"
     ]
   },
   component: ApplicationDetailsByIDPage,
