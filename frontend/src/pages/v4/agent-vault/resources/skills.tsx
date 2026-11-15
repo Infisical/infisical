@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
@@ -27,6 +27,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetBody,
@@ -68,7 +69,7 @@ import type {
   TAgentVaultSkillVersion
 } from "@app/hooks/api/agentVault/types";
 
-import { failed, saved, toast } from "../../access/toast";
+import { failed, readableFailure, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { DateCell } from "./shared";
 import { downloadSkillVersion } from "./skill-download";
@@ -231,11 +232,8 @@ export const CreateSkillDialog = ({
   const [fields, setFields] = useState<THeaderFields>({ name: initialName, description: "" });
   const [files, setFiles] = useState(initialFiles);
   const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
-  const [errors, setErrors] = useState<Partial<Record<"name" | "description" | "files", string>>>(
-    {}
-  );
   const [uploading, setUploading] = useState(false);
-  const [pending, setPending] = useState(false);
+  const completed = useRef(false);
   const dirty =
     fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -265,14 +263,12 @@ export const CreateSkillDialog = ({
     if (headerError) syncFieldsFromHeader(nextText);
     setFields((prev) => ({ ...prev, [key]: value }));
     setFiles((prev) => setEntryText(prev, setSkillHeaderValue(getEntryText(prev), key, value)));
-    setErrors((prev) => ({ ...prev, [key]: undefined, files: undefined }));
   };
 
   const changeFiles = (next: TSkillDraftFile[]) => {
     const text = getEntryText(next);
     if (text !== getEntryText(files)) syncFieldsFromHeader(text);
     setFiles(next);
-    setErrors((prev) => ({ ...prev, files: undefined }));
   };
 
   const loadUpload = ({ files: uploaded, isEntryOnly }: TSkillUpload) => {
@@ -295,28 +291,34 @@ export const CreateSkillDialog = ({
     }
     setFiles(sortSkillFiles(withEntry));
     setSelectedPath(SKILL_ENTRY_FILE);
-    setErrors({});
   };
 
-  const submit = async () => {
+  const validate = () => {
     if (headerError) {
       setSelectedPath(SKILL_ENTRY_FILE);
-      setErrors({ files: headerError });
-      return;
+      return { fields: { files: headerError } };
     }
-    const text = getEntryText(files);
-    const { frontmatter, body } = splitFrontmatter(text);
-    const header = frontmatter === null ? {} : parseSkillHeader(frontmatter);
     const next = {
       name: getNameError(fields.name),
       description: getDescriptionError(fields.description),
-      files: body.trim() ? undefined : `Write the instructions in ${SKILL_ENTRY_FILE}.`
+      files: splitFrontmatter(getEntryText(files)).body.trim()
+        ? undefined
+        : `Write the instructions in ${SKILL_ENTRY_FILE}.`
     };
-    setErrors(next);
-    if (!header || Object.values(next).some(Boolean)) {
-      if (next.files) setSelectedPath(SKILL_ENTRY_FILE);
-      return;
-    }
+    if (next.files) setSelectedPath(SKILL_ENTRY_FILE);
+    if (!Object.values(next).some(Boolean)) return true;
+    return {
+      fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
+        string,
+        string
+      >
+    };
+  };
+
+  const complete = async () => {
+    const text = getEntryText(files);
+    const { frontmatter } = splitFrontmatter(text);
+    const header = (frontmatter === null ? {} : parseSkillHeader(frontmatter)) ?? {};
     const entryText = HEADER_KEYS.reduce(
       (current, key) =>
         header[key] === fields[key] ||
@@ -327,71 +329,67 @@ export const CreateSkillDialog = ({
           : setSkillHeaderValue(current, key, fields[key]),
       text
     );
-    setPending(true);
-    try {
-      const { skill } = await create.mutateAsync({
-        files: fromDraftFiles(setEntryText(files, entryText))
-      });
-      saved(`Skill ${skill.name} created`);
-      await onCreated?.(skill);
-      onOpenChange(false);
-    } catch (error) {
-      failed("Failed to create skill", error);
-    } finally {
-      setPending(false);
-    }
+    const { skill } = await create
+      .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
+      .catch(readableFailure("Failed to create skill"));
+    saved(`Skill ${skill.name} created`);
+    completed.current = true;
+    await onCreated?.(skill);
   };
 
   return (
     <>
-      <Sheet open onOpenChange={(open) => !open && requestDiscard()}>
-        <SheetContent size="lg" pending={pending}>
-          <SheetHeader>
-            <SheetTitle>Create skill</SheetTitle>
-          </SheetHeader>
-          <SheetBody>
-            <form
-              id="agent-vault-create-skill"
-              autoComplete="off"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submit();
-              }}
-            >
+      <MultiStep
+        variant="sheet"
+        size="lg"
+        open
+        onOpenChange={(next) => {
+          if (next || completed.current) {
+            onOpenChange(next);
+            return;
+          }
+          requestDiscard();
+        }}
+        title="Create skill"
+        completeLabel="Create skill"
+        onComplete={complete}
+        steps={[
+          {
+            title: "Skill",
+            validate,
+            content: (
               <Stack gap={16}>
-                <Field label="Name" error={errors.name} wide>
+                <Field label="Name" name="name" wide>
                   <Input
                     value={fields.name}
                     maxLength={SKILL_NAME_MAX_LENGTH}
                     placeholder="code-review"
                     spellCheck={false}
-                    invalid={Boolean(errors.name)}
                     onChange={(event) => changeField("name", event.target.value)}
                   />
                 </Field>
                 <Field
                   label="Description"
+                  name="description"
                   description="Agents read this to decide when to use the skill."
-                  error={errors.description}
                   wide
                 >
                   <Input
                     value={fields.description}
                     maxLength={SKILL_DESCRIPTION_MAX_LENGTH}
-                    invalid={Boolean(errors.description)}
                     onChange={(event) => changeField("description", event.target.value)}
                   />
                 </Field>
                 <Field
                   group
                   label="Files"
-                  error={errors.files ?? headerError ?? undefined}
+                  name="files"
+                  error={headerError ?? undefined}
                   help={
                     <Button
                       variant="outline"
                       size="sm"
                       icon="upload"
-                      disabled={pending}
                       onClick={() => setUploading(true)}
                     >
                       Upload
@@ -409,23 +407,10 @@ export const CreateSkillDialog = ({
                   />
                 </Field>
               </Stack>
-            </form>
-          </SheetBody>
-          <SheetFooter>
-            <Button variant="outline" disabled={pending} onClick={requestDiscard}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              form="agent-vault-create-skill"
-              loading={pending}
-            >
-              Create skill
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            )
+          }
+        ]}
+      />
       {uploading && (
         <SkillUploadDialog projectId={projectId} onOpenChange={setUploading} onLoad={loadUpload} />
       )}

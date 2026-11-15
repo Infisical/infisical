@@ -1,6 +1,4 @@
-import { useEffect } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
 import { Combobox, type ComboboxCreationFormProps } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -8,7 +6,6 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
-import { z } from "zod";
 
 import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -16,22 +13,11 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
-const formSchema = z
-  .object({
-    mode: z.enum(["create", "assign"]).optional(),
-    name: z.string().trim(),
-    identityId: z.string(),
-    role: z.string().min(1)
-  })
-  .superRefine((values, ctx) => {
-    if (values.mode === "assign" && !values.identityId)
-      ctx.addIssue({ code: "custom", path: ["identityId"], message: "Pick a machine identity" });
-    if (values.mode !== "assign" && !values.name)
-      ctx.addIssue({ code: "custom", path: ["name"], message: "Enter a name" });
-  });
+type TMode = "create" | "assign";
 
-type TFormValues = z.infer<typeof formSchema>;
-type TMode = NonNullable<TFormValues["mode"]>;
+type TDraft = { mode?: TMode; name: string; identityId: string; role: string };
+
+type TErrors = Partial<Record<"name" | "identityId", string>>;
 
 export type TCreatedIdentity = { id: string; name: string; role: string };
 
@@ -59,36 +45,45 @@ export const CreateIdentityForm = ({
   const createIdentity = agentVault.useCreateManagedIdentity(projectId);
   const addMembers = agentVault.useAddMembers(projectId);
 
-  const { control, handleSubmit, setValue, clearErrors } = useForm<TFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { name: query, identityId: "", role: ProjectMembershipRole.Member }
+  const [draft, setDraft] = useState<TDraft>({
+    name: query,
+    identityId: "",
+    role: ProjectMembershipRole.Member
   });
-  const [pickedMode, name, identityId] = useWatch({
-    control,
-    name: ["mode", "name", "identityId"]
-  });
+  const [errors, setErrors] = useState<TErrors>({});
+
   let defaultMode: TMode | undefined;
   if (assignable) defaultMode = assignable.length && !query ? "assign" : "create";
-  const mode = pickedMode ?? defaultMode;
-  const lockMode = () => {
-    if (!pickedMode && mode) setValue("mode", mode);
+  const mode = draft.mode ?? defaultMode;
+
+  const edit = (patch: Partial<TDraft>, cleared?: keyof TErrors) => {
+    setDraft((prev) => ({ ...prev, mode: prev.mode ?? mode, ...patch }));
+    if (cleared) setErrors((prev) => ({ ...prev, [cleared]: undefined }));
   };
 
-  const isDirty = mode === "assign" ? Boolean(identityId) : name.trim() !== query;
+  const isDirty = mode === "assign" ? Boolean(draft.identityId) : draft.name.trim() !== query;
   useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
   useEffect(
     () => onSubmitLabelChange(mode === "assign" ? "Add" : undefined),
     [mode, onSubmitLabelChange]
   );
 
-  const submit = async (values: TFormValues) => {
-    const isCreate = values.mode !== "assign";
-    const picked = assignable?.find((identity) => identity.id === values.identityId);
-    if (!isCreate && !picked) return;
+  const submit = async () => {
+    const name = draft.name.trim();
+    const picked = assignable?.find((identity) => identity.id === draft.identityId);
+    if (mode === "create" && !name) {
+      setErrors({ name: "Enter a name" });
+      return;
+    }
+    if (mode === "assign" && !picked) {
+      setErrors({ identityId: "Pick a machine identity" });
+      return;
+    }
+    edit({});
     onPendingChange(true);
     try {
-      if (isCreate) {
-        const created = await createIdentity.mutateAsync({ name: values.name, role: values.role });
+      if (mode === "create") {
+        const created = await createIdentity.mutateAsync({ name, role: draft.role });
         if (created.authAttachFailed)
           toast({
             tone: "bad",
@@ -96,18 +91,18 @@ export const CreateIdentityForm = ({
             description: "Add an auth method from the identity page."
           });
         else saved("Machine identity created");
-        onCreated({ id: created.id, name: created.name, role: values.role });
+        onCreated({ id: created.id, name: created.name, role: draft.role });
         complete({ value: created.id, label: created.name });
         return;
       }
       if (!picked) return;
-      await addMembers.mutateAsync({ machineIdentityIds: [picked.id], role: values.role });
+      await addMembers.mutateAsync({ machineIdentityIds: [picked.id], role: draft.role });
       saved("Machine identity added");
-      onCreated({ ...picked, role: values.role });
+      onCreated({ ...picked, role: draft.role });
       complete({ value: picked.id, label: picked.name });
     } catch (cause) {
       failed(
-        isCreate ? "Failed to create machine identity" : "Failed to add machine identity",
+        mode === "create" ? "Couldn't create machine identity" : "Couldn't add machine identity",
         cause
       );
     } finally {
@@ -129,8 +124,8 @@ export const CreateIdentityForm = ({
       id={formId}
       autoComplete="off"
       onSubmit={(event) => {
-        lockMode();
-        handleSubmit(submit)(event).catch(() => {});
+        event.preventDefault();
+        submit();
       }}
     >
       <Stack gap={16}>
@@ -139,8 +134,8 @@ export const CreateIdentityForm = ({
           label="Identity assignment mode"
           value={mode}
           onValueChange={(next) => {
-            setValue("mode", next as TMode);
-            clearErrors();
+            edit({ mode: next as TMode });
+            setErrors({});
           }}
           tabs={[
             { value: "create", label: "Create new" },
@@ -148,70 +143,46 @@ export const CreateIdentityForm = ({
           ]}
         />
         {mode === "create" ? (
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState }) => (
-              <Field
-                label="Name"
-                error={fieldState.error?.message}
-                description="A machine identity managed by Agent Vault, with Universal Auth attached."
-              >
-                <Input
-                  {...field}
-                  onChange={(event) => {
-                    lockMode();
-                    field.onChange(event);
-                  }}
-                  placeholder="ci-release-agent"
-                  invalid={Boolean(fieldState.error)}
-                />
-              </Field>
-            )}
-          />
+          <Field
+            label="Name"
+            error={errors.name}
+            description="A machine identity managed by Agent Vault, with Universal Auth attached."
+          >
+            <Input
+              placeholder="ci-release-agent"
+              value={draft.name}
+              invalid={Boolean(errors.name)}
+              onChange={(event) => edit({ name: event.target.value }, "name")}
+            />
+          </Field>
         ) : (
-          <Controller
-            control={control}
-            name="identityId"
-            render={({ field, fieldState }) => (
-              <Field
-                label="Machine identity"
-                error={fieldState.error?.message}
-                description="An organization machine identity, which can be added to several projects."
-              >
-                <Combobox
-                  label="Machine identity"
-                  placeholder="Pick a machine identity"
-                  emptyText="No machine identity can be added."
-                  options={(assignable ?? []).map((identity) => ({
-                    value: identity.id,
-                    label: identity.name
-                  }))}
-                  value={field.value}
-                  invalid={Boolean(fieldState.error)}
-                  onChange={(value) => {
-                    lockMode();
-                    field.onChange(value);
-                  }}
-                />
-              </Field>
-            )}
-          />
+          <Field
+            label="Machine identity"
+            error={errors.identityId}
+            description="An organization machine identity, which can be added to several projects."
+          >
+            <Combobox
+              label="Machine identity"
+              placeholder="Pick a machine identity"
+              emptyText="No machine identity can be added."
+              options={(assignable ?? []).map((identity) => ({
+                value: identity.id,
+                label: identity.name
+              }))}
+              value={draft.identityId}
+              invalid={Boolean(errors.identityId)}
+              onChange={(identityId) => edit({ identityId }, "identityId")}
+            />
+          </Field>
         )}
-        <Controller
-          control={control}
-          name="role"
-          render={({ field }) => (
-            <Field label="Role">
-              <Select
-                label="Role"
-                value={field.value}
-                options={ROLE_OPTIONS}
-                onChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
+        <Field label="Role">
+          <Select
+            label="Role"
+            value={draft.role}
+            options={ROLE_OPTIONS}
+            onChange={(role) => edit({ role })}
+          />
+        </Field>
       </Stack>
     </form>
   );

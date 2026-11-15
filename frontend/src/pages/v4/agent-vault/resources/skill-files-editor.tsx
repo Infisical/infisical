@@ -1,15 +1,6 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +14,10 @@ import { FileTree, type FileTreeNode } from "@infisical/cipher/ui/file-tree";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { FilePlusIcon, FolderPlusIcon, SquareTerminalIcon } from "lucide-react";
-import { z } from "zod";
 
 import {
   getSkillBaseName,
@@ -125,66 +116,49 @@ const SkillEntryNameDialog = ({
   onClose: () => void;
 }) => {
   const initialName = edit.action === "rename" ? getSkillBaseName(edit.path) : "";
-  const schema = z.object({
-    name: z
-      .string()
-      .min(1, "Enter a name.")
-      .superRefine((name, ctx) => {
-        if (name === initialName) return;
-        const message = getNameEditError(edit, name, filePaths, folderPaths);
-        if (message) ctx.addIssue({ code: "custom", message });
-      })
-  });
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: initialName },
-    mode: "onChange"
-  });
+  const [name, setName] = useState(initialName);
   const noun = edit.type === "file" ? "file" : "folder";
-  const title = edit.action === "rename" ? `Rename ${initialName}` : `New ${noun}`;
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <form
-          id="agent-vault-skill-entry-name"
-          autoComplete="off"
-          onSubmit={handleSubmit(({ name }) => (name === initialName ? onClose() : onCommit(name)))}
-        >
-          <Field
-            label={edit.type === "file" ? "File name" : "Folder name"}
-            description={
-              edit.action === "create" && edit.parentPath ? `In ${edit.parentPath}/` : undefined
-            }
-            error={errors.name?.message}
-            wide
-          >
-            <Input
-              {...register("name")}
-              mono
-              spellCheck={false}
-              placeholder={edit.type === "file" ? "reference.md" : "scripts"}
-              invalid={Boolean(errors.name)}
-            />
-          </Field>
-        </form>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="agent-vault-skill-entry-name">
-            {edit.action === "rename" ? "Rename" : `Add ${noun}`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <div onSubmit={(event) => event.stopPropagation()}>
+      <MultiStep
+        variant="dialog"
+        open
+        onOpenChange={(open) => !open && onClose()}
+        title={edit.action === "rename" ? `Rename ${initialName}` : `New ${noun}`}
+        completeLabel={edit.action === "rename" ? "Rename" : `Add ${noun}`}
+        onComplete={() => (name === initialName ? onClose() : onCommit(name))}
+        steps={[
+          {
+            title: "Name",
+            validate: () => {
+              if (!name) return { fields: { name: "Enter a name." } };
+              const message =
+                name === initialName ? null : getNameEditError(edit, name, filePaths, folderPaths);
+              return message ? { fields: { name: message } } : true;
+            },
+            content: (
+              <Field
+                label={edit.type === "file" ? "File name" : "Folder name"}
+                name="name"
+                description={
+                  edit.action === "create" && edit.parentPath ? `In ${edit.parentPath}/` : undefined
+                }
+                wide
+              >
+                <Input
+                  mono
+                  value={name}
+                  spellCheck={false}
+                  placeholder={edit.type === "file" ? "reference.md" : "scripts"}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </Field>
+            )
+          }
+        ]}
+      />
+    </div>
   );
 };
 

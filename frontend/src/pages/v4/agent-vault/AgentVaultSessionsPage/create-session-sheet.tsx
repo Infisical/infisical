@@ -23,6 +23,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
@@ -304,19 +305,26 @@ const CreateNowForm = ({
     formState: { errors }
   } = form;
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
-  const { data: bundleDetails } = useV4Adapter("agentVaultResources").useAccessBundle(
+  const details = useV4Adapter("agentVaultResources").useAccessBundle(
     projectId,
     accessBundle?.id ?? ""
   );
-  const needsSetup =
-    accessBundle && bundleDetails?.id === accessBundle.id
-      ? bundleDetails.services.filter(
+  const detailedNeedsSetup =
+    accessBundle && details.data?.id === accessBundle.id
+      ? details.data.services.filter(
           (service) => service.personalValues && !service.personalValues.isConfigured
         )
-      : [];
+      : undefined;
+  const isDetailsFailed = !detailedNeedsSetup && Boolean(details.error);
+  const needsSetup: (Pick<TAgentVaultService, "id" | "name"> & Partial<TAgentVaultService>)[] =
+    detailedNeedsSetup ?? accessBundle?.servicesRequiringSetup ?? [];
   const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
   const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
   const [settingUp, setSettingUp] = useState<TAgentVaultService>();
+  const setUpBlockedReason = (type?: TAgentVaultService["type"]) => {
+    if (type) return undefined;
+    return isDetailsFailed ? "Couldn't load this service" : "Loading this service";
+  };
 
   const submit = (values: TCreateNowForm) =>
     onCreate({
@@ -392,6 +400,23 @@ const CreateNowForm = ({
                   ? "Until you set it up, this session can't reach it."
                   : "Until you set them up, this session can't reach them."}
               </Alert>
+              {isDetailsFailed && (
+                <Alert
+                  tone="bad"
+                  actions={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={details.isFetching}
+                      onClick={() => details.refetch?.()}
+                    >
+                      Retry
+                    </Button>
+                  }
+                >
+                  Couldn&apos;t load these services, so they can&apos;t be set up here yet.
+                </Alert>
+              )}
               <List label="Services that require your personal values" variant="framed" size="sm">
                 {shownNeedsSetup.map((service) => (
                   <ListRow
@@ -400,13 +425,22 @@ const CreateNowForm = ({
                     label={service.name}
                     title={service.name}
                     media={
-                      <ServiceIcon
-                        hostPattern={hostPatternOf(service)}
-                        serviceType={service.type}
-                      />
+                      service.type ? (
+                        <ServiceIcon
+                          hostPattern={hostPatternOf(service as TAgentVaultService)}
+                          serviceType={service.type}
+                        />
+                      ) : (
+                        <Skeleton width={24} height={24} />
+                      )
                     }
                     actions={
-                      <Button variant="outline" size="sm" onClick={() => setSettingUp(service)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabledReason={setUpBlockedReason(service.type)}
+                        onClick={() => service.type && setSettingUp(service as TAgentVaultService)}
+                      >
                         Set up
                       </Button>
                     }
@@ -433,7 +467,9 @@ const CreateNowForm = ({
       </form>
       <PersonalValuesDialog
         projectId={projectId}
-        service={settingUp && (needsSetup.find(({ id }) => id === settingUp.id) ?? settingUp)}
+        service={
+          settingUp && (detailedNeedsSetup?.find(({ id }) => id === settingUp.id) ?? settingUp)
+        }
         onOpenChange={(isOpen) => !isOpen && setSettingUp(undefined)}
       />
     </>
