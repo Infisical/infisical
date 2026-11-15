@@ -422,7 +422,7 @@ export const OverviewPage = () => {
               icon="search"
               aria-label="Search keys"
               placeholder="Search keys by name or ID"
-              kbd="/"
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

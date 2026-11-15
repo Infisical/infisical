@@ -23,6 +23,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { Code } from "@infisical/cipher/ui/code";
 import {
   Dialog,
   DialogClose,
@@ -59,6 +60,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
+import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
@@ -420,6 +422,7 @@ const PresetStep = ({
   const app = preset.app as AppConnection;
   const formHandle = useRef<AppConnectionFormHandle>(null);
   const resumed = useResumedGitHubForm(resumeApp);
+  const [method, setMethod] = useState(() => resumed?.values.method ?? preset.methods[0]?.value);
   const [initialGateway] = useState<GatewayPickerValue>(() => resumed?.gateway ?? NO_GATEWAY);
   const [gateway, setGateway] = useState(initialGateway);
   const isGatewayChanged = (next: GatewayPickerValue) =>
@@ -451,6 +454,7 @@ const PresetStep = ({
         onDirtyChange={onDirtyChange}
         onPendingChange={onPendingChange}
         onSubmitLabelChange={onSubmitLabelChange}
+        onMethodChange={setMethod}
         onSubmit={async (values: AppConnectionFormValues) => {
           const connection = await creation.create({
             name: preset.name,
@@ -487,12 +491,16 @@ const PresetStep = ({
             }
           }
         }
-        gitHubApps={{
-          projectId,
-          onCreate: createGitHubApp,
-          readInstance: () => gitHubInstanceOf(formHandle.current),
-          onDeleted: (appId) => clearDeletedGitHubApp(formHandle.current, preset, appId)
-        }}
+        gitHubApps={
+          method === GitHubConnectionMethod.App
+            ? {
+                projectId,
+                onCreate: createGitHubApp,
+                readInstance: () => gitHubInstanceOf(formHandle.current),
+                onDeleted: (appId) => clearDeletedGitHubApp(formHandle.current, preset, appId)
+              }
+            : undefined
+        }
         pending={pending}
       />
       {creation.dialog}
@@ -1140,7 +1148,7 @@ const ViewCredentialsSheet = ({
                 variant="props"
                 items={entries.map(([key, value]) => [
                   labels.get(key) ?? key,
-                  <code key={key}>{credentialValue(value)}</code>
+                  <Code key={key}>{credentialValue(value)}</Code>
                 ])}
               />
             )}

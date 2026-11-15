@@ -400,7 +400,7 @@ export const PamTemplatesPage = () => {
               icon="search"
               aria-label="Search templates"
               placeholder="Search by name or description..."
-              kbd="/"
+              slashShortcut
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

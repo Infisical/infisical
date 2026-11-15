@@ -10,6 +10,7 @@ const providerIconVariants: Record<string, { onLight?: string; onDark?: string }
   "Amazon Web Services.png": { onLight: "Amazon Web Services.on-light.png" },
   "Anthropic.png": { onDark: "Anthropic.on-dark.svg" },
   "DatadogWhite.png": { onLight: "Datadog.png" },
+  "EnvKey.png": { onDark: "EnvKey.on-dark.png" },
   "Express.png": { onLight: "Express.on-light.png" },
   "GitHub.png": { onLight: "GitHub.on-light.png" },
   "Gradle.png": { onLight: "Gradle.on-light.png" },
@@ -23,6 +24,7 @@ const providerIconVariants: Record<string, { onLight?: string; onDark?: string }
   "Remix.png": { onLight: "Remix.on-light.png" },
   "SSH.png": { onLight: "SSH.on-light.png" },
   "UltraDNS.png": { onLight: "UltraDNS.on-light.png" },
+  "Vault.png": { onDark: "Vault.on-dark.png" },
   "Venafi.png": { onLight: "Venafi.on-light.png" }
 };
 
