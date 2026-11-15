@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -22,6 +21,7 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
 import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import {
   Sheet,
@@ -30,12 +30,21 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
+import { format } from "date-fns";
 
-import type { TPamFolderWithCount } from "@app/hooks/api/pam";
+import { PamResourcePermissionActions, type TPamFolderWithCount } from "@app/hooks/api/pam";
+import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { ConfirmAction } from "./confirm-action";
+import { FolderApprovals } from "./folder-approvals";
+import { MembersPanel } from "./members";
+import { FOLDER_TABS } from "./sheet-tabs";
 
 const NAME_MAX = 64;
 const DESCRIPTION_MAX = 256;
@@ -162,56 +171,6 @@ export const CreateFolderDialog = ({
         description="The folder you started will be lost."
       />
     </>
-  );
-};
-
-const ConfirmAction = ({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmText,
-  action,
-  tone = "danger",
-  onConfirm
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
-  confirmText?: string;
-  action: string;
-  tone?: "danger" | "neutral";
-  onConfirm: () => Promise<boolean>;
-}) => {
-  const [pending, setPending] = useState(false);
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent tone={tone} confirmText={confirmText} pending={pending}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant={tone === "danger" ? "destructive" : "primary"}
-            loading={pending}
-            onClick={async (event) => {
-              event.preventDefault();
-              setPending(true);
-              try {
-                if (await onConfirm()) onOpenChange(false);
-              } finally {
-                setPending(false);
-              }
-            }}
-          >
-            {action}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 };
 
@@ -413,18 +372,116 @@ const FolderSettings = ({ folder }: { folder: TPamFolderWithCount }) => {
 };
 
 export const FolderSheet = ({
-  folder,
+  folderId,
+  folders,
   onOpenChange
 }: {
-  folder: TPamFolderWithCount | undefined;
+  folderId?: string;
+  folders: TPamFolderWithCount[];
   onOpenChange: (open: boolean) => void;
-}) => (
-  <Sheet open={Boolean(folder)} onOpenChange={onOpenChange}>
-    <SheetContent size="md">
-      <SheetHeader>
-        <SheetTitle>{folder?.name ?? "Folder"}</SheetTitle>
-      </SheetHeader>
-      <SheetBody>{folder && <FolderSettings key={folder.id} folder={folder} />}</SheetBody>
-    </SheetContent>
-  </Sheet>
-);
+}) => {
+  const pam = useV4Adapter("pam");
+  const { tab, setTab } = usePamSheetState("folderId");
+  const { data: memberFolders = [] } = pam.useFolders(undefined, {
+    enabled: Boolean(folderId) && !folders.some(({ id }) => id === folderId)
+  });
+  const folder = [...folders, ...memberFolders].find(({ id }) => id === folderId);
+  const { can, isLoading } = pam.useFolderActions(folderId ?? "", Boolean(folderId));
+  const [dirty, setDirty] = useState(false);
+  const close = () => {
+    setDirty(false);
+    onOpenChange(false);
+  };
+  const pendingTab = useRef<string | null>(null);
+  const guard = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => {
+      const nextTab = pendingTab.current;
+      pendingTab.current = null;
+      if (!nextTab) {
+        close();
+        return;
+      }
+      setDirty(false);
+      setTab(nextTab);
+    }
+  });
+  const requestClose = () => {
+    pendingTab.current = null;
+    guard.requestDiscard();
+  };
+  const tabs = isLoading ? [] : FOLDER_TABS.filter(({ action }) => can(action));
+  const activeTab = tabs.find(({ value }) => value === tab)?.value ?? tabs[0]?.value;
+
+  const lead = folder && (
+    <Stack gap={16}>
+      {folder.description && <Text muted>{folder.description}</Text>}
+      <DataList
+        variant="props"
+        items={[
+          ["Accounts", String(folder.accountCount)],
+          ["Created", format(new Date(folder.createdAt), "MMMM do, yyyy")]
+        ]}
+      />
+      {activeTab && (
+        <Tabs
+          label="Folder sections"
+          value={activeTab}
+          tabs={tabs.map(({ value, label }) => ({ value, label }))}
+          onChange={(next) => {
+            if (dirty) {
+              pendingTab.current = next;
+              guard.requestDiscard();
+              return;
+            }
+            setTab(next);
+          }}
+        />
+      )}
+    </Stack>
+  );
+
+  let content = (
+    <Stack gap={12}>
+      <Skeleton height={32} width={240} />
+      <Skeleton height={120} />
+    </Stack>
+  );
+  if (folder && activeTab === PamSheetTab.Permissions)
+    content = <MembersPanel scope="folder" resourceId={folder.id} />;
+  if (folder && activeTab === PamSheetTab.Configuration)
+    content = <FolderSettings key={folder.id} folder={folder} />;
+  const body =
+    folder && activeTab === PamSheetTab.Approvals ? (
+      <FolderApprovals
+        folderId={folder.id}
+        lead={lead}
+        canRevoke={can(PamResourcePermissionActions.RevokeGrants)}
+        onDirtyChange={setDirty}
+      />
+    ) : (
+      <SheetBody>
+        <Stack gap={24}>
+          {lead}
+          {content}
+        </Stack>
+      </SheetBody>
+    );
+
+  return (
+    <>
+      <Sheet open={Boolean(folderId)} onOpenChange={(open) => !open && requestClose()}>
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>{folder?.name ?? "Folder"}</SheetTitle>
+          </SheetHeader>
+          {body}
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        {...guard.discardDialogProps}
+        description="Your unsaved folder changes will be lost."
+      />
+    </>
+  );
+};

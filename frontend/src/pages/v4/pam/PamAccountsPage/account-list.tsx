@@ -123,7 +123,9 @@ export const AccountList = ({
             <AccountMenu
               orgId={orgId}
               account={account}
-              onConfigure={() => overlays.openAccount(account.id)}
+              onConfigure={(tab) => overlays.openAccount(account.id, tab)}
+              onRequestAccess={(accessType) => overlays.openRequestAccess(account, accessType)}
+              onViewCredentials={() => overlays.openCredentials(account)}
               onDelete={() =>
                 overlays.openDeleteAccount({
                   id: account.id,

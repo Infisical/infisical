@@ -426,7 +426,7 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
 });
 
 const folderStore = createFixtureStore(folders);
-const accountStore = createFixtureStore(accounts);
+export const accountStore = createFixtureStore(accounts);
 
 type AccountDetails = Pick<TPamAccount, "connectionDetails" | "credentials">;
 
@@ -455,6 +455,8 @@ const detailsFor = (account: TPamAccountListItem): AccountDetails => {
   });
   return { connectionDetails: connection, credentials };
 };
+
+const overridesStore = createFixtureStore<Record<string, TPamAccount["settingsOverrides"]>>({});
 
 const accountDetailStore = createFixtureStore<Record<string, AccountDetails>>(
   Object.fromEntries(accounts.map((account) => [account.id, detailsFor(account)]))
@@ -803,7 +805,7 @@ const accessRequests: TPamAccessRequest[] = requestSeeds.map(
   }
 );
 
-const accessRequestStore = createFixtureStore(accessRequests);
+export const accessRequestStore = createFixtureStore(accessRequests);
 
 const PAM_PROJECT_TYPE = ProjectType.PAM;
 
@@ -864,6 +866,7 @@ export const pamDemo: PamAdapter = {
   useAccount: (accountId) => {
     const allAccounts = accountStore.use();
     const details = accountDetailStore.use();
+    const overrides = overridesStore.use();
     const account = allAccounts.find(({ id }) => id === accountId);
     if (!account) return { data: undefined, isPending: Boolean(accountId), error: null };
     return {
@@ -872,7 +875,7 @@ export const pamDemo: PamAdapter = {
         accountType: account.accountType as PamAccountType,
         templatePolicies: {},
         templateSettings: {},
-        settingsOverrides: null,
+        settingsOverrides: overrides[account.id] ?? null,
         ...(details[account.id] ?? detailsFor(account))
       },
       isPending: false,
@@ -1019,8 +1022,18 @@ export const pamDemo: PamAdapter = {
         folderName: folder?.name ?? existing.folderName,
         templateId: template?.id ?? existing.templateId,
         templateName: template?.name ?? existing.templateName,
+        ...(changes.gatewayId !== undefined ? { gatewayId: changes.gatewayId } : {}),
+        ...(changes.gatewayPoolId !== undefined ? { gatewayPoolId: changes.gatewayPoolId } : {}),
+        ...(changes.recordingConnectionId !== undefined
+          ? { recordingConnectionId: changes.recordingConnectionId }
+          : {}),
         updatedAt: new Date().toISOString()
       };
+      if (changes.settingsOverrides !== undefined)
+        overridesStore.update((current) => ({
+          ...current,
+          [accountId]: changes.settingsOverrides ?? null
+        }));
       accountStore.update((current) =>
         current.map((account) => (account.id === accountId ? updated : account))
       );

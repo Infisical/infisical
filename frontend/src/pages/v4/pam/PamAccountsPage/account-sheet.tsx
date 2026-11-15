@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState, useRef } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -20,18 +20,21 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
+  PamAccountAccessibilityIssue,
   PamFieldWidget,
   PamResourcePermissionActions,
   type TPamAccount,
   type TPamAccountTypeMetadata,
   type TPamFieldDescriptor
 } from "@app/hooks/api/pam";
+import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useOrgId } from "../../access/permissions";
@@ -53,8 +56,21 @@ import {
   type TFieldGroup,
   type TFieldValues
 } from "./account-form";
+import { CredentialHealth, OverridesPanel, RotationPanel } from "./account-settings";
+import { MembersPanel } from "./members";
 import { SchemaFields } from "./schema-fields";
+import { visibleAccountTabs } from "./sheet-tabs";
 import { SshCaNotice } from "./ssh-ca-notice";
+
+const ISSUE_TAB: Record<PamAccountAccessibilityIssue, PamSheetTab> = {
+  [PamAccountAccessibilityIssue.NoCredential]: PamSheetTab.Configuration,
+  [PamAccountAccessibilityIssue.NoGateway]: PamSheetTab.Advanced,
+  [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced,
+  [PamAccountAccessibilityIssue.NoApprovalConfig]: PamSheetTab.Configuration
+};
+
+const tabsWithIssues = (account: TPamAccount) =>
+  new Set(account.accessibilityIssues.map((issue) => ISSUE_TAB[issue]));
 
 type Draft = {
   name: string;
@@ -88,11 +104,13 @@ const AccountForm = ({
   metadata,
   lead,
   update,
+  canCheckHealth,
   onDirtyChange
 }: {
   account: TPamAccount;
   metadata: TPamAccountTypeMetadata;
   lead: ReactNode;
+  canCheckHealth: boolean;
   update: ReturnType<PamAdapter["useUpdateAccount"]>;
   onDirtyChange: (dirty: boolean) => void;
 }) => {
@@ -129,7 +147,7 @@ const AccountForm = ({
     const nextErrors = missingFieldErrors(metadata, draft.values);
     if (!draft.name.trim()) nextErrors.name = REQUIRED;
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) return false;
     const credentials = filterUnchangedCredentials(draft.values.credentials);
     try {
       await update.mutateAsync({
@@ -147,6 +165,7 @@ const AccountForm = ({
       });
       saved("Account updated");
       onDirtyChange(false);
+      return true;
     } catch (error) {
       const { fields, unmapped } = serverFieldErrors(error, knownFieldsFor(metadata));
       setErrors(fields);
@@ -155,12 +174,14 @@ const AccountForm = ({
           "Failed to update account",
           unmapped.length ? new Error(unmapped.join(", ")) : error
         );
+      return false;
     }
   };
 
   return (
     <>
       <SheetBody>
+        {lead}
         <form
           id="pam-account-configure"
           onSubmit={(event) => {
@@ -169,7 +190,6 @@ const AccountForm = ({
           }}
         >
           <Stack gap={24}>
-            {lead}
             <FieldSet legend="General">
               <Stack gap={16}>
                 <Field label="Name" error={errors.name}>
@@ -238,6 +258,11 @@ const AccountForm = ({
                     authMethod={draft.values.credentials.authMethod as string | undefined}
                     accountId={account.id}
                   />
+                  <CredentialHealth
+                    accountId={account.id}
+                    canCheck={canCheckHealth}
+                    onBeforeCheck={async () => !dirty || submit()}
+                  />
                 </Stack>
               </FieldSet>
             )}
@@ -282,10 +307,10 @@ export const AccountSheet = ({
   const orgId = useOrgId();
   const go = useGo();
   const pam = useV4Adapter("pam");
+  const { tab, setTab } = usePamSheetState("accountId");
   const { data: account, isPending, error } = pam.useAccount(accountId);
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const { can } = pam.useAccountActions(accountId ?? "", Boolean(accountId));
-  const canEdit = can(PamResourcePermissionActions.EditAccounts);
   const update = pam.useUpdateAccount();
   const [dirty, setDirty] = useState(false);
   const metadata = accountTypes.find(({ type }) => type === account?.accountType);
@@ -294,7 +319,41 @@ export const AccountSheet = ({
     setDirty(false);
     onOpenChange(false);
   };
-  const guard = useDiscardChangesGuard({ isDirty: dirty, onDiscard: close });
+  const pendingTab = useRef<string | null>(null);
+  const guard = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => {
+      const nextTab = pendingTab.current;
+      pendingTab.current = null;
+      if (!nextTab) {
+        close();
+        return;
+      }
+      setDirty(false);
+      setTab(nextTab);
+    }
+  });
+  const requestClose = () => {
+    pendingTab.current = null;
+    guard.requestDiscard();
+  };
+
+  const tabs = account
+    ? visibleAccountTabs(can, account.accountType).map((definition) => ({
+        value: definition.value,
+        label: tabsWithIssues(account).has(definition.value) ? (
+          <Inline gap={8} align="center" wrap={false}>
+            {definition.label}
+            <Badge tone="warn" dot size="sm">
+              Needs setup
+            </Badge>
+          </Inline>
+        ) : (
+          definition.label
+        )
+      }))
+    : [];
+  const activeTab = tabs.find(({ value }) => value === tab)?.value ?? tabs[0]?.value;
 
   const summary: DataListItem[] = account
     ? [
@@ -335,6 +394,21 @@ export const AccountSheet = ({
     <Stack gap={16}>
       {account.description && <Text muted>{account.description}</Text>}
       <DataList variant="props" items={summary} />
+      {activeTab && (
+        <Tabs
+          label="Account sections"
+          value={activeTab}
+          tabs={tabs}
+          onChange={(next) => {
+            if (dirty) {
+              pendingTab.current = next;
+              guard.requestDiscard();
+              return;
+            }
+            setTab(next);
+          }}
+        />
+      )}
     </Stack>
   );
 
@@ -357,26 +431,64 @@ export const AccountSheet = ({
         />
       </SheetBody>
     );
-  if (!isPending && account && metadata)
-    body = canEdit ? (
-      <AccountForm
-        key={`${account.id}-${account.updatedAt}`}
-        account={account}
-        metadata={metadata}
-        lead={lead}
-        update={update}
-        onDirtyChange={setDirty}
-      />
-    ) : (
-      <SheetBody>{lead}</SheetBody>
-    );
+  if (!isPending && account && metadata) {
+    body = <SheetBody>{lead}</SheetBody>;
+    if (activeTab === PamSheetTab.Configuration)
+      body = (
+        <AccountForm
+          key={`${account.id}-${account.updatedAt}`}
+          account={account}
+          metadata={metadata}
+          lead={<Stack gap={24}>{lead}</Stack>}
+          update={update}
+          canCheckHealth={can(PamResourcePermissionActions.ViewCredentials)}
+          onDirtyChange={setDirty}
+        />
+      );
+    if (activeTab === PamSheetTab.Permissions)
+      body = (
+        <SheetBody>
+          <Stack gap={24}>
+            {lead}
+            <MembersPanel
+              scope="account"
+              resourceId={account.id}
+              inheritFrom={{ folderId: account.folderId, folderName: account.folderName }}
+            />
+          </Stack>
+        </SheetBody>
+      );
+    if (activeTab === PamSheetTab.Rotation)
+      body = (
+        <SheetBody>
+          <Stack gap={24}>
+            {lead}
+            <RotationPanel accountId={account.id} metadata={metadata} />
+          </Stack>
+        </SheetBody>
+      );
+    if (activeTab === PamSheetTab.Advanced)
+      body = (
+        <SheetBody>
+          <Stack gap={24}>
+            {lead}
+            <OverridesPanel
+              key={account.id}
+              account={account}
+              metadata={metadata}
+              onDirtyChange={setDirty}
+            />
+          </Stack>
+        </SheetBody>
+      );
+  }
 
   return (
     <>
       <Sheet
         open={Boolean(accountId)}
         onOpenChange={(next) => {
-          if (!next) guard.requestDiscard();
+          if (!next) requestClose();
         }}
       >
         <SheetContent size="lg" pending={update.isPending}>

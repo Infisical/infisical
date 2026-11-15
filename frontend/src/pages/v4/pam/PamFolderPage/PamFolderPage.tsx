@@ -89,7 +89,7 @@ export const PamFolderPage = () => {
                   <DropdownMenuContent align="end">
                     <FolderMenu
                       folder={folder}
-                      onConfigure={() => overlays.openConfigureFolder(folder.id)}
+                      onConfigure={(tab) => overlays.openConfigureFolder(folder.id, tab)}
                       onDelete={() => overlays.openDeleteFolder(folder)}
                     />
                   </DropdownMenuContent>
