@@ -14,16 +14,16 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
-import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
-
 import {
   CertExtensionCriticality,
   customExtensionLabelFor,
   getCustomExtensionValuePlaceholder,
   isPresetExtensionOid,
   validateCustomExtensionValue
-} from "../../CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
+import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
+
 import { SectionHeading } from "./SectionHeading";
 
 type Props = {

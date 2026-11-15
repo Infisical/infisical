@@ -17,14 +17,14 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
-import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
-import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 import {
   customExtensionLabelFor,
   getCustomExtensionValuePlaceholder,
   isPresetExtensionOid
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
+import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
+import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 
 import { PolicyRowMessage } from "./PolicyRowMessage";
 

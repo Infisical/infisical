@@ -10,8 +10,8 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
+import { CertPolicyState } from "@app/helpers/certificateConstants";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
-import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type Props = {
   policy: TCertificatePolicy;

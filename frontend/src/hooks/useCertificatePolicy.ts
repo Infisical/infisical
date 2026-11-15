@@ -2,22 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import {
+  CertPolicyState,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
+  mapPolicyKeyAlgorithmToApi,
+  mapPolicySignatureAlgorithmToApi
+} from "@app/helpers/certificateConstants";
+import { buildPolicyRules, withRequiredRows } from "@app/helpers/certificatePolicyGuidance";
+import { SubjectAltName, SubjectAttribute } from "@app/helpers/certificateUtils";
+import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
   getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import {
-  CertPolicyState,
-  CertSubjectAlternativeNameType,
-  CertSubjectAttributeType,
-  mapPolicyKeyAlgorithmToApi,
-  mapPolicySignatureAlgorithmToApi
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-
-import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
-import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
 
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);

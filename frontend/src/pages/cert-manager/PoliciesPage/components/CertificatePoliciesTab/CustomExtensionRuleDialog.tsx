@@ -21,14 +21,14 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 import {
   CertExtensionCriticality,
   CertExtensionInclude,
   customExtensionLabelFor,
   getPresetExtensionCriticality,
   isPresetExtensionOid
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 
 export const ANY_CRITICALITY = "any";
 

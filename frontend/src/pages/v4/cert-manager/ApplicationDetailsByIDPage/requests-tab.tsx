@@ -18,13 +18,20 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { CertificateRequestStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
-import type { TPkiApplication } from "@app/hooks/api/pkiApplications/types";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  type TPkiApplication
+} from "@app/hooks/api/pkiApplications/types";
 
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
+import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
+import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { orgHref, v4Path } from "../../links";
-import { plural } from "./shared";
+import { RequestCertificateSheet } from "../components/certificate-requests/request-sheet";
+import { appCan, plural } from "./shared";
 
 const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
@@ -112,11 +119,19 @@ const RequestStatus = ({
 
 export const RequestsTab = ({
   orgId,
-  application
+  application,
+  access
 }: {
   orgId: string;
   application: TPkiApplication;
+  access: PkiApplicationPermission;
 }) => {
+  const [requesting, setRequesting] = useState(false);
+  const canRequest = appCan(
+    access,
+    PkiApplicationResourceActions.Create,
+    PkiApplicationResourceSub.Certificates
+  );
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
@@ -245,7 +260,24 @@ export const RequestsTab = ({
             }}
           />
         }
+        actions={
+          <Button
+            variant="primary"
+            icon="plus"
+            disabledReason={canRequest ? undefined : RESTRICTED}
+            onClick={() => setRequesting(true)}
+          >
+            Request certificate
+          </Button>
+        }
       />
+      {requesting && (
+        <RequestCertificateSheet
+          applicationId={application.id}
+          applicationName={application.name}
+          onClose={() => setRequesting(false)}
+        />
+      )}
       <DataTable
         label={`Certificate requests in ${application.name}`}
         rows={rows}

@@ -18,9 +18,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
-import type { TPkiApplication } from "@app/hooks/api/pkiApplications/types";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  type TPkiApplication
+} from "@app/hooks/api/pkiApplications/types";
 import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
@@ -34,7 +39,8 @@ import {
   RevokeCertificateDialog,
   shortDate
 } from "../components/certificate";
-import { plural } from "./shared";
+import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
+import { appCan, plural } from "./shared";
 
 const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
@@ -87,6 +93,12 @@ export const CertificatesTab = ({
   const [pageSize, setPageSize] = useState(25);
   const [revoking, setRevoking] = useState<TCertificate>();
   const [deleting, setDeleting] = useState<TCertificate>();
+  const [importing, setImporting] = useState(false);
+  const canImport = appCan(
+    access,
+    PkiApplicationResourceActions.Import,
+    PkiApplicationResourceSub.Certificates
+  );
   const { data, isPending } = adapter.useApplicationCertificates({
     projectId,
     applicationId: application.id,
@@ -230,7 +242,23 @@ export const CertificatesTab = ({
             }}
           />
         }
+        actions={
+          <Button
+            variant="outline"
+            icon="upload"
+            disabledReason={canImport ? undefined : RESTRICTED}
+            onClick={() => setImporting(true)}
+          >
+            Import
+          </Button>
+        }
       />
+      {importing && (
+        <ImportCertificatesSheet
+          applicationId={application.id}
+          onClose={() => setImporting(false)}
+        />
+      )}
       <DataTable
         label={`Certificates in ${application.name}`}
         rows={rows}
@@ -326,6 +354,7 @@ export const CertificatesTab = ({
       <DeleteCertificateDialog
         cert={deleting}
         caType={deleting ? caType(deleting) : undefined}
+        projectId={projectId}
         onClose={() => setDeleting(undefined)}
       />
     </Stack>

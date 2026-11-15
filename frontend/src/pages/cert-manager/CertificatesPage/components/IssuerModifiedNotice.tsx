@@ -1,14 +1,14 @@
 import { InfoIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
-import { TIssuerModifiedField } from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   customExtensionLabelFor,
   formatExtendedKeyUsage,
   formatKeyUsage
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { TIssuerModifiedField } from "@app/hooks/api/certificates/types";
 
 type Props = {
   fields: TIssuerModifiedField[];

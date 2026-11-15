@@ -1,9 +1,9 @@
-import { isIPv4, isIPv6 } from "@app/helpers/ip";
-import { CaType } from "@app/hooks/api/ca";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
+import { CaType } from "@app/hooks/api/ca";
 
 export const getSanPlaceholder = (sanType: CertSubjectAlternativeNameType): string => {
   switch (sanType) {

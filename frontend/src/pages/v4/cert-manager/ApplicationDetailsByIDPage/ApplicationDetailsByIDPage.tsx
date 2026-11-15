@@ -210,7 +210,7 @@ const ApplicationDetail = ({
           />
         )}
         {tab === "requests" && canViewCertificates && (
-          <RequestsTab orgId={orgId} application={application} />
+          <RequestsTab orgId={orgId} application={application} access={access} />
         )}
         {tab === "syncs" && canViewSyncs && (
           <SyncsTab orgId={orgId} projectId={projectId} application={application} access={access} />

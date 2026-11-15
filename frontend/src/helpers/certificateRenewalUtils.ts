@@ -1,6 +1,20 @@
 import * as x509 from "@peculiar/x509";
 
 import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
+  isIssuerGeneratedExtensionOid
+} from "@app/helpers/certificateConstants";
+import {
+  filterUsages,
+  formatSubjectAltNames,
+  getAttributeValue,
+  sanTypeCandidatesFromValue,
+  SUBJECT_ATTR_MAP
+} from "@app/helpers/certificateUtils";
+import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -10,23 +24,8 @@ import {
   TCertificateRenewalPreview,
   TRenewCertificateAttributes
 } from "@app/hooks/api/certificates/types";
-import {
-  CertExtendedKeyUsageType,
-  CertKeyUsageType,
-  CertSubjectAlternativeNameType,
-  CertSubjectAttributeType,
-  isIssuerGeneratedExtensionOid
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-
-import type { RenewalFormData } from "./CertificateRenewalModal";
-import {
-  filterUsages,
-  formatSubjectAltNames,
-  getAttributeValue,
-  sanTypeCandidatesFromValue,
-  SUBJECT_ATTR_MAP
-} from "./certificateUtils";
-import type { TemplateConstraints } from "./useCertificatePolicy";
+import type { TemplateConstraints } from "@app/hooks/useCertificatePolicy";
+import type { RenewalFormData } from "@app/pages/cert-manager/CertificatesPage/components/CertificateRenewalModal";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

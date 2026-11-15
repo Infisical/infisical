@@ -35,6 +35,7 @@ import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
+import { CertificateSyncImpact, useCertificateHoldingSyncs } from "./certificate-sync-impact";
 
 export const daysLeft = (date: string) =>
   Math.round((new Date(date).getTime() - Date.now()) / 864e5);
@@ -220,15 +221,23 @@ export const RevokeCertificateDialog = ({
 export const DeleteCertificateDialog = ({
   cert,
   caType,
+  projectId,
   onClose,
   onDeleted
 }: {
   cert?: TCertificate;
   caType?: CaType;
+  projectId: string;
   onClose: () => void;
   onDeleted?: () => void;
 }) => {
   const remove = useV4Adapter("certificates").useDeleteCertificate();
+  const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
+    projectId,
+    certificateId: cert?.id,
+    applicationId: cert?.applicationId,
+    isEnabled: Boolean(cert)
+  });
   const canRevoke = Boolean(
     cert?.caId && (!caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES))
   );
@@ -245,10 +254,12 @@ export const DeleteCertificateDialog = ({
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <CertificateSyncImpact holdingSyncs={holdingSyncs} />
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
+            disabled={isLoadingHoldingSyncs}
             onClick={async () => {
               if (!cert) return;
               try {

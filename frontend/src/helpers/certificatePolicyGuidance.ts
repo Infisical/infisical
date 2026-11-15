@@ -1,16 +1,19 @@
 import {
-  TCertificatePolicy,
-  TCertificatePolicyRule,
-  TSubjectRule
-} from "@app/hooks/api/certificatePolicies";
-import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   formatSANType,
   validateCustomExtensionValue
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-
-import { SUBJECT_ATTRIBUTE_LABELS, SubjectAltName, SubjectAttribute } from "./certificateUtils";
+} from "@app/helpers/certificateConstants";
+import {
+  SUBJECT_ATTRIBUTE_LABELS,
+  SubjectAltName,
+  SubjectAttribute
+} from "@app/helpers/certificateUtils";
+import {
+  TCertificatePolicy,
+  TCertificatePolicyRule,
+  TSubjectRule
+} from "@app/hooks/api/certificatePolicies";
 
 type SanRule = NonNullable<TCertificatePolicyRule["sans"]>[number];
 

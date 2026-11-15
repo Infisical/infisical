@@ -1,17 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-
+} from "@app/helpers/certificateConstants";
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
   capTtlToDays,
   getRemovedCertificateNames
-} from "./certificateRenewalUtils";
+} from "@app/helpers/certificateRenewalUtils";
+import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
 
 const certificate = {
   id: "cert-1",

@@ -1,11 +1,14 @@
+import { CertSubjectAttributeType } from "@app/helpers/certificateConstants";
+import {
+  filterUsages,
+  formatSubjectAltNames,
+  SUBJECT_ATTR_MAP
+} from "@app/helpers/certificateUtils";
 import { TCertificateProfileDefaults } from "@app/hooks/api/certificateProfiles/types";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { TUnifiedCertificateIssuanceDTO } from "@app/hooks/api/certificates/types";
-import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-
-import type { FormData } from "./CertificateIssuanceModal";
-import { filterUsages, formatSubjectAltNames, SUBJECT_ATTR_MAP } from "./certificateUtils";
-import type { TemplateConstraints } from "./useCertificatePolicy";
+import type { TemplateConstraints } from "@app/hooks/useCertificatePolicy";
+import type { FormData } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 type ManagedFormData = Extract<FormData, { requestMethod: "managed" }>;
 

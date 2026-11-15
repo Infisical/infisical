@@ -1,6 +1,7 @@
 import type { MongoAbility } from "@casl/ability";
 
 import type { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
+import type { TDigiCertOrder } from "@app/hooks/api/appConnections/digicert/queries";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import type {
   TCertificateProfile,
@@ -10,11 +11,21 @@ import type {
   TActivityTrendResponse,
   TCertificate,
   TCertificateByIdResponse,
+  TCertificateRenewalPreview,
   TDashboardStats,
   TDeleteCertDTO,
+  TImportCertificateDTO,
+  TImportCertificateResponse,
+  TImportPkcs12EntriesDTO,
+  TImportPkcs12EntriesResult,
   TPqcTrendResponse,
+  TRenewCertificateDTO,
+  TRenewCertificateResponse,
   TRevokeCertDTO,
-  TRevokeCertResponse
+  TRevokeCertResponse,
+  TUnifiedCertificateIssuanceDTO,
+  TUnifiedCertificateIssuanceResponse,
+  TUpdateRenewalConfigDTO
 } from "@app/hooks/api/certificates/types";
 import type { TCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import type {
@@ -59,4 +70,22 @@ export type CertificatesAdapter = {
   useInstallations: (dto: TListPkiInstallationsDTO) => V4QueryResult<TListPkiInstallationsResponse>;
   useDeleteCertificate: V4Mutation<TDeleteCertDTO, TCertificate>;
   useRevokeCertificate: V4Mutation<TRevokeCertDTO, TRevokeCertResponse>;
+  useRenewalPreview: (certificateId: string) => V4QueryResult<TCertificateRenewalPreview>;
+  useRenewCertificate: V4Mutation<TRenewCertificateDTO, TRenewCertificateResponse>;
+  useUpdateRenewalConfig: V4Mutation<
+    TUpdateRenewalConfigDTO,
+    { message: string; renewBeforeDays?: number }
+  >;
+  useImportCertificate: V4Mutation<TImportCertificateDTO, TImportCertificateResponse>;
+  useImportPkcs12Entries: V4Mutation<TImportPkcs12EntriesDTO, TImportPkcs12EntriesResult[]>;
+  useIssueCertificate: V4Mutation<
+    TUnifiedCertificateIssuanceDTO,
+    TUnifiedCertificateIssuanceResponse
+  >;
+  useDigiCertOrders: (dto: {
+    connectionId: string;
+    organizationId: number;
+    productNameId: string;
+    enabled: boolean;
+  }) => V4QueryResult<TDigiCertOrder[]>;
 };

@@ -1,12 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert/queries";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles/queries";
-import { useDeleteCert, useRevokeCert } from "@app/hooks/api/certificates/mutations";
+import {
+  useDeleteCert,
+  useImportCertificate,
+  useImportPkcs12Entries,
+  useRenewCertificate,
+  useRevokeCert,
+  useUnifiedCertificateIssuance,
+  useUpdateRenewalConfig
+} from "@app/hooks/api/certificates/mutations";
 import {
   useGetCertActivityTrend,
   useGetCertDashboardStats,
   useGetCertificateById,
+  useGetCertificateRenewalPreview,
   useGetCertPqcTrend
 } from "@app/hooks/api/certificates/queries";
 import {
@@ -38,5 +48,13 @@ export const certificatesLive: CertificatesAdapter = {
   useCertificateProfiles: useListCertificateProfiles,
   useInstallations: useListPkiInstallations,
   useDeleteCertificate: useDeleteCert,
-  useRevokeCertificate: useRevokeCert
+  useRevokeCertificate: useRevokeCert,
+  useRenewalPreview: useGetCertificateRenewalPreview,
+  useRenewCertificate,
+  useUpdateRenewalConfig,
+  useImportCertificate,
+  useImportPkcs12Entries,
+  useIssueCertificate: useUnifiedCertificateIssuance,
+  useDigiCertOrders: ({ connectionId, organizationId, productNameId, enabled }) =>
+    useDigiCertConnectionListOrders(connectionId, organizationId, productNameId, { enabled })
 };
