@@ -12,7 +12,7 @@ import {
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
-import { removeTrailingSlash } from "../fn";
+import { pick, removeTrailingSlash } from "../fn";
 import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
@@ -964,12 +964,7 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
 };
 
 // A list of environment variables that can be overwritten
-export const overwriteSchema: {
-  [key: string]: {
-    name: string;
-    fields: { key: keyof TEnvConfig; description?: string }[];
-  };
-} = {
+export const overwriteSchema = {
   auditLogs: {
     name: "Audit Logs",
     fields: [
@@ -1229,16 +1224,46 @@ export const overwriteSchema: {
       }
     ]
   }
-};
+} as const satisfies Record<
+  string,
+  { name: string; fields: readonly { key: keyof TEnvConfig; description?: string }[] }
+>;
 
-export const overridableKeys = new Set(
+// The env values an instance admin can override, plus the flag derived only from them.
+export type TOverridableKey =
+  | (typeof overwriteSchema)[keyof typeof overwriteSchema]["fields"][number]["key"]
+  | "isGithubRadarConfigured";
+
+export type TOverridableEnvConfig = Pick<TEnvConfig, TOverridableKey>;
+
+export const overridableKeys: ReadonlySet<string> = new Set<string>(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
 );
 
+const overridableOutputKeys: TOverridableKey[] = [
+  ...Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key)),
+  "isGithubRadarConfigured"
+];
+
+// The overridable env values with these overrides on top of the process env, parsed by the env schema so its
+// coercion, defaults and fallbacks apply. Keys an admin cannot override are ignored. Only Instance Config Core reads
+// overridable values; domains.ts hands it this.
+export const resolveOverridableEnv = (
+  overrides: Record<string, string>
+): { success: true; config: TOverridableEnvConfig } | { success: false; issues: string[] } => {
+  const allowedOverrides = Object.fromEntries(Object.entries(overrides).filter(([key]) => overridableKeys.has(key)));
+  const parsedResult = envSchema.safeParse({ ...process.env, ...allowedOverrides });
+  if (!parsedResult.success) {
+    return {
+      success: false,
+      issues: parsedResult.error.issues.map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
+    };
+  }
+  return { success: true, config: pick(parsedResult.data, overridableOutputKeys) };
+};
+
 export const validateOverrides = (config: Record<string, string>) => {
-  const allowedOverrides = Object.fromEntries(
-    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
-  );
+  const allowedOverrides = Object.fromEntries(Object.entries(config).filter(([key]) => overridableKeys.has(key)));
 
   const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
   const parsedResult = envSchema.safeParse(tempEnv);
@@ -1252,9 +1277,7 @@ export const validateOverrides = (config: Record<string, string>) => {
 };
 
 export const overrideEnvConfig = (config: Record<string, string>) => {
-  const allowedOverrides = Object.fromEntries(
-    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
-  );
+  const allowedOverrides = Object.fromEntries(Object.entries(config).filter(([key]) => overridableKeys.has(key)));
 
   const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
   const parsedResult = envSchema.safeParse(tempEnv);
