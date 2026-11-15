@@ -24,7 +24,7 @@ func TestUser_Delete(t *testing.T) {
 		phone := signIn(t, tn, alice.Email)
 
 		// Action
-		res, err := alice.API.DeleteUserWithResponse(t.Context())
+		res, err := alice.API.DeleteUserWithResponse(t.Context(), nil)
 
 		// Assert
 		require.NoError(t, err)

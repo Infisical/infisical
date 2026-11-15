@@ -137,6 +137,8 @@ Before it opens any port, `connect` checks each service with the proxy. The prox
 - If you name services, `connect` stops with the proxy's reason and opens no ports
 - With `--all`, `connect` skips each refused service and prints its name and the reason (it stops with an error only if the proxy refuses every service)
 
+If a service has a [hook](/documentation/platform/agent-vault/hooks), the proxy asks the hook each time the agent opens a connection. If the hook server refuses the connection or doesn't give a usable answer, `connect` prints the service's name and a message, and the connection closes.
+
 ### Connect outside `infisical agent-vault run`
 
 Pass the session token and the proxy's address:
@@ -188,6 +190,8 @@ The proxy records each statement, SSH command, and file transfer in the [session
     - The TLS settings match the database, for example **Verify Certificate** is off or **CA Certificate (optional)** is set for a database with a private certificate
 
     The session's log shows the failed connection as an **Error** row with the reason, and so does the proxy's own log.
+
+    If `connect` printed a message about the service's hook, the hook server refused the connection or didn't give a usable answer. See the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
   </Accordion>
   <Accordion title="The MySQL client says it can't load mysql_native_password">
     The client was built without the `mysql_native_password` login method, which the proxy needs. Use a MySQL 8 or MariaDB client.

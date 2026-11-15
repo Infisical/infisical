@@ -168,8 +168,8 @@ The outcome is one of six:
 | --- | --- |
 | **Brokered** | A service matched and the proxy attached its credential to the request |
 | **Passthrough** | No service matched, or the matching service has no credential. The proxy forwarded the request without a credential |
-| **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
-| **Error** | The proxy couldn't reach the destination host |
+| **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests), or the service's [hook](/documentation/platform/agent-vault/hooks) denied it |
+| **Error** | The proxy couldn't reach the destination host, or the service's hook didn't give a usable answer |
 | **Listed Services** | The agent asked the proxy for the [services the session can use](/documentation/platform/agent-vault/service-discovery), and the proxy got the list from Infisical |
 | **Fetched Skills** | The proxy got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
 

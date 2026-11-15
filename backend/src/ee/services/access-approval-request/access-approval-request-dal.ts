@@ -47,11 +47,13 @@ export const secretAccessApprovalRequestDALFactory = (db: TDbClient) => {
   const findSecretAccessRequests = async ({
     projectId,
     policyId,
-    requesterId
+    requesterId,
+    envSlug
   }: {
     projectId: string;
     policyId?: string;
     requesterId?: string;
+    envSlug?: string;
   }) => {
     try {
       return await db
@@ -60,6 +62,14 @@ export const secretAccessApprovalRequestDALFactory = (db: TDbClient) => {
         .where((qb) => {
           if (policyId) void qb.where("policyId", policyId);
           if (requesterId) void qb.where("requesterId", requesterId);
+          // The request's environment is only stored in its packed permission rules; creation requires every
+          // rule to share it, so the first rule's conditions are authoritative (see readRequestedScope).
+          if (envSlug) {
+            void qb.whereRaw(`?? #>> '{requestData,permissions,0,2,environment}' = ?`, [
+              `${TableName.ApprovalRequests}.requestData`,
+              envSlug
+            ]);
+          }
         })
         .orderBy("createdAt", "desc");
     } catch (error) {

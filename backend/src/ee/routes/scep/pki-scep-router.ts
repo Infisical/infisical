@@ -37,6 +37,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getScepOperation",
       params: z.object({
         profileId: z.string().uuid()
       }),
@@ -92,12 +93,15 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "postScepOperation",
+      consumes: ["application/x-pki-message"],
       params: z.object({
         profileId: z.string().uuid()
       }),
       querystring: z.object({
         operation: z.string().optional()
-      })
+      }),
+      body: z.instanceof(Buffer).optional()
     },
     handler: async (req, res) => {
       const { profileId } = req.params;
@@ -210,6 +214,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     url: "/applications/:applicationId/profiles/:profileId/pkiclient.exe",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "getScepApplicationOperation",
       params: z.object({
         applicationId: z.string().uuid(),
         profileId: z.string().uuid()
@@ -260,11 +265,14 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     url: "/applications/:applicationId/profiles/:profileId/pkiclient.exe",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "postScepApplicationOperation",
+      consumes: ["application/x-pki-message"],
       params: z.object({
         applicationId: z.string().uuid(),
         profileId: z.string().uuid()
       }),
-      querystring: z.object({ operation: z.string().optional() })
+      querystring: z.object({ operation: z.string().optional() }),
+      body: z.instanceof(Buffer).optional()
     },
     handler: async (req, res) => {
       const { applicationId, profileId } = req.params;

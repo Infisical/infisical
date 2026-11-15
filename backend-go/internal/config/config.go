@@ -342,7 +342,6 @@ type Config struct {
 	// Development flags
 	RotationDevelopmentMode                     bool
 	DailyResourceCleanUpDevelopmentMode         bool
-	BDDNockAPIEnabled                           bool
 	ACMEDevelopmentMode                         bool
 	ACMESkipUpstreamValidation                  bool
 	ACMEDevelopmentHTTP01ChallengeHostOverrides string
@@ -704,7 +703,6 @@ func LoadConfig() (*Config, error) {
 		// Development flags
 		OptionalBool(&cfg.RotationDevelopmentMode, "ROTATION_DEVELOPMENT_MODE", false).
 		OptionalBool(&cfg.DailyResourceCleanUpDevelopmentMode, "DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE", false).
-		OptionalBool(&cfg.BDDNockAPIEnabled, "BDD_NOCK_API_ENABLED", false).
 		OptionalBool(&cfg.ACMEDevelopmentMode, "ACME_DEVELOPMENT_MODE", false).
 		OptionalBool(&cfg.ACMESkipUpstreamValidation, "ACME_SKIP_UPSTREAM_VALIDATION", false).
 		Optional(&cfg.ACMEDevelopmentHTTP01ChallengeHostOverrides, "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES", "").

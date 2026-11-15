@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -89,7 +89,7 @@ type TSecretSyncServiceFactoryDep = {
     TSecretSyncQueueFactory,
     "queueSecretSyncSyncSecretsById" | "queueSecretSyncImportSecretsById" | "queueSecretSyncRemoveSecretsById"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -621,12 +621,10 @@ export const secretSyncServiceFactory = ({
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    // secretSyncLimit is uncapped by default (null); only enforce a cap when the plan configures a
-    // numeric limit. Counted org-wide right before creation.
     const plan = await licenseService.getPlan(actor.orgId);
-    if (typeof plan.secretSyncLimit === "number") {
+    if (plan.isLimited(PlanLimit.SecretSyncs)) {
       const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
-      if (currentSecretSyncCount >= plan.secretSyncLimit) {
+      if (plan.exceeds(PlanLimit.SecretSyncs, currentSecretSyncCount)) {
         throw new BadRequestError({
           message: "Failed to create secret sync due to plan limit reached. Upgrade plan to add more secret syncs."
         });

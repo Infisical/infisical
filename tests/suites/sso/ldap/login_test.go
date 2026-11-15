@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
@@ -85,6 +86,30 @@ func TestLDAPLogin(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, apierr.Message(res.Body), "not a part of the accepted domains")
+		require.Nil(t, fixture.MembershipOf(t, tn, email))
+	})
+}
+
+func TestLDAPLogin_SeatLimit(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse a new directory user when the plan's member limit is reached, and add no membership", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		d := configured(t, tn)
+		uid, password, email := d.person(t, tn.Email("ldap-"+id.Short()))
+		tn.NewMachineIdentity(t)
+		tn.SetPlan(t, license.SeatLimited(1))
+
+		// Action
+		res := login(t, tn, uid, password)
+
+		// Assert
+		require.NotEqual(t, http.StatusOK, res.StatusCode())
+		require.Contains(t, string(res.Body), "member limit reached")
 		require.Nil(t, fixture.MembershipOf(t, tn, email))
 	})
 }

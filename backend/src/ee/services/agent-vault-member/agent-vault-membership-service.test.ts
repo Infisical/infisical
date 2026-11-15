@@ -136,7 +136,7 @@ const buildService = ({
       delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() },
+    usageMeteringService: { emit: vi.fn() },
     agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
     identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }

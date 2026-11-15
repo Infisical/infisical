@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionActions,
   OrgPermissionMemberActions,
@@ -24,7 +24,7 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-rol
 type TExternalGroupOrgRoleMappingServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: TLicenseServiceFactory;
+  licenseService: TLicenseService;
   roleDAL: TRoleDALFactory;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };

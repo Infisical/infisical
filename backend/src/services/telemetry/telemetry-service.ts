@@ -1,10 +1,9 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { InstanceType, PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -86,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -207,7 +206,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -264,7 +263,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);
@@ -285,13 +284,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([
-        licenseService.getPlan(orgId),
-        licenseService.getOrgSeatUsage(orgId)
-      ]);
+      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
-      properties.has_secret_scanning = Boolean(plan.secretScanning);
+      properties.has_secret_scanning = plan.has(PlanFeature.SecretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }

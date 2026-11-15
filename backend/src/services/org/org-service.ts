@@ -12,13 +12,13 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
@@ -52,8 +52,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -134,7 +132,8 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
@@ -142,7 +141,6 @@ type TOrgServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
 };
@@ -165,6 +163,7 @@ export const orgServiceFactory = ({
   orgMembershipDAL,
   tokenService,
   licenseService,
+  usageMeteringService,
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
@@ -177,7 +176,6 @@ export const orgServiceFactory = ({
   projectAccessRevokeService,
   auditLogService,
   certificatePolicyDAL,
-  usageMeteringService,
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
@@ -538,7 +536,7 @@ export const orgServiceFactory = ({
     );
 
     if (secretShareBrandConfig !== undefined) {
-      if (!plan.secretShareExternalBranding) {
+      if (!plan.has(PlanFeature.SecretShareExternalBranding)) {
         throw new BadRequestError({
           message:
             "Failed to update secret share branding due to plan restriction. Upgrade plan to configure custom branding."
@@ -547,7 +545,7 @@ export const orgServiceFactory = ({
     }
 
     if (requireGatewayPools) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message:
             "Failed to require gateway pools due to plan restriction. Upgrade to Infisical Enterprise to use gateway pools."
@@ -556,7 +554,7 @@ export const orgServiceFactory = ({
     }
 
     if (enforceMfa !== undefined) {
-      if (!plan.enforceMfa) {
+      if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
@@ -573,7 +571,7 @@ export const orgServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     }
 
-    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.enforceMfa) {
+    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.has(PlanFeature.EnforceMfa)) {
       throw new BadRequestError({
         message:
           "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
@@ -581,7 +579,7 @@ export const orgServiceFactory = ({
     }
 
     if (authEnforced !== undefined) {
-      if (!plan?.samlSSO && !plan.oidcSSO)
+      if (!plan?.has(PlanFeature.SamlSso) && !plan.has(PlanFeature.OidcSso))
         throw new BadRequestError({
           message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });
@@ -589,7 +587,7 @@ export const orgServiceFactory = ({
     }
 
     if (scimEnabled !== undefined) {
-      if (!plan?.scim)
+      if (!plan?.has(PlanFeature.Scim))
         throw new BadRequestError({
           message:
             "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
@@ -603,7 +601,7 @@ export const orgServiceFactory = ({
     }
 
     if (googleSsoAuthEnforced !== undefined) {
-      if (!plan.enforceGoogleSSO) {
+      if (!plan.has(PlanFeature.EnforceGoogleSso)) {
         throw new BadRequestError({
           message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
         });
@@ -843,9 +841,10 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
+    if (!trx) await usageMeteringService.syncSeats(organization.id);
 
-    usageMeteringService.emit(organization.id, PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     return organization;
   };
@@ -998,7 +997,7 @@ export const orgServiceFactory = ({
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });
@@ -1383,7 +1382,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1393,9 +1392,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, SecretIdentities.key);
-    usageMeteringService.emit(orgId, PamIdentities.key);
-    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(orgId, Meter.PamIdentities);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 
@@ -1437,7 +1436,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1447,9 +1446,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, SecretIdentities.key);
-    usageMeteringService.emit(orgId, PamIdentities.key);
-    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(orgId, Meter.PamIdentities);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMemberships;
   };
 

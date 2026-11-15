@@ -20,6 +20,7 @@ import { milvusFlowProvider } from "./providers/milvus";
 import { mongoAtlasFlowProvider } from "./providers/mongo-atlas";
 import { mongoDbFlowProvider } from "./providers/mongo-db";
 import { oauth2FlowProvider } from "./providers/oauth2";
+import { openRouterFlowProvider } from "./providers/openrouter";
 import { rabbitMqFlowProvider } from "./providers/rabbit-mq";
 import { redisFlowProvider } from "./providers/redis";
 import { sapAseFlowProvider } from "./providers/sap-ase";
@@ -62,7 +63,8 @@ const definitions = new Map<DynamicSecretProviders, DynamicSecretFlowProvider>(
     ibmApiConnectFlowProvider,
     tailscaleFlowProvider,
     oauth2FlowProvider,
-    kafkaFlowProvider
+    kafkaFlowProvider,
+    openRouterFlowProvider
   ].map((definition) => [definition.provider, definition])
 );
 

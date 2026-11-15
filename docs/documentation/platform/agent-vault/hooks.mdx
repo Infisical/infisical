@@ -1,0 +1,380 @@
+---
+title: "Hooks"
+description: "Let your own server allow or refuse an AI agent's requests and connections to a service, before the proxy attaches the credential."
+---
+
+A hook is a server of yours that the [proxy](/documentation/platform/agent-vault/proxies) asks before it uses a [service](/documentation/platform/agent-vault/services)'s credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny`. The proxy continues only if your server answers `allow`.
+
+Use a hook when a service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) or [allowed tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) can't express your rule, for example to refuse refunds above a set amount, to allow writes to some repositories only, or to check a request against your own ticketing system. Your server gets the agent's request but never the service's credential.
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
+- A server that accepts `POST` requests at an `https://` or `http://` URL, and that every proxy in the project can reach
+
+## When the proxy asks the hook
+
+The proxy asks the hook at a different point for each [service type](/documentation/platform/agent-vault/services#service-types):
+
+- **HTTP APIs and MCP servers:** Before it sends each request to the service, including MCP calls such as `initialize` and `tools/list`
+- **Databases and SSH servers:** Once for each connection the agent opens
+
+The proxy checks its own rules first. If the request breaks the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), the service's methods and paths, or the service's allowed tools, the proxy refuses the request without asking the hook.
+
+If your server denies the request or doesn't give a usable answer, the proxy refuses it, and the agent gets a message it can act on (see [Refused requests](#refused-requests)).
+
+## Add a hook to a service
+
+You can add a hook when you add a service, or later when you edit it. Each proxy applies a change to a hook at its next check-in, within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
+
+<Tabs>
+  <Tab title="In Infisical">
+    <Steps>
+      <Step>
+        In your Agent Vault project, go to **Services**. To add a service, select **Add Service** and pick a template. To change an existing service, open the service's actions menu and select **Edit**.
+      </Step>
+      <Step>
+        Fill in the service's other steps as usual. On the **Hook** step, turn on **Use a Hook**.
+      </Step>
+      <Step>
+        In **Hook URL**, enter your server's URL, such as `https://hooks.example.com/agent-vault/stripe`. The URL can't include a username, a password, a query string, or a fragment. Give each service its own path if the services use different signing secrets (see [Pick a signing secret](#pick-a-signing-secret)).
+      </Step>
+      <Step>
+        In **Signing Secret**, enter the secret your server checks signatures with. If you're editing a service that already has a hook, leave the field as it is to keep the saved secret.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-hook.png" alt="The Hook step of the github service, with Use a Hook turned on, the hook URL https://hooks.example.com/agent-vault/github, and a saved signing secret" />
+        </Frame>
+      </Step>
+      <Step>
+        Select **Continue**, then select **Add Service**, or **Save** if you're editing the service.
+      </Step>
+    </Steps>
+
+    To remove a hook, edit the service and turn off **Use a Hook** on the **Hook** step.
+  </Tab>
+  <Tab title="Through the API">
+    To add a service with a hook, call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint with a `hook` object that holds the `url` and the `signingSecret`:
+
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/agent-vault/services \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "projectId": "<project-id>",
+        "type": "http",
+        "name": "stripe",
+        "hostPattern": "api.stripe.com",
+        "credential": {"type": "bearer", "value": "<stripe-key>"},
+        "hook": {
+          "url": "https://hooks.example.com/agent-vault/stripe",
+          "signingSecret": "<signing-secret>"
+        }
+      }'
+    ```
+
+    To add, change, or remove the hook of an existing service, call the [Update service](/api-reference/endpoints/agent-vault-services/update) endpoint with the service's `type` and a `hook` field:
+
+    - `{"url": "...", "signingSecret": "..."}` sets the URL and replaces the signing secret (if the service has no hook yet, `signingSecret` is required)
+    - `{"url": "..."}` changes only the URL and keeps the saved signing secret
+    - `null` removes the hook and its signing secret
+
+    ```bash
+    curl -X PATCH https://app.infisical.com/api/v1/agent-vault/services/<service-id> \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{"type": "http", "hook": {"url": "https://hooks.example.com/agent-vault/stripe-v2"}}'
+    ```
+
+    When you read a service as an admin, its `hook` field holds the `url`, or is `null` if the service has no hook. Infisical never returns the signing secret.
+  </Tab>
+</Tabs>
+
+An [inline service](/documentation/platform/agent-vault/inline-services) can have a hook too: send the same `hook` object with the inline service when you call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint.
+
+### Pick a signing secret
+
+The proxy signs every request to your server with the signing secret, so your server can check that the request came from your proxy. The secret can be 32 to 512 characters long, using letters, numbers, and symbols, with no spaces. To generate a secret:
+
+```bash
+openssl rand -hex 32
+```
+
+You can use the same secret for several services. If you give each service its own secret, also give each service its own URL path, such as `/agent-vault/stripe` and `/agent-vault/github`. Your server needs the secret before it can trust the body, and the body is the only part of the request that names the service. The URL path tells your server which secret to use.
+
+### Change the signing secret
+
+When you replace the secret, each proxy keeps signing with the old secret until its next check-in. So that your server doesn't reject requests in the meantime:
+
+<Steps>
+  <Step>
+    On your server, accept a signature made with either the old or the new secret.
+  </Step>
+  <Step>
+    Replace the secret on the service.
+  </Step>
+  <Step>
+    After every proxy in the project has checked in (within one poll interval, at most 300 seconds), remove the old secret from your server.
+  </Step>
+</Steps>
+
+## Build the hook server
+
+For each check, your server receives one `POST` request, verifies the request's signature, and answers `allow` or `deny` in JSON. The proxy waits at most 3 seconds for the answer.
+
+### Verify the signature
+
+The proxy signs requests the way the [Standard Webhooks](https://www.standardwebhooks.com/) specification describes, so you can verify them with any Standard Webhooks library. Load the library in raw-key mode. In the default mode, the library rejects every signature from the proxy.
+
+Verify the raw request body, before any framework parses it. The libraries also refuse a request whose `webhook-timestamp` differs from your server's clock by more than five minutes.
+
+<CodeGroup>
+```js Node.js
+import express from "express";
+import { Webhook } from "standardwebhooks";
+
+const hook = new Webhook(process.env.STRIPE_HOOK_SECRET, { format: "raw" });
+const app = express();
+
+app.post("/agent-vault/stripe", express.raw({ type: "application/json", limit: "4mb" }), (req, res) => {
+  let check;
+  try {
+    check = hook.verify(req.body, req.headers);
+  } catch {
+    return res.status(401).end();
+  }
+
+  if (check.request?.path === "/v1/refunds") {
+    return res.json({ decision: "deny", message: "Refunds need approval from the on-call engineer.", reason: "refund" });
+  }
+  res.json({ decision: "allow" });
+});
+
+app.listen(8080);
+```
+
+```go Go expandable
+package main
+
+import (
+	"encoding/json"
+	"io"
+	"log"
+	"net/http"
+	"os"
+
+	standardwebhooks "github.com/standard-webhooks/standard-webhooks/libraries/go"
+)
+
+func main() {
+	hook, err := standardwebhooks.NewWebhookRaw([]byte(os.Getenv("STRIPE_HOOK_SECRET")))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.HandleFunc("POST /agent-vault/stripe", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(io.LimitReader(r.Body, 4<<20))
+		if err := hook.Verify(body, r.Header); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var check struct {
+			Request *struct{ Path string } `json:"request"`
+		}
+		_ = json.Unmarshal(body, &check)
+
+		answer := map[string]string{"decision": "allow"}
+		if check.Request != nil && check.Request.Path == "/v1/refunds" {
+			answer = map[string]string{"decision": "deny", "message": "Refunds need approval from the on-call engineer.", "reason": "refund"}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(answer)
+	})
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+```
+</CodeGroup>
+
+The proxy can send the same check twice if a connection to your server drops. Both copies have the same `webhook-id`, so answer both with the same decision, and if your server records or counts checks, count each `webhook-id` once.
+
+### The request your server receives
+
+Each request has these headers:
+
+```text
+Content-Type: application/json
+User-Agent: infisical-agent-vault-proxy/<version>
+webhook-id: <unique ID of this check>
+webhook-timestamp: <Unix time in seconds>
+webhook-signature: v1,<base64 signature>
+```
+
+The body describes the session, the service, and the request the agent is about to send. This example body is for a request to an HTTP service:
+
+```json expandable
+{
+  "version": "1",
+  "deliveryId": "0193a5f4-7c2e-7b3a-9d41-6f2e8c1a5b07",
+  "proxy": { "id": "8e0c7d52-1f4b-4a8e-b2a6-3c9d0e7f1a24", "version": "0.43.0" },
+  "session": {
+    "id": "5b2f9c1e-8d7a-4e3b-a1c6-2f4d8e9b0a13",
+    "label": "Nightly refunds",
+    "actor": { "type": "machineIdentity", "id": "c4a1e8f2-6b3d-4f7a-9e2c-1d5b8a0f3e46", "name": "support-agent", "email": null },
+    "onBehalfOf": { "id": "e7d3b9a1-2c4f-4e8b-b6a0-9f1c3d5e7a82", "name": "Ana Silva", "email": "ana@example.com" }
+  },
+  "service": {
+    "id": "a9f2c4e1-3b7d-4a6e-8c1f-5d0b2e4a7c93",
+    "name": "stripe",
+    "type": "http",
+    "accessBundle": { "id": "f1b3d5a7-9c2e-4f6a-8b0d-2e4c6a8f1b35", "name": "payments" }
+  },
+  "request": {
+    "method": "POST",
+    "scheme": "https",
+    "host": "api.stripe.com",
+    "port": "443",
+    "path": "/v1/refunds",
+    "query": "",
+    "headers": { "content-type": ["application/x-www-form-urlencoded"] },
+    "body": "charge=ch_123&amount=25000",
+    "bodyEncoding": "utf8",
+    "bodyTruncated": false
+  },
+  "mcp": null,
+  "connection": null
+}
+```
+
+- `deliveryId`: the same value as the `webhook-id` header
+- `session.actor`: the user or machine identity that created the session, as it was when the session was created
+- `session.onBehalfOf`: the user a machine identity created the session [on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users), or `null`
+- `service.accessBundle`: the access bundle the session uses the service through, or `null` for an inline service
+- `request.path`: the path as the agent sent it, still percent-encoded
+- `request.headers`: the headers the agent sent, with names in lowercase, each with a list of values
+- `request.body`: the request body as text if it's valid UTF-8, or as base64 with `bodyEncoding` set to `base64`
+
+For an MCP server, `request` describes the HTTP request, and `mcp` lists the JSON-RPC calls in the request's body:
+
+```json
+"mcp": {
+  "calls": [{ "id": 17, "method": "tools/call", "tool": "merge_pull_request" }],
+  "parsed": true
+}
+```
+
+To check a tool call's arguments, read them from `request.body`. If `parsed` is `false`, the proxy couldn't read the calls, so deny the request if your rule depends on them.
+
+For a database or SSH service, `request` is `null`, and `connection` describes the server the agent is connecting to:
+
+```json
+"connection": { "host": "db.internal", "port": "5432", "database": "billing" }
+```
+
+### Answer the request
+
+Answer with a `2xx` status and a JSON body, for both decisions:
+
+```json
+{ "decision": "deny", "message": "Refunds need approval from the on-call engineer.", "reason": "refund over the limit" }
+```
+
+- `decision`: `allow` or `deny`, in lowercase
+- `message` (optional): the text the agent gets, up to 2 KB, or 1 KB for databases and SSH servers (say what the agent should do next, such as whether to try again)
+- `reason` (optional): text for the [session logs](/documentation/platform/agent-vault/session-logs), up to 512 bytes
+
+Text longer than these limits is cut.
+
+The proxy also refuses the request if your server doesn't give a usable answer, which is any of the following:
+
+- No answer within 3 seconds
+- A connection or TLS error
+- A status other than `2xx`
+- A redirect
+- A body larger than 64 KB
+- A body that isn't valid JSON
+- A missing or unknown `decision`
+
+### What your server sees
+
+Your server sees the agent's request as the agent sent it, before the proxy changes anything. Keep these points in mind when you write a rule:
+
+- **No credentials:** The request doesn't include the service's credential or its [custom headers](/documentation/platform/agent-vault/http-apis#custom-headers), and if the agent sends a [substitution](/documentation/platform/agent-vault/http-apis#substitutions) placeholder, your server sees the placeholder, not the real value
+- **Method overrides:** Some APIs accept a header such as `X-HTTP-Method-Override` that turns a `POST` into a `DELETE`, so check those headers as well as `method`
+- **Large bodies:** The proxy sends at most the first 1 MB of the body, and sets `bodyTruncated` to `true` if it cut the body short
+- **Compressed bodies:** A body sent with a `Content-Encoding` header, such as `gzip`, arrives still compressed, as base64
+- **Repeated keys:** A header, a query parameter, or a JSON key can appear more than once, and the API might read a different copy than your parser does
+
+If your rule depends on a part of the request that your server can't read in full, such as a truncated body or a value that appears more than once, deny the request.
+
+## Refused requests
+
+If your server denies a request, the agent gets your `message`. If you sent no message, the agent gets "Your organization's hook refused this request." (or "Your organization's hook refused this connection." for databases and SSH servers). If your server doesn't give a usable answer, the agent gets a message saying that the hook server didn't give a usable answer.
+
+The proxy delivers the refusal differently for each service type:
+
+- **HTTP APIs, and `GET` and `DELETE` requests to MCP servers:** A `403` response with the `hook_denied` error code, or a `503` response with the `hook_failed` error code and a `Retry-After: 5` header, each with a JSON body like the proxy's other [refusals](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy)
+- **`POST` requests to MCP servers:** A tool result with `isError` set to `true` for a tool call, so the agent reads the message as the tool's answer, or a JSON-RPC error with the same message for any other call
+- **Databases and SSH servers:** `infisical agent-vault connect` prints the service's name and the message, as in `analytics: <message>`, and the proxy closes the agent's connection without opening one to the server
+
+For an HTTP denial, the response looks like this:
+
+```text
+HTTP/1.1 403 Forbidden
+Content-Type: application/json
+X-Agent-Vault-Decision: blocked
+X-Agent-Vault-Error: hook_denied
+
+{"error":"hook_denied","message":"Refunds need approval from the on-call engineer.","hint":"This is the Agent Vault proxy, not the API: your organization's hook refused this request. Do what its message says, including whether to try again."}
+```
+
+### In the session logs
+
+Each refusal adds a row to the session logs:
+
+- **HTTP APIs and MCP servers:** A denied request shows as **Blocked** with "The hook refused this request:" followed by your `reason`, and a failed hook call shows as **Error** with "The hook didn't give a usable answer, so the request wasn't sent."
+- **Databases and SSH servers:** A denied connection shows "The hook refused this connection:" followed by your `reason` (or your `message`, if you sent no `reason`), and a failed hook call shows "The hook didn't give a usable answer, so the connection wasn't opened."
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-hook-denied.png" alt="The session logs of a session, with a PUT request to merge a pull request shown as Blocked, and hovering over Blocked shows: The hook refused this request: merge to main needs approval (rule protect-main)" />
+</Frame>
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-hook-connection.png" alt="The session logs of a session, with a connection to the orders-db PostgreSQL service shown as Blocked and expanded to read: The hook refused this connection: orders-db access outside 09:00-18:00 UTC" />
+</Frame>
+
+The session's owner and the project's admins can read the session logs, and the proxy also writes `reason` to its own log, so don't put anything in `reason` that those readers shouldn't see.
+
+## Limitations
+
+- **Session labels aren't a safe input:** The session's owner and project admins can [change the label](/documentation/platform/agent-vault/sessions#label-a-session) at any time, so never allow a request because of `session.label`
+- **MySQL can switch databases:** `connection.database` is the database the connection opens with, but a MySQL client can switch to any other database the service's account can reach with `USE`, so limit the account's grants on the server
+- **One MCP tool call can reach the hook more than once:** If an MCP server asks the agent for more input during a tool call, the agent sends the tool call again with a new JSON-RPC ID, and the proxy asks the hook again
+- **`http://` isn't encrypted:** Over an `http://` URL, the request (with the agent's headers and body) and your server's answer cross the network unencrypted, so use `http://` only on a network you trust
+- **Private certificate authorities:** If your server's `https://` certificate comes from a private certificate authority, every machine that runs a proxy has to trust that authority (on Linux, set `SSL_CERT_FILE` or `SSL_CERT_DIR` in the proxy's environment to the authority's certificate)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Every request is refused with hook_failed">
+    The proxy couldn't get a usable answer from your server. Check that:
+
+    - Every machine that runs a proxy in the project can reach the hook URL
+    - Your server answers within 3 seconds, with a `2xx` status and a JSON body whose `decision` is `allow` or `deny`
+    - Your server doesn't redirect the request, for example from `http://` to `https://`
+
+    The proxy's own log shows the cause of each failure, such as a timeout or an unexpected status.
+  </Accordion>
+  <Accordion title="Your server rejects every signature">
+    Check that:
+
+    - Your server loads the library in raw-key mode, as in [Verify the signature](#verify-the-signature)
+    - The secret on your server matches the service's signing secret exactly (if you recently [changed it](#change-the-signing-secret), proxies switch on their next check-in)
+    - Your server verifies the raw body, before a framework parses or reformats it
+    - The clocks on the proxy's machine and on your server are both correct, since the library refuses a timestamp more than five minutes off
+  </Accordion>
+  <Accordion title="The MCP server stops working after you add a hook">
+    The proxy asks the hook about every request to the MCP server, including `initialize`, `tools/list`, and notifications, not only tool calls. Make sure your server allows those requests.
+  </Accordion>
+</AccordionGroup>
