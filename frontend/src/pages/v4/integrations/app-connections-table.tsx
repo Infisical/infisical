@@ -663,7 +663,6 @@ export const AppConnectionsTable = ({
             onClear={clearFilters}
           />
         }
-        persistentStatus={`${visible.length} of ${scoped.length} connections`}
         pagination={
           visible.length > 0 ? (
             <Pagination

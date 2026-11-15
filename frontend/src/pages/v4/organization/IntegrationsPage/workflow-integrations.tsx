@@ -24,6 +24,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
+import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionActions,
@@ -179,9 +180,7 @@ export const WorkflowIntegrationsTab = () => {
       text: (row) => (row.description ? `${row.slug}: ${row.description}` : row.slug),
       render: (row) => (
         <Stack gap={2}>
-          <Button variant="link" underline="hover" onClick={() => edit(row)}>
-            {row.slug}
-          </Button>
+          <span className="truncate">{row.slug}</span>
           {row.description && <Meta mono={false}>{row.description}</Meta>}
         </Stack>
       )
@@ -249,6 +248,7 @@ export const WorkflowIntegrationsTab = () => {
         sort={sort}
         onSortChange={setSort}
         rowActions={{
+          inline: [{ label: "Edit details", icon: PencilIcon, onSelect: edit }],
           menuDisabledReason: (row) => (busyId === row.id ? "Working on it" : undefined),
           renderMenu: (row) => (
             <>
