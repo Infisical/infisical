@@ -31,10 +31,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useTimedReset } from "@app/hooks";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
@@ -44,7 +40,6 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
@@ -53,7 +48,7 @@ import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
 import { ServiceIcon } from "../resources/shared";
-import { CreateIdentityForm } from "./create-identity-form";
+import { useIdentityCreation } from "./create-identity-dialog";
 import {
   codeLanguageForFile,
   createSessionSnippet,
@@ -545,11 +540,7 @@ const MachineIdentityFields = ({
   universalAuthError: unknown;
 }) => {
   const agentVault = useV4Adapter("agentVault");
-  const { permission } = useProjectPermission(projectId);
-  const canCreateIdentity = permission.can(
-    ProjectPermissionIdentityActions.Create,
-    ProjectPermissionSub.Identity
-  );
+  const identityCreation = useIdentityCreation(projectId, onIdentityChange);
   const [identitySearch, setIdentitySearch] = useState("");
   const [debouncedIdentitySearch] = useDebounce(identitySearch);
   const { data: identities, isPending: isSearchingIdentities } = agentVault.useMembers(
@@ -604,26 +595,10 @@ const MachineIdentityFields = ({
             const member = identities?.members.find((entry) => entry.id === id);
             if (member) onIdentityChange({ id: member.id, name: member.name, role: member.role });
           }}
-          creation={
-            canCreateIdentity
-              ? {
-                  mode: "dialog",
-                  label: "Create machine identity",
-                  title: "Add machine identity to Agent Vault",
-                  submitLabel: "Create",
-                  discardTitle: "Discard this machine identity?",
-                  renderForm: (form) => (
-                    <CreateIdentityForm
-                      {...form}
-                      projectId={projectId}
-                      onCreated={onIdentityChange}
-                    />
-                  )
-                }
-              : undefined
-          }
+          creation={identityCreation.creation}
         />
       </Field>
+      {identityCreation.dialog}
       {identity && hasNoUniversalAuth && (
         <Alert tone="warn">
           {identity.name} doesn&apos;t use Universal Auth, so it has no client ID. Add Universal

@@ -1,4 +1,4 @@
-import { useEffect, useId, useReducer, useRef, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
@@ -18,6 +18,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
@@ -50,8 +51,9 @@ import {
 } from "@app/hooks/api/pam";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
-import { failed, saved, toast } from "../../access/toast";
+import { failed, readableFailure, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import type { PamAccessAdapter } from "../../data/pam-access/contract";
 
 const DURATION_OPTIONS = [
   { value: "15m", label: "15 minutes" },
@@ -166,7 +168,10 @@ const ApprovalWorkflow = ({
   );
 };
 
-type RequestTarget = { account: TPamAccountListItem; accessType: PamAccessType };
+type RequestTarget = {
+  account: TPamAccountListItem;
+  accessType: PamAccessType;
+};
 
 const announceSubmission = (
   request: TPamAccessRequest | undefined,
@@ -195,7 +200,10 @@ const announceSubmission = (
     ? "Credential access request submitted"
     : "Access request submitted";
   if (firstFailure)
-    toast({ title: submitted, description: `It wasn't auto-approved: ${firstFailure}` });
+    toast({
+      title: submitted,
+      description: `It wasn't auto-approved: ${firstFailure}`
+    });
   else saved(submitted);
 };
 
@@ -247,7 +255,7 @@ const PendingRequest = ({
           </Inline>
         }
       >
-        <Field label="Reason" description={`At least ${BREAK_GLASS_MIN} characters.`}>
+        <Field label="Reason" description={`At least ${BREAK_GLASS_MIN} characters.`} wide>
           <Textarea
             rows={3}
             value={bypassReason}
@@ -291,6 +299,7 @@ const AutoApprovalInputFields = ({
         key={key}
         label={ambiguous ? `${input.label} from ${input.connectionName}` : input.label}
         optional
+        wide
         description="Requests are approved instantly when the linked record passes this folder's auto-approval rules."
       >
         <Input
@@ -303,108 +312,111 @@ const AutoApprovalInputFields = ({
     );
   });
 
-export const RequestAccessSheet = ({
-  target,
-  onOpenChange,
-  onGranted
-}: {
+type RequestDraft = {
+  reason: string;
+  duration: string;
+  breakGlass: boolean;
+  inputs: Record<string, string>;
+};
+
+const EMPTY_DRAFT: RequestDraft = {
+  reason: "",
+  duration: "1h",
+  breakGlass: false,
+  inputs: {}
+};
+
+type AccountApprovers = ReturnType<PamAccessAdapter["useAccountApprovers"]>["data"];
+
+type RequestContext = {
   target: RequestTarget | null;
-  onOpenChange: (open: boolean) => void;
-  onGranted: (target: RequestTarget) => void;
-}) => {
-  const pam = useV4Adapter("pam");
-  const pamAccess = useV4Adapter("pamAccess");
-  const formId = useId();
-  const account = target?.account ?? null;
-  const accessType = target?.accessType ?? PamAccessType.Session;
-  const isCredential = accessType === PamAccessType.Credential;
-  const { data: accountTypes = [] } = pam.useAccountTypes();
-  const meta = accountTypes.find(({ type }) => type === account?.accountType);
-  const details = useAccountDetails(account, meta);
-  const { data: approvers, isPending: approversPending } = pamAccess.useAccountApprovers(
-    account?.id,
-    accessType
+  account: TPamAccountListItem | null;
+  accessType: PamAccessType;
+  isCredential: boolean;
+  approvers: AccountApprovers;
+  loaded: boolean;
+  pendingRequestId?: string | null;
+  title: ReactNode;
+  overview: ReactNode;
+};
+
+const isDraftDirty = (draft: RequestDraft) =>
+  Boolean(
+    draft.reason.trim() ||
+    draft.duration !== EMPTY_DRAFT.duration ||
+    draft.breakGlass ||
+    Object.values(draft.inputs).some((value) => value.trim())
   );
-  const createRequest = pamAccess.useCreateAccessRequest();
-  const breakGlass = pamAccess.useBreakGlass();
-  const cancelRequest = pamAccess.useCancelAccessRequest();
 
-  const [reason, setReason] = useState("");
-  const [duration, setDuration] = useState("1h");
-  const [bypassReason, setBypassReason] = useState("");
-  const [breakGlassChosen, setBreakGlassChosen] = useState(false);
-  const [inputValues, setInputValues] = useState<Record<string, string>>({});
-  const [reasonError, setReasonError] = useState<string>();
-  const [pending, setPending] = useState(false);
-
-  const isPending =
-    (isCredential ? account?.credentialAccessStatus : account?.accessStatus) ===
-    PamAccessStatus.Pending;
-  const pendingRequestId = isCredential
-    ? account?.credentialPendingRequestId
-    : account?.pendingRequestId;
-  const requireReason = Boolean(account?.requireReason);
-  const isBreakGlassOnly = Boolean(
+const breakGlassIsOnlyWayIn = (account: TPamAccountListItem | null, approvers: AccountApprovers) =>
+  Boolean(
     account?.canBreakGlass &&
     approvers &&
     !approvers.autoApprovalOnly &&
     !approvers.steps.some((step) => step.approvers.length > 0)
   );
-  const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
-  const inputs = approvers?.autoApprovalInputs ?? [];
-  const dirty =
-    !isPending &&
-    Boolean(
-      reason.trim() ||
-      duration !== "1h" ||
-      breakGlassChosen ||
-      Object.values(inputValues).some((value) => value.trim())
-    );
 
-  const reset = () => {
-    setReason("");
-    setDuration("1h");
-    setBypassReason("");
-    setBreakGlassChosen(false);
-    setInputValues({});
-    setReasonError(undefined);
+const validateDraft = (draft: RequestDraft, breakGlass: boolean, requireReason: boolean) => {
+  const trimmed = draft.reason.trim();
+  if (breakGlass && trimmed.length < BREAK_GLASS_MIN)
+    return {
+      fields: { reason: `At least ${BREAK_GLASS_MIN} characters for a break-glass request` }
+    };
+  if (requireReason && !trimmed) return { fields: { reason: "Required" } };
+  return true;
+};
+
+const requestPayload = (
+  accountId: string,
+  accessType: PamAccessType,
+  draft: RequestDraft,
+  breakGlass: boolean,
+  inputs: TAutoApprovalInputDetails[] = []
+) => {
+  const autoApprovalInputs = breakGlass ? [] : toInputValues(inputs, draft.inputs);
+  return {
+    accountId,
+    duration: draft.duration,
+    reason: draft.reason.trim() || undefined,
+    accessType,
+    breakGlass: breakGlass || undefined,
+    autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined
   };
+};
+
+const submitLabelFor = (isCredential: boolean, breakGlass: boolean) => {
+  if (breakGlass) return "Break glass";
+  return isCredential ? "Request credentials" : "Request session access";
+};
+
+const LoadingRequest = () => (
+  <Stack gap={12}>
+    <Skeleton height={64} />
+    <Skeleton height={120} />
+  </Stack>
+);
+
+const PendingRequestSheet = ({
+  open,
+  context,
+  onClose,
+  onGranted
+}: {
+  open: boolean;
+  context: RequestContext;
+  onClose: () => void;
+  onGranted: (target: RequestTarget) => void;
+}) => {
+  const pamAccess = useV4Adapter("pamAccess");
+  const breakGlass = pamAccess.useBreakGlass();
+  const cancelRequest = pamAccess.useCancelAccessRequest();
+  const [bypassReason, setBypassReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const { target, account, isCredential, pendingRequestId } = context;
+
   const close = () => {
-    reset();
-    onOpenChange(false);
-  };
-  const guard = useDiscardChangesGuard({ isDirty: dirty, onDiscard: close });
-
-  const submit = async () => {
-    if (!account || !target) return;
-    const trimmed = reason.trim();
-    if (breakGlassOnSubmit && trimmed.length < BREAK_GLASS_MIN) {
-      setReasonError(`At least ${BREAK_GLASS_MIN} characters for a break-glass request`);
-      return;
-    }
-    if (requireReason && !trimmed) {
-      setReasonError("Required");
-      return;
-    }
-    const autoApprovalInputs = breakGlassOnSubmit ? [] : toInputValues(inputs, inputValues);
-    setPending(true);
-    try {
-      const { request } = await createRequest.mutateAsync({
-        accountId: account.id,
-        duration,
-        reason: trimmed || undefined,
-        accessType,
-        breakGlass: breakGlassOnSubmit || undefined,
-        autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined
-      });
-      announceSubmission(request, isCredential, breakGlassOnSubmit);
-      close();
-      if (breakGlassOnSubmit || request?.autoApprovedAt) onGranted(target);
-    } catch (error) {
-      failed("Failed to submit request", error);
-    } finally {
-      setPending(false);
-    }
+    setBypassReason("");
+    onClose();
   };
 
   const runBreakGlass = async () => {
@@ -439,172 +451,300 @@ export const RequestAccessSheet = ({
     }
   };
 
-  const steps = approvers?.steps ?? [];
-  let body = (
-    <Stack gap={12}>
-      <Skeleton height={64} />
-      <Skeleton height={120} />
-    </Stack>
+  return (
+    <Sheet open={open} onOpenChange={(next) => !next && close()}>
+      <SheetContent size="md" pending={pending}>
+        <SheetHeader>
+          <SheetTitle>{context.title}</SheetTitle>
+          {account?.folderName && <SheetDescription>{account.folderName}</SheetDescription>}
+        </SheetHeader>
+        <SheetBody>
+          <Stack gap={24}>
+            {context.overview}
+            {context.loaded ? (
+              <PendingRequest
+                isCredential={isCredential}
+                steps={context.approvers?.steps ?? []}
+                canBreakGlass={Boolean(account?.canBreakGlass && pendingRequestId)}
+                bypassReason={bypassReason}
+                onBypassReasonChange={setBypassReason}
+                pending={pending}
+                onBreakGlass={runBreakGlass}
+              />
+            ) : (
+              <LoadingRequest />
+            )}
+          </Stack>
+        </SheetBody>
+        {pendingRequestId && (
+          <SheetFooter>
+            <Inline gap={8} justify="end">
+              <Button variant="destructive" loading={pending} onClick={runCancel}>
+                Cancel request
+              </Button>
+            </Inline>
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
   );
-  if (account && !approversPending && isPending)
-    body = (
-      <PendingRequest
-        isCredential={isCredential}
-        steps={steps}
-        canBreakGlass={Boolean(account.canBreakGlass && pendingRequestId)}
-        bypassReason={bypassReason}
-        onBypassReasonChange={setBypassReason}
-        pending={pending}
-        onBreakGlass={runBreakGlass}
-      />
-    );
-  if (account && !approversPending && !isPending)
-    body = (
-      <form
-        id={formId}
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        <Stack gap={24}>
-          <AccessTypeNotice isCredential={isCredential} />
-          <Field
-            label="Reason"
-            optional={!requireReason && !breakGlassOnSubmit}
-            error={reasonError}
-            description={
-              breakGlassOnSubmit
-                ? "Sent to the approvers you skip and recorded in audit logs."
-                : "Visible to approvers and recorded in audit logs."
-            }
-          >
-            <Textarea
-              rows={4}
-              maxLength={500}
-              value={reason}
-              aria-invalid={Boolean(reasonError) || undefined}
-              placeholder={
-                isCredential
-                  ? "Why do you need this account's credentials?"
-                  : "What are you working on?"
-              }
-              onChange={(event) => {
-                setReason(event.target.value);
-                setReasonError(undefined);
-              }}
-            />
-          </Field>
-          <Field
-            label={isCredential ? "How long you need it" : "Requested duration"}
-            description={
-              isCredential
-                ? "How long you can reveal the credential for."
-                : "How long you can launch sessions for once approved."
-            }
-          >
-            <Select
-              label="Duration"
-              value={duration}
-              options={DURATION_OPTIONS}
-              onValueChange={setDuration}
-            />
-          </Field>
-          {!breakGlassOnSubmit && approvers?.autoApprovalOnly && (
-            <Alert tone="warn" title="No one will review this request">
-              This folder has no approvers. Your request is approved only if it passes an
-              auto-approval rule when you submit it. Otherwise it&apos;s rejected immediately.
-            </Alert>
-          )}
-          {!breakGlassOnSubmit && (
-            <AutoApprovalInputFields
-              inputs={inputs}
-              values={inputValues}
-              onChange={(key, value) => setInputValues((current) => ({ ...current, [key]: value }))}
-            />
-          )}
-          <ApprovalWorkflow steps={steps} waiting={false} />
-          {account.canBreakGlass && (
-            <Switch
-              layout="row"
-              label="Break glass"
-              description={
-                isBreakGlassOnly
-                  ? "Required here. The folder has no approvers and auto-approval is off for this account. Every use is audited."
-                  : "Grant now, skipping the approvers. Every use is audited."
-              }
-              checked={breakGlassOnSubmit}
-              disabledReason={isBreakGlassOnly ? "Break glass is the only way in here" : undefined}
-              onCheckedChange={setBreakGlassChosen}
-            />
-          )}
-        </Stack>
-      </form>
-    );
+};
 
-  let submitLabel = isCredential ? "Request credentials" : "Request session access";
-  if (breakGlassOnSubmit) submitLabel = "Break glass";
+const RequestFields = ({
+  draft,
+  onChange,
+  isCredential,
+  requireReason,
+  breakGlassOnSubmit,
+  isBreakGlassOnly,
+  canBreakGlass,
+  approvers
+}: {
+  draft: RequestDraft;
+  onChange: (patch: Partial<RequestDraft>) => void;
+  isCredential: boolean;
+  requireReason: boolean;
+  breakGlassOnSubmit: boolean;
+  isBreakGlassOnly: boolean;
+  canBreakGlass: boolean;
+  approvers: AccountApprovers;
+}) => (
+  <>
+    <AccessTypeNotice isCredential={isCredential} />
+    <Field
+      label="Reason"
+      name="reason"
+      wide
+      optional={!requireReason && !breakGlassOnSubmit}
+      description={
+        breakGlassOnSubmit
+          ? "Sent to the approvers you skip and recorded in audit logs."
+          : "Visible to approvers and recorded in audit logs."
+      }
+    >
+      <Textarea
+        rows={4}
+        maxLength={500}
+        value={draft.reason}
+        placeholder={
+          isCredential ? "Why do you need this account's credentials?" : "What are you working on?"
+        }
+        onChange={(event) => onChange({ reason: event.target.value })}
+      />
+    </Field>
+    <Field
+      label={isCredential ? "How long you need it" : "Requested duration"}
+      wide
+      description={
+        isCredential
+          ? "How long you can reveal the credential for."
+          : "How long you can launch sessions for once approved."
+      }
+    >
+      <Select
+        label="Duration"
+        value={draft.duration}
+        options={DURATION_OPTIONS}
+        onValueChange={(duration) => onChange({ duration })}
+      />
+    </Field>
+    {!breakGlassOnSubmit && approvers?.autoApprovalOnly && (
+      <Alert tone="warn" title="No one will review this request">
+        This folder has no approvers. Your request is approved only if it passes an auto-approval
+        rule when you submit it. Otherwise it&apos;s rejected immediately.
+      </Alert>
+    )}
+    {!breakGlassOnSubmit && (
+      <AutoApprovalInputFields
+        inputs={approvers?.autoApprovalInputs ?? []}
+        values={draft.inputs}
+        onChange={(key, value) => onChange({ inputs: { ...draft.inputs, [key]: value } })}
+      />
+    )}
+    <ApprovalWorkflow steps={approvers?.steps ?? []} waiting={false} />
+    {canBreakGlass && (
+      <Switch
+        layout="row"
+        label="Break glass"
+        description={
+          isBreakGlassOnly
+            ? "Required here. The folder has no approvers and auto-approval is off for this account. Every use is audited."
+            : "Grant now, skipping the approvers. Every use is audited."
+        }
+        checked={breakGlassOnSubmit}
+        disabledReason={isBreakGlassOnly ? "Break glass is the only way in here" : undefined}
+        onCheckedChange={(checked) => onChange({ breakGlass: checked })}
+      />
+    )}
+  </>
+);
+
+const NewRequestSheet = ({
+  open,
+  context,
+  onClose,
+  onGranted
+}: {
+  open: boolean;
+  context: RequestContext;
+  onClose: () => void;
+  onGranted: (target: RequestTarget) => void;
+}) => {
+  const createRequest = useV4Adapter("pamAccess").useCreateAccessRequest();
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const completed = useRef(false);
+  const { target, account, accessType, isCredential, approvers } = context;
+  const requireReason = Boolean(account?.requireReason);
+  const isBreakGlassOnly = breakGlassIsOnlyWayIn(account, approvers);
+  const breakGlassOnSubmit = draft.breakGlass || isBreakGlassOnly;
+
+  const close = () => {
+    setDraft(EMPTY_DRAFT);
+    onClose();
+  };
+  const guard = useDiscardChangesGuard({ isDirty: isDraftDirty(draft), onDiscard: close });
+  const update = (patch: Partial<RequestDraft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+
+  const submit = async () => {
+    if (!account || !target) return;
+    const { request } = await createRequest
+      .mutateAsync(
+        requestPayload(
+          account.id,
+          accessType,
+          draft,
+          breakGlassOnSubmit,
+          approvers?.autoApprovalInputs
+        )
+      )
+      .catch(readableFailure("Couldn't submit the request"));
+    completed.current = true;
+    announceSubmission(request, isCredential, breakGlassOnSubmit);
+    if (breakGlassOnSubmit || request?.autoApprovedAt) onGranted(target);
+  };
 
   return (
     <>
-      <Sheet open={Boolean(target)} onOpenChange={(next) => !next && guard.requestDiscard()}>
-        <SheetContent size="md" pending={pending}>
-          <SheetHeader>
-            <Inline gap={12} align="center" wrap={false}>
-              {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="md" />}
-              <Stack gap={4}>
-                <Inline gap={8} align="center">
-                  <SheetTitle>{account?.name ?? "Account"}</SheetTitle>
-                  {meta && <Badge tone="outline">{meta.name}</Badge>}
-                  <AccessTypeBadge accessType={accessType} />
-                </Inline>
-                {account?.folderName && <SheetDescription>{account.folderName}</SheetDescription>}
+      <MultiStep
+        variant="sheet"
+        size="md"
+        open={open}
+        onOpenChange={(next) => {
+          if (next) return;
+          if (!completed.current) {
+            guard.requestDiscard();
+            return;
+          }
+          completed.current = false;
+          close();
+        }}
+        title={context.title}
+        description={account?.folderName || undefined}
+        completeLabel={submitLabelFor(isCredential, breakGlassOnSubmit)}
+        onComplete={submit}
+        steps={[
+          {
+            title: "Request",
+            completeVariant: breakGlassOnSubmit ? "destructive" : "primary",
+            completeIcon: breakGlassOnSubmit ? undefined : "arrow-up",
+            disabledReason: context.loaded ? undefined : "Loading approvers",
+            validate: () => validateDraft(draft, breakGlassOnSubmit, requireReason),
+            content: (
+              <Stack gap={24}>
+                {context.overview}
+                {context.loaded ? (
+                  <RequestFields
+                    draft={draft}
+                    onChange={update}
+                    isCredential={isCredential}
+                    requireReason={requireReason}
+                    breakGlassOnSubmit={breakGlassOnSubmit}
+                    isBreakGlassOnly={isBreakGlassOnly}
+                    canBreakGlass={Boolean(account?.canBreakGlass)}
+                    approvers={approvers}
+                  />
+                ) : (
+                  <LoadingRequest />
+                )}
               </Stack>
-            </Inline>
-          </SheetHeader>
-          <SheetBody>
-            <Stack gap={24}>
-              {(account?.description || details.length > 0) && (
-                <Stack gap={12}>
-                  {account?.description && <Text muted>{account.description}</Text>}
-                  {details.length > 0 && <DataList variant="props" items={details} />}
-                </Stack>
-              )}
-              {body}
-            </Stack>
-          </SheetBody>
-          <SheetFooter>
-            <Inline gap={8} justify="end">
-              {isPending ? (
-                pendingRequestId && (
-                  <Button variant="destructive" loading={pending} onClick={runCancel}>
-                    Cancel request
-                  </Button>
-                )
-              ) : (
-                <>
-                  <Button variant="outline" onClick={guard.requestDiscard}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    form={formId}
-                    variant={breakGlassOnSubmit ? "destructive" : "primary"}
-                    icon={breakGlassOnSubmit ? undefined : "arrow-up"}
-                    loading={pending}
-                    disabledReason={account && !approversPending ? undefined : "Loading approvers"}
-                  >
-                    {submitLabel}
-                  </Button>
-                </>
-              )}
-            </Inline>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            )
+          }
+        ]}
+      />
       <DiscardChangesAlertDialog
         {...guard.discardDialogProps}
         description="The request you started will be lost."
+      />
+    </>
+  );
+};
+
+export const RequestAccessSheet = ({
+  target,
+  onOpenChange,
+  onGranted
+}: {
+  target: RequestTarget | null;
+  onOpenChange: (open: boolean) => void;
+  onGranted: (target: RequestTarget) => void;
+}) => {
+  const pam = useV4Adapter("pam");
+  const account = target?.account ?? null;
+  const accessType = target?.accessType ?? PamAccessType.Session;
+  const isCredential = accessType === PamAccessType.Credential;
+  const { data: accountTypes = [] } = pam.useAccountTypes();
+  const meta = accountTypes.find(({ type }) => type === account?.accountType);
+  const details = useAccountDetails(account, meta);
+  const { data: approvers, isPending: approversPending } = useV4Adapter(
+    "pamAccess"
+  ).useAccountApprovers(account?.id, accessType);
+  const isPending =
+    (isCredential ? account?.credentialAccessStatus : account?.accessStatus) ===
+    PamAccessStatus.Pending;
+
+  const context: RequestContext = {
+    target,
+    account,
+    accessType,
+    isCredential,
+    approvers,
+    loaded: Boolean(account) && !approversPending,
+    pendingRequestId: isCredential
+      ? account?.credentialPendingRequestId
+      : account?.pendingRequestId,
+    title: (
+      <Inline gap={8} align="center">
+        <Inline gap={8} align="center" wrap={false}>
+          {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
+          <span>{account?.name ?? "Account"}</span>
+        </Inline>
+        {meta && <Badge tone="outline">{meta.name}</Badge>}
+        <AccessTypeBadge accessType={accessType} />
+      </Inline>
+    ),
+    overview: (account?.description || details.length > 0) && (
+      <Stack gap={12}>
+        {account?.description && <Text muted>{account.description}</Text>}
+        {details.length > 0 && <DataList variant="props" items={details} />}
+      </Stack>
+    )
+  };
+  const close = () => onOpenChange(false);
+
+  return (
+    <>
+      <PendingRequestSheet
+        open={Boolean(target) && isPending}
+        context={context}
+        onClose={close}
+        onGranted={onGranted}
+      />
+      <NewRequestSheet
+        open={Boolean(target) && !isPending}
+        context={context}
+        onClose={close}
+        onGranted={onGranted}
       />
     </>
   );
@@ -619,7 +759,9 @@ const MFA_FAILURE = {
 const mfaSessionIdOf = (error: unknown) => {
   const data = (
     error as {
-      response?: { data?: { error?: string; details?: { mfaSessionId?: string } } };
+      response?: {
+        data?: { error?: string; details?: { mfaSessionId?: string } };
+      };
     }
   )?.response?.data;
   return data?.error === "SESSION_MFA_REQUIRED" ? data.details?.mfaSessionId : undefined;

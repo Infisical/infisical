@@ -956,11 +956,12 @@ export const CertificateProfileSheet = ({
       if (isAxiosError(error) && error.response?.data?.error === ApiErrorTypes.ConflictError) {
         setErrors({ slug: error.response.data?.message ?? "This name is already in use." });
         setStep(0);
-        return;
+        return false;
       }
       readableFailure(`Couldn't ${isEdit ? "update" : "create"} the certificate profile.`)(error);
     }
     onClose();
+    return true;
   };
 
   const detailsStep = {

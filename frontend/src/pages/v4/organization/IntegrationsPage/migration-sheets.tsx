@@ -1,14 +1,14 @@
-import { type ReactNode, useId, useRef, useState } from "react";
+import { type ReactNode, useId } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { FileInput } from "@infisical/cipher/ui/file-input";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
@@ -20,7 +20,6 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Meta } from "@infisical/cipher/ui/text";
 import { z } from "zod";
 
 import {
@@ -105,8 +104,6 @@ type EnvKeyDraft = { decryptionKey: string; file?: File };
 export const EnvKeyImportSheet = ({ onClose }: { onClose: () => void }) => {
   const importEnvKey = useV4Adapter("integrations").useImportEnvKey();
   const formId = useId();
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
   const {
     control,
     handleSubmit,
@@ -158,50 +155,12 @@ export const EnvKeyImportSheet = ({ onClose }: { onClose: () => void }) => {
             name="file"
             render={({ field }) => (
               <Field label="Export file">
-                <input
-                  ref={fileInput}
-                  type="file"
-                  hidden
-                  onChange={(event) => {
-                    const next = event.target.files?.[0];
-                    if (next) field.onChange(next);
-                    const input = event.target;
-                    input.value = "";
-                  }}
+                <FileInput
+                  files={field.value ? [field.value] : []}
+                  title="Drop an EnvKey export or browse"
+                  onFiles={([next]) => field.onChange(next)}
+                  onRemove={() => field.onChange(undefined)}
                 />
-                {field.value ? (
-                  <Inline gap={8} align="center" justify="between" wrap={false}>
-                    <Meta>{field.value.name}</Meta>
-                    <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
-                      Replace file
-                    </Button>
-                  </Inline>
-                ) : (
-                  <div
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setDragging(true);
-                    }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      setDragging(false);
-                      const next = event.dataTransfer.files[0];
-                      if (next) field.onChange(next);
-                    }}
-                  >
-                    <EmptyState
-                      size="sm"
-                      icon="upload"
-                      title={dragging ? "Drop the file to upload it" : "Drop an EnvKey export here"}
-                      actions={
-                        <Button variant="outline" onClick={() => fileInput.current?.click()}>
-                          Choose file
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
               </Field>
             )}
           />

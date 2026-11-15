@@ -1,8 +1,9 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { Fragment, type ReactNode, useMemo, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { ContextMenuItem, ContextMenuSeparator } from "@infisical/cipher/ui/context-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,9 +41,7 @@ import styles from "./skills.module.css";
 
 type TEntryType = "file" | "folder";
 
-type TNameEdit =
-  | { action: "create"; type: TEntryType; parentPath: string }
-  | { action: "rename"; type: TEntryType; path: string };
+type TNewEntry = { type: TEntryType; parentPath: string };
 
 type TTreeNode = FileTreeNode & { children?: TTreeNode[] };
 
@@ -90,39 +89,24 @@ const buildTree = (
   return sort(root);
 };
 
-const getNameEditError = (
-  edit: TNameEdit,
-  name: string,
-  filePaths: string[],
-  folderPaths: string[]
-) =>
-  getSkillEntryNameError({
-    name,
-    parentPath: edit.action === "create" ? edit.parentPath : getSkillParentPath(edit.path),
-    filePaths,
-    folderPaths,
-    ...(edit.action === "rename" && { renamingPath: edit.path })
-  });
-
-const SkillEntryNameDialog = ({
-  edit,
+const SkillNewEntryDialog = ({
+  entry,
   filePaths,
   folderPaths,
   onCommit,
   onClose
 }: {
-  edit: TNameEdit;
+  entry: TNewEntry;
   filePaths: string[];
   folderPaths: string[];
   onCommit: (name: string) => void;
   onClose: () => void;
 }) => {
-  const initialName = edit.action === "rename" ? getSkillBaseName(edit.path) : "";
-  const [name, setName] = useState(initialName);
-  const noun = edit.type === "file" ? "file" : "folder";
+  const [name, setName] = useState("");
+  const noun = entry.type === "file" ? "file" : "folder";
   const completed = useRef(false);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: name !== initialName,
+    isDirty: Boolean(name),
     onDiscard: onClose
   });
 
@@ -132,36 +116,37 @@ const SkillEntryNameDialog = ({
         variant="dialog"
         open
         onOpenChange={(open) => !open && !completed.current && requestDiscard()}
-        title={edit.action === "rename" ? `Rename ${initialName}` : `New ${noun}`}
-        completeLabel={edit.action === "rename" ? "Rename" : `Add ${noun}`}
+        title={`New ${noun}`}
+        completeLabel={`Add ${noun}`}
         onComplete={() => {
           completed.current = true;
-          if (name === initialName) onClose();
-          else onCommit(name);
+          onCommit(name);
         }}
         steps={[
           {
             title: "Name",
             validate: () => {
               if (!name) return { fields: { name: "Enter a name." } };
-              const message =
-                name === initialName ? null : getNameEditError(edit, name, filePaths, folderPaths);
+              const message = getSkillEntryNameError({
+                name,
+                parentPath: entry.parentPath,
+                filePaths,
+                folderPaths
+              });
               return message ? { fields: { name: message } } : true;
             },
             content: (
               <Field
-                label={edit.type === "file" ? "File name" : "Folder name"}
+                label={entry.type === "file" ? "File name" : "Folder name"}
                 name="name"
-                description={
-                  edit.action === "create" && edit.parentPath ? `In ${edit.parentPath}/` : undefined
-                }
+                description={entry.parentPath ? `In ${entry.parentPath}/` : undefined}
                 wide
               >
                 <Input
                   mono
                   value={name}
                   spellCheck={false}
-                  placeholder={edit.type === "file" ? "reference.md" : "scripts"}
+                  placeholder={entry.type === "file" ? "reference.md" : "scripts"}
                   onChange={(event) => setName(event.target.value)}
                 />
               </Field>
@@ -176,70 +161,60 @@ const SkillEntryNameDialog = ({
 
 type TTarget = { path: string; type: TEntryType };
 
-const SkillEntryMenu = ({
-  target,
-  canChange,
-  canDiscard,
-  isExecutable,
-  onRename,
-  onToggleExecutable,
-  onDiscard,
-  onDelete
-}: {
-  target: TTarget;
-  canChange: boolean;
-  canDiscard: boolean;
-  isExecutable: boolean;
-  onRename: () => void;
-  onToggleExecutable: () => void;
-  onDiscard: () => void;
-  onDelete: () => void;
-}) => (
+type TEntryAction = {
+  label: string;
+  icon: ReactNode;
+  destructive?: boolean;
+  onSelect: () => void;
+};
+
+const SkillEntryActions = ({ name, actions }: { name: string; actions: TEntryAction[] }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button
         variant="ghost"
-        size="icon-sm"
+        size="icon-xs"
         icon="more"
         iconOnly
-        aria-label={`Options for ${target.path}`}
-        disabled={!canChange && !canDiscard}
-        disabledReason={
-          !canChange && !canDiscard ? `${target.path} can't be renamed or deleted.` : undefined
-        }
+        aria-label={`Options for ${name}`}
+        disabled={!actions.length}
+        disabledReason={actions.length ? undefined : `${name} can't be renamed or deleted.`}
       />
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
-      {canChange && (
-        <DropdownMenuItem onSelect={onRename}>
-          <Icon name="pencil" />
-          Rename
-        </DropdownMenuItem>
-      )}
-      {canChange && target.type === "file" && (
-        <DropdownMenuItem onSelect={onToggleExecutable}>
-          <Icon icon={SquareTerminalIcon} />
-          {isExecutable ? "Make not executable" : "Make executable"}
-        </DropdownMenuItem>
-      )}
-      {canDiscard && (
-        <DropdownMenuItem onSelect={onDiscard}>
-          <Icon name="undo" />
-          Discard changes
-        </DropdownMenuItem>
-      )}
-      {canChange && (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-            <Icon name="trash" />
-            {target.type === "folder" ? "Delete folder" : "Delete file"}
+      {actions.map((action) => (
+        <Fragment key={action.label}>
+          {action.destructive && <DropdownMenuSeparator />}
+          <DropdownMenuItem
+            variant={action.destructive ? "destructive" : "default"}
+            onSelect={action.onSelect}
+          >
+            {action.icon}
+            {action.label}
           </DropdownMenuItem>
-        </>
-      )}
+        </Fragment>
+      ))}
     </DropdownMenuContent>
   </DropdownMenu>
 );
+
+const SkillEntryContextMenu = ({ name, actions }: { name: string; actions: TEntryAction[] }) =>
+  actions.length ? (
+    actions.map((action) => (
+      <Fragment key={action.label}>
+        {action.destructive && <ContextMenuSeparator />}
+        <ContextMenuItem
+          variant={action.destructive ? "destructive" : "default"}
+          onSelect={action.onSelect}
+        >
+          {action.icon}
+          {action.label}
+        </ContextMenuItem>
+      </Fragment>
+    ))
+  ) : (
+    <ContextMenuItem disabled>{`${name} can't be renamed or deleted.`}</ContextMenuItem>
+  );
 
 const SkillFileView = ({
   target,
@@ -330,27 +305,7 @@ const SkillTreeToolbar = ({
   </Inline>
 );
 
-const SkillFileHeader = ({
-  target,
-  editable,
-  canChange,
-  canDiscard,
-  isExecutable,
-  onRename,
-  onSetMode,
-  onDiscard,
-  onDelete
-}: {
-  target: TTarget;
-  editable: boolean;
-  canChange: boolean;
-  canDiscard: boolean;
-  isExecutable: boolean;
-  onRename: () => void;
-  onSetMode: (mode: TSkillDraftFile["mode"]) => void;
-  onDiscard: () => void;
-  onDelete: () => void;
-}) => {
+const SkillFileHeader = ({ target, isExecutable }: { target: TTarget; isExecutable: boolean }) => {
   const isFile = target.type === "file";
   return (
     <div className={styles.fileHead}>
@@ -358,18 +313,6 @@ const SkillFileHeader = ({
         {isFile ? target.path : `${target.path}/`}
       </span>
       {isFile && isExecutable && <Badge tone="soft">Executable</Badge>}
-      {editable && (
-        <SkillEntryMenu
-          target={target}
-          canChange={canChange}
-          canDiscard={isFile && canDiscard}
-          isExecutable={isExecutable}
-          onRename={onRename}
-          onToggleExecutable={() => onSetMode(isExecutable ? "0644" : "0755")}
-          onDiscard={onDiscard}
-          onDelete={onDelete}
-        />
-      )}
     </div>
   );
 };
@@ -398,7 +341,8 @@ export const SkillFilesEditor = ({
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<string[]>([]);
-  const [nameEdit, setNameEdit] = useState<TNameEdit | null>(null);
+  const [newEntry, setNewEntry] = useState<TNewEntry | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
 
   const paths = useMemo(() => files.map((file) => file.path), [files]);
   const folderPaths = useMemo(
@@ -438,29 +382,71 @@ export const SkillFilesEditor = ({
     if (selected && !remaining.includes(selected) && remaining[0]) onSelect(remaining[0].path);
   };
 
-  const commitName = (name: string) => {
-    if (!nameEdit) return;
-    if (nameEdit.action === "create") {
-      const path = joinSkillPath(nameEdit.parentPath, name);
-      if (nameEdit.type === "file") {
-        onChange?.([...files, newDraftFile(path)]);
-        setSelectedFolder(null);
-        onSelect(path);
-      } else {
-        setEmptyFolders((prev) => [...prev, path]);
-        setSelectedFolder(path);
-      }
+  const createEntry = (name: string) => {
+    if (!newEntry) return;
+    const path = joinSkillPath(newEntry.parentPath, name);
+    if (newEntry.type === "file") {
+      onChange?.([...files, newDraftFile(path)]);
+      setSelectedFolder(null);
+      onSelect(path);
     } else {
-      const from = nameEdit.path;
-      const to = joinSkillPath(getSkillParentPath(from), name);
-      onChange?.(renameSkillPaths(files, from, to));
-      setEmptyFolders((prev) => renameSkillFolders(prev, from, to));
-      setCollapsed((prev) => renameSkillFolders(prev, from, to));
-      if (selectedFolder === from) setSelectedFolder(to);
-      if (selected && (selected.path === from || selected.path.startsWith(`${from}/`)))
-        onSelect(to + selected.path.slice(from.length));
+      setEmptyFolders((prev) => [...prev, path]);
+      setSelectedFolder(path);
     }
-    setNameEdit(null);
+    setNewEntry(null);
+  };
+
+  const renameEntry = (from: string, name: string) => {
+    if (requiredPaths.includes(from)) return `${from} can't be renamed.`;
+    const message = getSkillEntryNameError({
+      name,
+      parentPath: getSkillParentPath(from),
+      filePaths: paths,
+      folderPaths,
+      renamingPath: from
+    });
+    if (message) return message;
+    const to = joinSkillPath(getSkillParentPath(from), name);
+    onChange?.(renameSkillPaths(files, from, to));
+    setEmptyFolders((prev) => renameSkillFolders(prev, from, to));
+    setCollapsed((prev) => renameSkillFolders(prev, from, to));
+    if (selectedFolder === from) setSelectedFolder(to);
+    if (selected && (selected.path === from || selected.path.startsWith(`${from}/`)))
+      onSelect(to + selected.path.slice(from.length));
+    return undefined;
+  };
+
+  const actionsFor = (node: FileTreeNode): TEntryAction[] => {
+    const isFile = node.type !== "folder";
+    const canChange = !requiredPaths.includes(node.id);
+    const isExecutable = modes.get(node.id) === "0755";
+    const actions: TEntryAction[] = [];
+    if (canChange)
+      actions.push({
+        label: "Rename",
+        icon: <Icon name="pencil" />,
+        onSelect: () => setRenaming(node.id)
+      });
+    if (canChange && isFile)
+      actions.push({
+        label: isExecutable ? "Make not executable" : "Make executable",
+        icon: <Icon icon={SquareTerminalIcon} />,
+        onSelect: () => updateFile(node.id, { mode: isExecutable ? "0644" : "0755" })
+      });
+    if (isFile && onDiscardFile && discardablePaths?.has(node.id))
+      actions.push({
+        label: "Discard changes",
+        icon: <Icon name="undo" />,
+        onSelect: () => onDiscardFile(node.id)
+      });
+    if (canChange)
+      actions.push({
+        label: isFile ? "Delete file" : "Delete folder",
+        icon: <Icon name="trash" />,
+        destructive: true,
+        onSelect: () => deleteEntry(node.id)
+      });
+    return actions;
   };
 
   return (
@@ -470,9 +456,7 @@ export const SkillFilesEditor = ({
           {editable && (
             <SkillTreeToolbar
               atFileLimit={files.length >= SKILL_MAX_FILES}
-              onCreate={(type) =>
-                setNameEdit({ action: "create", type, parentPath: newItemParent(target) })
-              }
+              onCreate={(type) => setNewEntry({ type, parentPath: newItemParent(target) })}
             />
           )}
           <FileTree
@@ -496,23 +480,22 @@ export const SkillFilesEditor = ({
               setSelectedFolder(null);
               onSelect(id);
             }}
+            {...(editable && {
+              renaming,
+              onRenamingChange: setRenaming,
+              onRename: renameEntry,
+              renderActions: (node: FileTreeNode) => (
+                <SkillEntryActions name={node.name} actions={actionsFor(node)} />
+              ),
+              renderContextMenu: (node: FileTreeNode) => (
+                <SkillEntryContextMenu name={node.name} actions={actionsFor(node)} />
+              )
+            })}
           />
         </div>
         <div className={styles.filePane}>
           {target && (
-            <SkillFileHeader
-              target={target}
-              editable={editable}
-              canChange={!requiredPaths.includes(target.path)}
-              canDiscard={Boolean(onDiscardFile && discardablePaths?.has(target.path))}
-              isExecutable={modes.get(target.path) === "0755"}
-              onRename={() =>
-                setNameEdit({ action: "rename", type: target.type, path: target.path })
-              }
-              onSetMode={(mode) => updateFile(target.path, { mode })}
-              onDiscard={() => onDiscardFile?.(target.path)}
-              onDelete={() => deleteEntry(target.path)}
-            />
+            <SkillFileHeader target={target} isExecutable={modes.get(target.path) === "0755"} />
           )}
           <div className={styles.fileBody}>
             <SkillFileView
@@ -524,13 +507,13 @@ export const SkillFilesEditor = ({
             />
           </div>
         </div>
-        {nameEdit && (
-          <SkillEntryNameDialog
-            edit={nameEdit}
+        {newEntry && (
+          <SkillNewEntryDialog
+            entry={newEntry}
             filePaths={paths}
             folderPaths={folderPaths}
-            onCommit={commitName}
-            onClose={() => setNameEdit(null)}
+            onCommit={createEntry}
+            onClose={() => setNewEntry(null)}
           />
         )}
       </div>

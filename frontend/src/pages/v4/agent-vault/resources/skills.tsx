@@ -234,7 +234,6 @@ export const CreateSkillDialog = ({
   const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
   const [uploading, setUploading] = useState(false);
   const completed = useRef(false);
-  const [nameTaken, setNameTaken] = useState<{ name: string; message: string }>();
   const dirty =
     fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -330,16 +329,19 @@ export const CreateSkillDialog = ({
           : setSkillHeaderValue(current, key, fields[key]),
       text
     );
-    const { skill } = await create
-      .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
-      .catch((error: unknown) => {
-        const message = errorMessage(error);
-        if (message?.startsWith("A skill named")) setNameTaken({ name: fields.name, message });
-        return readableFailure("Failed to create skill")(error);
-      });
+    let created: Awaited<ReturnType<typeof create.mutateAsync>>;
+    try {
+      created = await create.mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) });
+    } catch (error) {
+      const message = errorMessage(error);
+      if (message?.startsWith("A skill named")) return { fields: { name: message } };
+      return readableFailure("Failed to create skill")(error);
+    }
+    const { skill } = created;
     saved(`Skill ${skill.name} created`);
     completed.current = true;
     await onCreated?.(skill);
+    return undefined;
   };
 
   return (
@@ -364,12 +366,7 @@ export const CreateSkillDialog = ({
             validate,
             content: (
               <Stack gap={16}>
-                <Field
-                  label="Name"
-                  name="name"
-                  error={nameTaken?.name === fields.name ? nameTaken.message : undefined}
-                  wide
-                >
+                <Field label="Name" name="name" wide>
                   <Input
                     value={fields.name}
                     maxLength={SKILL_NAME_MAX_LENGTH}
