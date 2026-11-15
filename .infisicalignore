@@ -96,6 +96,3 @@ backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-pa
 backend/src/ee/services/agent-vault/agent-vault-service-type-fns.test.ts:private-key:351
 frontend/src/components/agent-vault/service-sheet/serviceRequest.test.ts:private-key:691
 frontend/src/components/agent-vault/service-sheet/serviceSchema.test.ts:private-key:576
-backend/src/domains/lib/testing/integration/postgres-connection.test.ts:generic-password:29
-backend/src/domains/lib/testing/integration/postgres.ts:generic-password:47
-backend/src/domains/lib/testing/integration/postgres.ts:generic-password:67
