@@ -148,6 +148,7 @@ export const ServiceTokensTab = () => {
             icon="search"
             aria-label="Search service tokens by name, environment or secret path..."
             placeholder="Search service tokens by name, environment or secret path..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

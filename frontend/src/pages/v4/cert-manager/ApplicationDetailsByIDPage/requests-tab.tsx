@@ -242,6 +242,7 @@ export const RequestsTab = ({
             icon="search"
             aria-label="Search certificate requests"
             placeholder="Search by SAN or CN"
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

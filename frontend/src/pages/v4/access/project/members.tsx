@@ -192,6 +192,7 @@ export const ProjectMembersTab = () => {
             icon="search"
             aria-label={`Search ${accessLabel(scope.projectType, "users").toLowerCase()}...`}
             placeholder={`Search ${accessLabel(scope.projectType, "users").toLowerCase()}...`}
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

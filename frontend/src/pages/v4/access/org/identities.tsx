@@ -371,6 +371,7 @@ export const OrgIdentitiesTab = () => {
               icon="search"
               placeholder="Search machine identities by name or role..."
               aria-label="Search machine identities by name or role"
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

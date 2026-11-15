@@ -393,6 +393,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
             icon="search"
             aria-label={`Search ${resource.pluralNoun}`}
             placeholder={`Search ${resource.pluralNoun}...`}
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
