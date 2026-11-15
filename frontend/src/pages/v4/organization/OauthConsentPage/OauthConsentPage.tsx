@@ -10,12 +10,58 @@ import { Heading, Meta, StatusText, Text } from "@infisical/cipher/ui/text";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 
+import type { TOauthAuthorizeInfo } from "@app/hooks/api/oauthClients/types";
+
 import { errorMessage, failed } from "../../access/toast";
 import { AuthPage } from "../../auth/components/AuthPage";
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { liveQueryClient } from "../../data/live-query-client";
 
 const PAGE_TITLE = "Authorize Application";
+
+const ClientDetails = ({ info }: { info: TOauthAuthorizeInfo }) => {
+  const scopes = info.requestedScopes ?? [];
+  return (
+    <Inset>
+      <Stack gap={12}>
+        <Stack gap={4}>
+          <Heading level={2} size="subsection" className="break-words">
+            {info.clientName}
+          </Heading>
+          {info.clientDescription && (
+            <Text muted className="break-words">
+              {info.clientDescription}
+            </Text>
+          )}
+        </Stack>
+        <Text muted>
+          {scopes.length
+            ? "It will get this access on your behalf, limited to your Infisical permissions, until you revoke its session."
+            : "It will be able to act on your behalf with your Infisical permissions until you revoke its session."}
+        </Text>
+        {scopes.length > 0 && (
+          <ul aria-label="Requested access">
+            <Stack gap={12}>
+              {scopes.map(({ scope, description }) => (
+                <li key={scope}>
+                  <Inline gap={8} align="start" wrap={false}>
+                    <Icon name="check-c" className="mt-0.5 shrink-0" />
+                    <Stack gap={2} className="min-w-0">
+                      <Text className="break-words">{description}</Text>
+                      <Meta mono className="break-all">
+                        {scope}
+                      </Meta>
+                    </Stack>
+                  </Inline>
+                </li>
+              ))}
+            </Stack>
+          </ul>
+        )}
+      </Stack>
+    </Inset>
+  );
+};
 
 const OauthConsent = () => {
   const mode = useV4Mode();
@@ -65,8 +111,6 @@ const OauthConsent = () => {
     );
   }
 
-  const scopes = info.data?.requestedScopes ?? [];
-
   return (
     <AuthPage variant="focused" pageTitle={PAGE_TITLE} title="Authorize application">
       <Stack gap={24}>
@@ -75,46 +119,7 @@ const OauthConsent = () => {
             <Skeleton lines={2} />
           </Inset>
         )}
-        {info.data && (
-          <Inset>
-            <Stack gap={12}>
-              <Stack gap={4}>
-                <Heading level={2} size="subsection" className="break-words">
-                  {info.data.clientName}
-                </Heading>
-                {info.data.clientDescription && (
-                  <Text muted className="break-words">
-                    {info.data.clientDescription}
-                  </Text>
-                )}
-              </Stack>
-              <Text muted>
-                {scopes.length
-                  ? "It will get this access on your behalf, limited to your Infisical permissions, until you revoke its session."
-                  : "It will be able to act on your behalf with your Infisical permissions until you revoke its session."}
-              </Text>
-              {scopes.length > 0 && (
-                <ul aria-label="Requested access">
-                  <Stack gap={12}>
-                    {scopes.map(({ scope, description }) => (
-                      <li key={scope}>
-                        <Inline gap={8} align="start" wrap={false}>
-                          <Icon name="check-c" className="mt-0.5 shrink-0" />
-                          <Stack gap={2} className="min-w-0">
-                            <Text className="break-words">{description}</Text>
-                            <Meta mono className="break-all">
-                              {scope}
-                            </Meta>
-                          </Stack>
-                        </Inline>
-                      </li>
-                    ))}
-                  </Stack>
-                </ul>
-              )}
-            </Stack>
-          </Inset>
-        )}
+        {info.data && <ClientDetails info={info.data} />}
         {!info.isPending && Boolean(info.error) && (
           <Alert
             tone="bad"

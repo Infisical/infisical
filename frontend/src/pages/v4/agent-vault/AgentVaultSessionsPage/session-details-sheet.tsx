@@ -67,7 +67,13 @@ const LabelField = ({
   const update = useV4Adapter("agentVault").useUpdateSessionLabel(orgId, projectId);
   const stored = session.label ?? "";
   const [draft, setDraft] = useState(stored);
+  const [syncedLabel, setSyncedLabel] = useState(stored);
   const [error, setError] = useState<string>();
+
+  if (stored !== syncedLabel) {
+    setSyncedLabel(stored);
+    if (draft === syncedLabel) setDraft(stored);
+  }
 
   if (!canEditSessionLabel(session))
     return (

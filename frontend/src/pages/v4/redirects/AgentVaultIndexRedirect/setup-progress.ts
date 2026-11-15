@@ -22,8 +22,10 @@ export enum AgentVaultSetupStep {
 
 export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => {
   const agentVault = useV4Adapter("agentVault");
-  const { data: permission } = agentVault.useProjectPermission({ projectId });
-  const isPermissionLoaded = Boolean(permission);
+  const { data: permission, error: permissionError } = agentVault.useProjectPermission({
+    projectId
+  });
+  const isPermissionLoaded = Boolean(permission) || Boolean(permissionError);
   const isAdmin = Boolean(
     permission?.memberships.some((membership) =>
       membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)

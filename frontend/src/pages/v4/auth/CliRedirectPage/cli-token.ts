@@ -7,11 +7,17 @@ export const clearCliToken = () => sessionStorage.removeItem(SessionStorageKeys.
 const readStoredToken = () => {
   const stored = sessionStorage.getItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
   if (!stored) return undefined;
-  const { expiry, data, callbackPort } = JSON.parse(stored) as {
-    expiry: string;
-    data: string;
-    callbackPort?: number;
-  };
+  let parsed: { expiry?: string; data?: string; callbackPort?: number } | null;
+  try {
+    parsed = JSON.parse(stored);
+  } catch {
+    parsed = null;
+  }
+  if (!parsed?.data || !parsed.expiry) {
+    clearCliToken();
+    return undefined;
+  }
+  const { expiry, data, callbackPort } = parsed;
   if (new Date() > new Date(expiry)) {
     clearCliToken();
     return undefined;

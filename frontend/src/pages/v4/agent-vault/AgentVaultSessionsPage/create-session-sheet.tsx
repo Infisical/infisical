@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
@@ -24,6 +26,7 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
 import ms from "ms";
+import { z } from "zod";
 
 import { useDebounce, useTimedReset } from "@app/hooks";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
@@ -192,337 +195,157 @@ const SandboxFiles = ({
   );
 };
 
-export const CreateSessionSheet = ({
+const IdentityLink = ({
   orgId,
   projectId,
-  isAdmin,
-  open,
-  onOpenChange
+  identityId,
+  children
 }: {
   orgId: string;
   projectId: string;
-  isAdmin: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  identityId: string;
+  children: React.ReactNode;
+}) => (
+  <Button variant="link" asChild>
+    <Link
+      to={v4Path("/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId")}
+      params={{ orgId, projectId, identityId }}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </Link>
+  </Button>
+);
+
+const IdentityDescription = ({
+  orgId,
+  projectId,
+  identity,
+  isOwnSandbox,
+  hasClientIdError
+}: {
+  orgId: string;
+  projectId: string;
+  identity: TIdentity | null;
+  isOwnSandbox: boolean;
+  hasClientIdError: boolean;
 }) => {
-  const agentVault = useV4Adapter("agentVault");
-  const { user } = useV4Session();
-
-  const [platform, setPlatform] = useState<TPlatform | null>(null);
-  const [tab, setTab] = useState<TCreateTab>(readStoredTab);
-  const [created, setCreated] = useState<TAgentVaultMintedSession | null>(null);
-  const [accessBundle, setAccessBundle] = useState<TAgentVaultAccessBundleListItem | null>(null);
-  const [identity, setIdentity] = useState<TIdentity | null>(null);
-  const [bundleSearch, setBundleSearch] = useState("");
-  const [identitySearch, setIdentitySearch] = useState("");
-  const [label, setLabel] = useState("");
-  const [ttlPreset, setTtlPreset] = useState("7d");
-  const [customTtl, setCustomTtl] = useState("");
-  const [errors, setErrors] = useState<{ label?: string; ttl?: string }>({});
-
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setPlatform(null);
-      setCreated(null);
-      setAccessBundle(null);
-      setIdentity(null);
-      setBundleSearch("");
-      setIdentitySearch("");
-      setLabel("");
-      setTtlPreset("7d");
-      setCustomTtl("");
-      setErrors({});
-    }
-  }
-
-  const [debouncedBundleSearch] = useDebounce(bundleSearch);
-  const [debouncedIdentitySearch] = useDebounce(identitySearch);
-  const { data: bundles, isFetching: isSearchingBundles } = agentVault.useAccessBundles(
-    orgId,
-    projectId,
-    {
-      search: debouncedBundleSearch.trim() || undefined,
-      orderBy: "name",
-      orderDirection: "asc",
-      limit: 50
-    }
+  if (!identity)
+    return isOwnSandbox
+      ? "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."
+      : "Your code creates sessions as a machine identity. Pick one to see the credentials the files below need.";
+  const link = (text: string) => (
+    <IdentityLink orgId={orgId} projectId={projectId} identityId={identity.id}>
+      {text}
+    </IdentityLink>
   );
-  const { data: proxies } = agentVault.useProxies(
-    orgId,
-    projectId,
-    { limit: 1 },
-    { enabled: open, refetchOnWindowFocus: "always" }
+  if (!isOwnSandbox)
+    return (
+      <>
+        The files below read credentials from environment variables. Set them to {identity.name}
+        &apos;s client ID and one of its {link("client secrets")}.
+      </>
+    );
+  if (hasClientIdError)
+    return (
+      <>
+        Couldn&apos;t load {identity.name}&apos;s client ID, so the snippets below show{" "}
+        <Code>&lt;client-id&gt;</Code>. Find it on {link(`${identity.name}'s page`)}.
+      </>
+    );
+  return (
+    <>
+      The snippets below have {identity.name}&apos;s client ID. Replace{" "}
+      <Code>&lt;client-secret&gt;</Code> with one of its {link("client secrets")}.
+    </>
   );
-  const { data: identities, isPending: isSearchingIdentities } = agentVault.useMembers(
-    projectId,
-    {
-      actorType: AgentVaultMemberType.MachineIdentity,
-      search: debouncedIdentitySearch.trim() || undefined,
-      limit: 50
-    },
-    open && isAdmin
-  );
-  const universalAuth = agentVault.useIdentityUniversalAuth(identity?.id ?? "");
-  const { data: isGranted } = agentVault.useIsAccessBundleMember(
-    orgId,
-    projectId,
-    accessBundle?.id ?? "",
-    identity
-      ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
-      : null
-  );
-  const grant = agentVault.useGrantAccessBundle(orgId, projectId);
-  const createSession = agentVault.useCreateSession(orgId, projectId);
+};
 
-  const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
-  const hasNoUniversalAuth = Boolean(identity) && isNoUniversalAuthError(universalAuth.error);
-  const hasClientIdError = Boolean(identity && universalAuth.error) && !hasNoUniversalAuth;
-  const clientId =
-    identity && universalAuth.data?.identityId === identity.id ? universalAuth.data.clientId : null;
-  const needsGrant =
-    Boolean(identity && accessBundle) &&
-    isGranted === false &&
-    identity?.role !== ProjectMembershipRole.Admin;
+const createNowSchema = z
+  .object({ label: sessionLabelSchema, ttlPreset: z.string(), customTtl: z.string() })
+  .superRefine(({ ttlPreset, customTtl }, ctx) => {
+    if (ttlPreset !== CUSTOM_TTL) return;
+    const message = customTtlError(customTtl);
+    if (message) ctx.addIssue({ code: "custom", path: ["customTtl"], message });
+  });
 
-  const siteUrl = currentSiteUrl();
-  const accessBundleName = accessBundle?.name ?? "<access-bundle-name>";
-  const isOwnSandbox = platform === OWN_SANDBOX;
-  const isCreateNow = isOwnSandbox && tab === CREATE_NOW;
-  const language = tab === CREATE_NOW ? SnippetLanguage.Cli : tab;
-  const scriptLanguage =
-    tab === SnippetLanguage.Python ? ScriptLanguage.Python : ScriptLanguage.TypeScript;
-  const isLocked = Boolean(created);
-  const platformDetails = platform && platform !== OWN_SANDBOX ? PLATFORMS[platform] : null;
+type TCreateNowForm = z.infer<typeof createNowSchema>;
+
+const CreateNowForm = ({
+  orgId,
+  projectId,
+  accessBundle,
+  onCreate
+}: {
+  orgId: string;
+  projectId: string;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  onCreate: (values: { ttl: string; label?: string }) => Promise<void>;
+}) => {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<TCreateNowForm>({
+    resolver: zodResolver(createNowSchema),
+    defaultValues: { label: "", ttlPreset: "7d", customTtl: "" }
+  });
+  const ttlPreset = useWatch({ control, name: "ttlPreset" });
   const needsSetup = accessBundle?.servicesRequiringSetup ?? [];
   const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
 
-  const onTabChange = (value: string) => {
-    if (!isCreateTab(value)) return;
-    setTab(value);
-    storeTab(value);
-  };
+  const submit = (values: TCreateNowForm) =>
+    onCreate({
+      ttl: values.ttlPreset === CUSTOM_TTL ? values.customTtl.trim() : values.ttlPreset,
+      label: values.label || undefined
+    });
 
-  const onCreate = async () => {
-    if (!accessBundle) return;
-    const parsedLabel = sessionLabelSchema.safeParse(label);
-    const ttlError = ttlPreset === CUSTOM_TTL ? customTtlError(customTtl) : undefined;
-    const nextErrors = {
-      label: parsedLabel.success ? undefined : parsedLabel.error.issues[0]?.message,
-      ttl: ttlError
-    };
-    setErrors(nextErrors);
-    if (nextErrors.label || nextErrors.ttl || !parsedLabel.success) return;
-    try {
-      const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
-        ttl: ttlPreset === CUSTOM_TTL ? customTtl.trim() : ttlPreset,
-        label: parsedLabel.data || undefined
-      });
-      saved("Session created");
-      setCreated(session);
-    } catch (error) {
-      failed("Failed to create session", error);
-    }
-  };
-
-  const onGrant = async () => {
-    if (!identity || !accessBundle) return;
-    try {
-      await grant.mutateAsync({
-        accessBundleId: accessBundle.id,
-        machineIdentityIds: [identity.id]
-      });
-      saved(`Granted ${accessBundle.name} to ${identity.name}`);
-    } catch (error) {
-      failed("Failed to grant the access bundle", error);
-    }
-  };
-
-  const identityLink = (text: string) =>
-    identity && (
-      <Button variant="link" asChild>
-        <Link
-          to={v4Path(
-            "/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId"
-          )}
-          params={{ orgId, projectId, identityId: identity.id }}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {text}
-        </Link>
-      </Button>
-    );
-
-  let identityDescription: React.ReactNode = !isOwnSandbox
-    ? "Your code creates sessions as a machine identity. Pick one to see the credentials the files below need."
-    : "Your code creates sessions as a machine identity. Pick one to fill in its client ID below.";
-  if (identity && hasNoUniversalAuth) identityDescription = undefined;
-  else if (identity && !isOwnSandbox)
-    identityDescription = (
-      <>
-        The files below read credentials from environment variables. Set them to {identity.name}
-        &apos;s client ID and one of its {identityLink("client secrets")}.
-      </>
-    );
-  else if (identity && hasClientIdError)
-    identityDescription = (
-      <>
-        Couldn&apos;t load {identity.name}&apos;s client ID, so the snippets below show{" "}
-        <Code>&lt;client-id&gt;</Code>. Find it on {identityLink(`${identity.name}'s page`)}.
-      </>
-    );
-  else if (identity)
-    identityDescription = (
-      <>
-        The snippets below have {identity.name}&apos;s client ID. Replace{" "}
-        <Code>&lt;client-secret&gt;</Code> with one of its {identityLink("client secrets")}.
-      </>
-    );
-
-  const bundleOptions = (bundles?.accessBundles ?? []).map((bundle) => ({
-    value: bundle.id,
-    label: bundle.name
-  }));
-  if (accessBundle && !bundleOptions.some((option) => option.value === accessBundle.id))
-    bundleOptions.unshift({ value: accessBundle.id, label: accessBundle.name });
-
-  const identityOptions = (identities?.members ?? []).map((member) => ({
-    value: member.id,
-    label: member.name
-  }));
-  if (identity && !identityOptions.some((option) => option.value === identity.id))
-    identityOptions.unshift({ value: identity.id, label: identity.name });
-
-  const values = (
-    <Stack gap={16}>
-      <Field label="Access bundle" description="The services an agent can reach with this session.">
-        <Combobox
-          label="Access bundle"
-          placeholder="Pick an access bundle"
-          emptyText="No access bundle matches."
-          options={bundleOptions}
-          value={accessBundle?.id ?? ""}
-          loading={isSearchingBundles}
-          onSearch={setBundleSearch}
-          clearable
-          disabled={isLocked}
-          onChange={(id) =>
-            setAccessBundle(bundles?.accessBundles.find((bundle) => bundle.id === id) ?? null)
-          }
-        />
-      </Field>
-      {isCreateNow && (
-        <Field label="Created as" description="Sessions you create here are attributed to you.">
-          <Inline gap={8} align="center" wrap={false}>
-            <Icon name="user" />
-            <span>{user.name || user.email}</span>
-          </Inline>
-        </Field>
-      )}
-      {!isCreateNow && isAdmin && (
-        <Field label="Machine identity" description={identityDescription}>
-          <Combobox
-            label="Machine identity"
-            placeholder="Pick a machine identity"
-            emptyText="No machine identity matches."
-            options={identityOptions}
-            value={identity?.id ?? ""}
-            loading={isSearchingIdentities}
-            onSearch={setIdentitySearch}
-            clearable
-            onChange={(id) => {
-              const member = identities?.members.find((entry) => entry.id === id);
-              setIdentity(member ? { id: member.id, name: member.name, role: member.role } : null);
-            }}
-          />
-        </Field>
-      )}
-      {!isCreateNow && !isAdmin && (
-        <Field
-          label="Machine identity"
-          description="Your code creates sessions as a machine identity. Ask an Agent Vault admin for the client ID and client secret of one that's granted this access bundle."
-        />
-      )}
-      {!isCreateNow && identity && hasNoUniversalAuth && (
-        <Alert tone="warn">
-          {identity.name} doesn&apos;t use Universal Auth, so it has no client ID. Add Universal
-          Auth on {identityLink(`${identity.name}'s page`)}.
-        </Alert>
-      )}
-      {!isCreateNow && needsGrant && identity && accessBundle && (
-        <Alert
-          tone="warn"
-          title={`${identity.name} can't use ${accessBundle.name}`}
-          actions={
-            <Button variant="outline" size="sm" loading={grant.isPending} onClick={onGrant}>
-              Grant access
-            </Button>
-          }
-        >
-          Creating a session fails until the access bundle is granted to it.
-        </Alert>
-      )}
-    </Stack>
-  );
-
-  const createSnippet = createSessionSnippet(language, {
-    siteUrl,
-    projectId,
-    accessBundle: accessBundleName,
-    clientId: clientId ?? "<client-id>",
-    clientSecret: "<client-secret>"
-  });
-
-  const createNowForm = (
-    <form
-      id={FORM_ID}
-      onSubmit={(event) => {
-        event.preventDefault();
-        onCreate();
-      }}
-    >
+  return (
+    <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
       <Stack gap={16}>
-        <Field label="Label" optional error={errors.label}>
-          <Input
-            value={label}
-            placeholder="Nightly deploy"
-            invalid={Boolean(errors.label)}
-            onChange={(event) => {
-              setLabel(event.target.value);
-              setErrors((prev) => ({ ...prev, label: undefined }));
-            }}
-          />
-        </Field>
+        <Controller
+          control={control}
+          name="label"
+          render={({ field, fieldState }) => (
+            <Field label="Label" optional error={fieldState.error?.message}>
+              <Input {...field} placeholder="Nightly deploy" invalid={Boolean(fieldState.error)} />
+            </Field>
+          )}
+        />
         <Field
           label="Expires"
-          error={errors.ttl}
+          error={errors.customTtl?.message}
           description={
             ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
           }
         >
           <Stack gap={8}>
-            <Select
-              label="Expires"
-              value={ttlPreset}
-              options={TTL_PRESETS}
-              onChange={(value) => {
-                setTtlPreset(value);
-                setErrors((prev) => ({ ...prev, ttl: undefined }));
-              }}
+            <Controller
+              control={control}
+              name="ttlPreset"
+              render={({ field }) => (
+                <Select
+                  label="Expires"
+                  value={field.value}
+                  options={TTL_PRESETS}
+                  onChange={field.onChange}
+                />
+              )}
             />
             {ttlPreset === CUSTOM_TTL && (
-              <DurationInput
-                aria-label="Custom expiry"
-                value={customTtl}
-                invalid={Boolean(errors.ttl)}
-                placeholder="90"
-                onChange={(value) => {
-                  setCustomTtl(value);
-                  setErrors((prev) => ({ ...prev, ttl: undefined }));
-                }}
+              <Controller
+                control={control}
+                name="customTtl"
+                render={({ field, fieldState }) => (
+                  <DurationInput
+                    aria-label="Custom expiry"
+                    value={field.value}
+                    invalid={Boolean(fieldState.error)}
+                    placeholder="90"
+                    onChange={field.onChange}
+                  />
+                )}
               />
             )}
           </Stack>
@@ -556,80 +379,653 @@ export const CreateSessionSheet = ({
       </Stack>
     </form>
   );
+};
 
-  const ownSandbox = (
-    <Stack gap={16}>
-      {values}
-      <Tabs
-        label="How to create the session"
-        variant="segmented"
-        value={tab}
-        onValueChange={onTabChange}
-        tabs={[
-          { value: SnippetLanguage.TypeScript, label: "TypeScript", disabled: isLocked },
-          { value: SnippetLanguage.Python, label: "Python", disabled: isLocked },
-          { value: SnippetLanguage.Cli, label: "CLI", disabled: isLocked },
-          { value: CREATE_NOW, label: "Create now" }
-        ]}
-      />
-      {created && (
-        <Stack gap={8}>
-          <Alert tone="warn">
-            This command is shown once. Copy it now, since the session token cannot be retrieved
-            later.
-          </Alert>
-          <CodeBlock
-            label="Run an agent with it"
-            language="bash"
-            code={runCommand(created.token, siteUrl)}
-          />
-          <SmallText muted>
-            Run it where your agent runs. Replace <Code>&lt;proxy-host&gt;</Code> with the host your
-            proxy runs on and <Code>&lt;agent-command&gt;</Code> with the agent to run, such as{" "}
-            <Code>claude</Code>.{" "}
-            {created.expiresAt
-              ? `The session expires ${formatSessionExpiry(created.expiresAt)}.`
-              : "The session lasts until someone revokes it."}
-          </SmallText>
-        </Stack>
-      )}
-      {!created && isCreateNow && createNowForm}
-      {!isCreateNow && (
-        <>
-          <CodeBlock label="Install" language="bash" code={INSTALL_COMMANDS[language]} />
-          <Stack gap={8}>
-            <CodeBlock
-              label="Create a session"
-              language={SNIPPET_CODE_LANGUAGES[language]}
-              code={createSnippet}
+const GrantAccessAlert = ({
+  orgId,
+  projectId,
+  identity,
+  accessBundle
+}: {
+  orgId: string;
+  projectId: string;
+  identity: TIdentity;
+  accessBundle: TAgentVaultAccessBundleListItem;
+}) => {
+  const agentVault = useV4Adapter("agentVault");
+  const { data: isGranted } = agentVault.useIsAccessBundleMember(
+    orgId,
+    projectId,
+    accessBundle.id,
+    { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
+  );
+  const grant = agentVault.useGrantAccessBundle(orgId, projectId);
+
+  if (isGranted !== false || identity.role === ProjectMembershipRole.Admin) return null;
+
+  const onGrant = async () => {
+    try {
+      await grant.mutateAsync({
+        accessBundleId: accessBundle.id,
+        machineIdentityIds: [identity.id]
+      });
+      saved(`Granted ${accessBundle.name} to ${identity.name}`);
+    } catch (error) {
+      failed("Failed to grant the access bundle", error);
+    }
+  };
+
+  return (
+    <Alert
+      tone="warn"
+      title={`${identity.name} can't use ${accessBundle.name}`}
+      actions={
+        <Button variant="outline" size="sm" loading={grant.isPending} onClick={onGrant}>
+          Grant access
+        </Button>
+      }
+    >
+      Creating a session fails until the access bundle is granted to it.
+    </Alert>
+  );
+};
+
+const MachineIdentityFields = ({
+  orgId,
+  projectId,
+  isOwnSandbox,
+  open,
+  accessBundle,
+  identity,
+  onIdentityChange,
+  universalAuthError
+}: {
+  orgId: string;
+  projectId: string;
+  isOwnSandbox: boolean;
+  open: boolean;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  identity: TIdentity | null;
+  onIdentityChange: (identity: TIdentity | null) => void;
+  universalAuthError: unknown;
+}) => {
+  const agentVault = useV4Adapter("agentVault");
+  const [identitySearch, setIdentitySearch] = useState("");
+  const [debouncedIdentitySearch] = useDebounce(identitySearch);
+  const { data: identities, isPending: isSearchingIdentities } = agentVault.useMembers(
+    projectId,
+    {
+      actorType: AgentVaultMemberType.MachineIdentity,
+      search: debouncedIdentitySearch.trim() || undefined,
+      limit: 50
+    },
+    open
+  );
+  const hasNoUniversalAuth = Boolean(identity) && isNoUniversalAuthError(universalAuthError);
+  const hasClientIdError = Boolean(identity && universalAuthError) && !hasNoUniversalAuth;
+
+  const identityOptions = (identities?.members ?? []).map((member) => ({
+    value: member.id,
+    label: member.name
+  }));
+  if (identity && !identityOptions.some((option) => option.value === identity.id))
+    identityOptions.unshift({ value: identity.id, label: identity.name });
+
+  return (
+    <>
+      <Field
+        label="Machine identity"
+        description={
+          identity && hasNoUniversalAuth ? undefined : (
+            <IdentityDescription
+              orgId={orgId}
+              projectId={projectId}
+              identity={identity}
+              isOwnSandbox={isOwnSandbox}
+              hasClientIdError={hasClientIdError}
             />
-            <SmallText muted>
-              {language === SnippetLanguage.Cli ? (
-                <>
-                  The command stores the session token in{" "}
-                  <Code>INFISICAL_AGENT_VAULT_SESSION_TOKEN</Code>, where{" "}
-                  <Code>infisical agent-vault run</Code> reads it.
-                </>
+          )
+        }
+      >
+        <Combobox
+          label="Machine identity"
+          placeholder="Pick a machine identity"
+          emptyText="No machine identity matches."
+          options={identityOptions}
+          value={identity?.id ?? ""}
+          loading={isSearchingIdentities}
+          onSearch={setIdentitySearch}
+          clearable
+          onChange={(id) => {
+            const member = identities?.members.find((entry) => entry.id === id);
+            onIdentityChange(
+              member ? { id: member.id, name: member.name, role: member.role } : null
+            );
+          }}
+        />
+      </Field>
+      {identity && hasNoUniversalAuth && (
+        <Alert tone="warn">
+          {identity.name} doesn&apos;t use Universal Auth, so it has no client ID. Add Universal
+          Auth on{" "}
+          <IdentityLink orgId={orgId} projectId={projectId} identityId={identity.id}>
+            {identity.name}&apos;s page
+          </IdentityLink>
+          .
+        </Alert>
+      )}
+      {identity && accessBundle && (
+        <GrantAccessAlert
+          orgId={orgId}
+          projectId={projectId}
+          identity={identity}
+          accessBundle={accessBundle}
+        />
+      )}
+    </>
+  );
+};
+
+const AccessBundleField = ({
+  orgId,
+  projectId,
+  accessBundle,
+  disabled,
+  onChange
+}: {
+  orgId: string;
+  projectId: string;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  disabled: boolean;
+  onChange: (accessBundle: TAgentVaultAccessBundleListItem | null) => void;
+}) => {
+  const agentVault = useV4Adapter("agentVault");
+  const [bundleSearch, setBundleSearch] = useState("");
+  const [debouncedBundleSearch] = useDebounce(bundleSearch);
+  const { data: bundles, isFetching: isSearchingBundles } = agentVault.useAccessBundles(
+    orgId,
+    projectId,
+    {
+      search: debouncedBundleSearch.trim() || undefined,
+      orderBy: "name",
+      orderDirection: "asc",
+      limit: 50
+    }
+  );
+  const bundleOptions = (bundles?.accessBundles ?? []).map((bundle) => ({
+    value: bundle.id,
+    label: bundle.name
+  }));
+  if (accessBundle && !bundleOptions.some((option) => option.value === accessBundle.id))
+    bundleOptions.unshift({ value: accessBundle.id, label: accessBundle.name });
+
+  return (
+    <Field label="Access bundle" description="The services an agent can reach with this session.">
+      <Combobox
+        label="Access bundle"
+        placeholder="Pick an access bundle"
+        emptyText="No access bundle matches."
+        options={bundleOptions}
+        value={accessBundle?.id ?? ""}
+        loading={isSearchingBundles}
+        onSearch={setBundleSearch}
+        clearable
+        disabled={disabled}
+        onChange={(id) =>
+          onChange(bundles?.accessBundles.find((bundle) => bundle.id === id) ?? null)
+        }
+      />
+    </Field>
+  );
+};
+
+const CreatedSessionCommand = ({
+  session,
+  siteUrl
+}: {
+  session: TAgentVaultMintedSession;
+  siteUrl: string;
+}) => (
+  <Stack gap={8}>
+    <Alert tone="warn">
+      This command is shown once. Copy it now, since the session token cannot be retrieved later.
+    </Alert>
+    <CodeBlock
+      label="Run an agent with it"
+      language="bash"
+      code={runCommand(session.token, siteUrl)}
+    />
+    <SmallText muted>
+      Run it where your agent runs. Replace <Code>&lt;proxy-host&gt;</Code> with the host your proxy
+      runs on and <Code>&lt;agent-command&gt;</Code> with the agent to run, such as{" "}
+      <Code>claude</Code>.{" "}
+      {session.expiresAt
+        ? `The session expires ${formatSessionExpiry(session.expiresAt)}.`
+        : "The session lasts until someone revokes it."}
+    </SmallText>
+  </Stack>
+);
+
+const PlatformPicker = ({ onPick }: { onPick: (platform: TPlatform) => void }) => (
+  <>
+    <SheetHeader>
+      <SheetTitle>Create session</SheetTitle>
+      <SheetDescription>
+        An agent running with this session can only reach the hosts in the session&apos;s access
+        bundle.
+      </SheetDescription>
+    </SheetHeader>
+    <SheetBody>
+      <RadioGroup
+        aria-label="Where your agent runs"
+        columns={2}
+        value=""
+        onValueChange={(value) => onPick(value as TPlatform)}
+      >
+        {PLATFORM_OPTIONS.map((option) => (
+          <RadioGroupCard
+            key={option.value}
+            value={option.value}
+            title={option.name}
+            media={
+              option.logo ? (
+                <ProviderIcon icon={option.logo} alt="" size="sm" />
               ) : (
-                "Revoking the session when the agent finishes stops its credentials from working, even if the agent fails."
-              )}
-            </SmallText>
-          </Stack>
-        </>
+                <Icon name="server" />
+              )
+            }
+          />
+        ))}
+      </RadioGroup>
+    </SheetBody>
+  </>
+);
+
+const SessionSnippets = ({ language, code }: { language: SnippetLanguage; code: string }) => (
+  <>
+    <CodeBlock label="Install" language="bash" code={INSTALL_COMMANDS[language]} />
+    <Stack gap={8}>
+      <CodeBlock label="Create a session" language={SNIPPET_CODE_LANGUAGES[language]} code={code} />
+      <SmallText muted>
+        {language === SnippetLanguage.Cli ? (
+          <>
+            The command stores the session token in <Code>INFISICAL_AGENT_VAULT_SESSION_TOKEN</Code>
+            , where <Code>infisical agent-vault run</Code> reads it.
+          </>
+        ) : (
+          "Revoking the session when the agent finishes stops its credentials from working, even if the agent fails."
+        )}
+      </SmallText>
+    </Stack>
+  </>
+);
+
+const NoProxyAlert = ({ orgId, projectId }: { orgId: string; projectId: string }) => (
+  <Alert
+    tone="info"
+    actions={
+      <Button variant="outline" size="sm" asChild>
+        <Link
+          to={v4Path("/organizations/$orgId/projects/agent-vault/$projectId/proxies")}
+          params={{ orgId, projectId }}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Create a proxy
+        </Link>
+      </Button>
+    }
+  >
+    Agents reach their services through a proxy, and this project has none yet.
+  </Alert>
+);
+
+const PlatformHeader = ({ platform }: { platform: (typeof PLATFORMS)[ScriptProvider] | null }) => (
+  <SheetHeader>
+    <SheetTitle>
+      <Inline gap={8} align="center" wrap={false}>
+        {platform ? <ProviderIcon icon={platform.logo} alt="" size="sm" /> : <Icon name="server" />}
+        {platform?.name ?? "Your own sandbox"}
+      </Inline>
+    </SheetTitle>
+    <SheetDescription>
+      {platform?.description ??
+        "Create sessions from your own code, wherever your agent runs, or create one here to try it out."}
+    </SheetDescription>
+  </SheetHeader>
+);
+
+const GuideActions = ({
+  platform,
+  prompt
+}: {
+  platform: ScriptProvider;
+  prompt: {
+    language: ScriptLanguage;
+    siteUrl: string;
+    projectId: string;
+    accessBundle: string;
+    clientId: string | null;
+  };
+}) => {
+  const details = PLATFORMS[platform];
+  return (
+    <>
+      <Button variant="outline" iconRight="external" asChild>
+        <a href={details.guideUrl} target="_blank" rel="noopener noreferrer">
+          View guide
+        </a>
+      </Button>
+      <CopyPromptButton
+        prompt={setupPrompt(details, {
+          ...prompt,
+          language: hasScriptLanguages(platform) ? prompt.language : undefined
+        })}
+      />
+    </>
+  );
+};
+
+const SessionFields = ({
+  orgId,
+  projectId,
+  isAdmin,
+  isCreateNow,
+  isOwnSandbox,
+  open,
+  isLocked,
+  accessBundle,
+  onAccessBundleChange,
+  identity,
+  onIdentityChange,
+  universalAuthError
+}: {
+  orgId: string;
+  projectId: string;
+  isAdmin: boolean;
+  isCreateNow: boolean;
+  isOwnSandbox: boolean;
+  open: boolean;
+  isLocked: boolean;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  onAccessBundleChange: (accessBundle: TAgentVaultAccessBundleListItem | null) => void;
+  identity: TIdentity | null;
+  onIdentityChange: (identity: TIdentity | null) => void;
+  universalAuthError: unknown;
+}) => {
+  const { user } = useV4Session();
+  return (
+    <Stack gap={16}>
+      <AccessBundleField
+        orgId={orgId}
+        projectId={projectId}
+        accessBundle={accessBundle}
+        disabled={isLocked}
+        onChange={onAccessBundleChange}
+      />
+      {isCreateNow && (
+        <Field label="Created as" description="Sessions you create here are attributed to you.">
+          <Inline gap={8} align="center" wrap={false}>
+            <Icon name="user" />
+            <span>{user.name || user.email}</span>
+          </Inline>
+        </Field>
+      )}
+      {!isCreateNow && !isAdmin && (
+        <Field
+          label="Machine identity"
+          description="Your code creates sessions as a machine identity. Ask an Agent Vault admin for the client ID and client secret of one that's granted this access bundle."
+        />
+      )}
+      {!isCreateNow && isAdmin && (
+        <MachineIdentityFields
+          orgId={orgId}
+          projectId={projectId}
+          isOwnSandbox={isOwnSandbox}
+          open={open}
+          accessBundle={accessBundle}
+          identity={identity}
+          onIdentityChange={onIdentityChange}
+          universalAuthError={universalAuthError}
+        />
       )}
     </Stack>
   );
+};
 
-  const prompt =
-    platformDetails && platform !== OWN_SANDBOX && platform
-      ? setupPrompt(platformDetails, {
-          language: hasScriptLanguages(platform) ? scriptLanguage : undefined,
-          siteUrl,
-          projectId,
-          accessBundle: accessBundleName,
-          clientId
-        })
-      : null;
+const CreateSessionFooter = ({
+  platform,
+  isOwnSandbox,
+  isCreateNow,
+  created,
+  isPending,
+  hasAccessBundle,
+  prompt,
+  onBack,
+  onDone
+}: {
+  platform: TPlatform;
+  isOwnSandbox: boolean;
+  isCreateNow: boolean;
+  created: boolean;
+  isPending: boolean;
+  hasAccessBundle: boolean;
+  prompt: React.ComponentProps<typeof GuideActions>["prompt"];
+  onBack: () => void;
+  onDone: () => void;
+}) => (
+  <SheetFooter>
+    <Inline gap={8} justify="end">
+      {!created && (
+        <Button variant="ghost" disabled={isPending} onClick={onBack}>
+          Back
+        </Button>
+      )}
+      <Inline gap={8} justify="end">
+        {platform !== OWN_SANDBOX && <GuideActions platform={platform} prompt={prompt} />}
+        {isCreateNow && !created && (
+          <Button
+            variant="accent"
+            type="submit"
+            form={FORM_ID}
+            loading={isPending}
+            disabledReason={hasAccessBundle ? undefined : "Pick an access bundle first"}
+          >
+            Create session
+          </Button>
+        )}
+        {isOwnSandbox && (!isCreateNow || created) && (
+          <Button variant="accent" onClick={onDone}>
+            Done
+          </Button>
+        )}
+      </Inline>
+    </Inline>
+  </SheetFooter>
+);
+
+const OwnSandboxBody = ({
+  fields,
+  tab,
+  onTabChange,
+  created,
+  isCreateNow,
+  language,
+  snippet,
+  siteUrl,
+  orgId,
+  projectId,
+  accessBundle,
+  onCreate
+}: {
+  fields: React.ReactNode;
+  tab: TCreateTab;
+  onTabChange: (value: string) => void;
+  created: TAgentVaultMintedSession | null;
+  isCreateNow: boolean;
+  language: SnippetLanguage;
+  snippet: string;
+  siteUrl: string;
+  orgId: string;
+  projectId: string;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  onCreate: (values: { ttl: string; label?: string }) => Promise<void>;
+}) => (
+  <Stack gap={16}>
+    {fields}
+    <Tabs
+      label="How to create the session"
+      variant="segmented"
+      value={tab}
+      onValueChange={onTabChange}
+      tabs={[
+        { value: SnippetLanguage.TypeScript, label: "TypeScript", disabled: Boolean(created) },
+        { value: SnippetLanguage.Python, label: "Python", disabled: Boolean(created) },
+        { value: SnippetLanguage.Cli, label: "CLI", disabled: Boolean(created) },
+        { value: CREATE_NOW, label: "Create now" }
+      ]}
+    />
+    {created && <CreatedSessionCommand session={created} siteUrl={siteUrl} />}
+    {!created && isCreateNow && (
+      <CreateNowForm
+        orgId={orgId}
+        projectId={projectId}
+        accessBundle={accessBundle}
+        onCreate={onCreate}
+      />
+    )}
+    {!isCreateNow && <SessionSnippets language={language} code={snippet} />}
+  </Stack>
+);
+
+const clientIdFor = (
+  identity: TIdentity | null,
+  universalAuth: { identityId: string; clientId: string } | undefined
+) => (identity && universalAuth?.identityId === identity.id ? universalAuth.clientId : null);
+
+const createView = (platform: TPlatform | null, tab: TCreateTab) => {
+  const isOwnSandbox = platform === OWN_SANDBOX;
+  return {
+    isOwnSandbox,
+    isCreateNow: isOwnSandbox && tab === CREATE_NOW,
+    language: tab === CREATE_NOW ? SnippetLanguage.Cli : tab,
+    scriptLanguage:
+      tab === SnippetLanguage.Python ? ScriptLanguage.Python : ScriptLanguage.TypeScript,
+    platformDetails: platform && platform !== OWN_SANDBOX ? PLATFORMS[platform] : null
+  };
+};
+
+export const CreateSessionSheet = ({
+  orgId,
+  projectId,
+  isAdmin,
+  open,
+  onOpenChange
+}: {
+  orgId: string;
+  projectId: string;
+  isAdmin: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const agentVault = useV4Adapter("agentVault");
+  const [platform, setPlatform] = useState<TPlatform | null>(null);
+  const [tab, setTab] = useState<TCreateTab>(readStoredTab);
+  const [created, setCreated] = useState<TAgentVaultMintedSession | null>(null);
+  const [accessBundle, setAccessBundle] = useState<TAgentVaultAccessBundleListItem | null>(null);
+  const [identity, setIdentity] = useState<TIdentity | null>(null);
+
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setPlatform(null);
+      setCreated(null);
+      setAccessBundle(null);
+      setIdentity(null);
+    }
+  }
+
+  const { data: proxies } = agentVault.useProxies(
+    orgId,
+    projectId,
+    { limit: 1 },
+    { enabled: open, refetchOnWindowFocus: "always" }
+  );
+  const universalAuth = agentVault.useIdentityUniversalAuth(identity?.id ?? "");
+  const createSession = agentVault.useCreateSession(orgId, projectId);
+
+  const hasNoProxy = proxies?.totalCount === 0;
+  const clientId = clientIdFor(identity, universalAuth.data);
+  const siteUrl = currentSiteUrl();
+  const accessBundleName = accessBundle?.name ?? "<access-bundle-name>";
+  const { isOwnSandbox, isCreateNow, language, scriptLanguage, platformDetails } = createView(
+    platform,
+    tab
+  );
+  const isLocked = Boolean(created);
+
+  const onTabChange = (value: string) => {
+    if (!isCreateTab(value)) return;
+    setTab(value);
+    storeTab(value);
+  };
+
+  const onCreate = async (values: { ttl: string; label?: string }) => {
+    if (!accessBundle) return;
+    try {
+      const session = await createSession.mutateAsync({
+        accessBundle: accessBundle.name,
+        ...values
+      });
+      saved("Session created");
+      setCreated(session);
+    } catch (error) {
+      failed("Failed to create session", error);
+    }
+  };
+
+  const values = (
+    <SessionFields
+      orgId={orgId}
+      projectId={projectId}
+      isAdmin={isAdmin}
+      isCreateNow={isCreateNow}
+      isOwnSandbox={isOwnSandbox}
+      open={open}
+      isLocked={isLocked}
+      accessBundle={accessBundle}
+      onAccessBundleChange={setAccessBundle}
+      identity={identity}
+      onIdentityChange={setIdentity}
+      universalAuthError={universalAuth.error}
+    />
+  );
+
+  const createSnippet = createSessionSnippet(language, {
+    siteUrl,
+    projectId,
+    accessBundle: accessBundleName,
+    clientId: clientId ?? "<client-id>",
+    clientSecret: "<client-secret>"
+  });
+
+  const ownSandbox = (
+    <OwnSandboxBody
+      fields={values}
+      tab={tab}
+      onTabChange={onTabChange}
+      created={created}
+      isCreateNow={isCreateNow}
+      language={language}
+      snippet={createSnippet}
+      siteUrl={siteUrl}
+      orgId={orgId}
+      projectId={projectId}
+      accessBundle={accessBundle}
+      onCreate={onCreate}
+    />
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -641,79 +1037,13 @@ export const CreateSessionSheet = ({
         }}
       >
         {platform === null ? (
-          <>
-            <SheetHeader>
-              <SheetTitle>Create session</SheetTitle>
-              <SheetDescription>
-                An agent running with this session can only reach the hosts in the session&apos;s
-                access bundle.
-              </SheetDescription>
-            </SheetHeader>
-            <SheetBody>
-              <RadioGroup
-                aria-label="Where your agent runs"
-                columns={2}
-                value=""
-                onValueChange={(value) => setPlatform(value as TPlatform)}
-              >
-                {PLATFORM_OPTIONS.map((option) => (
-                  <RadioGroupCard
-                    key={option.value}
-                    value={option.value}
-                    title={option.name}
-                    media={
-                      option.logo ? (
-                        <ProviderIcon icon={option.logo} alt="" size="sm" />
-                      ) : (
-                        <Icon name="server" />
-                      )
-                    }
-                  />
-                ))}
-              </RadioGroup>
-            </SheetBody>
-          </>
+          <PlatformPicker onPick={setPlatform} />
         ) : (
           <>
-            <SheetHeader>
-              <SheetTitle>
-                <Inline gap={8} align="center" wrap={false}>
-                  {platformDetails ? (
-                    <ProviderIcon icon={platformDetails.logo} alt="" size="sm" />
-                  ) : (
-                    <Icon name="server" />
-                  )}
-                  {platformDetails?.name ?? "Your own sandbox"}
-                </Inline>
-              </SheetTitle>
-              <SheetDescription>
-                {platformDetails?.description ??
-                  "Create sessions from your own code, wherever your agent runs, or create one here to try it out."}
-              </SheetDescription>
-            </SheetHeader>
+            <PlatformHeader platform={platformDetails} />
             <SheetBody>
               <Stack gap={16}>
-                {hasNoProxy && (
-                  <Alert
-                    tone="info"
-                    actions={
-                      <Button variant="outline" size="sm" asChild>
-                        <Link
-                          to={v4Path(
-                            "/organizations/$orgId/projects/agent-vault/$projectId/proxies"
-                          )}
-                          params={{ orgId, projectId }}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Create a proxy
-                        </Link>
-                      </Button>
-                    }
-                  >
-                    Agents reach their services through a proxy, and this project has none yet.
-                  </Alert>
-                )}
+                {hasNoProxy && <NoProxyAlert orgId={orgId} projectId={projectId} />}
                 {platform === OWN_SANDBOX ? (
                   ownSandbox
                 ) : (
@@ -730,51 +1060,23 @@ export const CreateSessionSheet = ({
                 )}
               </Stack>
             </SheetBody>
-            <SheetFooter>
-              <Inline gap={8} justify="end">
-                {!created && (
-                  <Button
-                    variant="ghost"
-                    disabled={createSession.isPending}
-                    onClick={() => setPlatform(null)}
-                  >
-                    Back
-                  </Button>
-                )}
-                <Inline gap={8} justify="end">
-                  {platformDetails && prompt && (
-                    <>
-                      <Button variant="outline" iconRight="external" asChild>
-                        <a
-                          href={platformDetails.guideUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View guide
-                        </a>
-                      </Button>
-                      <CopyPromptButton prompt={prompt} />
-                    </>
-                  )}
-                  {isCreateNow && !created && (
-                    <Button
-                      variant="accent"
-                      type="submit"
-                      form={FORM_ID}
-                      loading={createSession.isPending}
-                      disabledReason={accessBundle ? undefined : "Pick an access bundle first"}
-                    >
-                      Create session
-                    </Button>
-                  )}
-                  {isOwnSandbox && (!isCreateNow || created) && (
-                    <Button variant="accent" onClick={() => onOpenChange(false)}>
-                      Done
-                    </Button>
-                  )}
-                </Inline>
-              </Inline>
-            </SheetFooter>
+            <CreateSessionFooter
+              platform={platform}
+              isOwnSandbox={isOwnSandbox}
+              isCreateNow={isCreateNow}
+              created={Boolean(created)}
+              isPending={createSession.isPending}
+              hasAccessBundle={Boolean(accessBundle)}
+              prompt={{
+                language: scriptLanguage,
+                siteUrl,
+                projectId,
+                accessBundle: accessBundleName,
+                clientId
+              }}
+              onBack={() => setPlatform(null)}
+              onDone={() => onOpenChange(false)}
+            />
           </>
         )}
       </SheetContent>

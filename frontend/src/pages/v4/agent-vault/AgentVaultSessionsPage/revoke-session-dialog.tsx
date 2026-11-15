@@ -30,7 +30,7 @@ export const RevokeSessionDialog = ({
 
   return (
     <AlertDialog open={Boolean(session)} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent tone="danger" icon="x" confirmText="revoke">
+      <AlertDialogContent tone="danger" icon="x" confirmText="revoke" pending={revoke.isPending}>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {session ? `Revoke session ${describeSession(session)}` : "Revoke session"}

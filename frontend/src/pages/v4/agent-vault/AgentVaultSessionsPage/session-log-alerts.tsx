@@ -15,9 +15,11 @@ import {
 } from "../AgentVaultSettingsPage/session-logs/aws-setup-dialog";
 import { UpgradeDialog } from "../AgentVaultSettingsPage/session-logs/upgrade-dialog";
 
+type TReadAccessAlert = { message: (host: string) => React.ReactNode; action?: string };
+
 const READ_ACCESS_ALERTS: Record<
   Exclude<TAgentVaultSessionLogReadAccess, "readable">,
-  { message: (host: string) => React.ReactNode; action?: string }
+  TReadAccessAlert
 > = {
   "cors-missing": {
     message: () =>
@@ -34,23 +36,80 @@ const READ_ACCESS_ALERTS: Record<
   }
 };
 
-export const SessionLogAlerts = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
+const PlanBlockedAlert = ({
+  storageType,
+  onUpgrade
+}: {
+  storageType: AgentVaultSessionLogStorageType;
+  onUpgrade: () => void;
+}) => (
+  <Alert
+    tone="warn"
+    actions={
+      <Button variant="outline" size="sm" onClick={onUpgrade}>
+        Upgrade
+      </Button>
+    }
+  >
+    {storageType === AgentVaultSessionLogStorageType.External
+      ? "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket."
+      : "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them."}
+  </Alert>
+);
+
+const ReadAccessAlert = ({
+  alert,
+  host,
+  onOpenSetup
+}: {
+  alert: TReadAccessAlert;
+  host: string;
+  onOpenSetup: () => void;
+}) => (
+  <Alert
+    tone="warn"
+    actions={
+      alert.action && (
+        <Button variant="outline" size="sm" onClick={onOpenSetup}>
+          {alert.action}
+        </Button>
+      )
+    }
+  >
+    {alert.message(host)}
+  </Alert>
+);
+
+const useSessionLogAlertState = (orgId: string, projectId: string) => {
   const settingsAdapter = useV4Adapter("agentVaultSettings");
   const { data: state } = settingsAdapter.useSessionLogSettings(orgId, projectId);
   const { data: health } = settingsAdapter.useSessionLogHealth(orgId, projectId);
   const { data: plan } = settingsAdapter.useSessionLogPlan(orgId);
   const { data: readCheck } = settingsAdapter.useSessionLogReadCheck(orgId, projectId);
-  const [upgradeFor, setUpgradeFor] = useState<AgentVaultSessionLogStorageType | null>(null);
-  const [isAwsSetupOpen, setIsAwsSetupOpen] = useState(false);
 
   const settings = state?.settings ?? null;
   const isBlockedByPlan = plan ? isAgentVaultSessionLogBlockedByPlan(settings, plan) : false;
   const external =
     settings?.storage.type === AgentVaultSessionLogStorageType.External ? settings.storage : null;
-  const readAlert =
-    !health?.connectionError && readCheck && readCheck.status !== "readable"
-      ? READ_ACCESS_ALERTS[readCheck.status]
-      : null;
+  return {
+    connectionError:
+      settings?.enabled && !isBlockedByPlan ? (health?.connectionError ?? null) : null,
+    blockedStorageType: isBlockedByPlan ? (settings?.storage.type ?? null) : null,
+    isLoggingOff: settings?.enabled === false,
+    readAlert:
+      health?.connectionError || !readCheck || readCheck.status === "readable"
+        ? null
+        : { alert: READ_ACCESS_ALERTS[readCheck.status], host: readCheck.host ?? "" },
+    bucket: external?.bucket ?? null,
+    keyPrefix: external?.keyPrefix ?? null
+  };
+};
+
+export const SessionLogAlerts = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
+  const { connectionError, blockedStorageType, isLoggingOff, readAlert, bucket, keyPrefix } =
+    useSessionLogAlertState(orgId, projectId);
+  const [upgradeFor, setUpgradeFor] = useState<AgentVaultSessionLogStorageType | null>(null);
+  const [isAwsSetupOpen, setIsAwsSetupOpen] = useState(false);
 
   const settingsLink = (
     <Button variant="outline" size="sm" asChild>
@@ -66,54 +125,35 @@ export const SessionLogAlerts = ({ orgId, projectId }: { orgId: string; projectI
 
   return (
     <>
-      {health?.connectionError && settings?.enabled && !isBlockedByPlan && (
+      {connectionError && (
         <Alert tone="bad" actions={settingsLink}>
-          {health.connectionError}
+          {connectionError}
         </Alert>
       )}
-      {isBlockedByPlan && settings && (
-        <Alert
-          tone="warn"
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setUpgradeFor(settings.storage.type)}
-            >
-              Upgrade
-            </Button>
-          }
-        >
-          {settings.storage.type === AgentVaultSessionLogStorageType.External
-            ? "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket."
-            : "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them."}
-        </Alert>
+      {blockedStorageType && (
+        <PlanBlockedAlert
+          storageType={blockedStorageType}
+          onUpgrade={() => setUpgradeFor(blockedStorageType)}
+        />
       )}
-      {settings && !settings.enabled && (
+      {isLoggingOff && (
         <Alert tone="warn" actions={settingsLink}>
           Sessions aren&apos;t being logged, so there is no record of what your agents reached.
         </Alert>
       )}
-      {readAlert && readCheck && (
-        <Alert
-          tone="warn"
-          actions={
-            readAlert.action && (
-              <Button variant="outline" size="sm" onClick={() => setIsAwsSetupOpen(true)}>
-                {readAlert.action}
-              </Button>
-            )
-          }
-        >
-          {readAlert.message(readCheck.host ?? "")}
-        </Alert>
+      {readAlert && (
+        <ReadAccessAlert
+          alert={readAlert.alert}
+          host={readAlert.host}
+          onOpenSetup={() => setIsAwsSetupOpen(true)}
+        />
       )}
       <UpgradeDialog storageType={upgradeFor} onClose={() => setUpgradeFor(null)} />
       <AwsSetupDialog
         open={isAwsSetupOpen}
         onOpenChange={setIsAwsSetupOpen}
-        bucket={external?.bucket ?? null}
-        keyPrefix={external?.keyPrefix ?? null}
+        bucket={bucket}
+        keyPrefix={keyPrefix}
       />
     </>
   );
