@@ -28,6 +28,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
@@ -474,16 +475,17 @@ export const ProjectMembershipsSection = ({
       sortable: true,
       grow: true,
       text: (row) => (isNamedByProduct(row.project.type) ? "-" : row.project.name),
-      render: (row) => (isNamedByProduct(row.project.type) ? "-" : row.project.name)
+      render: (row) =>
+        isNamedByProduct(row.project.type) ? "-" : <MiddleTruncate text={row.project.name} />
     },
-    ...(subject === "group" ? [] : [{ id: "role", header: "Role", width: 200, render: roleLabel }]),
+    ...(subject === "group" ? [] : [{ id: "role", header: "Role", width: 160, render: roleLabel }]),
     ...(subject === "user"
       ? []
       : [
           {
             id: "added",
             header: "Added on",
-            width: 140,
+            width: 130,
             render: (row: ProjectMembershipRow) => formatDate(row.createdAt)
           }
         ])
