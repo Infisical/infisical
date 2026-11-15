@@ -92,27 +92,22 @@ export const MembersTab = ({
   };
 
   const add = async ({ kind, members, role }: PickedSignerMembers) => {
-    try {
-      if (kind === "user")
-        await addUsers.mutateAsync({
-          signerId,
-          userIds: members.map((member) => member.id),
-          emails: [],
-          role
-        });
-      else {
-        await Promise.all(
-          members.map((member) =>
-            kind === "identity"
-              ? addIdentity.mutateAsync({ signerId, identityId: member.id, role })
-              : addGroup.mutateAsync({ signerId, groupId: member.id, role })
-          )
-        );
-        saved(members.length === 1 ? "Member added" : "Members added");
-      }
-    } catch (addError) {
-      failed("Couldn't add members", addError);
-      throw addError;
+    if (kind === "user")
+      await addUsers.mutateAsync({
+        signerId,
+        userIds: members.map((member) => member.id),
+        emails: [],
+        role
+      });
+    else {
+      await Promise.all(
+        members.map((member) =>
+          kind === "identity"
+            ? addIdentity.mutateAsync({ signerId, identityId: member.id, role })
+            : addGroup.mutateAsync({ signerId, groupId: member.id, role })
+        )
+      );
+      saved(members.length === 1 ? "Member added" : "Members added");
     }
   };
 

@@ -497,7 +497,13 @@ const previewCertificates = (
   const profileIds = new Set(filters.profileIds);
   const orderIds = new Set(filters.certificateOrderIds);
   return certificates
-    .filter((cert) => !cert.deletedAt)
+    .filter(
+      (cert) =>
+        !cert.deletedAt &&
+        !cert.renewedByCertificateId &&
+        cert.status !== CertStatus.REVOKED &&
+        new Date(cert.notAfter).getTime() > Date.now()
+    )
     .filter(
       (cert) =>
         !applicationId ||
