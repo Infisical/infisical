@@ -100,8 +100,9 @@ const transport: TWebAccessTransport = {
       isOpen: () => socket.readyState === WebSocket.OPEN
     };
   },
-  connectRemoteDesktop: async ({ container, accountId, ticket, destination }) => {
+  connectRemoteDesktop: async ({ container, accountId, ticket, destination, signal }) => {
     const Backend = await loadRdpBackend();
+    signal.throwIfAborted();
     const element = document.createElement("iron-remote-desktop");
     (element as unknown as { module: TRdpBackend }).module = Backend;
     element.setAttribute("scale", "fit");
@@ -121,6 +122,7 @@ const transport: TWebAccessTransport = {
     };
     try {
       const { ended } = await new Promise<{ ended: Promise<void> }>((resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
         element.addEventListener(
           "ready",
           (event) => {
@@ -147,8 +149,9 @@ const transport: TWebAccessTransport = {
       });
       return { ended, shutdown };
     } catch (error) {
-      console.error("RDP session failed:", error);
       shutdown();
+      if (signal.aborted) throw error;
+      console.error("RDP session failed:", error);
       throw new Error(RDP_SESSION_FAILED);
     }
   }

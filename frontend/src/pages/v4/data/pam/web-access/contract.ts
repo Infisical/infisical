@@ -34,6 +34,7 @@ export type TWebAccessTransport = {
     accountId: string;
     ticket: string;
     destination: string;
+    signal: AbortSignal;
   }) => Promise<TWebAccessRemoteDesktop>;
 };
 

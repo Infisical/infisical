@@ -131,9 +131,9 @@ const transport: TWebAccessTransport = {
     }),
   openTerminal: (input) =>
     input.accountType === PamAccountType.SSH ? openShell(input) : openQueryShell(input),
-  connectRemoteDesktop: ({ container }) =>
-    new Promise((resolve) => {
-      later(() => {
+  connectRemoteDesktop: ({ container, signal }) =>
+    new Promise((resolve, reject) => {
+      const timer = later(() => {
         const canvas = document.createElement("canvas");
         canvas.width = 1920;
         canvas.height = 1080;
@@ -154,6 +154,14 @@ const transport: TWebAccessTransport = {
           }
         });
       }, 900);
+      signal.addEventListener(
+        "abort",
+        () => {
+          window.clearTimeout(timer);
+          reject(signal.reason);
+        },
+        { once: true }
+      );
     })
 };
 

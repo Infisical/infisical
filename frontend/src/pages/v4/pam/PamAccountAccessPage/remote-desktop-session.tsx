@@ -32,6 +32,7 @@ const RemoteDesktopSession = ({
   const surfaceRef = useRef<HTMLDivElement>(null);
   const connectionRef = useRef<TWebAccessRemoteDesktop | null>(null);
   const generationRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
   const mfaRef = useRef(mfaSessionId);
 
   const teardown = () => {
@@ -43,6 +44,9 @@ const RemoteDesktopSession = ({
     const container = surfaceRef.current;
     if (!container) return;
     teardown();
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     generationRef.current += 1;
     const generation = generationRef.current;
     const isCurrent = () => generation === generationRef.current;
@@ -75,7 +79,8 @@ const RemoteDesktopSession = ({
         container,
         accountId: account.id,
         ticket,
-        destination: account.name
+        destination: account.name,
+        signal: controller.signal
       });
       if (!isCurrent()) {
         connection.shutdown();
@@ -114,6 +119,7 @@ const RemoteDesktopSession = ({
     startSession();
     return () => {
       generationRef.current += 1;
+      abortRef.current?.abort();
       connectionRef.current?.shutdown();
       connectionRef.current = null;
     };

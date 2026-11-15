@@ -78,7 +78,11 @@ const toReplayEvent = (frame: TRdpFrame): TRdpReplayEvent => {
 
 let wasmReady: Promise<InitOutput> | null = null;
 const ensureWasm = () => {
-  if (!wasmReady) wasmReady = wasmInit();
+  if (!wasmReady)
+    wasmReady = wasmInit().catch((error) => {
+      wasmReady = null;
+      throw error;
+    });
   return wasmReady;
 };
 
@@ -140,23 +144,30 @@ const RdpCanvas = memo(({ events }: { events: readonly TRdpReplayEvent[] }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<TPlayer | null>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [bounds, setBounds] = useState({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
 
   useEffect(() => {
     let cancelled = false;
-    ensureWasm().then((wasm) => {
-      const context = canvasRef.current?.getContext("2d");
-      if (cancelled || !context) return;
-      playerRef.current = {
-        wasm,
-        context,
-        decoder: freshDecoder(),
-        applied: 0,
-        contentWidth: 0,
-        contentHeight: 0
-      };
-      setReady(true);
-    });
+    ensureWasm().then(
+      (wasm) => {
+        const context = canvasRef.current?.getContext("2d");
+        if (cancelled || !context) return;
+        playerRef.current = {
+          wasm,
+          context,
+          decoder: freshDecoder(),
+          applied: 0,
+          contentWidth: 0,
+          contentHeight: 0
+        };
+        setReady(true);
+      },
+      (error) => {
+        console.error("RDP replay: decoder failed to load", error);
+        if (!cancelled) setFailed(true);
+      }
+    );
     return () => {
       cancelled = true;
       playerRef.current?.decoder.free();
@@ -190,6 +201,13 @@ const RdpCanvas = memo(({ events }: { events: readonly TRdpReplayEvent[] }) => {
       current.width === width && current.height === height ? current : { width, height }
     );
   }, [events, ready]);
+
+  if (failed)
+    return (
+      <Alert tone="bad" title="Could not load the recording player">
+        Close and reopen the session to try again.
+      </Alert>
+    );
 
   return (
     <div
