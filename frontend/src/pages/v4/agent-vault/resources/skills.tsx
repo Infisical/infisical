@@ -234,7 +234,7 @@ export const CreateSkillDialog = ({
   const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
   const [uploading, setUploading] = useState(false);
   const completed = useRef(false);
-  const created = useRef<{ id: string; name: string } | null>(null);
+  const [nameTaken, setNameTaken] = useState<string>();
   const dirty =
     fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -260,6 +260,7 @@ export const CreateSkillDialog = ({
   };
 
   const changeField = (key: (typeof HEADER_KEYS)[number], value: string) => {
+    if (key === "name") setNameTaken(undefined);
     const nextText = setSkillHeaderValue(getEntryText(files), key, value);
     if (headerError) syncFieldsFromHeader(nextText);
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -268,7 +269,10 @@ export const CreateSkillDialog = ({
 
   const changeFiles = (next: TSkillDraftFile[]) => {
     const text = getEntryText(next);
-    if (text !== getEntryText(files)) syncFieldsFromHeader(text);
+    if (text !== getEntryText(files)) {
+      syncFieldsFromHeader(text);
+      setNameTaken(undefined);
+    }
     setFiles(next);
   };
 
@@ -294,7 +298,7 @@ export const CreateSkillDialog = ({
     setSelectedPath(SKILL_ENTRY_FILE);
   };
 
-  const validate = async () => {
+  const validate = () => {
     if (headerError) {
       setSelectedPath(SKILL_ENTRY_FILE);
       return { fields: { files: headerError } };
@@ -307,13 +311,16 @@ export const CreateSkillDialog = ({
         : `Write the instructions in ${SKILL_ENTRY_FILE}.`
     };
     if (next.files) setSelectedPath(SKILL_ENTRY_FILE);
-    if (Object.values(next).some(Boolean))
-      return {
-        fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
-          string,
-          string
-        >
-      };
+    if (!Object.values(next).some(Boolean)) return true;
+    return {
+      fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
+        string,
+        string
+      >
+    };
+  };
+
+  const complete = async () => {
     const text = getEntryText(files);
     const { frontmatter } = splitFrontmatter(text);
     const header = (frontmatter === null ? {} : parseSkillHeader(frontmatter)) ?? {};
@@ -327,21 +334,13 @@ export const CreateSkillDialog = ({
           : setSkillHeaderValue(current, key, fields[key]),
       text
     );
-    try {
-      created.current = (
-        await create.mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
-      ).skill;
-      return true;
-    } catch (error) {
-      const message = errorMessage(error);
-      if (message?.startsWith("A skill named")) return { fields: { name: message } };
-      return readableFailure("Failed to create skill")(error);
-    }
-  };
-
-  const complete = async () => {
-    const skill = created.current;
-    if (!skill) return;
+    const { skill } = await create
+      .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
+      .catch((error: unknown) => {
+        const message = errorMessage(error);
+        if (message?.startsWith("A skill named")) setNameTaken(message);
+        return readableFailure("Failed to create skill")(error);
+      });
     saved(`Skill ${skill.name} created`);
     completed.current = true;
     await onCreated?.(skill);
@@ -369,7 +368,7 @@ export const CreateSkillDialog = ({
             validate,
             content: (
               <Stack gap={16}>
-                <Field label="Name" name="name" wide>
+                <Field label="Name" name="name" error={nameTaken} wide>
                   <Input
                     value={fields.name}
                     maxLength={SKILL_NAME_MAX_LENGTH}

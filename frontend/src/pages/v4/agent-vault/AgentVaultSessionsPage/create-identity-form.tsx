@@ -19,7 +19,7 @@ type TDraft = { mode?: TMode; name: string; identityId: string; role: string };
 
 type TErrors = Partial<Record<"name" | "identityId", string>>;
 
-export type TCreatedIdentity = { id: string; name: string; role: string };
+export type TCreatedIdentity = { id: string; name: string; role?: string };
 
 const ROLE_OPTIONS = AGENT_VAULT_PRODUCT_ROLE_OPTIONS.map(({ value, label, description }) => ({
   value,
@@ -98,9 +98,13 @@ export const CreateIdentityForm = ({
         return;
       }
       if (!picked) return;
-      await addMembers.mutateAsync({ machineIdentityIds: [picked.id], role: draft.role });
-      saved("Machine identity added");
-      onCreated({ ...picked, role: draft.role });
+      const { members } = await addMembers.mutateAsync({
+        machineIdentityIds: [picked.id],
+        role: draft.role
+      });
+      const added = members.find((member) => member.id === picked.id);
+      saved(added ? "Machine identity added" : "Machine identity was already a member");
+      onCreated({ ...picked, role: added?.role });
       complete({ value: picked.id, label: picked.name });
     } catch (cause) {
       failed(
