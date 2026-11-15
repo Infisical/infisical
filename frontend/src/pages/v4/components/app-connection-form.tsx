@@ -106,6 +106,8 @@ export type AppConnectionFormProps = {
   onPendingChange?: (pending: boolean) => void;
   /** Called with the selected method's submit label: its redirect submitLabel, or Create connection. */
   onSubmitLabelChange?: (label: string) => void;
+  /** Called when the person picks another method. */
+  onMethodChange?: (method: string) => void;
   /**
    * Edits the credentials of a stored connection. The method is fixed and only its fields show;
    * values are the stored root values, such as name, description and credentials.
@@ -154,6 +156,7 @@ export function AppConnectionForm({
   onDirtyChange,
   onPendingChange,
   onSubmitLabelChange,
+  onMethodChange,
   edit,
   initialValues,
   handleRef
@@ -330,6 +333,7 @@ export function AppConnectionForm({
                     const chosen = methods.find((entry) => entry.value === next);
                     form.setValue("credentials", chosen?.credentials ?? {}, { shouldDirty: true });
                     form.clearErrors("credentials");
+                    onMethodChange?.(next);
                   }}
                 />
               </Field>
