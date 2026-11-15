@@ -1,4 +1,5 @@
 import { type ComponentProps, useId, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,7 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -15,7 +17,6 @@ import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -63,6 +64,10 @@ const SubOrgDialog = ({ editing, onClose }: { editing?: Editing; onClose: () => 
   const slugTouched = useRef(Boolean(current));
   const [errors, setErrors] = useState<{ name?: string; slug?: string }>({});
   const [pending, setPending] = useState(false);
+  const guard = useDiscardChangesGuard({
+    isDirty: name !== (current?.name ?? "") || slug !== (current?.slug ?? ""),
+    onDiscard: onClose
+  });
 
   const submit = async () => {
     const nameIssue = GenericResourceNameSchema.safeParse(name).error?.issues[0]?.message;
@@ -98,62 +103,67 @@ const SubOrgDialog = ({ editing, onClose }: { editing?: Editing; onClose: () => 
   };
 
   return (
-    <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>{current ? "Edit sub-organization" : "Create sub-organization"}</DialogTitle>
-        </DialogHeader>
-        <form
-          id={formId}
-          noValidate
-          autoComplete="off"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field label="Name" error={errors.name}>
-              <Input
-                value={name}
-                placeholder="Acme Corp"
-                invalid={Boolean(errors.name)}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  if (!slugTouched.current)
-                    setSlug(slugify(event.target.value, { lowercase: true }));
-                }}
-              />
-            </Field>
-            <Field
-              label="Slug"
-              optional
-              error={errors.slug}
-              description={current ? undefined : "Generated from the name when left empty."}
-            >
-              <Input
-                mono
-                value={slug}
-                placeholder="acme-corp"
-                invalid={Boolean(errors.slug)}
-                onChange={(event) => {
-                  slugTouched.current = true;
-                  setSlug(event.target.value);
-                }}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button type="submit" form={formId} loading={pending}>
-            {current ? "Save" : "Create sub-organization"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && guard.requestDiscard()}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>
+              {current ? "Edit sub-organization" : "Create sub-organization"}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            id={formId}
+            noValidate
+            autoComplete="off"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <Field label="Name" error={errors.name}>
+                <Input
+                  value={name}
+                  placeholder="Acme Corp"
+                  invalid={Boolean(errors.name)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (!slugTouched.current)
+                      setSlug(slugify(event.target.value, { lowercase: true }));
+                  }}
+                />
+              </Field>
+              <Field
+                label="Slug"
+                optional
+                error={errors.slug}
+                description={current ? undefined : "Generated from the name when left empty."}
+              >
+                <Input
+                  mono
+                  value={slug}
+                  placeholder="acme-corp"
+                  invalid={Boolean(errors.slug)}
+                  onChange={(event) => {
+                    slugTouched.current = true;
+                    setSlug(event.target.value);
+                  }}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="outline" onClick={guard.requestDiscard}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} loading={pending}>
+              {current ? "Save" : "Create sub-organization"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog {...guard.discardDialogProps} />
+    </>
   );
 };
 

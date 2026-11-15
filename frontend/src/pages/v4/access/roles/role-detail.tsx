@@ -47,6 +47,7 @@ import { useOrgPermission, useProjectPermission } from "../permissions";
 import { useProjectScope } from "../project/scope";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
+import type { PermissionSubject } from "./catalog";
 import {
   orgToApi,
   type PermissionErrors,
@@ -77,6 +78,7 @@ export type RoleEditorProps = {
   backHref: string;
   backLabel?: string;
   describable?: boolean;
+  subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
   references: { environments?: readonly string[]; tags?: readonly string[] };
   vaultConnections: readonly { id: string; name: string }[];
@@ -95,6 +97,7 @@ export const RoleEditor = ({
   backHref,
   backLabel,
   describable = true,
+  subjects,
   can,
   references,
   vaultConnections,
@@ -267,7 +270,7 @@ export const RoleEditor = ({
       <RuleTable
         scope={scope}
         draft={current}
-        subjects={subjectsFor(scope)}
+        subjects={subjects ?? subjectsFor(scope)}
         editable={editable}
         reason={reason}
         errors={errors}

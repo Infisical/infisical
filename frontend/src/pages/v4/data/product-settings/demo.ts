@@ -78,24 +78,33 @@ const kmsBuiltInRoles: TProjectTemplate["roles"] = [
 const environments = (...names: [string, string][]) =>
   names.map(([name, slug], index) => ({ name, slug, position: index + 1 }));
 
+const withBuiltInRoles = (type: ProjectType, custom: TProjectTemplate["roles"]) => {
+  const builtIns = type === ProjectType.KMS ? kmsBuiltInRoles : builtInRoles;
+  const builtInSlugs = new Set(builtIns.map((role) => role.slug));
+  return [...builtIns, ...custom.filter((role) => !builtInSlugs.has(role.slug))];
+};
+
 const standardEnvironments = () =>
   environments(["Development", "dev"], ["Staging", "staging"], ["Production", "prod"]);
 
 const template = (
   overrides: Partial<TProjectTemplate> & Pick<TProjectTemplate, "id" | "name">,
   daysAgo: number
-): TProjectTemplate => ({
-  type: ProjectType.SecretManager,
-  roles: [],
-  environments: null,
-  users: null,
-  groups: null,
-  identities: null,
-  projectManagedIdentities: null,
-  createdAt: at(daysAgo),
-  updatedAt: at(Math.max(daysAgo - 3, 0)),
-  ...overrides
-});
+): TProjectTemplate => {
+  const type = overrides.type ?? ProjectType.SecretManager;
+  return {
+    environments: null,
+    users: null,
+    groups: null,
+    identities: null,
+    projectManagedIdentities: null,
+    createdAt: at(daysAgo),
+    updatedAt: at(Math.max(daysAgo - 3, 0)),
+    ...overrides,
+    type,
+    roles: withBuiltInRoles(type, overrides.roles ?? [])
+  };
+};
 
 const templates = createFixtureStore<TProjectTemplate[]>([
   template(
@@ -305,6 +314,7 @@ export const productSettingsDemo: ProductSettingsAdapter = {
       ...(Object.fromEntries(
         Object.entries(changes).filter(([, value]) => value !== undefined)
       ) as Partial<TProjectTemplate>),
+      roles: changes.roles ? withBuiltInRoles(current.type, changes.roles) : current.roles,
       updatedAt: at(0)
     };
     templates.update((list) => list.map((item) => (item.id === templateId ? updated : item)));

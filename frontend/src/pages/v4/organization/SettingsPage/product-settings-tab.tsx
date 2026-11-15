@@ -76,6 +76,10 @@ const ExportDialog = ({
   const exportProject = useV4Adapter("orgSettings").useExportCertManagerProject();
   const [result, setResult] = useState<TExportCertManagerProjectResult>();
   const [pending, setPending] = useState(false);
+  const close = () => {
+    setResult(undefined);
+    onClose();
+  };
   const renamed =
     result &&
     result.renamedCertificateAuthorities.length +
@@ -86,9 +90,7 @@ const ExportDialog = ({
     <Dialog
       open={Boolean(source)}
       onOpenChange={(open) => {
-        if (open) return;
-        setResult(undefined);
-        onClose();
+        if (!open) close();
       }}
     >
       <DialogContent pending={pending}>
@@ -115,12 +117,12 @@ const ExportDialog = ({
         )}
         <DialogFooter>
           {result ? (
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={close}>
               Close
             </Button>
           ) : (
             <>
-              <Button variant="outline" disabled={pending} onClick={onClose}>
+              <Button variant="outline" disabled={pending} onClick={close}>
                 Cancel
               </Button>
               <Button

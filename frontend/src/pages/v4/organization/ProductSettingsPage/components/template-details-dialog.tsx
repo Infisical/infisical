@@ -1,8 +1,9 @@
 import { useId, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -47,6 +48,11 @@ export const TemplateDetailsDialog = ({
   });
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
+  const guard = useDiscardChangesGuard({
+    isDirty:
+      draft.name !== (template?.name ?? "") || draft.description !== (template?.description ?? ""),
+    onDiscard: () => onOpenChange(false)
+  });
   const issues = submitted ? schema.safeParse(draft).error?.flatten().fieldErrors : undefined;
 
   const submit = async () => {
@@ -79,55 +85,58 @@ export const TemplateDetailsDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>
-            {template ? "Edit template details" : "Create project template"}
-          </DialogTitle>
-        </DialogHeader>
-        <form
-          id={formId}
-          noValidate
-          autoComplete="off"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field
-              label="Name"
-              description="Lowercase letters, numbers and hyphens."
-              error={issues?.name?.[0]}
-            >
-              <Input
-                mono
-                placeholder="my-project-template"
-                data-1p-ignore
-                invalid={Boolean(issues?.name)}
-                value={draft.name}
-                onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              />
-            </Field>
-            <Field label="Description" optional error={issues?.description?.[0]}>
-              <Textarea
-                rows={4}
-                value={draft.description}
-                onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
-          </DialogClose>
-          <Button type="submit" form={formId} variant="primary" loading={pending}>
-            {template ? "Save" : "Create template"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open onOpenChange={(open) => (open ? undefined : guard.requestDiscard())}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>
+              {template ? "Edit template details" : "Create project template"}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            id={formId}
+            noValidate
+            autoComplete="off"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <Field
+                label="Name"
+                description="Lowercase letters, numbers and hyphens."
+                error={issues?.name?.[0]}
+              >
+                <Input
+                  mono
+                  placeholder="my-project-template"
+                  data-1p-ignore
+                  invalid={Boolean(issues?.name)}
+                  value={draft.name}
+                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                />
+              </Field>
+              <Field label="Description" optional error={issues?.description?.[0]}>
+                <Textarea
+                  rows={4}
+                  value={draft.description}
+                  onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" onClick={guard.requestDiscard}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} variant="primary" loading={pending}>
+              {template ? "Save" : "Create template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog {...guard.discardDialogProps} />
+    </>
   );
 };

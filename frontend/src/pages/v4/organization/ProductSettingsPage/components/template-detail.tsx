@@ -28,8 +28,10 @@ import { isCustomProjectRole } from "@app/helpers/roles";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { InfisicalProjectTemplate, type TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
+import { ProjectTypePermissionSubjects } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
+import { KMS_KEY_SUBJECTS, PROJECT_SUBJECTS } from "../../../access/roles/catalog";
 import { projectToApi } from "../../../access/roles/permissions-model";
 import { RoleEditor } from "../../../access/roles/role-detail";
 import { failed, saved } from "../../../access/toast";
@@ -51,6 +53,11 @@ type Links = { back: string; backLabel: string; template: string };
 
 const roleLink = (templateHref: string, slug: string) =>
   `${templateHref}?role=${encodeURIComponent(slug)}`;
+
+const KMS_TEMPLATE_SUBJECTS = [...PROJECT_SUBJECTS, ...KMS_KEY_SUBJECTS].filter(
+  (subject) =>
+    (ProjectTypePermissionSubjects[ProjectType.KMS] as Record<string, boolean>)[subject.subject]
+);
 
 const TemplateRoleEditor = ({
   template,
@@ -99,6 +106,7 @@ const TemplateRoleEditor = ({
       backHref={links.template}
       backLabel={template.name}
       describable={false}
+      subjects={template.type === ProjectType.KMS ? KMS_TEMPLATE_SUBJECTS : undefined}
       can={{ edit: canEdit, create: canEdit, delete: canEdit }}
       references={{ environments: template.environments?.map((environment) => environment.slug) }}
       vaultConnections={[]}

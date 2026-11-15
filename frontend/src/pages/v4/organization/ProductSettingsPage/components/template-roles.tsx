@@ -1,4 +1,5 @@
-import { useId, useState, useRef } from "react";
+import { useId, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,13 +8,13 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -60,6 +61,10 @@ const AddRoleDialog = ({
   const slugTouched = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
+  const guard = useDiscardChangesGuard({
+    isDirty: Boolean(name || slug),
+    onDiscard: () => onOpenChange(false)
+  });
   const parsedSlug = slugSchema({ min: 1 }).safeParse(slug);
   const taken = template.roles.some((role) => role.slug === slug.trim());
   const nameError = submitted && !name.trim() ? "Name required" : undefined;
@@ -90,59 +95,62 @@ const AddRoleDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>Add role</DialogTitle>
-        </DialogHeader>
-        <form
-          id={formId}
-          noValidate
-          autoComplete="off"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field label="Name" error={nameError}>
-              <Input
-                placeholder="Deployer"
-                data-1p-ignore
-                invalid={Boolean(nameError)}
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  if (!slugTouched.current)
-                    setSlug(slugify(event.target.value, { lowercase: true }));
-                }}
-              />
-            </Field>
-            <Field label="Slug" error={slugError}>
-              <Input
-                mono
-                placeholder="deployer"
-                data-1p-ignore
-                invalid={Boolean(slugError)}
-                value={slug}
-                onChange={(event) => {
-                  setSlug(event.target.value);
-                  slugTouched.current = true;
-                }}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
-          </DialogClose>
-          <Button type="submit" form={formId} variant="primary" loading={pending}>
-            Add role
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open onOpenChange={(open) => (open ? undefined : guard.requestDiscard())}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>Add role</DialogTitle>
+          </DialogHeader>
+          <form
+            id={formId}
+            noValidate
+            autoComplete="off"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <Field label="Name" error={nameError}>
+                <Input
+                  placeholder="Deployer"
+                  data-1p-ignore
+                  invalid={Boolean(nameError)}
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (!slugTouched.current)
+                      setSlug(slugify(event.target.value, { lowercase: true }));
+                  }}
+                />
+              </Field>
+              <Field label="Slug" error={slugError}>
+                <Input
+                  mono
+                  placeholder="deployer"
+                  data-1p-ignore
+                  invalid={Boolean(slugError)}
+                  value={slug}
+                  onChange={(event) => {
+                    setSlug(event.target.value);
+                    slugTouched.current = true;
+                  }}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" onClick={guard.requestDiscard}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} variant="primary" loading={pending}>
+              Add role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog {...guard.discardDialogProps} />
+    </>
   );
 };
 

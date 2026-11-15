@@ -2351,3 +2351,62 @@ export const ACTION_ALLOWED_CONDITIONS: Record<string, Record<string, string[]>>
     "assign-role": ["groupName", "assignableRole"]
   }
 };
+
+export const KMS_KEY_SUBJECTS: PermissionSubject[] = [
+  {
+    subject: "cmek",
+    title: "KMS keys",
+    description: "Manage encryption keys and cryptographic operations",
+    actions: [
+      { value: "read", label: "Read", description: "View KMS keys and their metadata" },
+      { value: "create", label: "Create", description: "Create new KMS encryption keys" },
+      { value: "edit", label: "Modify", description: "Update KMS key configuration" },
+      { value: "delete", label: "Remove", description: "Delete KMS keys" },
+      { value: "encrypt", label: "Encrypt", description: "Use KMS keys to encrypt data" },
+      { value: "decrypt", label: "Decrypt", description: "Use KMS keys to decrypt data" },
+      { value: "sign", label: "Sign", description: "Create signatures using KMS keys" },
+      { value: "verify", label: "Verify", description: "Verify signatures using KMS keys" },
+      { value: "generate-mac", label: "Generate MAC", description: "Generate MACs using KMS keys" },
+      { value: "verify-mac", label: "Verify MAC", description: "Verify MACs using KMS keys" },
+      { value: "rotate", label: "Rotate", description: "Rotate KMS key material" },
+      {
+        value: "export-private-key",
+        label: "Export private key",
+        description: "Export the private key from KMS (sensitive operation)"
+      },
+      {
+        value: "publish-public-key",
+        label: "Publish public key",
+        description: "Publish a sign-verify key's public key at an unauthenticated JWKS URL"
+      }
+    ]
+  },
+  {
+    subject: "kmip",
+    title: "KMIP",
+    description: "Manage keys via KMIP protocol",
+    actions: [
+      {
+        value: "read-clients",
+        label: "Read clients",
+        description: "View KMIP clients and their configuration"
+      },
+      {
+        value: "create-clients",
+        label: "Create clients",
+        description: "Register new KMIP clients"
+      },
+      {
+        value: "update-clients",
+        label: "Modify clients",
+        description: "Update KMIP client settings"
+      },
+      { value: "delete-clients", label: "Delete clients", description: "Remove KMIP clients" },
+      {
+        value: "generate-client-certificates",
+        label: "Generate client certificates",
+        description: "Generate authentication certificates for KMIP clients"
+      }
+    ]
+  }
+];
