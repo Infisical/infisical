@@ -1028,7 +1028,12 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     return {
       state: {
         ...state,
-        bundles: state.bundles.filter((seed) => seed.id !== accessBundleId)
+        bundles: state.bundles.filter((seed) => seed.id !== accessBundleId),
+        sessions: state.sessions.map((session) =>
+          session.accessBundle?.id === accessBundleId
+            ? { ...session, accessBundle: { id: null, name: bundle.name } }
+            : session
+        )
       },
       result
     };

@@ -344,17 +344,28 @@ export const SessionLogsPanel = ({
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [opened, setOpened] = useState<TAgentVaultSessionLogRecord | null>(null);
   const [serviceRequest, setServiceRequest] = useState<{ host: string; path: string } | null>(null);
-  const [addedHosts, setAddedHosts] = useState<ReadonlySet<string>>(() => new Set());
   const bundle = session.accessBundle;
+  const { data: bundleDetail } = useV4Adapter("agentVaultResources").useAccessBundle(
+    projectId,
+    isAdmin ? (bundle?.id ?? "") : ""
+  );
   const columns = useMemo(() => {
-    if (!isAdmin || !bundle?.id) return LOG_COLUMNS;
+    if (!isAdmin || !bundle?.id || !bundleDetail) return LOG_COLUMNS;
+    const covered = bundleDetail.services.flatMap((service) =>
+      "hostPattern" in service ? service.hostPattern.split(",").map((host) => host.trim()) : []
+    );
+    const isCovered = (host: string) =>
+      covered.some(
+        (pattern) =>
+          pattern === host || (pattern.startsWith("*.") && host.endsWith(pattern.slice(1)))
+      );
     const isAddable = (record: TAgentVaultSessionLogRecord) =>
       !record.service &&
       !isNativeSessionLogRecord(record) &&
       (record.decision === AgentVaultSessionLogDecision.Blocked ||
         record.decision === AgentVaultSessionLogDecision.Passthrough) &&
       !isInfisicalSessionEndpointRequest(record) &&
-      !addedHosts.has(hostPatternFor(record));
+      !isCovered(hostPatternFor(record));
     const addColumn: DataTableColumn<TAgentVaultSessionLogRecord> = {
       id: "add-service",
       header: "Add service",
@@ -376,7 +387,7 @@ export const SessionLogsPanel = ({
         ) : null
     };
     return [...LOG_COLUMNS, addColumn];
-  }, [isAdmin, bundle, addedHosts]);
+  }, [isAdmin, bundle, bundleDetail]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date }>();
@@ -903,7 +914,6 @@ export const SessionLogsPanel = ({
           projectId={projectId}
           accessBundleId={bundle.id}
           request={serviceRequest}
-          onSaved={() => setAddedHosts((hosts) => new Set(hosts).add(serviceRequest.host))}
           onOpenChange={(open) => !open && setServiceRequest(null)}
         />
       )}

@@ -181,14 +181,12 @@ export const ServiceSheet = ({
   accessBundleId,
   service,
   request,
-  onSaved,
   onOpenChange
 }: {
   projectId: string;
   accessBundleId?: string;
   service?: TAgentVaultService;
   request?: { host: string; path?: string };
-  onSaved?: () => void;
   onOpenChange: (open: boolean) => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -443,7 +441,6 @@ export const ServiceSheet = ({
       else await create.mutateAsync(buildCreateServiceRequest(accessBundleId, form));
       saved(`Service ${form.name} ${isCreate ? "created" : "updated"}`);
       completed.current = true;
-      onSaved?.();
       return true;
     } catch (error) {
       if (!showSaveError(error)) return false;
