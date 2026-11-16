@@ -541,6 +541,7 @@ export type TListAgentVaultSessionsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  metadata?: Record<string, string>;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {

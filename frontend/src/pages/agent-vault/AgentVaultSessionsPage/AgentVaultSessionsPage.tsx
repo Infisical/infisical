@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -35,6 +35,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -85,6 +86,10 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
@@ -123,6 +128,14 @@ export const AgentVaultSessionsPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const metadataFilter = useMemo(() => {
+    const entries = appliedMetadataFilters
+      .map(({ key, value }) => [key.trim(), value.trim()] as const)
+      .filter(([key, value]) => key && value);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  }, [appliedMetadataFilters]);
   const [scope, setScope] = useState(() => {
     const stored = getUserTablePreference(
       "agentVaultSessionsTable",
@@ -146,6 +159,7 @@ export const AgentVaultSessionsPage = () => {
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
+    metadata: metadataFilter,
     limit: perPage,
     offset: (page - 1) * perPage
   });
@@ -176,7 +190,8 @@ export const AgentVaultSessionsPage = () => {
 
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
-  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
+  const isFiltered =
+    Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
 
@@ -184,7 +199,7 @@ export const AgentVaultSessionsPage = () => {
   let emptyDescription: string;
   if (isFiltered) {
     emptyTitle = "No sessions match these filters";
-    emptyDescription = "Try a different search term or status.";
+    emptyDescription = "Try a different search term, status or metadata.";
   } else if (!hasReachableBundles) {
     emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
     emptyDescription = isAdmin
@@ -332,7 +347,7 @@ export const AgentVaultSessionsPage = () => {
               <DropdownMenuTrigger asChild>
                 <IconButton
                   aria-label="Filter sessions"
-                  variant={statuses.length ? "av" : "outline"}
+                  variant={statuses.length || metadataFilter ? "av" : "outline"}
                 >
                   <FilterIcon />
                 </IconButton>
@@ -360,6 +375,27 @@ export const AgentVaultSessionsPage = () => {
                     </DropdownMenuCheckboxItem>
                   );
                 })}
+                <DropdownMenuSeparator />
+                <div className="flex w-72 flex-col gap-3 p-2">
+                  <MetadataFilterSection
+                    entries={pendingMetadataFilters}
+                    onChange={setPendingMetadataFilters}
+                  />
+                  <Button
+                    variant="av"
+                    size="sm"
+                    isDisabled={
+                      JSON.stringify(pendingMetadataFilters) ===
+                      JSON.stringify(appliedMetadataFilters)
+                    }
+                    onClick={() => {
+                      setAppliedMetadataFilters(pendingMetadataFilters);
+                      setPage(1);
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
             {isAdmin && (

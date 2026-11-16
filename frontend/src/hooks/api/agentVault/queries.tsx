@@ -527,15 +527,21 @@ export const useListAgentVaultSessions = (
     ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, projectId, params),
     queryFn: async () => {
-      const { statuses, ...rest } = params ?? {};
+      const { statuses, metadata, ...rest } = params ?? {};
+      const metadataFilter = Object.entries(metadata ?? {}).map(
+        ([key, value]) => `${key}=${value}`
+      );
       const { data } = await apiRequest.get<TAgentVaultSessionList>(
         "/api/v1/agent-vault/sessions",
         {
           params: {
             ...rest,
             projectId,
-            status: statuses?.length ? statuses.join(",") : undefined
-          }
+            status: statuses?.length ? statuses.join(",") : undefined,
+            metadata: metadataFilter.length ? metadataFilter : undefined
+          },
+          // The API reads a repeated metadata=key=value, not axios's default metadata[]=.
+          paramsSerializer: { indexes: null }
         }
       );
       return data;
