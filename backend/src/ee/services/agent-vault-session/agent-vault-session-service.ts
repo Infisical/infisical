@@ -263,8 +263,7 @@ export const agentVaultSessionServiceFactory = ({
       )
     ) {
       throw new ForbiddenRequestError({
-        message:
-          "You don't have permission to send skills with a session. Name an access bundle or the project's skills instead."
+        message: `You are not allowed to ${ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills} on ${ProjectPermissionSub.AgentVaultSessions}. Name an access bundle or the project's skills instead.`
       });
     }
 

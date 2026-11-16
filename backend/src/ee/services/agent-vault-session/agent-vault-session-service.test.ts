@@ -468,7 +468,7 @@ describe("mintSession, skills", () => {
 
     const { service: withoutAction, insertInlineSkills } = buildSkillService({ isAdmin: false, canSendSkills: false });
     await expect(mintSkills(withoutAction, [skillFolder("scratch")])).rejects.toThrow(
-      "You don't have permission to send skills with a session."
+      "You are not allowed to create-with-inline-skills on agent-vault-sessions."
     );
     expect(insertInlineSkills).not.toHaveBeenCalled();
   });
