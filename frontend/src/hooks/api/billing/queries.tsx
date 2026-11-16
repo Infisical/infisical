@@ -3,12 +3,10 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
-  BillingBreakdownScopeKind,
-  BillingCatalogProduct,
-  BillingOrganizationsPage,
-  BillingOverview,
-  BillingUsageBreakdown
-} from "./types";
+  RENDER_CLOUD_PREVIEW_CATALOG,
+  RENDER_CLOUD_PREVIEW_OVERVIEW
+} from "./render-cloud-preview-fixtures";
+import { BillingBreakdownScopeKind, BillingOrganizationsPage, BillingUsageBreakdown } from "./types";
 
 type BillingOrganizationsParams = { search?: string; limit?: number; offset?: number };
 
@@ -27,15 +25,7 @@ export const useGetBillingOverview = (
 ) => {
   return useQuery({
     queryKey: billingKeys.overview(orgId),
-    queryFn: async () => {
-      const {
-        data: { overview }
-      } = await apiRequest.get<{ overview: BillingOverview }>(
-        `/api/v1/organizations/${orgId}/billing/v2/overview`
-      );
-
-      return overview;
-    },
+    queryFn: async () => RENDER_CLOUD_PREVIEW_OVERVIEW,
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
     placeholderData: keepPreviousData,
@@ -46,15 +36,7 @@ export const useGetBillingOverview = (
 export const useGetBillingCatalog = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: billingKeys.catalog(orgId),
-    queryFn: async () => {
-      const {
-        data: { products }
-      } = await apiRequest.get<{ products: BillingCatalogProduct[] }>(
-        `/api/v1/organizations/${orgId}/billing/v2/catalog`
-      );
-
-      return products;
-    },
+    queryFn: async () => RENDER_CLOUD_PREVIEW_CATALOG,
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     placeholderData: keepPreviousData
   });
