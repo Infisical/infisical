@@ -16,7 +16,8 @@ import {
 
 import { readableFailure, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
-import { MAX_IMPORT_PATHS, VaultReviewStep, VaultSourceStep } from "./vault-import-steps";
+import { MAX_IMPORT_PATHS } from "./external-import";
+import { VaultReviewStep, VaultSourceStep } from "./vault-import-steps";
 
 const sourceBlockOf = (
   { connectionId, namespace, mountPath }: { [key: string]: unknown },

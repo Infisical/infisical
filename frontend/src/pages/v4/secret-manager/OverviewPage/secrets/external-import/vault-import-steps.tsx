@@ -17,14 +17,17 @@ import type {
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 
 import { useV4Adapter } from "../../../../data/adapters";
+import type {
+  TVaultMount,
+  TVaultSecretPaths
+} from "../../../../data/secrets/contract-external-import";
+import { MAX_IMPORT_PATHS, plural } from "./external-import";
 
 import styles from "./external-import.module.css";
 
-export const MAX_IMPORT_PATHS = 25;
 const VISIBLE_SKIPPED_PATHS = 6;
 
 const trimSlash = (path: string) => path.replace(/\/$/, "");
-export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 function PathBadges({ paths, limit }: { paths: string[]; limit?: number }) {
   const shown = limit === undefined ? paths : paths.slice(0, limit);
@@ -44,87 +47,60 @@ function PathBadges({ paths, limit }: { paths: string[]; limit?: number }) {
   );
 }
 
-export function VaultSourceStep({
-  connections,
-  state,
+type SelectionDispatch = Dispatch<VaultImportSelectionAction<string[]>>;
+
+function VaultMountField({
+  namespace,
+  mountPath,
+  mounts,
   dispatch
 }: {
-  connections: TAvailableAppConnection[];
-  state: VaultImportSelectionState<string[]>;
-  dispatch: Dispatch<VaultImportSelectionAction<string[]>>;
+  namespace: string | null;
+  mountPath: string | null;
+  mounts: { data: TVaultMount[] | undefined; isPending: boolean };
+  dispatch: SelectionDispatch;
 }) {
-  const adapter = useV4Adapter("secrets");
-  const { connectionId, namespace, mountPath } = state;
-  const selected = state.selection ?? [];
-  const connection = connectionId ?? undefined;
-  const namespaces = adapter.useVaultNamespaces(connection);
-  const mounts = adapter.useVaultMounts(
-    Boolean(namespace && connection),
-    namespace ?? undefined,
-    connection
-  );
-  const secretPaths = adapter.useVaultSecretPaths(
-    Boolean(namespace && mountPath && connection),
-    namespace ?? undefined,
-    mountPath ?? undefined,
-    connection
-  );
   const kvMounts = (mounts.data ?? []).filter((mount) => mount.type.startsWith("kv"));
-  const available = secretPaths.data?.secretPaths ?? [];
-  const skipped = secretPaths.data?.skippedWildcardPaths ?? [];
-  const overLimit = selected.length > MAX_IMPORT_PATHS;
   const noKv = Boolean(namespace) && !mounts.isPending && !kvMounts.length;
-
   return (
-    <Stack gap={16}>
-      <Field label="App connection">
-        <Combobox
-          label="App connection"
-          placeholder="Select app connection"
-          emptyText="No app connections found"
-          options={connections.map((entry) => ({
-            value: entry.id,
-            label: entry.name,
-            meta: entry.projectId ? undefined : "Organization"
-          }))}
-          value={connectionId ?? ""}
-          onValueChange={(value) => dispatch({ type: "connection", value })}
-        />
-      </Field>
-      <Field label="Namespace">
-        <Combobox
-          label="Namespace"
-          disabled={!connectionId}
-          loading={namespaces.isPending && Boolean(connectionId)}
-          placeholder={connectionId ? "Select namespace" : "Select an app connection first"}
-          emptyText="No Vault namespaces found"
-          options={(namespaces.data ?? []).map((option) => ({
-            value: option.name,
-            label: option.name === "/" ? "root" : option.name
-          }))}
-          value={namespace ?? ""}
-          onValueChange={(value) => dispatch({ type: "namespace", value })}
-        />
-      </Field>
-      <Field
+    <Field
+      label="Secrets engine"
+      description={noKv ? "This namespace has no KV secrets engines." : undefined}
+    >
+      <Combobox
         label="Secrets engine"
-        description={noKv ? "This namespace has no KV secrets engines." : undefined}
-      >
-        <Combobox
-          label="Secrets engine"
-          disabled={!namespace || !kvMounts.length}
-          loading={mounts.isPending && Boolean(namespace)}
-          placeholder={namespace ? "Select secrets engine" : "Select a namespace first"}
-          emptyText="No KV secrets engines found"
-          options={kvMounts.map((mount) => ({
-            value: trimSlash(mount.path),
-            label: trimSlash(mount.path),
-            meta: mount.version ? `v${mount.version}` : undefined
-          }))}
-          value={mountPath ?? ""}
-          onValueChange={(value) => dispatch({ type: "mount", value })}
-        />
-      </Field>
+        disabled={!namespace || !kvMounts.length}
+        loading={mounts.isPending && Boolean(namespace)}
+        placeholder={namespace ? "Select secrets engine" : "Select a namespace first"}
+        emptyText="No KV secrets engines found"
+        options={kvMounts.map((mount) => ({
+          value: trimSlash(mount.path),
+          label: trimSlash(mount.path),
+          meta: mount.version ? `v${mount.version}` : undefined
+        }))}
+        value={mountPath ?? ""}
+        onValueChange={(value) => dispatch({ type: "mount", value })}
+      />
+    </Field>
+  );
+}
+
+function VaultPathsField({
+  mountPath,
+  selected,
+  paths,
+  dispatch
+}: {
+  mountPath: string | null;
+  selected: string[];
+  paths?: TVaultSecretPaths;
+  dispatch: SelectionDispatch;
+}) {
+  const available = paths?.secretPaths ?? [];
+  const skipped = paths?.skippedWildcardPaths ?? [];
+  const overLimit = selected.length > MAX_IMPORT_PATHS;
+  return (
+    <>
       <Field
         label="Secret paths"
         description={`Up to ${MAX_IMPORT_PATHS} per import.`}
@@ -158,6 +134,78 @@ export function VaultSourceStep({
           </Stack>
         </Alert>
       )}
+    </>
+  );
+}
+
+export function VaultSourceStep({
+  connections,
+  state,
+  dispatch
+}: {
+  connections: TAvailableAppConnection[];
+  state: VaultImportSelectionState<string[]>;
+  dispatch: SelectionDispatch;
+}) {
+  const adapter = useV4Adapter("secrets");
+  const { connectionId, namespace, mountPath } = state;
+  const connection = connectionId ?? undefined;
+  const namespaces = adapter.useVaultNamespaces(connection);
+  const mounts = adapter.useVaultMounts(
+    Boolean(namespace && connection),
+    namespace ?? undefined,
+    connection
+  );
+  const secretPaths = adapter.useVaultSecretPaths(
+    Boolean(namespace && mountPath && connection),
+    namespace ?? undefined,
+    mountPath ?? undefined,
+    connection
+  );
+
+  return (
+    <Stack gap={16}>
+      <Field label="App connection">
+        <Combobox
+          label="App connection"
+          placeholder="Select app connection"
+          emptyText="No app connections found"
+          options={connections.map((entry) => ({
+            value: entry.id,
+            label: entry.name,
+            meta: entry.projectId ? undefined : "Organization"
+          }))}
+          value={connectionId ?? ""}
+          onValueChange={(value) => dispatch({ type: "connection", value })}
+        />
+      </Field>
+      <Field label="Namespace">
+        <Combobox
+          label="Namespace"
+          disabled={!connectionId}
+          loading={namespaces.isPending && Boolean(connectionId)}
+          placeholder={connectionId ? "Select namespace" : "Select an app connection first"}
+          emptyText="No Vault namespaces found"
+          options={(namespaces.data ?? []).map((option) => ({
+            value: option.name,
+            label: option.name === "/" ? "root" : option.name
+          }))}
+          value={namespace ?? ""}
+          onValueChange={(value) => dispatch({ type: "namespace", value })}
+        />
+      </Field>
+      <VaultMountField
+        namespace={namespace}
+        mountPath={mountPath}
+        mounts={mounts}
+        dispatch={dispatch}
+      />
+      <VaultPathsField
+        mountPath={mountPath}
+        selected={state.selection ?? []}
+        paths={secretPaths.data}
+        dispatch={dispatch}
+      />
     </Stack>
   );
 }

@@ -11,6 +11,9 @@ import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/type
 import { useProjectPermission } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
 
+export const MAX_IMPORT_PATHS = 25;
+export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
 export type ExternalImportSource = "vault" | "doppler";
 export type ExternalImportConnections = Record<ExternalImportSource, TAvailableAppConnection[]>;
 
