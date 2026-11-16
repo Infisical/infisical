@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
@@ -55,7 +55,7 @@ const RootPage = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeProduct = useActiveProduct();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (activeProduct) root.dataset.product = activeProduct;
     else delete root.dataset.product;
