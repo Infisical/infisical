@@ -27,6 +27,8 @@ import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
+// Keeps the suite off api.pwnedpasswords.com; the unit tests cover the breach check.
+process.env.DISABLE_BREACHED_PASSWORD_CHECK = "true";
 export default {
   name: "knex-env",
   transformMode: "ssr",
