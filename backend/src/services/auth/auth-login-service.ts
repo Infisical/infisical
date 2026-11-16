@@ -1115,7 +1115,9 @@ export const authLoginServiceFactory = ({
     // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
     // victim's email under their own externalId, and inheriting the flag on a later login would mint a
     // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
-    const isAliasVerified = isEmailVerifiedByProvider && (!isDisposableAddress || user.email === sanitizedEmail);
+    const isAliasVerified =
+      isEmailVerifiedByProvider &&
+      (!isDisposableAddress || sanitizeEmail(user.email || user.username) === sanitizedEmail);
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
       try {

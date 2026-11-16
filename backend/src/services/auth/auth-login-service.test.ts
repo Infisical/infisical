@@ -37,15 +37,17 @@ const googleLogin = {
 
 const existingAccount = ({
   email = "alice@corp.com",
+  storedEmail = email,
   alias
 }: {
   email?: string;
+  storedEmail?: string | null;
   alias?: { email: string; isEmailVerified: boolean };
 }) => {
   const user = {
     id: "user-1",
     username: email,
-    email,
+    email: storedEmail,
     isAccepted: true,
     isEmailVerified: true,
     authMethods: [AuthMethod.GOOGLE]
@@ -130,13 +132,16 @@ describe("oauth2Login", () => {
     expect(smtpService.sendMail).toHaveBeenCalledWith(expect.objectContaining({ recipients: ["alice@corp.com"] }));
   });
 
-  test("signs in an existing account whose own email is on a disposable domain", async () => {
-    const { service, userAliasDAL, smtpService } = existingAccount({ email: "alice@mailinator.com" });
+  test.each(["alice@mailinator.com", "Alice@Mailinator.com", null])(
+    "signs in an existing account on a disposable domain whose stored email is %s",
+    async (storedEmail) => {
+      const { service, userAliasDAL, smtpService } = existingAccount({ email: "alice@mailinator.com", storedEmail });
 
-    const login = await service.oauth2Login(googleLogin);
+      const login = await service.oauth2Login(googleLogin);
 
-    expect(login.result).toBe(ProviderAuthResult.SESSION);
-    expect(userAliasDAL.create).toHaveBeenCalledWith(expect.objectContaining({ isEmailVerified: true }));
-    expect(smtpService.sendMail).not.toHaveBeenCalled();
-  });
+      expect(login.result).toBe(ProviderAuthResult.SESSION);
+      expect(userAliasDAL.create).toHaveBeenCalledWith(expect.objectContaining({ isEmailVerified: true }));
+      expect(smtpService.sendMail).not.toHaveBeenCalled();
+    }
+  );
 });
