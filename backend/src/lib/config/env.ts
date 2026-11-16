@@ -220,7 +220,9 @@ const envSchema = z
     DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
     DISABLE_BREACHED_PASSWORD_CHECK: zodStrBool
       .default("false")
-      .describe("Skip the Have I Been Pwned check on password set and reset, for instances with no outbound egress."),
+      .describe(
+        "Skip the Have I Been Pwned check on signup and password changes, for instances with no outbound egress."
+      ),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),

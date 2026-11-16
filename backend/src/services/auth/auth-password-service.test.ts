@@ -1,6 +1,6 @@
 import nodeCrypto from "node:crypto";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 
@@ -100,6 +100,13 @@ describe("breached password", () => {
 
 test("refuses a recovery token that expires during the lookup", async () => {
   const { keyStore, service } = await setup();
+  const expiresAt = Math.floor(Date.now() / 1000) + 60;
+  const now = vi.spyOn(Date, "now");
+  onTestFinished(() => now.mockRestore());
+  mocks.get.mockImplementation(async () => {
+    now.mockReturnValue((expiresAt + 1) * 1000);
+    return { data: "" };
+  });
 
   await expect(
     service.resetPasswordV2({
@@ -107,7 +114,7 @@ test("refuses a recovery token that expires during the lookup", async () => {
       userId: "user-id",
       newPassword: "Not-In-The-List-7!",
       recoveryTokenJti: "jti",
-      recoveryTokenExpiresAt: Math.floor(Date.now() / 1000) - 1
+      recoveryTokenExpiresAt: expiresAt
     })
   ).rejects.toThrow("Invalid recovery token");
   expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();

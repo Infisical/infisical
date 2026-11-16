@@ -564,6 +564,9 @@ export const superAdminServiceFactory = ({
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
     await assertPasswordNotBreached(password);
+    // The lookup can take seconds, so another admin signup may have finished meanwhile.
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (serverCfg?.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 

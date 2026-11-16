@@ -32,3 +32,25 @@ test("admin signup refuses a breached password before creating the account", asy
   ).rejects.toThrow("known data breach");
   expect(userDAL.transaction).not.toHaveBeenCalled();
 });
+
+test("admin signup stops if the instance was set up during the breach lookup", async () => {
+  let initialized = false;
+  mocks.get.mockImplementation(async () => {
+    initialized = true;
+    return { data: "" };
+  });
+  const userDAL = { findOne: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
+  const serverCfgDAL = { findById: vi.fn(async () => ({ initialized })) };
+  const service = superAdminServiceFactory({ userDAL, serverCfgDAL } as never);
+
+  await expect(
+    service.adminSignUp({
+      email: "admin@example.com",
+      password: "Not-In-The-List-7!",
+      firstName: "Ada",
+      ip: "127.0.0.1",
+      userAgent: "vitest"
+    })
+  ).rejects.toThrow("Admin account has already been set up");
+  expect(userDAL.transaction).not.toHaveBeenCalled();
+});
