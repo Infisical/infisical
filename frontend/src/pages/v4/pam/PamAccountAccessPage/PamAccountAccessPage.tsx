@@ -9,6 +9,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { SessionAccessGate } from "./access-gate";
 import { AwsConsoleAccess } from "./aws-console-access";
+import { DataExplorer } from "./data-explorer/data-explorer";
 import { RemoteDesktopLauncher } from "./remote-desktop-session";
 import { TerminalSession } from "./terminal-session";
 
@@ -43,19 +44,13 @@ const AccountAccess = () => {
     );
   if (account.accountType === PamAccountType.AwsIam) return <AwsConsoleAccess account={account} />;
   if (account.accountType === PamAccountType.SSH) return <TerminalSession account={account} />;
-  if (DATA_EXPLORER_TYPES.has(account.accountType))
-    return (
-      <EmptyState
-        icon="server"
-        title="The data explorer isn't in v4 yet"
-        description="Open this account in the classic app to browse and query it."
-      />
-    );
 
   return (
     <SessionAccessGate account={account}>
-      {({ reason, mfaSessionId }) =>
-        REMOTE_DESKTOP_TYPES.has(account.accountType) ? (
+      {({ reason, mfaSessionId }) => {
+        if (DATA_EXPLORER_TYPES.has(account.accountType))
+          return <DataExplorer account={account} reason={reason} mfaSessionId={mfaSessionId} />;
+        return REMOTE_DESKTOP_TYPES.has(account.accountType) ? (
           <RemoteDesktopLauncher
             account={account}
             reason={reason}
@@ -64,8 +59,8 @@ const AccountAccess = () => {
           />
         ) : (
           <TerminalSession account={account} reason={reason} mfaSessionId={mfaSessionId} />
-        )
-      }
+        );
+      }}
     </SessionAccessGate>
   );
 };

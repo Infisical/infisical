@@ -2,6 +2,15 @@ import { PamAccountType } from "@app/hooks/api/pam";
 
 import { fixtureMutation } from "../../fixture-store";
 import type { PamWebAccessAdapter, TWebAccessTransport } from "./contract";
+import {
+  DemoSqlError,
+  demoSchemas,
+  demoTableDetail,
+  demoTables,
+  isDemoTransactionOpen,
+  rollbackDemoTransaction,
+  runDemoQuery
+} from "./demo-data-explorer";
 import { paintDemoDesktop } from "./demo-desktop";
 
 const SHELL_PROMPT = "\u001b[32mdeploy@bastion-ops\u001b[0m:\u001b[34m~\u001b[0m$ ";
@@ -124,6 +133,82 @@ const openQueryShell: TWebAccessTransport["openTerminal"] = ({ onMessage, onClos
   };
 };
 
+const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, onClose }) => {
+  let open = true;
+  const connections = new Set<string>();
+  const reply = (message: Record<string, unknown>, ms = 140) =>
+    later(() => {
+      if (open) onMessage(JSON.stringify(message));
+    }, ms);
+  later(() => onMessage(JSON.stringify({ type: "ready" })), 600);
+  const close = () => {
+    if (!open) return;
+    open = false;
+    connections.forEach(rollbackDemoTransaction);
+    later(onClose, 0);
+  };
+  return {
+    isOpen: () => open,
+    close,
+    send: (raw) => {
+      const message = JSON.parse(raw) as {
+        type: string;
+        id?: string;
+        connectionId?: string;
+        schema?: string;
+        table?: string;
+        sql?: string;
+      };
+      const { id, connectionId = "" } = message;
+      try {
+        if (message.type === "open-connection") {
+          const opened = `demo-connection-${crypto.randomUUID()}`;
+          connections.add(opened);
+          reply({ type: "connection-opened", id, connectionId: opened, nativeConnectionId: null });
+        } else if (message.type === "close-connection") {
+          rollbackDemoTransaction(connectionId);
+          connections.delete(connectionId);
+        } else if (message.type === "get-schemas")
+          reply({ type: "schemas", id, data: demoSchemas() });
+        else if (message.type === "get-tables")
+          reply({ type: "tables", id, data: demoTables(message.schema ?? "") });
+        else if (message.type === "get-table-detail")
+          reply({
+            type: "table-detail",
+            id,
+            connectionId,
+            transactionOpen: isDemoTransactionOpen(connectionId),
+            data: demoTableDetail(message.schema ?? "", message.table ?? "")
+          });
+        else if (message.type === "query") {
+          const startedAt = performance.now();
+          const result = runDemoQuery(message.sql ?? "", connectionId);
+          reply(
+            {
+              type: "query-result",
+              id,
+              connectionId,
+              ...result,
+              executionTimeMs: Math.max(1, Math.round(performance.now() - startedAt)) + 11
+            },
+            260
+          );
+        }
+      } catch (error) {
+        reply({
+          type: "error",
+          id,
+          connectionId,
+          transactionOpen: isDemoTransactionOpen(connectionId),
+          error: error instanceof Error ? error.message : "Query failed",
+          detail: error instanceof DemoSqlError ? error.detail : undefined,
+          hint: error instanceof DemoSqlError ? error.hint : undefined
+        });
+      }
+    }
+  };
+};
+
 const transport: TWebAccessTransport = {
   requestTicket: () =>
     new Promise((resolve) => {
@@ -131,6 +216,7 @@ const transport: TWebAccessTransport = {
     }),
   openTerminal: (input) =>
     input.accountType === PamAccountType.SSH ? openShell(input) : openQueryShell(input),
+  openDataExplorer,
   connectRemoteDesktop: ({ container, signal }) =>
     new Promise((resolve, reject) => {
       const timer = later(() => {

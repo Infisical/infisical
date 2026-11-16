@@ -86,6 +86,22 @@ const fitWindowTo = (container: HTMLElement) => {
   };
 };
 
+const openSocket: TWebAccessTransport["openDataExplorer"] = ({
+  accountId,
+  ticket,
+  onMessage,
+  onClose
+}) => {
+  const socket = new WebSocket(webAccessUrl(accountId, ticket));
+  socket.onmessage = (event) => onMessage(String(event.data));
+  socket.onclose = onClose;
+  return {
+    send: (message) => socket.send(message),
+    close: () => socket.close(),
+    isOpen: () => socket.readyState === WebSocket.OPEN
+  };
+};
+
 const transport: TWebAccessTransport = {
   requestTicket: async ({ accountId, reason, mfaSessionId, selectedHost }) => {
     const { data } = await apiRequest.post<{ ticket: string }>(
@@ -94,16 +110,8 @@ const transport: TWebAccessTransport = {
     );
     return data.ticket;
   },
-  openTerminal: ({ accountId, ticket, onMessage, onClose }) => {
-    const socket = new WebSocket(webAccessUrl(accountId, ticket));
-    socket.onmessage = (event) => onMessage(String(event.data));
-    socket.onclose = onClose;
-    return {
-      send: (message) => socket.send(message),
-      close: () => socket.close(),
-      isOpen: () => socket.readyState === WebSocket.OPEN
-    };
-  },
+  openTerminal: openSocket,
+  openDataExplorer: openSocket,
   connectRemoteDesktop: async ({ container, accountId, ticket, destination, signal }) => {
     const Backend = await loadRdpBackend();
     signal.throwIfAborted();
