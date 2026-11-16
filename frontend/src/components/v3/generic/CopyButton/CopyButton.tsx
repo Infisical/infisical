@@ -1,8 +1,7 @@
-import { ComponentProps, forwardRef, type JSX } from "react";
+import { ComponentProps, forwardRef, type JSX, useEffect, useRef, useState } from "react";
 import { Check, CircleAlert, Copy } from "lucide-react";
 
 import { copyToClipboard } from "@app/helpers/clipboard";
-import { useTimedReset } from "@app/hooks";
 
 import { cn } from "../../utils";
 import { IconButton } from "../IconButton";
@@ -13,16 +12,26 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
   ariaLabel: string;
 } & Pick<ComponentProps<typeof IconButton>, "variant" | "size">;
 
+type CopyStatus = "idle" | "copied" | "failed";
+
 const COPY_FAILED_MESSAGE = "Could not copy to clipboard";
+const STATUS_RESET_DELAY_MS = 2000;
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   (
     { value, ariaLabel, variant = "ghost", size = "xs", onClick, className, ...props },
     ref
   ): JSX.Element => {
-    const [copyStatus, , setCopyStatus] = useTimedReset<"idle" | "copied" | "failed">({
-      initialState: "idle"
-    });
+    const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+    const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    useEffect(() => () => clearTimeout(resetTimer.current), []);
+
+    const showStatus = (status: CopyStatus) => {
+      clearTimeout(resetTimer.current);
+      setCopyStatus(status);
+      resetTimer.current = setTimeout(() => setCopyStatus("idle"), STATUS_RESET_DELAY_MS);
+    };
     const isFailed = copyStatus === "failed";
 
     return (
@@ -38,10 +47,10 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
             onClick={async (event) => {
               try {
                 await copyToClipboard(value);
-                setCopyStatus("copied");
+                showStatus("copied");
                 onClick?.(event);
               } catch {
-                setCopyStatus("failed");
+                showStatus("failed");
               }
             }}
           >
