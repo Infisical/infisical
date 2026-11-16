@@ -53,10 +53,10 @@ ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Build
-RUN npm run build
+# Render preview: skip the tsc typecheck, which uses most of the build memory, and bundle only
+RUN npx vite build
 
 # Production image
 FROM base AS frontend-runner
@@ -119,7 +119,9 @@ RUN npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Render preview: wait for the frontend build so the two Node builds never share the builder's memory
+COPY --from=frontend-builder /app/package.json /tmp/after-frontend-build.json
 RUN npm run build
 
 # Bake in-app announcements + their images at build time so self-hosted / air-gapped
@@ -197,7 +199,7 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.9/o
     && tar -xf openssl-3.5.9.tar.gz \
     && cd openssl-3.5.9 \
     && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
-    && make -j"$(nproc)" \
+    && make -j2 \
     && make install_sw \
     && cd / \
     && rm -rf /tmp/openssl-build
