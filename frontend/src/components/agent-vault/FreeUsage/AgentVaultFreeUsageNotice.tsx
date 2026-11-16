@@ -16,9 +16,10 @@ export const AgentVaultFreeUsageNotice = () => {
 
   const isShown = Boolean(freeUsage) && warn && !isClosed;
   const limit = freeUsage ? formatFreeUsageCount(freeUsage.limit) : "";
+  const until = canAddCard ? "until an admin adds a card or the month resets" : "until the month resets";
   const usageMessage = isLimitReached
-    ? `This organization used its ${limit} free Agent Vault requests this month. Agent requests are refused until an admin adds a card or the month resets.`
-    : `This organization used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused until an admin adds a card or the month resets.`;
+    ? `This organization used its ${limit} free Agent Vault requests this month. Agent requests are refused ${until}.`
+    : `This organization used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused ${until}.`;
   const message = canAddCard
     ? usageMessage
     : `${usageMessage} Ask an organization admin to add a card.`;
