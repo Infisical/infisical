@@ -124,13 +124,21 @@ export const agentVaultSessionServiceFactory = ({
     status: deriveSessionStatus({ ...session, userId, identityId, onBehalfOfUserId, onBehalfOfUserName })
   });
 
-  // The services each session names and the ones sent with it, as one list in the order they were sent.
-  const withSessionServices = async <T extends { id: string }>(sessions: T[]) => {
+  // The services each session names and the ones sent with it, as one list in the order they were sent. A named service
+  // is read from the live catalog, so one the reader no longer reaches is left out, the same as a deleted one: its
+  // later name, description and hosts are the services API's to show, not the session's.
+  const withSessionServices = async <T extends { id: string }>(
+    sessions: T[],
+    readerAccessBundleIds: string[] | null
+  ) => {
     const sessionIds = sessions.map((session) => session.id);
-    const [inlineRows, namedRows] = await Promise.all([
+    const [inlineRows, allNamedRows, reachableServiceIds] = await Promise.all([
       agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(sessionIds),
-      agentVaultSessionServiceDAL.findSummariesBySessionIds(sessionIds)
+      agentVaultSessionServiceDAL.findSummariesBySessionIds(sessionIds),
+      serviceIdsReachedThrough(agentVaultServiceDAL, readerAccessBundleIds)
     ]);
+    const reachable = reachableServiceIds === null ? null : new Set(reachableServiceIds);
+    const namedRows = reachable ? allNamedRows.filter((row) => reachable.has(row.id)) : allNamedRows;
     const bySession = new Map<string, { position: number; service: TAgentVaultSessionServiceSummary }[]>();
     const add = (sessionId: string, position: number, service: TAgentVaultSessionServiceSummary) => {
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, service }]);
@@ -501,7 +509,10 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const listSessions = async ({ projectId, ctx, scope, statuses, search, limit, offset }: TListSessionsDTO) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission, accessBundleIds } = await getAgentVaultReachability(
+      { permissionService, membershipDAL },
+      { projectId, ctx }
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -524,7 +535,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: await withSessionServices(sessions.map(toSessionView)), totalCount };
+    return { sessions: await withSessionServices(sessions.map(toSessionView), accessBundleIds), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -548,7 +559,10 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission, accessBundleIds } = await getAgentVaultReachability(
+      { permissionService, membershipDAL },
+      { projectId, ctx }
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -558,9 +572,10 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const [session] = await withSessionServices([
-      toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))
-    ]);
+    const [session] = await withSessionServices(
+      [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
+      accessBundleIds
+    );
     return { session };
   };
 
@@ -613,7 +628,10 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const updateSessionLabel = async ({ projectId, ctx, sessionId, label }: TUpdateSessionLabelDTO) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission, accessBundleIds } = await getAgentVaultReachability(
+      { permissionService, membershipDAL },
+      { projectId, ctx }
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionSub.AgentVaultSessions
@@ -635,7 +653,7 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    const [view] = await withSessionServices([toSessionView({ ...session, label })]);
+    const [view] = await withSessionServices([toSessionView({ ...session, label })], accessBundleIds);
     return { session: view, previousLabel: updated.previousLabel };
   };
 

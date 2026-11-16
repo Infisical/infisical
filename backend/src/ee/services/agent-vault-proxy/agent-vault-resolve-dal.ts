@@ -149,15 +149,19 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")
       .orderBy(`${TableName.AgentVaultService}.name`, "asc")) as Omit<TResolveServiceRow, "position">[];
 
-    const rootPositions = new Map(roots.map((row) => [row.id, row.position]));
+    const rootById = new Map(roots.map((row) => [row.id, row]));
     const byBundle = new Map<string, typeof rows>();
     rows.forEach((row) => byBundle.set(row.accessBundleId!, [...(byBundle.get(row.accessBundleId!) ?? []), row]));
 
     // Bundles in name order, so a service two of them pair with a named service is credited to the same one each time.
     const overrides = new Map<string, TResolveServiceRow>();
     byBundle.forEach((bundleRows) => {
-      const bundleRoots = bundleRows.filter((row) => rootPositions.has(row.id));
-      const position = Math.min(...bundleRoots.map((row) => rootPositions.get(row.id)!));
+      // A root's hosts come from the row resolve sends, not this second read: an edit committed between the two would
+      // otherwise pair the old wildcard with the overrides of the new one and drop a restriction neither state has.
+      const bundleRoots = bundleRows
+        .filter((row) => rootById.has(row.id))
+        .map((row) => ({ ...row, hostPattern: rootById.get(row.id)!.hostPattern }));
+      const position = Math.min(...bundleRoots.map((row) => rootById.get(row.id)!.position));
       const reached = new Set(bundleRoots.map((row) => row.id));
       let frontier: typeof bundleRows = bundleRoots;
       while (frontier.length) {
