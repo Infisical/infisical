@@ -5088,14 +5088,35 @@ describe("Agent Vault V1 Router", async () => {
 
           const minted = await member.as("POST", sessionsUrl, { services: ["ns-granted"] });
           expect(minted.statusCode, minted.payload).toBe(200);
-          const { token } = minted.json().session as { token: string };
+          const { token, id: sessionId } = minted.json().session as { token: string; id: string };
           expect(await sessionServiceNames(token)).toEqual(["ns-granted"]);
+          const namedIn = async (read: Promise<{ json: () => { session: { services: { name: string }[] } } }>) =>
+            (await read).json().session.services.map((entry) => entry.name);
+          expect(await namedIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
 
           const revoked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
             machineIdentityIds: [member.id]
           });
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await sessionServiceNames(token)).toEqual([]);
+
+          // Session reads show a named service only while the reader reaches it, so its later changes stay with the
+          // services API.
+          const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as { id: string };
+          expect(
+            (await inject("PATCH", `${servicesUrl}/${granted.id}`, { type: "http", description: "changed after the revoke" }))
+              .statusCode
+          ).toBe(200);
+          const ownRead = await member.as("GET", `${sessionsUrl}/${sessionId}`);
+          expect(ownRead.statusCode).toBe(200);
+          expect(ownRead.json().session.services).toEqual([]);
+          expect(ownRead.payload).not.toContain("changed after the revoke");
+          const ownList = await member.as("GET", `${sessionsUrl}?limit=100`);
+          const listed = (ownList.json().sessions as { id: string; services: unknown[] }[]).find(
+            (row) => row.id === sessionId
+          );
+          expect(listed?.services).toEqual([]);
+          expect(await namedIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
         } finally {
           await member.cleanup();
         }
@@ -10330,14 +10351,23 @@ describe("Agent Vault V1 Router", async () => {
           // Unlike a service, a member may send a skill of its own.
           const minted = await member.as("POST", sessionsUrl, { skills: ["ss-granted", inlineSkill("ss-member-own")] });
           expect(minted.statusCode, minted.payload).toBe(200);
-          const { token } = minted.json().session as { token: string };
+          const { token, id: sessionId } = minted.json().session as { token: string; id: string };
           expect(await deliveredNames(token)).toEqual(["ss-granted", "ss-member-own"]);
+          const skillNamesIn = async (read: Promise<{ json: () => { session: { skills: { name: string }[] } } }>) =>
+            (await read).json().session.skills.map((entry) => entry.name);
+          expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual([
+            "ss-granted",
+            "ss-member-own"
+          ]);
 
           const revoked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
             machineIdentityIds: [member.id]
           });
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await deliveredNames(token)).toEqual(["ss-member-own"]);
+          // Session reads show a named skill only while the reader reaches it; an admin still sees it.
+          expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-member-own"]);
+          expect(await skillNamesIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-granted", "ss-member-own"]);
         } finally {
           await member.cleanup();
         }
