@@ -47,7 +47,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   MAX_PERSONAL_VARIABLES,
   MAX_VARIABLES,
@@ -214,6 +219,15 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
   const revealValue = useRevealAgentVaultVariableValue();
+  const { permission } = useProjectPermission();
+  // Personal variables are the caller's own, so only global ones take a permission per action.
+  const canGlobal = (action: ProjectPermissionAgentVaultVariableActions) =>
+    isPersonal || permission.can(action, ProjectPermissionSub.AgentVaultVariables);
+  const canCreate = canGlobal(ProjectPermissionAgentVaultVariableActions.Create);
+  const canEdit = canGlobal(ProjectPermissionAgentVaultVariableActions.Edit);
+  const canDelete = canGlobal(ProjectPermissionAgentVaultVariableActions.Delete);
+  const canReadValue = canGlobal(ProjectPermissionAgentVaultVariableActions.ReadValue);
+  const hasRowActions = canReadValue || canEdit || canDelete;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -340,13 +354,13 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
           ) : (
             <>
               A global variable stores one value that any service can use as{" "}
-              <code className="font-mono">{toVariableReference("KEY")}</code>. Only admins can
-              manage these and see their values.
+              <code className="font-mono">{toVariableReference("KEY")}</code>. Managing these and
+              seeing their values each take their own permission.
             </>
           )}
         </CardDescription>
         <CardAction>
-          {isAtLimit ? (
+          {canCreate && isAtLimit && (
             <Tooltip>
               <TooltipTrigger asChild>
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
@@ -363,7 +377,8 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                   : `This project can hold at most ${maxVariables} global variables. Delete an unused one first.`}
               </TooltipContent>
             </Tooltip>
-          ) : (
+          )}
+          {canCreate && !isAtLimit && (
             <Button variant="av" onClick={() => openForm(null)}>
               <PlusIcon />
               Add {isPersonal ? "Personal" : "Global"} Variable
@@ -397,6 +412,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               <EmptyDescription>
                 {hasVariables && "Try a different search term."}
                 {!hasVariables &&
+                  canCreate &&
                   (isPersonal
                     ? "Add a variable to reuse one of your values across the services you set up."
                     : "Add a variable to use one value across services in any access bundle.")}
@@ -454,46 +470,60 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <RevealableValue value={revealedValue} />
-                        <IconButton
-                          variant="ghost"
-                          size="xs"
-                          className="shrink-0"
-                          aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
-                          isPending={revealingId === variable.id}
-                          onClick={() => toggleReveal(variable)}
-                        >
-                          {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
-                        </IconButton>
+                        {canReadValue && (
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            className="shrink-0"
+                            aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
+                            isPending={revealingId === variable.id}
+                            onClick={() => toggleReveal(variable)}
+                          >
+                            {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+                          </IconButton>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <UsedByServiceBadges usedByServices={variable.usedByServices} />
                     </TableCell>
                     <TableCell variant="action">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton variant="ghost" size="xs" aria-label="Open variable actions">
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          <DropdownMenuItem onClick={() => copyValue(variable)}>
-                            <CopyIcon />
-                            Copy Value
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openForm(variable)}>
-                            <PencilIcon />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() => setVariableToDelete(variable)}
-                          >
-                            <TrashIcon />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {hasRowActions && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Open variable actions"
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            {canReadValue && (
+                              <DropdownMenuItem onClick={() => copyValue(variable)}>
+                                <CopyIcon />
+                                Copy Value
+                              </DropdownMenuItem>
+                            )}
+                            {canEdit && (
+                              <DropdownMenuItem onClick={() => openForm(variable)}>
+                                <PencilIcon />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setVariableToDelete(variable)}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

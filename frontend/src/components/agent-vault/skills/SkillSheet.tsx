@@ -97,7 +97,6 @@ const SkillSheetBody = ({
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  // Listing a skill's versions takes Edit on the server, so the history goes with it.
   const canEdit = permission.can(
     ProjectPermissionAgentVaultSkillActions.Edit,
     ProjectPermissionSub.AgentVaultSkills
@@ -383,6 +382,7 @@ const SkillSheetBody = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {/* Listing a skill's versions takes Edit on the server. */}
                   {canEdit && (
                     <DropdownMenuItem onClick={() => setDialog("history")}>
                       <HistoryIcon />

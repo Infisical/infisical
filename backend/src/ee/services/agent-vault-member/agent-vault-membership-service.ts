@@ -40,6 +40,7 @@ import {
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
+  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
   AgentVaultMemberType,
   TAgentVaultActorColumn
 } from "../agent-vault/agent-vault-enums";
@@ -141,6 +142,21 @@ const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembe
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
 
+// An empty request is checked as every kind, so it still needs the full set rather than none.
+const memberTypesOf = ({
+  userIds,
+  groupIds,
+  machineIdentityIds,
+  emails = []
+}: TAgentVaultMemberIds & { emails?: string[] }) => {
+  const types = [
+    ...(userIds.length || emails.length ? [AgentVaultMemberType.User] : []),
+    ...(groupIds.length ? [AgentVaultMemberType.Group] : []),
+    ...(machineIdentityIds.length ? [AgentVaultMemberType.MachineIdentity] : [])
+  ];
+  return types.length ? types : ALL_ACTOR_TYPES;
+};
+
 const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
   (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
@@ -171,19 +187,45 @@ export const agentVaultMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
 
-  // Product membership covers users, groups and machine identities alike, so changing it takes the action on all three.
-  const checkCanChangeMembers = async (projectId: string, ctx: TGenericPermission, change: TMemberChange) => {
-    const { permission } = await getActorPermission(projectId, ctx);
-    const allowed =
-      permission.can(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member) &&
-      permission.can(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups) &&
-      permission.can(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
-    if (!allowed) {
-      throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });
-    }
+  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+
+  // Each kind of member takes the action on its own subject, so a role can manage users without identities.
+  const assertCanChangeActorTypes = (
+    permission: TProjectPermission,
+    change: TMemberChange,
+    types: AgentVaultMemberType[]
+  ) => {
+    const forbidden = ForbiddenError.from(permission);
+    types.forEach((type) => {
+      if (type === AgentVaultMemberType.User) {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member);
+      } else if (type === AgentVaultMemberType.Group) {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups);
+      } else {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
+      }
+    });
   };
 
-  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+  const canChangeActorType = (permission: TProjectPermission, change: TMemberChange, type: AgentVaultMemberType) => {
+    if (type === AgentVaultMemberType.User) {
+      return permission.can(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member);
+    }
+    if (type === AgentVaultMemberType.Group) {
+      return permission.can(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups);
+    }
+    return permission.can(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
+  };
+
+  const checkCanChangeMembers = async (
+    projectId: string,
+    ctx: TGenericPermission,
+    change: TMemberChange,
+    types: AgentVaultMemberType[]
+  ) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    assertCanChangeActorTypes(permission, change, types);
+  };
 
   const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
     if (type === AgentVaultMemberType.User) {
@@ -240,12 +282,16 @@ export const agentVaultMembershipServiceFactory = ({
     offset,
     ctx
   }: TListAgentVaultMembersDTO) => {
-    await checkCanChangeMembers(projectId, ctx, "add");
-
     const { permission } = await getActorPermission(projectId, ctx);
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
-    const readable = asked.filter((type) => canReadActorType(permission, type));
-    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+    // Only kinds the caller could add are offered, so each has to be both readable and addable.
+    const readable = asked.filter(
+      (type) => canReadActorType(permission, type) && canChangeActorType(permission, "add", type)
+    );
+    if (!readable.length) {
+      assertCanReadActorType(permission, asked[0]);
+      assertCanChangeActorTypes(permission, "add", [asked[0]]);
+    }
 
     return agentVaultMemberDAL.findAvailableActors({
       projectId,
@@ -479,7 +525,7 @@ export const agentVaultMembershipServiceFactory = ({
     usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkCanChangeMembers(projectId, ctx, "add");
+    await checkCanChangeMembers(projectId, ctx, "add", memberTypesOf({ ...ids, emails: [...emails, ...usernames] }));
     assertValidRole(role);
 
     // A username is matched the same way as an email, by the user's username and then their SSO aliases.
@@ -557,7 +603,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkCanChangeMembers(projectId, ctx, "edit");
+    await checkCanChangeMembers(projectId, ctx, "edit", memberTypesOf(ids));
     assertValidRole(role);
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
@@ -616,7 +662,7 @@ export const agentVaultMembershipServiceFactory = ({
       );
 
       // A demoted admin no longer reaches the bundles they hold no grant on, so what they saved there goes.
-      if (role !== ProjectMembershipRole.Admin) {
+      if (!AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role)) {
         await clearPersonalValuesAfterRevoke(
           { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
           {
@@ -649,7 +695,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
-    await checkCanChangeMembers(projectId, ctx, "remove");
+    await checkCanChangeMembers(projectId, ctx, "remove", memberTypesOf(ids));
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 

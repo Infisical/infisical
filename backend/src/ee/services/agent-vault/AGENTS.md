@@ -163,7 +163,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
   (10 second marker), so a promotion or demotion can lag by that much on top of the proxy's poll.
 - Resolve requires a live session-read permission, not a membership row: a lapsed time-limited role leaves
-  its row behind, and `hasRole(Admin)` alone would fall through as member. An actor removed from the project
+  its row behind, and `hasRoleReachingEveryBundle` alone would fall through as member. An actor removed from the project
   surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
   the next poll instead of riding its grace window.
 - Removing an actor from an Agent Vault project does not revoke their sessions. The sessions resolve to nothing while
