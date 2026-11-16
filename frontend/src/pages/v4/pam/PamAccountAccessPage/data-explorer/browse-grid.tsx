@@ -520,7 +520,7 @@ export const BrowseGrid = ({
           <AlertDialogHeader>
             <AlertDialogTitle>{`Delete ${selectedKeys.length} ${selectedKeys.length === 1 ? "row" : "rows"} from ${schema}.${table}?`}</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes the rows from the database and can't be undone.
+              This deletes the rows from the database and can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
