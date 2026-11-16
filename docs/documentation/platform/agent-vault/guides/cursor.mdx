@@ -711,7 +711,7 @@ Don't start workers with `--sync-dashboard-secrets`, which passes your Cursor se
 
 ### Sessions that outlive their workers
 
-Cursor doesn't tell the controller when a worker exits, so the session keeps working until its `ttl` runs out. If someone copies the session token during a run, they can use the access bundle's services through the proxy until then, from any pod that can reach the proxy. Keep the `ttl` as short as your conversations allow, and if you think a session token leaked, [revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) in Agent Vault.
+Cursor doesn't tell the controller when a worker exits, so the session keeps working until its `ttl` runs out. If someone copies the session token during a run, they can use the access bundle's services through the proxy until then, from any pod that can reach the proxy. Keep the `ttl` as short as your conversations allow, and if you think a session token leaked, [revoke the session](/documentation/platform/agent-vault/revoke-a-session) in Agent Vault.
 
 ### Workers' outgoing connections
 

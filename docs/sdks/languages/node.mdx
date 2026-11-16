@@ -867,7 +867,7 @@ const session = await client.agentVault().sessions.create({
 **Returns:**
 - `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
 
-To pass `session.token` to the agent, follow the steps in [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token).
+To pass `session.token` to the agent, follow the steps in [Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent).
 
 #### Create a session on behalf of a user
 
@@ -881,7 +881,7 @@ const session = await client.agentVault().sessions.create({
 });
 ```
 
-- The session can use an access bundle only if both the user and the machine identity [can use the bundle](/documentation/platform/agent-vault/sessions-on-behalf-of-users#what-the-session-can-reach)
+- The session can use an access bundle only if both the user and the machine identity [can use the bundle](/documentation/platform/agent-vault/sessions-on-behalf-of-users#access-bundles-and-personal-values)
 - The session belongs to the machine identity, so the user can't see the session unless they're an Agent Vault admin
 - In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `null` if the session is the machine identity's own
 

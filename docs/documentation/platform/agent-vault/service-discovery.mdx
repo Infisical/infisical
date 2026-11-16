@@ -48,7 +48,7 @@ This shortened example shows a GitHub service that allows only `GET` requests:
 
 ## How an agent gets the list
 
-The agent requests the list from the Infisical instance that the proxy connects to, through the same proxy as its other requests. The agent sends no token. The proxy adds the session's token to the request, so the agent never handles the token. Each request appears in the session's [logs](/documentation/platform/agent-vault/session-logs#what-gets-recorded) with the outcome **Listed Services**.
+The agent requests the list from the Infisical instance that the proxy connects to, through the same proxy as its other requests. The agent sends no token. The proxy adds the session's token to the request, so the agent never handles the token. Each request appears in the session's [logs](/documentation/platform/agent-vault/session-logs#log-contents) with the outcome **Listed Services**.
 
 `INFISICAL_AGENT_VAULT_URL` holds the URL of that Infisical instance, such as `https://app.infisical.com`. With the variable set, the agent runs:
 

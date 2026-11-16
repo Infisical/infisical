@@ -315,7 +315,7 @@ On the Agent Vault machine, follow the proxy's logs:
 
 ### Check the model provider
 
-Send Hermes a message through your messaging platform. If Hermes replies, both the messaging platform and the model provider received the real credentials, and the proxy [logs those requests as `brokered`](/documentation/platform/agent-vault/session-logs#what-gets-recorded).
+Send Hermes a message through your messaging platform. If Hermes replies, both the messaging platform and the model provider received the real credentials, and the proxy [logs those requests as `brokered`](/documentation/platform/agent-vault/session-logs#log-contents).
 
 ### Check API calls
 
@@ -336,7 +336,7 @@ To stop Hermes from using the real credentials, open your Agent Vault project in
 To give the gateway a new session, [create a session](#create-a-session) in Infisical. Then, on the Hermes machine, replace the token in both `HTTPS_PROXY` and `HTTP_PROXY` in `~/.hermes/.env` and run `hermes gateway restart`.
 
 <Tip>
-To replace the session on a schedule instead of by hand, script these steps and [create the session with the API](/documentation/platform/agent-vault/sessions-api).
+To replace the session on a schedule instead of by hand, script these steps and [create the session with the API](/documentation/platform/agent-vault/create-a-session).
 </Tip>
 
 ## Troubleshooting

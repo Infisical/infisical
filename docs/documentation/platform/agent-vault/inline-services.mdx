@@ -9,13 +9,13 @@ Use inline services when the code that creates sessions, such as an agent orches
 
 ## Prerequisites
 
-- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) (to set one up, follow [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and choose **Admin** in **Role**)
-- An access token for the machine identity, from [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity)
+- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) (to set one up, follow the [API steps for creating a session](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api) and choose **Admin** in **Role**)
+- An access token for the machine identity, from the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint
 - A running [proxy](/documentation/platform/agent-vault/proxies) in the same project, which the agent's machine can reach
 
 ## Create a session with inline services
 
-You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, with the ID of your Agent Vault project in `projectId` ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
+You can send inline services through the API or an SDK, not from the dashboard or the CLI. Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint as the machine identity, with the ID of your Agent Vault project in `projectId` ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
@@ -49,7 +49,7 @@ An inline service can also have a [hook](/documentation/platform/agent-vault/hoo
 
 A session can have up to 20 inline services, and no two of its services can have the same name, including the services in its access bundle. A service sent without a name counts as its first host. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
 
-Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
+[Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent) with the session token from the response. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/revoke-a-session).
 
 <Tip>
   A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user doesn't need the **Admin** role, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
@@ -78,7 +78,7 @@ The **Access** column on the **Sessions** page also shows how many inline servic
 
 [The endpoint that reads a session](/api-reference/endpoints/agent-vault-sessions/get) and [the endpoint that lists sessions](/api-reference/endpoints/agent-vault-sessions/list) return the inline services in `services`, and the [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for creating the session lists them too.
 
-## When the session ends
+## Credential deletion
 
 Infisical deletes the inline services' credentials, hook signing secrets, custom header values, and substitution values once the session ends:
 

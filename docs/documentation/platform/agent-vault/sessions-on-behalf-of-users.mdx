@@ -26,7 +26,7 @@ sequenceDiagram
 ## Prerequisites
 
 - The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), or an admin of the project who can [set up the delegation](#set-up-a-delegation) for you
-- A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth), as [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) describes
+- A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth), as the [API steps for creating a session](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api) describe
 - A [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) for the machine identity on each access bundle its sessions use
 - Users who are [members of the project](/documentation/platform/agent-vault/access-control#product-membership) and have a grant on the access bundles their agents use
 
@@ -89,7 +89,7 @@ To take a user or group out of the delegation, select **Manage Delegation**, sel
 
 ## Create a session on behalf of a user
 
-Log in as the machine identity, as [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) describes. Then call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and name the user in `onBehalfOf`:
+Log in as the machine identity, as the [API steps for creating a session](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api) describe. Then call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and name the user in `onBehalfOf`:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
@@ -102,7 +102,9 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 - In `accessBundle`, name a bundle that both the user and the machine identity can use
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
-Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
+You can't create sessions on behalf of users from the dashboard or the CLI.
+
+[Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent) with the session token from the response, and [revoke the session](/documentation/platform/agent-vault/revoke-a-session) when the agent finishes.
 
 <Tip>
   You can also create the session with [the Python SDK](/sdks/languages/python#create-a-session-on-behalf-of-a-user) or [the Node.js SDK](/sdks/languages/node#create-a-session-on-behalf-of-a-user).
@@ -119,7 +121,7 @@ curl "https://app.infisical.com/api/v1/agent-vault/access-bundles?projectId=<pro
 
 The response lists only the access bundles that both the user and the machine identity can use. For each bundle, `servicesRequiringSetup` lists the services the user hasn't set up their personal values for yet. The proxy refuses the session's requests to those services, so add `requiresSetup=false` to list only the bundles the user has set up.
 
-## What the session can reach
+## Access bundles and personal values
 
 A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
 
@@ -134,7 +136,7 @@ If a user or group in the delegation can use an access bundle that isn't granted
 
 To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
 
-## When the session stops working
+## Delegation changes
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
 
@@ -145,7 +147,7 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 - An admin removes the machine identity from the project, which also deletes its delegation
 - Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
-If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
+If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
 
 If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
 
@@ -180,8 +182,8 @@ When the machine identity creates the session, Infisical writes an audit event w
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
-    Create, use, and revoke a session from your own code.
+  <Card title="Create a session" icon="plus" href="/documentation/platform/agent-vault/create-a-session">
+    Create a session and start an agent with its token.
   </Card>
   <Card title="HTTP APIs" icon="plug" href="/documentation/platform/agent-vault/http-apis#member-provided-values">
     Leave part of a service's credential to each member.

@@ -583,7 +583,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 
 </CodeGroup>
 
-For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run). The agent's container can't reach Infisical, so the CLI gets the session's [skills](/documentation/platform/agent-vault/skills) through the proxy.
+For more about creating sessions from code, see [Create a session](/documentation/platform/agent-vault/create-a-session). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run). The agent's container can't reach Infisical, so the CLI gets the session's [skills](/documentation/platform/agent-vault/skills) through the proxy.
 
 To run a different agent, install it in [the image](#step-3-build-the-sandbox-image), replace the `claude` command in the script that starts the agent with the agent's non-interactive command, such as `codex exec`, and replace the Claude Code settings in the agent's environment variables. For an agent you built yourself, run it the same way, or set the proxy in its HTTP client as [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-4-send-requests-through-the-proxy) describes.
 
@@ -700,7 +700,7 @@ Each sidecar has a copy of the proxy token. If you think someone took control of
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Create sessions with the API" icon="key-round" href="/documentation/platform/agent-vault/sessions-api">
+  <Card title="Create a session" icon="plus" href="/documentation/platform/agent-vault/create-a-session">
     Create a session for each agent run from your own code.
   </Card>
   <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
