@@ -412,32 +412,6 @@ const BulkReviewChangeRequestsSheetContent = ({
         </SheetTitle>
       </SheetHeader>
 
-      {!outcomes && !isSubmitting && (
-        <div className="flex items-center gap-3 border-b border-border px-4 py-2">
-          <p className="flex-1 text-sm text-muted">Apply one decision to every request</p>
-          <ButtonGroup>
-            <Button
-              size="xs"
-              variant={approveCount === requests.length ? "success" : "outline"}
-              aria-pressed={approveCount === requests.length}
-              onClick={() => decideAll("approve")}
-            >
-              <CheckIcon />
-              Approve All
-            </Button>
-            <Button
-              size="xs"
-              variant={decidedCount === requests.length && !approveCount ? "danger" : "outline"}
-              aria-pressed={decidedCount === requests.length && !approveCount}
-              onClick={() => decideAll("reject")}
-            >
-              <XIcon />
-              Reject All
-            </Button>
-          </ButtonGroup>
-        </div>
-      )}
-
       <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-6 overflow-y-auto p-4">
         {groups.map((group) => {
           const [{ id, environment, folderId, policy }] = group;
@@ -566,6 +540,33 @@ const BulkReviewChangeRequestsSheetContent = ({
             </div>
           ) : (
             <>
+              <div className="flex items-center gap-3 border-b border-border pb-3">
+                <p className="flex-1 text-sm text-muted">Apply one decision to every request</p>
+                <ButtonGroup>
+                  <Button
+                    size="xs"
+                    variant={approveCount === requests.length ? "success" : "outline"}
+                    aria-pressed={approveCount === requests.length}
+                    isDisabled={isSubmitting}
+                    onClick={() => decideAll("approve")}
+                  >
+                    <CheckIcon />
+                    Approve All
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={
+                      decidedCount === requests.length && !approveCount ? "danger" : "outline"
+                    }
+                    aria-pressed={decidedCount === requests.length && !approveCount}
+                    isDisabled={isSubmitting}
+                    onClick={() => decideAll("reject")}
+                  >
+                    <XIcon />
+                    Reject All
+                  </Button>
+                </ButtonGroup>
+              </div>
               <Field>
                 <FieldLabel htmlFor="bulk-review-comment">Comment (optional)</FieldLabel>
                 <TextArea
