@@ -145,7 +145,7 @@ export const copyMetadataFromCertificate = async (
 export const applyMetadataFilter = <T extends Knex.QueryBuilder>(
   query: T,
   metadataFilter: Array<{ key: string; value?: string }>,
-  joinColumn: "certificateId" | "certificateRequestId" | "pamResourceId" | "pamAccountId",
+  joinColumn: "certificateId" | "certificateRequestId" | "pamResourceId" | "pamAccountId" | "agentVaultSessionId",
   parentTable: TableName
 ): T => {
   return query.where((qb) => {

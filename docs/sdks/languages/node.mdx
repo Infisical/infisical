@@ -814,6 +814,7 @@ const { sessions, totalCount } = await client.agentVault().sessions.list({
   scope: AgentVaultSessionScope.Mine, // Optional
   statuses: [AgentVaultSessionStatus.Active], // Optional
   search: "nightly deploy", // Optional
+  metadata: { runId: "8812" }, // Optional
   limit: 20, // Optional
   offset: 0 // Optional
 });
@@ -825,6 +826,7 @@ const { sessions, totalCount } = await client.agentVault().sessions.list({
   - `scope` (AgentVaultSessionScope, optional): whose sessions to list, either `AgentVaultSessionScope.Mine` (`"mine"`) for your own sessions or `AgentVaultSessionScope.All` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.Mine`)
   - `statuses` (AgentVaultSessionStatus[], optional): the statuses to include, from `AgentVaultSessionStatus.Active` (`"active"`), `AgentVaultSessionStatus.Revoked` (`"revoked"`), and `AgentVaultSessionStatus.Expired` (`"expired"`) (defaults to all three)
   - `search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+  - `metadata` (Record<string, string>, optional): only sessions whose [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) has every one of these keys with exactly these values (up to 20)
   - `limit` (number, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
   - `offset` (number, optional): the number of sessions to skip (defaults to `0`)
 
@@ -850,7 +852,8 @@ const session = await client.agentVault().sessions.create({
   projectId: "<project-id>",
   accessBundle: "<access-bundle-name>",
   ttl: "1h", // Optional
-  label: "nightly deploy" // Optional
+  label: "nightly deploy", // Optional
+  metadata: { runId: "8812" } // Optional
 });
 ```
 
@@ -861,6 +864,7 @@ const session = await client.agentVault().sessions.create({
   - `services` (AgentVaultInlineServiceInput[], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
   - `ttl` (string, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
   - `label` (string, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
+  - `metadata` (Record<string, string>, optional): key/value pairs that say who or what the session is for, such as a run ID or ticket (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters)
   - `onBehalfOfUserEmail` (string, optional): the email address of the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user) (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserId`)
   - `onBehalfOfUserId` (string, optional): the ID of the user that the session is created on behalf of (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserEmail`)
 
@@ -915,20 +919,22 @@ const session = await client.agentVault().sessions.create({
 
 For the fields that each type of service takes, and for when Infisical deletes the services' secrets, see [Inline services](/documentation/platform/agent-vault/inline-services).
 
-#### Update session label
+#### Update session label and metadata
 
-Add, change, or remove a session's label, for example to record what the agent is working on. You can change the label after the session expires or is revoked, unless someone deleted the session's owner or the user that the session was created on behalf of.
+Add, change, or remove a session's label or metadata, for example to record what the agent is working on. You can change them after the session expires or is revoked, unless someone deleted the session's owner or the user that the session was created on behalf of.
 
 ```typescript
 const session = await client.agentVault().sessions.update("<session-id>", {
-  label: "support ticket triage"
+  label: "support ticket triage", // Optional
+  metadata: { ticket: "OPS-142" } // Optional
 });
 ```
 
 **Parameters:**
 - `sessionId` (string): the ID of the session
 - `options` (object):
-  - `label` (string | null): the new label, or `null` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters)
+  - `label` (string | null, optional): the new label, or `null` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters). Leave it out to keep the current label
+  - `metadata` (Record<string, string>, optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters). Leave it out to keep the current metadata
 
 **Returns:**
 - `AgentVaultSession`: the updated session

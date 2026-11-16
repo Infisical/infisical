@@ -6,7 +6,11 @@ import { z } from "zod";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
+import {
+  TAgentVaultSessionActor,
+  TAgentVaultSessionMetadataFilter,
+  TAgentVaultSessionOnBehalfOf
+} from "./agent-vault-session-types";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
 
@@ -118,6 +122,53 @@ export const agentVaultSessionMetadataSchema = z
   );
 
 export type TAgentVaultSessionMetadata = Record<string, string>;
+
+export const AGENT_VAULT_SESSION_METADATA_FILTER_FORMAT_MESSAGE =
+  "Filter metadata as key=value, such as metadata=runId=8812";
+
+// A repeated query param arrives as an array and a single one as a string. Values may contain "=", so only the
+// first one separates the key.
+export const agentVaultSessionMetadataFilterSchema = z
+  .union([z.string(), z.string().array()])
+  .transform((raw, ctx): TAgentVaultSessionMetadataFilter => {
+    const pairs = typeof raw === "string" ? [raw] : raw;
+    if (pairs.length > AGENT_VAULT_SESSION_METADATA_MAX_KEYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `You can filter by at most ${AGENT_VAULT_SESSION_METADATA_MAX_KEYS} metadata entries`
+      });
+      return z.NEVER;
+    }
+    const seen = new Set<string>();
+    const filter: TAgentVaultSessionMetadataFilter = [];
+    pairs.forEach((pair) => {
+      const separator = pair.indexOf("=");
+      if (separator === -1 || !pair.slice(0, separator).trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: AGENT_VAULT_SESSION_METADATA_FILTER_FORMAT_MESSAGE });
+        return;
+      }
+      const key = metadataKeySchema.safeParse(pair.slice(0, separator));
+      if (!key.success) {
+        key.error.issues.forEach(({ message }) => ctx.addIssue({ code: z.ZodIssueCode.custom, message }));
+        return;
+      }
+      if (seen.has(key.data)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `The metadata key '${key.data}' appears more than once. Filter by each key once.`
+        });
+        return;
+      }
+      seen.add(key.data);
+      const value = metadataValueSchema(key.data).safeParse(pair.slice(separator + 1));
+      if (!value.success) {
+        value.error.issues.forEach(({ message }) => ctx.addIssue({ code: z.ZodIssueCode.custom, message }));
+        return;
+      }
+      filter.push({ key: key.data, value: value.data });
+    });
+    return filter;
+  });
 
 export const isSameSessionMetadata = (a: TAgentVaultSessionMetadata, b: TAgentVaultSessionMetadata) =>
   JSON.stringify(Object.entries(a)) === JSON.stringify(Object.entries(b));

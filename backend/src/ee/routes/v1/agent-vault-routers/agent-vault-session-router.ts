@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   agentVaultSessionLabelSchema,
   agentVaultSessionLabelUpdateSchema,
+  agentVaultSessionMetadataFilterSchema,
   agentVaultSessionMetadataSchema,
   describeSessionForAudit
 } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
@@ -148,6 +149,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           .optional()
           .describe(AGENT_VAULT.SESSION.search),
+        metadata: agentVaultSessionMetadataFilterSchema.optional().describe(AGENT_VAULT.SESSION.metadataFilter),
         limit: z.coerce.number().int().min(1).max(100).default(20).describe(AGENT_VAULT.SESSION.limit),
         offset: z.coerce.number().int().min(0).default(0).describe(AGENT_VAULT.SESSION.offset)
       }),
@@ -162,12 +164,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, status, ...query } = req.query;
+      const { projectId: requestedProjectId, status, metadata, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultSession.listSessions({
         projectId,
         ctx: actorContext(req),
         statuses: status,
+        metadataFilter: metadata,
         ...query
       });
     }

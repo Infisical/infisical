@@ -403,7 +403,16 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
-  const listSessions = async ({ projectId, ctx, scope, statuses, search, limit, offset }: TListSessionsDTO) => {
+  const listSessions = async ({
+    projectId,
+    ctx,
+    scope,
+    statuses,
+    search,
+    metadataFilter,
+    limit,
+    offset
+  }: TListSessionsDTO) => {
     const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
@@ -421,6 +430,7 @@ export const agentVaultSessionServiceFactory = ({
       actor,
       statuses,
       search,
+      metadataFilter,
       limit,
       offset
     });

@@ -6,10 +6,15 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import { isOrphanedSession } from "./agent-vault-session-fns";
-import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
+import {
+  TAgentVaultSessionActor,
+  TAgentVaultSessionMetadataFilter,
+  TAgentVaultSessionOnBehalfOf
+} from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -179,6 +184,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor,
       statuses,
       search,
+      metadataFilter,
       limit,
       offset
     }: {
@@ -187,6 +193,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       statuses?: AgentVaultSessionStatus[];
       search?: string;
+      metadataFilter?: TAgentVaultSessionMetadataFilter;
       limit: number;
       offset: number;
     },
@@ -266,6 +273,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
                   ]);
               });
           });
+        }
+        if (metadataFilter?.length) {
+          void applyMetadataFilter(query, metadataFilter, "agentVaultSessionId", TableName.AgentVaultSession);
         }
         return query;
       };

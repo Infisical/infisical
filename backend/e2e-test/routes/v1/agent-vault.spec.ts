@@ -5988,6 +5988,51 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({});
     });
 
+    test("metadata filters the session list, every pair must match, and the count follows it", async () => {
+      const bundle = await createAccessBundle(`session-metadata-filter-${Date.now()}`);
+      const runId = `run-${Date.now()}`;
+      const mint = async (metadata: Record<string, string>) => {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          metadata
+        });
+        expect(res.statusCode).toBe(200);
+        return res.json().session.id as string;
+      };
+      const prod = await mint({ runId, env: "prod" });
+      const staging = await mint({ runId, env: "staging" });
+      await mint({ runId: `${runId}-other`, env: "prod" });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/sessions?${query}`);
+        expect(res.statusCode, query).toBe(200);
+        const body = res.json() as { sessions: { id: string }[]; totalCount: number };
+        return { ids: body.sessions.map((row) => row.id).sort(), totalCount: body.totalCount };
+      };
+
+      expect(await list(`metadata=runId=${runId}`)).toEqual({ ids: [prod, staging].sort(), totalCount: 2 });
+      // A real repeated param, which arrives as an array.
+      expect(await list(`metadata=runId=${runId}&metadata=env=prod`)).toEqual({ ids: [prod], totalCount: 1 });
+      expect(await list(`metadata=${encodeURIComponent(` runId = ${runId} `)}&metadata=env=dev`)).toEqual({
+        ids: [],
+        totalCount: 0
+      });
+      // The count describes the filtered set, not the page.
+      const paged = await list(`metadata=runId=${runId}&limit=1`);
+      expect(paged.ids).toHaveLength(1);
+      expect(paged.totalCount).toBe(2);
+
+      const malformed = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId");
+      expect(malformed.statusCode).toBe(422);
+      expect(JSON.stringify(malformed.json().message)).toContain(
+        "Filter metadata as key=value, such as metadata=runId=8812"
+      );
+      const repeated = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=1&metadata=runId=2");
+      expect(repeated.statusCode).toBe(422);
+      expect(JSON.stringify(repeated.json().message)).toContain("The metadata key 'runId' appears more than once.");
+    });
+
     test("search filters and counts on the server, not just the page", async () => {
       const alpha = await createAccessBundle("search-alpha");
       const beta = await createAccessBundle("search-beta");

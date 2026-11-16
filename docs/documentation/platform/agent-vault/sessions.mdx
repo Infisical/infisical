@@ -127,6 +127,21 @@ You can change a session's label and metadata later, even after the session expi
   <img src="/images/platform/agent-vault/session-actions.png" alt="The Sessions page with the menu of the Nightly deploy session open, showing View Session Logs, Edit Label, and Revoke Session" />
 </Frame>
 
+To find the sessions of a run, list sessions by metadata with the [List sessions](/api-reference/endpoints/agent-vault-sessions/list) endpoint or an SDK. A session is listed only if it matches every key and value you pass:
+
+<Tabs>
+  <Tab title="Python SDK">
+    ```python
+    sessions = client.agent_vault.sessions.list(project_id="<project-id>", metadata={"runId": "8812"})
+    ```
+  </Tab>
+  <Tab title="Node SDK">
+    ```typescript
+    const { sessions } = await client.agentVault().sessions.list({ projectId: "<project-id>", metadata: { runId: "8812" } });
+    ```
+  </Tab>
+</Tabs>
+
 ## View session logs
 
 [Session logs](/documentation/platform/agent-vault/session-logs) record every request an agent makes during a session. To view them, go to **Sessions** in your Agent Vault project and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.

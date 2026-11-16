@@ -5351,6 +5351,8 @@ export const AGENT_VAULT = {
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search:
       "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
+    metadataFilter:
+      "Filter by metadata, as `key=value`, such as `metadata=runId=8812`. Repeat the parameter to filter by several entries; a session must match all of them. Keys and values match exactly, after trimming. Up to 20 entries.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",

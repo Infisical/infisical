@@ -114,6 +114,8 @@ export type TMintSessionDTO = {
   metadata?: Record<string, string>;
 };
 
+export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: string }>;
+
 export type TListSessionsDTO = {
   projectId: string;
   ctx: TGenericPermission;
@@ -122,6 +124,7 @@ export type TListSessionsDTO = {
   limit: number;
   offset: number;
   search?: string;
+  metadataFilter?: TAgentVaultSessionMetadataFilter;
 };
 
 export type TRevokeSessionDTO = {

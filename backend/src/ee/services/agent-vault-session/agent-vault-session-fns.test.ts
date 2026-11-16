@@ -5,6 +5,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import {
   agentVaultSessionLabelUpdateSchema,
+  agentVaultSessionMetadataFilterSchema,
   agentVaultSessionMetadataSchema,
   deriveSessionStatus,
   describeSessionForAudit,
@@ -197,6 +198,59 @@ describe("agent vault session metadata", () => {
     expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "2" })).toBe(true);
     expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "3" })).toBe(false);
     expect(isSameSessionMetadata({ a: "1" }, {})).toBe(false);
+  });
+});
+
+describe("agent vault session metadata filter", () => {
+  const messagesOf = (input: unknown) => {
+    const result = agentVaultSessionMetadataFilterSchema.safeParse(input);
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  };
+  const formatMessage = "Filter metadata as key=value, such as metadata=runId=8812";
+
+  test("takes one pair as a string or several as an array", () => {
+    expect(agentVaultSessionMetadataFilterSchema.parse("runId=8812")).toEqual([{ key: "runId", value: "8812" }]);
+    expect(agentVaultSessionMetadataFilterSchema.parse(["runId=8812", "env=prod"])).toEqual([
+      { key: "runId", value: "8812" },
+      { key: "env", value: "prod" }
+    ]);
+  });
+
+  test("splits on the first = only and trims both sides", () => {
+    expect(agentVaultSessionMetadataFilterSchema.parse(" query = a=b=c ")).toEqual([{ key: "query", value: "a=b=c" }]);
+    expect(agentVaultSessionMetadataFilterSchema.parse("note=")).toEqual([{ key: "note", value: "" }]);
+  });
+
+  test("refuses a pair without = or without a key", () => {
+    expect(messagesOf("runId")).toEqual([formatMessage]);
+    expect(messagesOf("=8812")).toEqual([formatMessage]);
+    expect(messagesOf("  =8812")).toEqual([formatMessage]);
+    expect(messagesOf("")).toEqual([formatMessage]);
+    expect(messagesOf(["runId=8812", "env"])).toEqual([formatMessage]);
+  });
+
+  test("accepts up to 20 pairs and refuses more", () => {
+    const pairs = (count: number) => Array.from({ length: count }, (_, index) => `key${index}=v`);
+    expect(agentVaultSessionMetadataFilterSchema.safeParse(pairs(20)).success).toBe(true);
+    expect(messagesOf(pairs(21))).toEqual(["You can filter by at most 20 metadata entries"]);
+  });
+
+  test("refuses a key given twice, even when only trimming tells them apart", () => {
+    expect(messagesOf(["runId=1", " runId =2"])).toEqual([
+      "The metadata key 'runId' appears more than once. Filter by each key once."
+    ]);
+  });
+
+  test("follows the key and value rules of session metadata", () => {
+    expect(agentVaultSessionMetadataFilterSchema.safeParse(`${"k".repeat(255)}=${"v".repeat(1020)}`).success).toBe(
+      true
+    );
+    expect(messagesOf(`${"k".repeat(256)}=v`)).toEqual(["A metadata key can be at most 255 characters"]);
+    expect(messagesOf(`runId=${"v".repeat(1021)}`)).toEqual([
+      "The value of metadata key 'runId' can be at most 1020 characters"
+    ]);
+    expect(messagesOf("alice\u200b=v")[0]).toContain("A metadata key can't contain");
+    expect(messagesOf("owner=a\tb")[0]).toContain("The value of metadata key 'owner' can't contain");
   });
 });
 
