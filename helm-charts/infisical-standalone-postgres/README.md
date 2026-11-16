@@ -33,7 +33,7 @@ A helm chart to deploy Infisical
 | infisical.image.imagePullSecrets | list | `[]` | Secret references for pulling the image, if needed |
 | infisical.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not already present on the node |
 | infisical.image.repository | string | `"infisical/infisical"` | Image repository for the Infisical service |
-| infisical.image.tag | string | `"v0.93.1-postgres"` | Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical |
+| infisical.image.tag | string | `""` | Infisical image tag. Leave empty to use the chart's `appVersion`, the release this chart version was published for. Set it to pin a specific version from https://hub.docker.com/r/infisical/infisical |
 | infisical.kubeSecretRef | string | `"infisical-secrets"` | Kubernetes Secret reference containing Infisical root credentials |
 | infisical.name | string | `"infisical"` |  |
 | infisical.podAnnotations | object | `{}` | Custom annotations for Infisical pods |

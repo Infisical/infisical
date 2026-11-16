@@ -110,7 +110,9 @@ For production deployments with many users or secrets, increase these values acc
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.167.0"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
+        # Leave tag unset to run the release this chart version was published for.
+        # To pin a version, set it to a tag from https://hub.docker.com/r/infisical/infisical/tags
+        # tag: "v0.167.0"
         pullPolicy: IfNotPresent
       replicaCount: 2
 
