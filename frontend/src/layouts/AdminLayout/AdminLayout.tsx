@@ -19,7 +19,7 @@ export const AdminLayout = () => {
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
 
-  const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
+  const containerHeight = config.pageFrameContent ? "h-[94dvh]" : "h-dvh";
 
   return (
     <>

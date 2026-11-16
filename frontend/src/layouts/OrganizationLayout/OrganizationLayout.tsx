@@ -52,7 +52,7 @@ export const OrganizationLayout = () => {
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
-  const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
+  const containerHeight = config.pageFrameContent ? "h-[94dvh]" : "h-dvh";
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
