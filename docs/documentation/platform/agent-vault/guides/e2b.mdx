@@ -195,7 +195,7 @@ Copy the proxy's ID for [Step 4](#step-4-run-a-command-in-a-sandbox).
   | Yours, from a publicly trusted CA | `True` in Python, or `true` in TypeScript, so E2B uses its trust store |
   | Yours, from a private CA | That CA's certificate as `ca_cert` (`caCert` in TypeScript) |
 
-  Learn more about the [SOCKS5 port's certificate](/documentation/platform/agent-vault/proxies#certificate-for-the-socks5-port).
+  Learn more about the [SOCKS5 port's certificate](/documentation/platform/agent-vault/socks5#certificate-for-the-socks5-port).
 </Info>
 
 ## Step 3: Give your code the credentials
@@ -477,7 +477,7 @@ export async function runInSandbox(command: string): Promise<string> {
 
 </CodeGroup>
 
-The function adds the proxy's CA to the sandbox's system trust store, and sets the variables that [`agent-vault run`](/documentation/platform/agent-vault/proxies#certificate-trust) sets for the tools that don't read that store.
+The function adds the proxy's CA to the sandbox's system trust store, and sets the variables that [`agent-vault run`](/documentation/platform/agent-vault/certificate-trust) sets for the tools that don't read that store.
 
 The function also prepares the sandbox for an agent, as `agent-vault run` does on other hosts:
 
@@ -485,9 +485,9 @@ The function also prepares the sandbox for an agent, as `agent-vault run` does o
 - It sets `INFISICAL_AGENT_VAULT_URL` to your Infisical instance's URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy
 - It writes the session's MCP servers that are ready to `MCP_CONFIG_PATH`, in the format of Claude Code's `--mcp-config`, as [Give the agent its MCP servers](/documentation/platform/agent-vault/service-discovery#give-the-agent-its-mcp-servers) describes
 
-To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
+To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/certificate-trust#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
 
-For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
+For more about creating sessions from code, see [Create a session](/documentation/platform/agent-vault/create-a-session).
 
 ## Step 5: Verify it works
 
@@ -578,7 +578,7 @@ To allow only the hosts that services in the session's access bundle cover, set 
 
 ### Compromised sandboxes or leaked tokens
 
-The session token is in your code and in E2B's settings for the sandbox, not in the sandbox. If you think a session token leaked, [revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session).
+The session token is in your code and in E2B's settings for the sandbox, not in the sandbox. If you think a session token leaked, [revoke the session](/documentation/platform/agent-vault/revoke-a-session).
 
 The proxy token is only on the proxy's machine. If you think someone took control of that machine, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token).
 
@@ -633,14 +633,14 @@ The proxy token is only on the proxy's machine. If you think someone took contro
     Updating a running sandbox's network settings with `update_network` (`updateNetwork` in TypeScript) replaces all of them. If the update doesn't include `egress_proxy`, E2B sends the sandbox's traffic out directly. Include the same `egress_proxy`, with its `tls` setting, in every update.
   </Accordion>
   <Accordion title="Getting the CA from Infisical fails with a 409">
-    The proxy serves your own CA, which Infisical doesn't have. [With your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority), read the certificate you passed with `--ca-cert` from a file instead.
+    The proxy serves your own CA, which Infisical doesn't have. [With your own CA](/documentation/platform/agent-vault/certificate-trust#use-your-own-certificate-authority), read the certificate you passed with `--ca-cert` from a file instead.
   </Accordion>
 </AccordionGroup>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Proxies" icon="server" href="/documentation/platform/agent-vault/proxies#accept-connections-over-socks5">
+  <Card title="Proxies" icon="server" href="/documentation/platform/agent-vault/socks5">
     Learn more about the proxy's SOCKS5 port and its settings.
   </Card>
   <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">

@@ -218,7 +218,7 @@ Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the f
 
 Start the proxy with its proxy token. You can run the proxy on as many machines as you need with the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
 
-To accept SOCKS5 connections from sandbox providers such as E2B, pass `--socks5-port` and `--socks5-tls-name`. Learn more about [the SOCKS5 port](/documentation/platform/agent-vault/proxies#accept-connections-over-socks5).
+To accept SOCKS5 connections from sandbox providers such as E2B, pass `--socks5-port` and `--socks5-tls-name`. Learn more about [the SOCKS5 port](/documentation/platform/agent-vault/socks5).
 
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 
@@ -289,7 +289,7 @@ The CLI gives flags precedence over environment variables. If you pass either a 
 
 The command also needs the proxy's address. You can provide it either by passing `--proxy` or by setting [`INFISICAL_AGENT_VAULT_PROXY_ADDRESS`](#agent-vault-run--env-infisical-agent-vault-proxy-address).
 
-The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/proxies#certificate-trust). It also sets `INFISICAL_AGENT_VAULT_URL` to the URL of the Infisical instance that the proxy connects to, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy. The agent inherits the rest of your environment, and the command exits with the agent's exit code. It also gives the agent `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`, `INFISICAL_AGENT_VAULT_CA_FILE` (unless you pass `--no-ca-trust`), and `INFISICAL_DOMAIN` (unless it's already set), so the agent can run [infisical agent-vault connect](/cli/reference#agent-vault-connect).
+The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/certificate-trust). It also sets `INFISICAL_AGENT_VAULT_URL` to the URL of the Infisical instance that the proxy connects to, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy. The agent inherits the rest of your environment, and the command exits with the agent's exit code. It also gives the agent `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`, `INFISICAL_AGENT_VAULT_CA_FILE` (unless you pass `--no-ca-trust`), and `INFISICAL_DOMAIN` (unless it's already set), so the agent can run [infisical agent-vault connect](/cli/reference#agent-vault-connect).
 
 Before the agent starts, the command gets the [skills](/documentation/platform/agent-vault/skills) in the session's access bundle through the proxy, installs them in `~/.agents/skills`, and links them for Claude Code and Hermes. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), `infisical-agent-vault`, which tells the agent how to work behind the proxy. The installed skills stay after the agent exits.
 
