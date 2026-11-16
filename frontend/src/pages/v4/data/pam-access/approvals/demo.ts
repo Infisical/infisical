@@ -21,6 +21,7 @@ const catalog: TAutoApprovalCatalog = {
   apps: [AppConnection.Jira],
   fieldApps: [AppConnection.Jira],
   requesterApps: [],
+  ai: { model: null, contextApps: [], contextConnections: [] },
   connections: [
     {
       id: JIRA_CONNECTION_ID,
@@ -129,21 +130,27 @@ const configStore = createFixtureStore<Record<string, TPamApprovalConfig>>({
               connectionId: JIRA_CONNECTION_ID,
               subject: "issue",
               constraint: "not-used-before",
-              values: []
+              values: [],
+              prompt: null,
+              contextConnectionIds: []
             },
             {
               id: "cond-2",
               connectionId: JIRA_CONNECTION_ID,
               subject: "issue",
               constraint: "assigned-to-requester",
-              values: []
+              values: [],
+              prompt: null,
+              contextConnectionIds: []
             },
             {
               id: "cond-3",
               connectionId: JIRA_CONNECTION_ID,
               subject: "issue",
               constraint: "project-is",
-              values: ["INC"]
+              values: ["INC"],
+              prompt: null,
+              contextConnectionIds: []
             }
           ]
         }
@@ -170,10 +177,11 @@ export const useDemoAutoApprovalInputs = (folderId: string | undefined) => {
 };
 
 const conditionPasses = (
-  condition: { connectionId: string; subject: string; constraint: string; values: string[] },
+  condition: { connectionId: string | null; subject: string; constraint: string; values: string[] },
   submitted: TAutoApprovalInputValue[]
 ) => {
   if (condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT) return true;
+  if (!condition.connectionId) return false;
   const value = submitted.find(
     ({ connectionId, subject }) =>
       connectionId === condition.connectionId && subject === condition.subject
@@ -198,7 +206,9 @@ export const evaluateDemoAutoApproval = (
   const evaluated = rules.map((rule) => {
     const conditions = rule.conditions.map((condition) => {
       const passed = conditionPasses(condition, submitted);
-      const { entry } = subjectOf(condition.connectionId, condition.subject);
+      const { entry } = condition.connectionId
+        ? subjectOf(condition.connectionId, condition.subject)
+        : { entry: undefined };
       const constraint = entry?.constraints.find(({ id }) => id === condition.constraint);
       return {
         id: condition.id,
@@ -270,7 +280,9 @@ export const pamAccessApprovalsDemo: PamAccessApprovalsAdapter = {
                     name: rule.name,
                     conditions: rule.conditions.map((condition, position) => ({
                       ...condition,
-                      id: `cond-${index}-${position}`
+                      id: `cond-${index}-${position}`,
+                      prompt: condition.prompt ?? null,
+                      contextConnectionIds: condition.contextConnectionIds ?? []
                     }))
                   }))
                 }
