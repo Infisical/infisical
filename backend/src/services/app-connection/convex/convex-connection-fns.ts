@@ -42,10 +42,19 @@ export const getConvexDeploymentHeaders = (accessToken: string) => ({
   Accept: "application/json"
 });
 
+// Used when Convex answers an auth failure without a message of its own
+const CONVEX_AUTH_ERROR_MESSAGES: Record<number, string> = {
+  401: "Convex rejected the access token (401). Check that the token is valid and has not been revoked or expired.",
+  403: "The access token cannot access this Convex team or deployment (403). Check that the token's owner is a member with access to it."
+};
+
 export const getConvexErrorMessage = (error: unknown) => {
   if (isAxiosError<{ message?: unknown }>(error)) {
     const message = error.response?.data?.message;
-    return typeof message === "string" && message ? message : error.message;
+    if (typeof message === "string" && message) return message;
+
+    const status = error.response?.status;
+    return (status && CONVEX_AUTH_ERROR_MESSAGES[status]) || error.message;
   }
 
   return error instanceof Error ? error.message : "Unknown error";

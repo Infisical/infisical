@@ -93,14 +93,24 @@ describe("getConvexDeploymentUrl", () => {
 });
 
 describe("getConvexErrorMessage", () => {
-  const axiosError = (data: unknown) => {
-    const error = new AxiosError("Request failed with status code 502");
-    error.response = { status: 502, data, statusText: "", headers: {}, config: { headers: {} as never } };
+  const axiosError = (data: unknown, status = 502) => {
+    const error = new AxiosError(`Request failed with status code ${status}`);
+    error.response = { status, data, statusText: "", headers: {}, config: { headers: {} as never } };
     return error;
   };
 
   it("uses Convex's message and ignores bodies that are not Convex errors", () => {
     expect(getConvexErrorMessage(axiosError({ code: "BadName", message: "Name is invalid" }))).toBe("Name is invalid");
     expect(getConvexErrorMessage(axiosError("<html>Bad gateway</html>"))).toBe("Request failed with status code 502");
+  });
+
+  it("explains a bare 401 or 403 instead of echoing the status line", () => {
+    expect(getConvexErrorMessage(axiosError("", 401))).toBe(
+      "Convex rejected the access token (401). Check that the token is valid and has not been revoked or expired."
+    );
+    expect(getConvexErrorMessage(axiosError(undefined, 403))).toBe(
+      "The access token cannot access this Convex team or deployment (403). Check that the token's owner is a member with access to it."
+    );
+    expect(getConvexErrorMessage(axiosError({ message: "Token expired" }, 401))).toBe("Token expired");
   });
 });
