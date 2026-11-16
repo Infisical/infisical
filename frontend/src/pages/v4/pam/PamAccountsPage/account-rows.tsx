@@ -6,7 +6,6 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { useParams } from "@tanstack/react-router";
 
 import {
   buildPamAccountCan,
@@ -26,7 +25,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, useGo, v4Path } from "../../links";
+import { v4Path } from "../../links";
 import { AccountSheet } from "./account-sheet";
 import { CreateAccountSheet } from "./create-account-sheet";
 import {
@@ -38,6 +37,7 @@ import {
   type FolderTarget,
   JoinFolderDialog
 } from "./folder-dialogs";
+import { LaunchSessionDialog } from "./launch-session";
 import { CredentialsDialog, RequestAccessSheet } from "./request-access";
 import { FOLDER_TABS, visibleAccountTabs } from "./sheet-tabs";
 
@@ -170,23 +170,66 @@ const AccountBadges = ({
   );
 };
 
-const accessHref = (orgId: string, account: Pick<TPamAccountListItem, "id" | "accountType">) =>
-  orgHref(orgId, `/pam/accounts/${account.accountType}/${account.id}/access`);
+const launchState = (account: TPamAccountListItem) => {
+  const canLaunch = buildPamAccountCan(account.permissions)(
+    PamResourcePermissionActions.LaunchSessions
+  );
+  const isGranted = account.accessStatus === PamAccessStatus.Granted;
+  const canLaunchNow =
+    account.isAccessible && canLaunch && (!account.requiresApproval || isGranted);
+  let launchReason: string | undefined;
+  if (!canLaunch) launchReason = "You don't have permission to launch sessions";
+  else if (!canLaunchNow) launchReason = "This account is not ready to launch";
+  return {
+    needsApproval: account.requiresApproval && !isGranted && canLaunch && account.isAccessible,
+    canLaunchNow,
+    launchReason
+  };
+};
+
+const SessionMenuItem = ({
+  account,
+  onRequestAccess,
+  onLaunch
+}: {
+  account: TPamAccountListItem;
+  onRequestAccess: () => void;
+  onLaunch: () => void;
+}) => {
+  const { needsApproval, launchReason } = launchState(account);
+  const isPending = account.accessStatus === PamAccessStatus.Pending;
+  if (needsApproval)
+    return (
+      <DropdownMenuItem onSelect={onRequestAccess}>
+        <Icon name={isPending ? "clock" : "key"} />
+        {isPending ? "Access request pending" : "Request access"}
+      </DropdownMenuItem>
+    );
+  return (
+    <DropdownMenuItem disabledReason={launchReason} onSelect={onLaunch}>
+      <Icon name="terminal" />
+      Launch session
+    </DropdownMenuItem>
+  );
+};
 
 export const AccountName = ({
   orgId,
   account,
   meta,
-  showFolder = false
+  showFolder = false,
+  onLaunch
 }: {
   orgId: string;
   account: TPamAccountListItem;
   meta?: TPamAccountTypeMetadata;
   showFolder?: boolean;
+  onLaunch: (account: TPamAccountListItem) => void;
 }) => {
   const canEdit = buildPamAccountCan(account.permissions)(
     PamResourcePermissionActions.EditAccounts
   );
+  const { needsApproval, canLaunchNow } = launchState(account);
   return (
     <Inline gap={8} align="center" wrap={false}>
       {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
@@ -194,6 +237,19 @@ export const AccountName = ({
         link={{
           to: v4Path("/organizations/$orgId/pam/accounts/$accountType/$accountId/access"),
           params: { orgId, accountType: account.accountType, accountId: account.id }
+        }}
+        onClick={(event) => {
+          if (!(needsApproval || canLaunchNow)) return;
+          if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          )
+            return;
+          event.preventDefault();
+          onLaunch(account);
         }}
       >
         {account.name}
@@ -221,28 +277,21 @@ const copyId = (kind: "Folder" | "Account", id: string) => {
 };
 
 export const AccountMenu = ({
-  orgId,
   account,
   onConfigure,
   onRequestAccess,
+  onLaunch,
   onViewCredentials,
   onDelete
 }: {
-  orgId: string;
   account: TPamAccountListItem;
   onConfigure: (tab: PamSheetTab) => void;
   onRequestAccess: (accessType: PamAccessType) => void;
+  onLaunch: () => void;
   onViewCredentials: () => void;
   onDelete: () => void;
 }) => {
-  const go = useGo();
   const can = buildPamAccountCan(account.permissions);
-  const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
-  const isGranted = account.accessStatus === PamAccessStatus.Granted;
-  const isPending = account.accessStatus === PamAccessStatus.Pending;
-  const needsApproval = account.requiresApproval && !isGranted && canLaunch && account.isAccessible;
-  const canLaunchNow =
-    account.isAccessible && canLaunch && (!account.requiresApproval || isGranted);
   const canViewCredentials =
     account.supportsCredentialReveal && can(PamResourcePermissionActions.ViewCredentials);
   const needsCredentialApproval =
@@ -251,14 +300,8 @@ export const AccountMenu = ({
   const hasApprovalConfig = !account.accessibilityIssues.includes(
     PamAccountAccessibilityIssue.NoApprovalConfig
   );
-  const configureTab =
-    visibleAccountTabs(can, account.accountType).find(
-      ({ value }) => value === PamSheetTab.Configuration
-    ) ?? visibleAccountTabs(can, account.accountType)[0];
-
-  let launchReason: string | undefined;
-  if (!canLaunch) launchReason = "You don't have permission to launch sessions";
-  else if (!canLaunchNow) launchReason = "This account is not ready to launch";
+  const tabs = visibleAccountTabs(can, account.accountType);
+  const configureTab = tabs.find(({ value }) => value === PamSheetTab.Configuration) ?? tabs[0];
 
   return (
     <>
@@ -266,20 +309,11 @@ export const AccountMenu = ({
         <Icon name="copy" />
         Copy account ID
       </DropdownMenuItem>
-      {needsApproval ? (
-        <DropdownMenuItem onSelect={() => onRequestAccess(PamAccessType.Session)}>
-          <Icon name={isPending ? "clock" : "key"} />
-          {isPending ? "Access request pending" : "Request access"}
-        </DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem
-          disabledReason={launchReason}
-          onSelect={() => go(accessHref(orgId, account))}
-        >
-          <Icon name="terminal" />
-          Launch session
-        </DropdownMenuItem>
-      )}
+      <SessionMenuItem
+        account={account}
+        onRequestAccess={() => onRequestAccess(PamAccessType.Session)}
+        onLaunch={onLaunch}
+      />
       {canViewCredentials &&
         (needsCredentialApproval ? (
           <DropdownMenuItem
@@ -412,8 +446,6 @@ export const useAccountOverlays = ({
   lockedFolderId?: string;
   onFolderDeleted?: () => void;
 } = {}) => {
-  const go = useGo();
-  const { orgId } = useParams({ strict: false }) as { orgId: string };
   const accountSheet = usePamSheetState("accountId");
   const folderSheet = usePamSheetState("folderId");
   const [requesting, setRequesting] = useState<{
@@ -421,6 +453,7 @@ export const useAccountOverlays = ({
     accessType: PamAccessType;
   } | null>(null);
   const [revealing, setRevealing] = useState<TPamAccountListItem | null>(null);
+  const [launching, setLaunching] = useState<TPamAccountListItem | null>(null);
   const [creating, setCreating] = useState<{ folderId?: string } | null>(null);
   const [createSeq, setCreateSeq] = useState(0);
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -461,7 +494,13 @@ export const useAccountOverlays = ({
         }}
         onGranted={({ account, accessType }) => {
           if (accessType === PamAccessType.Credential) setRevealing(account);
-          else go(accessHref(orgId, account));
+          else setLaunching(account);
+        }}
+      />
+      <LaunchSessionDialog
+        account={launching}
+        onOpenChange={(open) => {
+          if (!open) setLaunching(null);
         }}
       />
       <CredentialsDialog
@@ -502,6 +541,11 @@ export const useAccountOverlays = ({
     openAccount: (accountId: string, tab?: PamSheetTab) => accountSheet.openSheet(accountId, tab),
     openRequestAccess: (account: TPamAccountListItem, accessType: PamAccessType) =>
       setRequesting({ account, accessType }),
+    openLaunch: (account: TPamAccountListItem) => {
+      if (launchState(account).needsApproval)
+        setRequesting({ account, accessType: PamAccessType.Session });
+      else setLaunching(account);
+    },
     openCredentials: setRevealing,
     openDeleteAccount: setDeletingAccount,
     openDeleteFolder: setDeletingFolder,

@@ -172,6 +172,7 @@ export const PamAccountsPage = () => {
             orgId={orgId}
             account={row.account}
             meta={typeMap.get(row.account.accountType)}
+            onLaunch={overlays.openLaunch}
           />
         );
       }
@@ -304,10 +305,10 @@ export const PamAccountsPage = () => {
               const { account } = row;
               return (
                 <AccountMenu
-                  orgId={orgId}
                   account={account}
                   onConfigure={(tab) => overlays.openAccount(account.id, tab)}
                   onRequestAccess={(accessType) => overlays.openRequestAccess(account, accessType)}
+                  onLaunch={() => overlays.openLaunch(account)}
                   onViewCredentials={() => overlays.openCredentials(account)}
                   onDelete={() =>
                     overlays.openDeleteAccount({

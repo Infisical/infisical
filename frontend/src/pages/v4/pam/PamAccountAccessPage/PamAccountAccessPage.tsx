@@ -1,4 +1,13 @@
-import { EmptyState } from "@infisical/cipher/ui/empty";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyState,
+  EmptyTitle
+} from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Spinner } from "@infisical/cipher/ui/spinner";
 import { useParams, useSearch } from "@tanstack/react-router";
 
@@ -7,6 +16,8 @@ import { PamAccountType } from "@app/hooks/api/pam";
 
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { accountHosts, browserUnavailableReason } from "../PamAccountsPage/launch-command";
+import { CliCommand } from "../PamAccountsPage/launch-session";
 import { SessionAccessGate } from "./access-gate";
 import { AwsConsoleAccess } from "./aws-console-access";
 import { DataExplorer } from "./data-explorer/data-explorer";
@@ -31,7 +42,9 @@ const REMOTE_DESKTOP_TYPES = new Set<PamAccountType>([
 const AccountAccess = () => {
   const { accountId } = useParams({ from: route });
   const { host } = useSearch({ from: route });
-  const { data: account, isPending } = useV4Adapter("pam").useAccount(accountId);
+  const pam = useV4Adapter("pam");
+  const { data: account, isPending } = pam.useAccount(accountId);
+  const { data: accountTypes = [] } = pam.useAccountTypes();
 
   if (isPending) return <Spinner size="page" label="Loading account" />;
   if (!account)
@@ -42,6 +55,30 @@ const AccountAccess = () => {
         description={`Could not find an account with ID ${accountId}.`}
       />
     );
+  const unavailable = browserUnavailableReason(
+    accountTypes.find(({ type }) => type === account.accountType),
+    account
+  );
+  if (unavailable) {
+    const hosts = accountHosts(account);
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia>
+            <Icon name="terminal" />
+          </EmptyMedia>
+          <EmptyTitle>Connect with the CLI</EmptyTitle>
+          <EmptyDescription>{unavailable}</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent style={{ width: "min(100%, 40rem)" }}>
+          <CliCommand
+            account={account}
+            host={hosts.length > 1 ? (host ?? "HOST") : (host ?? hosts[0])}
+          />
+        </EmptyContent>
+      </Empty>
+    );
+  }
   if (account.accountType === PamAccountType.AwsIam) return <AwsConsoleAccess account={account} />;
   if (account.accountType === PamAccountType.SSH) return <TerminalSession account={account} />;
 

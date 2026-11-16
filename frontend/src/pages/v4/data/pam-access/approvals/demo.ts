@@ -1,5 +1,7 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
+  AUTO_APPROVAL_AI_CONSTRAINT,
+  AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   type TAutoApprovalCatalog,
@@ -21,7 +23,19 @@ const catalog: TAutoApprovalCatalog = {
   apps: [AppConnection.Jira],
   fieldApps: [AppConnection.Jira],
   requesterApps: [],
-  ai: { model: null, contextApps: [], contextConnections: [] },
+  ai: {
+    model: "claude-sonnet-4-5",
+    contextApps: [AppConnection.Jira],
+    contextConnections: [
+      { id: JIRA_CONNECTION_ID, name: "jira-acme", app: AppConnection.Jira, tools: [] },
+      {
+        id: "c0000000-0000-4000-8000-000000000002",
+        name: "jira-security",
+        app: AppConnection.Jira,
+        tools: []
+      }
+    ]
+  },
   connections: [
     {
       id: JIRA_CONNECTION_ID,
@@ -151,6 +165,16 @@ const configStore = createFixtureStore<Record<string, TPamApprovalConfig>>({
               values: ["INC"],
               prompt: null,
               contextConnectionIds: []
+            },
+            {
+              id: "cond-4",
+              connectionId: null,
+              subject: AUTO_APPROVAL_AI_SUBJECT,
+              constraint: AUTO_APPROVAL_AI_CONSTRAINT,
+              values: [],
+              prompt:
+                "Approve if the linked ticket is an open incident and the account matches the affected service.",
+              contextConnectionIds: [JIRA_CONNECTION_ID]
             }
           ]
         }
@@ -180,7 +204,11 @@ const conditionPasses = (
   condition: { connectionId: string | null; subject: string; constraint: string; values: string[] },
   submitted: TAutoApprovalInputValue[]
 ) => {
-  if (condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT) return true;
+  if (
+    condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT ||
+    condition.subject === AUTO_APPROVAL_AI_SUBJECT
+  )
+    return true;
   if (!condition.connectionId) return false;
   const value = submitted.find(
     ({ connectionId, subject }) =>
@@ -212,7 +240,10 @@ export const evaluateDemoAutoApproval = (
       const constraint = entry?.constraints.find(({ id }) => id === condition.constraint);
       return {
         id: condition.id,
-        description: `${entry?.label ?? condition.subject} ${constraint?.label ?? condition.constraint}`,
+        description:
+          condition.subject === AUTO_APPROVAL_AI_SUBJECT
+            ? "AI approves the request"
+            : `${entry?.label ?? condition.subject} ${constraint?.label ?? condition.constraint}`,
         passed,
         reason: passed ? null : "The submitted value did not match"
       };
