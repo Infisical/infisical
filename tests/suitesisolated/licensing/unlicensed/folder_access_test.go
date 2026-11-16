@@ -25,7 +25,7 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		return res.StatusCode(), string(res.Body)
 	}
 
-	t.Run("should grant folder access on the root folder, including its subfolders", func(t *testing.T) {
+	t.Run("should refuse folder access that applies to subfolders", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
@@ -37,20 +37,12 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		})
 
 		// Assert
-		require.Equalf(t, http.StatusOK, status, "granting on /: %s", body)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, body, "Failed to apply folder access to subfolders due to plan restriction.")
 		res, err := tn.Admin.API.ListIdentityFolderAccessWithResponse(t.Context(), proj.ID, pr.ID)
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "listing grants: %s", res.Body)
-		var parsed struct {
-			FolderAccess []struct {
-				SecretPath            string `json:"secretPath"`
-				IsPermissionRecursive bool   `json:"isPermissionRecursive"`
-			} `json:"folderAccess"`
-		}
-		require.NoError(t, json.Unmarshal(res.Body, &parsed))
-		require.Len(t, parsed.FolderAccess, 1)
-		require.Equal(t, "/", parsed.FolderAccess[0].SecretPath)
-		require.True(t, parsed.FolderAccess[0].IsPermissionRecursive)
+		require.Contains(t, string(res.Body), `"folderAccess":[]`)
 	})
 
 	t.Run("should grant folder access on a folder below the root folder", func(t *testing.T) {

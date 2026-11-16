@@ -129,7 +129,8 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     (Boolean(existingGrant) && !grant.hasChanges);
 
   const handleSubmit = async () => {
-    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac))) {
+    const change = existingGrant ? grant.updateFields() : grant.createFields();
+    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), change)) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
         paywallKey: "project.folder-access-section"
