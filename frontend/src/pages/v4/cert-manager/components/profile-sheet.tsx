@@ -831,7 +831,6 @@ export const CertificateProfileSheet = ({
   );
   const [draft, setDraft] = useState(initial);
   const [errors, setErrors] = useState<ProfileErrors>({});
-  const [step, setStep] = useState(0);
   const [creatingPolicy, setCreatingPolicy] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -954,9 +953,7 @@ export const CertificateProfileSheet = ({
       }
     } catch (error) {
       if (isAxiosError(error) && error.response?.data?.error === ApiErrorTypes.ConflictError) {
-        setErrors({ slug: error.response.data?.message ?? "This name is already in use." });
-        setStep(0);
-        return false;
+        return { fields: { slug: error.response.data?.message ?? "This name is already in use." } };
       }
       readableFailure(`Couldn't ${isEdit ? "update" : "create"} the certificate profile.`)(error);
     }
@@ -972,6 +969,7 @@ export const CertificateProfileSheet = ({
       <Stack gap={16}>
         <Field
           label="Name"
+          name="slug"
           description="Lowercase letters, numbers, and hyphens. Spaces become hyphens."
           error={errors.slug}
           wide
@@ -1046,12 +1044,8 @@ export const CertificateProfileSheet = ({
         size="lg"
         title={titles[isEdit ? "edit" : mode]}
         open
-        step={step}
-        onStepChange={setStep}
         onOpenChange={(next) => {
-          if (next) return;
-          setStep(step);
-          requestDiscard();
+          if (!next) requestDiscard();
         }}
         completeLabel={isEdit ? "Save changes" : "Create profile"}
         onComplete={save}
