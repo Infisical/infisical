@@ -132,7 +132,7 @@ export type TRevokeSessionDTO = {
 
 export type TGetSessionByIdDTO = TRevokeSessionDTO;
 
-/** A field left out keeps its value. Metadata replaces the whole set. */
+// A field left out keeps its value. Metadata replaces the whole set.
 export type TUpdateSessionDTO = TRevokeSessionDTO & {
   label?: string | null;
   metadata?: Record<string, string>;
