@@ -149,6 +149,15 @@ describe("resolvePolicyForPath", () => {
     }
   });
 
+  test("matches a policy whose stored path is not canonical", () => {
+    const exact = makePathPolicy("exact", "prod");
+    const glob = makePathPolicy("glob", "app//**");
+
+    expect(resolvePolicyForPath([exact], "/prod")).toBe(exact);
+    expect(resolvePolicyForPath([glob], "/app/api")).toBe(glob);
+    expect(resolvePolicyForPath([exact, glob], "/db")).toBeUndefined();
+  });
+
   test("ignores policies whose path does not match", () => {
     expect(resolvePolicyForPath([makePathPolicy("a", "/app/**")], "/db")).toBeUndefined();
     expect(resolvePolicyForPath([], "/db")).toBeUndefined();

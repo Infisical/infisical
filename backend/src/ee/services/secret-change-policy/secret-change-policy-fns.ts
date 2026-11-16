@@ -104,7 +104,10 @@ export const resolvePolicyForPath = <T extends { secretPath?: string | null; cre
   policies
     .filter(
       ({ secretPath: policyPath }) =>
-        !policyPath || picomatch.isMatch(canonicalizeSecretPath(secretPath), policyPath, { strictSlashes: false })
+        !policyPath ||
+        picomatch.isMatch(canonicalizeSecretPath(secretPath), canonicalizeSecretPath(policyPath), {
+          strictSlashes: false
+        })
     )
     .sort(
       (a, b) =>
