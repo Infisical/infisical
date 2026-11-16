@@ -169,6 +169,35 @@ describe("UsageReportService.handleUsageEvent", () => {
   });
 });
 
+describe("UsageReportService.handleMeteringEvents", () => {
+  const event = (eventId: string, meter: Meter) => ({
+    eventId,
+    meter,
+    quantity: 100,
+    occurredAt: new Date("2026-12-01T12:00:00.000Z")
+  });
+
+  test("should report an org-tree meter's events at the root, and an org meter's at the org that sent them", async () => {
+    // Setup
+    const { usageMeteringService, queue, licenseServer } = await buildLicense();
+
+    // Action
+    usageMeteringService.recordMeteringEvents(SUB_ORG_ID, [
+      event("e1", Meter.AgentVaultBrokeredRequests),
+      event("e2", Meter.SecretIdentities)
+    ]);
+    await queue.drain();
+
+    // Assert
+    expect(licenseServer.events.map((e) => [e.orgId, e.event.eventId])).toEqual(
+      expect.arrayContaining([
+        [ROOT.id, "e1"],
+        [SUB_ORG_ID, "e2"]
+      ])
+    );
+  });
+});
+
 describe("UsageReportService.flushInstanceUsage", () => {
   test("should report every meter once under the instance, counting the whole instance", async () => {
     // Setup

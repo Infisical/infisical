@@ -246,7 +246,6 @@ export const membershipGroupServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     }
     return { membership, group };
   };
@@ -647,7 +646,6 @@ export const membershipGroupServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities);
       usageMeteringService.emit(existingMembership.scopeOrgId, Meter.PamIdentities);
-      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities);
     }
     return { membership: membershipDoc, group };
   };

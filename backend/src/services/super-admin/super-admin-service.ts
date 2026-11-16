@@ -756,7 +756,6 @@ export const superAdminServiceFactory = ({
       usageMeteringService.emit(orgId, Meter.UserIdentities);
       usageMeteringService.emit(orgId, Meter.SecretIdentities);
       usageMeteringService.emit(orgId, Meter.PamIdentities);
-      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     });
   };
 
@@ -1102,7 +1101,6 @@ export const superAdminServiceFactory = ({
 
     usageMeteringService.emit(organizationId, Meter.SecretIdentities);
     usageMeteringService.emit(organizationId, Meter.PamIdentities);
-    usageMeteringService.emit(organizationId, Meter.AgentVaultIdentities);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 

@@ -24,11 +24,10 @@ export const AgentVaultSessionLogUpgradeModal = ({
     }
     isOpen={isOpen}
     onOpenChange={onOpenChange}
-    intent={{
-      ...(storageType === AgentVaultSessionLogStorageType.Default
+    intent={
+      storageType === AgentVaultSessionLogStorageType.Default
         ? AgentVaultSessionLogDefaultStorageUpgradeIntent
-        : AgentVaultSessionLogsUpgradeIntent),
-      isEnterpriseFeature: true
-    }}
+        : AgentVaultSessionLogsUpgradeIntent
+    }
   />
 );

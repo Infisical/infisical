@@ -384,7 +384,6 @@ export const projectMembershipServiceFactory = ({
     }
     usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(project.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return orgMembers;
   };
 
@@ -548,7 +547,6 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return memberships;
   };
 
@@ -643,7 +641,6 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(project.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 

@@ -363,10 +363,15 @@ const pamMappings: TFeatureMapping[] = [
   }
 ];
 
-// Agent Vault session logs: external storage (the customer's own bucket), default storage (the instance's bucket),
-// how many days default storage keeps them, and whether hooks can be added or changed (on for every plan). The
-// retention key is a placeholder until the License Server has it.
+// Agent Vault: the product entitlement (null leaves it open, like pam), then session logs: external storage (the
+// customer's own bucket), default storage (the instance's bucket), how many days default storage keeps them, and
+// whether hooks can be added or changed (on for every plan). The retention key is a placeholder until the License
+// Server has it.
 const agentVaultMappings: TFeatureMapping[] = [
+  {
+    v2Key: "agent_vault",
+    v1Field: "agentVault"
+  },
   {
     v2Key: "agent_vault_byo_s3",
     v1Field: "agentVaultByoS3"

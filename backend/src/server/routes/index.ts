@@ -1832,8 +1832,7 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL,
-    usageMeteringService
+    projectMembershipDAL
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -2150,7 +2149,6 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2253,6 +2251,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -4948,6 +4947,8 @@ export const registerRoutes = async (
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,

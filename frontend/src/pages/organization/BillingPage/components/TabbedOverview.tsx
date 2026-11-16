@@ -8,6 +8,7 @@ import {
   SELF_HOSTED_LICENSE_DOCS_URL
 } from "@app/components/license/self-hosted-license";
 import {
+  AgentVaultUpgradeIntent,
   CertificateManagementUpgradeIntent,
   PamUpgradeIntent,
   SecretsManagementUpgradeIntent,
@@ -48,6 +49,7 @@ import { CardEmpty } from "./shared";
 import { SubscriptionsTable } from "./SubscriptionsTable";
 
 const PRODUCT_UPGRADE_INTENTS: Record<string, UpgradeIntent> = {
+  [AgentVaultUpgradeIntent.productKey]: AgentVaultUpgradeIntent,
   [CertificateManagementUpgradeIntent.productKey]: CertificateManagementUpgradeIntent,
   [PamUpgradeIntent.productKey]: PamUpgradeIntent,
   [SecretsManagementUpgradeIntent.productKey]: SecretsManagementUpgradeIntent

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AgentVaultAccessState } from "@app/domains/agent-vault/agent-vault/ce/module";
 import {
   AgentVaultSessionLogCorsProbeResponseSchema,
   AgentVaultSessionLogHealthResponseSchema,
@@ -8,6 +9,7 @@ import {
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
@@ -20,6 +22,40 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import { AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
+  // Org-wide: the plan and the free monthly count belong to the root organization, not a project.
+  server.route({
+    method: "GET",
+    url: "/access",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getAgentVaultAccess",
+      description: "Whether the organization can broker credentials, and its free usage this month",
+      tags: [ApiDocsTags.AgentVaultSettings],
+      response: {
+        200: z.object({
+          access: z.object({
+            state: z.nativeEnum(AgentVaultAccessState).describe(AGENT_VAULT.ACCESS.state),
+            allowed: z.boolean().describe(AGENT_VAULT.ACCESS.allowed),
+            freeUsage: z
+              .object({
+                used: z.number().int().describe(AGENT_VAULT.ACCESS.used),
+                limit: z.number().int().describe(AGENT_VAULT.ACCESS.limit),
+                resetsAt: z.date().describe(AGENT_VAULT.ACCESS.resetsAt)
+              })
+              .nullable()
+              .describe(AGENT_VAULT.ACCESS.freeUsage),
+            warn: z.boolean().describe(AGENT_VAULT.ACCESS.warn)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => ({
+      access: (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+    })
+  });
+
   server.route({
     method: "GET",
     url: "/session-logs",

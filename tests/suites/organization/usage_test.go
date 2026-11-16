@@ -98,21 +98,6 @@ func TestUsageReport_Send(t *testing.T) {
 		expectSnapshot(t, root, "secret_identities", 2)
 	})
 
-	t.Run("should report an agent vault identity when an identity joins an agent vault project", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		root := fixture.LicenseServer(t, tn, tn.OrgID)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("agent-vault"))
-
-		// Action
-		proj.NewMachineIdentity(t)
-
-		// Assert
-		expectSnapshot(t, root, "agent_vault_identities", 2)
-	})
-
 	t.Run("should report nothing for an org on the free plan", func(t *testing.T) {
 		t.Parallel()
 
@@ -193,7 +178,7 @@ func TestUsageReport_Send(t *testing.T) {
 }
 
 // A new paid org reports this many dimensions once, on its first plan read.
-const meteredDimensions = 8
+const meteredDimensions = 7
 
 // Lets an injected failure hit the report the test triggers, not an initial one.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {

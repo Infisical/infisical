@@ -239,7 +239,7 @@ describe("org access reconcile consumer", () => {
         }
       })
     );
-    expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
+    expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(2);
   });
 
   test("records the identity and the group that carried the lost path, and says which grants went", async () => {
