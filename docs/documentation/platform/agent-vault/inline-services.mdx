@@ -92,7 +92,7 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Creating the session fails with &quot;Only an Agent Vault admin can send inline services with a session&quot;">
+  <Accordion title="Creating the session fails with &quot;You are not allowed to create-with-inline-services on agent-vault-sessions&quot;">
     The machine identity has the **Member** role in the Agent Vault project. Either give it the **Admin** role, or add the services to an access bundle, [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity, and name the access bundle or the services instead.
 
     To give the machine identity the **Admin** role:
