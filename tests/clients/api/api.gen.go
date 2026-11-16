@@ -33723,6 +33723,42 @@ func (e CreateDynamicSecretJSONBodyProvider28Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateDynamicSecretJSONBodyProvider29InputsLimitReset.
+const (
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetDaily   CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "daily"
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetMonthly CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "monthly"
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetWeekly  CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "weekly"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider29InputsLimitReset enum.
+func (e CreateDynamicSecretJSONBodyProvider29InputsLimitReset) Valid() bool {
+	switch e {
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetDaily:
+		return true
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetMonthly:
+		return true
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetWeekly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider29Type.
+const (
+	Openrouter CreateDynamicSecretJSONBodyProvider29Type = "openrouter"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider29Type enum.
+func (e CreateDynamicSecretJSONBodyProvider29Type) Valid() bool {
+	switch e {
+	case Openrouter:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateDynamicSecret400JSONResponseBodyStatusCode.
 const (
 	CreateDynamicSecret400JSONResponseBodyStatusCodeN400 CreateDynamicSecret400JSONResponseBodyStatusCode = 400
@@ -62538,6 +62574,96 @@ const (
 func (e RequestProjectAccess500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case RequestProjectAccess500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject400JSONResponseBodyStatusCode.
+const (
+	RestoreProject400JSONResponseBodyStatusCodeN400 RestoreProject400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject400JSONResponseBodyStatusCode enum.
+func (e RestoreProject400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject401JSONResponseBodyStatusCode.
+const (
+	RestoreProject401JSONResponseBodyStatusCodeN401 RestoreProject401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject401JSONResponseBodyStatusCode enum.
+func (e RestoreProject401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject403JSONResponseBodyStatusCode.
+const (
+	RestoreProject403JSONResponseBodyStatusCodeN403 RestoreProject403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject403JSONResponseBodyStatusCode enum.
+func (e RestoreProject403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject404JSONResponseBodyStatusCode.
+const (
+	RestoreProject404JSONResponseBodyStatusCodeN404 RestoreProject404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject404JSONResponseBodyStatusCode enum.
+func (e RestoreProject404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject422JSONResponseBodyStatusCode.
+const (
+	RestoreProject422JSONResponseBodyStatusCodeN422 RestoreProject422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject422JSONResponseBodyStatusCode enum.
+func (e RestoreProject422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreProject500JSONResponseBodyStatusCode.
+const (
+	RestoreProject500JSONResponseBodyStatusCodeN500 RestoreProject500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RestoreProject500JSONResponseBodyStatusCode enum.
+func (e RestoreProject500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RestoreProject500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -118284,6 +118410,33 @@ type CreateDynamicSecretJSONBodyProvider28InputsSaslMechanism string
 // CreateDynamicSecretJSONBodyProvider28Type defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBodyProvider28Type string
 
+// CreateDynamicSecretJSONBodyProvider29 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29 struct {
+	Inputs struct {
+		// IncludeByokInLimit Whether bring-your-own-key usage counts toward the spending limit.
+		IncludeByokInLimit *bool `json:"includeByokInLimit,omitempty"`
+
+		// Limit Spending limit in USD applied to each created API key, as a decimal string such as "2.5".
+		Limit *string `json:"limit,omitempty"`
+
+		// LimitReset How often the spending limit resets. Leave unset for a limit that never resets.
+		LimitReset *CreateDynamicSecretJSONBodyProvider29InputsLimitReset `json:"limitReset,omitempty"`
+
+		// ManagementKey OpenRouter management API key used to create and delete the API keys issued for each lease.
+		ManagementKey string `json:"managementKey"`
+
+		// WorkspaceId ID of the OpenRouter workspace to create keys in. Defaults to the management key's default workspace.
+		WorkspaceId *string `json:"workspaceId,omitempty"`
+	} `json:"inputs"`
+	Type CreateDynamicSecretJSONBodyProvider29Type `json:"type"`
+}
+
+// CreateDynamicSecretJSONBodyProvider29InputsLimitReset defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29InputsLimitReset string
+
+// CreateDynamicSecretJSONBodyProvider29Type defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29Type string
+
 // CreateDynamicSecretJSONBody_Provider defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBody_Provider struct {
 	union json.RawMessage
@@ -127966,6 +128119,24 @@ type RequestProjectAccess422JSONResponseBodyStatusCode float32
 // RequestProjectAccess500JSONResponseBodyStatusCode defines parameters for RequestProjectAccess.
 type RequestProjectAccess500JSONResponseBodyStatusCode float32
 
+// RestoreProject400JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject400JSONResponseBodyStatusCode float32
+
+// RestoreProject401JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject401JSONResponseBodyStatusCode float32
+
+// RestoreProject403JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject403JSONResponseBodyStatusCode float32
+
+// RestoreProject404JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject404JSONResponseBodyStatusCode float32
+
+// RestoreProject422JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject422JSONResponseBodyStatusCode float32
+
+// RestoreProject500JSONResponseBodyStatusCode defines parameters for RestoreProject.
+type RestoreProject500JSONResponseBodyStatusCode float32
+
 // ListProjectRolesV1400JSONResponseBodyStatusCode defines parameters for ListProjectRolesV1.
 type ListProjectRolesV1400JSONResponseBodyStatusCode float32
 
@@ -134962,6 +135133,7 @@ type GatewayHeartbeatJSONBody1 struct {
 	Capabilities *struct {
 		CertificateScan                   *bool     `json:"certificateScan,omitempty"`
 		ClickhouseNativeProtocol          *bool     `json:"clickhouseNativeProtocol,omitempty"`
+		OutputMasking                     *bool     `json:"outputMasking,omitempty"`
 		Pkcs11                            *bool     `json:"pkcs11,omitempty"`
 		Pkcs11MlDsa                       *bool     `json:"pkcs11MlDsa,omitempty"`
 		SessionLogMaskingBuiltInDetection *bool     `json:"sessionLogMaskingBuiltInDetection,omitempty"`
@@ -154550,6 +154722,32 @@ func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyP
 	return err
 }
 
+// AsCreateDynamicSecretJSONBodyProvider29 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider29
+func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider29() (CreateDynamicSecretJSONBodyProvider29, error) {
+	var body CreateDynamicSecretJSONBodyProvider29
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider29 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider as the provided CreateDynamicSecretJSONBodyProvider29
+func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider29 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider29
+func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t CreateDynamicSecretJSONBody_Provider) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -173265,6 +173463,11 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	RequestProjectAccess(ctx context.Context, projectId string, body RequestProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RestoreProject performs a POST /api/v1/projects/{projectId}/restore (the `RestoreProject` operationId) request.
+	//
+	// Restore a soft-deleted project.
+	RestoreProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListProjectRolesV1 performs a GET /api/v1/projects/{projectId}/roles (the `ListProjectRolesV1` operationId) request.
 	//
 	// List project role.
@@ -185431,6 +185634,21 @@ func (c *Client) RequestProjectAccessWithBody(ctx context.Context, projectId str
 // Takes a body of the `application/json` content type.
 func (c *Client) RequestProjectAccess(ctx context.Context, projectId string, body RequestProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRequestProjectAccessRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RestoreProject performs a POST /api/v1/projects/{projectId}/restore (the `RestoreProject` operationId) request.
+//
+// Restore a soft-deleted project.
+func (c *Client) RestoreProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreProjectRequest(c.Server, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -213318,6 +213536,40 @@ func NewRequestProjectAccessRequestWithBody(server string, projectId string, con
 	return req, nil
 }
 
+// NewRestoreProjectRequest constructs an http.Request for the RestoreProject method
+func NewRestoreProjectRequest(server string, projectId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/restore", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListProjectRolesV1Request constructs an http.Request for the ListProjectRolesV1 method
 func NewListProjectRolesV1Request(server string, projectId string) (*http.Request, error) {
 	var err error
@@ -231840,6 +232092,13 @@ type ClientWithResponsesInterface interface {
 	// RequestProjectAccessWithResponse performs a POST /api/v1/projects/{projectId}/project-access (the `RequestProjectAccess` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	RequestProjectAccessWithResponse(ctx context.Context, projectId string, body RequestProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestProjectAccessResponse, error)
+
+	// RestoreProjectWithResponse performs a POST /api/v1/projects/{projectId}/restore (the `RestoreProject` operationId) request.
+	//
+	// Restore a soft-deleted project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RestoreProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*RestoreProjectResponse, error)
 
 	// ListProjectRolesV1WithResponse performs a GET /api/v1/projects/{projectId}/roles (the `ListProjectRolesV1` operationId) request.
 	//
@@ -318948,6 +319207,205 @@ func (r RequestProjectAccessResponse) ContentType() string {
 	return ""
 }
 
+type RestoreProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Project struct {
+			AuditLogsRetentionDays                      *float32            `json:"auditLogsRetentionDays,omitempty"`
+			AutoCapitalization                          *bool               `json:"autoCapitalization,omitempty"`
+			CreatedAt                                   time.Time           `json:"createdAt"`
+			DefaultProduct                              *string             `json:"defaultProduct,omitempty"`
+			Description                                 *string             `json:"description,omitempty"`
+			EnforceEncryptedSecretManagerSecretMetadata *bool               `json:"enforceEncryptedSecretManagerSecretMetadata,omitempty"`
+			HasDeleteProtection                         *bool               `json:"hasDeleteProtection,omitempty"`
+			Id                                          string              `json:"id"`
+			IsLegacyAdditionalPrivilegesEnabled         *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
+			KmsCertificateKeyId                         *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+			KmsSecretManagerKeyId                       *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
+			Name                                        string              `json:"name"`
+			OrgId                                       openapi_types.UUID  `json:"orgId"`
+			PitVersionLimit                             *float32            `json:"pitVersionLimit,omitempty"`
+			SecretBlindIndexEnabled                     *bool               `json:"secretBlindIndexEnabled,omitempty"`
+			SecretDetectionIgnoreValues                 *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
+			SecretSharing                               *bool               `json:"secretSharing,omitempty"`
+			ShowSnapshotsLegacy                         *bool               `json:"showSnapshotsLegacy,omitempty"`
+			Slug                                        string              `json:"slug"`
+			Type                                        string              `json:"type"`
+			UpdatedAt                                   time.Time           `json:"updatedAt"`
+			UpgradeStatus                               *string             `json:"upgradeStatus,omitempty"`
+			Version                                     *float32            `json:"version,omitempty"`
+		} `json:"project"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode RestoreProject500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RestoreProjectResponse) GetJSON200() *struct {
+	Project struct {
+		AuditLogsRetentionDays                      *float32            `json:"auditLogsRetentionDays,omitempty"`
+		AutoCapitalization                          *bool               `json:"autoCapitalization,omitempty"`
+		CreatedAt                                   time.Time           `json:"createdAt"`
+		DefaultProduct                              *string             `json:"defaultProduct,omitempty"`
+		Description                                 *string             `json:"description,omitempty"`
+		EnforceEncryptedSecretManagerSecretMetadata *bool               `json:"enforceEncryptedSecretManagerSecretMetadata,omitempty"`
+		HasDeleteProtection                         *bool               `json:"hasDeleteProtection,omitempty"`
+		Id                                          string              `json:"id"`
+		IsLegacyAdditionalPrivilegesEnabled         *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
+		KmsCertificateKeyId                         *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+		KmsSecretManagerKeyId                       *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
+		Name                                        string              `json:"name"`
+		OrgId                                       openapi_types.UUID  `json:"orgId"`
+		PitVersionLimit                             *float32            `json:"pitVersionLimit,omitempty"`
+		SecretBlindIndexEnabled                     *bool               `json:"secretBlindIndexEnabled,omitempty"`
+		SecretDetectionIgnoreValues                 *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
+		SecretSharing                               *bool               `json:"secretSharing,omitempty"`
+		ShowSnapshotsLegacy                         *bool               `json:"showSnapshotsLegacy,omitempty"`
+		Slug                                        string              `json:"slug"`
+		Type                                        string              `json:"type"`
+		UpdatedAt                                   time.Time           `json:"updatedAt"`
+		UpgradeStatus                               *string             `json:"upgradeStatus,omitempty"`
+		Version                                     *float32            `json:"version,omitempty"`
+	} `json:"project"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RestoreProjectResponse) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RestoreProjectResponse) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RestoreProjectResponse) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RestoreProjectResponse) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RestoreProjectResponse) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RestoreProjectResponse) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode RestoreProject500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RestoreProjectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RestoreProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestoreProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RestoreProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListProjectRolesV1Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -382516,6 +382974,19 @@ func (c *ClientWithResponses) RequestProjectAccessWithResponse(ctx context.Conte
 	return ParseRequestProjectAccessResponse(rsp)
 }
 
+// RestoreProjectWithResponse performs a POST /api/v1/projects/{projectId}/restore (the `RestoreProject` operationId) request.
+//
+// Restore a soft-deleted project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RestoreProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*RestoreProjectResponse, error) {
+	rsp, err := c.RestoreProject(ctx, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreProjectResponse(rsp)
+}
+
 // ListProjectRolesV1WithResponse performs a GET /api/v1/projects/{projectId}/roles (the `ListProjectRolesV1` operationId) request.
 //
 // List project role.
@@ -442353,6 +442824,132 @@ func ParseRequestProjectAccessResponse(rsp *http.Response) (*RequestProjectAcces
 			Message    string                                            `json:"message"`
 			ReqId      string                                            `json:"reqId"`
 			StatusCode RequestProjectAccess500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRestoreProjectResponse parses an HTTP response from a RestoreProjectWithResponse call
+func ParseRestoreProjectResponse(rsp *http.Response) (*RestoreProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestoreProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Project struct {
+				AuditLogsRetentionDays                      *float32            `json:"auditLogsRetentionDays,omitempty"`
+				AutoCapitalization                          *bool               `json:"autoCapitalization,omitempty"`
+				CreatedAt                                   time.Time           `json:"createdAt"`
+				DefaultProduct                              *string             `json:"defaultProduct,omitempty"`
+				Description                                 *string             `json:"description,omitempty"`
+				EnforceEncryptedSecretManagerSecretMetadata *bool               `json:"enforceEncryptedSecretManagerSecretMetadata,omitempty"`
+				HasDeleteProtection                         *bool               `json:"hasDeleteProtection,omitempty"`
+				Id                                          string              `json:"id"`
+				IsLegacyAdditionalPrivilegesEnabled         *bool               `json:"isLegacyAdditionalPrivilegesEnabled,omitempty"`
+				KmsCertificateKeyId                         *openapi_types.UUID `json:"kmsCertificateKeyId,omitempty"`
+				KmsSecretManagerKeyId                       *openapi_types.UUID `json:"kmsSecretManagerKeyId,omitempty"`
+				Name                                        string              `json:"name"`
+				OrgId                                       openapi_types.UUID  `json:"orgId"`
+				PitVersionLimit                             *float32            `json:"pitVersionLimit,omitempty"`
+				SecretBlindIndexEnabled                     *bool               `json:"secretBlindIndexEnabled,omitempty"`
+				SecretDetectionIgnoreValues                 *[]string           `json:"secretDetectionIgnoreValues,omitempty"`
+				SecretSharing                               *bool               `json:"secretSharing,omitempty"`
+				ShowSnapshotsLegacy                         *bool               `json:"showSnapshotsLegacy,omitempty"`
+				Slug                                        string              `json:"slug"`
+				Type                                        string              `json:"type"`
+				UpdatedAt                                   time.Time           `json:"updatedAt"`
+				UpgradeStatus                               *string             `json:"upgradeStatus,omitempty"`
+				Version                                     *float32            `json:"version,omitempty"`
+			} `json:"project"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode RestoreProject500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
