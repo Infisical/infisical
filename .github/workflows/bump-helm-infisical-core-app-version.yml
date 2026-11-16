@@ -1,0 +1,209 @@
+name: Bump Infisical Core Helm chart app version
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Stable release tag the chart should default to, for example v0.167.10"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: "Stable release tag the chart should default to, for example v0.167.10"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Every run writes to the same branch, so two releases tagged close together must not race.
+concurrency:
+  group: bump-helm-infisical-core-app-version
+  cancel-in-progress: false
+
+env:
+  BRANCH_NAME: chore/helm-infisical-core-app-version
+  CHART_FILE: helm-charts/infisical-standalone-postgres/Chart.yaml
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: release
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          if ! echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Skipping non-stable release tag: $TAG_NAME"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "stable=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Look for an open bump PR
+        id: existing
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          PR_NUMBER="$(gh pr list --base main --head "$BRANCH_NAME" --state open --json number --jq '.[0].number // empty')"
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      # An open PR is updated on its own branch, so edits a reviewer pushed to it are kept.
+      - name: Checkout
+        if: steps.release.outputs.stable == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          ref: ${{ steps.existing.outputs.pr != '' && env.BRANCH_NAME || 'main' }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Bump chart app version
+        id: bump
+        if: steps.release.outputs.stable == 'true'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          MAIN_APP_VERSION="$(git show "origin/main:$CHART_FILE" | sed -n 's/^appVersion: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')"
+          echo "main_app_version=$MAIN_APP_VERSION" >> "$GITHUB_OUTPUT"
+
+          NEWEST="$(printf '%s\n%s\n' "${MAIN_APP_VERSION#v}" "${TAG_NAME#v}" | sort -V | tail -n 1)"
+          if [ "$MAIN_APP_VERSION" = "$TAG_NAME" ] || [ "$NEWEST" != "${TAG_NAME#v}" ]; then
+            echo "main already defaults to $MAIN_APP_VERSION, which is not older than $TAG_NAME."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
+
+      - name: Push bump branch
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          EXISTING_PR: ${{ steps.existing.outputs.pr }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -z "$EXISTING_PR" ]; then
+            git switch -C "$BRANCH_NAME"
+          fi
+
+          git add helm-charts/infisical-standalone-postgres
+          git commit -m "chore(helm): update infisical-standalone appVersion to ${TAG_NAME}"
+
+          if [ -n "$EXISTING_PR" ]; then
+            git push origin "HEAD:refs/heads/${BRANCH_NAME}"
+            exit 0
+          fi
+
+          # A branch left behind by a closed PR is replaced, but only if nobody moved it since we looked.
+          REMOTE_SHA="$(git ls-remote --heads origin "$BRANCH_NAME" | cut -f1)"
+          if [ -z "$REMOTE_SHA" ]; then
+            git push origin "$BRANCH_NAME"
+          else
+            git push --force-with-lease="refs/heads/${BRANCH_NAME}:${REMOTE_SHA}" origin "$BRANCH_NAME"
+          fi
+
+      - name: Write PR body
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          MAIN_APP_VERSION: ${{ steps.bump.outputs.main_app_version }}
+          CHART_VERSION: ${{ steps.bump.outputs.chart_version }}
+          BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main
+        run: |
+          is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
+
+          RELEASES="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | while read -r v; do
+            if is_newer "${v#v}" "${MAIN_APP_VERSION#v}" && ! is_newer "${v#v}" "${TAG_NAME#v}"; then
+              DATA_FILE="upgrade-impact/data/releases/${v}.yaml"
+              if DATA="$(git show "origin/main:${DATA_FILE}" 2>/dev/null)"; then
+                IMPACT="$(echo "$DATA" | yq '.impactLevel')"
+                BREAKING="$(echo "$DATA" | yq '.breakingChanges | length')"
+                SUMMARY="$(echo "$DATA" | yq '.summary')"
+                echo "- [\`${v}\`](${BLOB_URL}/${DATA_FILE}): impact \`${IMPACT}\`, breaking changes: ${BREAKING}. ${SUMMARY}"
+              else
+                echo "- \`${v}\`: no upgrade impact data on \`main\`. If its upgrade impact PR is still open, read it there."
+              fi
+            fi
+          done)"
+
+          cat > "$RUNNER_TEMP/pr-body.md" <<EOF
+          ## Context
+
+          Points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. The chart's \`appVersion\` is the default \`infisical.image.tag\`, so merging this moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. If a newer release ships before this merges, this PR is updated in place.
+
+          Before merging, add upgrade notes to the chart \`${CHART_VERSION}\` CHANGELOG section for every release below with breaking changes, as chart 1.11.1 does.
+
+          ### Releases in this bump
+
+          ${RELEASES}
+
+          ## Steps to verify the change
+
+          Checks don't run on pull requests opened by GitHub Actions. Close and reopen this PR to run the Helm chart tests, which install the chart's \`appVersion\`.
+
+          After merging, run the **Release Infisical Core Helm chart** workflow to publish chart \`${CHART_VERSION}\`.
+
+          ## Type
+
+          - [ ] Fix
+          - [ ] Feature
+          - [ ] Improvement
+          - [ ] Breaking
+          - [ ] Docs
+          - [x] Chore
+          EOF
+
+      - name: Open or update PR
+        id: pr
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          EXISTING_PR: ${{ steps.existing.outputs.pr }}
+        run: |
+          PR_TITLE="chore(helm): update infisical-standalone appVersion to ${TAG_NAME}"
+
+          if [ -n "$EXISTING_PR" ]; then
+            gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
+            echo "number=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_URL="$(gh pr create --base main --head "$BRANCH_NAME" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md")"
+          echo "Opened $PR_URL"
+          echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Request review from the release author
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
+
+          if [ -z "$RELEASE_AUTHOR" ]; then
+            echo "::error::Could not resolve the author of release ${TAG_NAME}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            --method POST \
+            --raw-field "reviewers[]=${RELEASE_AUTHOR}" \
+            --silent; then
+            echo "::error::Could not request review from ${RELEASE_AUTHOR}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          echo "Requested review from release author: $RELEASE_AUTHOR"

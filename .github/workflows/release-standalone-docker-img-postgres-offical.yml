@@ -265,6 +265,17 @@ jobs:
           env:
             GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}
 
+    bump-helm-chart-app-version:
+        name: Open Helm chart app version PR
+        needs: [infisical-standalone, infisical-fips-standalone]
+        permissions:
+            contents: write
+            pull-requests: write
+        uses: ./.github/workflows/bump-helm-infisical-core-app-version.yml
+        with:
+            tag: ${{ github.ref_name }}
+        secrets: inherit
+
     generate-upgrade-impact:
         name: Generate upgrade impact PR
         needs: [infisical-standalone, infisical-fips-standalone, trigger-binary-release]

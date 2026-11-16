@@ -60,6 +60,17 @@ jobs:
           render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
           diff "$RUNNER_TEMP/first.yaml" "$RUNNER_TEMP/second.yaml"
 
+      - name: Check image tag rendering
+        working-directory: helm-charts/infisical-standalone-postgres
+        run: |
+          set -euo pipefail
+          ls charts/*.tgz >/dev/null 2>&1 || helm dependency build .
+          image() { helm template infisical . -s templates/infisical.yaml "$@" | yq ea '[select(.kind == "Deployment")] | .[0].spec.template.spec.containers[0].image'; }
+          APP_VERSION="$(yq '.appVersion' Chart.yaml)"
+
+          [ "$(image)" = "infisical/infisical:${APP_VERSION}" ]
+          [ "$(image --set infisical.image.tag=v0.1.0)" = "infisical/infisical:v0.1.0" ]
+
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
 
@@ -87,5 +98,5 @@ jobs:
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
             --helm-extra-args="--timeout=300s" \
-            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.167.0 --set infisical.autoBootstrap.enabled=true --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
+            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.autoBootstrap.enabled=true --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
             --namespace infisical-standalone-postgres
