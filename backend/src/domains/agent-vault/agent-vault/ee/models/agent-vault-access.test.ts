@@ -67,6 +67,15 @@ describe("AgentVaultAccess.decide", () => {
     expect(() => under.assertAllowed()).not.toThrow();
   });
 
+  test("should never show more used requests than the limit", () => {
+    // Setup
+    const access = AgentVaultAccess.decide({ isCloud: true, plan: plan(false), used: 5_103, now });
+
+    // Action, Assert
+    expect(access.freeUsage?.used).toBe(5_000);
+    expect(access.toJSON().state).toBe(AgentVaultAccessState.LimitReached);
+  });
+
   test("should reset at next year's January in December", () => {
     // Setup
     const access = AgentVaultAccess.decide({

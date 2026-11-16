@@ -55,8 +55,9 @@ export class AgentVaultAccess {
     return this.accessState;
   }
 
+  // A proxy keeps brokering until its next check, so the count can pass the limit; nobody is shown more than they get.
   get freeUsage(): TAgentVaultFreeUsageJSON | null {
-    return this.usage ? { ...this.usage } : null;
+    return this.usage ? { ...this.usage, used: Math.min(this.usage.used, this.usage.limit) } : null;
   }
 
   get warn(): boolean {
