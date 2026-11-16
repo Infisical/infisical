@@ -48,6 +48,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import {
   approvalPolicyQuery,
@@ -63,7 +64,6 @@ import {
   useGetPamApprovalConfig,
   useListFolderMembers,
   useListPamAccessRequests,
-  useListPamProductGroups,
   usePamFolderPermission,
   useRevokePamAccessRequest,
   useSetPamApprovalConfig
@@ -131,7 +131,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
-  const { data: productGroups } = useListPamProductGroups();
+  const { data: productGroups } = useListWorkspaceGroups(currentProject.id, currentProject.type);
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -307,15 +307,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
   // members: a requester can reach the folder through a group the rule doesn't name
-  const requesterOptions = useMemo<TRequesterCheckOptions>(() => {
-    const productGroupIds = new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean));
-    return {
+  const requesterOptions = useMemo<TRequesterCheckOptions>(
+    () => ({
       users: productUsers.map((u) => ({ value: u.id, label: u.name, subtitle: u.email })),
-      groups: (orgGroups ?? [])
-        .filter((g) => productGroupIds.has(g.id))
-        .map((g) => ({ value: g.id, label: g.name }))
-    };
-  }, [productUsers, orgGroups, productGroups]);
+      groups: (productGroups ?? []).map(({ group }) => ({ value: group.id, label: group.name }))
+    }),
+    [productUsers, productGroups]
+  );
 
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
