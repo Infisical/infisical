@@ -4,11 +4,15 @@
 #
 # Usage: ./bump-infisical-core-app-version.sh v0.167.10
 #
-# The CHANGELOG's top section is unreleased when its heading has no date. The change
-# joins that section and keeps the chart version; otherwise the chart version gets a
-# patch bump and a new section. Never moves appVersion backwards, so a patch release
-# tagged on an older line after a newer release leaves the chart alone.
+# If the current chart version is already in the registry, the chart version gets a
+# patch bump and a new CHANGELOG section. Otherwise the change joins that version's
+# section. The registry is the source of truth because CHANGELOG headings are dated by
+# hand after a release, so an undated heading can belong to a published chart. Never
+# moves appVersion backwards, so a patch release tagged on an older line after a newer
+# release leaves the chart alone.
 set -euo pipefail
+
+CHART_REF="oci://helm.oci.cloudsmith.io/infisical/helm-charts/infisical-standalone"
 
 TAG="${1:-}"
 if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -23,6 +27,20 @@ OUTPUT_FILE="${GITHUB_OUTPUT:-/dev/null}"
 
 read_field() {
   sed -n "s/^$1: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *$/\1/p" "$CHART_FILE"
+}
+
+# Any registry error other than "not found" aborts, so an outage can't make a published
+# version look unpublished and get reused.
+is_published() {
+  local err
+  if err="$(helm show chart "$CHART_REF" --version "$1" 2>&1 >/dev/null)"; then
+    return 0
+  fi
+  if echo "$err" | grep -q ': not found$'; then
+    return 1
+  fi
+  echo "Could not check whether chart $1 is published: $err" >&2
+  exit 1
 }
 
 CURRENT_APP_VERSION="$(read_field appVersion)"
@@ -43,7 +61,7 @@ fi
 BULLET_PREFIX='* Updated the default Infisical image (`appVersion`) from '
 TOP_HEADING="$(grep -m 1 '^## ' "$CHANGELOG_FILE")"
 
-if [ "$TOP_HEADING" = "## $CHART_VERSION" ]; then
+if [ "$TOP_HEADING" = "## $CHART_VERSION" ] && ! is_published "$CHART_VERSION"; then
   NEW_CHART_VERSION="$CHART_VERSION"
   if awk '/^## /{n++} n==1' "$CHANGELOG_FILE" | grep -qF "$BULLET_PREFIX"; then
     # An earlier bump in this unreleased section keeps its original "from" version.
