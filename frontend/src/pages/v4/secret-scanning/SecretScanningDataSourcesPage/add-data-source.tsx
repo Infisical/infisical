@@ -29,7 +29,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useDebounced } from "../../access/org/use-debounced";
-import { readableFailure, toast } from "../../access/toast";
+import { duplicateNameMessage, readableFailure, toast } from "../../access/toast";
 import { useConnectionCreation } from "../../components/connection-creation";
 import { useV4Adapter } from "../../data/adapters";
 import { startConnectionRedirect } from "../../data/integrations/connection-redirect";
@@ -358,8 +358,8 @@ export const AddDataSourceSheet = ({
         }}
         completeLabel="Add data source"
         onComplete={async () => {
-          await create
-            .mutateAsync({
+          try {
+            await create.mutateAsync({
               type: draft.type,
               projectId,
               name: draft.name.trim(),
@@ -369,10 +369,15 @@ export const AddDataSourceSheet = ({
               isHistoricalScanEnabled: draft.isHistoricalScanEnabled,
               isScanNewCommitsEnabled: draft.isScanNewCommitsEnabled,
               isDiscoveryEnabled: draft.isDiscoveryEnabled && discovery
-            } as TCreateSecretScanningDataSourceDTO)
-            .catch(readableFailure("Could not add the data source."));
+            } as TCreateSecretScanningDataSourceDTO);
+          } catch (error) {
+            const duplicate = duplicateNameMessage(error, draft.name.trim());
+            if (duplicate) return { fields: { name: duplicate } };
+            return readableFailure("Could not add the data source.")(error);
+          }
           toast({ tone: "ok", title: `Added ${platform} data source ${draft.name.trim()}` });
           completed.current = true;
+          return true;
         }}
         steps={[
           {
@@ -473,6 +478,7 @@ export const AddDataSourceSheet = ({
               <Stack gap={16}>
                 <Field
                   label="Name"
+                  name="name"
                   description="Lowercase letters, numbers and dashes."
                   error={fieldErrors.name}
                   wide

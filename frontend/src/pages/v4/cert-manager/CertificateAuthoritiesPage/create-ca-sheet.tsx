@@ -26,7 +26,7 @@ import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/c
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers/types";
 
-import { readableFailure, saved } from "../../access/toast";
+import { duplicateNameMessage, readableFailure, saved } from "../../access/toast";
 import { useConnectionCreation } from "../../components/connection-creation";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
@@ -60,6 +60,7 @@ const BasicsStep = ({ draft, errors, set }: StepProps) => (
   <Stack gap={16}>
     <Field
       label="Name"
+      name="name"
       description="A unique slug used to reference this CA."
       error={errors.name}
       wide
@@ -449,13 +450,19 @@ export const CreateCaSheet = ({
   };
 
   const submit = async () => {
-    const created = await create
-      .mutateAsync(toCreateCaDto(draft) as TCreateCertificateAuthorityDTO)
-      .catch(readableFailure("Could not create the CA."));
+    let created: TUnifiedCertificateAuthority;
+    try {
+      created = await create.mutateAsync(toCreateCaDto(draft) as TCreateCertificateAuthorityDTO);
+    } catch (error) {
+      const duplicate = duplicateNameMessage(error, draft.name.trim());
+      if (duplicate) return { fields: { name: duplicate }, step: 0 };
+      return readableFailure("Could not create the CA.")(error);
+    }
     saved(`CA ${draft.name} created`);
     completed.current = true;
     close();
     onCreated?.(created);
+    return true;
   };
 
   return (

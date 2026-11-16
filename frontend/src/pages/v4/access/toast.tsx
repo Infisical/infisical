@@ -43,5 +43,12 @@ export const readableFailure =
     throw new Error(errorMessage(error) ?? fallback);
   };
 
+export const duplicateNameMessage = (error: unknown, name: string) => {
+  if (!isAxiosError(error) || error.response?.status !== 400) return undefined;
+  const message: unknown = error.response.data?.message;
+  if (typeof message !== "string" || !message.includes("already exists")) return undefined;
+  return message.includes(`"${name}"`) || message.includes(`'${name}'`) ? message : undefined;
+};
+
 export const failed = (title: string, error?: unknown) =>
   toast({ tone: "bad", title, description: errorMessage(error) });

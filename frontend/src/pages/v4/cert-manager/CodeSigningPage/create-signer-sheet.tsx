@@ -10,7 +10,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { MultiStep, type MultiStepResult } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
@@ -23,7 +23,7 @@ import {
 } from "@app/hooks/api/signers/types";
 import { slugSchema } from "@app/lib/schemas";
 
-import { errorMessage, readableFailure } from "../../access/toast";
+import { duplicateNameMessage, errorMessage, readableFailure } from "../../access/toast";
 import { Muted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
@@ -134,7 +134,7 @@ const CreateSheet = ({
       ...picked.map((member) => ({ kind, id: member.id, label: member.label, role }))
     ]);
 
-  const submit = async () => {
+  const submit = async (): Promise<MultiStepResult> => {
     const existing = usesExistingCertificate(cert);
     const caType = caOptions.find((option) => option.id === cert.caId)?.caType;
     let externalConfiguration: TSignerExternalConfiguration | undefined;
@@ -146,37 +146,40 @@ const CreateSheet = ({
       externalConfiguration = { template: cert.adcsTemplate.trim() };
     submitting.current = true;
     try {
-      await create
-        .mutateAsync({
-          projectId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-          caId: cert.caId,
-          commonName: existing ? undefined : cert.commonName.trim(),
-          certificateTtlDays: existing ? undefined : Number(cert.certificateTtlDays),
-          certificateRenewBeforeDays: renewBeforeValue(cert),
-          keyAlgorithm: existing ? undefined : cert.keyAlgorithm,
-          members: members.map((member) => ({
-            kind: member.kind,
-            id: member.id,
-            role: member.role
-          })),
-          approvalPolicy: policySteps.length
-            ? { steps: policyStepsPayload(policySteps), constraints: limits }
+      await create.mutateAsync({
+        projectId,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        caId: cert.caId,
+        commonName: existing ? undefined : cert.commonName.trim(),
+        certificateTtlDays: existing ? undefined : Number(cert.certificateTtlDays),
+        certificateRenewBeforeDays: renewBeforeValue(cert),
+        keyAlgorithm: existing ? undefined : cert.keyAlgorithm,
+        members: members.map((member) => ({
+          kind: member.kind,
+          id: member.id,
+          role: member.role
+        })),
+        approvalPolicy: policySteps.length
+          ? { steps: policyStepsPayload(policySteps), constraints: limits }
+          : undefined,
+        certificate:
+          cert.keySource === CertKeySource.Hsm && cert.hsmConnectorId
+            ? {
+                keySource: CertKeySource.Hsm,
+                hsmConnectorId: cert.hsmConnectorId,
+                hsmKeyLabel: existing ? cert.hsmKeyLabel.trim() : undefined,
+                hsmKeyId: existing && lookup.resolvedKeyId ? lookup.resolvedKeyId : undefined
+              }
             : undefined,
-          certificate:
-            cert.keySource === CertKeySource.Hsm && cert.hsmConnectorId
-              ? {
-                  keySource: CertKeySource.Hsm,
-                  hsmConnectorId: cert.hsmConnectorId,
-                  hsmKeyLabel: existing ? cert.hsmKeyLabel.trim() : undefined,
-                  hsmKeyId: existing && lookup.resolvedKeyId ? lookup.resolvedKeyId : undefined
-                }
-              : undefined,
-          externalConfiguration
-        })
-        .catch(readableFailure("Couldn't create the signer."));
+        externalConfiguration
+      });
       onClose();
+      return true;
+    } catch (error) {
+      const duplicate = duplicateNameMessage(error, name.trim());
+      if (duplicate) return { fields: { name: duplicate } };
+      return readableFailure("Couldn't create the signer.")(error);
     } finally {
       submitting.current = false;
     }
@@ -209,7 +212,13 @@ const CreateSheet = ({
             },
             content: (
               <Stack gap={16}>
-                <Field label="Name" description="Lowercase, with dashes." error={nameError} wide>
+                <Field
+                  label="Name"
+                  name="name"
+                  description="Lowercase, with dashes."
+                  error={nameError}
+                  wide
+                >
                   <Input
                     value={name}
                     placeholder="mobile-app-prod"
