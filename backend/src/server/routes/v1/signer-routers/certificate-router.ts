@@ -33,7 +33,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "reissueSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Re-issue the signer's certificate, optionally from a different CA or with a different key source. If a certificate request is open, it's canceled first, along with its DigiCert order. If the signer's certificate was revoked, the new certificate always uses a new key, and the signer can sign again once it's issued.",
+        "Re-issue the signer's certificate, optionally from a different CA or with a different key source. If a certificate request is open, it's canceled first, including any order it placed with the CA. If the signer's certificate was revoked, the new certificate always uses a new key, and the signer can sign again once it's issued.",
       params: SignerIdParamsSchema,
       body: z
         .object({
@@ -152,7 +152,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "revokeSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Revoke the signer's certificate, which stops the signer from signing right away and cancels any certificate request in progress. While the CA processes the revoke, the signer's status is `revocation_pending`, and when DigiCert requires approval, it stays there until the request is approved (`revoked`) or rejected. If the CA refuses the revoke, the certificate stays valid, the signer goes back to `active` (or stays `disabled`), the signer's admins get an in-app notification, and a canceled renewal must be started again. To sign again after a revoke, reissue the certificate with a new key.",
+        "Revoke the signer's certificate, which stops the signer from signing right away and cancels any certificate request in progress. While the CA processes the revoke, the signer's status is `revocation_pending`. If the CA queues the revoke for approval (DigiCert can), it stays there until the request is approved (`revoked`) or rejected. If the CA refuses the revoke, the certificate stays valid, the signer goes back to `active` (or stays `disabled`), the signer's admins get an in-app notification, and a canceled renewal must be started again. To sign again after a revoke, reissue the certificate with a new key.",
       params: SignerIdParamsSchema,
       body: z.object({
         revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
