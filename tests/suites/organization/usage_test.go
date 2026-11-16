@@ -178,7 +178,7 @@ func TestUsageReport_Send(t *testing.T) {
 }
 
 // A new paid org reports this many dimensions once, on its first plan read.
-const meteredDimensions = 8
+const meteredDimensions = 7
 
 // Lets an injected failure hit the report the test triggers, not an initial one.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
