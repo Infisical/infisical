@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { approvalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   ApprovalNotificationEvent,
   ApprovalPolicyType,
@@ -33,6 +34,7 @@ const approvalRequestStepsDAL = approvalRequestStepsDALFactory(testDb);
 const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(testDb);
 const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(testDb);
 const userGroupMembershipDAL = userGroupMembershipDALFactory(testDb);
+const approvalPolicyDAL = approvalPolicyDALFactory(testDb);
 
 const asApprover = (userId: string, orgId: string): TApprovalActor => ({
   id: userId,
@@ -66,6 +68,7 @@ const buildService = () => {
       approvalRequestStepsDAL,
       approvalRequestApprovalsDAL,
       userGroupMembershipDAL,
+      approvalPolicyDAL,
       permissionService: { getOrgPermission: async () => ({}) },
       notificationService: {
         createUserNotifications: async (rows: { userId: string; title: string }[]) => {
