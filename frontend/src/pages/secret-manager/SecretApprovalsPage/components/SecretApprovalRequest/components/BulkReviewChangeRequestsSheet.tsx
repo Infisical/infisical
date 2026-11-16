@@ -593,6 +593,10 @@ const BulkReviewChangeRequestsSheetContent = ({
                       isDisabled={!isReadyToSubmit || isSubmitting}
                       isPending={isSubmitting}
                     >
+                      <span className="tabular-nums opacity-70">
+                        {approveCount}/{requests.length} Approved
+                      </span>
+                      <span aria-hidden className="h-3.5 w-px bg-current opacity-30" />
                       Submit
                       <ChevronDownIcon />
                     </Button>
@@ -608,9 +612,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     </DropdownMenuItem>
                     <DropdownMenuItem isDisabled={!approveCount} onClick={() => handleSubmit(true)}>
                       <div className="flex flex-col">
-                        <span className="font-medium">
-                          Submit & Merge{approveCount ? ` ${approveCount}` : ""}
-                        </span>
+                        <span className="font-medium">Submit & Merge</span>
                         <span className="text-xs text-accent">
                           Also merge approved requests that meet their policy.
                         </span>
