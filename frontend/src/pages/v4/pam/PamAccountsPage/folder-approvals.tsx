@@ -1,4 +1,5 @@
 import { type Dispatch, type ReactNode, type SetStateAction, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge, Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -11,7 +12,7 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Select } from "@infisical/cipher/ui/select";
-import { SheetBody, SheetFooter } from "@infisical/cipher/ui/sheet";
+import { SheetBody, SheetFooter, useSheetView } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -21,6 +22,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { type TAlert } from "@app/hooks/api/alerts/types";
 import {
   PamAccessRequestStatus,
   PamAccessType,
@@ -431,7 +433,8 @@ const ApprovalsEditor = ({
   canRevoke,
   initialDraft: savedState,
   slugById,
-  onDirtyChange
+  onDirtyChange,
+  onOpenAlert
 }: {
   folderId: string;
   lead: ReactNode;
@@ -439,7 +442,9 @@ const ApprovalsEditor = ({
   initialDraft: Draft;
   slugById: Record<string, string>;
   onDirtyChange: (dirty: boolean) => void;
+  onOpenAlert: (alert?: TAlert) => void;
 }) => {
+  const view = useSheetView();
   const pamAccess = useV4Adapter("pamAccess");
   const directory = usePamDirectory();
   const { data: folderMembers } = pamAccess.useFolderMembers(folderId);
@@ -580,7 +585,7 @@ const ApprovalsEditor = ({
                 change({ breakGlass: without(latest.current.breakGlass, approver) })
               }
             />
-            <FolderAlerts folderId={folderId} />
+            <FolderAlerts folderId={folderId} onOpen={onOpenAlert} />
             {savedState.notifications.length > 0 && (
               <LegacyNotifications
                 configs={notifications}
@@ -592,24 +597,28 @@ const ApprovalsEditor = ({
           </Stack>
         </Stack>
       </SheetBody>
-      <SheetFooter>
-        <Stack gap={8}>
-          {formError && <Alert tone="bad" title={formError} />}
-          <Inline gap={8} justify="end">
-            <Button variant="outline" disabled={!dirty || saving} onClick={reset}>
-              Discard
-            </Button>
-            <Button
-              variant="primary"
-              loading={saving}
-              disabledReason={dirty ? undefined : "No changes to save"}
-              onClick={save}
-            >
-              Save
-            </Button>
-          </Inline>
-        </Stack>
-      </SheetFooter>
+      {view?.footer &&
+        createPortal(
+          <SheetFooter>
+            <Stack gap={8}>
+              {formError && <Alert tone="bad" title={formError} />}
+              <Inline gap={8} justify="end">
+                <Button variant="outline" disabled={!dirty || saving} onClick={reset}>
+                  Discard
+                </Button>
+                <Button
+                  variant="primary"
+                  loading={saving}
+                  disabledReason={dirty ? undefined : "No changes to save"}
+                  onClick={save}
+                >
+                  Save
+                </Button>
+              </Inline>
+            </Stack>
+          </SheetFooter>,
+          view.footer
+        )}
     </>
   );
 };
@@ -618,12 +627,14 @@ export const FolderApprovals = ({
   folderId,
   lead,
   canRevoke,
-  onDirtyChange
+  onDirtyChange,
+  onOpenAlert
 }: {
   folderId: string;
   lead: ReactNode;
   canRevoke: boolean;
   onDirtyChange: (dirty: boolean) => void;
+  onOpenAlert: (alert?: TAlert) => void;
 }) => {
   const { data: config, error } = useV4Adapter("pamAccess").useApprovalConfig(folderId);
   if (!config && error)
@@ -674,6 +685,7 @@ export const FolderApprovals = ({
         ])
       )}
       onDirtyChange={onDirtyChange}
+      onOpenAlert={onOpenAlert}
     />
   );
 };

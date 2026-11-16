@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
@@ -28,7 +28,9 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  SheetView,
+  SheetViews
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
@@ -36,12 +38,14 @@ import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { format } from "date-fns";
 
+import { type TAlert } from "@app/hooks/api/alerts/types";
 import { PamResourcePermissionActions, type TPamFolderWithCount } from "@app/hooks/api/pam";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { ConfirmAction } from "./confirm-action";
+import { FolderAlertView } from "./folder-alerts";
 import { FolderApprovals } from "./folder-approvals";
 import { MembersPanel } from "./members";
 import { FOLDER_TABS } from "./sheet-tabs";
@@ -371,6 +375,54 @@ const FolderSettings = ({ folder }: { folder: TPamFolderWithCount }) => {
   );
 };
 
+const FolderSheetBody = ({
+  folder,
+  activeTab,
+  lead,
+  canRevoke,
+  onDirtyChange,
+  onOpenAlert
+}: {
+  folder?: TPamFolderWithCount;
+  activeTab?: string;
+  lead: ReactNode;
+  canRevoke: boolean;
+  onDirtyChange: (dirty: boolean) => void;
+  onOpenAlert: (alert?: TAlert) => void;
+}) => {
+  if (folder && activeTab === PamSheetTab.Approvals)
+    return (
+      <FolderApprovals
+        folderId={folder.id}
+        lead={lead}
+        canRevoke={canRevoke}
+        onDirtyChange={onDirtyChange}
+        onOpenAlert={onOpenAlert}
+      />
+    );
+  let content = (
+    <Stack gap={12}>
+      <Skeleton height={32} width={240} />
+      <Skeleton height={120} />
+    </Stack>
+  );
+  if (folder && activeTab === PamSheetTab.Permissions)
+    content = <MembersPanel scope="folder" resourceId={folder.id} />;
+  if (folder && activeTab === PamSheetTab.Configuration)
+    content = <FolderSettings key={folder.id} folder={folder} />;
+  return (
+    <SheetBody>
+      <Stack gap={24}>
+        {lead}
+        {content}
+      </Stack>
+    </SheetBody>
+  );
+};
+
+const FOLDER_VIEW = "folder";
+const ALERT_VIEW = "alert";
+
 export const FolderSheet = ({
   folderId,
   folders,
@@ -388,9 +440,19 @@ export const FolderSheet = ({
   const folder = [...folders, ...memberFolders].find(({ id }) => id === folderId);
   const { can, isLoading } = pam.useFolderActions(folderId ?? "", Boolean(folderId));
   const [dirty, setDirty] = useState(false);
+  const [view, setView] = useState(FOLDER_VIEW);
+  const [alertView, setAlertView] = useState<{ alert?: TAlert; session: number }>({ session: 0 });
+  const [alertDirty, setAlertDirty] = useState(false);
   const close = () => {
     setDirty(false);
+    setView(FOLDER_VIEW);
+    setAlertDirty(false);
     onOpenChange(false);
+  };
+  const openAlert = (alert?: TAlert) => {
+    setAlertView((current) => ({ alert, session: current.session + 1 }));
+    setAlertDirty(false);
+    setView(ALERT_VIEW);
   };
   const pendingTab = useRef<string | null>(null);
   const guard = useDiscardChangesGuard({
@@ -441,41 +503,46 @@ export const FolderSheet = ({
     </Stack>
   );
 
-  let content = (
-    <Stack gap={12}>
-      <Skeleton height={32} width={240} />
-      <Skeleton height={120} />
-    </Stack>
-  );
-  if (folder && activeTab === PamSheetTab.Permissions)
-    content = <MembersPanel scope="folder" resourceId={folder.id} />;
-  if (folder && activeTab === PamSheetTab.Configuration)
-    content = <FolderSettings key={folder.id} folder={folder} />;
-  const body =
-    folder && activeTab === PamSheetTab.Approvals ? (
-      <FolderApprovals
-        folderId={folder.id}
-        lead={lead}
-        canRevoke={can(PamResourcePermissionActions.RevokeGrants)}
-        onDirtyChange={setDirty}
-      />
-    ) : (
-      <SheetBody>
-        <Stack gap={24}>
-          {lead}
-          {content}
-        </Stack>
-      </SheetBody>
-    );
-
   return (
     <>
       <Sheet open={Boolean(folderId)} onOpenChange={(open) => !open && requestClose()}>
         <SheetContent size="lg">
-          <SheetHeader>
-            <SheetTitle>{folder?.name ?? "Folder"}</SheetTitle>
-          </SheetHeader>
-          {body}
+          <SheetViews view={view} onViewChange={setView}>
+            <SheetView
+              id={FOLDER_VIEW}
+              title={folder?.name ?? "Folder"}
+              header={
+                <SheetHeader>
+                  <SheetTitle>{folder?.name ?? "Folder"}</SheetTitle>
+                </SheetHeader>
+              }
+            >
+              <FolderSheetBody
+                folder={folder}
+                activeTab={activeTab}
+                lead={lead}
+                canRevoke={can(PamResourcePermissionActions.RevokeGrants)}
+                onDirtyChange={setDirty}
+                onOpenAlert={openAlert}
+              />
+            </SheetView>
+            <SheetView
+              id={ALERT_VIEW}
+              title={alertView.alert ? "Edit alert" : "New alert"}
+              size="lg"
+              dirty={alertDirty}
+              discardDescription="Your unsaved changes to this alert will be lost."
+            >
+              {folder && (
+                <FolderAlertView
+                  key={alertView.session}
+                  folderId={folder.id}
+                  alert={alertView.alert}
+                  onDirtyChange={setAlertDirty}
+                />
+              )}
+            </SheetView>
+          </SheetViews>
         </SheetContent>
       </Sheet>
       <DiscardChangesAlertDialog

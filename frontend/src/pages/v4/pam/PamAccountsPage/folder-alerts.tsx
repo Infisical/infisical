@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
-import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -13,6 +11,8 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
+import { SheetBody } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
@@ -136,24 +136,22 @@ const DetailsStep = ({
   );
 };
 
-const AlertWizard = ({
-  open,
-  onOpenChange,
+const AlertFlow = ({
   alert,
   folderId,
   projectId,
   used,
   members,
-  hasEnterprise
+  hasEnterprise,
+  onDirtyChange
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   alert?: TAlert;
   folderId: string;
   projectId: string;
   used: AlertEventType[];
   members: TMemberEmails;
   hasEnterprise: boolean;
+  onDirtyChange: (dirty: boolean) => void;
 }) => {
   const settings = useV4Adapter("certManagerSettings");
   const createAlert = settings.useCreateAlert();
@@ -177,16 +175,19 @@ const AlertWizard = ({
         }
   );
   const [draft, setDraft] = useState(initial);
+  const latest = useRef(initial);
   const [errors, setErrors] = useState<TFieldErrors>({});
   const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
-  const completed = useRef(false);
-  const guard = useDiscardChangesGuard({
-    isDirty: JSON.stringify(draft) !== JSON.stringify(initial),
-    onDiscard: () => onOpenChange(false)
-  });
+
+  const commit = (patch: Partial<TDraft>) => {
+    const next = { ...latest.current, ...patch };
+    latest.current = next;
+    setDraft(next);
+    onDirtyChange(JSON.stringify(next) !== JSON.stringify(initial));
+  };
 
   const update = (patch: Partial<TDraft>) => {
-    setDraft((current) => ({ ...current, ...patch }));
+    commit(patch);
     setErrors((current) =>
       Object.keys(patch).reduce((next, key) => withoutErrors(next, key), current)
     );
@@ -225,113 +226,142 @@ const AlertWizard = ({
         .catch(readableFailure("Could not create the alert."));
       saved(`Alert "${data.name}" created`);
     }
-    completed.current = true;
+    onDirtyChange(false);
   };
 
   return (
-    <>
-      <MultiStep
-        variant="dialog"
-        open={open}
-        onOpenChange={(next) => {
-          if (next || completed.current) {
-            onOpenChange(next);
-            return;
-          }
-          guard.requestDiscard();
-        }}
-        title={alert ? "Edit alert" : "Create alert"}
-        completeLabel={alert ? "Save alert" : "Create alert"}
-        onComplete={onComplete}
-        steps={[
-          {
-            title: "Details",
-            validate: () => {
-              const result = formSchema.safeParse(draft);
-              const next = toFieldErrors(result.success ? undefined : result.error, ([key]) =>
-                ["eventType", "name", "description"].includes(String(key))
-              );
-              setErrors(next);
-              return Object.keys(next).length === 0;
-            },
-            content: (
-              <DetailsStep
-                isEditing={Boolean(alert)}
-                used={used}
-                draft={draft}
-                errors={errors}
-                onChange={update}
-              />
-            )
+    <MultiStep
+      variant="view"
+      completeLabel={alert ? "Save alert" : "Create alert"}
+      onComplete={onComplete}
+      steps={[
+        {
+          title: "Details",
+          validate: () => {
+            const result = formSchema.safeParse(draft);
+            const next = toFieldErrors(result.success ? undefined : result.error, ([key]) =>
+              ["eventType", "name", "description"].includes(String(key))
+            );
+            setErrors(next);
+            return Object.keys(next).length === 0;
           },
-          {
-            title: "Channels",
-            heading: "Notification channels",
-            description: "Add at least one destination for this alert.",
-            validate: () => {
-              if (!draft.channels.length) return { message: "Add at least one channel." };
-              const next = validateChannels(draft.channels);
-              setChannelErrors(next);
-              return Object.keys(next).length === 0;
-            },
-            content: (
-              <ChannelsStep
-                channels={draft.channels}
-                errors={channelErrors}
-                onChange={(channels) => setDraft((current) => ({ ...current, channels }))}
-                onErrorsChange={setChannelErrors}
-                projectId={projectId}
-                alertId={alert?.id}
-                members={members}
-                hasEnterprise={hasEnterprise}
-                resource={{ resourceType: AlertResourceType.PamFolder, resourceId: folderId }}
-                upgrade={{
-                  intent: PamEnterpriseAlertingUpgradeIntent,
-                  paywallKey: "pam.folder-alert-channels"
-                }}
-              />
-            )
-          }
-        ]}
-      />
-      <DiscardChangesAlertDialog
-        {...guard.discardDialogProps}
-        description="Your unsaved changes to this alert will be lost."
-      />
-    </>
+          content: (
+            <DetailsStep
+              isEditing={Boolean(alert)}
+              used={used}
+              draft={draft}
+              errors={errors}
+              onChange={update}
+            />
+          )
+        },
+        {
+          title: "Channels",
+          heading: "Notification channels",
+          description: "Add at least one destination for this alert.",
+          validate: () => {
+            if (!draft.channels.length) return { message: "Add at least one channel." };
+            const next = validateChannels(draft.channels);
+            setChannelErrors(next);
+            return Object.keys(next).length === 0;
+          },
+          content: (
+            <ChannelsStep
+              channels={draft.channels}
+              errors={channelErrors}
+              onChange={(channels) => commit({ channels })}
+              onErrorsChange={setChannelErrors}
+              projectId={projectId}
+              alertId={alert?.id}
+              members={members}
+              hasEnterprise={hasEnterprise}
+              resource={{ resourceType: AlertResourceType.PamFolder, resourceId: folderId }}
+              upgrade={{
+                intent: PamEnterpriseAlertingUpgradeIntent,
+                paywallKey: "pam.folder-alert-channels"
+              }}
+            />
+          )
+        }
+      ]}
+    />
   );
 };
 
-export const FolderAlerts = ({ folderId }: { folderId: string }) => {
+const useFolderAlerts = (folderId: string) => {
   const orgId = useOrgId();
-  const { permission } = useOrgPermission();
   const settings = useV4Adapter("certManagerSettings");
   const { data: projectId = "" } = useV4Adapter("access").usePamProjectId(orgId);
-  const hasEnterprise = useV4Adapter("pamAccess").useHasEnterpriseAlerting(orgId).data ?? false;
-  const { data: allAlerts = [], isPending } = settings.useAlerts({
+  const { data = [], isPending } = settings.useAlerts({
     resourceType: AlertResourceType.PamFolder,
     resourceId: folderId,
     projectId
   });
-  const alerts = allAlerts.filter((alert) => alert.resourceId === folderId);
-  const updateAlert = settings.useUpdateAlert();
-  const deleteAlert = settings.useDeleteAlert();
-  const [opened, setOpened] = useState<{ alert?: TAlert; session: number }>({ session: 0 });
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [deleting, setDeleting] = useState<TAlert>();
+  return {
+    orgId,
+    projectId,
+    isPending,
+    alerts: data.filter((alert) => alert.resourceId === folderId)
+  };
+};
+
+export const FolderAlertView = ({
+  folderId,
+  alert,
+  onDirtyChange
+}: {
+  folderId: string;
+  alert?: TAlert;
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
+  const { orgId, projectId, alerts } = useFolderAlerts(folderId);
+  const { permission } = useOrgPermission();
+  const settings = useV4Adapter("certManagerSettings");
+  const hasEnterprise = useV4Adapter("pamAccess").useHasEnterpriseAlerting(orgId).data ?? false;
   const canReadMembers = permission.can(
     OrgPermissionMemberActions.Read,
     OrgPermissionSubjects.Member
   );
-  const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: isWizardOpen && canReadMembers });
-  const members = toMemberEmails(orgUsers.data);
-  const used = alerts.map((alert) => alert.eventType as AlertEventType);
-  const allUsed = PAM_EVENT_TYPES.every((event) => used.includes(event));
+  const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: canReadMembers });
+  if (!projectId || (canReadMembers && orgUsers.isPending))
+    return (
+      <SheetBody>
+        <Stack gap={12}>
+          <Skeleton height={32} width={240} />
+          <Skeleton height={120} />
+        </Stack>
+      </SheetBody>
+    );
+  return (
+    <AlertFlow
+      alert={alert}
+      folderId={folderId}
+      projectId={projectId}
+      used={alerts
+        .map(({ eventType }) => eventType as AlertEventType)
+        .filter((event) => event !== alert?.eventType)}
+      members={toMemberEmails(orgUsers.data)}
+      hasEnterprise={hasEnterprise}
+      onDirtyChange={onDirtyChange}
+    />
+  );
+};
 
-  const openWizard = (alert?: TAlert) => {
-    setOpened((current) => ({ alert, session: current.session + 1 }));
-    setIsWizardOpen(true);
-  };
+export const FolderAlerts = ({
+  folderId,
+  onOpen
+}: {
+  folderId: string;
+  onOpen: (alert?: TAlert) => void;
+}) => {
+  const settings = useV4Adapter("certManagerSettings");
+  const { alerts, isPending } = useFolderAlerts(folderId);
+  const updateAlert = settings.useUpdateAlert();
+  const deleteAlert = settings.useDeleteAlert();
+  const [deleting, setDeleting] = useState<TAlert>();
+  const allUsed = PAM_EVENT_TYPES.every((event) =>
+    alerts.some(({ eventType }) => eventType === event)
+  );
 
   const columns: DataTableColumn<TAlert>[] = [
     {
@@ -340,6 +370,7 @@ export const FolderAlerts = ({ folderId }: { folderId: string }) => {
       primary: true,
       grow: true,
       text: (alert) => alert.name,
+      render: (alert) => alert.name,
       secondary: (alert) => EVENT_LABELS[alert.eventType as AlertEventType] ?? alert.eventType
     },
     {
@@ -380,7 +411,7 @@ export const FolderAlerts = ({ folderId }: { folderId: string }) => {
             size="sm"
             icon="plus"
             disabledReason={allUsed ? "Every event already has an alert" : undefined}
-            onClick={() => openWizard()}
+            onClick={() => onOpen()}
           >
             Add alert
           </Button>
@@ -395,9 +426,9 @@ export const FolderAlerts = ({ folderId }: { folderId: string }) => {
             loadingRows={2}
             getRowId={(alert) => alert.id}
             rowLabel={(alert) => alert.name}
-            onRowActivate={openWizard}
+            onRowActivate={onOpen}
             rowActions={{
-              inline: [{ label: "Edit", icon: "settings", onSelect: (alert) => openWizard(alert) }],
+              inline: [{ label: "Edit", icon: "settings", onSelect: (alert) => onOpen(alert) }],
               renderMenu: (alert) => (
                 <>
                   <DropdownMenuItem
@@ -424,19 +455,6 @@ export const FolderAlerts = ({ folderId }: { folderId: string }) => {
           <EmptyState size="sm" media="bare" icon="bell" title="No alerts" />
         )}
       </Card>
-      {opened.session > 0 && (!canReadMembers || !orgUsers.isPending) && (
-        <AlertWizard
-          key={opened.session}
-          open={isWizardOpen}
-          onOpenChange={setIsWizardOpen}
-          alert={opened.alert}
-          folderId={folderId}
-          projectId={projectId}
-          used={used.filter((event) => event !== opened.alert?.eventType)}
-          members={members}
-          hasEnterprise={hasEnterprise}
-        />
-      )}
       <ConfirmAction
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}
