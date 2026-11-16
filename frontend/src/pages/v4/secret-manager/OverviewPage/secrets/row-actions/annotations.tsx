@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Calendar } from "@infisical/cipher/ui/calendar";
 import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
-import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
@@ -17,17 +18,35 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { format } from "date-fns";
-import { MailIcon } from "lucide-react";
 
+import {
+  AlertChannelType,
+  AlertPrincipalType,
+  AlertResourceType,
+  channelFormSchema,
+  type TAlert,
+  type TAlertChannelInput
+} from "@app/hooks/api/alerts/types";
+import { toChannelForm, toChannelInput } from "@app/hooks/api/alerts/utils";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
+import { useOrgId } from "../../../../access/permissions";
+import { ChannelsStep } from "../../../../cert-manager/SettingsPage/alert-channels";
+import {
+  type TDraftChannel,
+  type TFieldErrors,
+  type TMemberEmails,
+  toDraftChannel,
+  toMemberEmails,
+  validateChannels
+} from "../../../../cert-manager/SettingsPage/alert-model";
+import { useV4Adapter } from "../../../../data/adapters";
 import type { Secret, SecretReminder } from "../../secrets-model";
-import { Gate } from "../flows/shared";
-import { NEXT_PHASE } from "../overview-cells";
 
 import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
@@ -346,218 +365,371 @@ function DateButton({
   );
 }
 
-export function ReminderSheet({
-  open,
-  secretName,
-  environmentLabel,
-  reminder,
-  canEdit,
-  onOpenChange,
-  onSave
-}: {
+const everyoneEmail = (projectId: string): TDraftChannel =>
+  toDraftChannel({
+    channelType: AlertChannelType.Email,
+    name: "Email",
+    enabled: true,
+    recipients: [{ principalType: AlertPrincipalType.ProjectMembers, principalId: projectId }],
+    webhookUrl: "",
+    url: "",
+    signingSecret: "",
+    headers: [],
+    integrationKey: ""
+  });
+
+type ReminderSheetProps = {
   open: boolean;
+  secretId: string;
+  projectId: string;
   secretName: string;
   environmentLabel: string;
   reminder?: SecretReminder;
   canEdit: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (reminder: SecretReminder | undefined) => void;
+  onSave: (reminder: SecretReminder | undefined, channels?: TAlertChannelInput[]) => Promise<void>;
+};
+
+const toReminderForm = (projectId: string, reminder?: SecretReminder, alert?: TAlert) => ({
+  type: reminder?.repeatDays ? RECURRING : ONE_TIME,
+  repeatDays: reminder?.repeatDays ?? null,
+  fromDate: reminder?.fromDate ? new Date(reminder.fromDate) : undefined,
+  nextReminderDate: reminder?.nextReminderDate ? new Date(reminder.nextReminderDate) : undefined,
+  message: reminder?.message ?? "",
+  channels: alert
+    ? alert.channels.map((channel) => toDraftChannel(toChannelForm(channel)))
+    : [reminder ? { ...everyoneEmail(projectId), recipients: [] } : everyoneEmail(projectId)]
+});
+type TReminderForm = ReturnType<typeof toReminderForm>;
+
+const comparable = (form: TReminderForm) =>
+  JSON.stringify(form, (key, value: unknown) => (key === "uid" ? undefined : value));
+
+const scheduleIssues = (form: TReminderForm) => {
+  const issues: Record<string, string> = {};
+  if (form.type === ONE_TIME) {
+    if (!form.nextReminderDate) issues.nextReminderDate = "Reminder date is required";
+    else if (form.nextReminderDate <= new Date())
+      issues.nextReminderDate = "Reminder date must be in the future";
+    return issues;
+  }
+  if (form.repeatDays !== null && form.repeatDays < MIN_REPEAT_DAYS)
+    issues.repeatDays = `Must be at least ${MIN_REPEAT_DAYS} day`;
+  if (form.repeatDays !== null && form.repeatDays > MAX_REPEAT_DAYS)
+    issues.repeatDays = `Must be less than ${MAX_REPEAT_DAYS} days`;
+  if (!form.fromDate) issues.fromDate = "Start date is required";
+  else if (form.fromDate <= new Date()) issues.fromDate = "Start date must be in the future";
+  return issues;
+};
+
+function ScheduleFields({
+  form,
+  errors,
+  canEdit,
+  onChange: patch
+}: {
+  form: TReminderForm;
+  errors: Record<string, string>;
+  canEdit: boolean;
+  onChange: (value: Partial<TReminderForm>) => void;
 }) {
-  const initial = {
-    type: reminder?.repeatDays ? RECURRING : ONE_TIME,
-    repeatDays: reminder?.repeatDays ?? null,
-    fromDate: reminder?.fromDate ? new Date(reminder.fromDate) : undefined,
-    nextReminderDate: reminder?.nextReminderDate ? new Date(reminder.nextReminderDate) : undefined,
-    message: reminder?.message ?? ""
-  };
-  const [form, setForm] = useState(initial);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
-  const patch = (value: Partial<typeof form>) => {
-    setForm((current) => ({ ...current, ...value }));
-    setErrors({});
-  };
-  const submit = () => {
-    const issues: Record<string, string> = {};
-    if (form.type === ONE_TIME) {
-      if (!form.nextReminderDate) issues.nextReminderDate = "Reminder date is required";
-      else if (form.nextReminderDate <= new Date())
-        issues.nextReminderDate = "Reminder date must be in the future";
-    } else {
-      if (form.repeatDays !== null && form.repeatDays < MIN_REPEAT_DAYS)
-        issues.repeatDays = `Must be at least ${MIN_REPEAT_DAYS} day`;
-      if (form.repeatDays !== null && form.repeatDays > MAX_REPEAT_DAYS)
-        issues.repeatDays = `Must be less than ${MAX_REPEAT_DAYS} days`;
-      if (!form.fromDate) issues.fromDate = "Start date is required";
-      else if (form.fromDate <= new Date()) issues.fromDate = "Start date must be in the future";
-    }
-    setErrors(issues);
-    if (Object.keys(issues).length) return;
-    onSave({
-      ...(form.type === RECURRING
-        ? {
-            repeatDays: form.repeatDays ?? undefined,
-            fromDate: form.fromDate?.toISOString()
-          }
-        : { nextReminderDate: form.nextReminderDate?.toISOString() }),
-      message: form.message,
-      recipients: reminder?.recipients ?? []
-    });
-  };
   const every = form.repeatDays && form.repeatDays > 1 ? `${form.repeatDays} days` : "day";
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className={flowStyles.secretSheet}>
-        <SheetHeader>
-          <SheetTitle>{reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
-          <SheetDescription>
-            {`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
-          </SheetDescription>
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id="secret-reminder-form"
-            className={styles.sheetForm}
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <Field label="Recurrence">
-              <Select
-                value={form.type}
-                disabled={!canEdit}
-                options={[
-                  { value: RECURRING, label: RECURRING },
-                  { value: ONE_TIME, label: ONE_TIME }
-                ]}
-                onChange={(type) =>
-                  patch(
-                    type === RECURRING
-                      ? {
-                          type,
-                          repeatDays: DEFAULT_REPEAT_DAYS,
-                          nextReminderDate: undefined,
-                          fromDate: undefined
-                        }
-                      : { type, nextReminderDate: tomorrow(), repeatDays: null }
-                  )
-                }
-              />
-            </Field>
-            {form.type === RECURRING ? (
-              <div className={styles.pair}>
-                <Field
-                  label="Interval (days)"
-                  error={errors.repeatDays}
-                  description={
-                    form.repeatDays
-                      ? `Every ${every}${form.fromDate ? ` from ${format(form.fromDate, "MM/dd/yy")}` : ""}`
-                      : undefined
+    <>
+      <Field label="Recurrence">
+        <Select
+          value={form.type}
+          disabled={!canEdit}
+          options={[
+            { value: RECURRING, label: RECURRING },
+            { value: ONE_TIME, label: ONE_TIME }
+          ]}
+          onChange={(type) =>
+            patch(
+              type === RECURRING
+                ? {
+                    type,
+                    repeatDays: DEFAULT_REPEAT_DAYS,
+                    nextReminderDate: undefined,
+                    fromDate: undefined
                   }
-                  className={styles.grow}
-                >
-                  <Input
-                    type="number"
-                    min={MIN_REPEAT_DAYS}
-                    max={MAX_REPEAT_DAYS}
-                    placeholder={String(DEFAULT_REPEAT_DAYS)}
-                    disabled={!canEdit}
-                    value={form.repeatDays ?? ""}
-                    onChange={(event) => {
-                      const value = parseInt(event.target.value, 10);
-                      patch({ repeatDays: Number.isNaN(value) ? null : value });
-                    }}
-                  />
-                </Field>
-                <Field label="Start date" error={errors.fromDate} className={styles.grow}>
-                  <DateButton
-                    id="reminder-start-date"
-                    align="end"
-                    value={form.fromDate}
-                    disabled={!canEdit}
-                    invalid={Boolean(errors.fromDate)}
-                    onChange={(fromDate) => patch({ fromDate })}
-                  />
-                </Field>
-              </div>
-            ) : (
-              <Field label="Reminder date" error={errors.nextReminderDate}>
-                <DateButton
-                  id="reminder-date"
-                  align="start"
-                  value={form.nextReminderDate}
-                  disabled={!canEdit}
-                  invalid={Boolean(errors.nextReminderDate)}
-                  onChange={(nextReminderDate) => patch({ nextReminderDate })}
-                />
-              </Field>
+                : { type, nextReminderDate: tomorrow(), repeatDays: null }
+            )
+          }
+        />
+      </Field>
+      {form.type === RECURRING ? (
+        <div className={styles.pair}>
+          <Field
+            label="Interval (days)"
+            error={errors.repeatDays}
+            description={
+              form.repeatDays
+                ? `Every ${every}${form.fromDate ? ` from ${format(form.fromDate, "MM/dd/yy")}` : ""}`
+                : undefined
+            }
+            className={styles.grow}
+          >
+            <Input
+              type="number"
+              min={MIN_REPEAT_DAYS}
+              max={MAX_REPEAT_DAYS}
+              placeholder={String(DEFAULT_REPEAT_DAYS)}
+              disabled={!canEdit}
+              value={form.repeatDays ?? ""}
+              onChange={(event) => {
+                const value = parseInt(event.target.value, 10);
+                patch({ repeatDays: Number.isNaN(value) ? null : value });
+              }}
+            />
+          </Field>
+          <Field label="Start date" error={errors.fromDate} className={styles.grow}>
+            <DateButton
+              id="reminder-start-date"
+              align="end"
+              value={form.fromDate}
+              disabled={!canEdit}
+              invalid={Boolean(errors.fromDate)}
+              onChange={(fromDate) => patch({ fromDate })}
+            />
+          </Field>
+        </div>
+      ) : (
+        <Field label="Reminder date" error={errors.nextReminderDate}>
+          <DateButton
+            id="reminder-date"
+            align="start"
+            value={form.nextReminderDate}
+            disabled={!canEdit}
+            invalid={Boolean(errors.nextReminderDate)}
+            onChange={(nextReminderDate) => patch({ nextReminderDate })}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+function ReminderForm({
+  secretId,
+  projectId,
+  reminder,
+  canEdit,
+  alert,
+  members,
+  form,
+  dirty,
+  pending,
+  onPending,
+  onPatch,
+  onClose,
+  onSave
+}: Omit<ReminderSheetProps, "open" | "secretName" | "environmentLabel" | "onOpenChange"> & {
+  alert?: TAlert;
+  members: TMemberEmails;
+  form: TReminderForm;
+  dirty: boolean;
+  pending?: "save" | "delete";
+  onPending: (pending?: "save" | "delete") => void;
+  onPatch: (value: Partial<TReminderForm>) => void;
+  onClose: () => void;
+}) {
+  const hasNoRecipients = Boolean(reminder) && !alert;
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
+  const patch = (value: Partial<TReminderForm>) => {
+    onPatch(value);
+    setErrors({});
+  };
+  const run = async (kind: "save" | "delete", request: () => Promise<void>) => {
+    onPending(kind);
+    try {
+      await request();
+    } finally {
+      onPending(undefined);
+    }
+  };
+  const submit = () => {
+    const issues = scheduleIssues(form);
+    if (!form.channels.length) issues.channels = "At least one channel is required";
+    const nextChannelErrors = validateChannels(form.channels);
+    setErrors(issues);
+    setChannelErrors(nextChannelErrors);
+    if (Object.keys(issues).length || Object.keys(nextChannelErrors).length) return undefined;
+    return run("save", () =>
+      onSave(
+        {
+          ...(form.type === RECURRING
+            ? {
+                repeatDays: form.repeatDays ?? undefined,
+                fromDate: form.fromDate?.toISOString()
+              }
+            : { nextReminderDate: form.nextReminderDate?.toISOString() }),
+          message: form.message,
+          recipients: reminder?.recipients ?? []
+        },
+        form.channels.map((channel) => toChannelInput(channelFormSchema.parse(channel)))
+      )
+    );
+  };
+  return (
+    <>
+      <SheetBody>
+        <form
+          id="secret-reminder-form"
+          className={styles.sheetForm}
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit();
+          }}
+        >
+          <ScheduleFields form={form} errors={errors} canEdit={canEdit} onChange={patch} />
+          <Field label="Note">
+            <Textarea
+              value={form.message}
+              placeholder="Remember to rotate this secret every month."
+              disabled={!canEdit}
+              onChange={(event) => patch({ message: event.target.value })}
+            />
+          </Field>
+          <div className={styles.channels}>
+            <div className={styles.formLabel}>Channels</div>
+            {hasNoRecipients && (
+              <SmallText muted>This reminder has nobody to notify. Choose recipients.</SmallText>
             )}
-            <Field label="Note">
-              <Textarea
-                value={form.message}
-                placeholder="Remember to rotate this secret every month."
-                disabled={!canEdit}
-                onChange={(event) => patch({ message: event.target.value })}
-              />
-            </Field>
-            <div className={styles.channels}>
-              <div className={styles.channelsHead}>
-                <div>
-                  <div className={styles.formLabel}>Channels</div>
-                  <SmallText muted>Add at least one delivery channel.</SmallText>
-                </div>
-                <Gate reason={NEXT_PHASE}>
-                  <Button type="button" variant="outline" size="xs" icon="plus" disabled>
-                    Add channel
-                  </Button>
-                </Gate>
-              </div>
-              <div className={styles.channelCard}>
-                <span className={styles.channelTitle}>
-                  <Icon icon={MailIcon} />
-                  Email
-                </span>
-                <SmallText muted>
-                  {`Recipients: ${reminder?.recipients?.length ? reminder.recipients.join(", ") : "All project members"}`}
-                </SmallText>
-              </div>
-            </div>
-            {!canEdit && (
-              <SmallText muted>
-                You do not have permission to manage reminders on this secret.
-              </SmallText>
-            )}
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <Inline gap={8} justify="between">
-            <span>
-              {reminder && canEdit && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="xs"
-                  icon="trash"
-                  onClick={() => onSave(undefined)}
-                >
-                  Delete
-                </Button>
-              )}
-            </span>
-            <Inline gap={8}>
-              <Button type="button" variant="ghost" size="xs" onClick={() => onOpenChange(false)}>
-                Close
+            <ChannelsStep
+              channels={form.channels}
+              errors={channelErrors}
+              onChange={(channels) => patch({ channels })}
+              onErrorsChange={setChannelErrors}
+              projectId={projectId}
+              alertId={alert?.id}
+              members={members}
+              hasEnterprise
+              projectRecipients
+              resource={{
+                resourceType: AlertResourceType.SecretReminder,
+                resourceId: secretId
+              }}
+            />
+            {errors.channels && <FieldError>{errors.channels}</FieldError>}
+          </div>
+          {!canEdit && (
+            <SmallText muted>
+              You do not have permission to manage reminders on this secret.
+            </SmallText>
+          )}
+        </form>
+      </SheetBody>
+      <SheetFooter>
+        <Inline gap={8} justify="between">
+          <span>
+            {reminder && canEdit && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="xs"
+                icon="trash"
+                loading={pending === "delete"}
+                disabled={Boolean(pending)}
+                onClick={() => run("delete", () => onSave(undefined))}
+              >
+                Delete
               </Button>
-              {canEdit && (
-                <Button type="submit" form="secret-reminder-form" size="xs" disabled={!dirty}>
-                  {reminder ? "Update reminder" : "Create reminder"}
-                </Button>
-              )}
-            </Inline>
+            )}
+          </span>
+          <Inline gap={8}>
+            <Button type="button" variant="ghost" size="xs" onClick={onClose}>
+              Close
+            </Button>
+            {canEdit && (
+              <Button
+                type="submit"
+                form="secret-reminder-form"
+                size="xs"
+                disabled={!dirty || Boolean(pending)}
+                loading={pending === "save"}
+              >
+                {reminder ? "Update reminder" : "Create reminder"}
+              </Button>
+            )}
           </Inline>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </Inline>
+      </SheetFooter>
+    </>
+  );
+}
+
+export function ReminderSheet({
+  open,
+  secretName,
+  environmentLabel,
+  ...props
+}: ReminderSheetProps) {
+  const adapter = useV4Adapter("secrets");
+  const orgId = useOrgId();
+  const alerts = adapter.useReminderAlerts(
+    {
+      resourceType: AlertResourceType.SecretReminder,
+      projectId: props.projectId,
+      resourceId: props.secretId
+    },
+    { enabled: Boolean(props.reminder) }
+  );
+  const orgUsers = adapter.useReminderMembers(orgId);
+  const isLoading = Boolean(props.reminder) && !alerts.data;
+  const alert = alerts.data?.[0];
+  const initial = toReminderForm(props.projectId, props.reminder, alert);
+  const [draft, setDraft] = useState<TReminderForm>();
+  const [pending, setPending] = useState<"save" | "delete">();
+  const dirty = draft !== undefined && comparable(draft) !== comparable(initial);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => props.onOpenChange(false)
+  });
+  return (
+    <>
+      <Sheet
+        open={open}
+        onOpenChange={(next) => (next ? props.onOpenChange(true) : requestDiscard())}
+      >
+        <SheetContent className={flowStyles.secretSheet} pending={Boolean(pending)}>
+          <SheetHeader>
+            <SheetTitle>{props.reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
+            <SheetDescription>
+              {`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
+            </SheetDescription>
+          </SheetHeader>
+          {isLoading ? (
+            <SheetBody>
+              {alerts.error ? (
+                <SmallText muted>
+                  Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+                </SmallText>
+              ) : (
+                <Stack gap={12}>
+                  <Skeleton height={56} />
+                  <Skeleton height={56} />
+                  <Skeleton height={160} />
+                </Stack>
+              )}
+            </SheetBody>
+          ) : (
+            <ReminderForm
+              {...props}
+              alert={alert}
+              members={toMemberEmails(orgUsers.data)}
+              form={draft ?? initial}
+              dirty={dirty}
+              pending={pending}
+              onPending={setPending}
+              onPatch={(value) => setDraft((current) => ({ ...(current ?? initial), ...value }))}
+              onClose={requestDiscard}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 }

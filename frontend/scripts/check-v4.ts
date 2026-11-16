@@ -18,7 +18,7 @@ export type V4Check = {
   /** For .ts/.tsx files: judges each className-like string literal and returns the offending text. */
   classString?: (value: string) => readonly string[];
   /** For .ts/.tsx files: judges the whole source and returns each offending text with its offset. */
-  source?: (text: string) => readonly { index: number; text: string }[];
+  source?: (text: string, file: string) => readonly { index: number; text: string }[];
 };
 
 /**
@@ -721,6 +721,82 @@ export const unscopedSubjects = (selector: string): string[] =>
     return !/[.[#]/.test(subject.replace(/::[\w-]+(\([^)]*\))?/g, ""));
   });
 
+const routeDeclaration = /createFileRoute\(\s*["'`]([^"'`]+)["'`]\s*\)/;
+const fullReadiness = /readiness:\s*["']full["']/;
+const importSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)["']([^"']+)["']/gm;
+const notPortedCall =
+  /\bnotPorted\(\s*(?:(["'`])((?:(?!\1)[^\n])*)\1|([^()\n]*(?:\([^()\n]*\)[^()\n]*)*))/g;
+const notPortedLiteral =
+  /Ported in the next phase|\bnext phase\b|Not in v4 yet|n't be configured here yet|n't available here yet|can be managed here|not here yet/gi;
+
+const resolveImport = (from: string, specifier: string, known: Set<string>) => {
+  let base: string;
+  if (specifier.startsWith("@app/")) base = path.posix.join("src", specifier.slice("@app/".length));
+  else if (specifier.startsWith(".")) base = path.posix.join(path.posix.dirname(from), specifier);
+  else return undefined;
+  return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`].find(
+    (candidate) => known.has(candidate)
+  );
+};
+
+let fullRouteOwners: Map<string, string> | undefined;
+/** The first readiness full route whose page imports this file, directly or through other v4 modules. */
+const fullRouteOf = (file: string) => {
+  if (!fullRouteOwners) {
+    const files = walk("src/pages/v4").filter(isMarkup);
+    const known = new Set(files);
+    const edges = new Map<string, string[]>();
+    const read = (current: string) => readFileSync(path.join(root, current), "utf8");
+    const importsOf = (current: string) => {
+      const cached = edges.get(current);
+      if (cached) return cached;
+      const next = [...read(current).matchAll(importSpecifier)].flatMap((match) => {
+        const resolved = resolveImport(current, match[1], known);
+        return resolved ? [resolved] : [];
+      });
+      edges.set(current, next);
+      return next;
+    };
+    const owners = new Map<string, string>();
+    files
+      .filter((candidate) => candidate.endsWith("/route.tsx"))
+      .sort()
+      .forEach((routeFile) => {
+        const text = read(routeFile);
+        const route = text.match(routeDeclaration)?.[1];
+        if (!route || !fullReadiness.test(text)) return;
+        const seen = new Set([routeFile]);
+        const queue = [routeFile];
+        while (queue.length) {
+          const current = queue.pop() as string;
+          if (!owners.has(current)) owners.set(current, route);
+          importsOf(current).forEach((next) => {
+            if (seen.has(next)) return;
+            seen.add(next);
+            queue.push(next);
+          });
+        }
+      });
+    fullRouteOwners = owners;
+  }
+  return fullRouteOwners.get(file);
+};
+
+const notPortedGates = (text: string, file: string) => {
+  const route = fullRouteOf(file);
+  if (!route) return [];
+  return [
+    ...[...text.matchAll(notPortedCall)].map((match) => ({
+      index: match.index ?? 0,
+      text: `${route}: ${(match[2] ?? match[3] ?? "").trim()}`
+    })),
+    ...[...text.matchAll(notPortedLiteral)].map((match) => ({
+      index: match.index ?? 0,
+      text: `${route}: ${match[0]}`
+    }))
+  ];
+};
+
 export const v4Checks: readonly V4Check[] = [
   {
     id: "has-selector",
@@ -1053,6 +1129,15 @@ export const v4Checks: readonly V4Check[] = [
     ]
   },
   {
+    id: "not-ported",
+    rule: "full-readiness-parity",
+    message:
+      "A route marked readiness full gates a feature as not ported. Port the feature. notPorted (pages/v4/not-ported.ts) is the only way to express such a gate and every one blocks full readiness; known gates live in the baseline so later batches shrink it.",
+    appliesTo: (file) =>
+      isMarkup(file) && isAuthored(file) && file !== "src/pages/v4/not-ported.ts",
+    source: notPortedGates
+  },
+  {
     id: "suspense-fallback",
     rule: "page-loading",
     message:
@@ -1105,7 +1190,7 @@ export const scanSource = (file: string, text: string): Finding[] => {
         });
       const whole = check.source;
       if (whole && isMarkup(file))
-        return whole(text).flatMap(({ index, text: match }) => {
+        return whole(text, file).flatMap(({ index, text: match }) => {
           const line = text.slice(0, index).split("\n").length;
           if (exemptLine(line, check.id)) return [];
           return [{ check: check.id, file, line, text: match }];

@@ -1,14 +1,19 @@
 import ms from "ms";
 
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
 import { secretsAccessDemo } from "./demo-access";
+import { useDemoSecretAccessList } from "./demo-access-insights";
 import { recordDemoCommit, secretsCommitsDemo } from "./demo-commits";
 import { fakeLeaseData } from "./demo-leases";
 import { secretsManagedDemo } from "./demo-managed";
+import {
+  deleteReminderAlert,
+  saveReminderAlert,
+  useReminderAlertStore
+} from "./demo-reminder-channels";
 import {
   childPath,
   demoMutation,
@@ -59,14 +64,6 @@ const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {
     redactedByUserId: entry.redacted ? "demo-user-sarah" : null
   }));
 };
-
-const all = Object.values(ProjectPermissionSecretActions).filter(
-  (action) => action !== ProjectPermissionSecretActions.Subscribe
-);
-const reading = [
-  ProjectPermissionSecretActions.DescribeSecret,
-  ProjectPermissionSecretActions.ReadValue
-];
 
 const newSecret = (
   store: DemoStore,
@@ -355,47 +352,11 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
     }));
     return {};
   }),
-  useSecretAccessList: () => ({
-    data: {
-      users: [
-        {
-          id: "user-sarah",
-          membershipId: "membership-sarah",
-          name: "Sarah Lin",
-          allowedActions: all
-        },
-        {
-          id: "user-jordan",
-          membershipId: "membership-jordan",
-          name: "Jordan Lee",
-          allowedActions: [...reading, ProjectPermissionSecretActions.Edit]
-        }
-      ],
-      identities: [
-        {
-          id: "identity-ci",
-          membershipId: "membership-ci",
-          name: "ci-deployer",
-          allowedActions: reading
-        }
-      ],
-      groups: [
-        {
-          id: "group-platform",
-          membershipId: "membership-platform",
-          name: "Platform team",
-          allowedActions: [...reading, ProjectPermissionSecretActions.Create],
-          userIds: ["user-jordan"],
-          identityIds: []
-        }
-      ]
-    },
-    isPending: false,
-    error: null
-  }),
+  useSecretAccessList: useDemoSecretAccessList,
   useCreateSharedSecret: demoMutation(() => ({ id: crypto.randomUUID() })),
   useCreateReminder: (secretId) => {
     const store = useStore();
+    const alertStore = useReminderAlertStore();
     return {
       isPending: false,
       mutateAsync: async (dto) => {
@@ -413,12 +374,16 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
           (secret) => secret.id === secretId,
           (secret) => ({ ...secret, reminder })
         );
+        const projectId = store.get().secrets.find((secret) => secret.id === secretId)?.projectId;
+        if (projectId && dto.channels)
+          saveReminderAlert(alertStore, secretId, projectId, dto.channels);
         return reminder;
       }
     };
   },
   useDeleteReminder: (secretId) => {
     const store = useStore();
+    const alertStore = useReminderAlertStore();
     return {
       isPending: false,
       mutateAsync: async ({ reminderId }) => {
@@ -432,6 +397,7 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
             reminderNote: undefined
           })
         );
+        deleteReminderAlert(alertStore, secretId);
         return { id: reminderId, secretId };
       }
     };
