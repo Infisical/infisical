@@ -170,6 +170,7 @@ export const normalizeFolderPath = (path: string) => {
 
 export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";
 
-// render cloud preview: every grant needs the plan, root included
-export const canGrantFolderAccess = (hasFolderRbacPlan: boolean, _folderPath: string) =>
-  hasFolderRbacPlan;
+export const canGrantFolderAccess = (
+  hasFolderRbacPlan: boolean,
+  change: { isPermissionRecursive?: boolean } = {}
+) => hasFolderRbacPlan || !change.isPermissionRecursive;

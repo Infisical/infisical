@@ -16,9 +16,9 @@ func TestFolderAccess_License(t *testing.T) {
 	h := harness.From(t)
 
 	withoutFolderRBAC := license.Enterprise().Without(license.SecretsFolderRBAC)
-	const planMessage = "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
+	const planMessage = "Failed to apply folder access to subfolders due to plan restriction. Upgrade your Infisical plan to apply folder access to subfolders."
 
-	t.Run("should refuse a grant create when the plan does not include folder rbac", func(t *testing.T) {
+	t.Run("should grant folder access when the plan does not include folder rbac", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -28,16 +28,14 @@ func TestFolderAccess_License(t *testing.T) {
 		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 
 		// Action
-		res := grantAs(t, tn.Admin, proj, pr, at("/app"), secretmanager.FolderRead, nil)
+		res := grantAs(t, tn.Admin, proj, pr, at("/app"), secretmanager.FolderManage, nil)
 
 		// Assert
-		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)
-		require.Equal(t, planMessage, res.message)
-		tn.SetPlan(t, license.Enterprise())
-		require.Empty(t, grantsOf(t, proj, pr))
+		require.Equalf(t, http.StatusOK, res.status, "granting: %s", res.body)
+		require.Len(t, grantsOf(t, proj, pr), 1)
 	})
 
-	t.Run("should refuse a root folder grant on cloud when the plan does not include folder rbac", func(t *testing.T) {
+	t.Run("should refuse folder access that applies to subfolders when the plan does not include folder rbac", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -46,13 +44,38 @@ func TestFolderAccess_License(t *testing.T) {
 		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 
 		// Action
-		res := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, nil)
+		res := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, map[string]any{"isPermissionRecursive": true})
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)
 		require.Equal(t, planMessage, res.message)
 		tn.SetPlan(t, license.Enterprise())
 		require.Empty(t, grantsOf(t, proj, pr))
+	})
+
+	t.Run("should refuse editing folder access that applies to subfolders after a downgrade unless the edit turns it off", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := newProject(t, tn)
+		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
+		created := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, map[string]any{"isPermissionRecursive": true})
+		require.Equalf(t, http.StatusOK, created.status, "granting: %s", created.body)
+		tn.SetPlan(t, withoutFolderRBAC)
+
+		// Action
+		roleChange := updateGrant(t, tn.Admin, proj, pr, at("/"), map[string]any{"permission": string(secretmanager.FolderEdit)})
+		recursionOff := updateGrant(t, tn.Admin, proj, pr, at("/"), map[string]any{"isPermissionRecursive": false})
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, roleChange.status, "changing the role: %s", roleChange.body)
+		require.Equal(t, planMessage, roleChange.message)
+		require.Equalf(t, http.StatusOK, recursionOff.status, "turning subfolders off: %s", recursionOff.body)
+		grants := grantsOf(t, proj, pr)
+		require.Len(t, grants, 1)
+		require.Equal(t, string(secretmanager.FolderRead), grants[0].Permission)
+		require.False(t, grants[0].IsPermissionRecursive)
 	})
 
 	t.Run("should keep an existing grant working after a downgrade", func(t *testing.T) {
