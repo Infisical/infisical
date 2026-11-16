@@ -18,18 +18,16 @@ permissions:
   contents: write
   pull-requests: write
 
-# Every run writes to the same branch, so two releases tagged close together must not race.
-concurrency:
-  group: bump-helm-infisical-core-app-version
-  cancel-in-progress: false
-
 env:
   BRANCH_NAME: chore/helm-infisical-core-app-version
-  CHART_FILE: helm-charts/infisical-standalone-postgres/Chart.yaml
 
 jobs:
   bump:
     runs-on: ubuntu-latest
+    # Every run writes to the same branch, so two releases tagged close together must not race.
+    concurrency:
+      group: bump-helm-infisical-core-app-version
+      cancel-in-progress: false
     steps:
       - name: Resolve tag
         id: release
@@ -62,25 +60,13 @@ jobs:
         with:
           ref: ${{ steps.existing.outputs.pr != '' && env.BRANCH_NAME || 'main' }}
           fetch-depth: 0
-          fetch-tags: true
 
       - name: Bump chart app version
         id: bump
         if: steps.release.outputs.stable == 'true'
         env:
           TAG_NAME: ${{ steps.release.outputs.tag }}
-        run: |
-          MAIN_APP_VERSION="$(git show "origin/main:$CHART_FILE" | sed -n 's/^appVersion: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')"
-          echo "main_app_version=$MAIN_APP_VERSION" >> "$GITHUB_OUTPUT"
-
-          NEWEST="$(printf '%s\n%s\n' "${MAIN_APP_VERSION#v}" "${TAG_NAME#v}" | sort -V | tail -n 1)"
-          if [ "$MAIN_APP_VERSION" = "$TAG_NAME" ] || [ "$NEWEST" != "${TAG_NAME#v}" ]; then
-            echo "main already defaults to $MAIN_APP_VERSION, which is not older than $TAG_NAME."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
+        run: ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
 
       - name: Push bump branch
         if: steps.bump.outputs.changed == 'true'
@@ -115,10 +101,10 @@ jobs:
         if: steps.bump.outputs.changed == 'true'
         env:
           TAG_NAME: ${{ steps.release.outputs.tag }}
-          MAIN_APP_VERSION: ${{ steps.bump.outputs.main_app_version }}
           CHART_VERSION: ${{ steps.bump.outputs.chart_version }}
           BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main
         run: |
+          MAIN_APP_VERSION="$(git show origin/main:helm-charts/infisical-standalone-postgres/Chart.yaml | yq '.appVersion')"
           is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
 
           RELEASES="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | while read -r v; do

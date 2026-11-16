@@ -39,7 +39,7 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
 
-      - name: Check rolloutOnEveryRender rendering
+      - name: Check chart rendering
         working-directory: helm-charts/infisical-standalone-postgres
         run: |
           set -euo pipefail
@@ -60,16 +60,9 @@ jobs:
           render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
           diff "$RUNNER_TEMP/first.yaml" "$RUNNER_TEMP/second.yaml"
 
-      - name: Check image tag rendering
-        working-directory: helm-charts/infisical-standalone-postgres
-        run: |
-          set -euo pipefail
-          ls charts/*.tgz >/dev/null 2>&1 || helm dependency build .
-          image() { helm template infisical . -s templates/infisical.yaml "$@" | yq ea '[select(.kind == "Deployment")] | .[0].spec.template.spec.containers[0].image'; }
-          APP_VERSION="$(yq '.appVersion' Chart.yaml)"
-
-          [ "$(image)" = "infisical/infisical:${APP_VERSION}" ]
-          [ "$(image --set infisical.image.tag=v0.1.0)" = "infisical/infisical:v0.1.0" ]
+          image='.spec.template.spec.containers[0].image'
+          check "$image == \"infisical/infisical:$(yq '.appVersion' Chart.yaml)\""
+          check "$image == \"infisical/infisical:v0.1.0\"" --set infisical.image.tag=v0.1.0
 
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
