@@ -8,8 +8,9 @@ License in `domains.ts`. The rest of Agent Vault still lives in `src/ee/services
 - **Access** (`AgentVaultAccess.decide`, cloud only): an org whose root org plan says `agentVault: false` brokers
   for free up to `AGENT_VAULT_FREE_MONTHLY_REQUESTS` a calendar month (UTC), then is refused with a
   `RuleViolationError` named `AgentVaultFreeLimitReached` until the month resets or it adds a payment method. A
-  plan that grants it (`true`) or says nothing (`null`: the License Server switch doesn't exist yet, or a fallback plan during
-  an outage) is never limited, so a missing switch never blocks anyone. Self-hosted is never counted or limited.
+  plan that grants it (`true`) or says nothing (`null`: the License Server switch doesn't exist yet, or a fallback
+  plan during an outage) is never limited, so a missing switch never blocks anyone. Self-hosted is never counted or
+  limited.
 - **Infisical counts the free tier itself**, because the License Server knows nothing about orgs without a license.
   The count is in the key store (`FreeUsageCache`), per root org and month, so sub-orgs share their root's. A read
   that fails allows: an outage never blocks brokering. The count is in Redis only: losing it gives orgs extra free
