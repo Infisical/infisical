@@ -708,22 +708,46 @@ const splitStatements = (sql: string) => {
   return statements.map((statement) => statement.trim()).filter(Boolean);
 };
 
-export const runDemoQuery = (sql: string, transactionOpen: boolean) => {
-  let open = transactionOpen;
-  let result: TResult = { rows: [], fields: [], rowCount: null, isTruncated: false, command: "" };
-  splitStatements(sql).forEach((statement) => {
-    const tokens = tokenize(statement.replace(/--[^\n]*/g, ""));
-    const verb = tokens[0]?.text.toUpperCase() ?? "";
-    if (verb === "BEGIN") {
-      open = true;
-      result = { ...result, rowCount: null, command: "BEGIN" };
-    } else if (verb === "COMMIT" || verb === "ROLLBACK") {
-      open = false;
-      result = { ...result, rowCount: null, command: verb };
-    } else if (verb === "SELECT" || verb === "WITH") result = runSelect(tokens);
-    else result = runMutation(tokens);
+type TSnapshot = { schema: string; table: string; rows: TRow[] }[];
+
+const snapshots = new Map<string, TSnapshot>();
+
+const takeSnapshot = (): TSnapshot =>
+  Object.entries(tables).flatMap(([schema, entries]) =>
+    Object.entries(entries).map(([table, entry]) => ({ schema, table, rows: [...entry.rows] }))
+  );
+
+export const rollbackDemoTransaction = (connectionId: string) => {
+  snapshots.get(connectionId)?.forEach(({ schema, table, rows }) => {
+    const entry = tables[schema]?.[table];
+    if (entry) entry.rows = rows;
   });
-  return { ...result, transactionOpen: open };
+  snapshots.delete(connectionId);
+};
+
+export const isDemoTransactionOpen = (connectionId: string) => snapshots.has(connectionId);
+
+export const runDemoQuery = (sql: string, connectionId: string) => {
+  let result: TResult = { rows: [], fields: [], rowCount: null, isTruncated: false, command: "" };
+  try {
+    splitStatements(sql).forEach((statement) => {
+      const tokens = tokenize(statement.replace(/--[^\n]*/g, ""));
+      const verb = tokens[0]?.text.toUpperCase() ?? "";
+      if (verb === "BEGIN") {
+        if (!snapshots.has(connectionId)) snapshots.set(connectionId, takeSnapshot());
+        result = { ...result, rowCount: null, command: "BEGIN" };
+      } else if (verb === "COMMIT" || verb === "ROLLBACK") {
+        if (verb === "ROLLBACK") rollbackDemoTransaction(connectionId);
+        snapshots.delete(connectionId);
+        result = { ...result, rowCount: null, command: verb };
+      } else if (verb === "SELECT" || verb === "WITH") result = runSelect(tokens);
+      else result = runMutation(tokens);
+    });
+  } catch (error) {
+    rollbackDemoTransaction(connectionId);
+    throw error;
+  }
+  return { ...result, transactionOpen: snapshots.has(connectionId) };
 };
 
 export const demoSchemas = () => Object.keys(tables).map((name) => ({ name }));

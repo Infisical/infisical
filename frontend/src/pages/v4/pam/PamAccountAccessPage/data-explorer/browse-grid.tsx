@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -8,7 +17,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -85,6 +95,8 @@ const columnWidth = (type: string, name: string) => {
   return Math.max(180, Math.min(350, name.length * 10 + 120));
 };
 
+export type BrowseGridHandle = { hasStagedChanges: () => boolean };
+
 export const BrowseGrid = ({
   tableDetail,
   tableType,
@@ -93,6 +105,7 @@ export const BrowseGrid = ({
   connectionId,
   executeQuery,
   onRefresh,
+  ref,
   dialect
 }: {
   tableDetail: TableDetail | null;
@@ -102,6 +115,7 @@ export const BrowseGrid = ({
   connectionId: string;
   executeQuery: (connectionId: string, sql: string) => Promise<QueryResult>;
   onRefresh: () => Promise<void>;
+  ref?: Ref<BrowseGridHandle>;
   dialect: SqlDialect;
 }) => {
   const [original, setOriginal] = useState<GridRow[]>([]);
@@ -185,16 +199,6 @@ export const BrowseGrid = ({
     [tableDetail, executeQuery, connectionId, schema, table, primaryKeys, dialect]
   );
 
-  const query = { offset, pageSize, filters, sorts };
-  const reload = (patch: Partial<typeof query> = {}) => {
-    const next = { ...query, ...patch };
-    setOffset(next.offset);
-    setPageSize(next.pageSize);
-    setFilters(next.filters);
-    setSorts(next.sorts);
-    return load(next);
-  };
-
   useEffect(() => {
     if (!tableDetail) return;
     load({ offset, pageSize, filters, sorts });
@@ -224,6 +228,36 @@ export const BrowseGrid = ({
     return cells;
   }, [current, originalByKey, columnNames]);
   const changeCount = Object.keys(dirty).length;
+  useImperativeHandle(ref, () => ({ hasStagedChanges: () => changeCount > 0 }), [changeCount]);
+
+  const pendingDiscardRef = useRef<((discarded: boolean) => void) | null>(null);
+  const settleDiscard = (discarded: boolean) => {
+    pendingDiscardRef.current?.(discarded);
+    pendingDiscardRef.current = null;
+  };
+  const discardGuard = useDiscardChangesGuard({
+    isDirty: changeCount > 0,
+    onDiscard: () => {
+      setCurrent(original);
+      settleDiscard(true);
+    }
+  });
+  const discardFirst = () =>
+    new Promise<boolean>((resolve) => {
+      pendingDiscardRef.current = resolve;
+      discardGuard.requestDiscard();
+    });
+
+  const query = { offset, pageSize, filters, sorts };
+  const reload = async (patch: Partial<typeof query> = {}) => {
+    if (!(await discardFirst())) return -1;
+    const next = { ...query, ...patch };
+    setOffset(next.offset);
+    setPageSize(next.pageSize);
+    setFilters(next.filters);
+    setSorts(next.sorts);
+    return load(next);
+  };
 
   const columns = useMemo<GridColumn<GridRow>[]>(() => {
     const keySet = new Set(primaryKeys);
@@ -381,7 +415,9 @@ export const BrowseGrid = ({
               variant="destructive"
               size="sm"
               icon="trash"
-              onClick={() => setConfirmingDelete(true)}
+              onClick={async () => {
+                if (await discardFirst()) setConfirmingDelete(true);
+              }}
             >
               {`Delete ${selectedKeys.length} ${selectedKeys.length === 1 ? "row" : "rows"}`}
             </Button>
@@ -422,7 +458,7 @@ export const BrowseGrid = ({
             aria-label="Refresh"
             disabledReason={busyReason}
             onClick={async () => {
-              await onRefresh();
+              if (await discardFirst()) await onRefresh();
             }}
           />
         </div>
@@ -515,6 +551,14 @@ export const BrowseGrid = ({
           </div>
         )}
       </div>
+      <DiscardChangesAlertDialog
+        {...discardGuard.discardDialogProps}
+        onOpenChange={(open) => {
+          discardGuard.setIsDiscardDialogOpen(open);
+          if (!open) settleDiscard(false);
+        }}
+        description="Your staged edits to this table will be lost."
+      />
       <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
         <AlertDialogContent tone="danger">
           <AlertDialogHeader>

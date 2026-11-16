@@ -7,6 +7,8 @@ import {
   demoSchemas,
   demoTableDetail,
   demoTables,
+  isDemoTransactionOpen,
+  rollbackDemoTransaction,
   runDemoQuery
 } from "./demo-data-explorer";
 import { paintDemoDesktop } from "./demo-desktop";
@@ -133,8 +135,7 @@ const openQueryShell: TWebAccessTransport["openTerminal"] = ({ onMessage, onClos
 
 const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, onClose }) => {
   let open = true;
-  let nextConnection = 1;
-  const transactions = new Map<string, boolean>();
+  const connections = new Set<string>();
   const reply = (message: Record<string, unknown>, ms = 140) =>
     later(() => {
       if (open) onMessage(JSON.stringify(message));
@@ -143,6 +144,7 @@ const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, 
   const close = () => {
     if (!open) return;
     open = false;
+    connections.forEach(rollbackDemoTransaction);
     later(onClose, 0);
   };
   return {
@@ -160,12 +162,13 @@ const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, 
       const { id, connectionId = "" } = message;
       try {
         if (message.type === "open-connection") {
-          const opened = `demo-connection-${nextConnection}`;
-          nextConnection += 1;
-          transactions.set(opened, false);
+          const opened = `demo-connection-${crypto.randomUUID()}`;
+          connections.add(opened);
           reply({ type: "connection-opened", id, connectionId: opened, nativeConnectionId: null });
-        } else if (message.type === "close-connection") transactions.delete(connectionId);
-        else if (message.type === "get-schemas")
+        } else if (message.type === "close-connection") {
+          rollbackDemoTransaction(connectionId);
+          connections.delete(connectionId);
+        } else if (message.type === "get-schemas")
           reply({ type: "schemas", id, data: demoSchemas() });
         else if (message.type === "get-tables")
           reply({ type: "tables", id, data: demoTables(message.schema ?? "") });
@@ -174,13 +177,12 @@ const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, 
             type: "table-detail",
             id,
             connectionId,
-            transactionOpen: transactions.get(connectionId) ?? false,
+            transactionOpen: isDemoTransactionOpen(connectionId),
             data: demoTableDetail(message.schema ?? "", message.table ?? "")
           });
         else if (message.type === "query") {
           const startedAt = performance.now();
-          const result = runDemoQuery(message.sql ?? "", transactions.get(connectionId) ?? false);
-          transactions.set(connectionId, result.transactionOpen);
+          const result = runDemoQuery(message.sql ?? "", connectionId);
           reply(
             {
               type: "query-result",
@@ -197,7 +199,7 @@ const openDataExplorer: TWebAccessTransport["openDataExplorer"] = ({ onMessage, 
           type: "error",
           id,
           connectionId,
-          transactionOpen: transactions.get(connectionId) ?? false,
+          transactionOpen: isDemoTransactionOpen(connectionId),
           error: error instanceof Error ? error.message : "Query failed",
           detail: error instanceof DemoSqlError ? error.detail : undefined,
           hint: error instanceof DemoSqlError ? error.hint : undefined

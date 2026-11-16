@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import type { CodeEditorDialect } from "@infisical/cipher/ui/code-editor";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -10,7 +12,7 @@ import { PamAccountType, type TPamAccount } from "@app/hooks/api/pam";
 
 import { toast } from "../../../access/toast";
 import { AccessCard, AccessFailed, AccessPending } from "../access-gate";
-import { BrowseGrid } from "./browse-grid";
+import { BrowseGrid, type BrowseGridHandle } from "./browse-grid";
 import type { SchemaInfo, TableInfo } from "./protocol";
 import { QueryPanel } from "./query-panel";
 import { ExplorerSidebar } from "./sidebar";
@@ -54,7 +56,11 @@ export const DataExplorer = ({
 
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
   const [selectedSchema, setSelectedSchema] = useState(defaultSchema);
-  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [loadedTables, setLoadedTables] = useState<{ schema: string; items: TableInfo[] }>({
+    schema: defaultSchema,
+    items: []
+  });
+  const tables = loadedTables.schema === selectedSchema ? loadedTables.items : [];
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [ended, setEnded] = useState<{ reason: string | null } | null>(null);
@@ -98,6 +104,28 @@ export const DataExplorer = ({
   });
   const { openQueryTab, openBrowseTab, resetTabs, refreshBrowseTab } = tabs;
 
+  const gridHandlesRef = useRef(new Map<string, BrowseGridHandle>());
+  const [closingTabId, setClosingTabId] = useState<string | null>(null);
+  const closeGuard = useDiscardChangesGuard({
+    isDirty: true,
+    onDiscard: () => {
+      if (closingTabId) tabs.closeTab(closingTabId);
+      setClosingTabId(null);
+    }
+  });
+  const requestCloseTab = (tab: (typeof tabs.tabs)[number]) => {
+    const hasInput =
+      tab.kind === "query"
+        ? tab.sql.trim() !== ""
+        : (gridHandlesRef.current.get(tab.id)?.hasStagedChanges() ?? false);
+    if (!hasInput || tab.isDead) {
+      tabs.closeTab(tab.id);
+      return;
+    }
+    setClosingTabId(tab.id);
+    closeGuard.requestDiscard();
+  };
+
   const startedRef = useRef(false);
   useEffect(() => {
     if (!startedRef.current) {
@@ -115,7 +143,7 @@ export const DataExplorer = ({
       setIsLoadingTables(true);
       try {
         const result = await fetchTables(schema);
-        if (request === tablesRequestRef.current) setTables(result);
+        if (request === tablesRequestRef.current) setLoadedTables({ schema, items: result });
       } catch {
         // The session reports a failed request
       } finally {
@@ -172,7 +200,7 @@ export const DataExplorer = ({
   const handleReconnect = () => {
     setEnded(null);
     setSchemas([]);
-    setTables([]);
+    setLoadedTables((loaded) => ({ ...loaded, items: [] }));
     resetTabs();
     reconnect();
   };
@@ -287,7 +315,7 @@ export const DataExplorer = ({
                 iconOnly
                 icon="x"
                 aria-label={`Close ${active.title}`}
-                onClick={() => tabs.closeTab(active.id)}
+                onClick={() => requestCloseTab(active)}
               />
             )}
             <Button
@@ -327,6 +355,12 @@ export const DataExplorer = ({
                   connectionId={tab.connectionId}
                   executeQuery={executeQuery}
                   dialect={dialect}
+                  ref={(handle) => {
+                    if (handle) gridHandlesRef.current.set(tab.id, handle);
+                    return () => {
+                      gridHandlesRef.current.delete(tab.id);
+                    };
+                  }}
                   onRefresh={() =>
                     Promise.all([
                       refreshBrowseTab(tab.id),
@@ -397,6 +431,15 @@ export const DataExplorer = ({
         <span>{`${tables.length} ${tables.length === 1 ? "table" : "tables"} in ${selectedSchema}`}</span>
         <span>{`Account ${account.name}`}</span>
       </div>
+      <DiscardChangesAlertDialog
+        {...closeGuard.discardDialogProps}
+        title="Close this tab?"
+        description={
+          tabs.tabs.find(({ id }) => id === closingTabId)?.kind === "query"
+            ? "The query in this tab will be lost."
+            : "Your staged edits to this table will be lost."
+        }
+      />
     </div>
   );
 };
