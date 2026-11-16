@@ -1,85 +1,84 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { DataList } from "@infisical/cipher/ui/list";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 
 import { type MetadataEntry, MetadataEditor } from "../../access/org/metadata-editor";
-import { failed, saved } from "../../access/toast";
+import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { certificateName } from "../components/certificate";
 
 const EditMetadataDialog = ({ cert, onClose }: { cert: TCertificate; onClose: () => void }) => {
   const update = useV4Adapter("certificates").useUpdateCertificateMetadata();
-  const [entries, setEntries] = useState<MetadataEntry[]>(() =>
+  const [initial] = useState<MetadataEntry[]>(() =>
     (cert.metadata ?? []).map(({ key, value }) => ({ key, value }))
   );
+  const [entries, setEntries] = useState(initial);
   const [errors, setErrors] = useState<{ key?: string }[]>();
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: JSON.stringify(entries) !== JSON.stringify(initial),
+    onDiscard: onClose
+  });
 
-  const submit = async () => {
+  const validate = () => {
     const next = entries.map((entry) => ({ key: entry.key.trim() ? undefined : "Required" }));
     setErrors(next);
-    if (next.some((entry) => entry.key)) return;
-    try {
-      await update.mutateAsync({
+    return !next.some((entry) => entry.key);
+  };
+
+  const submit = async () => {
+    await update
+      .mutateAsync({
         certificateId: cert.id,
         metadata: entries.map((entry) => ({ key: entry.key.trim(), value: entry.value.trim() }))
-      });
-      saved("Metadata saved");
-      onClose();
-    } catch (error) {
-      failed("Couldn't save metadata", error);
-    }
+      })
+      .catch(readableFailure("Couldn't save metadata"));
+    saved("Metadata saved");
+    onClose();
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent pending={update.isPending}>
-        <DialogHeader>
-          <DialogTitle>{`Edit metadata for ${certificateName(cert)}`}</DialogTitle>
-        </DialogHeader>
-        <form
-          id="certificate-metadata"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <MetadataEditor
-            boxed
-            addLabel="Add entry"
-            entries={entries}
-            errors={errors}
-            onChange={(next) => {
-              setEntries(next);
-              setErrors(undefined);
-            }}
-          />
-        </form>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            form="certificate-metadata"
-            loading={update.isPending}
-          >
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <MultiStep
+        variant="dialog"
+        title={`Edit metadata for ${certificateName(cert)}`}
+        open
+        onOpenChange={(next) => {
+          if (next || update.isPending) return;
+          requestDiscard();
+        }}
+        completeLabel="Save"
+        onComplete={submit}
+        steps={[
+          {
+            title: "Metadata",
+            validate,
+            content: (
+              <MetadataEditor
+                boxed
+                addLabel="Add entry"
+                entries={entries}
+                errors={errors}
+                onChange={(next) => {
+                  setEntries(next);
+                  setErrors(undefined);
+                }}
+              />
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your metadata changes will be lost."
+      />
+    </>
   );
 };
 

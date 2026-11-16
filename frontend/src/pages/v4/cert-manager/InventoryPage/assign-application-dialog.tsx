@@ -1,20 +1,14 @@
 import { useState } from "react";
-import { Button } from "@infisical/cipher/ui/button";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
-import { failed, saved } from "../../access/toast";
+import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { certificateName } from "../components/certificate";
 
@@ -27,6 +21,10 @@ const AssignForm = ({ cert, onClose }: { cert: TCertificate; onClose: () => void
     limit: 20
   });
   const assign = useV4Adapter("certificates").useAssignToApplication();
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: Boolean(applicationId),
+    onDiscard: onClose
+  });
   const options = (data?.applications ?? []).map((application) => ({
     value: application.id,
     label: application.name
@@ -34,53 +32,54 @@ const AssignForm = ({ cert, onClose }: { cert: TCertificate; onClose: () => void
   const name = certificateName(cert);
 
   const submit = async () => {
-    try {
-      const assigned = await assign.mutateAsync({ certificateId: cert.id, applicationId });
-      saved(
-        `${name} assigned to ${assigned.applicationName ?? options.find((option) => option.value === applicationId)?.label ?? "the application"}`
-      );
-      onClose();
-    } catch (error) {
-      failed("Couldn't assign the certificate", error);
-    }
+    const assigned = await assign
+      .mutateAsync({ certificateId: cert.id, applicationId })
+      .catch(readableFailure("Couldn't assign the certificate"));
+    saved(
+      `${name} assigned to ${assigned.applicationName ?? options.find((option) => option.value === applicationId)?.label ?? "the application"}`
+    );
+    onClose();
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent pending={assign.isPending}>
-        <DialogHeader>
-          <DialogTitle>{`Assign ${name} to an application`}</DialogTitle>
-          <DialogDescription>
-            Once assigned, the certificate can&apos;t move to another application.
-          </DialogDescription>
-        </DialogHeader>
-        <Field label="Application">
-          <Combobox
-            label="Application"
-            placeholder="Select an application"
-            emptyText={isPending ? "Loading" : "No applications found"}
-            options={options}
-            value={applicationId}
-            onValueChange={setApplicationId}
-            onSearch={setSearch}
-            loading={isPending}
-          />
-        </Field>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabledReason={applicationId ? undefined : "Select an application"}
-            loading={assign.isPending}
-            onClick={submit}
-          >
-            Assign
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <MultiStep
+        variant="dialog"
+        title={`Assign ${name} to an application`}
+        description="Once assigned, the certificate can't move to another application."
+        open
+        onOpenChange={(next) => {
+          if (next || assign.isPending) return;
+          requestDiscard();
+        }}
+        completeLabel="Assign"
+        onComplete={submit}
+        steps={[
+          {
+            title: "Application",
+            disabledReason: applicationId ? undefined : "Select an application",
+            content: (
+              <Field label="Application">
+                <Combobox
+                  label="Application"
+                  placeholder="Select an application"
+                  emptyText={isPending ? "Loading" : "No applications found"}
+                  options={options}
+                  value={applicationId}
+                  onValueChange={setApplicationId}
+                  onSearch={setSearch}
+                  loading={isPending}
+                />
+              </Field>
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="The selected application will be lost."
+      />
+    </>
   );
 };
 

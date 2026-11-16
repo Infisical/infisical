@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import type { FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -8,16 +9,10 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +27,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Switch } from "@infisical/cipher/ui/switch";
 
 import {
@@ -45,14 +41,26 @@ import type {
   TSystemView,
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
+import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 
 import { useProjectPermission } from "../../access/permissions";
-import { failed, saved } from "../../access/toast";
+import { failed, readableFailure, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 
-export type InventoryView = { filters: FilterBarFilter[]; includeDeleted: boolean };
+export type InventoryViewScope = Pick<TInventoryViewFilters, "applicationIds" | "metadata">;
+
+export type InventoryView = {
+  filters: FilterBarFilter[];
+  includeDeleted: boolean;
+  scope?: InventoryViewScope;
+};
+
+export const VIEW_KEY_ALGORITHMS: Partial<Record<string, readonly string[]>> = {
+  "system-pqc": PQC_KEY_ALGORITHMS,
+  "system-non-pqc": NON_PQC_KEY_ALGORITHMS
+};
 
 type ViewFilters = TInventoryViewFilters & Omit<TSystemViewFilters, "status">;
 
@@ -70,7 +78,7 @@ const dateValue = (value: string | Date) => {
   return date.toISOString().split("T")[0];
 };
 
-const viewToFilters = (view: ViewFilters): InventoryView => {
+const viewToFilters = (viewId: string, view: ViewFilters): InventoryView => {
   const filters: FilterBarFilter[] = [];
   const add = (field: string, values: string[]) => {
     if (values.length) filters.push({ field, values });
@@ -84,16 +92,27 @@ const viewToFilters = (view: ViewFilters): InventoryView => {
   addDate("notBefore", "before", view.notBeforeTo);
   addDate("notBefore", "after", view.notBeforeFrom);
   add("enrollmentType", view.enrollmentTypes ?? []);
-  add("keyAlgorithm", listOf(view.keyAlgorithm));
+  add("keyAlgorithm", [...(VIEW_KEY_ALGORITHMS[viewId] ?? listOf(view.keyAlgorithm))]);
   add("keySize", (view.keySizes ?? []).map(String));
   add("caId", view.caIds ?? []);
   add("profileId", view.profileIds ?? []);
   add("source", listOf(view.source));
-  return { filters, includeDeleted: Boolean(view.includeDeleted) };
+  const scope: InventoryViewScope = {};
+  if (view.applicationIds?.length) scope.applicationIds = view.applicationIds;
+  if (view.metadata?.length) scope.metadata = view.metadata;
+  return {
+    filters,
+    includeDeleted: Boolean(view.includeDeleted),
+    scope: Object.keys(scope).length ? scope : undefined
+  };
 };
 
-const filtersToView = ({ filters, includeDeleted }: InventoryView): TInventoryViewFilters => {
-  const view: TInventoryViewFilters = includeDeleted ? { includeDeleted } : {};
+const filtersToView = ({
+  filters,
+  includeDeleted,
+  scope
+}: InventoryView): TInventoryViewFilters => {
+  const view: TInventoryViewFilters = { ...scope, ...(includeDeleted ? { includeDeleted } : {}) };
   filters.forEach(({ field, operator, values }) => {
     if (!values.length) return;
     if (field === "notAfter" || field === "notBefore") {
@@ -124,76 +143,62 @@ const SaveViewDialog = ({
   const create = useV4Adapter("certificates").useCreateInventoryView();
   const [name, setName] = useState("");
   const [isShared, setIsShared] = useState(false);
-  const [error, setError] = useState<string>();
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: name.trim() !== "" || isShared,
+    onDiscard: onClose
+  });
 
   const submit = async () => {
     const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Enter a name");
-      return;
-    }
-    try {
-      const view = await create.mutateAsync({
-        name: trimmed,
-        filters: filtersToView(current),
-        isShared
-      });
-      saved(`View ${trimmed} saved`);
-      onSaved(view.id);
-      onClose();
-    } catch (failure) {
-      failed("Couldn't save the view", failure);
-    }
+    const view = await create
+      .mutateAsync({ name: trimmed, filters: filtersToView(current), isShared })
+      .catch(readableFailure("Couldn't save the view"));
+    saved(`View ${trimmed} saved`);
+    onSaved(view.id);
+    onClose();
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent pending={create.isPending}>
-        <DialogHeader>
-          <DialogTitle>Save as view</DialogTitle>
-        </DialogHeader>
-        <form
-          id="save-inventory-view"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field label="Name" error={error}>
-              <Input
-                value={name}
-                invalid={Boolean(error)}
-                maxLength={255}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setError(undefined);
-                }}
-              />
-            </Field>
-            <Switch
-              layout="row"
-              label="Share with team"
-              checked={isShared}
-              onCheckedChange={setIsShared}
-            />
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            form="save-inventory-view"
-            loading={create.isPending}
-          >
-            Save view
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <MultiStep
+        variant="dialog"
+        title="Save as view"
+        open
+        onOpenChange={(next) => {
+          if (next || create.isPending) return;
+          requestDiscard();
+        }}
+        completeLabel="Save view"
+        onComplete={submit}
+        steps={[
+          {
+            title: "View",
+            disabledReason: name.trim() ? undefined : "Enter a name",
+            content: (
+              <Stack gap={16}>
+                <Field label="Name">
+                  <Input
+                    value={name}
+                    maxLength={255}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                </Field>
+                <Switch
+                  layout="row"
+                  label="Share with team"
+                  checked={isShared}
+                  onCheckedChange={setIsShared}
+                />
+              </Stack>
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="The view name will be lost."
+      />
+    </>
   );
 };
 
@@ -307,7 +312,7 @@ export const InventoryViewsMenu = ({
 
   const select = (viewId: string) => {
     const view = all.find((entry) => entry.id === viewId);
-    if (view) onSelect(view.id, viewToFilters(view.filters as ViewFilters));
+    if (view) onSelect(view.id, viewToFilters(view.id, view.filters as ViewFilters));
   };
 
   const toggleShare = async (view: TCertificateInventoryView) => {

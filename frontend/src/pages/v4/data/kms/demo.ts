@@ -36,7 +36,10 @@ const key = (
   hasDeleteProtection: false,
   version: 1,
   isPublicKeyPublished: false,
-  kid: keyUsage === KmsKeyUsage.SIGN_VERIFY ? `${id}:v1` : null,
+  kid:
+    keyUsage === KmsKeyUsage.SIGN_VERIFY && !String(algorithm).startsWith("ML_DSA")
+      ? `${id}:v1`
+      : null,
   jwksUrl: null,
   createdAt,
   updatedAt: createdAt,

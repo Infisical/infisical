@@ -18,9 +18,10 @@ const columns: [string, (cert: TCertificate) => string | null | undefined][] = [
   ["Source", (cert) => getCertSourceLabel(cert.source ?? null)]
 ];
 
-const escape = (value: string | null | undefined) => {
-  if (value === null || value === undefined) return "";
-  return /[",\r\n]|^[=+\-@]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+const escape = (raw: string | null | undefined) => {
+  if (raw === null || raw === undefined) return "";
+  const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n']/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 };
 
 export const certificatesToCsv = (certificates: TCertificate[]) =>

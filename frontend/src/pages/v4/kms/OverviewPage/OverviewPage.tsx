@@ -163,7 +163,9 @@ const KeyMenu = ({
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            disabledReason={permissions.publishPublicKey ? undefined : RESTRICTED}
+            disabledReason={
+              permissions.edit && permissions.publishPublicKey ? undefined : RESTRICTED
+            }
             onSelect={onTogglePublish}
           >
             <Icon name="globe" />

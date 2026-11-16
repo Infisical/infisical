@@ -18,11 +18,7 @@ import {
   IssuerType,
   type TCertificateProfile
 } from "@app/hooks/api/certificateProfiles/types";
-import {
-  isPqcAlgorithm,
-  NON_PQC_KEY_ALGORITHMS,
-  PQC_KEY_ALGORITHMS
-} from "@app/hooks/api/certificates/constants";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import {
   CertExtendedKeyUsage,
   CertificateRequestStatus,
@@ -598,14 +594,8 @@ const systemViews = [
   systemView("system-expired", "Expired", { status: ["expired"] }),
   systemView("system-revoked", "Revoked", { status: ["revoked"] }),
   systemView("system-deleted", "Deleted", { status: [CertStatus.DELETED] }),
-  {
-    ...systemView("system-pqc", "Post-Quantum (PQC)", {}),
-    filters: { keyAlgorithm: [...PQC_KEY_ALGORITHMS] } as TSystemView["filters"]
-  },
-  {
-    ...systemView("system-non-pqc", "Classical (Non-PQC)", {}),
-    filters: { keyAlgorithm: [...NON_PQC_KEY_ALGORITHMS] } as TSystemView["filters"]
-  }
+  systemView("system-pqc", "Post-Quantum (PQC)", {}),
+  systemView("system-non-pqc", "Classical (Non-PQC)", {})
 ];
 
 const savedView = (

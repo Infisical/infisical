@@ -45,12 +45,16 @@ const useExportCertificate = () => {
   const pkcs12 = useDownloadCertPkcs12();
   const pem = useMutation({
     mutationFn: async ({ serialNumber, fileName, format }: TExportCertificateDTO) => {
-      const { data } = await apiRequest.get<{ certificate: string; certificateChain: string }>(
-        `/api/v1/pki/certificates/${serialNumber}/certificate`
-      );
+      const { data } = await apiRequest.get<{
+        certificate: string;
+        certificateChain: string | null;
+      }>(`/api/v1/pki/certificates/${serialNumber}/certificate`);
       const body =
         format === "chain"
-          ? [data.certificate, data.certificateChain].map((part) => part.trim()).join("\n")
+          ? [data.certificate, data.certificateChain]
+              .map((part) => part?.trim())
+              .filter(Boolean)
+              .join("\n")
           : data.certificate.trim();
       FileSaver.saveAs(
         new Blob([`${body}\n`], { type: "application/x-pem-file" }),

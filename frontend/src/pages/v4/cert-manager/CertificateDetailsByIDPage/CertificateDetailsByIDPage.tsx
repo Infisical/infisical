@@ -58,8 +58,12 @@ import {
   shortDate,
   useCertManagerProjectId
 } from "../components/certificate";
-import { ExportCertificateDialog, useExportCertificate } from "../components/certificate-export";
-import { exportFormatLabel, pkcs12Block } from "../components/certificate-export-format";
+import {
+  ExportCertificateDialog,
+  useExportCertificate,
+  usePkcs12Block
+} from "../components/certificate-export";
+import { exportFormatLabel } from "../components/certificate-export-format";
 import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { CertificateMetadataCard } from "./certificate-metadata";
@@ -129,9 +133,18 @@ const LinkedCertificate = ({ orgId, certificateId }: { orgId: string; certificat
   );
 };
 
-const DownloadMenu = ({ cert, block }: { cert: TCertificate; block?: string }) => {
+const DownloadMenu = ({
+  cert,
+  projectId,
+  block
+}: {
+  cert: TCertificate;
+  projectId: string;
+  block?: string;
+}) => {
   const [exportingPkcs12, setExportingPkcs12] = useState(false);
   const exporter = useExportCertificate();
+  const pkcs12Block = usePkcs12Block(cert, projectId);
   return (
     <>
       <DropdownMenu>
@@ -153,16 +166,14 @@ const DownloadMenu = ({ cert, block }: { cert: TCertificate; block?: string }) =
           <DropdownMenuItem onSelect={() => exporter.download(cert, "chain")}>
             {exportFormatLabel.chain}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            disabledReason={pkcs12Block(cert)}
-            onSelect={() => setExportingPkcs12(true)}
-          >
+          <DropdownMenuItem disabledReason={pkcs12Block} onSelect={() => setExportingPkcs12(true)}>
             {exportFormatLabel.pkcs12}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <ExportCertificateDialog
         cert={exportingPkcs12 ? cert : undefined}
+        projectId={projectId}
         initialFormat="pkcs12"
         onClose={() => setExportingPkcs12(false)}
       />
@@ -501,7 +512,7 @@ const CertificateDetail = ({
               blocks={blocks}
               parentApplication={parentApplication}
             />
-            <DownloadMenu cert={cert} block={blocks.export} />
+            <DownloadMenu cert={cert} projectId={projectId} block={blocks.export} />
           </>
         }
       />

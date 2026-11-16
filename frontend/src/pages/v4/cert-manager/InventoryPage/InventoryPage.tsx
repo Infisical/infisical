@@ -35,13 +35,10 @@ import {
 import type { CaType } from "@app/hooks/api/ca/enums";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import { EnrollmentType, type TCertificateProfile } from "@app/hooks/api/certificateProfiles/types";
-import {
-  certKeyAlgorithmToNameMap,
-  NON_PQC_KEY_ALGORITHMS,
-  PQC_KEY_ALGORITHMS
-} from "@app/hooks/api/certificates/constants";
+import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm, CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
+import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
@@ -65,7 +62,12 @@ import { ImportCertificatesSheet } from "../components/certificate-requests/impo
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { AssignApplicationDialog } from "./assign-application-dialog";
 import { certificatesToCsv } from "./csv-export";
-import { type InventoryView, InventoryViewsMenu } from "./inventory-views";
+import {
+  type InventoryView,
+  InventoryViewsMenu,
+  type InventoryViewScope,
+  VIEW_KEY_ALGORITHMS
+} from "./inventory-views";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
 
@@ -92,11 +94,6 @@ type InventorySearch = {
   filterExpiresDays?: string;
   filterExpiresAfterDays?: string;
   viewId?: string;
-};
-
-const VIEW_KEY_ALGORITHMS: Partial<Record<string, readonly string[]>> = {
-  "system-pqc": PQC_KEY_ALGORITHMS,
-  "system-non-pqc": NON_PQC_KEY_ALGORITHMS
 };
 
 const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
@@ -402,31 +399,51 @@ const InventoryRowMenu = ({
   );
 };
 
+const InventoryRenewSheet = ({
+  cert,
+  projectId,
+  onClose
+}: {
+  cert: TCertificate;
+  projectId: string;
+  onClose: () => void;
+}) => {
+  const { permission } = useProjectPermission(projectId);
+  const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
+    cert.applicationId ?? ""
+  );
+  const canRevoke = cert.applicationId
+    ? getApplicationCertificateAccess({
+        applicationName: cert.applicationName ?? "this application",
+        permission: appAccess?.permission
+      }).canDelete
+    : permission.can(ProjectPermissionCertificateActions.Delete, ProjectPermissionSub.Certificates);
+  return (
+    <RenewCertificateSheet
+      cert={cert}
+      applicationName={cert.applicationName ?? undefined}
+      canRevoke={canRevoke}
+      onClose={onClose}
+    />
+  );
+};
+
 const InventoryRowDialogs = ({
   action: { kind, cert },
   caType,
   projectId,
-  canRevoke,
   onClose
 }: {
   action: RowAction;
   caType?: CaType;
   projectId: string;
-  canRevoke: boolean;
   onClose: () => void;
 }) => {
   switch (kind) {
     case "export":
-      return <ExportCertificateDialog cert={cert} onClose={onClose} />;
+      return <ExportCertificateDialog cert={cert} projectId={projectId} onClose={onClose} />;
     case "renew":
-      return (
-        <RenewCertificateSheet
-          cert={cert}
-          applicationName={cert.applicationName ?? undefined}
-          canRevoke={canRevoke}
-          onClose={onClose}
-        />
-      );
+      return <InventoryRenewSheet cert={cert} projectId={projectId} onClose={onClose} />;
     case "sync":
       return (
         <CertificateSyncsDialog
@@ -467,7 +484,6 @@ const useInventoryAccess = (projectId: string) => {
     permission.can(action, ProjectPermissionSub.Certificates);
   return {
     canImport: can(ProjectPermissionCertificateActions.Import),
-    canRevoke: can(ProjectPermissionCertificateActions.Delete),
     isAdmin: Boolean(
       access?.memberships.some((membership) =>
         membership.roles.some((role) => role.role === "admin")
@@ -555,6 +571,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const [importing, setImporting] = useState(false);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [activeViewId, setActiveViewId] = useState<string | null>(search.viewId ?? null);
+  const [viewScope, setViewScope] = useState<InventoryViewScope>();
   const [action, setAction] = useState<RowAction>();
 
   const { data, isPending } = certificates.useCertificates({
@@ -564,11 +581,13 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
     search: query.trim() || undefined,
     ...filterParams(filters),
     includeDeleted: includeDeleted || undefined,
+    applicationIds: viewScope?.applicationIds,
+    metadataFilter: viewScope?.metadata,
     sortBy: sortKeys[sort.columnId],
     sortOrder: sort.direction
   });
   const { data: stats } = certificates.useDashboardStats(projectId);
-  const { canImport, canRevoke, isAdmin } = useInventoryAccess(projectId);
+  const { canImport, isAdmin } = useInventoryAccess(projectId);
   const { data: authorities = [] } = certificates.useCertificateAuthorities();
   const { data: profiles } = certificates.useCertificateProfiles({
     limit: 100
@@ -589,12 +608,14 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
     setFilters([]);
     setIncludeDeleted(false);
     setActiveViewId(null);
+    setViewScope(undefined);
     setPage(1);
   };
   const applyView = (viewId: string | null, view: InventoryView) => {
     setActiveViewId(viewId);
     setFilters(view.filters);
     setIncludeDeleted(view.includeDeleted);
+    setViewScope(view.scope);
     setPage(1);
   };
   return (
@@ -642,7 +663,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               <InventoryViewsMenu
                 projectId={projectId}
                 activeViewId={activeViewId}
-                current={{ filters, includeDeleted }}
+                current={{ filters, includeDeleted, scope: viewScope }}
                 onSelect={applyView}
               />
               <ColumnsMenu hidden={hidden} onChange={setHidden} />
@@ -714,7 +735,6 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
           action={action}
           caType={caType(action.cert)}
           projectId={projectId}
-          canRevoke={canRevoke}
           onClose={() => setAction(undefined)}
         />
       )}
