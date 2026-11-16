@@ -94,8 +94,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `edit` and `revoke` reach only your own), `create-with-inline-services` on sessions, the `agent-vault-variables`
   subject (global variables), the project's `Settings` subject (session log settings, `read` to view and `edit` to
   change), `edit` on proxies (the proxy list carries a proxy's settings only for it), `manage-members` on access bundles
-  (a delegation's missing bundles), and `create`, `edit` and `delete` on members, groups and identities together
-  (product membership).
+  (a delegation's missing bundles), and `create`, `edit` and `delete` on members, groups or identities, for only the
+  kinds a membership change names. Typing a global variable reference into a service or an MCP tool load also takes
+  `read-value` on `agent-vault-variables`, checked before the key lookup so a missing key can't be told apart.
+- **Giving, changing or removing a member's role is bounded like Secrets Management's membership routes**
+  (`assertRoleBoundary` in the membership service): `assign-role` on that kind of member, and on the legacy privilege
+  system every permission of each role involved. The change actions alone would let a role that only manages
+  identities add or promote an admin.
 - **Only the admin rule set holds them.** In an Agent Vault project any role but admin resolves to the member set,
   custom roles and additional privileges included, so `buildAgentVaultProjectAdminPermissionRules` is the one place an
   action is granted. A new role is a new rule set, not a new branch in a service.
@@ -104,8 +109,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   can be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
 - **Reaching every bundle without a grant is the one rule that follows the role** (see below), because queries lock and
   read the role rows that confer it.
-- Keep each refusal's error type and message when a gate changes: an id you may not act on stays a 404, and the
-  refusals that name the admin role keep naming it while only that role holds the action.
+- Keep each refusal's error type when a gate changes: an id you may not act on stays a 404.
 
 ## Grants and reachability
 

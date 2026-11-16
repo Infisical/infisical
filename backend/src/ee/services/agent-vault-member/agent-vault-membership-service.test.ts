@@ -3,7 +3,10 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
+import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -67,11 +70,23 @@ const buildService = ({
   adminMembershipIds = [] as string[],
   groupReachableIds = [] as string[],
   // A role of its own, in place of Agent Vault admin.
-  rules = agentVaultProjectAdminPermissions as RawRuleOf<MongoAbility>[]
+  rules = agentVaultProjectAdminPermissions as RawRuleOf<MongoAbility>[],
+  // Off is the legacy system, where the boundary compares rule sets instead of checking assign-role.
+  shouldUseNewPrivilegeSystem = false
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
     permissionService: {
+      getProjectPermissionByRoles: vi.fn(async (roles: string[]) =>
+        roles.map((role) => ({
+          permission: createMongoAbility(
+            (role === ProjectMembershipRole.Admin
+              ? agentVaultProjectAdminPermissions
+              : agentVaultProjectMemberPermissions) as RawRuleOf<MongoAbility>[]
+          ),
+          role: { name: role, slug: role }
+        }))
+      ),
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(rules)
       })
@@ -91,7 +106,7 @@ const buildService = ({
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null, shouldUseNewPrivilegeSystem }),
       lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
       findActorsWithActiveOrgAccess: vi.fn(
         async ({ userIds, identityIds }: { userIds: string[]; identityIds: string[] }) => {
@@ -587,11 +602,17 @@ describe("member changes take the action on each kind they name", () => {
   ];
   const withoutIdentity = { userIds: [], groupIds: [], machineIdentityIds: [] };
 
-  test("adds, re-roles and removes an identity with only the identity actions", async () => {
+  const identityRoleAssigner = [
+    ...identityManager,
+    { action: ProjectPermissionIdentityActions.AssignRole, subject: ProjectPermissionSub.Identity }
+  ];
+
+  test("adds, re-roles and removes an identity with the identity actions and assign-role", async () => {
     const { service, deps } = buildService({
       productMemberships: [{ id: "mem-1" }],
       adminMembershipIds: ["mem-other"],
-      rules: identityManager
+      rules: identityRoleAssigner,
+      shouldUseNewPrivilegeSystem: true
     });
 
     await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx });
@@ -650,4 +671,56 @@ describe("member changes take the action on each kind they name", () => {
       })
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
+});
+
+describe("assigning a role is bounded like Secrets Management's membership routes", () => {
+  const identityManager = [
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionIdentityActions.Create,
+    ProjectPermissionIdentityActions.Edit,
+    ProjectPermissionIdentityActions.Delete
+  ].map((action) => ({ action, subject: ProjectPermissionSub.Identity }));
+
+  test.each([true, false])(
+    "without assign-role, a role that manages identities can't add, promote, demote or remove one (new system: %s)",
+    async (shouldUseNewPrivilegeSystem) => {
+      const { service, deps } = buildService({
+        productMemberships: [{ id: "mem-1" }],
+        adminMembershipIds: ["mem-1", "mem-other"],
+        rules: identityManager,
+        shouldUseNewPrivilegeSystem
+      });
+
+      await expect(
+        service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Admin, ctx })
+      ).rejects.toThrow(/Failed to add the member with this role/);
+      await expect(
+        service.updateProductMemberRoles({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx })
+      ).rejects.toThrow(/Failed to change the role of a more privileged member/);
+      await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
+        /Failed to remove a more privileged member/
+      );
+      expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+      expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+      expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
+    }
+  );
+
+  test.each([true, false])(
+    "an Agent Vault admin still promotes (new system: %s)",
+    async (shouldUseNewPrivilegeSystem) => {
+      const { service, deps } = buildService({
+        productMemberships: [{ id: "mem-1" }],
+        adminMembershipIds: ["mem-other"],
+        shouldUseNewPrivilegeSystem
+      });
+      await service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        ...addIds,
+        role: ProjectMembershipRole.Admin,
+        ctx
+      });
+      expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalled();
+    }
+  );
 });
