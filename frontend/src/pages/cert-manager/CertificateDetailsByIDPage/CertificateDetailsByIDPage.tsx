@@ -7,6 +7,7 @@ import { PageTitle } from "@app/components/PageTitle";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   AccessRestrictedDialog,
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -289,6 +290,17 @@ const Page = () => {
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
   const revokeBlockedReason =
     pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
+  const pendingRevocationLink =
+    pendingRevocation.isPending && pendingRevocationRequestId
+      ? getCertManagerLink(currentProject, `approvals/${pendingRevocationRequestId}`, {
+          policyType: ApprovalPolicyType.CertRevocation
+        })
+      : undefined;
+  const pendingRevocationBadge = pendingRevocationLink ? (
+    <Badge variant="warning" asChild>
+      <Link {...pendingRevocationLink}>Revocation Pending</Link>
+    </Badge>
+  ) : null;
 
   let certificateBackLink = (
     <Link
@@ -356,17 +368,11 @@ const Page = () => {
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
           description={
-            pendingRevocation.isPending && pendingRevocationRequestId ? (
+            pendingRevocationLink ? (
               <>
                 This certificate isn&apos;t revoked until its{" "}
                 <Link
-                  {...getCertManagerLink(
-                    currentProject,
-                    `approvals/${pendingRevocationRequestId}`,
-                    {
-                      policyType: ApprovalPolicyType.CertRevocation
-                    }
-                  )}
+                  {...pendingRevocationLink}
                   className="text-foreground underline underline-offset-2 hover:text-project"
                 >
                   revocation request
@@ -377,7 +383,23 @@ const Page = () => {
               "View certificate details"
             )
           }
-          title={displayName}
+          title={
+            pendingRevocationBadge ? (
+              // The h1 truncates as one line after its 26px scope icon (plus mr-3), so this box gets the rest
+              // of the width; at max-w-full it overflows and the h1 replaces the whole title with an ellipsis.
+              <span className="inline-flex max-w-[calc(100%-2.375rem)] items-center gap-x-3 align-bottom">
+                <span
+                  className="min-w-0 truncate underline decoration-project/90 underline-offset-4"
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+                {pendingRevocationBadge}
+              </span>
+            ) : (
+              displayName
+            )
+          }
         >
           {isDeleted && !canOfferRevoke ? (
             <Tooltip>
@@ -566,7 +588,10 @@ const Page = () => {
           )}
         </PageHeader>
         <div className="flex flex-col gap-5 lg:flex-row">
-          <CertificateOverviewSection certificateId={certificate.id} />
+          <CertificateOverviewSection
+            certificateId={certificate.id}
+            pendingRevocationBadge={pendingRevocationBadge}
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
             <CertificateInstallationsSection certificateId={certificate.id} />
