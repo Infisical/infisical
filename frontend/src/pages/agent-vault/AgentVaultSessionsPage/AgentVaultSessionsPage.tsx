@@ -66,6 +66,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
@@ -209,7 +210,16 @@ export const AgentVaultSessionsPage = () => {
   // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
   const { data: nameableServices } = useListAgentVaultServices(projectId, { limit: 1 });
-  const { data: nameableSkills } = useListAgentVaultSkills(projectId, { limit: 1 });
+  // Without Read on skills the caller can name none, and the list would only answer 403.
+  const canReadSkills = permission.can(
+    ProjectPermissionAgentVaultSkillActions.Read,
+    ProjectPermissionSub.AgentVaultSkills
+  );
+  const { data: nameableSkills } = useListAgentVaultSkills(
+    projectId,
+    { limit: 1 },
+    { enabled: canReadSkills }
+  );
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
     projectId,
     canReadSessionLogSettings
