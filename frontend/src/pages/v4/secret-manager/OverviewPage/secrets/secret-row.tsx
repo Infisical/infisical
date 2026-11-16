@@ -747,9 +747,9 @@ function SecretActionsRow({
                       secretId: secret.id,
                       reminderId: secret.reminder?.id ?? ""
                     });
-                setOpen(undefined);
-                request.then(
+                return request.then(
                   () => {
+                    setOpen(undefined);
                     handlers.onRefresh();
                     ctx.report(
                       reminder
@@ -758,11 +758,12 @@ function SecretActionsRow({
                       "ok"
                     );
                   },
-                  (error) =>
+                  (error) => {
                     failed(
                       reminder ? "Failed to save the reminder" : "Failed to delete the reminder",
                       error
-                    )
+                    );
+                  }
                 );
               }}
             />

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Calendar } from "@infisical/cipher/ui/calendar";
 import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
@@ -385,7 +387,7 @@ type ReminderSheetProps = {
   reminder?: SecretReminder;
   canEdit: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (reminder: SecretReminder | undefined, channels?: TAlertChannelInput[]) => void;
+  onSave: (reminder: SecretReminder | undefined, channels?: TAlertChannelInput[]) => Promise<void>;
 };
 
 const toReminderForm = (projectId: string, reminder?: SecretReminder, alert?: TAlert) => ({
@@ -512,21 +514,34 @@ function ReminderForm({
   canEdit,
   alert,
   members,
-  onOpenChange,
+  form,
+  dirty,
+  onPatch,
+  onClose,
   onSave
-}: Omit<ReminderSheetProps, "open" | "secretName" | "environmentLabel"> & {
+}: Omit<ReminderSheetProps, "open" | "secretName" | "environmentLabel" | "onOpenChange"> & {
   alert?: TAlert;
   members: TMemberEmails;
+  form: TReminderForm;
+  dirty: boolean;
+  onPatch: (value: Partial<TReminderForm>) => void;
+  onClose: () => void;
 }) {
   const hasNoRecipients = Boolean(reminder) && !alert;
-  const [initial] = useState(() => toReminderForm(projectId, reminder, alert));
-  const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
-  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
-  const patch = (value: Partial<typeof form>) => {
-    setForm((current) => ({ ...current, ...value }));
+  const [pending, setPending] = useState<"save" | "delete">();
+  const patch = (value: Partial<TReminderForm>) => {
+    onPatch(value);
     setErrors({});
+  };
+  const run = async (kind: "save" | "delete", request: () => Promise<void>) => {
+    setPending(kind);
+    try {
+      await request();
+    } finally {
+      setPending(undefined);
+    }
   };
   const submit = () => {
     const issues = scheduleIssues(form);
@@ -534,19 +549,21 @@ function ReminderForm({
     const nextChannelErrors = validateChannels(form.channels);
     setErrors(issues);
     setChannelErrors(nextChannelErrors);
-    if (Object.keys(issues).length || Object.keys(nextChannelErrors).length) return;
-    onSave(
-      {
-        ...(form.type === RECURRING
-          ? {
-              repeatDays: form.repeatDays ?? undefined,
-              fromDate: form.fromDate?.toISOString()
-            }
-          : { nextReminderDate: form.nextReminderDate?.toISOString() }),
-        message: form.message,
-        recipients: reminder?.recipients ?? []
-      },
-      form.channels.map((channel) => toChannelInput(channelFormSchema.parse(channel)))
+    if (Object.keys(issues).length || Object.keys(nextChannelErrors).length) return undefined;
+    return run("save", () =>
+      onSave(
+        {
+          ...(form.type === RECURRING
+            ? {
+                repeatDays: form.repeatDays ?? undefined,
+                fromDate: form.fromDate?.toISOString()
+              }
+            : { nextReminderDate: form.nextReminderDate?.toISOString() }),
+          message: form.message,
+          recipients: reminder?.recipients ?? []
+        },
+        form.channels.map((channel) => toChannelInput(channelFormSchema.parse(channel)))
+      )
     );
   };
   return (
@@ -607,18 +624,26 @@ function ReminderForm({
                 variant="destructive"
                 size="xs"
                 icon="trash"
-                onClick={() => onSave(undefined)}
+                loading={pending === "delete"}
+                disabled={Boolean(pending)}
+                onClick={() => run("delete", () => onSave(undefined))}
               >
                 Delete
               </Button>
             )}
           </span>
           <Inline gap={8}>
-            <Button type="button" variant="ghost" size="xs" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" size="xs" onClick={onClose}>
               Close
             </Button>
             {canEdit && (
-              <Button type="submit" form="secret-reminder-form" size="xs" disabled={!dirty}>
+              <Button
+                type="submit"
+                form="secret-reminder-form"
+                size="xs"
+                disabled={!dirty || Boolean(pending)}
+                loading={pending === "save"}
+              >
                 {reminder ? "Update reminder" : "Create reminder"}
               </Button>
             )}
@@ -647,37 +672,55 @@ export function ReminderSheet({
   );
   const orgUsers = adapter.useReminderMembers(orgId);
   const isLoading = Boolean(props.reminder) && !alerts.data;
+  const alert = alerts.data?.[0];
+  const initial = toReminderForm(props.projectId, props.reminder, alert);
+  const [draft, setDraft] = useState<TReminderForm>();
+  const dirty = draft !== undefined && JSON.stringify(draft) !== JSON.stringify(initial);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => props.onOpenChange(false)
+  });
   return (
-    <Sheet open={open} onOpenChange={props.onOpenChange}>
-      <SheetContent className={flowStyles.secretSheet}>
-        <SheetHeader>
-          <SheetTitle>{props.reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
-          <SheetDescription>
-            {`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
-          </SheetDescription>
-        </SheetHeader>
-        {isLoading ? (
-          <SheetBody>
-            {alerts.error ? (
-              <SmallText muted>
-                Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
-              </SmallText>
-            ) : (
-              <Stack gap={12}>
-                <Skeleton height={56} />
-                <Skeleton height={56} />
-                <Skeleton height={160} />
-              </Stack>
-            )}
-          </SheetBody>
-        ) : (
-          <ReminderForm
-            {...props}
-            alert={alerts.data?.[0]}
-            members={toMemberEmails(orgUsers.data)}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet
+        open={open}
+        onOpenChange={(next) => (next ? props.onOpenChange(true) : requestDiscard())}
+      >
+        <SheetContent className={flowStyles.secretSheet}>
+          <SheetHeader>
+            <SheetTitle>{props.reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
+            <SheetDescription>
+              {`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
+            </SheetDescription>
+          </SheetHeader>
+          {isLoading ? (
+            <SheetBody>
+              {alerts.error ? (
+                <SmallText muted>
+                  Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+                </SmallText>
+              ) : (
+                <Stack gap={12}>
+                  <Skeleton height={56} />
+                  <Skeleton height={56} />
+                  <Skeleton height={160} />
+                </Stack>
+              )}
+            </SheetBody>
+          ) : (
+            <ReminderForm
+              {...props}
+              alert={alert}
+              members={toMemberEmails(orgUsers.data)}
+              form={draft ?? initial}
+              dirty={dirty}
+              onPatch={(value) => setDraft((current) => ({ ...(current ?? initial), ...value }))}
+              onClose={requestDiscard}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 }
