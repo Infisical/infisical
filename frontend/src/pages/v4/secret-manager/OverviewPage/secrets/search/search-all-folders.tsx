@@ -33,6 +33,7 @@ import {
 } from "@app/hooks/api/dashboard/types";
 import type { ProjectEnv } from "@app/hooks/api/projects/types";
 import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/types";
+import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { errorMessage, failed, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -852,6 +853,11 @@ function SearchResults({
     environments,
     Boolean(query.trim() || filters.tags.length)
   );
+  useResetPageHelper({
+    totalCount: results?.total ?? Infinity,
+    offset: (page - 1) * perPage,
+    setPage: () => setPaging({ scope: pageScope, page: 1 })
+  });
 
   return (
     <SheetBody className={styles.body}>

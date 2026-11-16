@@ -7,7 +7,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
-import type { TDopplerConfig } from "@app/hooks/api/migration/types";
+import { ExternalMigrationImportStatus, type TDopplerConfig } from "@app/hooks/api/migration/types";
 
 import { readableFailure, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -67,7 +67,7 @@ export function DopplerImportDialog({
   const submit = async () => {
     completed.current = true;
     try {
-      await importDoppler
+      const response = await importDoppler
         .mutateAsync({
           connectionId: draft.connectionId,
           dopplerProject: draft.project,
@@ -77,7 +77,11 @@ export function DopplerImportDialog({
           targetSecretPath: path
         })
         .catch(readableFailure("Couldn't import secrets from Doppler."));
-      toast({ tone: "ok", title: "Successfully imported secrets from Doppler" });
+      toast(
+        response.status === ExternalMigrationImportStatus.ApprovalRequired
+          ? { title: "Secret change request created successfully. Awaiting approval." }
+          : { tone: "ok", title: "Successfully imported secrets from Doppler" }
+      );
       onClose();
     } catch (error) {
       completed.current = false;
