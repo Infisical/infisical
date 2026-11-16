@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -20,12 +20,18 @@ import {
   Input
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useUpdateAgentVaultSessionLabel } from "@app/hooks/api/agentVault";
+import { useUpdateAgentVaultSession } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
 import { sessionLabelSchema } from "./sessionLabelSchema";
+import { SessionMetadataFields } from "./SessionMetadataFields";
+import {
+  metadataRecordToRows,
+  metadataRowsToRecord,
+  sessionMetadataRowsSchema
+} from "./sessionMetadataSchema";
 
-const schema = z.object({ label: sessionLabelSchema });
+const schema = z.object({ label: sessionLabelSchema, metadata: sessionMetadataRowsSchema });
 
 type FormData = z.infer<typeof schema>;
 
@@ -34,30 +40,37 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-export const EditSessionLabelDialog = ({ session, onOpenChange }: Props) => {
+export const EditSessionDialog = ({ session, onOpenChange }: Props) => {
   const { projectId } = useProject();
-  const updateLabel = useUpdateAgentVaultSessionLabel(projectId);
+  const updateSession = useUpdateAgentVaultSession(projectId);
 
+  const formMethods = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { label: "", metadata: [] }
+  });
   const {
     control,
     handleSubmit,
     reset,
     formState: { isSubmitting }
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = formMethods;
 
   useEffect(() => {
-    if (session) reset({ label: session.label ?? "" });
+    if (session) {
+      reset({ label: session.label ?? "", metadata: metadataRecordToRows(session.metadata) });
+    }
   }, [session, reset]);
 
-  const onSubmit = async ({ label }: FormData) => {
+  const onSubmit = async ({ label, metadata }: FormData) => {
     if (!session) return;
 
     try {
-      await updateLabel.mutateAsync({ sessionId: session.id, label: label || null });
-      createNotification({
-        text: label ? "Session label saved" : "Session label removed",
-        type: "success"
+      await updateSession.mutateAsync({
+        sessionId: session.id,
+        label: label || null,
+        metadata: metadataRowsToRecord(metadata)
       });
+      createNotification({ text: "Session updated", type: "success" });
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -68,8 +81,10 @@ export const EditSessionLabelDialog = ({ session, onOpenChange }: Props) => {
     <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{session?.label ? "Edit Label" : "Add Label"}</DialogTitle>
-          <DialogDescription>A label describes what this session is for.</DialogDescription>
+          <DialogTitle>Edit Session</DialogTitle>
+          <DialogDescription>
+            A label and metadata describe what this session is for.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -92,6 +107,10 @@ export const EditSessionLabelDialog = ({ session, onOpenChange }: Props) => {
               </Field>
             )}
           />
+
+          <FormProvider {...formMethods}>
+            <SessionMetadataFields idPrefix="agent-vault-session-edit" />
+          </FormProvider>
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

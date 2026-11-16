@@ -88,7 +88,7 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
-import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { EditSessionDialog } from "./components/EditSessionDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
@@ -138,7 +138,7 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
-  const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
+  const [sessionToEdit, setSessionToEdit] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
@@ -519,11 +519,11 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
+                              {/* The API refuses edits once the session's owner, or the user it acts on behalf of, is deleted */}
                               {session.actor.id !== null && session.onBehalfOf?.id !== null && (
-                                <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
                                   <PencilIcon />
-                                  {session.label ? "Edit Label" : "Add Label"}
+                                  Edit Session
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -579,13 +579,13 @@ export const AgentVaultSessionsPage = () => {
         session={openSession}
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
-        onEditLabel={setSessionToLabel}
+        onEdit={setSessionToEdit}
       />
 
-      <EditSessionLabelDialog
-        session={sessionToLabel}
+      <EditSessionDialog
+        session={sessionToEdit}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setSessionToLabel(null);
+          if (!isOpen) setSessionToEdit(null);
         }}
       />
 

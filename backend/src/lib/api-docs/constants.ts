@@ -5334,7 +5334,12 @@ export const AGENT_VAULT = {
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
     updateLabel:
-      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. Leave it out to keep the current label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+    metadata:
+      "Key/value pairs that describe the session, such as a run ID, a ticket or the end user an agent works for, so whoever reads the session later can tell what it was for. Up to 20 entries. Each key is 1 to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters. Keys and values are trimmed, and each key can be used once.",
+    metadataRead: "The session's metadata, as key/value pairs in the order they were set. Empty when it has none.",
+    updateMetadata:
+      "The session's new metadata. It replaces every existing entry, so send the full set you want to keep, or an empty object to remove them all. Leave it out to keep the current metadata. Up to 20 entries, with the same rules as at creation. You can't change the metadata once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:
       "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",

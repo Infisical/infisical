@@ -2113,6 +2113,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
+    resourceMetadataDAL,
     membershipDAL,
     userDAL,
     orgDAL,

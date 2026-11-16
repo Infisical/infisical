@@ -824,7 +824,7 @@ const { sessions, totalCount } = await client.agentVault().sessions.list({
   - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from
   - `scope` (AgentVaultSessionScope, optional): whose sessions to list, either `AgentVaultSessionScope.Mine` (`"mine"`) for your own sessions or `AgentVaultSessionScope.All` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.Mine`)
   - `statuses` (AgentVaultSessionStatus[], optional): the statuses to include, from `AgentVaultSessionStatus.Active` (`"active"`), `AgentVaultSessionStatus.Revoked` (`"revoked"`), and `AgentVaultSessionStatus.Expired` (`"expired"`) (defaults to all three)
-  - `search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+  - `search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
   - `limit` (number, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
   - `offset` (number, optional): the number of sessions to skip (defaults to `0`)
 

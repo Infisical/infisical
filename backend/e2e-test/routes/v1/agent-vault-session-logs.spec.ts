@@ -842,8 +842,12 @@ describe("Agent Vault session logs", async () => {
       const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, { label: "afterwards" });
       expect(relabelled.statusCode).toBe(400);
       expect(relabelled.json().message).toBe(
-        "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label can't be changed."
+        "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label and metadata can't be changed."
       );
+      const remetadata = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, {
+        metadata: { runId: "8812" }
+      });
+      expect(remetadata.statusCode).toBe(400);
 
       const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${sessionId}/revoke`);
       expect(revoked.statusCode).toBe(200);

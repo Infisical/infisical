@@ -4,9 +4,12 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import {
+  agentVaultSessionLabelUpdateSchema,
+  agentVaultSessionMetadataSchema,
   deriveSessionStatus,
   describeSessionForAudit,
   isOrphanedSession,
+  isSameSessionMetadata,
   isSessionOwnedBy
 } from "./agent-vault-session-fns";
 
@@ -128,5 +131,80 @@ describe("describeSessionForAudit", () => {
         accessBundle: { name: "release" }
       })
     ).toEqual({ sessionOwner: "slack-assistant", accessBundleName: "release", onBehalfOfUserName: "alice" });
+  });
+});
+
+describe("agent vault session metadata", () => {
+  const messagesOf = (input: unknown) => {
+    const result = agentVaultSessionMetadataSchema.safeParse(input);
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  };
+
+  test("trims keys and values and keeps the order they were sent in", () => {
+    const parsed = agentVaultSessionMetadataSchema.parse({ " runId ": " 8812 ", slackChannel: "#deploys", note: "" });
+    expect(Object.entries(parsed)).toEqual([
+      ["runId", "8812"],
+      ["slackChannel", "#deploys"],
+      ["note", ""]
+    ]);
+  });
+
+  test("accepts up to 20 entries and refuses more", () => {
+    const entries = (count: number) =>
+      Object.fromEntries(Array.from({ length: count }, (_, index) => [`key${index}`, "value"]));
+    expect(agentVaultSessionMetadataSchema.safeParse(entries(20)).success).toBe(true);
+    expect(messagesOf(entries(21))).toEqual(["A session can have at most 20 metadata entries"]);
+  });
+
+  test("refuses two keys that are the same once trimmed", () => {
+    expect(messagesOf({ runId: "1", "runId ": "2" })).toEqual([
+      "The metadata key 'runId' appears more than once. Each key can be used once per session."
+    ]);
+  });
+
+  test("refuses an empty or blank key", () => {
+    expect(messagesOf({ "": "value" })).toEqual(["A metadata key can't be empty"]);
+    expect(messagesOf({ "   ": "value" })).toEqual(["A metadata key can't be empty"]);
+  });
+
+  test("bounds key and value length", () => {
+    expect(agentVaultSessionMetadataSchema.safeParse({ ["k".repeat(255)]: "v".repeat(1020) }).success).toBe(true);
+    expect(messagesOf({ ["k".repeat(256)]: "v" })).toEqual(["A metadata key can be at most 255 characters"]);
+    expect(messagesOf({ runId: "v".repeat(1021) })).toEqual([
+      "The value of metadata key 'runId' can be at most 1020 characters"
+    ]);
+  });
+
+  test("refuses invisible characters in a key or a value, so one entry can't pass for another", () => {
+    const invisible = ["a\tb", "alice\u200b", "revo \u202eltr", "a\u2028b", "a\ue000b", "a\ud800b"];
+    invisible.forEach((text) => {
+      expect(messagesOf({ [text]: "value" })[0], JSON.stringify(text)).toContain("A metadata key can't contain");
+      expect(messagesOf({ owner: text })[0], JSON.stringify(text)).toContain(
+        "The value of metadata key 'owner' can't contain"
+      );
+    });
+    expect(agentVaultSessionMetadataSchema.parse({ ticket: "PR #123 (prod): café, 部署 🚀" })).toEqual({
+      ticket: "PR #123 (prod): café, 部署 🚀"
+    });
+  });
+
+  test("refuses anything but string values", () => {
+    expect(agentVaultSessionMetadataSchema.safeParse({ runId: 8812 }).success).toBe(false);
+    expect(agentVaultSessionMetadataSchema.safeParse([["runId", "8812"]]).success).toBe(false);
+  });
+
+  test("compares two sets entry by entry, in order", () => {
+    expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "2" })).toBe(true);
+    expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "3" })).toBe(false);
+    expect(isSameSessionMetadata({ a: "1" }, {})).toBe(false);
+  });
+});
+
+describe("agent vault session label on update", () => {
+  test("left out keeps the label, while null or blank removes it", () => {
+    expect(agentVaultSessionLabelUpdateSchema.parse(undefined)).toBeUndefined();
+    expect(agentVaultSessionLabelUpdateSchema.parse(null)).toBeNull();
+    expect(agentVaultSessionLabelUpdateSchema.parse("   ")).toBeNull();
+    expect(agentVaultSessionLabelUpdateSchema.parse(" nightly ")).toBe("nightly");
   });
 });

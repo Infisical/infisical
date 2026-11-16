@@ -56,7 +56,7 @@ Anyone granted at least one access bundle in a project can create a session in t
     infisical agent-vault sessions create --access-bundle <bundle-name> --ttl 8h
     ```
 
-    Set the duration with `--ttl`, which takes a value like `30m`, `8h`, `7d`, or `never`, and defaults to `never`. To [label the session](#label-a-session), pass `--label`.
+    Set the duration with `--ttl`, which takes a value like `30m`, `8h`, `7d`, or `never`, and defaults to `never`. To [label the session or add metadata](#label-a-session-and-add-metadata), pass `--label` or `--metadata`.
 
     To create a session and start the agent in one command, pass the access bundle to `infisical agent-vault run` instead. The CLI revokes that session when the agent exits:
 
@@ -84,14 +84,44 @@ Anyone granted at least one access bundle in a project can create a session in t
   Picking **Never** as the duration keeps the session working until someone revokes it. Only use this for long-running agents, and revoke the session once the agent has finished.
 </Tip>
 
-## Label a session
+## Label a session and add metadata
 
 A label is a short description of what a session is for, such as `nightly deploy` or `support ticket triage`. If one identity creates many sessions, the label is how you tell the sessions apart on the **Sessions** page, and you can search sessions by their label. A label can be up to 128 characters, and can't contain line breaks, tabs, or invisible characters such as zero-width spaces.
 
-You can add, change, or remove a session's label, even after the session expires or is revoked:
+Metadata is a set of keys and values that record which run a session belongs to, such as the run ID, the ticket, or the user or Slack channel the agent works for. A session can have up to 20 metadata keys. A key can be up to 255 characters and a value up to 1020, and neither can contain line breaks, tabs, or invisible characters.
 
-- In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Add Label** or **Edit Label**
-- From an agent or a script, call [the endpoint that updates a session](/api-reference/endpoints/agent-vault-sessions/update), for example to record what the agent is working on
+To add a label and metadata when you create a session:
+
+<Tabs>
+  <Tab title="Dashboard">
+    In the **Create Session** dialog, on the **Create Now** tab, enter a **Label**. To add metadata, select **Add Metadata**, then enter a key and a value. Select **Add Metadata** again for each other key.
+  </Tab>
+  <Tab title="CLI">
+    Pass `--label`, and pass `--metadata` once for each key, as `key=value`. The value is everything after the first `=`. Both flags work with `infisical agent-vault sessions create` and with `infisical agent-vault run --access-bundle`:
+
+    ```bash
+    infisical agent-vault sessions create --access-bundle <bundle-name> \
+      --label "nightly deploy" --metadata runId=8812 --metadata ticket=OPS-142
+    ```
+  </Tab>
+  <Tab title="Python SDK">
+    Pass `label` and a `metadata` dictionary to `client.agent_vault.sessions.create`:
+
+    ```python
+    session = client.agent_vault.sessions.create(
+        project_id="<project-id>",
+        access_bundle="<access-bundle-name>",
+        label="nightly deploy",
+        metadata={"runId": "8812"}
+    )
+    ```
+  </Tab>
+</Tabs>
+
+You can change a session's label and metadata later, even after the session expires or is revoked:
+
+- In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Edit Session**
+- From an agent or a script, call the [Update session](/api-reference/endpoints/agent-vault-sessions/update) endpoint, for example to record what the agent is working on (if you send `metadata`, it replaces all of the session's metadata)
 
 <Frame>
   <img src="/images/platform/agent-vault/session-actions.png" alt="The Sessions page with the menu of the Nightly deploy session open, showing View Session Logs, Edit Label, and Revoke Session" />

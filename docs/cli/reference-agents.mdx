@@ -347,6 +347,7 @@ For the folders the command links and replaces, see [How agents get skills](/doc
 - `--client-secret <string>`: The client secret of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 - `--keep-session`: Leave a session created with `--access-bundle` active when the agent exits, instead of revoking it. Can't be combined with `--session-token`.
 - `--label <string>`: A short description of what a session created with `--access-bundle` is for, shown on the **Sessions** page, such as `nightly deploy`. Up to 128 characters, without line breaks, tabs, or invisible characters. Can't be combined with `--session-token`.
+- `--metadata <stringArray>`: A key and value to attach to a session created with `--access-bundle`, as `key=value`, such as `runId=8812`. Pass the flag once for each key. The value is everything after the first `=`, so it can contain `=`. Up to 20 keys. A key can be up to 255 characters and a value up to 1020, and neither can contain line breaks, tabs, or invisible characters. Can't be combined with `--session-token`.
 - `--no-agent-vault-skill`: Start the agent without Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), `infisical-agent-vault`, which tells the agent how to work behind the proxy and how to list its services. The session's other skills are still installed. `--no-skills` leaves out the built-in skill too.
 - `--no-ca-trust`: Skip writing the certificate authority, setting the trust variables, and adding it to the macOS keychain, for a machine that already trusts this proxy. `--ca-fingerprint` is still checked.
 - `--no-mcp-servers`: Start Claude Code without the session's MCP servers. By default, if the agent's command is `claude`, the command adds the session's [MCP servers](/documentation/platform/agent-vault/service-discovery#give-the-agent-its-mcp-servers) that are ready to it with `--mcp-config`.
@@ -478,7 +479,7 @@ Create and revoke Agent Vault [sessions](/documentation/platform/agent-vault/ses
 infisical agent-vault sessions create --access-bundle <name> [flags]
 ```
 
-Create a [session](/documentation/platform/agent-vault/sessions) with an [access bundle](/documentation/platform/agent-vault/access-bundles) and print its session token. The command prints only the token, so you can save it in a variable and pass it to [infisical agent-vault run](#agent-vault-run) or to an agent. Pass `-o json` or `-o yaml` to also print the session's ID, project ID, access bundle, label, and expiry.
+Create a [session](/documentation/platform/agent-vault/sessions) with an [access bundle](/documentation/platform/agent-vault/access-bundles) and print its session token. The command prints only the token, so you can save it in a variable and pass it to [infisical agent-vault run](#agent-vault-run) or to an agent. Pass `-o json` or `-o yaml` to also print the session's ID, project ID, access bundle, label, metadata, and expiry.
 
 The command reads the Agent Vault project in this order, and stops with an error if none is set:
 
@@ -496,7 +497,8 @@ The session stays active until it expires or you revoke it with [infisical agent
 - `--client-id <string>`: The client ID of the machine identity that creates the session. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
 - `--client-secret <string>`: The client secret of the machine identity that creates the session. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 - `--label <string>`: A short description of what the session is for, shown on the **Sessions** page, such as `nightly deploy`. Up to 128 characters.
-- `--output <string>` (`-o`): Print the session's ID, token, project ID, access bundle, label, and expiry as `json` or `yaml`, instead of only the token.
+- `--metadata <stringArray>`: A key and value to attach to the session, as `key=value`, such as `runId=8812`. Pass the flag once for each key. The value is everything after the first `=`, so it can contain `=`. Up to 20 keys. A key can be up to 255 characters and a value up to 1020, and neither can contain line breaks, tabs, or invisible characters.
+- `--output <string>` (`-o`): Print the session's ID, token, project ID, access bundle, label, metadata, and expiry as `json` or `yaml`, instead of only the token.
 - `--project-id <string>`: The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) to create the session in. If you leave it out, the CLI reads `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 - `--ttl <string>` (default `never`): How long the session lasts: one number and one unit, such as `30m`, `8h`, or `7d` (not `2h30m`), or `never`.
 

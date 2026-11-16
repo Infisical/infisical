@@ -8,6 +8,7 @@ import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { isOrphanedSession } from "./agent-vault-session-fns";
 import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
@@ -464,6 +465,23 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // For an edit that leaves the label alone: locks the row on the primary and tells whether it may be written, under
+  // the same rule and for the same reason as updateLabel. No row back means no such session.
+  const lockForEdit = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const row = (await (tx || db)(TableName.AgentVaultSession)
+        .where({ id, projectId })
+        .forUpdate()
+        .first("label", "userId", "identityId", "onBehalfOfUserId", "onBehalfOfUserName")) as
+        | Pick<TAgentVaultSessions, "label" | "userId" | "identityId" | "onBehalfOfUserId" | "onBehalfOfUserName">
+        | undefined;
+      if (!row) return undefined;
+      return { previousLabel: row.label ?? null, isEditable: !isOrphanedSession(row) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault session for edit" });
+    }
+  };
+
   // Read after a write that didn't happen, so the answer reflects the row as it is, not as a replica last saw it.
   const findByIdOnPrimary = async (id: string, projectId: string, tx?: Knex) => {
     try {
@@ -494,6 +512,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     findForList,
     revokeIfActive,
     updateLabel,
+    lockForEdit,
     findByIdOnPrimary,
     createWithId
   };

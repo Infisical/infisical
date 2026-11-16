@@ -851,7 +851,7 @@ sessions = client.agent_vault.sessions.list(
 - `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from
 - `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` (`"mine"`) for your own sessions or `AgentVaultSessionScope.ALL` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.MINE`)
 - `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `AgentVaultSessionStatus.ACTIVE` (`"active"`), `AgentVaultSessionStatus.REVOKED` (`"revoked"`), and `AgentVaultSessionStatus.EXPIRED` (`"expired"`) (defaults to all three)
-- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
 - `limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of sessions to skip (defaults to `0`)
 

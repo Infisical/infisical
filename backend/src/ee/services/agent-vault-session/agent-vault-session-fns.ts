@@ -38,10 +38,89 @@ export const agentVaultSessionLabelSchema = agentVaultSessionLabelStringSchema
   .nullish()
   .transform((label) => label || null);
 
-// Required on update: the label is the only field, so leaving it out must not read as clearing it.
+// Left out on update keeps the label, so undefined must survive the transform rather than read as clearing it.
 export const agentVaultSessionLabelUpdateSchema = agentVaultSessionLabelStringSchema
   .nullable()
-  .transform((label) => label || null);
+  .optional()
+  .transform((label) => (label === undefined ? undefined : label || null));
+
+export const AGENT_VAULT_SESSION_METADATA_MAX_KEYS = 20;
+export const AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH = 255;
+export const AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH = 1020;
+
+const metadataKeySchema = z
+  .string()
+  .trim()
+  .min(1, "A metadata key can't be empty")
+  .max(
+    AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH,
+    `A metadata key can be at most ${AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH} characters`
+  )
+  .refine(
+    isValidAgentVaultSessionLabel,
+    "A metadata key can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."
+  );
+
+const metadataValueSchema = (key: string) =>
+  z
+    .string()
+    .trim()
+    .max(
+      AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH,
+      `The value of metadata key '${key}' can be at most ${AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH} characters`
+    )
+    .refine(
+      isValidAgentVaultSessionLabel,
+      `The value of metadata key '${key}' can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks.`
+    );
+
+// Keys are checked one by one rather than as a z.record key schema, which trims them and lets a later key that
+// trims to the same text overwrite an earlier one without a word.
+export const agentVaultSessionMetadataSchema = z
+  .record(z.string(), z.string())
+  .superRefine((metadata, ctx) => {
+    const entries = Object.entries(metadata);
+    if (entries.length > AGENT_VAULT_SESSION_METADATA_MAX_KEYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can have at most ${AGENT_VAULT_SESSION_METADATA_MAX_KEYS} metadata entries`
+      });
+      return;
+    }
+    const seen = new Set<string>();
+    entries.forEach(([rawKey, rawValue]) => {
+      const key = metadataKeySchema.safeParse(rawKey);
+      if (!key.success) {
+        key.error.issues.forEach(({ message }) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [rawKey], message })
+        );
+        return;
+      }
+      if (seen.has(key.data)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [rawKey],
+          message: `The metadata key '${key.data}' appears more than once. Each key can be used once per session.`
+        });
+        return;
+      }
+      seen.add(key.data);
+      const value = metadataValueSchema(key.data).safeParse(rawValue);
+      if (!value.success) {
+        value.error.issues.forEach(({ message }) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [rawKey], message })
+        );
+      }
+    });
+  })
+  .transform((metadata) =>
+    Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key.trim(), value.trim()]))
+  );
+
+export type TAgentVaultSessionMetadata = Record<string, string>;
+
+export const isSameSessionMetadata = (a: TAgentVaultSessionMetadata, b: TAgentVaultSessionMetadata) =>
+  JSON.stringify(Object.entries(a)) === JSON.stringify(Object.entries(b));
 
 export const hashSessionToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 

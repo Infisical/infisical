@@ -2582,6 +2582,8 @@ export type TAgentVaultSessionCreatedEvent = {
     // Null for a session started with inline services only.
     accessBundleId: string | null;
     inlineServiceCount: number;
+    // How many metadata entries the session was created with. Never the keys or values.
+    metadataCount: number;
     ttlSeconds: number | null;
     isOnBehalfOfUser: boolean;
   };
