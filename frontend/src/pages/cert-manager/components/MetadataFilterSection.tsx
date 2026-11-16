@@ -1,6 +1,6 @@
 import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { IconButton, Input } from "@app/components/v3";
+import { FieldError, IconButton, Input } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
 export type MetadataFilterEntry = {
@@ -14,13 +14,17 @@ type Props = {
   onChange: (entries: MetadataFilterEntry[]) => void;
   labelClassName?: string;
   clearClassName?: string;
+  errors?: (string | undefined)[];
+  maxEntries?: number;
 };
 
 export const MetadataFilterSection = ({
   entries,
   onChange,
   labelClassName,
-  clearClassName
+  clearClassName,
+  errors,
+  maxEntries
 }: Props) => {
   const updateEntry = (idx: number, field: "key" | "value", val: string) => {
     const updated = [...entries];
@@ -53,32 +57,39 @@ export const MetadataFilterSection = ({
         )}
       </div>
       {entries.map((entry, idx) => (
-        <div key={entry.id} className="flex items-center gap-1">
-          <Input
-            value={entry.key}
-            onChange={(e) => updateEntry(idx, "key", e.target.value)}
-            placeholder="Key"
-            className="flex-1"
-          />
-          <Input
-            value={entry.value}
-            onChange={(e) => updateEntry(idx, "value", e.target.value)}
-            placeholder="Value"
-            className="flex-1"
-          />
-          <IconButton
-            aria-label="Remove metadata filter"
-            variant="ghost"
-            size="xs"
-            onClick={() => removeEntry(idx)}
-          >
-            <TrashIcon />
-          </IconButton>
+        <div key={entry.id} className="space-y-1">
+          <div className="flex items-center gap-1">
+            <Input
+              value={entry.key}
+              onChange={(e) => updateEntry(idx, "key", e.target.value)}
+              placeholder="Key"
+              className="flex-1"
+              isError={Boolean(errors?.[idx])}
+            />
+            <Input
+              value={entry.value}
+              onChange={(e) => updateEntry(idx, "value", e.target.value)}
+              placeholder="Value"
+              className="flex-1"
+              isError={Boolean(errors?.[idx])}
+            />
+            <IconButton
+              aria-label="Remove metadata filter"
+              variant="ghost"
+              size="xs"
+              onClick={() => removeEntry(idx)}
+            >
+              <TrashIcon />
+            </IconButton>
+          </div>
+          {errors?.[idx] && <FieldError>{errors[idx]}</FieldError>}
         </div>
       ))}
-      <IconButton aria-label="Add metadata filter" variant="outline" size="xs" onClick={addEntry}>
-        <PlusIcon />
-      </IconButton>
+      {(maxEntries === undefined || entries.length < maxEntries) && (
+        <IconButton aria-label="Add metadata filter" variant="outline" size="xs" onClick={addEntry}>
+          <PlusIcon />
+        </IconButton>
+      )}
     </div>
   );
 };

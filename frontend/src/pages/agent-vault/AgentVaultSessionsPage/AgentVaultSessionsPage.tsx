@@ -105,6 +105,11 @@ import {
   TSessionAccessItem
 } from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
+import {
+  SESSION_METADATA_KEY_MAX_LENGTH,
+  SESSION_METADATA_MAX_KEYS,
+  SESSION_METADATA_VALUE_MAX_LENGTH
+} from "./components/sessionMetadataSchema";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -136,6 +141,24 @@ export const AgentVaultSessionsPage = () => {
       .filter(([key, value]) => key && value);
     return entries.length ? Object.fromEntries(entries) : undefined;
   }, [appliedMetadataFilters]);
+  // The same limits the API applies, checked here so a refused filter never reads as "no sessions match".
+  const metadataFilterErrors = useMemo(() => {
+    const seen = new Set<string>();
+    return pendingMetadataFilters.map(({ key: rawKey, value: rawValue }) => {
+      const key = rawKey.trim();
+      const value = rawValue.trim();
+      if (!key && !value) return undefined;
+      if (!key) return "Enter a key";
+      if (!value) return "Enter a value";
+      if (key.length > SESSION_METADATA_KEY_MAX_LENGTH)
+        return `A key can be at most ${SESSION_METADATA_KEY_MAX_LENGTH} characters`;
+      if (value.length > SESSION_METADATA_VALUE_MAX_LENGTH)
+        return `A value can be at most ${SESSION_METADATA_VALUE_MAX_LENGTH} characters`;
+      if (seen.has(key)) return `The metadata key '${key}' appears more than once.`;
+      seen.add(key);
+      return undefined;
+    });
+  }, [pendingMetadataFilters]);
   const [scope, setScope] = useState(() => {
     const stored = getUserTablePreference(
       "agentVaultSessionsTable",
@@ -382,13 +405,16 @@ export const AgentVaultSessionsPage = () => {
                     onChange={setPendingMetadataFilters}
                     labelClassName="normal-case text-accent"
                     clearClassName="text-muted hover:text-foreground"
+                    errors={metadataFilterErrors}
+                    maxEntries={SESSION_METADATA_MAX_KEYS}
                   />
                   <Button
                     variant="av"
                     size="sm"
                     isDisabled={
+                      metadataFilterErrors.some(Boolean) ||
                       JSON.stringify(pendingMetadataFilters) ===
-                      JSON.stringify(appliedMetadataFilters)
+                        JSON.stringify(appliedMetadataFilters)
                     }
                     onClick={() => {
                       setAppliedMetadataFilters(pendingMetadataFilters);

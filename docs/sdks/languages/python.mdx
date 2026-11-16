@@ -962,8 +962,8 @@ session = client.agent_vault.sessions.update(
 
 **Parameters:**
 - `session_id` (str): the ID of the session
-- `label` (Optional[str], optional): the new label, or `None` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters). Leave it out to keep the current label
-- `metadata` (Dict[str, str], optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters). Leave it out to keep the current metadata
+- `label` (Optional[str], optional): the new label, or `None` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters; leave it out to keep the current label)
+- `metadata` (Dict[str, str], optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters; leave it out to keep the current metadata)
 
 **Returns:**
 - `AgentVaultSession`: the updated session

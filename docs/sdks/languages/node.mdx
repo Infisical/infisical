@@ -933,8 +933,8 @@ const session = await client.agentVault().sessions.update("<session-id>", {
 **Parameters:**
 - `sessionId` (string): the ID of the session
 - `options` (object):
-  - `label` (string | null, optional): the new label, or `null` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters). Leave it out to keep the current label
-  - `metadata` (object, optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters). Leave it out to keep the current metadata
+  - `label` (string | null, optional): the new label, or `null` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters; leave it out to keep the current label)
+  - `metadata` (object, optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters; leave it out to keep the current metadata)
 
 **Returns:**
 - `AgentVaultSession`: the updated session
