@@ -289,6 +289,22 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
     ]
   },
   {
+    subject: "audit-log-streams",
+    title: "Audit log streams",
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "Read audit log streams and their alerts"
+      },
+      {
+        value: "edit",
+        label: "Edit",
+        description: "Create, update and delete audit log streams, and manage their alerts"
+      }
+    ]
+  },
+  {
     subject: "identity",
     title: "Machine identity management",
     actions: [

@@ -19,6 +19,8 @@ const DEMO_FOLDER_ID = "f0000000-0000-4000-8000-000000000001";
 
 const catalog: TAutoApprovalCatalog = {
   apps: [AppConnection.Jira],
+  fieldApps: [AppConnection.Jira],
+  requesterApps: [],
   connections: [
     {
       id: JIRA_CONNECTION_ID,
