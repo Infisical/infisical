@@ -273,7 +273,7 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
   ): Promise<R & TBypassAffordances & TAutoApprovalAffordance> => {
-    const autoApproval = toAutoApprovalOutcome(request);
+    const autoApproval = toAutoApprovalOutcome(request, { hideAi: request.requesterId === actor.id });
 
     if (!resources[request.type as ApprovalPolicyType]?.isBreakGlassEligible) {
       return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null, autoApproval };
@@ -1378,7 +1378,17 @@ export const approvalPolicyServiceFactory = ({
             approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
-          ctx: { requester: { email: requesterEmail || null } }
+          ctx: {
+            requester: { email: requesterEmail || null },
+            request: {
+              policyType,
+              policyName: policy.name,
+              requester: { name: requesterName || null, email: requesterEmail || null },
+              justification: justification ?? null,
+              duration: requestDuration ?? null,
+              details: requestData
+            }
+          }
         });
 
         const current = await checkAgainstPolicy();
@@ -1415,7 +1425,7 @@ export const approvalPolicyServiceFactory = ({
         const closest = autoApprovalEvidence ? getClosestFailedRule(autoApprovalEvidence) : null;
         throw new BadRequestError({
           message: closest
-            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it. Closest rule "${closest.ruleName}": ${closest.reason}`
+            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it.${closest.reason ? ` Closest rule "${closest.ruleName}": ${closest.reason}` : ""}`
             : "Request rejected. There are no approvers to review it. Auto-approval doesn't apply to this request either."
         });
       }

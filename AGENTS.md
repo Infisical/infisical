@@ -165,6 +165,10 @@ requests' evidence and claimed under an advisory lock in the auto-approve transa
 stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
 never `autoApprovalEvidence`.
 
+An `ai` condition has the organization's AI model judge the request against the admin's prompt. It runs last,
+only when the rest of its rule passed and no earlier rule approved, and anything but a clean approval falls
+through to the approvers. See AI Features below.
+
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
 through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
 `delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
@@ -255,6 +259,15 @@ consumer itself. A new delegated policy type adds its `postApprovalTxRoutine` an
 `delegatedApprovalDecisionMapsFactory`, the same way dispatch details get a builder in
 `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP`. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
 the provider reads that field alone and ignores `state`.
+
+### AI Features
+
+One model per organization (an Anthropic connection plus a model ID on `organizations`, set under Organization
+Settings > General) serves every AI feature, through `backend/src/services/ai/`. An app connection becomes usable
+as AI context by adding read-only tools to `APP_CONNECTION_AI_TOOLS` (`services/app-connection/app-connection-ai-tools.ts`);
+Jira is the first. Requester text and tool results are untrusted: they stay out of the system prompt, and the
+model is asked to answer through `submit_decision` (`tool_choice` stays `auto`, since thinking models reject a
+forced tool), and a reply without it does not approve.
 
 ### Object Storage
 

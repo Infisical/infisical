@@ -16,7 +16,8 @@ export const ApprovalPolicyAutoApprovalConditionsSchema = z.object({
   constraint: z.string(),
   values: z.unknown(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  prompt: z.string().nullable().optional()
 });
 
 export type TApprovalPolicyAutoApprovalConditions = z.infer<typeof ApprovalPolicyAutoApprovalConditionsSchema>;

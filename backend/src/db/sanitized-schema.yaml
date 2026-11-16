@@ -824,6 +824,8 @@ tables:
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
       - requireGatewayPools
+      - aiConnectionId
+      - aiModel
 
   - name: pam_accounts
     source: public.pam_accounts

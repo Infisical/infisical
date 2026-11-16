@@ -5,7 +5,12 @@ import { TableName } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { AUTO_APPROVAL_REQUESTER_SUBJECT, TAutoApprovalConfig, TStoredAutoApproval } from "./auto-approval-types";
+import {
+  AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_REQUESTER_SUBJECT,
+  TAutoApprovalConfig,
+  TStoredAutoApproval
+} from "./auto-approval-types";
 
 const toValues = (values: unknown) =>
   Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [];
@@ -16,6 +21,7 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
   const inputsOrm = ormify(db, TableName.ApprovalPolicyAutoApprovalInputs);
   const rulesOrm = ormify(db, TableName.ApprovalPolicyAutoApprovalRules);
   const conditionsOrm = ormify(db, TableName.ApprovalPolicyAutoApprovalConditions);
+  const contextsOrm = ormify(db, TableName.ApprovalPolicyAutoApprovalConditionContexts);
 
   const findByPolicyIds = async (policyIds: string[], tx?: Knex): Promise<Map<string, TStoredAutoApproval>> => {
     const byPolicyId = new Map<string, TStoredAutoApproval>();
@@ -37,6 +43,15 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
               rules.map((rule) => rule.id)
             )
             .orderBy("position", "asc")
+        : [];
+      const contexts = conditions.length
+        ? await dbInstance(TableName.ApprovalPolicyAutoApprovalConditionContexts)
+            .whereIn(
+              "conditionId",
+              conditions.map((condition) => condition.id)
+            )
+            .orderBy("createdAt", "asc")
+            .orderBy("connectionId", "asc")
         : [];
 
       const inputById = new Map(inputs.map((input) => [input.id, input]));
@@ -65,13 +80,20 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
             .filter((condition) => condition.ruleId === rule.id)
             .map((condition) => {
               const input = condition.inputId ? inputById.get(condition.inputId) : undefined;
+              const isAi = condition.prompt !== null && condition.prompt !== undefined;
+              let subject = input?.subject ?? AUTO_APPROVAL_REQUESTER_SUBJECT;
+              if (isAi) subject = AUTO_APPROVAL_AI_SUBJECT;
               return {
                 id: condition.id,
                 inputId: condition.inputId ?? null,
-                connectionId: input?.connectionId ?? (condition.connectionId as string),
-                subject: input?.subject ?? AUTO_APPROVAL_REQUESTER_SUBJECT,
+                connectionId: input?.connectionId ?? condition.connectionId ?? null,
+                subject,
                 constraint: condition.constraint,
-                values: toValues(condition.values)
+                values: toValues(condition.values),
+                prompt: condition.prompt ?? null,
+                contextConnectionIds: contexts
+                  .filter((context) => context.conditionId === condition.id)
+                  .map((context) => context.connectionId)
               };
             })
         });
@@ -107,6 +129,18 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
 
     const conditionRows = config.rules.flatMap((rule, rulePosition) =>
       rule.conditions.map((condition, position) => {
+        if (condition.subject === AUTO_APPROVAL_AI_SUBJECT) {
+          return {
+            ruleId: ruleIdByPosition.get(rulePosition) as string,
+            position,
+            inputId: null,
+            connectionId: null,
+            constraint: condition.constraint,
+            values: JSON.stringify(condition.values),
+            prompt: condition.prompt ?? ""
+          };
+        }
+
         const isRequester = condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT;
         const inputId = isRequester ? null : inputIdByKey.get(`${condition.connectionId}:${condition.subject}`);
         if (!isRequester && !inputId) {
@@ -119,14 +153,27 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
           ruleId: ruleIdByPosition.get(rulePosition) as string,
           position,
           inputId: inputId ?? null,
-          connectionId: isRequester ? condition.connectionId : null,
+          connectionId: isRequester ? (condition.connectionId ?? null) : null,
           constraint: condition.constraint,
           values: JSON.stringify(condition.values)
         };
       })
     );
 
-    await conditionsOrm.insertMany(conditionRows, tx);
+    const conditions = await conditionsOrm.insertMany(conditionRows, tx);
+    const conditionIdByPosition = new Map(
+      conditions.map((condition) => [`${condition.ruleId}:${condition.position}`, condition.id])
+    );
+
+    const contextRows = config.rules.flatMap((rule, rulePosition) =>
+      rule.conditions.flatMap((condition, position) =>
+        (condition.contextConnectionIds ?? []).map((connectionId) => ({
+          conditionId: conditionIdByPosition.get(`${ruleIdByPosition.get(rulePosition)}:${position}`) as string,
+          connectionId
+        }))
+      )
+    );
+    if (contextRows.length) await contextsOrm.insertMany(contextRows, tx);
   };
 
   return { findByPolicyIds, replaceForPolicy };

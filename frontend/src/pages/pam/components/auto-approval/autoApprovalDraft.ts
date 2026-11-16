@@ -1,4 +1,5 @@
 import {
+  AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   TAutoApprovalCatalogConnection,
@@ -10,10 +11,13 @@ import {
 // Client keys keep React rows stable while rules and conditions are edited
 export type TDraftCondition = {
   key: string;
+  // Empty for an AI condition, which reads the request rather than one connection
   connectionId: string;
   subject: string;
   constraint: string;
   values: string[];
+  prompt?: string;
+  contextConnectionIds?: string[];
 };
 
 export type TDraftRule = { key: string; name: string; conditions: TDraftCondition[] };
@@ -29,7 +33,9 @@ export const AUTO_APPROVAL_LIMITS = {
   rules: 20,
   conditions: 20,
   values: 50,
-  valueLength: 255
+  valueLength: 255,
+  aiPromptLength: 4000,
+  aiContextConnections: 5
 };
 
 // Mirrors the Jira provider's constraint; other providers name theirs the same way
@@ -49,10 +55,14 @@ export const toAutoApprovalDraft = (config?: TAutoApprovalConfigResponse): TAuto
     name: rule.name,
     conditions: rule.conditions.map((condition) => ({
       key: condition.id,
-      connectionId: condition.connectionId,
+      connectionId: condition.connectionId ?? "",
       subject: condition.subject,
       constraint: condition.constraint,
-      values: condition.values
+      values: condition.values,
+      ...(condition.subject === AUTO_APPROVAL_AI_SUBJECT && {
+        prompt: condition.prompt ?? "",
+        contextConnectionIds: condition.contextConnectionIds
+      })
     }))
   }))
 });
@@ -61,12 +71,19 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
   inputs: draft.inputs,
   rules: draft.rules.map((rule) => ({
     name: rule.name.trim(),
-    conditions: rule.conditions.map(({ connectionId, subject, constraint, values }) => ({
-      connectionId,
-      subject,
-      constraint,
-      values
-    }))
+    conditions: rule.conditions.map(
+      ({ connectionId, subject, constraint, values, prompt, contextConnectionIds }) =>
+        subject === AUTO_APPROVAL_AI_SUBJECT
+          ? {
+              connectionId: null,
+              subject,
+              constraint,
+              values: [],
+              prompt: prompt?.trim() ?? "",
+              contextConnectionIds: contextConnectionIds ?? []
+            }
+          : { connectionId, subject, constraint, values }
+    )
   }))
 });
 
@@ -106,10 +123,23 @@ export const getSubjectDisplayLabel = (
 export const isRequesterSubject = (subjectId: string) =>
   subjectId === AUTO_APPROVAL_REQUESTER_SUBJECT;
 
+export const isAiCondition = (condition: Pick<TDraftCondition, "subject">) =>
+  condition.subject === AUTO_APPROVAL_AI_SUBJECT;
+
 export const getConditionError = (
   condition: TDraftCondition,
   catalog: TAutoApprovalCatalogConnection[] | undefined
 ): string | null => {
+  if (isAiCondition(condition)) {
+    if (!condition.prompt?.trim()) return "Describe when the AI should approve";
+    if (condition.prompt.length > AUTO_APPROVAL_LIMITS.aiPromptLength) {
+      return `Instructions can be at most ${AUTO_APPROVAL_LIMITS.aiPromptLength} characters`;
+    }
+    if ((condition.contextConnectionIds?.length ?? 0) > AUTO_APPROVAL_LIMITS.aiContextConnections) {
+      return `Choose at most ${AUTO_APPROVAL_LIMITS.aiContextConnections} connections`;
+    }
+    return null;
+  }
   if (!condition.connectionId || !condition.subject) return "Choose what to check";
   if (!condition.constraint) return "Choose a check";
   if (condition.values.length > AUTO_APPROVAL_LIMITS.values) {
