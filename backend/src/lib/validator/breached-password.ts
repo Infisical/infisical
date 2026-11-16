@@ -2,10 +2,14 @@ import { crypto } from "@app/lib/crypto/cryptography";
 
 import { getConfig } from "../config/env";
 import { request } from "../config/request";
+import { BadRequestError } from "../errors";
 import { logger } from "../logger";
 
 const PWNED_PASSWORDS_RANGE_URL = "https://api.pwnedpasswords.com/range";
 const REQUEST_TIMEOUT_MS = 3000;
+
+// The web app matches on this name.
+export const BREACHED_PASSWORD_ERROR_NAME = "BREACHED_PASSWORD";
 
 // Only the first five hex characters of the SHA-1 are sent; the suffix is compared here.
 export const isPasswordBreached = async (password: string): Promise<boolean> => {
@@ -38,5 +42,17 @@ export const isPasswordBreached = async (password: string): Promise<boolean> => 
     // Fail open: a failed lookup must not block a password change.
     logger.warn(error, "isPasswordBreached: Have I Been Pwned lookup failed, skipping breach check");
     return false;
+  }
+};
+
+export const createBreachedPasswordError = () =>
+  new BadRequestError({
+    name: BREACHED_PASSWORD_ERROR_NAME,
+    message: "This password has appeared in a known data breach. Choose a different password."
+  });
+
+export const assertPasswordNotBreached = async (password: string) => {
+  if (await isPasswordBreached(password)) {
+    throw createBreachedPasswordError();
   }
 };

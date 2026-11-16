@@ -2,7 +2,7 @@ import nodeCrypto from "node:crypto";
 
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { isPasswordBreached } from "./breached-password";
+import { assertPasswordNotBreached, BREACHED_PASSWORD_ERROR_NAME, isPasswordBreached } from "./breached-password";
 
 const mocks = vi.hoisted(() => ({
   config: { DISABLE_BREACHED_PASSWORD_CHECK: false },
@@ -70,5 +70,27 @@ describe("isPasswordBreached", () => {
 
     expect(await isPasswordBreached(PASSWORD)).toBe(false);
     expect(mocks.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("assertPasswordNotBreached", () => {
+  beforeEach(() => {
+    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = false;
+    mocks.get.mockReset();
+  });
+
+  test("throws a named 400 when the password is in the list", async () => {
+    mocks.get.mockResolvedValue(rangeBody([`${SUFFIX}:42`]));
+
+    await expect(assertPasswordNotBreached(PASSWORD)).rejects.toMatchObject({
+      name: BREACHED_PASSWORD_ERROR_NAME,
+      message: "This password has appeared in a known data breach. Choose a different password."
+    });
+  });
+
+  test("resolves when the password is not in the list", async () => {
+    mocks.get.mockResolvedValue(rangeBody([]));
+
+    await expect(assertPasswordNotBreached(PASSWORD)).resolves.toBeUndefined();
   });
 });

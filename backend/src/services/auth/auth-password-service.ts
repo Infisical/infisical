@@ -4,7 +4,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { isPasswordBreached } from "@app/lib/validator/breached-password";
+import { assertPasswordNotBreached } from "@app/lib/validator/breached-password";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -22,14 +22,6 @@ type TAuthPasswordServiceFactoryDep = {
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-};
-
-const assertPasswordNotBreached = async (password: string) => {
-  if (await isPasswordBreached(password)) {
-    throw new BadRequestError({
-      message: "This password has appeared in a known data breach. Choose a different password."
-    });
-  }
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;

@@ -16,6 +16,7 @@ import {
   emailDispatchRequestCounter
 } from "@app/lib/telemetry/metrics";
 import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { createBreachedPasswordError, isPasswordBreached } from "@app/lib/validator/breached-password";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -274,11 +275,18 @@ export const authSignupServiceFactory = ({
       // Determine rejection before hashing, but don't throw yet
       const shouldReject = !user || user.isAccepted || Boolean(decodedToken?.aliasId);
 
-      // Always hash the password so bcrypt cost is incurred regardless of validity
-      const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
+      // Always hash and run the breach lookup so their cost is incurred regardless of validity
+      const [hashedPassword, isBreached] = await Promise.all([
+        crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS),
+        isPasswordBreached(dto.password)
+      ]);
 
       if (shouldReject) {
         throw new BadRequestError({ message: "Invalid token" });
+      }
+
+      if (isBreached) {
+        throw createBreachedPasswordError();
       }
 
       const updatedUser = await authDAL.transaction(async (tx) => {
