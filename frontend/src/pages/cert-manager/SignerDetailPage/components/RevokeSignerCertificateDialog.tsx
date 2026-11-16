@@ -30,6 +30,16 @@ import {
 
 const REVOCATION_REASONS = crlReasons.filter(({ value }) => value !== CrlReason.CERTIFICATE_HOLD);
 
+const ADCS_UNSUPPORTED_REASONS: CrlReason[] = [
+  CrlReason.PRIVILEGE_WITHDRAWN,
+  CrlReason.A_A_COMPROMISE
+];
+
+const getRevocationReasons = (caType?: string | null) =>
+  caType === CaType.ADCS
+    ? REVOCATION_REASONS.filter(({ value }) => !ADCS_UNSUPPORTED_REASONS.includes(value))
+    : REVOCATION_REASONS;
+
 type Props = {
   signer: TSigner;
   isOpen: boolean;
@@ -90,7 +100,7 @@ export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {REVOCATION_REASONS.map(({ label, value }) => (
+                {getRevocationReasons(signer.caType).map(({ label, value }) => (
                   <SelectItem value={value} key={value}>
                     {label}
                   </SelectItem>

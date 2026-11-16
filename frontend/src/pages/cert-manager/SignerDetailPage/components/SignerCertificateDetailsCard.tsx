@@ -1,6 +1,9 @@
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { ExternalLinkIcon } from "lucide-react";
 
 import {
+  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -14,6 +17,9 @@ import {
   Empty,
   EmptyTitle
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
+import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import {
   CertKeySource,
   certKeySourceLabels,
@@ -21,7 +27,40 @@ import {
   TSigner
 } from "@app/hooks/api/signers";
 
+import { getCertManagerLink } from "../../cert-manager-link";
+import { CertificateAuthorityTab } from "../../CertificateAuthoritiesPage/CertificateAuthoritiesPage";
+
 const NotSet = () => <span className="text-muted">-</span>;
+
+const SignerCaDetail = ({ signer }: { signer: TSigner }) => {
+  const { currentProject } = useProject();
+  if (!signer.caId || !signer.caName) return null;
+  const isInternalCa = signer.caType === CaType.INTERNAL;
+
+  return (
+    <Detail>
+      <DetailLabel>Certificate Authority</DetailLabel>
+      <DetailValue className="flex flex-wrap items-center gap-2">
+        <Link
+          {...(isInternalCa
+            ? getCertManagerLink(currentProject, `ca/${signer.caId}`)
+            : getCertManagerLink(currentProject, "certificate-authorities", {
+                selectedTab: CertificateAuthorityTab.External
+              }))}
+          className="inline-flex items-center gap-1 underline"
+        >
+          {signer.caName}
+          <ExternalLinkIcon className="size-3.5 text-muted" />
+        </Link>
+        {signer.caStatus && signer.caStatus !== CaStatus.ACTIVE && (
+          <Badge variant={getCaStatusBadgeVariant(signer.caStatus)}>
+            {caStatusToNameMap[signer.caStatus]}
+          </Badge>
+        )}
+      </DetailValue>
+    </Detail>
+  );
+};
 
 type Props = {
   signer: TSigner;
@@ -63,6 +102,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
                 {signer.certificateCommonName ?? signer.commonName ?? <NotSet />}
               </DetailValue>
             </Detail>
+            <SignerCaDetail signer={signer} />
             <CopyableDetail label="Serial Number" value={signer.certificateSerialNumber} />
             <Detail>
               <DetailLabel>Expires</DetailLabel>

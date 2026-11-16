@@ -73,6 +73,7 @@ import {
   TCodeSigningRequestData
 } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
+import { assertAdcsRevocationReasonSupported } from "../certificate-authority/adcs/adcs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { caSupportsCapability } from "../certificate-authority/certificate-authority-maps";
@@ -206,6 +207,9 @@ const UNFINISHED_REVOKE_REASON =
 
 const certificateRequestInProgressMessage = (signerName: string) =>
   `Signer '${signerName}' is already waiting for a new certificate. Try again after it's issued.`;
+
+const inactiveCaMessage = (caName: string) =>
+  `Certificate authority '${caName}' is not active. Enable it in Certificate Authorities, or choose another certificate authority.`;
 
 const signerCertificateLockHeldMessage = (signerName: string) =>
   `Signer '${signerName}' is being changed by another request right now. Try again in a moment.`;
@@ -431,7 +435,7 @@ export const resolveReissueTarget = ({
     if (switchingKeySource && hsmKeyAlgorithm === HsmKeyAlgorithm.RSA_3072) {
       throw new BadRequestError({
         message: requireNewKey
-          ? "The signer's certificate was revoked, so it needs a new HSM key, and a new HSM key can't be RSA-3072. Choose RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384."
+          ? "The signer's certificate was revoked, so it needs a new HSM key, and a new HSM key can't be RSA-3072. In Options → Edit Settings, choose another key algorithm on the Signing Key step, then save."
           : "A new HSM key can't be RSA-3072. Choose RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384, or keep the signer's current key."
       });
     }
@@ -844,7 +848,7 @@ export const signerServiceFactory = ({
         throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
       }
       if (ca.status !== CaStatus.ACTIVE) {
-        throw new BadRequestError({ message: "The selected certificate authority is not active." });
+        throw new BadRequestError({ message: inactiveCaMessage(ca.name) });
       }
       resolvedCaId = ca.id;
       resolvedCaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
@@ -1686,7 +1690,7 @@ export const signerServiceFactory = ({
         throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
       }
       if (ca.status !== CaStatus.ACTIVE) {
-        throw new BadRequestError({ message: "The selected certificate authority is not active." });
+        throw new BadRequestError({ message: inactiveCaMessage(ca.name) });
       }
       const caType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
       const importOrderId = $parseDigiCertOrderId(dto.externalOrderId, caType, "externalOrderId") as number;
@@ -1800,7 +1804,7 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Certificate authority '${params.caId}' not found in this organization.` });
     }
     if (ca.status !== CaStatus.ACTIVE) {
-      throw new BadRequestError({ message: "The selected certificate authority is not active." });
+      throw new BadRequestError({ message: inactiveCaMessage(ca.name) });
     }
 
     const reissueCaType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
@@ -1882,7 +1886,25 @@ export const signerServiceFactory = ({
     const digicertReissueOrderId =
       reissueCaType === CaType.DIGICERT ? (explicitReissueOrderId ?? currentDigicertOrderId) : undefined;
 
-    const tracksRequestStatus = !isRenewal && signer.status !== SignerStatus.Disabled;
+    const wasDisabledWhenRevoked =
+      isCurrentCertificateRevoked && reissueCurrentCert
+        ? (
+            await signerDAL.transaction((tx) =>
+              signerRevocationDAL.findOne(
+                {
+                  signerId: signer.id,
+                  certificateId: reissueCurrentCert.id,
+                  status: SignerRevocationStatus.Completed
+                },
+                tx
+              )
+            )
+          )?.previousSignerStatus === SignerStatus.Disabled
+        : false;
+    const tracksRequestStatus = !isRenewal && signer.status !== SignerStatus.Disabled && !wasDisabledWhenRevoked;
+    let nextStatus: SignerStatus | undefined;
+    if (wasDisabledWhenRevoked) nextStatus = SignerStatus.Disabled;
+    else if (tracksRequestStatus) nextStatus = SignerStatus.Pending;
     const ctx: TReissueExecutionContext = {
       params,
       actor,
@@ -1906,7 +1928,7 @@ export const signerServiceFactory = ({
         externalCaConfig: nextExternalCaConfig,
         nextAutoRenewalAt: nextAutoRenewalAt ?? null,
         certificateFailureReason: null,
-        ...(tracksRequestStatus ? { status: SignerStatus.Pending } : {})
+        ...(nextStatus ? { status: nextStatus } : {})
       },
       reissueIsExternal,
       caName: ca.name,
@@ -2150,12 +2172,16 @@ export const signerServiceFactory = ({
       await $stopTrackingRevocation(revocation, `certificate authority '${ca.name}' is disabled`);
       return;
     }
-    let requestStatus: DigiCertRevocationRequestStatus;
+    let requestStatus: DigiCertRevocationRequestStatus | null;
     try {
       requestStatus = await digicertFns.getRevocationRequestStatus({ caId: ca.id, requestId });
     } catch (err) {
       if (!(err instanceof BadRequestError)) throw err;
       await $stopTrackingRevocation(revocation, `DigiCert refused the status check (${err.message})`);
+      return;
+    }
+    if (!requestStatus) {
+      await $stopTrackingRevocation(revocation, "DigiCert has no request with this number");
       return;
     }
     if (
@@ -2204,19 +2230,20 @@ export const signerServiceFactory = ({
     requestId: number,
     certificate: Pick<TCertificates, "id" | "caId" | "projectId" | "status" | "serialNumber" | "commonName">
   ) => {
-    let requestStatus: DigiCertRevocationRequestStatus | undefined;
+    let requestStatus: DigiCertRevocationRequestStatus | null = null;
     try {
       requestStatus = certificate.caId
         ? await digicertFns.getRevocationRequestStatus({ caId: certificate.caId, requestId })
-        : undefined;
+        : null;
     } catch (err) {
-      if (!(err instanceof BadRequestError || err instanceof NotFoundError)) {
-        await $settleRevocation(revocation, {
-          status: SignerRevocationStatus.Failed,
-          failureReason: UNFINISHED_REVOKE_REASON
-        });
-        throw err;
-      }
+      await $settleRevocation(revocation, {
+        status: SignerRevocationStatus.Failed,
+        failureReason:
+          err instanceof BadRequestError
+            ? `DigiCert refused the status check for revocation request #${requestId} (${err.message.replace(/\.$/, "")}). Fix the DigiCert connection or certificate authority, then revoke the certificate again.`
+            : UNFINISHED_REVOKE_REASON
+      });
+      throw err;
     }
     if (!requestStatus) {
       await signerRevocationDAL.updateIfUnsettled(revocation.id, { caRequestId: null });
@@ -2306,6 +2333,7 @@ export const signerServiceFactory = ({
         });
       }
     }
+    if (signer.caType === CaType.ADCS) assertAdcsRevocationReasonSupported(dto.revocationReason);
     const keepOrderId = isRetry ? undefined : await signerIssuanceService.cancelPendingDigiCertReissue(signer.id);
 
     return signerDAL.transaction(async (tx) => {

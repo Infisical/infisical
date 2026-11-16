@@ -58,17 +58,29 @@ import {
 } from "./adcs-certificate-authority-types";
 import { getAdcsConnectionCredentials } from "./adcs-connection-credentials";
 
+// AD CS answers E_INVALIDARG for these two reasons (MS-CSRA 3.1.4.1.8), so they are refused before calling the CA.
+type TAdcsRevocationReason = Exclude<CrlReason, CrlReason.PRIVILEGE_WITHDRAWN | CrlReason.A_A_COMPROMISE>;
+
 // RFC 5280 section 5.3.1 CRLReason codes, which MS-CSRA ICertAdminD::RevokeCertificate expects as `Reason`.
-const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
+const ADCS_CRL_REASON_CODES: Record<TAdcsRevocationReason, number> = {
   [CrlReason.UNSPECIFIED]: 0,
   [CrlReason.KEY_COMPROMISE]: 1,
   [CrlReason.CA_COMPROMISE]: 2,
   [CrlReason.AFFILIATION_CHANGED]: 3,
   [CrlReason.SUPERSEDED]: 4,
   [CrlReason.CESSATION_OF_OPERATION]: 5,
-  [CrlReason.CERTIFICATE_HOLD]: 6,
-  [CrlReason.PRIVILEGE_WITHDRAWN]: 9,
-  [CrlReason.A_A_COMPROMISE]: 10
+  [CrlReason.CERTIFICATE_HOLD]: 6
+};
+
+export const assertAdcsRevocationReasonSupported: (reason: CrlReason) => asserts reason is TAdcsRevocationReason = (
+  reason
+) => {
+  if (reason === CrlReason.PRIVILEGE_WITHDRAWN || reason === CrlReason.A_A_COMPROMISE) {
+    throw new BadRequestError({
+      message:
+        "Active Directory Certificate Services doesn't accept the Privilege Withdrawn or A/A Compromise reasons. Choose another revocation reason."
+    });
+  }
 };
 
 const buildSubjectDN = (commonName: string): string => {
@@ -689,6 +701,8 @@ export const ADCSCertificateAuthorityFns = ({
     if (!ca.externalCa || ca.externalCa.type !== CaType.ADCS) {
       throw new BadRequestError({ message: `CA is not a Microsoft ADCS certificate authority [caId=${caId}]` });
     }
+
+    assertAdcsRevocationReasonSupported(reason);
 
     const cert = await certificateDAL.findOne({ caId, serialNumber });
     if (!cert) {

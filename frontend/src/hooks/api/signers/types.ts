@@ -1,4 +1,4 @@
-import { CaType } from "@app/hooks/api/ca/enums";
+import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 
@@ -229,6 +229,8 @@ export type TSigner = {
   certificateHsmKeyLabel?: string | null;
   certificateStatus?: string | null;
   caType?: CaType | null;
+  caName?: string | null;
+  caStatus?: CaStatus | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
   externalOrder?: TSignerExternalOrder | null;

@@ -20,6 +20,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("failureReason").nullable();
       t.timestamps(true, true, true);
       t.index(["signerId", "createdAt"]);
+      t.index(["certificateId"]);
       t.index(["status"]);
     });
     await knex.raw(

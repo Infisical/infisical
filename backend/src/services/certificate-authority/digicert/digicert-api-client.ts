@@ -163,11 +163,16 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
 
   const getRequest = async (requestId: number) =>
     wrap(async () => {
-      const { data } = await request.get<TDigiCertRevocationRequest>(`${baseURL}/request/${requestId}`, {
-        headers,
-        ...boundedRequestConfig
-      });
-      return data;
+      try {
+        const { data } = await request.get<TDigiCertRevocationRequest>(`${baseURL}/request/${requestId}`, {
+          headers,
+          ...boundedRequestConfig
+        });
+        return data;
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 404) return null;
+        throw error;
+      }
     }, `request lookup for ${requestId}`);
 
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>

@@ -1,3 +1,6 @@
+import { webcrypto } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { describe, expect, it, vi } from "vitest";
 
@@ -30,7 +33,10 @@ vi.mock("../project/project-fns", async (importOriginal) => {
 
 vi.mock("./signer-issuance-fns", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./signer-issuance-fns")>();
-  return { ...actual, verifyCodeSigningEku: vi.fn().mockResolvedValue(undefined) };
+  return {
+    ...actual,
+    verifyCodeSigningEku: vi.fn().mockResolvedValue(undefined)
+  };
 });
 
 const SIGNER_ID = "signer-1";
@@ -46,6 +52,34 @@ const DAY_MS = 24 * 60 * MINUTE_MS;
 
 const tx = { isTransaction: true } as unknown as Knex;
 
+x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+const KEY_ALGORITHM = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+const generateKeys = () =>
+  webcrypto.subtle.generateKey(KEY_ALGORITHM, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
+const certificateDerFor = async (keys: CryptoKeyPair) =>
+  Buffer.from(
+    (
+      await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber: "01",
+        name: "CN=Example Release Signing",
+        notBefore: new Date(Date.now() - DAY_MS),
+        notAfter: new Date(Date.now() + 365 * DAY_MS),
+        keys,
+        signingAlgorithm: KEY_ALGORITHM
+      })
+    ).rawData
+  );
+const [jobKeys, earlierKeys] = await Promise.all([generateKeys(), generateKeys()]);
+const JOB_CSR_PEM = (
+  await x509.Pkcs10CertificateRequestGenerator.create({
+    name: "CN=Example Release Signing",
+    keys: jobKeys,
+    signingAlgorithm: KEY_ALGORITHM
+  })
+).toString("pem");
+const JOB_KEY_CERTIFICATE_DER = await certificateDerFor(jobKeys);
+const EARLIER_KEY_CERTIFICATE_DER = await certificateDerFor(earlierKeys);
+
 const buildJob = (overrides: Partial<TPkiSignerCertificateIssuanceJobs> = {}) =>
   ({
     id: JOB_ID,
@@ -57,7 +91,7 @@ const buildJob = (overrides: Partial<TPkiSignerCertificateIssuanceJobs> = {}) =>
     certificateTtlDays: 365,
     keyAlgorithm: CertKeyAlgorithm.RSA_2048,
     keySource: CertKeySource.Infisical,
-    encryptedCsr: Buffer.from("csr"),
+    encryptedCsr: Buffer.from(JOB_CSR_PEM),
     encryptedPrivateKey: null,
     externalOrderRef: null,
     certificateId: null,
@@ -165,7 +199,11 @@ const buildService = ({
         .mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
     certificateSecretDAL: {},
-    certificateBodyDAL: {},
+    certificateBodyDAL: {
+      findOne: vi.fn(async ({ certId }: { certId: string }) => ({
+        encryptedCertificate: certId.startsWith(OLD_CERT_ID) ? EARLIER_KEY_CERTIFICATE_DER : JOB_KEY_CERTIFICATE_DER
+      }))
+    },
     hsmConnectorService: {},
     cronJob: {},
     certificateIssuanceQueue: { awsPcaFns, azureAdCsFns: {}, adcsFns: {}, digicertFns }
@@ -442,6 +480,27 @@ describe("signerIssuanceService winding down a cancelling job", () => {
     expect(cancelledUpdate(deps.signerIssuanceJobDAL.update)).toBeDefined();
   });
 
+  it("revokes again when DigiCert has no record of the stored revocation request", async () => {
+    const { service, deps } = buildService({
+      job: cancelling({
+        caType: CaType.DIGICERT,
+        certificateId: NEW_CERT_ID,
+        externalOrderRef: { digicert: { orderId: ORDER_ID, revocationRequestId: 77 } }
+      })
+    });
+    deps.certificateIssuanceQueue.digicertFns.getRevocationRequestStatus.mockResolvedValue(null);
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateService.revokeOwnedCertificate).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: NEW_CERT_ID })
+    );
+    expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Cancelling },
+      { externalOrderRef: { digicert: { orderId: ORDER_ID, revocationRequestId: undefined } } }
+    );
+  });
+
   it("leaves a closed DigiCert order alone", async () => {
     const { service, deps } = buildService({
       job: cancelling({ caType: CaType.DIGICERT, externalOrderRef: { digicert: { orderId: ORDER_ID } } })
@@ -564,6 +623,38 @@ describe("signerIssuanceService DigiCert order that still holds the earlier cert
 
     expect(deps.certificateService.revokeOwnedCertificate).not.toHaveBeenCalled();
     expect(cancelledUpdate(deps.signerIssuanceJobDAL.update)).toBeDefined();
+  });
+
+  it("fails the reissue when the earlier certificate was never imported and downloads as a new row", async () => {
+    const { service, deps } = buildService({ job: digicertJob(reissueRef, { keySource: CertKeySource.Hsm }) });
+    issuedWithOldCertificate(deps);
+    deps.certificateIssuanceQueue.digicertFns.downloadCodeSigningCertificate.mockResolvedValue({
+      certificateId: "cert-old-never-imported"
+    });
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerIssuanceJobDAL.completeIfPending).not.toHaveBeenCalled();
+    expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
+      expect.objectContaining({ status: SignerIssuanceJobStatus.Failed }),
+      tx
+    );
+  });
+
+  it("fails a reissue that kept the signer's key when the order still holds the signer's current certificate", async () => {
+    const { service, deps } = buildService({ job: digicertJob(reissueRef, { keySource: CertKeySource.Hsm }) });
+    issuedWithOldCertificate(deps);
+    deps.certificateBodyDAL.findOne.mockResolvedValue({ encryptedCertificate: JOB_KEY_CERTIFICATE_DER });
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerIssuanceJobDAL.completeIfPending).not.toHaveBeenCalled();
+    expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
+      expect.objectContaining({ status: SignerIssuanceJobStatus.Failed }),
+      tx
+    );
   });
 
   it("fails the reissue instead of attaching the earlier certificate or overwriting its key details", async () => {

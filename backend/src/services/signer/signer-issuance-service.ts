@@ -18,6 +18,7 @@ import {
   CodeSigningOrderStatus,
   DigiCertRevocationRequestStatus
 } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
+import { isCsrKeyOfCertificate } from "../certificate-common/certificate-csr-utils";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -631,19 +632,21 @@ export const signerIssuanceServiceFactory = ({
     if (await $isOwnedBySigner(certificateId)) return null;
     const digicertRef = getJobDigiCertRef(job);
     const requestId = digicertRef?.revocationRequestId;
-    if (!requestId) {
+    const submitRevocation = async (): Promise<TCleanupOutcome> => {
       const submitted = await $submitOrphanedCertificateRevocation(certificateId);
-      if (submitted?.caRequestId) {
+      if (submitted?.caRequestId || requestId) {
         await signerIssuanceJobDAL.update(
           { id: job.id, status: SignerIssuanceJobStatus.Cancelling },
-          { externalOrderRef: { digicert: { ...digicertRef, revocationRequestId: submitted.caRequestId } } }
+          { externalOrderRef: { digicert: { ...digicertRef, revocationRequestId: submitted?.caRequestId } } }
         );
       }
       return submitted ? { leftover: submitted.leftover, canRetry: true } : null;
-    }
+    };
+    if (!requestId) return submitRevocation();
     const cert = await certificateDAL.findById(certificateId);
     if (!cert || cert.status === CertStatus.REVOKED) return null;
     const requestStatus = await digicertFns.getRevocationRequestStatus({ caId: cert.caId as string, requestId });
+    if (!requestStatus) return submitRevocation();
     if (requestStatus === DigiCertRevocationRequestStatus.Approved) {
       const project = await projectDAL.findOne({ id: cert.projectId });
       await certificateService.completeOwnedCertificateRevocation({
@@ -663,12 +666,23 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const $isIssuedForJob = async (certificateId: string, job: TPkiSignerCertificateIssuanceJobs) => {
-    const cert = await signerIssuanceJobDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
-    const jobCreatedAt = new Date(job.createdAt).getTime();
-    return (
-      Boolean(cert) &&
-      (new Date(cert.notBefore).getTime() >= jobCreatedAt || new Date(cert.createdAt).getTime() >= jobCreatedAt)
-    );
+    if (!job.encryptedCsr) return false;
+    const { cert, certBody, signer } = await signerIssuanceJobDAL.transaction(async (tx) => ({
+      cert: await certificateDAL.findById(certificateId, tx),
+      certBody: await certificateBodyDAL.findOne({ certId: certificateId }, tx),
+      signer: await signerDAL.findById(job.signerId, tx)
+    }));
+    if (!cert || !certBody?.encryptedCertificate || signer?.certificateId === certificateId) return false;
+    const certificateDer = await decryptForProject(cert.projectId, Buffer.from(certBody.encryptedCertificate));
+    const csrPem = (await decryptForProject(cert.projectId, Buffer.from(job.encryptedCsr))).toString();
+    try {
+      return isCsrKeyOfCertificate(
+        new x509.Pkcs10CertificateRequest(csrPem),
+        new x509.X509Certificate(new Uint8Array(certificateDer))
+      );
+    } catch {
+      return false;
+    }
   };
 
   const $digiCertOrderLeftover = (orderId: number): TCleanupOutcome => ({

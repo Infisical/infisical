@@ -1021,7 +1021,7 @@ export const DigiCertCertificateAuthorityFns = ({
   const getRevocationRequestStatus = async ({ caId, requestId }: { caId: string; requestId: number }) => {
     const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     const request = await client.getRequest(requestId);
-    return request.status;
+    return request?.status ?? null;
   };
 
   return {

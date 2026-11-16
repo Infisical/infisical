@@ -199,6 +199,11 @@ const buildService = ({
       return updated;
     }),
     findUnsettledForSigner: vi.fn(async () => revocationRows.find(isUnsettled)),
+    findOne: vi.fn(async (filter: Partial<TPkiSignerCertificateRevocations>) =>
+      revocationRows.find((row) =>
+        Object.entries(filter).every(([key, value]) => row[key as keyof TPkiSignerCertificateRevocations] === value)
+      )
+    ),
     find: vi.fn(async ({ status }: { status: SignerRevocationStatus }) =>
       revocationRows.filter((row) => row.status === status)
     )
@@ -452,6 +457,26 @@ describe("signerService.reissueCertificate", () => {
     await service.reissueCertificate({ ...actorFields, signerId: SIGNER_ID, caId: CA_ID });
 
     expect(signer()).toMatchObject({ status: SignerStatus.Active, certificateId: NEW_CERT_ID });
+  });
+
+  it("brings back a signer that was disabled when its certificate was revoked as Disabled", async () => {
+    mockInternalIssuance();
+    const { service, deps, signer } = buildService({
+      signer: buildSigner({ status: SignerStatus.Revoked, certificateStatus: CertStatus.REVOKED }),
+      certificate: buildCertificate({ status: CertStatus.REVOKED }),
+      revocations: [
+        buildRevocation({ status: SignerRevocationStatus.Completed, previousSignerStatus: SignerStatus.Disabled })
+      ]
+    });
+
+    await service.reissueCertificate({ ...actorFields, signerId: SIGNER_ID, caId: CA_ID });
+
+    expect(deps.signerDAL.updateById).toHaveBeenCalledWith(
+      SIGNER_ID,
+      expect.objectContaining({ status: SignerStatus.Disabled }),
+      tx
+    );
+    expect(signer()).toMatchObject({ status: SignerStatus.Disabled, certificateId: NEW_CERT_ID });
   });
 
   it("refuses while the revoke is still in progress", async () => {
@@ -918,6 +943,25 @@ describe("signerService revoke on a CA that can't revoke", () => {
     expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
     expect(deps.notificationService.createUserNotifications).not.toHaveBeenCalled();
   });
+
+  it.each([
+    [CrlReason.PRIVILEGE_WITHDRAWN, SignerStatus.Active],
+    [CrlReason.A_A_COMPROMISE, SignerStatus.Active],
+    [CrlReason.PRIVILEGE_WITHDRAWN, SignerStatus.RevocationPending]
+  ])(
+    "refuses the %s reason on AD CS for a %s signer before touching the revocation",
+    async (revocationReason, status) => {
+      const { service, deps } = buildService({ signer: buildSigner({ caType: CaType.ADCS, status }) });
+
+      await expect(
+        service.revokeCertificate({ ...actorFields, signerId: SIGNER_ID, revocationReason })
+      ).rejects.toThrow("Choose another revocation reason");
+
+      expect(deps.signerRevocationDAL.create).not.toHaveBeenCalled();
+      expect(deps.signerRevocationDAL.updateIfUnsettled).not.toHaveBeenCalled();
+      expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe("signerService pending DigiCert revocation that DigiCert won't report on", () => {
@@ -1001,9 +1045,7 @@ describe("signerService revoking again when DigiCert no longer knows the request
       signer: buildSigner({ status: SignerStatus.RevocationPending, caType: CaType.DIGICERT }),
       revocations: [buildRevocation({ status: SignerRevocationStatus.Failed, caRequestId: 41 })]
     });
-    deps.digicertFns.getRevocationRequestStatus.mockRejectedValue(
-      new BadRequestError({ message: "Request 41 not found." })
-    );
+    deps.digicertFns.getRevocationRequestStatus.mockResolvedValue(null);
 
     await revoke(service);
 
@@ -1011,5 +1053,26 @@ describe("signerService revoking again when DigiCert no longer knows the request
     expect(deps.digicertFns.revokeCertificate).toHaveBeenCalled();
     expect(revocation().status).toBe(SignerRevocationStatus.Completed);
     expect(signer().status).toBe(SignerStatus.Revoked);
+  });
+
+  it("keeps the tracked request and submits nothing when the lookup is refused", async () => {
+    const { service, deps, signer, revocation } = buildService({
+      ca: digicertCa,
+      certificate: digicertCertificate(),
+      signer: buildSigner({ status: SignerStatus.RevocationPending, caType: CaType.DIGICERT }),
+      revocations: [buildRevocation({ status: SignerRevocationStatus.Failed, caRequestId: 41 })]
+    });
+    deps.digicertFns.getRevocationRequestStatus.mockRejectedValue(
+      new BadRequestError({ message: "DigiCert request lookup for 41 failed: Unauthorized" })
+    );
+
+    await expect(revoke(service)).rejects.toThrow("Unauthorized");
+
+    expect(deps.signerRevocationDAL.updateIfUnsettled).not.toHaveBeenCalledWith(REVOCATION_ID, { caRequestId: null });
+    expect(deps.digicertFns.revokeCertificate).not.toHaveBeenCalled();
+    expect(revocation().caRequestId).toBe(41);
+    expect(revocation().failureReason).toContain("Unauthorized");
+    expect(revocation().failureReason).toContain("Fix the DigiCert connection");
+    expect(signer().status).toBe(SignerStatus.RevocationPending);
   });
 });

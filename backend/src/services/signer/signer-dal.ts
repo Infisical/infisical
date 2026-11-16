@@ -5,7 +5,7 @@ import { TableName, TPkiSigners, TPkiSignersUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 
@@ -22,6 +22,8 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateStatus: string | null;
   certificateCaId: string | null;
   caType: CaType | null;
+  caName?: string | null;
+  caStatus?: CaStatus | null;
   approvalPolicyName: string | null;
   hasOpenCertificateRequest: boolean;
 };
@@ -54,7 +56,7 @@ export const signerDALFactory = (db: TDbClient) => {
 
   const findByIdWithCertificate = async (signerId: string, tx?: Knex): Promise<TSignerWithCertificate | undefined> => {
     try {
-      const result = await (tx || db.replicaNode())(TableName.PkiSigners)
+      const result = (await (tx || db.replicaNode())(TableName.PkiSigners)
         .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
         .leftJoin(
           TableName.ApprovalPolicies,
@@ -75,6 +77,7 @@ export const signerDALFactory = (db: TDbClient) => {
           `${TableName.ExternalCertificateAuthority}.caId`,
           `${TableName.CertificateAuthority}.id`
         )
+        .leftJoin(`${TableName.CertificateAuthority} as signerCa`, `${TableName.PkiSigners}.caId`, "signerCa.id")
         .select(selectAllTableCols(TableName.PkiSigners))
         .select(
           db.raw("CASE WHEN ?? IS NULL THEN NULL ELSE COALESCE(??, ?) END AS ??", [
@@ -94,13 +97,15 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
+          db.ref("name").withSchema("signerCa").as("caName"),
+          db.ref("status").withSchema("signerCa").as("caStatus"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
           selectHasOpenCertificateRequest()
         )
         .where(`${TableName.PkiSigners}.id`, signerId)
-        .first();
+        .first()) as TSignerWithCertificate | undefined;
 
-      return result as TSignerWithCertificate | undefined;
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSignerByIdWithCertificate" });
     }

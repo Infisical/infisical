@@ -339,6 +339,13 @@ export const SignerKeyStep = ({
         />
       )}
 
+      {isHsm && externalOrderId && !canUseExistingCertificate && (
+        <FieldDescription className="text-warning">
+          DigiCert revokes the order&apos;s current certificate within 72 hours of the replacement.
+          After that, it can no longer be used to sign.
+        </FieldDescription>
+      )}
+
       {isHsm && usingExistingCertificate && (
         <Field>
           <FieldLabel>
