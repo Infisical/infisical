@@ -73,7 +73,6 @@ export const AccountList = ({
           account={account}
           meta={typeMap.get(account.accountType)}
           showFolder={showFolder}
-          onLaunch={overlays.openLaunch}
         />
       )
     },

@@ -68,7 +68,7 @@ type Scope = ReturnType<typeof folderAutoApprovalScope>;
 type TAi = TAutoApprovalCatalog["ai"];
 
 const NO_AI: TAi = { model: null, contextApps: [], contextConnections: [] };
-const NO_AI_MODEL = "Set up an AI model under Organization Settings > General first";
+const NO_AI_MODEL = "Needs an AI model in Organization Settings";
 
 const ConnectionIcon = ({ app }: { app: string }) => {
   const details = APP_CONNECTION_MAP[app as AppConnection];
@@ -282,7 +282,7 @@ const AiConditionRow = ({
     <Item
       variant="outline"
       size="sm"
-      media={<Icon name="sparkles" />}
+      icon="sparkles"
       title={
         <Inline gap={8} align="center">
           <span>AI approves the request</span>
@@ -308,7 +308,7 @@ const AiConditionRow = ({
       }
     >
       <Stack gap={12}>
-        <Field label="Instructions">
+        <Field label="Instructions" wide>
           <Textarea
             rows={3}
             maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
@@ -319,6 +319,7 @@ const AiConditionRow = ({
           />
         </Field>
         <Field
+          wide
           label="Additional context"
           description="The AI can also read the connections your request form fields use."
         >
@@ -326,6 +327,7 @@ const AiConditionRow = ({
             label="Additional context"
             size="sm"
             searchable
+            quickActions={false}
             options={options}
             value={selected}
             onChange={(value) =>

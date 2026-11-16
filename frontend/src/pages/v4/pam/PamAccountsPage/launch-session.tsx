@@ -14,11 +14,12 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Meta } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 
-import type { TPamAccountListItem } from "@app/hooks/api/pam";
+import type { TPamAccount } from "@app/hooks/api/pam";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -39,34 +40,25 @@ export const CliCommand = ({
       label="Command"
       copyLabel="Copy command"
       prompt="$"
-      maxLines={4}
+      maxLines={6}
       value={cliLaunchCommand(account, host)}
     />
   </Field>
 );
 
-const LaunchSession = ({
-  account,
-  onClose
-}: {
-  account: TPamAccountListItem;
-  onClose: () => void;
-}) => {
+const LaunchSession = ({ account }: { account: TPamAccount }) => {
   const go = useGo();
   const { orgId } = useParams({ strict: false }) as { orgId: string };
-  const pam = useV4Adapter("pam");
-  const { data: accountTypes = [] } = pam.useAccountTypes();
-  const { data: full } = pam.useAccount(account.id);
+  const { data: accountTypes = [] } = useV4Adapter("pam").useAccountTypes();
   const meta = accountTypes.find(({ type }) => type === account.accountType);
-  const unavailable = browserUnavailableReason(meta, full);
+  const unavailable = browserUnavailableReason(meta, account);
   const [picked, setPicked] = useState<LaunchMethod>("browser");
   const method: LaunchMethod = unavailable ? "cli" : picked;
-  const hosts = accountHosts(full);
+  const hosts = accountHosts(account);
   const [pickedHost, setPickedHost] = useState("");
   const host = hosts.length > 1 ? pickedHost || undefined : hosts[0];
 
-  const openInBrowser = () => {
-    onClose();
+  const openInBrowser = () =>
     go(
       orgHref(
         orgId,
@@ -75,7 +67,6 @@ const LaunchSession = ({
         }`
       )
     );
-  };
 
   return (
     <>
@@ -135,18 +126,34 @@ const LaunchSession = ({
   );
 };
 
+const LaunchSessionContent = ({ accountId }: { accountId: string }) => {
+  const { data: account, isPending } = useV4Adapter("pam").useAccount(accountId);
+  if (account) return <LaunchSession account={account} />;
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{isPending ? "Loading account" : "Account not found"}</DialogTitle>
+      </DialogHeader>
+      {isPending && (
+        <DialogBody>
+          <Skeleton height={96} />
+        </DialogBody>
+      )}
+      <DialogFooter showCloseButton />
+    </>
+  );
+};
+
 export const LaunchSessionDialog = ({
-  account,
+  accountId,
   onOpenChange
 }: {
-  account: TPamAccountListItem | null;
+  accountId?: string;
   onOpenChange: (open: boolean) => void;
 }) => (
-  <Dialog open={Boolean(account)} onOpenChange={onOpenChange}>
+  <Dialog open={Boolean(accountId)} onOpenChange={onOpenChange}>
     <DialogContent>
-      {account && (
-        <LaunchSession key={account.id} account={account} onClose={() => onOpenChange(false)} />
-      )}
+      {accountId && <LaunchSessionContent key={accountId} accountId={accountId} />}
     </DialogContent>
   </Dialog>
 );

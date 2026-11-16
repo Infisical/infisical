@@ -217,40 +217,36 @@ export const AccountName = ({
   orgId,
   account,
   meta,
-  showFolder = false,
-  onLaunch
+  showFolder = false
 }: {
   orgId: string;
   account: TPamAccountListItem;
   meta?: TPamAccountTypeMetadata;
   showFolder?: boolean;
-  onLaunch: (account: TPamAccountListItem) => void;
 }) => {
   const canEdit = buildPamAccountCan(account.permissions)(
     PamResourcePermissionActions.EditAccounts
   );
-  const { needsApproval, canLaunchNow } = launchState(account);
+  const { canLaunchNow } = launchState(account);
   return (
     <Inline gap={8} align="center" wrap={false}>
       {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
       <RowLink
-        link={{
-          to: v4Path("/organizations/$orgId/pam/accounts/$accountType/$accountId/access"),
-          params: { orgId, accountType: account.accountType, accountId: account.id }
-        }}
-        onClick={(event) => {
-          if (!(needsApproval || canLaunchNow)) return;
-          if (
-            event.button !== 0 ||
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          onLaunch(account);
-        }}
+        link={
+          canLaunchNow
+            ? {
+                to: ".",
+                search: (prev: Record<string, unknown>) => ({
+                  ...prev,
+                  accountId: account.id,
+                  tab: PamSheetTab.Launch
+                })
+              }
+            : {
+                to: v4Path("/organizations/$orgId/pam/accounts/$accountType/$accountId/access"),
+                params: { orgId, accountType: account.accountType, accountId: account.id }
+              }
+        }
       >
         {account.name}
         <span
@@ -448,12 +444,12 @@ export const useAccountOverlays = ({
 } = {}) => {
   const accountSheet = usePamSheetState("accountId");
   const folderSheet = usePamSheetState("folderId");
+  const launchId = accountSheet.tab === PamSheetTab.Launch ? accountSheet.selectedId : undefined;
   const [requesting, setRequesting] = useState<{
     account: TPamAccountListItem;
     accessType: PamAccessType;
   } | null>(null);
   const [revealing, setRevealing] = useState<TPamAccountListItem | null>(null);
-  const [launching, setLaunching] = useState<TPamAccountListItem | null>(null);
   const [creating, setCreating] = useState<{ folderId?: string } | null>(null);
   const [createSeq, setCreateSeq] = useState(0);
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -475,7 +471,7 @@ export const useAccountOverlays = ({
       />
       <CreateFolderDialog open={creatingFolder} onOpenChange={setCreatingFolder} />
       <AccountSheet
-        accountId={accountSheet.selectedId}
+        accountId={launchId ? undefined : accountSheet.selectedId}
         onOpenChange={(open) => {
           if (!open) accountSheet.closeSheet();
         }}
@@ -494,13 +490,13 @@ export const useAccountOverlays = ({
         }}
         onGranted={({ account, accessType }) => {
           if (accessType === PamAccessType.Credential) setRevealing(account);
-          else setLaunching(account);
+          else accountSheet.openSheet(account.id, PamSheetTab.Launch);
         }}
       />
       <LaunchSessionDialog
-        account={launching}
+        accountId={launchId}
         onOpenChange={(open) => {
-          if (!open) setLaunching(null);
+          if (!open) accountSheet.closeSheet();
         }}
       />
       <CredentialsDialog
@@ -544,7 +540,7 @@ export const useAccountOverlays = ({
     openLaunch: (account: TPamAccountListItem) => {
       if (launchState(account).needsApproval)
         setRequesting({ account, accessType: PamAccessType.Session });
-      else setLaunching(account);
+      else accountSheet.openSheet(account.id, PamSheetTab.Launch);
     },
     openCredentials: setRevealing,
     openDeleteAccount: setDeletingAccount,

@@ -172,7 +172,6 @@ export const PamAccountsPage = () => {
             orgId={orgId}
             account={row.account}
             meta={typeMap.get(row.account.accountType)}
-            onLaunch={overlays.openLaunch}
           />
         );
       }
