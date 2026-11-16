@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge, Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -507,8 +507,12 @@ const GatewayOverride = ({ account }: { account: TPamAccount }) => {
   const { data: gateways = [] } = networking.useGateways();
   const { data: pools = [] } = networking.usePools();
   const [picking, setPicking] = useState(false);
+  const stored = useMemo(
+    () => ({ gatewayId: account.gatewayId, gatewayPoolId: account.gatewayPoolId }),
+    [account.gatewayId, account.gatewayPoolId]
+  );
   const gateway = useAutosave({
-    value: { gatewayId: account.gatewayId, gatewayPoolId: account.gatewayPoolId },
+    value: stored,
     errorMessage: "Failed to update the gateway override",
     onSave: async (next) => {
       await update.mutateAsync({
