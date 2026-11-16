@@ -29,6 +29,12 @@ export type TWebAccessTransport = {
     onMessage: (data: string) => void;
     onClose: () => void;
   }) => TWebAccessChannel;
+  openDataExplorer: (input: {
+    accountId: string;
+    ticket: string;
+    onMessage: (data: string) => void;
+    onClose: () => void;
+  }) => TWebAccessChannel;
   connectRemoteDesktop: (input: {
     container: HTMLElement;
     accountId: string;
