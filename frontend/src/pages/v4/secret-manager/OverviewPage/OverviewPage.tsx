@@ -132,7 +132,7 @@ import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/cop
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
 import { createdSecretsShare } from "./secrets/created-share";
-import { EnvironmentPicker } from "./secrets/environment-picker";
+import { AddEnvironmentDialog, EnvironmentPicker } from "./secrets/environment-picker";
 import { addFlows, type ApplyFeedback, type FlowFeedback, type NewResource } from "./secrets/flows";
 import { childPath, environmentLabel } from "./secrets/flows/shared";
 import {
@@ -147,6 +147,7 @@ import {
   TruncatedLabel,
   useStableHandlers
 } from "./secrets/overview-cells";
+import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
@@ -278,6 +279,7 @@ export const OverviewPage = () => {
   const [moving, setMoving] = useState<Resource[]>();
   const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
   const [syncOpen, setSyncOpen] = useState(false);
+  const [addingEnvironment, setAddingEnvironment] = useState(false);
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
@@ -649,6 +651,11 @@ export const OverviewPage = () => {
     syncOptions: sync.syncOptions as Record<string, unknown>
   }));
   const createSecretSync = adapter.useCreateSecretSync();
+  const refetchProjectRef = useRef(projectQuery.refetch);
+  useLayoutEffect(() => {
+    refetchProjectRef.current = projectQuery.refetch;
+  });
+  const refetchProject = useCallback(() => refetchProjectRef.current?.(), []);
   const noEnvironments = projectQuery.isPending ? false : !projectEnvironments.length;
   const legacy = Boolean(projectQuery.data) && projectQuery.data?.version !== ProjectVersion.V3;
   const failed = Boolean(overview.error);
@@ -1254,7 +1261,7 @@ export const OverviewPage = () => {
       node
     );
   const secretEvents = useStableHandlers<
-    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions">
+    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize">
   >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
@@ -1293,13 +1300,26 @@ export const OverviewPage = () => {
       setQuery(key);
     },
     onRefresh: () => overview.refetch(),
+    onRename: (secrets, name, onFieldError) => {
+      const ids = new Set(secrets.map((secret) => secret.id));
+      return setResources(
+        (current) =>
+          current.map((resource): Resource =>
+            resource.kind === "secret" && ids.has(resource.id) ? { ...resource, name } : resource
+          ),
+        { title: `Renamed ${secrets[0]?.name ?? "secret"} to ${name}` },
+        undefined,
+        onFieldError
+      );
+    },
     importedFrom
   });
   const handlers: SecretRowHandlers = {
     ...secretEvents,
     copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
-    tagOptions
+    tagOptions,
+    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization)
   };
   const allOnPage =
     selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
@@ -1390,6 +1410,25 @@ export const OverviewPage = () => {
     updateSearch({ filterBy: undefined, tags: undefined, search: "" });
     resetView();
   };
+  const addNewMenu = (trigger?: ReactNode) => (
+    <AddNewMenu
+      writeBlock={writeBlock}
+      accessBlocks={addBlocks}
+      single={single}
+      copyBlock={pendingHere.length ? "Commit or discard pending changes first" : undefined}
+      onAdd={(kind) => openFlow(kind)}
+      onUpload={() => setImportRequest({ step: "upload" })}
+      onCopySecrets={() =>
+        setCopyInvocation({
+          origin: "toolbar",
+          sourcePath: path,
+          sourceEnvironmentSlug: single ? activeEnvironment : ""
+        })
+      }
+      onAddSync={() => setSyncOpen(true)}
+      trigger={trigger}
+    />
+  );
   const emptyState = (() => {
     if (query.trim())
       return (
@@ -1481,21 +1520,27 @@ export const OverviewPage = () => {
         <EmptyState
           icon="folder"
           title="No environments yet"
-          actions={gate(
-            notPorted("Adding environments"),
-            <Button icon="plus" disabled>
+          actions={
+            <Button
+              icon="plus"
+              disabledReason={
+                permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments)
+                  ? undefined
+                  : "You don't have permission to add environments"
+              }
+              onClick={() => setAddingEnvironment(true)}
+            >
               Add environment
             </Button>
-          )}
+          }
         />
       );
     if (legacy)
       return (
-        <EmptyState
-          icon="lock"
-          title="Secrets engine upgrade required"
-          description="This project uses the legacy secrets engine."
-          actions={gate(notPorted("Project upgrades"), <Button disabled>Upgrade project</Button>)}
+        <ProjectUpgradeState
+          projectId={projectId}
+          upgradeStatus={projectQuery.data?.upgradeStatus}
+          onRefetch={refetchProject}
         />
       );
     if (failed)
@@ -1703,24 +1748,7 @@ export const OverviewPage = () => {
                     secretCount={single ? envSecrets(activeEnvironment).length : 0}
                     onExport={(action) => exportEnv(activeEnvironment, action)}
                   />
-                  <AddNewMenu
-                    writeBlock={writeBlock}
-                    accessBlocks={addBlocks}
-                    single={single}
-                    copyBlock={
-                      pendingHere.length ? "Commit or discard pending changes first" : undefined
-                    }
-                    onAdd={(kind) => openFlow(kind)}
-                    onUpload={() => setImportRequest({ step: "upload" })}
-                    onCopySecrets={() =>
-                      setCopyInvocation({
-                        origin: "toolbar",
-                        sourcePath: path,
-                        sourceEnvironmentSlug: single ? activeEnvironment : ""
-                      })
-                    }
-                    onAddSync={() => setSyncOpen(true)}
-                  />
+                  {addNewMenu()}
                 </div>
                 <div className={styles.tableBlock}>
                   <div className={styles.tableFrame}>
@@ -1924,6 +1952,11 @@ export const OverviewPage = () => {
                           )}
                           {canQuickAdd && (
                             <QuickAddRow
+                              typeMenu={addNewMenu(
+                                <Button variant="ghost" size="icon-row" iconOnly icon="plus">
+                                  Add another resource type
+                                </Button>
+                              )}
                               multiple={!single}
                               colSpan={(single ? 1 : visibleEnvironments.length) + 1}
                               existing={ordered
@@ -2313,6 +2346,16 @@ export const OverviewPage = () => {
                 )
             }
             onToast={(tone, feedback) => toast({ tone, ...feedback })}
+          />
+          <AddEnvironmentDialog
+            projectId={projectId}
+            open={addingEnvironment}
+            onOpenChange={setAddingEnvironment}
+            report={report}
+            onCreated={(slug) => {
+              projectQuery.refetch?.();
+              setEnvironmentIds([slug]);
+            }}
           />
           <ReviewSheet
             open={reviewOpen}

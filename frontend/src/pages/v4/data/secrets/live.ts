@@ -23,10 +23,12 @@ import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
 import { secretsChangeRequestsLive } from "./live-change-requests";
 import { secretsFlowsLive } from "./live-flows";
+import { secretsUpgradeLive } from "./live-upgrade";
 
 export const secretsLive: SecretsAdapter = {
   ...secretsFlowsLive,
   ...secretsChangeRequestsLive,
+  ...secretsUpgradeLive,
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,

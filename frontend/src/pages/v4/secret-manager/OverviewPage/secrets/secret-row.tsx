@@ -63,7 +63,6 @@ import {
 
 import { failed } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
-import { notPorted } from "../../../not-ported";
 import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
 import { valueKey } from "../bridge/view-model";
@@ -96,6 +95,7 @@ import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
 import { ReferencesDialog } from "./row-actions/references-dialog";
+import { RenameSecretDialog } from "./row-actions/rename-secret-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
@@ -120,6 +120,12 @@ export type SecretRowHandlers = {
   importedFrom: (environment: string, key: string) => string | undefined;
   resources: readonly Resource[];
   tagOptions: string[];
+  autoCapitalize: boolean;
+  onRename: (
+    secrets: Secret[],
+    name: string,
+    onFieldError: (message: string) => void
+  ) => Promise<boolean>;
 };
 type Overlay =
   | "edit"
@@ -996,6 +1002,7 @@ function SecretRowView({
   const overlayFor = (environment: string) => (next: Overlay | undefined) =>
     setOverlays((current) => ({ ...current, [environment]: next }));
   const [editing, setEditing] = useState<string>();
+  const [renaming, setRenaming] = useState(false);
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
   const { name } = first;
@@ -1105,10 +1112,34 @@ function SecretRowView({
     if (handlers.importedFrom(environment, name)) return "imported";
     return "missing";
   };
+  const editDeniedIn = entries
+    .map((entry) =>
+      ctx.blockFor?.(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Edit,
+        {
+          environment: entry.environment,
+          secretPath: entry.path,
+          secretName: entry.name,
+          secretTags: entry.tags.length ? entry.tags : ["*"]
+        },
+        "rename this secret"
+      )
+    )
+    .find(Boolean);
+  let renameBlock = ctx.writeBlock ?? editDeniedIn;
+  if (!renameBlock && entries.some((entry) => entry.honeyToken || entry.managedBy))
+    renameBlock = "Managed secrets can't be renamed";
+  else if (!renameBlock && entries.some((entry) => entry.override !== undefined))
+    renameBlock = "Remove personal overrides first";
   const groupActions: RowActionProps = {
     label: name,
     menu: (
-      <DropdownMenuItem disabled description={notPorted("Renaming across environments")}>
+      <DropdownMenuItem
+        disabled={Boolean(renameBlock)}
+        description={renameBlock}
+        onSelect={() => setRenaming(true)}
+      >
         <Icon icon={EditIcon} />
         Edit secret name
       </DropdownMenuItem>
@@ -1348,6 +1379,15 @@ function SecretRowView({
             </Table>
           </TableCell>
         </TableRow>
+      )}
+      {renaming && (
+        <RenameSecretDialog
+          name={name}
+          environmentCount={entries.length}
+          autoCapitalize={handlers.autoCapitalize}
+          onRename={(next, onFieldError) => handlers.onRename(entries, next, onFieldError)}
+          onClose={() => setRenaming(false)}
+        />
       )}
     </>
   );

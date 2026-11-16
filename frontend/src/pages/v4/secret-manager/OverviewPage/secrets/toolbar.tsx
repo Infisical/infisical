@@ -36,7 +36,6 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
-import { notPorted } from "../../../not-ported";
 import type { ResourceKind, Secret } from "../secrets-model";
 import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
@@ -182,7 +181,8 @@ export function AddNewMenu({
   onAdd,
   onUpload,
   onCopySecrets,
-  onAddSync
+  onAddSync,
+  trigger
 }: {
   writeBlock?: string;
   accessBlocks?: AddNewBlocks;
@@ -192,6 +192,7 @@ export function AddNewMenu({
   onUpload: () => void;
   onCopySecrets: () => void;
   onAddSync: () => void;
+  trigger?: ReactNode;
 }) {
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
     if (writeBlock) return writeBlock;
@@ -214,11 +215,13 @@ export function AddNewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button layout="trigger" variant="accent">
-          Add new
-        </Button>
+        {trigger ?? (
+          <Button layout="trigger" variant="accent">
+            Add new
+          </Button>
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={trigger ? "start" : "end"}>
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {item("secret", "New secret", <KindIcon kind="secret" />)}
         {item("folder", "New folder", <KindIcon kind="folder" />)}
@@ -361,7 +364,8 @@ export function QuickAddRow({
   canCreateTags,
   onCreate,
   onQueue,
-  onPasteSecrets
+  onPasteSecrets,
+  typeMenu
 }: {
   multiple: boolean;
   colSpan: number;
@@ -377,6 +381,7 @@ export function QuickAddRow({
   ) => Promise<boolean>;
   onQueue?: (key: string, value: string, annotations: QuickAddAnnotations) => void;
   onPasteSecrets: (parsed: ReturnType<typeof parsePastedEnv>) => void;
+  typeMenu: ReactNode;
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
@@ -452,15 +457,19 @@ export function QuickAddRow({
     >
       <TableCell pin="start" selection divider={false}>
         <span className={styles.iconSlot}>
-          <Button
-            variant="ghost"
-            size="icon-row"
-            iconOnly
-            icon="plus"
-            disabledReason={notPorted("Other resource types")}
-          >
-            Add another resource type
-          </Button>
+          {dirty ? (
+            <Button
+              variant="ghost"
+              size="icon-row"
+              iconOnly
+              icon="plus"
+              disabledReason="Finish or clear this secret first"
+            >
+              Add another resource type
+            </Button>
+          ) : (
+            typeMenu
+          )}
         </span>
       </TableCell>
       <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>

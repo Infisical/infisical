@@ -43,7 +43,7 @@ const slugOf = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-function AddEnvironmentDialog({
+export function AddEnvironmentDialog({
   projectId,
   open,
   onOpenChange,
