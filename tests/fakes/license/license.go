@@ -9,7 +9,7 @@ package license
 // Feature carries both names for one entitlement, because two vocabularies are in
 // play and getting them confused fails silently.
 //
-// V2 is the License Server registry key the stub emits. V1 is the TFeatureSet field
+// V2 is the License Server registry key the stub emits. V1 is the Plan field (`TPlanProps`)
 // the read-back checks. feature-mapping.ts warns that a wrong key means the feature
 // is never projected onto the plan, so a raw string would surface as a 403 in a test
 // that looks unrelated to licensing.

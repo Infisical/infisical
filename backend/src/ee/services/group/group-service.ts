@@ -9,6 +9,7 @@ import {
   TGroups,
   TRoles
 } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -37,8 +38,6 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -51,7 +50,6 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -121,9 +119,9 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -150,10 +148,10 @@ export const groupServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
-  usageMeteringService,
   identityAccessTokenService,
   alertChannelRecipientDAL,
   eventEmitter,
@@ -179,7 +177,7 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
       });
@@ -281,7 +279,7 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
@@ -487,7 +485,7 @@ export const groupServiceFactory = ({
 
     const plan = await licenseService.getPlan(actorOrgId);
 
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });
@@ -531,17 +529,17 @@ export const groupServiceFactory = ({
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-      usageMeteringService.emit(actorOrgId, PamIdentities.key);
-      usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -872,6 +870,7 @@ export const groupServiceFactory = ({
 
     const users = await addUsersToGroupByUserIds({
       group: groupMembership.group,
+      usageMeteringService,
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
@@ -882,10 +881,6 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
-    // The user may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -980,6 +975,7 @@ export const groupServiceFactory = ({
 
     const identities = await addIdentitiesToGroup({
       group: groupMembership.group,
+      usageMeteringService,
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
@@ -994,10 +990,6 @@ export const groupServiceFactory = ({
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
     }
 
-    // The identity may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1075,6 +1067,7 @@ export const groupServiceFactory = ({
 
     const { users, sendPamCancellations } = await removeUsersFromGroupByUserIds({
       group: groupMembership.group,
+      usageMeteringService,
       userIds: [user.id],
       actorId,
       userGroupMembershipDAL,
@@ -1090,10 +1083,6 @@ export const groupServiceFactory = ({
     });
     sendPamCancellations();
 
-    // The user may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1165,6 +1154,7 @@ export const groupServiceFactory = ({
 
     const { identities, sendPamCancellations } = await removeIdentitiesFromGroup({
       group: groupMembership.group,
+      usageMeteringService,
       identityIds: [identityId],
       actorId,
       identityDAL,
@@ -1184,10 +1174,6 @@ export const groupServiceFactory = ({
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
     }
 
-    // The identity may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

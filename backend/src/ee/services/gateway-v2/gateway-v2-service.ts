@@ -1088,6 +1088,7 @@ export const gatewayV2ServiceFactory = ({
       pkcs11MlDsa?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
       clickhouseNativeProtocol?: boolean;
+      outputMasking?: boolean;
       certificateScan?: boolean;
       windowsCertificateScan?: boolean;
       supported_account_types?: string[];

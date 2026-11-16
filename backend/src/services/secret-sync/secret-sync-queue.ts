@@ -4,10 +4,10 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -149,7 +149,7 @@ type TSecretSyncQueueFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources" | "findOrphanedResourceIds">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -362,7 +362,10 @@ export const secretSyncQueueFactory = ({
       backoff,
       removeOnComplete: true,
       removeOnFail: true,
-      jobId: randomUUID()
+      deduplication: {
+        id: `secret-sync-sync-secrets-${payload.syncId}`,
+        keepLastIfActive: true
+      }
     });
   };
 

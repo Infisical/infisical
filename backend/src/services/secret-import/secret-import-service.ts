@@ -4,7 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -63,7 +63,7 @@ type TSecretImportServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -169,7 +169,7 @@ export const secretImportServiceFactory = ({
     if (isCrossProjectImport) {
       const plan = await licenseService.getPlan(actorOrgId);
       const org = await orgDAL.findOrgById(actorOrgId);
-      if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
+      if (!plan.has(PlanFeature.CrossProjectSecretSharing) || !org?.allowCrossProjectSecretSharing) {
         throw new ForbiddenRequestError({
           message: "Cross-project secret sharing is not enabled for this organization"
         });
@@ -212,7 +212,7 @@ export const secretImportServiceFactory = ({
       }
 
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretApproval) {
+      if (!plan.has(PlanFeature.SecretApproval)) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
         });
@@ -609,7 +609,7 @@ export const secretImportServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
       });

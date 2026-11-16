@@ -20,13 +20,19 @@ import {
   getAutoApprovalSubjectKey,
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
-import { AUTO_APPROVAL_APPS, getAutoApprovalProvider } from "./auto-approval-providers";
+import {
+  AUTO_APPROVAL_APPS,
+  AUTO_APPROVAL_FIELD_APPS,
+  AUTO_APPROVAL_REQUESTER_APPS,
+  getAutoApprovalProvider
+} from "./auto-approval-providers";
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
   AutoApprovalConstraintValue,
   TAutoApprovalConfig,
+  TAutoApprovalConstraint,
   TAutoApprovalContext,
   TAutoApprovalEvidence,
   TAutoApprovalInputValue,
@@ -38,16 +44,21 @@ import {
 
 const RESOLVE_TIMEOUT_MS = 20_000;
 
-const UNUSED_CONSTRAINT = { label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL, value: AutoApprovalConstraintValue.None };
+type TConstraintDefinition = Pick<TAutoApprovalConstraint<unknown, unknown>, "label" | "value" | "maxValues">;
+
+const UNUSED_CONSTRAINT: TConstraintDefinition = {
+  label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
+  value: AutoApprovalConstraintValue.None
+};
 
 // A subject the requester links offers the reuse check on top of its provider's own checks
 const getConstraintDefinition = (
-  subject: { input: unknown; constraints: Record<string, { label: string; value: AutoApprovalConstraintValue }> },
+  subject: { input: unknown; constraints: Record<string, TConstraintDefinition> },
   constraintId: string
-) =>
-  subject.input && constraintId === AUTO_APPROVAL_UNUSED_CONSTRAINT
-    ? UNUSED_CONSTRAINT
-    : subject.constraints[constraintId];
+): TConstraintDefinition | undefined => {
+  if (subject.input && constraintId === AUTO_APPROVAL_UNUSED_CONSTRAINT) return UNUSED_CONSTRAINT;
+  return Object.hasOwn(subject.constraints, constraintId) ? subject.constraints[constraintId] : undefined;
+};
 
 type TAutoApprovalServiceFactoryDep = {
   approvalPolicyAutoApprovalDAL: TApprovalPolicyAutoApprovalDALFactory;
@@ -162,6 +173,8 @@ export const autoApprovalServiceFactory = ({
       inputKeys.add(key);
     });
 
+    // A request reads every rule's values for a check together, so a cap on them applies to the whole policy
+    const valuesByCheck = new Map<string, Set<string>>();
     const rules = config.rules.map((rule) => {
       const name = rule.name.trim();
       const connectionIdByKind = new Map<string, string>();
@@ -215,6 +228,17 @@ export const autoApprovalServiceFactory = ({
           throw new BadRequestError({
             message: `Rule '${name}': '${check}' needs at least one value`
           });
+        }
+
+        if (constraint.maxValues) {
+          const checkKey = `${condition.connectionId}:${condition.subject}:${condition.constraint}`;
+          const checkValues = new Set([...(valuesByCheck.get(checkKey) ?? []), ...values]);
+          if (checkValues.size > constraint.maxValues) {
+            throw new BadRequestError({
+              message: `The rules give '${check}' from '${connectionName}' ${checkValues.size} different values. A policy can give it at most ${constraint.maxValues} across all of its rules.`
+            });
+          }
+          valuesByCheck.set(checkKey, checkValues);
         }
 
         return { ...condition, values };
@@ -355,7 +379,12 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAutoApprovalEvidence> => {
     const targets = new Map<
       string,
-      { connectionId: string; subject: string; inputId: string | null; constraintIds: Set<string> }
+      {
+        connectionId: string;
+        subject: string;
+        inputId: string | null;
+        valuesByConstraint: Map<string, Set<string>>;
+      }
     >();
     stored.rules.forEach((rule) =>
       rule.conditions.forEach((condition) => {
@@ -364,9 +393,12 @@ export const autoApprovalServiceFactory = ({
           connectionId: condition.connectionId,
           subject: condition.subject,
           inputId: condition.inputId,
-          constraintIds: new Set<string>()
+          valuesByConstraint: new Map<string, Set<string>>()
         };
-        target.constraintIds.add(condition.constraint);
+        target.valuesByConstraint.set(
+          condition.constraint,
+          new Set([...(target.valuesByConstraint.get(condition.constraint) ?? []), ...condition.values])
+        );
         targets.set(key, target);
       })
     );
@@ -426,10 +458,15 @@ export const autoApprovalServiceFactory = ({
           try {
             facts = await withTimeout(
               (signal) =>
-                definition.resolve(connection, parsedInput?.id ?? null, ctx, [...target.constraintIds], {
-                  ...providerDeps,
-                  signal
-                }),
+                definition.resolve(
+                  connection,
+                  parsedInput?.id ?? null,
+                  ctx,
+                  Object.fromEntries(
+                    [...target.valuesByConstraint].map(([constraintId, values]) => [constraintId, [...values]])
+                  ),
+                  { ...providerDeps, signal }
+                ),
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
             );
@@ -453,7 +490,7 @@ export const autoApprovalServiceFactory = ({
           const previouslyUsed = Boolean(
             parsedInput &&
             stableId &&
-            target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
+            target.valuesByConstraint.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
             (await isRecordUsed({
               connectionId: target.connectionId,
               subject: target.subject,
@@ -517,6 +554,8 @@ export const autoApprovalServiceFactory = ({
 
     return {
       apps: AUTO_APPROVAL_APPS,
+      fieldApps: AUTO_APPROVAL_FIELD_APPS,
+      requesterApps: AUTO_APPROVAL_REQUESTER_APPS,
       connections: connectionsByApp.flat().flatMap((connection) => {
         const provider = getAutoApprovalProvider(connection.app);
         if (!provider) return [];
@@ -555,7 +594,8 @@ export const autoApprovalServiceFactory = ({
     subject: subjectId,
     constraint: constraintId,
     search,
-    siblings
+    siblings,
+    selected
   }: {
     projectId: string;
     actor: TApprovalActor;
@@ -564,6 +604,7 @@ export const autoApprovalServiceFactory = ({
     constraint: string;
     search?: string;
     siblings: Record<string, string[]>;
+    selected: string[];
   }) => {
     const connection = await appConnectionService.validateAppConnectionUsageById(
       AUTO_APPROVAL_APPS,
@@ -581,7 +622,11 @@ export const autoApprovalServiceFactory = ({
     if (!constraint.listOptions) return { options: [] };
 
     return {
-      options: await constraint.listOptions(connection, { search: search?.trim() || undefined, siblings }, providerDeps)
+      options: await constraint.listOptions(
+        connection,
+        { search: search?.trim() || undefined, siblings, selected },
+        providerDeps
+      )
     };
   };
 

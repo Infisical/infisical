@@ -265,6 +265,18 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
   [DynamicSecretProviders.Kafka]: {
     presentation: { providerFamily: "Kafka", logoFileName: "Kafka.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
+  },
+  [DynamicSecretProviders.OpenRouter]: {
+    presentation: { providerFamily: "OpenRouter", logoFileName: "OpenRouter.png" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "API_KEY", label: "API Key" },
+        { key: "KEY_HASH", label: "Key Hash" },
+        { key: "KEY_NAME", label: "Key Name" }
+      ]),
+      supportsRenewal: false
+    }
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;
 

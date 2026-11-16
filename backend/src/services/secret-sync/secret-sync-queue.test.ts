@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { recordSecretSyncOutcomeMetric, recordSecretSyncStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -60,7 +61,9 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     start: vi.fn((name: string, fn: THandler) => {
       handlers.set(name, fn);
     }),
-    queue: vi.fn(async () => undefined)
+    queue: vi.fn<(name: string, job: string, data: unknown, opts: Record<string, unknown>) => Promise<void>>(
+      async () => undefined
+    )
   };
 
   const state = {
@@ -110,7 +113,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     >(async () => [])
   };
 
-  secretSyncQueueFactory({
+  const queue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
     keyStore: {
@@ -124,7 +127,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("") })) },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     telemetryService: { sendPostHogEvents: vi.fn(async () => undefined) },
-    licenseService: { getPlan: vi.fn() },
+    licenseService: new FakeLicenseService(),
     eventEmitter,
     alertService
   } as never);
@@ -153,7 +156,9 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     runJob,
     secretSyncDAL,
     eventEmitter,
-    alertService
+    alertService,
+    queueService,
+    queue
   };
 };
 
@@ -418,5 +423,43 @@ describe("sync alert cleanup", () => {
     await runJob(QueueJobs.DailySecretSyncRetry);
 
     expect(alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
+  });
+});
+
+describe("secret sync job deduplication", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("queues sync jobs under one deduplication id per sync instead of a random job id", async () => {
+    const { queue, queueService } = createHarness(healthy);
+
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-1" });
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-1" });
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-2" });
+
+    const queued = queueService.queue.mock.calls.map(([name, job, , opts]) => ({ name, job, opts }));
+    expect(queued.map(({ opts }) => opts.deduplication)).toEqual([
+      { id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true },
+      { id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true },
+      { id: "secret-sync-sync-secrets-sync-2", keepLastIfActive: true }
+    ]);
+    queued.forEach(({ name, job, opts }) => {
+      expect(name).toBe(QueueName.AppConnectionSecretSync);
+      expect(job).toBe(QueueJobs.SecretSyncSyncSecrets);
+      expect(opts).not.toHaveProperty("jobId");
+    });
+  });
+
+  test("requeues a lock failure under the same deduplication id, keeping its count and delay", async () => {
+    const { runSync, queueService } = createHarness(healthy, { lockFails: true });
+
+    await runSync(1, { failedToAcquireLockCount: 3 });
+
+    expect(queueService.queue).toHaveBeenCalledTimes(1);
+    const [, , data, opts] = queueService.queue.mock.calls[0];
+    expect(data).toEqual({ syncId: "sync-1", failedToAcquireLockCount: 4 });
+    expect(opts.deduplication).toEqual({ id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true });
+    expect(opts.delay).toBeGreaterThan(0);
   });
 });

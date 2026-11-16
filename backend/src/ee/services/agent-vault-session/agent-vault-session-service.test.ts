@@ -1,6 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
@@ -31,7 +33,9 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     }))
   );
   const transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() }));
-  const licenseService = { getPlan: vi.fn().mockResolvedValue({ agentVaultHooks: hooksOnPlan }) };
+  const licenseService = {
+    getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
   const kmsService = {
     wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")),
     // The "sealed" bytes are the plaintext behind a marker, so a test can read what was sealed.

@@ -2,21 +2,19 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { PamIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
@@ -28,12 +26,12 @@ type TSubOrgServiceFactoryDep = {
   >;
   orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -43,11 +41,11 @@ export const subOrgServiceFactory = ({
   orgDeletionService,
   permissionService,
   licenseService,
+  usageMeteringService,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
-  certificatePolicyDAL,
-  usageMeteringService
+  certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -65,7 +63,7 @@ export const subOrgServiceFactory = ({
     );
 
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (!orgLicensePlan.has(PlanFeature.SubOrganization)) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });
@@ -138,7 +136,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    usageMeteringService.emit(organization.id, PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     return {
       organization
@@ -247,7 +245,7 @@ export const subOrgServiceFactory = ({
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (!orgLicensePlan.has(PlanFeature.SubOrganization)) {
       throw new BadRequestError({
         message:
           "Sub-organization feature is not available. Please upgrade your instance to Infisical's Enterprise plan."

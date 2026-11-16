@@ -188,6 +188,11 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**Output masking fails closed**: an older gateway would silently ignore the rule, so
+`assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
+gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
+strips unknown keys, so a capability missing there is never stored and every check on it fails.
+
 **External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
 (`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
 backend list gateways read. Hosts beyond the built-in providers come from the server admin's
