@@ -188,6 +188,52 @@ func TestSecretVersion_TagConditions(t *testing.T) {
 			"1": "<hidden-by-infisical>", "2": "<hidden-by-infisical>", "3": "<hidden-by-infisical>",
 		}, values)
 	})
+
+	t.Run("should refuse an untagged version's value to a role that can describe the secret but not read its value", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, _, _ := sensitiveHistory(t, h.NewTenant(t))
+		proj.NewRole(t, "no-sensitive-values",
+			fixture.Permission{Subject: "secrets", Action: []string{"describeSecret", "readValue"}},
+			fixture.Permission{Subject: "secrets", Action: []string{"readValue"}, Inverted: true,
+				Conditions: map[string]any{"secretTags": map[string]any{"$in": []string{"sensitive"}}}})
+		describer := proj.NewUser(t, fixture.WithPrincipalName("describer"), fixture.WithRoles("no-sensitive-values"))
+
+		// Action
+		res := readVersion(t, describer, proj, new(float32(3)))
+
+		// Assert
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Equal(t, "You do not have permission to view secret value on secret with name 'DB_PASS'", apierr.Message(res.Body))
+	})
+
+	t.Run("should refuse a version read by its old name when the secret's current name and tags are denied", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		sensitive := secretmanager.CreateTag(t, proj, "sensitive")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "first")
+		renaming, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "DB_PASS", api.UpdateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/"), NewSecretName: new("PROD_DB_PASS"), TagIds: &[]string{sensitive},
+		})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, renaming.StatusCode(), renaming.Body)
+		proj.NewRole(t, "no-sensitive-prod",
+			fixture.Permission{Subject: "secrets", Action: []string{"read"}},
+			fixture.Permission{Subject: "secrets", Action: []string{"read"}, Inverted: true, Conditions: map[string]any{
+				"secretName": "PROD_DB_PASS", "secretTags": map[string]any{"$in": []string{"sensitive"}}}})
+		reader := proj.NewUser(t, fixture.WithPrincipalName("reader"), fixture.WithRoles("no-sensitive-prod"))
+
+		// Action
+		res := readVersion(t, reader, proj, new(float32(1)))
+
+		// Assert
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.NotContains(t, string(res.Body), "first")
+	})
 }
 
 // sensitiveHistory gives DB_PASS three versions: 1 ("first") from before the sensitive tag, 2

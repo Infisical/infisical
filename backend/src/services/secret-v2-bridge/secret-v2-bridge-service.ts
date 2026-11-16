@@ -2057,16 +2057,16 @@ export const secretV2BridgeServiceFactory = ({
               : undefined
           ));
 
-    // a version only carries the tags it was written with, so reading one must also pass the secret's current tags
+    // a version keeps the name and tags it was written with, so reading one must also pass the secret as it is now
     const currentSecret = version !== undefined && secret ? await secretDAL.findOne({ id: secret.id }) : undefined;
-    const secretTagSets = currentSecret ? [secret?.tags, currentSecret.tags] : [secret?.tags];
+    const secretsToCheck = currentSecret ? [secret, currentSecret] : [secret];
 
-    secretTagSets.forEach((tags) =>
+    secretsToCheck.forEach((el) =>
       throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath: path,
-        secretName,
-        secretTags: (tags || []).map((el) => el.slug)
+        secretName: el?.key ?? secretName,
+        secretTags: (el?.tags || []).map((tag) => tag.slug)
       })
     );
 
@@ -2211,12 +2211,12 @@ export const secretV2BridgeServiceFactory = ({
 
     if (viewSecretValue) {
       if (
-        !secretTagSets.every((tags) =>
+        !secretsToCheck.every((el) =>
           hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
             secretPath: path,
-            secretName,
-            secretTags: (tags || []).map((el) => el.slug)
+            secretName: el?.key ?? secretName,
+            secretTags: (el?.tags || []).map((tag) => tag.slug)
           })
         ) &&
         secretType !== SecretType.Personal
@@ -3273,13 +3273,13 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     return secretVersions.map((el) => {
-      // a version only carries the tags it was written with, so the secret's current tags must allow the read too
-      const secretValueHidden = [el.tags, secret.tags].some(
-        (tags) =>
+      // a version keeps the name and tags it was written with, so the secret as it is now must allow the read too
+      const secretValueHidden = [el, secret].some(
+        ({ key, tags }) =>
           !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment: folder.environment.envSlug,
             secretPath: folderWithPath.path,
-            secretName: el.key,
+            secretName: key,
             ...(tags?.length && {
               secretTags: tags.map((tag) => tag.slug)
             })
@@ -3863,18 +3863,18 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       secretVersions: secretVersionNumbers
     });
-    // a version only carries the tags it was written with, so the secret's current tags must allow the read too;
+    // a version keeps the name and tags it was written with, so the secret as it is now must allow the read too;
     // commits keep the versions of deleted secrets, which only have their own
     const secret = await secretDAL.findOne({ id: secretId });
     return secretVersions
       .filter((el) => !el.userId || el.userId === actorId)
       .map((el) => {
-        const secretValueHidden = [el.tags, secret?.tags ?? el.tags].some(
-          (tags) =>
+        const secretValueHidden = [el, secret ?? el].some(
+          ({ key, tags }) =>
             !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
               environment: environment.slug,
               secretPath,
-              secretName: el.key,
+              secretName: key,
               ...(tags?.length && {
                 secretTags: tags.map((tag) => tag.slug)
               })
