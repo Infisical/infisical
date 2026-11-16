@@ -110,9 +110,8 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                     // store for oauth callback connections
                     localStorage.setItem(
                       "secretSyncFormData",
-                      JSON.stringify(watch(), (key, serializedValue) =>
-                        key === "channels" ? undefined : serializedValue
-                      )
+                      // Only the top-level alert channels are left out; destination configs can have their own.
+                      JSON.stringify({ ...watch(), channels: undefined })
                     );
                     if (callback) callback();
                     return;
