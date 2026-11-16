@@ -725,36 +725,67 @@
                 ]
               },
               {
-                "group": "Concepts",
+                "group": "Defining resources",
                 "pages": [
-                  "documentation/platform/agent-vault/projects",
-                  "documentation/platform/agent-vault/access-bundles",
                   {
                     "group": "Services",
                     "root": "documentation/platform/agent-vault/services",
                     "pages": [
                       "documentation/platform/agent-vault/http-apis",
                       "documentation/platform/agent-vault/mcp-servers",
-                      "documentation/platform/agent-vault/databases-and-ssh",
-                      "documentation/platform/agent-vault/hooks"
+                      {
+                        "group": "Databases and SSH",
+                        "root": "documentation/platform/agent-vault/databases-and-ssh",
+                        "pages": [
+                          "documentation/platform/agent-vault/postgresql",
+                          "documentation/platform/agent-vault/mysql",
+                          "documentation/platform/agent-vault/ssh"
+                        ]
+                      }
                     ]
                   },
                   "documentation/platform/agent-vault/variables",
-                  "documentation/platform/agent-vault/skills",
-                  "documentation/platform/agent-vault/service-discovery",
+                  "documentation/platform/agent-vault/skills"
+                ]
+              },
+              {
+                "group": "Granting access",
+                "pages": [
+                  {
+                    "group": "Access control",
+                    "root": "documentation/platform/agent-vault/access-control",
+                    "pages": [
+                      "documentation/platform/agent-vault/projects",
+                      "documentation/platform/agent-vault/access-bundles"
+                    ]
+                  },
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
-                      "documentation/platform/agent-vault/sessions-cli",
-                      "documentation/platform/agent-vault/sessions-api",
+                      "documentation/platform/agent-vault/create-a-session",
+                      "documentation/platform/agent-vault/revoke-a-session",
                       "documentation/platform/agent-vault/sessions-on-behalf-of-users",
-                      "documentation/platform/agent-vault/inline-services",
-                      "documentation/platform/agent-vault/session-logs"
+                      "documentation/platform/agent-vault/inline-services"
                     ]
                   },
-                  "documentation/platform/agent-vault/proxies",
-                  "documentation/platform/agent-vault/access-control"
+                  {
+                    "group": "Proxies",
+                    "root": "documentation/platform/agent-vault/proxies",
+                    "pages": [
+                      "documentation/platform/agent-vault/certificate-trust",
+                      "documentation/platform/agent-vault/socks5"
+                    ]
+                  },
+                  "documentation/platform/agent-vault/hooks",
+                  "documentation/platform/agent-vault/service-discovery"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
+                  "documentation/platform/agent-vault/session-logs",
+                  "documentation/platform/agent-vault/external-log-storage"
                 ]
               }
             ]
@@ -2188,11 +2219,15 @@
                       },
                       {
                         "group": "Imperva",
-                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                        "pages": [
+                          "api-reference/endpoints/app-connections/imperva/create"
+                        ]
                       },
                       {
                         "group": "Kemp LoadMaster",
-                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
+                        "pages": [
+                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
+                        ]
                       },
                       {
                         "group": "Laravel Forge",
@@ -5094,6 +5129,14 @@
     {
       "source": "/api-reference/endpoints/agent-vault-skills/list-bundle-skills",
       "destination": "/api-reference/endpoints/agent-vault-access-bundles/list-skills"
+    },
+    {
+      "source": "/documentation/platform/agent-vault/sessions-cli",
+      "destination": "/documentation/platform/agent-vault/create-a-session"
+    },
+    {
+      "source": "/documentation/platform/agent-vault/sessions-api",
+      "destination": "/documentation/platform/agent-vault/create-a-session"
     },
     {
       "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
