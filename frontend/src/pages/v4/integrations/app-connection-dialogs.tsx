@@ -83,6 +83,7 @@ import {
 } from "../data/integrations/connection-redirect";
 import { rotateAtLocal, rotateAtOptions } from "../data/integrations/presets/shared";
 import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
+import { notPorted } from "../not-ported";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 import {
   DatabricksScopesField,
@@ -97,7 +98,6 @@ import {
   isManagedIdentity,
   methodName,
   methodPreset,
-  NOT_IN_V4,
   storedScopes
 } from "./app-connection-model";
 import {
@@ -234,7 +234,7 @@ const AppPicker = ({
             title={appName(app)}
             media={<AppLogo app={app} />}
             disabled={!CONNECTION_PRESETS[app]}
-            badge={CONNECTION_PRESETS[app] ? undefined : <Badge tone="soft">{NOT_IN_V4}</Badge>}
+            description={CONNECTION_PRESETS[app] ? undefined : notPorted(appName(app))}
             onClick={() => onPick(app)}
           />
         ))}

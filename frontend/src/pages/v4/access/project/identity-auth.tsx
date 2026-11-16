@@ -42,6 +42,7 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { IdentityTrustedIp, IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { notPorted } from "../../not-ported";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { DetailSkeleton, FormSkeleton, Gate, Muted, RESTRICTED } from "../ui";
@@ -49,7 +50,7 @@ import { type AuthIdentity, authMethodName, identitySubject, LockedBadge } from 
 
 const allMethods = Object.values(IdentityAuthMethod);
 const ACTIVE_LOCKOUTS = "Auth method has active lockouts";
-const UNSUPPORTED = "Only Universal Auth can be managed here";
+const UNSUPPORTED = notPorted("Managing this auth method");
 
 const isUniversal = (method?: IdentityAuthMethod) => method === IdentityAuthMethod.UNIVERSAL_AUTH;
 

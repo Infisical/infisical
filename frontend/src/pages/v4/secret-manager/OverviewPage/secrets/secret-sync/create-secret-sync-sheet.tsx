@@ -35,6 +35,7 @@ import { SmallText } from "@infisical/cipher/ui/text";
 import slugify from "@sindresorhus/slugify";
 import { ArrowRightIcon } from "lucide-react";
 
+import { EnterpriseSecretSyncsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   getSecretSyncDestinationConfig,
   SecretSyncFormSchema
@@ -60,6 +61,8 @@ import {
   connectionRedirect,
   startConnectionRedirect
 } from "../../../../data/integrations/connection-redirect";
+import { useV4Session } from "../../../../data/session/contract";
+import { useUpgradeGate } from "../../../../license";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
   ReviewSection,
@@ -68,7 +71,6 @@ import {
 } from "../flows/secret-rotation/fields";
 import { DiscardDialog, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
-import { NEXT_PHASE } from "../overview-cells";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
 import { enabledBadge, SyncConnections } from "./sync-fields";
@@ -138,6 +140,24 @@ const nameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;
 
 function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => void }) {
   const [search, setSearch] = useState("");
+  const { organization } = useV4Session();
+  const adapter = useV4Adapter("secrets");
+  const plan = adapter.useOverviewPlan(organization.id).data;
+  const syncOptions = adapter.useSecretSyncOptions().data;
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const choose = (destination: SecretSync) => {
+    const isEnterprise = syncOptions?.some(
+      (option) => option.destination === destination && option.enterprise
+    );
+    if (isEnterprise && plan && !plan.enterpriseSecretSyncs) {
+      openUpgradeGate({
+        intent: EnterpriseSecretSyncsUpgradeIntent,
+        paywallKey: "secret-manager.secret-sync-provider"
+      });
+      return;
+    }
+    onSelect(destination);
+  };
   const all = (Object.values(SecretSync) as SecretSync[])
     .filter((destination) => SECRET_SYNC_MAP[destination])
     .sort((first, second) => nameOf(first).localeCompare(nameOf(second)));
@@ -150,18 +170,15 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
   });
   const card = (destination: SecretSync) => {
     const { name, image, category } = SECRET_SYNC_MAP[destination];
-    const ported = Boolean(SYNC_VIEWS[destination]);
     return (
-      <Gate key={destination} reason={ported ? undefined : NEXT_PHASE}>
-        <Tile
-          media={<ProviderLogo image={image} size={24} />}
-          title={name}
-          disabled={!ported}
-          onClick={() => onSelect(destination)}
-        >
-          <span className={styles.category}>{category}</span>
-        </Tile>
-      </Gate>
+      <Tile
+        key={destination}
+        media={<ProviderLogo image={image} size={24} />}
+        title={name}
+        onClick={() => choose(destination)}
+      >
+        <span className={styles.category}>{category}</span>
+      </Tile>
     );
   };
   const grid = (destinations: SecretSync[]) => (
@@ -192,6 +209,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
           </section>
         </>
       )}
+      {upgradeGate}
     </Stack>
   );
 }
@@ -1118,14 +1136,7 @@ export function CreateSecretSyncSheet({
   let body: ReactNode = null;
   if (destination && current) {
     if (step === 0) body = <SourceFields environments={environments} conflicts={conflicts} />;
-    if (step === 1)
-      body = Destination ? (
-        <Destination />
-      ) : (
-        <Alert tone="neutral" title={NEXT_PHASE}>
-          {destinationName} destination settings are not available in this composition yet.
-        </Alert>
-      );
+    if (step === 1) body = Destination ? <Destination /> : null;
     if (step === 2) body = <InitialSyncFields />;
     if (step === 3) body = <OptionsFields />;
     if (step === 4) body = <DetailsFields />;

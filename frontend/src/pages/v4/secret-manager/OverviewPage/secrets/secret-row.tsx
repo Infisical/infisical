@@ -81,7 +81,6 @@ import {
   type EnvironmentStatus,
   ExpandCell,
   type KindOverlay,
-  NEXT_PHASE,
   PendingBadge,
   PendingMenuItems,
   ROW_ACTION_SLOTS,
@@ -92,10 +91,12 @@ import {
   stopRowClick,
   sameRow
 } from "./overview-cells";
+import { usePlanGates } from "./plan-gates";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
 import { ReferencesDialog } from "./row-actions/references-dialog";
+import { RenameSecretDialog } from "./row-actions/rename-secret-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
@@ -120,6 +121,12 @@ export type SecretRowHandlers = {
   importedFrom: (environment: string, key: string) => string | undefined;
   resources: readonly Resource[];
   tagOptions: string[];
+  autoCapitalize: boolean;
+  onRename: (
+    secrets: Secret[],
+    name: string,
+    onFieldError: (message: string) => void
+  ) => Promise<boolean>;
 };
 type Overlay =
   | "edit"
@@ -468,6 +475,7 @@ function SecretActionsRow({
   const later = (action: () => void) => () => {
     pending.current = action;
   };
+  const { guard } = usePlanGates();
   const select = (overlay: Overlay) =>
     later(() =>
       overlay === "share" || overlay === "references"
@@ -566,7 +574,7 @@ function SecretActionsRow({
           <Icon name="history" />
           Version history
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={select("access")}>
+        <DropdownMenuItem onSelect={later(() => guard("accessInsights", () => setOpen("access")))}>
           <Icon icon={UsersIcon} />
           View access
         </DropdownMenuItem>
@@ -714,6 +722,8 @@ function SecretActionsRow({
           {open === "reminder" && (
             <ReminderSheet
               open
+              secretId={secret.id}
+              projectId={secret.project}
               secretName={secret.name}
               environmentLabel={label}
               reminder={secret.reminder}
@@ -721,7 +731,7 @@ function SecretActionsRow({
               onOpenChange={(next) => {
                 if (!next) setOpen(undefined);
               }}
-              onSave={(reminder) => {
+              onSave={(reminder, channels) => {
                 const request = reminder
                   ? createReminder.mutateAsync({
                       secretId: secret.id,
@@ -731,15 +741,15 @@ function SecretActionsRow({
                       nextReminderDate: reminder.nextReminderDate
                         ? new Date(reminder.nextReminderDate)
                         : null,
-                      recipients: reminder.recipients
+                      channels
                     })
                   : deleteReminder.mutateAsync({
                       secretId: secret.id,
                       reminderId: secret.reminder?.id ?? ""
                     });
-                setOpen(undefined);
-                request.then(
+                return request.then(
                   () => {
+                    setOpen(undefined);
                     handlers.onRefresh();
                     ctx.report(
                       reminder
@@ -748,11 +758,12 @@ function SecretActionsRow({
                       "ok"
                     );
                   },
-                  (error) =>
+                  (error) => {
                     failed(
                       reminder ? "Failed to save the reminder" : "Failed to delete the reminder",
                       error
-                    )
+                    );
+                  }
                 );
               }}
             />
@@ -996,6 +1007,7 @@ function SecretRowView({
   const overlayFor = (environment: string) => (next: Overlay | undefined) =>
     setOverlays((current) => ({ ...current, [environment]: next }));
   const [editing, setEditing] = useState<string>();
+  const [renaming, setRenaming] = useState(false);
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
   const { name } = first;
@@ -1105,10 +1117,34 @@ function SecretRowView({
     if (handlers.importedFrom(environment, name)) return "imported";
     return "missing";
   };
+  const editDeniedIn = entries
+    .map((entry) =>
+      ctx.blockFor?.(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Edit,
+        {
+          environment: entry.environment,
+          secretPath: entry.path,
+          secretName: entry.name,
+          secretTags: entry.tags.length ? entry.tags : ["*"]
+        },
+        "rename this secret"
+      )
+    )
+    .find(Boolean);
+  let renameBlock = ctx.writeBlock ?? editDeniedIn;
+  if (!renameBlock && entries.some((entry) => entry.honeyToken || entry.managedBy))
+    renameBlock = "Managed secrets can't be renamed";
+  else if (!renameBlock && entries.some((entry) => entry.override !== undefined))
+    renameBlock = "Remove personal overrides first";
   const groupActions: RowActionProps = {
     label: name,
     menu: (
-      <DropdownMenuItem disabled description={NEXT_PHASE}>
+      <DropdownMenuItem
+        disabled={Boolean(renameBlock)}
+        description={renameBlock}
+        onSelect={() => setRenaming(true)}
+      >
         <Icon icon={EditIcon} />
         Edit secret name
       </DropdownMenuItem>
@@ -1348,6 +1384,15 @@ function SecretRowView({
             </Table>
           </TableCell>
         </TableRow>
+      )}
+      {renaming && (
+        <RenameSecretDialog
+          name={name}
+          environmentCount={entries.length}
+          autoCapitalize={handlers.autoCapitalize}
+          onRename={(next, onFieldError) => handlers.onRename(entries, next, onFieldError)}
+          onClose={() => setRenaming(false)}
+        />
       )}
     </>
   );
