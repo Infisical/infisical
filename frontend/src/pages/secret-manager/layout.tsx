@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { SecretManagerLayout } from "@app/layouts/SecretManagerLayout";
 
@@ -26,6 +27,7 @@ export const Route = createFileRoute(
 
     return {
       project,
+      productType: ProjectType.SecretManager,
       breadcrumbs: []
     };
   }
