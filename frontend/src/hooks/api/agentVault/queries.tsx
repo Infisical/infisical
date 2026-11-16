@@ -583,10 +583,10 @@ export const useGetAgentVaultAccess = (enabled = true) => {
     enabled,
     queryKey: agentVaultKeys.access(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TAgentVaultAccess>(
+      const { data } = await apiRequest.get<{ access: TAgentVaultAccess }>(
         "/api/v1/agent-vault/settings/access"
       );
-      return data;
+      return data.access;
     }
   });
 };

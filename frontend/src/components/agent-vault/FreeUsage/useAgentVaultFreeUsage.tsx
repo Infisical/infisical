@@ -1,22 +1,57 @@
 import { useCallback } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
-import { AgentVaultUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
-import { OrgPermissionBillingActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import { BillingProduct, buildUpgradeReturnPath } from "@app/components/license/UpgradeGate";
+import {
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useSubscription
+} from "@app/context";
 import { useGetAgentVaultAccess } from "@app/hooks/api/agentVault";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 // freeUsage is the org's free Agent Vault requests this month, and null unless the org is on the free tier.
 export const useAgentVaultFreeUsage = (paywallKey: string) => {
   const { data: access } = useGetAgentVaultAccess();
+  const { currentOrg, isRootOrganization } = useOrganization();
   const { permission } = useOrgPermission();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const canAddCard = permission.can(
-    OrgPermissionBillingActions.Read,
-    OrgPermissionSubjects.Billing
+  const { subscription } = useSubscription();
+  const route = useRouterState({
+    select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
+  });
+  const canAddCard =
+    isRootOrganization &&
+    permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing) &&
+    permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+  const plan = subscription.slug ?? "free";
+
+  const trackPaywall = useCallback(
+    (
+      event: typeof AnalyticsEvent.PaywallViewed | typeof AnalyticsEvent.PaywallUpgradeClicked,
+      paywallText: string
+    ) =>
+      analytics.captureForOrganization(event, currentOrg.id, {
+        paywallKey,
+        paywallText,
+        route,
+        isEnterpriseFeature: false,
+        plan
+      }),
+    [currentOrg.id, paywallKey, route, plan]
   );
 
   const openAddCard = useCallback(
-    () => openUpgradeGate({ intent: AgentVaultUpgradeIntent, paywallKey }),
-    [openUpgradeGate, paywallKey]
+    (paywallText: string) => {
+      trackPaywall(AnalyticsEvent.PaywallUpgradeClicked, paywallText);
+      const search = new URLSearchParams({
+        upgradeProduct: BillingProduct.AgentVault,
+        upgradeReturnPath: buildUpgradeReturnPath(window.location)
+      });
+      window.location.assign(`/organizations/${currentOrg.id}/billing?${search.toString()}`);
+    },
+    [trackPaywall, currentOrg.id]
   );
 
   return {
@@ -25,6 +60,6 @@ export const useAgentVaultFreeUsage = (paywallKey: string) => {
     warn: Boolean(access?.warn),
     canAddCard,
     openAddCard,
-    upgradeGate
+    trackPaywall
   };
 };

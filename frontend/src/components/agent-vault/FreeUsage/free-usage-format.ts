@@ -11,4 +11,6 @@ export const formatFreeUsageReset = (resetsAt: string) =>
   });
 
 export const formatFreeUsageSummary = ({ used, limit, resetsAt }: TAgentVaultFreeUsage) =>
-  `${formatFreeUsageCount(used)} / ${formatFreeUsageCount(limit)} requests this month · resets ${formatFreeUsageReset(resetsAt)}`;
+  used >= limit
+    ? `Limit reached · resets ${formatFreeUsageReset(resetsAt)}`
+    : `${formatFreeUsageCount(used)} / ${formatFreeUsageCount(limit)} requests this month · resets ${formatFreeUsageReset(resetsAt)}`;
