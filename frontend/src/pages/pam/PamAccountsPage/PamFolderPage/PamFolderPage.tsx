@@ -293,9 +293,8 @@ export const PamFolderPage = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <IconButton
-                        variant="outline"
+                        variant={selectedAccountType ? "pam" : "outline"}
                         aria-label="Filter by account type"
-                        className={selectedAccountType ? "text-product-pam" : undefined}
                       >
                         <Filter />
                       </IconButton>
@@ -304,12 +303,12 @@ export const PamFolderPage = () => {
                   <TooltipContent>{selectedTypeName ?? "Filter by account type"}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                  <DropdownMenuLabel>Account type</DropdownMenuLabel>
+                  <DropdownMenuLabel>Account Type</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={selectedAccountType || "all"}
                     onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
                   >
-                    <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All Types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
                         <ProviderIcon

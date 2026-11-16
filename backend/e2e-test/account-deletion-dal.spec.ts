@@ -170,11 +170,14 @@ describe("orgDAL.lockOrgTreeAccessForDeletion", () => {
       await orgDAL.lockOrgTreeAccessForDeletion(orgId, deletion);
 
       const join = addUserMembership({ userId: joiningUserId, orgId, role: OrgMembershipRole.Member });
+      // The insert's error can reach us before the commit's reply does, so the rejection needs a handler
+      // before the commit, or Vitest reports it as unhandled and fails the run.
+      const joinRejected = expect(join).rejects.toThrow(/foreign key/);
       await waitUntilBlockedBy(rows[0].pid as number);
       await deletion(TableName.Organization).where({ id: orgId }).delete();
       await deletion.commit();
 
-      await expect(join).rejects.toThrow(/foreign key/);
+      await joinRejected;
     } finally {
       if (!deletion.isCompleted()) await deletion.rollback();
     }

@@ -16,6 +16,7 @@ import {
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -399,7 +400,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
         templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
         accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type"),
-        search: z.string().trim().optional().describe("Filter accounts by name")
+        search: z.string().trim().optional().describe("Filter accounts by name"),
+        filterByAction: z
+          .nativeEnum(ResourcePermissionPamResourceActions)
+          .optional()
+          .describe("Filter accounts to only those where the caller has this specific permission action")
       }),
       response: {
         200: z.object({ accounts: z.array(PamAccountListItemSchema) })
@@ -414,6 +419,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         templateId: req.query.templateId,
         accountType: req.query.accountType,
         search: req.query.search,
+        filterByAction: req.query.filterByAction,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,

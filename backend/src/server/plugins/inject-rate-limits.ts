@@ -14,7 +14,7 @@ export const injectRateLimits = fp(async (server) => {
 
     const { orgId } = req.auth;
     const { rateLimits } = await requestMemoize(requestMemoKeys.licensePlan(orgId), () =>
-      server.services.license.getPlan(orgId)
+      server.services.licenseService.getPlan(orgId)
     );
 
     // the null coalescing handles plans cached before a limit was added to them

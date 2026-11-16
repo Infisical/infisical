@@ -1,5 +1,5 @@
 import { ReactNode, useSyncExternalStore } from "react";
-import { Clock, KeyRound, Rocket } from "lucide-react";
+import { Clock, Folder, KeyRound, Rocket } from "lucide-react";
 
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
@@ -70,6 +70,8 @@ type Props = {
   actions?: ReactNode;
   accessibilityBadge?: ReactNode;
   indented?: boolean;
+  // Set when the list spans folders, where account names are not unique.
+  folderName?: string | null;
 };
 
 export const PamAccountRow = ({
@@ -87,7 +89,8 @@ export const PamAccountRow = ({
   onRequestAccess,
   actions,
   accessibilityBadge,
-  indented
+  indented,
+  folderName
 }: Props) => {
   const now = useNow();
   const { map } = usePamAccountTypeMap();
@@ -211,6 +214,12 @@ export const PamAccountRow = ({
           </span>
           <Badge variant="neutral">{typeName}</Badge>
           {accessibilityBadge}
+          {folderName && (
+            <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+              <Folder className="size-3.5 shrink-0" />
+              <span className="truncate">{folderName}</span>
+            </span>
+          )}
         </div>
       </TableCell>
       <TableCell className="w-40">

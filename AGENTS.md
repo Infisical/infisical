@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
+- `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -28,7 +29,6 @@ infisical/
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
-├── docker-compose.bdd.yml        # BDD testing environment
 ├── docker-compose.e2e-dbs.yml    # E2E test databases (Oracle, SAP, Snowflake, etc.)
 ├── Dockerfile.standalone-infisical       # Standalone image (frontend + backend)
 ├── Dockerfile.fips.standalone-infisical  # FIPS-compliant standalone image
@@ -113,7 +113,7 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 PAM is a product over one implicit project per organization, not projects a user creates. Its URLs are `/organizations/$orgId/pam/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, its roles are admin or member only, and it has its own metered identities dimension (`pam_identities`). See `backend/src/ee/services/pam/AGENTS.md`.
 
-Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension, so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. See `backend/src/ee/services/agent-vault/AGENTS.md`.
+Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension (each meter's count lives in the domain that owns it, see `backend/src/domains/platform/license/AGENTS.md`), so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. See `backend/src/ee/services/agent-vault/AGENTS.md`.
 
 ### Single-Project Products
 
@@ -345,5 +345,5 @@ Pickers for entities a user may need to create first (app connections, gateways,
 ## Workflow Guardrails
 
 - Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
-- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- Never push changes to `default-features.ts` (the License free tier) or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
 - When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

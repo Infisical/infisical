@@ -52,7 +52,7 @@ func Enterprise() Plan {
 //
 // The License Server distinguishes capabilities from metered limits, and the mapping
 // does not record which is which. A cap sent as `true` would project onto a numeric
-// TFeatureSet field as a boolean, so limits are inferred by name and given a value
+// Plan field as a boolean, so limits are inferred by name and given a value
 // high enough that no test hits them accidentally.
 func valueFor(f Feature) any {
 	switch {
@@ -81,6 +81,14 @@ func (p Plan) With(f Feature, value any) Plan {
 	out := p.clone()
 	out.Features[f.V2] = value
 	return out
+}
+
+// SeatLimited caps members and identities at n. It is a pro plan because Infisical
+// does not enforce the cap on enterprise.
+func SeatLimited(n int) Plan {
+	p := Enterprise().With(MaxIdentityLimit, n)
+	p.Slug = "pro"
+	return p
 }
 
 func (p Plan) clone() Plan {
@@ -116,7 +124,7 @@ func (p Plan) Payload() any {
 }
 
 // Expect is the set a plan read-back can verify: the features that map to a
-// TFeatureSet field. The rest are real entitlements with nowhere to check them.
+// Plan field. The rest are real entitlements with nowhere to check them.
 func (p Plan) Expect() map[string]any {
 	out := map[string]any{}
 	for _, f := range All {

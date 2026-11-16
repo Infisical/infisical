@@ -38,7 +38,7 @@ func (p Profile) String() string {
 // shared container is adopted by name and takes its environment at creation, so if
 // one package declared fakenet and another did not, whichever started the instance
 // first would silently decide whether it runs in cloud mode for everyone.
-func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, env map[string]string, extra ...infra.Module) ([]infra.Module, map[infra.ModuleKey]infra.Scope) {
+func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, infOpts []infisical.Option, extra ...infra.Module) ([]infra.Module, map[infra.ModuleKey]infra.Scope) {
 	own := infra.Shared
 	if p == Isolated {
 		own = infra.Package
@@ -48,7 +48,7 @@ func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string
 		postgres.Module(),
 		redis.Module(),
 		fakenet.Module(fakenet.WithImage(fnImg), fakenet.WithCAFile(caFile)),
-		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, envOptions(env)...)...),
+		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, infOpts...)...),
 	}
 	scopes := map[infra.ModuleKey]infra.Scope{
 		postgres.Key: own,
@@ -67,10 +67,13 @@ func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string
 	return mods, scopes
 }
 
-func envOptions(env map[string]string) []infisical.Option {
-	opts := make([]infisical.Option, 0, len(env))
-	for k, v := range env {
+func infisicalOptions(cfg *config) []infisical.Option {
+	opts := make([]infisical.Option, 0, len(cfg.env)+len(cfg.files))
+	for k, v := range cfg.env {
 		opts = append(opts, infisical.WithEnv(k, v))
+	}
+	for _, f := range cfg.files {
+		opts = append(opts, infisical.WithFile(f.Src, f.Dst))
 	}
 	return opts
 }
