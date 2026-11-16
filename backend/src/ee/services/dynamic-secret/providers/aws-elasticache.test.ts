@@ -87,6 +87,12 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         if (users[input.UserId]) throw new UserAlreadyExistsFault({ message: "exists", $metadata: {} });
         users[input.UserId] = { UserName: input.UserName, AccessString: input.AccessString };
         return {};
+      case "DeleteUserCommand":
+        Reflect.deleteProperty(users, input.UserId);
+        Object.values(userGroups).forEach((userIds) => {
+          if (userIds.includes(input.UserId)) userIds.splice(userIds.indexOf(input.UserId), 1);
+        });
+        return {};
       case "ModifyUserGroupCommand":
         assertActive(input.UserGroupId);
         userGroups[input.UserGroupId].push(...input.UserIdsToAdd);
@@ -167,6 +173,19 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
       true
     ]);
     expect(Object.keys(account.userGroups)).toHaveLength(1);
+  });
+
+  test("deletes the lease user when the cluster can't take its own user group", async () => {
+    const account = fakeAccount({ "cluster-a": ["customer-user-group"] }, { "customer-user-group": ["default"] });
+
+    await saveDynamicSecret("cluster-a");
+    account.activateUserGroups();
+    await expect(createLease("cluster-a")).rejects.toThrow(
+      "Max number of user groups per replication group allowed is 1"
+    );
+
+    expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID]);
+    expect(Object.values(account.userGroups).flat()).not.toContainEqual(expect.stringMatching(/^inf-/));
   });
 
   test("moves a cluster off the legacy shared group without dropping any of its leases", async () => {

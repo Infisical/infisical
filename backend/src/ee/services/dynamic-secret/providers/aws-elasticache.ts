@@ -20,6 +20,7 @@ import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -139,24 +140,34 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
         : [];
 
     await elastiCache.send(new CreateUserCommand(creationInput));
-    await elastiCache.send(
-      new ModifyUserGroupCommand({
-        UserGroupId: userGroupId,
-        UserIdsToAdd: [creationInput.UserId, ...legacyUserIds],
-        UserIdsToRemove: []
-      })
-    );
-
-    if (!isAttached) {
-      // AWS accepts attaching a user group while the change above is still being applied.
+    try {
       await elastiCache.send(
-        new ModifyReplicationGroupCommand({
-          ReplicationGroupId: clusterName,
-          UserGroupIdsToAdd: [userGroupId],
-          UserGroupIdsToRemove: isOnLegacyGroup ? [LEGACY_SHARED_USER_GROUP_ID] : [],
-          ApplyImmediately: true
+        new ModifyUserGroupCommand({
+          UserGroupId: userGroupId,
+          UserIdsToAdd: [creationInput.UserId, ...legacyUserIds],
+          UserIdsToRemove: []
         })
       );
+
+      if (!isAttached) {
+        // AWS accepts attaching a user group while the change above is still being applied.
+        await elastiCache.send(
+          new ModifyReplicationGroupCommand({
+            ReplicationGroupId: clusterName,
+            UserGroupIdsToAdd: [userGroupId],
+            UserGroupIdsToRemove: isOnLegacyGroup ? [LEGACY_SHARED_USER_GROUP_ID] : [],
+            ApplyImmediately: true
+          })
+        );
+      }
+    } catch (err) {
+      // no lease will be saved to revoke whatever was already created
+      await elastiCache
+        .send(new DeleteUserCommand({ UserId: creationInput.UserId }))
+        .catch((cleanupErr) =>
+          logger.error(cleanupErr, `Failed to clean up ElastiCache user [userId=${creationInput.UserId}]`)
+        );
+      throw err;
     }
 
     return {
