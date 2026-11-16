@@ -158,6 +158,15 @@ describe("resolvePolicyForPath", () => {
     expect(resolvePolicyForPath([exact, glob], "/db")).toBeUndefined();
   });
 
+  test("keeps glob patterns that start with a glob character or group paths in braces", () => {
+    const braces = makePathPolicy("braces", "{/a,/b}");
+    const star = makePathPolicy("star", "*");
+
+    expect(resolvePolicyForPath([braces], "/a")).toBe(braces);
+    expect(resolvePolicyForPath([braces], "/b")).toBe(braces);
+    expect(resolvePolicyForPath([star], "/prod")).toBeUndefined();
+  });
+
   test("ignores policies whose path does not match", () => {
     expect(resolvePolicyForPath([makePathPolicy("a", "/app/**")], "/db")).toBeUndefined();
     expect(resolvePolicyForPath([], "/db")).toBeUndefined();

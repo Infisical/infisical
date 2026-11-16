@@ -19,6 +19,13 @@ export const prefixWithSlash = (str: string) => {
 // Folder lookups skip empty segments, so "prod", "//prod" and "/prod/" all name the "/prod" folder.
 export const canonicalizeSecretPath = (secretPath: string) => `/${secretPath.split("/").filter(Boolean).join("/")}`;
 
+// A glob can hold slashes inside a group ("{/a,/b}") and can start with a glob character ("*"), so a pattern only gets
+// its repeated and trailing slashes removed, and a leading slash only when it starts with a folder name.
+export const canonicalizeSecretPathPattern = (pattern: string) => {
+  const collapsed = removeTrailingSlash(pattern.replace(/\/{2,}/g, "/"));
+  return /^[\w-]/.test(collapsed) ? `/${collapsed}` : collapsed;
+};
+
 const vowelRegex = new RE2(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);

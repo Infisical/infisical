@@ -1,4 +1,23 @@
-import { canonicalizeSecretPath, sanitizeSqlLikeString } from "./string";
+import { canonicalizeSecretPath, canonicalizeSecretPathPattern, sanitizeSqlLikeString } from "./string";
+
+describe("canonicalizeSecretPathPattern", () => {
+  test.each([
+    ["/", "/"],
+    ["/**", "/**"],
+    ["prod", "/prod"],
+    ["prod/**", "/prod/**"],
+    ["prod-*", "/prod-*"],
+    ["//prod", "/prod"],
+    ["/app//**", "/app/**"],
+    ["/app/*/", "/app/*"],
+    ["*", "*"],
+    ["**", "**"],
+    ["{/a,/b}", "{/a,/b}"],
+    ["/app/{api,web}/**", "/app/{api,web}/**"]
+  ])("canonicalizes %p to %p", (input, expected) => {
+    expect(canonicalizeSecretPathPattern(input)).toBe(expected);
+  });
+});
 
 describe("canonicalizeSecretPath", () => {
   test.each([

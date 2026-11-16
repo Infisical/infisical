@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
+import { canonicalizeSecretPathPattern, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,7 +23,10 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           name: z.string().optional(),
           environment: z.string().optional(),
           environments: z.string().array().optional(),
-          secretPath: z.string().min(1, { message: "Secret path cannot be empty" }).transform(canonicalizeSecretPath),
+          secretPath: z
+            .string()
+            .min(1, { message: "Secret path cannot be empty" })
+            .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -110,7 +113,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
           .optional()
-          .transform((val) => (val ? canonicalizeSecretPath(val) : undefined)),
+          .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
         bypassForMachineIdentities: z.boolean().optional(),
