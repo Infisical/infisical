@@ -89,9 +89,6 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
-  // checked only on create and edit, so existing grants stay listable and revocable after a downgrade;
-  // self-hosted instances get folder access on the root folder (environment roles) without a license;
-  // Infisical Cloud and every other folder need the plan feature
   const assertFolderRbacLicensed = async (orgId: string, folder: TResolvedFolder) => {
     const { isCloud } = getConfig();
     if (!isCloud && folder.path === "/") return;
