@@ -692,12 +692,12 @@ describe("assigning a role is bounded like Secrets Management's membership route
 
       await expect(
         service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Admin, ctx })
-      ).rejects.toThrow(/Failed to add the member with this role/);
+      ).rejects.toThrow("Failed to add the member with this role");
       await expect(
         service.updateProductMemberRoles({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx })
-      ).rejects.toThrow(/Failed to change the role of a more privileged member/);
+      ).rejects.toThrow("Failed to change the role of a more privileged member");
       await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
-        /Failed to remove a more privileged member/
+        "Failed to remove a more privileged member"
       );
       expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
       expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
