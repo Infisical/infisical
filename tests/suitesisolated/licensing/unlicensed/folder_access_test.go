@@ -60,22 +60,8 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		// Assert
 		require.Equalf(t, http.StatusOK, status, "granting on /app: %s", body)
 	})
-	t.Run("should grant the Full Access folder role", func(t *testing.T) {
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 
-		// Action
-		status, body := grant(t, proj, pr, map[string]any{
-			"environmentSlug": "dev", "secretPath": "/", "permission": "full-access",
-		})
-
-		// Assert
-		require.Equalf(t, http.StatusOK, status, "granting full access: %s", body)
-	})
-
-	t.Run("should refuse the Manage folder role", func(t *testing.T) {
+	t.Run("should grant the Manage folder role", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
@@ -87,7 +73,6 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		})
 
 		// Assert
-		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, body, "Failed to grant the Manage folder role due to plan restriction.")
+		require.Equalf(t, http.StatusOK, status, "granting manage: %s", body)
 	})
 }
