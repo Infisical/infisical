@@ -76,6 +76,8 @@ const environments: ProjectEnv[] = [
   { id: "env-prod", name: "Production", slug: "prod" }
 ];
 const all = environments.map((environment) => environment.slug);
+const deepIntegrationPath =
+  "/api/v1/partner-integrations/settlement-reconciliation-service-with-a-long-folder-name";
 const manyEnvironments: ProjectEnv[] = [
   environments[0],
   { id: "env-qa", name: "QA", slug: "qa" },
@@ -404,7 +406,16 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       { name: "REDIS_URL", envs: ["dev", "staging"] },
       { name: "SENTRY_DSN", envs: ["prod"], values: { prod: sentryDsn } },
       { name: "STRIPE_AUTH_HEADER", envs: ["dev"], values: { dev: stripeAuthHeader } },
-      { name: "STRIPE_SECRET_KEY", envs: ["dev", "prod"] },
+      {
+        name: "STRIPE_SECRET_KEY",
+        envs: ["dev", "prod"],
+        dev: {
+          secretMetadata: [
+            { key: "owner", value: "payments-platform", isEncrypted: false },
+            { key: "vendor", value: "stripe", isEncrypted: false }
+          ]
+        }
+      },
       { name: "STRIPE_WEBHOOK_SECRET", envs: all, empty: ["staging"] },
       ...(large
         ? Array.from({ length: 32 }, (_, index) => ({
@@ -424,12 +435,29 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       { name: "CORS_ORIGINS", envs: all, values: { dev: corsOrigins } },
       { name: "FRAUD_SCORE_THRESHOLD", envs: ["prod"] },
       { name: "IDEMPOTENCY_TTL_SECONDS", envs: all, empty: ["dev"] },
-      { name: "LEDGER_API_KEY", envs: ["dev", "staging"], override: "fake-personal-ledger-key" },
+      {
+        name: "LEDGER_API_KEY",
+        envs: ["dev", "staging"],
+        override: "fake-personal-ledger-key",
+        dev: {
+          secretMetadata: [{ key: "owner", value: "ledger-team", isEncrypted: false }]
+        }
+      },
       { name: "LEDGER_DB_PASSWORD", envs: ["prod"], rotationId: "rotation-ledger-app-db-creds" },
       { name: "LEDGER_DB_USERNAME", envs: ["prod"], rotationId: "rotation-ledger-app-db-creds" },
       { name: "PAYMENT_PROVIDER", envs: all },
       { name: "PAYPAL_CLIENT_ID", envs: ["dev", "prod"] },
-      { name: "PAYPAL_CLIENT_SECRET", envs: all, empty: ["staging"] },
+      {
+        name: "PAYPAL_CLIENT_SECRET",
+        envs: all,
+        empty: ["staging"],
+        dev: {
+          secretMetadata: [
+            { key: "owner", value: "payments-platform", isEncrypted: false },
+            { key: "vendor", value: "paypal", isEncrypted: false }
+          ]
+        }
+      },
       { name: "RATE_LIMIT_PER_MIN", envs: all, comment: "Applies per API key." },
       { name: "SIGNING_SECRET", envs: all },
       {
@@ -451,6 +479,31 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     secrets
   );
   secretsAt("payments-api", "/api/v1", [{ name: "V1_SUNSET_DATE", envs: ["staging"] }], secrets);
+  if (large)
+    secretsAt(
+      "payments-api",
+      deepIntegrationPath,
+      Array.from({ length: 24 }, (_, index) => ({
+        name: `PARTNER_SETTLEMENT_RECONCILIATION_SERVICE_OAUTH_CLIENT_SECRET_REGION_${String(index + 1).padStart(2, "0")}`,
+        envs: all,
+        dev: {
+          secretMetadata: [
+            {
+              key: "owner",
+              value: "payments-platform-partner-settlement-reconciliation-oncall",
+              isEncrypted: false
+            },
+            { key: "data-classification", value: "restricted-financial-pii", isEncrypted: false },
+            {
+              key: "rotation-runbook",
+              value: "settlement-reconciliation-quarterly",
+              isEncrypted: false
+            }
+          ]
+        }
+      })),
+      secrets
+    );
   secretsAt(
     "web-dashboard",
     "/",
@@ -521,6 +574,17 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       ...folders("payments-api", "/", "workers", ["dev", "staging"]),
       ...folders("payments-api", "/api", "v1", all),
       ...folders("payments-api", "/api", "webhooks", ["dev", "prod"]),
+      ...(large
+        ? [
+            ...folders("payments-api", "/api/v1", "partner-integrations", all),
+            ...folders(
+              "payments-api",
+              "/api/v1/partner-integrations",
+              "settlement-reconciliation-service-with-a-long-folder-name",
+              all
+            )
+          ]
+        : []),
       ...folders("web-dashboard", "/", "shared", ["prod"]),
       ...folders("web-dashboard", "/", "flags", ["staging"])
     ],

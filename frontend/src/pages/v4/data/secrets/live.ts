@@ -23,7 +23,9 @@ import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
 import { secretsAccessInsightsLive } from "./live-access-insights";
 import { secretsChangeRequestsLive } from "./live-change-requests";
+import { secretsExternalImportLive } from "./live-external-import";
 import { secretsFlowsLive } from "./live-flows";
+import { secretsQuickSearchLive } from "./live-quick-search";
 import { secretsReminderChannelsLive } from "./live-reminder-channels";
 import { secretsUpgradeLive } from "./live-upgrade";
 
@@ -33,6 +35,8 @@ export const secretsLive: SecretsAdapter = {
   ...secretsUpgradeLive,
   ...secretsAccessInsightsLive,
   ...secretsReminderChannelsLive,
+  ...secretsQuickSearchLive,
+  ...secretsExternalImportLive,
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,

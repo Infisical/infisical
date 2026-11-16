@@ -36,7 +36,12 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
+import { ProviderIcon } from "../../../components/provider-icon";
 import type { ResourceKind, Secret } from "../secrets-model";
+import {
+  type ExternalImportSource,
+  externalImportSources
+} from "./external-import/external-import";
 import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
 import { Annotations } from "./secret-row";
@@ -182,7 +187,9 @@ export function AddNewMenu({
   onUpload,
   onCopySecrets,
   onAddSync,
-  trigger
+  trigger,
+  importSources = [],
+  onImportFrom
 }: {
   writeBlock?: string;
   accessBlocks?: AddNewBlocks;
@@ -193,6 +200,8 @@ export function AddNewMenu({
   onCopySecrets: () => void;
   onAddSync: () => void;
   trigger?: ReactNode;
+  importSources?: ExternalImportSource[];
+  onImportFrom?: (source: ExternalImportSource) => void;
 }) {
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
     if (writeBlock) return writeBlock;
@@ -270,6 +279,25 @@ export function AddNewMenu({
               <Icon name="sync" />
               New secret sync
             </DropdownMenuItem>
+            {importSources.length > 0 && <DropdownMenuSeparator />}
+            {importSources.map((source) => {
+              const { label, name, icon } = externalImportSources[source];
+              const reason =
+                writeBlock ??
+                accessBlocks.secret ??
+                (single ? undefined : `Select a single environment to import from ${name}`);
+              return (
+                <DropdownMenuItem
+                  key={source}
+                  disabled={Boolean(reason)}
+                  description={reason}
+                  onSelect={() => onImportFrom?.(source)}
+                >
+                  <ProviderIcon icon={icon} alt="" data-menu-icon="" />
+                  {label}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>

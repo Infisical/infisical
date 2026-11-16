@@ -43,7 +43,6 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
@@ -100,7 +99,6 @@ import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
-import { notPorted } from "../../not-ported";
 import { withoutDefaults } from "../search-defaults";
 import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
@@ -133,6 +131,11 @@ import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
 import { createdSecretsShare } from "./secrets/created-share";
 import { AddEnvironmentDialog, EnvironmentPicker } from "./secrets/environment-picker";
+import {
+  type ExternalImportSource,
+  useExternalImports
+} from "./secrets/external-import/external-import";
+import { ExternalImportOverlay } from "./secrets/external-import/external-import-overlay";
 import { addFlows, type ApplyFeedback, type FlowFeedback, type NewResource } from "./secrets/flows";
 import { childPath, environmentLabel } from "./secrets/flows/shared";
 import {
@@ -159,6 +162,7 @@ import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-act
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import { ShareSecretSheet } from "./secrets/row-actions/share-secret-sheet";
 import type { RowAction } from "./secrets/row-actions/types";
+import { ResourceSearchInput, SearchAllFoldersSheet } from "./secrets/search/search-all-folders";
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
@@ -220,7 +224,7 @@ const fieldErrorText = (error: unknown) =>
   isAxiosError(error) && error.response?.status === 400 ? errorMessage(error) : undefined;
 
 export const OverviewPage = () => {
-  const { projectId } = useParams({ from: ROUTE });
+  const { orgId, projectId } = useParams({ from: ROUTE });
   const search = useSearch({ from: ROUTE });
   const routerNavigate = useNavigate({ from: ROUTE });
   const adapter = useV4Adapter("secrets");
@@ -241,6 +245,8 @@ export const OverviewPage = () => {
   const tags = parseList(search.tags);
   const [query, setQuery] = useState(search.search);
   const [debounced, setDebounced] = useState(search.search);
+  const [searchAllOpen, setSearchAllOpen] = useState(false);
+  const [carriedQuery, setCarriedQuery] = useState<{ path: string; search: string }>();
   const [sort, setSort] = useState<Sort>({ field: "name", direction: "asc" });
   const [paging, setPaging] = useState({ scope: "", page: 1 });
   const [perPage, setPerPage] = useState(100);
@@ -280,6 +286,7 @@ export const OverviewPage = () => {
   const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
   const [syncOpen, setSyncOpen] = useState(false);
   const [addingEnvironment, setAddingEnvironment] = useState(false);
+  const [externalImport, setExternalImport] = useState<ExternalImportSource>();
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
@@ -301,6 +308,11 @@ export const OverviewPage = () => {
   );
   const single = visibleEnvironments.length === 1;
   const activeEnvironment = visibleEnvironments[0]?.value ?? "";
+  const externalImports = useExternalImports(
+    projectId,
+    visibleEnvironments.map((environment) => environment.value),
+    path
+  );
   const pageScope = JSON.stringify([path, environmentIds, debounced, types, tags, sort, perPage]);
   const page = paging.scope === pageScope ? paging.page : 1;
   const setPage = (next: number) => setPaging({ scope: pageScope, page: next });
@@ -692,8 +704,10 @@ export const OverviewPage = () => {
   const [shownPath, setShownPath] = useState(path);
   if (shownPath !== path) {
     setShownPath(path);
-    setQuery("");
-    setDebounced("");
+    const kept = carriedQuery?.path === path ? carriedQuery.search : "";
+    setCarriedQuery(undefined);
+    setQuery(kept);
+    setDebounced(kept);
     resetView();
   }
   const navigate = (nextPath: string) => updateSearch({ secretPath: nextPath, search: "" });
@@ -1426,6 +1440,8 @@ export const OverviewPage = () => {
         })
       }
       onAddSync={() => setSyncOpen(true)}
+      importSources={externalImports.sources}
+      onImportFrom={setExternalImport}
       trigger={trigger}
     />
   );
@@ -1440,12 +1456,9 @@ export const OverviewPage = () => {
               <Button variant="outline" onClick={clearFilters}>
                 Clear search
               </Button>
-              {gate(
-                notPorted("Search all folders"),
-                <Button variant="outline" disabled>
-                  Search all folders
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => setSearchAllOpen(true)}>
+                Search all folders
+              </Button>
             </>
           }
         />
@@ -1706,18 +1719,15 @@ export const OverviewPage = () => {
                     />
                   </div>
                   <div className={styles.search}>
-                    <Input
-                      aria-label="Search resources"
-                      icon="search"
-                      placeholder="Search by secret or folder name..."
-                      slashShortcut
+                    <ResourceSearchInput
                       value={query}
                       disabled={unavailable}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
+                      onChange={(value) => {
+                        setQuery(value);
                         setPage(1);
                         setSelected([]);
                       }}
+                      onSearchAllFolders={() => setSearchAllOpen(true)}
                     />
                   </div>
                   <ResourceFilterMenu
@@ -2311,6 +2321,16 @@ export const OverviewPage = () => {
               </>
             );
           })()}
+          {single && (
+            <ExternalImportOverlay
+              source={externalImport}
+              connections={externalImports.connections}
+              projectId={projectId}
+              environment={visibleEnvironments[0]}
+              path={path}
+              onClose={() => setExternalImport(undefined)}
+            />
+          )}
           <CreateSecretSyncSheet
             open={syncOpen}
             onOpenChange={setSyncOpen}
@@ -2355,6 +2375,22 @@ export const OverviewPage = () => {
             onCreated={(slug) => {
               projectQuery.refetch?.();
               setEnvironmentIds([slug]);
+            }}
+          />
+          <SearchAllFoldersSheet
+            open={searchAllOpen}
+            onOpenChange={setSearchAllOpen}
+            projectId={projectId}
+            orgId={orgId}
+            environments={projectQuery.data?.environments ?? []}
+            tags={tagList}
+            folderTree={folderTree}
+            initialQuery={query}
+            onSelect={(selection) => {
+              setCarriedQuery(selection);
+              setQuery(selection.search);
+              setDebounced(selection.search);
+              resetView();
             }}
           />
           <ReviewSheet
