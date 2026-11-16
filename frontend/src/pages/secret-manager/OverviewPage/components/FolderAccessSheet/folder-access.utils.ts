@@ -169,3 +169,8 @@ export const normalizeFolderPath = (path: string) => {
 };
 
 export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";
+
+export const canGrantFolderAccess = (
+  hasFolderRbacPlan: boolean,
+  change: { isPermissionRecursive?: boolean } = {}
+) => hasFolderRbacPlan || !change.isPermissionRecursive;
