@@ -103,7 +103,7 @@ const ExportCertificateForm = ({
   const name = certificateName(cert);
   const [format, setFormat] = useState(initialFormat);
   const [password, setPassword] = useState("");
-  const [alias, setAlias] = useState(name.slice(0, 255));
+  const [alias, setAlias] = useState(() => name.slice(0, 255));
   const [errors, setErrors] = useState<ExportErrors>({});
   const [attempts, setAttempts] = useState(0);
   const noKey = usePkcs12Block(cert, projectId);

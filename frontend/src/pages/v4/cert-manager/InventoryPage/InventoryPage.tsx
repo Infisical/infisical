@@ -62,12 +62,8 @@ import { ImportCertificatesSheet } from "../components/certificate-requests/impo
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { AssignApplicationDialog } from "./assign-application-dialog";
 import { certificatesToCsv } from "./csv-export";
-import {
-  type InventoryView,
-  InventoryViewsMenu,
-  type InventoryViewScope,
-  VIEW_KEY_ALGORITHMS
-} from "./inventory-views";
+import { type InventoryView, InventoryViewsMenu, type InventoryViewScope } from "./inventory-views";
+import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
 

@@ -41,13 +41,13 @@ import type {
   TSystemView,
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
-import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
 export type InventoryViewScope = Pick<TInventoryViewFilters, "applicationIds" | "metadata">;
 
@@ -55,11 +55,6 @@ export type InventoryView = {
   filters: FilterBarFilter[];
   includeDeleted: boolean;
   scope?: InventoryViewScope;
-};
-
-export const VIEW_KEY_ALGORITHMS: Partial<Record<string, readonly string[]>> = {
-  "system-pqc": PQC_KEY_ALGORITHMS,
-  "system-non-pqc": NON_PQC_KEY_ALGORITHMS
 };
 
 type ViewFilters = TInventoryViewFilters & Omit<TSystemViewFilters, "status">;
