@@ -59,6 +59,11 @@ const EVENT_LABELS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.PamAccessRequestBypassed]: "Break-glass used"
 };
 
+const eventLabel = (alert: TAlert) =>
+  EVENT_LABELS[alert.eventType as AlertEventType] ?? alert.eventType;
+
+type TSort = { columnId: string; direction: "asc" | "desc" };
+
 const DEFAULT_NAMES: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.PamAccessRequested]: "Access requested alert",
   [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
@@ -359,6 +364,14 @@ export const FolderAlerts = ({
   const updateAlert = settings.useUpdateAlert();
   const deleteAlert = settings.useDeleteAlert();
   const [deleting, setDeleting] = useState<TAlert>();
+  const [sort, setSort] = useState<TSort>();
+  const sortedAlerts = sort
+    ? [...alerts].sort((a, b) => {
+        const read = sort.columnId === "event" ? eventLabel : (alert: TAlert) => alert.name;
+        const order = read(a).toLowerCase().localeCompare(read(b).toLowerCase());
+        return sort.direction === "asc" ? order : -order;
+      })
+    : alerts;
   const allUsed = PAM_EVENT_TYPES.every((event) =>
     alerts.some(({ eventType }) => eventType === event)
   );
@@ -369,14 +382,22 @@ export const FolderAlerts = ({
       header: "Name",
       primary: true,
       grow: true,
+      sortable: true,
       text: (alert) => alert.name,
-      render: (alert) => alert.name,
-      secondary: (alert) => EVENT_LABELS[alert.eventType as AlertEventType] ?? alert.eventType
+      render: (alert) => alert.name
+    },
+    {
+      id: "event",
+      header: "Event",
+      width: 150,
+      sortable: true,
+      text: eventLabel,
+      render: eventLabel
     },
     {
       id: "channels",
       header: "Channels",
-      width: 200,
+      width: 120,
       render: (alert) =>
         [
           ...new Set(
@@ -420,7 +441,9 @@ export const FolderAlerts = ({
         {isPending || alerts.length > 0 ? (
           <DataTable
             label="Folder alerts"
-            rows={alerts}
+            rows={sortedAlerts}
+            sort={sort}
+            onSortChange={setSort}
             columns={columns}
             loading={isPending}
             loadingRows={2}
