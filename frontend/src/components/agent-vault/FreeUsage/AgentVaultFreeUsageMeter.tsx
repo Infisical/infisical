@@ -9,8 +9,14 @@ import { useAgentVaultFreeUsage } from "./useAgentVaultFreeUsage";
 
 export const AgentVaultFreeUsageMeter = () => {
   const hasTrackedView = useRef(false);
-  const { freeUsage, isLimitReached, warn, canAddPaymentMethod, openAddPaymentMethod, trackPaywall } =
-    useAgentVaultFreeUsage("agent-vault.free-usage-meter");
+  const {
+    freeUsage,
+    isLimitReached,
+    warn,
+    canAddPaymentMethod,
+    openAddPaymentMethod,
+    trackPaywall
+  } = useAgentVaultFreeUsage("agent-vault.free-usage-meter");
 
   const summary = freeUsage ? formatFreeUsageSummary(freeUsage) : "";
 
