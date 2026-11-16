@@ -201,8 +201,7 @@ export const agentVaultSessionServiceFactory = ({
       )
     ) {
       throw new ForbiddenRequestError({
-        message:
-          "Only an Agent Vault admin can send inline services with a session. Name an access bundle or the project's services instead."
+        message: `You are not allowed to ${ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices} on ${ProjectPermissionSub.AgentVaultSessions}. Name an access bundle or the project's services instead.`
       });
     }
 
@@ -508,11 +507,11 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    if (
-      scope === AgentVaultSessionScope.All &&
-      permission.cannot(ProjectPermissionAgentVaultSessionActions.ReadAny, ProjectPermissionSub.AgentVaultSessions)
-    ) {
-      throw new ForbiddenRequestError({ message: "Only an Agent Vault administrator can list everyone's sessions" });
+    if (scope === AgentVaultSessionScope.All) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultSessionActions.ReadAny,
+        ProjectPermissionSub.AgentVaultSessions
+      );
     }
 
     const actor = scope === AgentVaultSessionScope.All ? undefined : requireSessionActor(ctx);

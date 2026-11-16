@@ -30,6 +30,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
   useProject,
@@ -119,6 +120,10 @@ export const SessionLogSection = () => {
       )
     : false;
   const hasConnectionMenu = Boolean(external?.appConnectionId) || agentVaultConnections.length > 0;
+  const canEditSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
 
   return (
     <>
@@ -134,9 +139,11 @@ export const SessionLogSection = () => {
           </CardDescription>
           <CardAction>
             <ButtonGroup>
-              <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
-                {settings ? "Configure" : "Set Up Session Logs"}
-              </Button>
+              {canEditSettings && (
+                <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
+                  {settings ? "Configure" : "Set Up Session Logs"}
+                </Button>
+              )}
               {hasConnectionMenu && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

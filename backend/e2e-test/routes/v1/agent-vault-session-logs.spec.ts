@@ -435,6 +435,23 @@ describe("Agent Vault session logs", async () => {
       expect(refused.map((res) => res.statusCode)).toEqual([422, 422, 422]);
     });
 
+    // The probe takes a user's login, so a user member asks for it.
+    test("a non-admin member cannot get the CORS probe", async () => {
+      const user = await createUser("session-logs-probe-member");
+      try {
+        const orgId = seedData1.organization.id;
+        await addUserMembership({ userId: user.userId, orgId, role: OrgMembershipRole.Member });
+        await addUserMembership({ userId: user.userId, orgId, projectId, role: ProjectMembershipRole.Member });
+        const asUser = agentVaultRequester(await createUserAccessToken({ userId: user.userId, orgId }), () => projectId);
+
+        const probe = await asUser("GET", `${SETTINGS_URL}/cors-probe`);
+        expect(probe.statusCode).toBe(403);
+        expect(probe.json().message).toBe("You are not allowed to read on settings");
+      } finally {
+        await deleteUsers([user.userId]);
+      }
+    });
+
     test("a non-admin member cannot read or change the settings", async () => {
       const member = await createMemberIdentity(`session-logs-member-${Date.now()}`);
       try {

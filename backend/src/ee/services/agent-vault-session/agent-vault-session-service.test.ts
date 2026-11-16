@@ -258,7 +258,7 @@ describe("mintSession, project services named in services", () => {
     const { service } = buildNamingService({ isAdmin: false, grantedBundleIds: ["bundle-1"] });
 
     await expect(mintWith(service, [inline("scratch.example.com")])).rejects.toThrow(
-      "Only an Agent Vault admin can send inline services with a session."
+      "You are not allowed to create-with-inline-services on agent-vault-sessions."
     );
   });
 

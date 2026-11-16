@@ -685,12 +685,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // A key Agent Vault does not define would reach the host as literal braces, so it fails the save instead.
   // Stored text that a save keeps rather than writes needs the lookup only for the ids it holds.
-  const loadProjectVariables = async (projectId: string, texts: TReferencingText[], storedTexts: string[] = []) => {
-    if (
-      !texts.some(({ text }) => findVariableKeys(text).length) &&
-      !storedTexts.some((text) => findStoredVariableIds(text).length)
-    ) {
+  // Typed text that names a global sends that global's value to a host the caller chose, so it takes ReadValue on
+  // variables, checked before the lookup so a missing key can't be told from one the caller may not read.
+  const loadProjectVariables = async (
+    { projectId, permission }: { projectId: string; permission: TAgentVaultPermission["permission"] },
+    texts: TReferencingText[],
+    storedTexts: string[] = []
+  ) => {
+    const typesReferences = texts.some(({ text }) => findVariableKeys(text).length);
+    if (!typesReferences && !storedTexts.some((text) => findStoredVariableIds(text).length)) {
       return { idOfKey: new Map<string, string>(), variableIds: new Set<string>() };
+    }
+    if (typesReferences) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultVariableActions.ReadValue,
+        ProjectPermissionSub.AgentVaultVariables
+      );
     }
 
     const variables = await agentVaultVariableDAL.findKeys({ projectId, owner: null });
@@ -1171,6 +1181,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    return permission;
   };
 
   const createService = async ({
@@ -1194,7 +1205,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     hook,
     ...rest
   }: TCreateServiceDTO) => {
-    await requireServiceWrite(rest);
+    const permission = await requireServiceWrite(rest);
     assertOauthConnectedByUser(rest.ctx, credential);
     if (hook) await assertAgentVaultHooksOnPlan(licenseService, rest.ctx.actorOrgId);
     const bundles = await findBundlesInProject(rest.projectId, accessBundleIds);
@@ -1231,7 +1242,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     await checkHostPatternConflicts({ accessBundles: bundles, hostPattern });
 
-    const { idOfKey, variableIds } = await loadProjectVariables(rest.projectId, [
+    const { idOfKey, variableIds } = await loadProjectVariables({ projectId: rest.projectId, permission }, [
       ...credentialReferenceTexts(credential),
       ...(customHeaders ?? []).map((header) => ({ label: `The custom header '${header.name}'`, text: header.value })),
       ...(substitutions ?? []).map((substitution) => ({
@@ -1436,7 +1447,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     hook,
     ...rest
   }: TUpdateServiceDTO) => {
-    await requireServiceWrite(rest);
+    const permission = await requireServiceWrite(rest);
     assertOauthConnectedByUser(rest.ctx, credential);
 
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId });
@@ -1571,7 +1582,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // Only the values that arrived. One left out keeps what is sealed, and so keeps its references.
     const { idOfKey, variableIds } = await loadProjectVariables(
-      rest.projectId,
+      { projectId: rest.projectId, permission },
       [
         ...(credential ? credentialReferenceTexts(credential) : []),
         ...(customHeaders ?? []).flatMap((header) =>
@@ -2140,7 +2151,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders,
     ...rest
   }: TListMcpToolsDTO) => {
-    await requireServiceWrite(rest);
+    const permission = await requireServiceWrite(rest);
     assertOauthConnectedByUser(rest.ctx, credential);
     if (credential) assertCredentialTypeSupported(getAgentVaultServiceType(AgentVaultServiceType.Mcp), credential.type);
 
@@ -2166,7 +2177,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // Typed values name variables by key and stored ones by id, so typed ones are stored first and every value is
     // filled in the way resolve fills it in.
-    const { idOfKey } = await loadProjectVariables(rest.projectId, [
+    const { idOfKey } = await loadProjectVariables({ projectId: rest.projectId, permission }, [
       ...(credential ? credentialReferenceTexts(credential) : []),
       ...(customHeaders ?? []).flatMap((header) =>
         header.value === undefined ? [] : [{ label: `The custom header '${header.name}'`, text: header.value }]

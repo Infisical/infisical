@@ -1,9 +1,14 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
@@ -60,14 +65,15 @@ const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
   adminMembershipIds = [] as string[],
-  groupReachableIds = [] as string[]
+  groupReachableIds = [] as string[],
+  // A role of its own, in place of Agent Vault admin.
+  rules = agentVaultProjectAdminPermissions as RawRuleOf<MongoAbility>[]
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(agentVaultProjectAdminPermissions),
-        hasRole: () => true
+        permission: createMongoAbility(rules)
       })
     },
     identityDAL: {
@@ -145,6 +151,7 @@ const buildService = ({
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
     usageMeteringService: { emit: vi.fn() },
     agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    agentVaultMemberDAL: { findAvailableActors: vi.fn().mockResolvedValue({ members: [], totalCount: 0 }) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
     identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
@@ -564,5 +571,83 @@ describe("agentVaultMembership guards", () => {
     );
     expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
     expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("member changes take the action on each kind they name", () => {
+  // Can manage machine identities and read users, but can't add, change or remove users or groups.
+  const identityManager = [
+    ...[
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete
+    ].map((action) => ({ action, subject: ProjectPermissionSub.Identity })),
+    { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member }
+  ];
+  const withoutIdentity = { userIds: [], groupIds: [], machineIdentityIds: [] };
+
+  test("adds, re-roles and removes an identity with only the identity actions", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-1" }],
+      adminMembershipIds: ["mem-other"],
+      rules: identityManager
+    });
+
+    await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx });
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      ...addIds,
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
+    expect(deps.membershipDAL.delete).toHaveBeenCalled();
+  });
+
+  test.each([
+    ["a user by id", { ...withoutIdentity, userIds: [OTHER_USER_ID] }],
+    ["a user by email", { ...withoutIdentity, emails: ["someone@example.com"] }],
+    ["a group", { ...withoutIdentity, groupIds: [GROUP_ID] }],
+    ["an identity alongside a user", { ...addIds, userIds: [OTHER_USER_ID] }]
+  ])("refuses to add %s without that kind's create", async (_label, ids) => {
+    const { service, deps } = buildService({ rules: identityManager });
+
+    await expect(
+      service.addProductMembers({ projectId: PROJECT_ID, emails: [], ...ids, role: ProjectMembershipRole.Member, ctx })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("refuses to re-role or remove a user without the user actions", async () => {
+    const { service, deps } = buildService({ rules: identityManager });
+    const users = { ...withoutIdentity, userIds: [OTHER_USER_ID] };
+
+    await expect(
+      service.updateProductMemberRoles({ projectId: PROJECT_ID, ...users, role: ProjectMembershipRole.Admin, ctx })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...users, ctx })).rejects.toBeInstanceOf(
+      ForbiddenError
+    );
+    expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
+  });
+
+  test("lists as addable only the kinds the caller can both read and add", async () => {
+    const { service, deps } = buildService({ rules: identityManager });
+
+    await service.listAvailableProductMembers({ projectId: PROJECT_ID, limit: 10, offset: 0, ctx });
+    expect(deps.agentVaultMemberDAL.findAvailableActors).toHaveBeenCalledWith(
+      expect.objectContaining({ actorTypes: [AgentVaultMemberType.MachineIdentity] })
+    );
+
+    await expect(
+      service.listAvailableProductMembers({
+        projectId: PROJECT_ID,
+        actorType: AgentVaultMemberType.User,
+        limit: 10,
+        offset: 0,
+        ctx
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
