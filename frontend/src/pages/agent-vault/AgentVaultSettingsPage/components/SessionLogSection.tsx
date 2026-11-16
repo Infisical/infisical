@@ -75,11 +75,23 @@ export const SessionLogSection = () => {
     keyPrefix: string | null;
   } | null>(null);
   const { data: state, isPending } = useGetAgentVaultSessionLogSettings(projectId);
+  // Only names the connection in use and lists the connections, so each read waits for the permission its API checks.
+  const canConnectAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Connect,
+    ProjectPermissionSub.AppConnections
+  );
+  const canReadAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Read,
+    ProjectPermissionSub.AppConnections
+  );
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
-    currentProject.id
+    currentProject.id,
+    { enabled: canConnectAppConnections }
   );
-  const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id);
+  const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id, {
+    enabled: canReadAppConnections
+  });
 
   const settings = state?.settings ?? null;
   const external =
@@ -177,10 +189,12 @@ export const SessionLogSection = () => {
                         )}
                       </Tooltip>
                     )}
-                    <DropdownMenuItem onClick={() => setIsConnectionsSheetOpen(true)}>
-                      <PlugIcon />
-                      Manage Connections
-                    </DropdownMenuItem>
+                    {canReadAppConnections && (
+                      <DropdownMenuItem onClick={() => setIsConnectionsSheetOpen(true)}>
+                        <PlugIcon />
+                        Manage Connections
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -243,12 +257,15 @@ export const SessionLogSection = () => {
         )}
       </Card>
 
-      <SessionLogModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSaved={offerAwsSetup}
-        onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
-      />
+      {/* Both stay mounted while closed and read the connections, so each mounts only for someone who can open it. */}
+      {canEditSettings && (
+        <SessionLogModal
+          isOpen={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSaved={offerAwsSetup}
+          onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
+        />
+      )}
 
       <AwsSetupDialog
         isOpen={Boolean(awsSetup)}
@@ -263,10 +280,12 @@ export const SessionLogSection = () => {
         appConnection={editableConnection}
       />
 
-      <SessionLogConnectionsSheet
-        isOpen={isConnectionsSheetOpen}
-        onOpenChange={setIsConnectionsSheetOpen}
-      />
+      {canReadAppConnections && (
+        <SessionLogConnectionsSheet
+          isOpen={isConnectionsSheetOpen}
+          onOpenChange={setIsConnectionsSheetOpen}
+        />
+      )}
     </>
   );
 };
