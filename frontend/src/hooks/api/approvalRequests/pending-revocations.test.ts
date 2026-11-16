@@ -43,15 +43,21 @@ describe("getPendingRevocations", () => {
 
   it("drops a request the list still calls pending once its expiry has passed", () => {
     const result = getPendingRevocations(
-      [
-        revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T11:59:59.000Z" }),
-        revocationRequest("req-2", "cert-2", { expiresAt: "2026-11-12T12:00:00.000Z" })
-      ],
+      [revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T11:59:59.000Z" })],
       now
     );
 
     assert.equal(result.requestIdByCertificateId.size, 0);
     assert.equal(result.nextExpiresAt, null);
+  });
+
+  it("keeps a request expiring at this instant, as the server still treats it as pending", () => {
+    const result = getPendingRevocations(
+      [revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T12:00:00.000Z" })],
+      now
+    );
+
+    assert.equal(result.requestIdByCertificateId.get("cert-1"), "req-1");
   });
 
   it("keeps a request whose expiry is still ahead and drops it once the clock passes it", () => {
