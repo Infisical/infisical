@@ -45,7 +45,7 @@ const describeValues = (
 export type TResolvedAutoApprovalSubject = {
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  definition: TAutoApprovalSubject<any, any> | null;
+  definition: Pick<TAutoApprovalSubject<any, any>, "input" | "constraints"> | null;
   facts: unknown;
   error: string | null;
   recordId?: string | null;

@@ -65,6 +65,10 @@ export type CodeSigningPolicyConstraints = {
 // Conditions on the requester's own account in a service carry this subject and no input
 export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
 
+// Checks on the requester's own Infisical user and groups, which carry the requester subject and no connection
+export const AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT = "is-user";
+export const AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT = "in-group";
+
 export const AUTO_APPROVAL_AI_SUBJECT = "ai";
 export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
 

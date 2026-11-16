@@ -6,6 +6,10 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 // Conditions on the requester's own account in a service carry this subject and no input
 export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
 
+// Checks on the requester's own Infisical user and groups, which carry the requester subject and no connection
+export const AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT = "is-user";
+export const AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT = "in-group";
+
 export const AUTO_APPROVAL_AI_SUBJECT = "ai";
 export const AUTO_APPROVAL_AI_SUBJECT_LABEL = "AI";
 export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
@@ -154,7 +158,7 @@ export type TAutoApprovalEvidence = {
   approvedByRuleId: string | null;
   inputs: (TParsedAutoApprovalInput & { stableId: string })[];
   subjects: {
-    connectionId: string;
+    connectionId: string | null;
     subject: string;
     inputId: string | null;
     // The service's data as fetched; kept for audit and never returned by the API

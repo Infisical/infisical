@@ -5505,15 +5505,17 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.",
   conditionPrompt:
     "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
   conditionContextConnectionIds:
     "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
-  constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
-  values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
+  constraint:
+    "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-user' or 'in-group'.",
+  values:
+    "The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-user' takes user IDs and 'in-group' takes group IDs.",
   requestInputs:
     "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
   requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",

@@ -63,6 +63,7 @@ import {
   useGetPamApprovalConfig,
   useListFolderMembers,
   useListPamAccessRequests,
+  useListPamProductGroups,
   usePamFolderPermission,
   useRevokePamAccessRequest,
   useSetPamApprovalConfig
@@ -80,7 +81,8 @@ import {
   serializeAutoApprovalDraft,
   TAutoApprovalDraft,
   toAutoApprovalConfig,
-  toAutoApprovalDraft
+  toAutoApprovalDraft,
+  TRequesterCheckOptions
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { usePamProductUsers } from "../../components/usePamProductUsers";
@@ -129,6 +131,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
+  const { data: productGroups } = useListPamProductGroups();
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -302,6 +305,18 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     return [...groups, ...users];
   }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
 
+  // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
+  // members: a requester can reach the folder through a group the rule doesn't name
+  const requesterOptions = useMemo<TRequesterCheckOptions>(() => {
+    const productGroupIds = new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean));
+    return {
+      users: productUsers.map((u) => ({ value: u.id, label: u.name, subtitle: u.email })),
+      groups: (orgGroups ?? [])
+        .filter((g) => productGroupIds.has(g.id))
+        .map((g) => ({ value: g.id, label: g.name }))
+    };
+  }, [productUsers, orgGroups, productGroups]);
+
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
     setApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
@@ -385,6 +400,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onChange={setAutoApprovalDraft}
         showErrors={showAutoApprovalErrors}
         hasApprovers={approvers.length > 0}
+        requesterOptions={requesterOptions}
       />
 
       <Card>
