@@ -119,15 +119,27 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     expect(usageMeteringService.recordMeteringEvents).not.toHaveBeenCalled();
   });
 
-  test("should refuse a report dated too far from now", async () => {
+  test("should refuse a report older than a week", async () => {
     // Setup
     const { service, usageMeteringService } = build();
-    const ahead = new Date(Date.now() + 10 * 60_000);
     const old = new Date(Date.now() - 8 * 24 * 60 * 60_000);
 
     // Action, Assert
-    await expect(service.recordProxyUsage({ ...report, endedAt: ahead })).rejects.toThrow(RuleViolationError);
     await expect(service.recordProxyUsage({ ...report, endedAt: old })).rejects.toThrow(RuleViolationError);
     expect(usageMeteringService.recordMeteringEvents).not.toHaveBeenCalled();
+  });
+
+  test("should count and bill a report from a proxy whose clock runs ahead, at Infisical's time", async () => {
+    // Setup
+    const { service, usageMeteringService, freeUsageCache } = build();
+    const ahead = new Date(Date.now() + 10 * 60_000);
+
+    // Action
+    await service.recordProxyUsage({ ...report, endedAt: ahead });
+
+    // Assert
+    expect(await freeUsageCache.read(ROOT_ORG_ID, new Date())).toBe(100);
+    const [[, events]] = vi.mocked(usageMeteringService.recordMeteringEvents).mock.calls;
+    expect(events[0].occurredAt.getTime()).toBeLessThan(ahead.getTime() - 4 * 60_000);
   });
 });

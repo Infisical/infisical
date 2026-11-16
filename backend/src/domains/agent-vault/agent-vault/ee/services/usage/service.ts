@@ -25,7 +25,7 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     if (brokered <= 0 || !this.licenseService.getInstanceEntitlements().isCloud()) return;
 
     const offsetMs = endedAt.getTime() - Date.now();
-    if (offsetMs > MAX_REPORT_AHEAD_MS || -offsetMs > MAX_REPORT_AGE_MS) {
+    if (-offsetMs > MAX_REPORT_AGE_MS) {
       throw new RuleViolationError({
         name: "AgentVaultUsageReportOutOfRange",
         message:
@@ -45,9 +45,11 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
       logger.error(error, `Failed to count Agent Vault free usage [orgId=${orgId}] [reportId=${reportId}]`);
     }
 
-    // The proxy reuses reportId and endedAt when it resends, which is what the License Server dedupes on.
+    // The proxy reuses reportId and endedAt when it resends, which is what the License Server dedupes on. A proxy
+    // whose clock runs ahead is billed at Infisical's time, since the License Server refuses usage dated in the future.
+    const occurredAt = offsetMs > MAX_REPORT_AHEAD_MS ? new Date() : endedAt;
     this.usageMeteringService.recordMeteringEvents(orgId, [
-      { eventId: reportId, meter: Meter.AgentVaultBrokeredRequests, quantity: brokered, occurredAt: endedAt }
+      { eventId: reportId, meter: Meter.AgentVaultBrokeredRequests, quantity: brokered, occurredAt }
     ]);
   }
 }
