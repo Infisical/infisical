@@ -372,7 +372,10 @@ export const AgentVaultSessionsPage = () => {
                   <FilterIcon />
                 </IconButton>
               </PopoverTrigger>
-              <PopoverContent align="end" className="flex flex-col gap-3">
+              <PopoverContent
+                align="end"
+                className="flex max-h-(--radix-popover-content-available-height) flex-col gap-3 overflow-y-auto"
+              >
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-medium text-accent">Status</span>
                   {STATUS_OPTIONS.map((status) => {
