@@ -63,12 +63,15 @@ const metadataKeySchema = z
   .refine(
     isValidAgentVaultSessionLabel,
     "A metadata key can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."
-  );
+  )
+  // The list filter takes key=value and splits on the first =, so a key holding one could never be filtered on.
+  .refine((key) => !key.includes("="), "A metadata key can't contain =");
 
 const metadataValueSchema = (key: string) =>
   z
     .string()
     .trim()
+    .min(1, `Enter a value for metadata key '${key}'`)
     .max(
       AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH,
       `The value of metadata key '${key}' can be at most ${AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH} characters`
@@ -170,8 +173,13 @@ export const agentVaultSessionMetadataFilterSchema = z
     return filter;
   });
 
-export const isSameSessionMetadata = (a: TAgentVaultSessionMetadata, b: TAgentVaultSessionMetadata) =>
-  JSON.stringify(Object.entries(a)) === JSON.stringify(Object.entries(b));
+export const isSameSessionMetadata = (a: TAgentVaultSessionMetadata, b: TAgentVaultSessionMetadata) => {
+  const entries = Object.entries(a);
+  return (
+    entries.length === Object.keys(b).length &&
+    entries.every(([key, value]) => Object.prototype.hasOwnProperty.call(b, key) && b[key] === value)
+  );
+};
 
 export const hashSessionToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 

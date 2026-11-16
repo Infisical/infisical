@@ -22,7 +22,8 @@ export const sessionMetadataRowsSchema = z
       .refine(
         (key) => !DISALLOWED_LABEL_CHARS_RE.test(key),
         "A key can't contain line breaks, tabs, or invisible characters."
-      ),
+      )
+      .refine((key) => !key.includes("="), "A key can't contain ="),
     value: z
       .string()
       .trim()
@@ -51,6 +52,14 @@ export const sessionMetadataRowsSchema = z
           message: "Enter a key, or remove this row."
         });
         return;
+      }
+
+      if (!row.value) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "value"],
+          message: "Enter a value"
+        });
       }
 
       if (seenKeys.has(row.key)) {

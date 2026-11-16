@@ -5970,6 +5970,8 @@ describe("Agent Vault V1 Router", async () => {
         tooMany: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`key${index}`, "v"])),
         collision: { runId: "1", "runId ": "2" },
         emptyKey: { "": "v" },
+        emptyValue: { runId: " " },
+        equalsInKey: { "run=id": "v" },
         invisible: { "alice\u200b": "v" },
         nonString: { runId: 8812 }
       };
@@ -5985,6 +5987,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.stringify(collision.json().message)).toContain(
         "The metadata key 'runId' appears more than once. Each key can be used once per session."
       );
+      const emptyValue = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: rejected.emptyValue });
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({});
     });
 
@@ -6028,6 +6033,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.stringify(malformed.json().message)).toContain(
         "Filter metadata as key=value, such as metadata=runId=8812"
       );
+      const emptyValue = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=");
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
       const repeated = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=1&metadata=runId=2");
       expect(repeated.statusCode).toBe(422);
       expect(JSON.stringify(repeated.json().message)).toContain("The metadata key 'runId' appears more than once.");

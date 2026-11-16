@@ -891,7 +891,7 @@ session = client.agent_vault.sessions.create(
 - `access_bundle` (str, optional): the name of the access bundle that the agent can use during the session (pass `access_bundle`, `services`, or both)
 - `ttl` (str, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
 - `label` (str, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
-- `metadata` (Dict[str, str], optional): key/value pairs that say who or what the session is for, such as a run ID or ticket (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters)
+- `metadata` (Dict[str, str], optional): key/value pairs that say who or what the session is for, such as a run ID or ticket (up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key)
 - `on_behalf_of_user_email` (str, optional): the email address of the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user) (raises a `ValueError` if you also pass `on_behalf_of_user_id`)
 - `on_behalf_of_user_id` (str, optional): the ID of the user that the session is created on behalf of (raises a `ValueError` if you also pass `on_behalf_of_user_email`)
 - `services` (List[Dict[str, Any]], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
@@ -963,7 +963,7 @@ session = client.agent_vault.sessions.update(
 **Parameters:**
 - `session_id` (str): the ID of the session
 - `label` (Optional[str], optional): the new label, or `None` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters; leave it out to keep the current label)
-- `metadata` (Dict[str, str], optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters; leave it out to keep the current metadata)
+- `metadata` (Dict[str, str], optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or `{}` to remove it (up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key; leave it out to keep the current metadata)
 
 **Returns:**
 - `AgentVaultSession`: the updated session

@@ -35,6 +35,14 @@ describe("sessionMetadataRowsSchema", () => {
     ]);
   });
 
+  it("refuses a key without a value", () => {
+    expect(issueMessages([{ key: "runId", value: " " }])).toEqual(["Enter a value"]);
+  });
+
+  it("refuses a key containing =", () => {
+    expect(issueMessages([{ key: "a=b", value: "1" }])).toEqual(["A key can't contain ="]);
+  });
+
   it("refuses invisible characters", () => {
     expect(issueMessages([{ key: "alice​", value: "x" }])).toHaveLength(1);
     expect(issueMessages([{ key: "user", value: "a\tb" }])).toHaveLength(1);

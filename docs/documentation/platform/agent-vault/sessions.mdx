@@ -88,7 +88,7 @@ Anyone granted at least one access bundle in a project can create a session in t
 
 A label is a short description of what a session is for, such as `nightly deploy` or `support ticket triage`. If one identity creates many sessions, the label is how you tell the sessions apart on the **Sessions** page, and you can search sessions by their label. A label can be up to 128 characters, and can't contain line breaks, tabs, or invisible characters such as zero-width spaces.
 
-Metadata is a set of keys and values that record which run a session belongs to, such as the run ID, the ticket, or the user or Slack channel the agent works for. A session can have up to 20 metadata keys. A key can be up to 255 characters and a value up to 1020, and neither can contain line breaks, tabs, or invisible characters.
+Metadata is a set of keys and values that record which run a session belongs to, such as the run ID, the ticket, or the user or Slack channel the agent works for. A session can have up to 20 metadata keys. A key can be up to 255 characters and a value up to 1020, and neither can contain line breaks, tabs, or invisible characters. A value can't be empty, and a key can't contain `=`.
 
 To add a label and metadata when you create a session:
 

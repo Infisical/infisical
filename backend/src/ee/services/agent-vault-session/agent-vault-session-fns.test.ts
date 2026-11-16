@@ -142,12 +142,22 @@ describe("agent vault session metadata", () => {
   };
 
   test("trims keys and values and keeps the order they were sent in", () => {
-    const parsed = agentVaultSessionMetadataSchema.parse({ " runId ": " 8812 ", slackChannel: "#deploys", note: "" });
+    const parsed = agentVaultSessionMetadataSchema.parse({ " runId ": " 8812 ", slackChannel: "#deploys", note: "a" });
     expect(Object.entries(parsed)).toEqual([
       ["runId", "8812"],
       ["slackChannel", "#deploys"],
-      ["note", ""]
+      ["note", "a"]
     ]);
+  });
+
+  test("refuses an empty or blank value", () => {
+    expect(messagesOf({ note: "" })).toEqual(["Enter a value for metadata key 'note'"]);
+    expect(messagesOf({ note: "   " })).toEqual(["Enter a value for metadata key 'note'"]);
+  });
+
+  test("refuses = in a key but allows it in a value", () => {
+    expect(messagesOf({ "a=b": "value" })).toEqual(["A metadata key can't contain ="]);
+    expect(agentVaultSessionMetadataSchema.parse({ query: "a=b=c" })).toEqual({ query: "a=b=c" });
   });
 
   test("accepts up to 20 entries and refuses more", () => {
@@ -194,8 +204,10 @@ describe("agent vault session metadata", () => {
     expect(agentVaultSessionMetadataSchema.safeParse([["runId", "8812"]]).success).toBe(false);
   });
 
-  test("compares two sets entry by entry, in order", () => {
+  test("compares two sets entry by entry, in any order", () => {
     expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "2" })).toBe(true);
+    expect(isSameSessionMetadata({ a: "1", b: "2" }, { b: "2", a: "1" })).toBe(true);
+    expect(isSameSessionMetadata({ a: "1" }, { b: "1" })).toBe(false);
     expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1", b: "3" })).toBe(false);
     expect(isSameSessionMetadata({ a: "1" }, {})).toBe(false);
   });
@@ -218,7 +230,11 @@ describe("agent vault session metadata filter", () => {
 
   test("splits on the first = only and trims both sides", () => {
     expect(agentVaultSessionMetadataFilterSchema.parse(" query = a=b=c ")).toEqual([{ key: "query", value: "a=b=c" }]);
-    expect(agentVaultSessionMetadataFilterSchema.parse("note=")).toEqual([{ key: "note", value: "" }]);
+  });
+
+  test("refuses an empty or blank value", () => {
+    expect(messagesOf("note=")).toEqual(["Enter a value for metadata key 'note'"]);
+    expect(messagesOf("note=   ")).toEqual(["Enter a value for metadata key 'note'"]);
   });
 
   test("refuses a pair without = or without a key", () => {

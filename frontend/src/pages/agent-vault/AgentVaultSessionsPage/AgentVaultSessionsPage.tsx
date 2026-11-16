@@ -29,13 +29,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   DocumentationLinkBadge,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -45,9 +43,14 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Label,
   OverflowBadgeList,
   PageHeader,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
   Skeleton,
   Table,
   TableBody,
@@ -62,6 +65,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useOrganization, useProjectPermission, useSubscription, useProject } from "@app/context";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
@@ -106,9 +110,8 @@ import {
 } from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
 import {
-  SESSION_METADATA_KEY_MAX_LENGTH,
   SESSION_METADATA_MAX_KEYS,
-  SESSION_METADATA_VALUE_MAX_LENGTH
+  sessionMetadataRowsSchema
 } from "./components/sessionMetadataSchema";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -143,21 +146,15 @@ export const AgentVaultSessionsPage = () => {
   }, [appliedMetadataFilters]);
   // The same limits the API applies, checked here so a refused filter never reads as "no sessions match".
   const metadataFilterErrors = useMemo(() => {
-    const seen = new Set<string>();
-    return pendingMetadataFilters.map(({ key: rawKey, value: rawValue }) => {
-      const key = rawKey.trim();
-      const value = rawValue.trim();
-      if (!key && !value) return undefined;
-      if (!key) return "Enter a key";
-      if (!value) return "Enter a value";
-      if (key.length > SESSION_METADATA_KEY_MAX_LENGTH)
-        return `A key can be at most ${SESSION_METADATA_KEY_MAX_LENGTH} characters`;
-      if (value.length > SESSION_METADATA_VALUE_MAX_LENGTH)
-        return `A value can be at most ${SESSION_METADATA_VALUE_MAX_LENGTH} characters`;
-      if (seen.has(key)) return `The metadata key '${key}' appears more than once.`;
-      seen.add(key);
-      return undefined;
-    });
+    const errors: (string | undefined)[] = pendingMetadataFilters.map(() => undefined);
+    const result = sessionMetadataRowsSchema.safeParse(pendingMetadataFilters);
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        const [row] = issue.path;
+        if (typeof row === "number" && !errors[row]) errors[row] = issue.message;
+      });
+    }
+    return errors;
   }, [pendingMetadataFilters]);
   const [scope, setScope] = useState(() => {
     const stored = getUserTablePreference(
@@ -366,66 +363,74 @@ export const AgentVaultSessionsPage = () => {
                 placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <IconButton
                   aria-label="Filter sessions"
                   variant={statuses.length || metadataFilter ? "av" : "outline"}
                 >
                   <FilterIcon />
                 </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Status</DropdownMenuLabel>
-                {STATUS_OPTIONS.map((status) => {
-                  const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={status}
-                      checked={statuses.includes(status)}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setStatuses((prev) =>
-                          prev.includes(status)
-                            ? prev.filter((s) => s !== status)
-                            : [...prev, status]
-                        );
-                        setPage(1);
-                      }}
-                    >
-                      <Icon className={iconClassName} />
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-                <DropdownMenuSeparator />
-                <div className="flex w-72 flex-col gap-3 p-2">
-                  <MetadataFilterSection
-                    entries={pendingMetadataFilters}
-                    onChange={setPendingMetadataFilters}
-                    labelClassName="normal-case text-accent"
-                    clearClassName="text-muted hover:text-foreground"
-                    errors={metadataFilterErrors}
-                    maxEntries={SESSION_METADATA_MAX_KEYS}
-                  />
-                  <Button
-                    variant="av"
-                    size="sm"
-                    isDisabled={
-                      metadataFilterErrors.some(Boolean) ||
-                      JSON.stringify(pendingMetadataFilters) ===
-                        JSON.stringify(appliedMetadataFilters)
-                    }
-                    onClick={() => {
-                      setAppliedMetadataFilters(pendingMetadataFilters);
-                      setPage(1);
-                    }}
-                  >
-                    Apply
-                  </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-accent">Status</span>
+                  {STATUS_OPTIONS.map((status) => {
+                    const {
+                      label,
+                      icon: Icon,
+                      iconClassName
+                    } = SESSION_STATUS_PRESENTATION[status];
+                    const checkboxId = `session-status-filter-${status}`;
+                    return (
+                      <div key={status} className="flex items-center gap-2">
+                        <Checkbox
+                          id={checkboxId}
+                          variant="av"
+                          isChecked={statuses.includes(status)}
+                          onCheckedChange={() => {
+                            setStatuses((prev) =>
+                              prev.includes(status)
+                                ? prev.filter((s) => s !== status)
+                                : [...prev, status]
+                            );
+                            setPage(1);
+                          }}
+                        />
+                        <Label htmlFor={checkboxId}>
+                          <Icon className={cn("size-4", iconClassName)} />
+                          {label}
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Separator />
+                <MetadataFilterSection
+                  entries={pendingMetadataFilters}
+                  onChange={setPendingMetadataFilters}
+                  labelClassName="normal-case text-accent"
+                  clearClassName="text-muted hover:text-foreground"
+                  errors={metadataFilterErrors}
+                  maxEntries={SESSION_METADATA_MAX_KEYS}
+                />
+                <Button
+                  variant="av"
+                  size="sm"
+                  isDisabled={
+                    metadataFilterErrors.some(Boolean) ||
+                    JSON.stringify(pendingMetadataFilters) ===
+                      JSON.stringify(appliedMetadataFilters)
+                  }
+                  onClick={() => {
+                    setAppliedMetadataFilters(pendingMetadataFilters);
+                    setPage(1);
+                  }}
+                >
+                  Apply
+                </Button>
+              </PopoverContent>
+            </Popover>
             {isAdmin && (
               <Tabs
                 value={scope}

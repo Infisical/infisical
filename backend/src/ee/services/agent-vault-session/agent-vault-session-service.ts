@@ -159,11 +159,6 @@ export const agentVaultSessionServiceFactory = ({
     );
   };
 
-  const withMetadata = async <T extends { id: string }>(sessions: T[]) => {
-    const bySession = await findSessionMetadata(sessions.map((session) => session.id));
-    return sessions.map((session) => ({ ...session, metadata: bySession.get(session.id) ?? {} }));
-  };
-
   const withInlineServices = async <T extends { id: string }>(sessions: T[]) => {
     const rows = await agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(
       sessions.map((session) => session.id)
@@ -175,6 +170,14 @@ export const agentVaultSessionServiceFactory = ({
       else bySession.set(row.sessionId, [toInlineServiceSummary(row)]);
     });
     return sessions.map((session) => ({ ...session, services: bySession.get(session.id) ?? [] }));
+  };
+
+  const withServicesAndMetadata = async <T extends { id: string }>(sessions: T[]) => {
+    const [withServices, metadataBySession] = await Promise.all([
+      withInlineServices(sessions),
+      findSessionMetadata(sessions.map((session) => session.id))
+    ]);
+    return withServices.map((session) => ({ ...session, metadata: metadataBySession.get(session.id) ?? {} }));
   };
 
   const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
@@ -435,7 +438,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: await withMetadata(await withInlineServices(sessions.map(toSessionView))), totalCount };
+    return { sessions: await withServicesAndMetadata(sessions.map(toSessionView)), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -465,9 +468,9 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const [session] = await withMetadata(
-      await withInlineServices([toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin }))])
-    );
+    const [session] = await withServicesAndMetadata([
+      toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin }))
+    ]);
     return { session };
   };
 
