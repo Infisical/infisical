@@ -21,7 +21,8 @@ export const AnalyticsEvent = {
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
   SecretScanningOpened: "Secret Scanning Opened",
   AgentVaultRedirectClicked: "Agent Vault Redirect Clicked",
-  NativeIntegrationCreationBlockedModalViewed: "Native Integration Creation Blocked Modal Viewed"
+  NativeIntegrationCreationBlockedModalViewed: "Native Integration Creation Blocked Modal Viewed",
+  SecretApprovalReviewSubmitted: "Secret Approval Review Submitted"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -230,6 +231,15 @@ type NativeIntegrationCreationBlockedModalViewedProperties = {
   projectType: string;
 };
 
+export type SecretApprovalReviewSubmittedProperties = {
+  projectId: string;
+  mode: "bulk" | "single";
+  decision: "approved" | "rejected";
+  requestCount: number;
+  entryPoint: "request-detail" | "bulk-review-sheet";
+  mergeRequested: boolean;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -258,6 +268,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
   [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
   [AnalyticsEvent.NativeIntegrationCreationBlockedModalViewed]: NativeIntegrationCreationBlockedModalViewedProperties;
+  [AnalyticsEvent.SecretApprovalReviewSubmitted]: SecretApprovalReviewSubmittedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
