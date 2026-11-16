@@ -53,7 +53,7 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		require.True(t, parsed.FolderAccess[0].IsPermissionRecursive)
 	})
 
-	t.Run("should refuse folder access on a folder below the root folder", func(t *testing.T) {
+	t.Run("should grant folder access on a folder below the root folder", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
@@ -66,7 +66,6 @@ func TestUnlicensedInstance_FolderAccess(t *testing.T) {
 		})
 
 		// Assert
-		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, body, "Without a license, folder access can only be granted on the root folder '/'.")
+		require.Equalf(t, http.StatusOK, status, "granting on /app: %s", body)
 	})
 }

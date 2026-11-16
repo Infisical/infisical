@@ -51,7 +51,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleSave = async () => {
-    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), access.secretPath)) {
+    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac))) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
         paywallKey: "project.folder-access-section"

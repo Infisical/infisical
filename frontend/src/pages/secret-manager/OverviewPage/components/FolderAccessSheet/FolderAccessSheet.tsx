@@ -141,7 +141,7 @@ export const FolderAccessSheet = ({
   const [noAccessSection, setNoAccessSection] = useState("");
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const canGrant = canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), folderPath);
+  const canGrant = canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac));
   const openGrantUpgradeGate = () =>
     openUpgradeGate({
       intent: FolderAccessControlsUpgradeIntent,

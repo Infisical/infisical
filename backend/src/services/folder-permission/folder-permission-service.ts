@@ -89,17 +89,14 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
-  const assertFolderRbacLicensed = async (orgId: string, folder: TResolvedFolder) => {
-    const { isCloud } = getConfig();
-    if (!isCloud && folder.path === "/") return;
+  const assertFolderRbacLicensed = async (orgId: string) => {
+    if (!getConfig().isCloud) return;
 
     const plan = await licenseService.getPlan(orgId);
     if (plan.has(PlanFeature.SecretsFolderRbac)) return;
 
     throw new BadRequestError({
-      message: !isCloud
-        ? `Failed to grant folder access on '${folder.path}' in environment with slug '${folder.environmentSlug}' due to plan restriction. Without a license, folder access can only be granted on the root folder '/'. Upgrade your Infisical plan to grant access on other folders.`
-        : "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
+      message: "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
     });
   };
 
@@ -109,7 +106,7 @@ export const folderPermissionServiceFactory = ({
 
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(dto.permission.orgId, folder);
+    await assertFolderRbacLicensed(dto.permission.orgId);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) {
       assertRecursiveFolderIsRoot(folder);
@@ -159,7 +156,7 @@ export const folderPermissionServiceFactory = ({
     const { projectId, environmentSlug, secretPath, target } = dto;
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(dto.permission.orgId, folder);
+    await assertFolderRbacLicensed(dto.permission.orgId);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) assertRecursiveFolderIsRoot(folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
