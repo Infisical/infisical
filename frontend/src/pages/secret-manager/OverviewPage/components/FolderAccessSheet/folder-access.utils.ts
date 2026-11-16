@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getInitials } from "@app/helpers/string";
 import {
+  SecretFolderRole,
   TFolderAccess,
   TFolderAccessIdentity,
   TFolderAccessRole,
@@ -171,8 +172,13 @@ export const normalizeFolderPath = (path: string) => {
 
 export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";
 
-// self-hosted instances grant folder access without the plan, except access that applies to subfolders
+// self-hosted instances grant folder access without the plan, except the Manage role and access
+// that applies to subfolders
 export const canGrantFolderAccess = (
   hasFolderRbacPlan: boolean,
-  change: { isPermissionRecursive?: boolean } = {}
-) => hasFolderRbacPlan || (!isInfisicalCloud() && !change.isPermissionRecursive);
+  change: { permission?: SecretFolderRole; isPermissionRecursive?: boolean } = {}
+) =>
+  hasFolderRbacPlan ||
+  (!isInfisicalCloud() &&
+    !change.isPermissionRecursive &&
+    change.permission !== SecretFolderRole.Manage);

@@ -373,7 +373,10 @@ export const FolderAccessSheet = ({
     permission: SecretFolderRole,
     isPermissionRecursive = false
   ) => {
-    if (isGrantBlocked({ isPermissionRecursive: !actor.access && isPermissionRecursive })) return;
+    if (
+      isGrantBlocked({ permission, isPermissionRecursive: !actor.access && isPermissionRecursive })
+    )
+      return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const appliesToSubfolders = actor.access
@@ -451,7 +454,7 @@ export const FolderAccessSheet = ({
     tier: SecretFolderRole,
     isRecursive: boolean
   ) => {
-    if (isGrantBlocked({ isPermissionRecursive: isRecursive })) return;
+    if (isGrantBlocked({ permission: tier, isPermissionRecursive: isRecursive })) return;
     try {
       if (actor.type === "user") {
         await addUserToProject.mutateAsync({

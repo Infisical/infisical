@@ -91,7 +91,7 @@ export const folderPermissionServiceFactory = ({
 }: TFolderPermissionServiceFactoryDep) => {
   const assertFolderRbacLicensed = async (
     orgId: string,
-    { isPermissionRecursive }: { isPermissionRecursive?: boolean }
+    { role, isPermissionRecursive }: { role?: SecretFolderRole; isPermissionRecursive?: boolean }
   ) => {
     const plan = await licenseService.getPlan(orgId);
     if (plan.has(PlanFeature.SecretsFolderRbac)) return;
@@ -105,6 +105,12 @@ export const folderPermissionServiceFactory = ({
       throw new BadRequestError({
         message:
           "Failed to apply folder access to subfolders due to plan restriction. Upgrade your Infisical plan to apply folder access to subfolders."
+      });
+    }
+    if (role === SecretFolderRole.Manage) {
+      throw new BadRequestError({
+        message:
+          "Failed to grant the Manage folder role due to plan restriction. Upgrade your Infisical plan to use the Manage role."
       });
     }
   };
