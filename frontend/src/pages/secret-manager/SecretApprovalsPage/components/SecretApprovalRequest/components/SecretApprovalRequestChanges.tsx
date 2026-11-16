@@ -58,7 +58,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useProject, useUser } from "@app/context";
+import { useOrganization, useProject, useUser } from "@app/context";
 import {
   useGetSecretApprovalRequestDetails,
   useGetSecretImports,
@@ -66,6 +66,7 @@ import {
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
@@ -174,6 +175,7 @@ export const SecretApprovalRequestChanges = ({
   onOpenChange
 }: Props) => {
   const { user: userSession } = useUser();
+  const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
   const [comment, setComment] = useState("");
   const [willMerge, setWillMerge] = useState(false);
@@ -218,9 +220,17 @@ export const SecretApprovalRequestChanges = ({
 
   const handleReview = async (
     status: ApprovalStatus,
-    { notify = true }: { notify?: boolean } = {}
+    { notify = true, mergeRequested = false }: { notify?: boolean; mergeRequested?: boolean } = {}
   ) => {
     if (!secretApprovalRequestDetails) return;
+    analytics.captureForOrganization(AnalyticsEvent.SecretApprovalReviewSubmitted, currentOrg.id, {
+      projectId,
+      mode: "single",
+      decision: status === ApprovalStatus.REJECTED ? "rejected" : "approved",
+      requestCount: 1,
+      entryPoint: "request-detail",
+      mergeRequested
+    });
     await updateSecretApprovalRequestStatus({
       id: approvalRequestId,
       status,
@@ -241,7 +251,7 @@ export const SecretApprovalRequestChanges = ({
     if (!secretApprovalRequestDetails) return;
     try {
       setWillMerge(true);
-      await handleReview(ApprovalStatus.APPROVED, { notify: false });
+      await handleReview(ApprovalStatus.APPROVED, { notify: false, mergeRequested: true });
       await performSecretApprovalMerge({
         projectId,
         id: secretApprovalRequestDetails.id,
