@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { AppConnection } from "../appConnections/enums";
-import { appConnectionKeys } from "../appConnections/queries";
-import { TAvailableAppConnection } from "../appConnections/types";
+import { appConnectionKeys, fetchAvailableAppConnections } from "../appConnections/queries";
 import { TAnthropicModel, TOrgAiConfig } from "./types";
 
 export const aiQueryKeys = {
@@ -42,11 +41,6 @@ export const useListAnthropicModels = (connectionId: string) =>
 export const useListOrgAnthropicConnections = () =>
   useQuery({
     queryKey: appConnectionKeys.listAvailable(AppConnection.Anthropic),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ appConnections: TAvailableAppConnection[] }>(
-        "/api/v1/app-connections/anthropic/available"
-      );
-      return data.appConnections;
-    },
+    queryFn: () => fetchAvailableAppConnections(AppConnection.Anthropic),
     select: (connections) => connections.filter((connection) => !connection.projectId)
   });

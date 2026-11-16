@@ -195,12 +195,10 @@ export const getClosestFailedRule = (evidence: Pick<TAutoApprovalEvidence, "rule
     .sort((a, b) => a.failed - b.failed || b.passed - a.passed);
   if (!closest) return null;
 
-  const failedCondition = closest.rule.conditions.find((condition) => !condition.passed);
+  // AI checks never explain a refusal, so a rule that failed only on one gives no reason
+  const failedCondition = closest.rule.conditions.find((condition) => !condition.passed && !isAiCondition(condition));
   return {
     ruleName: closest.rule.name,
-    reason:
-      failedCondition && isAiCondition(failedCondition)
-        ? null
-        : (failedCondition?.reason ?? failedCondition?.description ?? "a condition didn't pass")
+    reason: failedCondition ? (failedCondition.reason ?? failedCondition.description) : null
   };
 };

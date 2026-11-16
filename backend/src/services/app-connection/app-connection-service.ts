@@ -1251,7 +1251,7 @@ export const appConnectionServiceFactory = ({
         if (constraint === "organizations_aiconnectionid_foreign") {
           throw new BadRequestError({
             message:
-              "Cannot delete this App Connection because the organization's AI features use it. Change the AI model under Organization Settings > General first."
+              "Cannot delete this App Connection because the organization's AI features use it. Change the connection under Organization Settings > General > AI Features first."
           });
         }
         if (constraint === "certificate_authority_secret_appconnectionid_foreign") {

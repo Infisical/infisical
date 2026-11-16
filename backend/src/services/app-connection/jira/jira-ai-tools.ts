@@ -152,12 +152,7 @@ export const JIRA_AI_TOOLS = {
       } catch (error) {
         throw toToolError(error);
       }
-      const result = users.slice(0, MAX_USERS).map((user) => ({
-        accountId: user.accountId ?? user.key ?? null,
-        displayName: user.displayName ?? null,
-        email: user.emailAddress ?? null,
-        active: user.active ?? null
-      }));
+      const result = users.slice(0, MAX_USERS).map((user) => ({ ...toPerson(user)!, active: user.active ?? null }));
       return {
         result,
         summary: `Found ${result.length} Jira user${result.length === 1 ? "" : "s"} for ${email}`

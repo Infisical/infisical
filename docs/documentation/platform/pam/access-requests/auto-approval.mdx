@@ -136,7 +136,7 @@ The AI check passes only if the model approves. If the model declines or errors,
   The requester writes the reason and the linked tickets, so they can try to give the AI instructions. Keep the **is assigned to the requester** and **hasn't been used before** checks in every rule with an AI check.
 </Warning>
 
-Approvers see the model's reasoning and the tickets it looked up under **Auto-approval status**. The requester only sees that the AI didn't approve the request.
+Approvers see the model's reasoning and the tickets it looked up under **Auto-approval status**. The requester isn't told why the AI didn't approve, only that the request wasn't auto-approved.
 
 ## Request access with a linked record
 
@@ -147,6 +147,8 @@ After you submit the request, the confirmation message shows whether a rule appr
 - If a rule approved it, the access you asked for starts right away
 - If no rule approved it, the request waits for an approver, and the message shows why the rule that came closest didn't pass
 - If no rule approved it and the folder has no approvers, the request is rejected (the message shows why the rule that came closest didn't pass)
+
+If the closest rule failed only on its [AI check](#ai-checks), the message doesn't give a reason.
 
 If you turn on **Break glass** in the form, the record fields disappear, because [break-glass](/documentation/platform/pam/access-requests/break-glass) requests skip the rules.
 

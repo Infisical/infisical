@@ -302,7 +302,7 @@ export const RequestAccessSheet = ({
             }))
             .sort((a, b) => a.failed - b.failed || b.passed - a.passed)[0]?.rule;
           const firstFailure = closestRule?.conditions.find(
-            (condition) => !condition.passed
+            (condition) => !condition.passed && condition.reason
           )?.reason;
 
           let text = isCredentialRequest

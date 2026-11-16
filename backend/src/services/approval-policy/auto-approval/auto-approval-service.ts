@@ -164,7 +164,7 @@ export const autoApprovalServiceFactory = ({
     ) {
       throw new BadRequestError({
         message:
-          "Set up an AI model under Organization Settings > General before adding an AI check to auto-approval rules."
+          "AI is turned off for this organization, so rules with an AI check can't be saved. Remove the AI checks, or ask an organization admin to set up AI features under Organization Settings > General."
       });
     }
 
@@ -633,8 +633,8 @@ export const autoApprovalServiceFactory = ({
 
     const deterministic = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
     const aiResults = new Map<string, TAiConditionResult>();
-    // A rule without AI that already passes decides the request, so the model isn't called for nothing
-    let isApproved = deterministic.rules.some((rule) => rule.passed && !rule.conditions.some(isAiCondition));
+    // Rules with AI checks can't pass yet, so this is a rule without AI, and the model isn't called for nothing
+    let isApproved = Boolean(deterministic.approvedByRuleId);
     for await (const rule of stored.rules) {
       const aiConditions = rule.conditions.filter(isAiCondition);
       const evaluatedRule = deterministic.rules.find((candidate) => candidate.id === rule.id);
@@ -651,7 +651,8 @@ export const autoApprovalServiceFactory = ({
           })
         );
       } else if (!aiConditions.length) {
-        isApproved = Boolean(evaluatedRule?.passed);
+        // eslint-disable-next-line no-continue
+        continue;
       } else if (!othersPassed) {
         aiConditions.forEach((condition) =>
           aiResults.set(condition.id, {

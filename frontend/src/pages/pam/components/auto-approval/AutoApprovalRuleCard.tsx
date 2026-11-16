@@ -163,7 +163,7 @@ const ConditionRow = ({
         </Badge>
         <span className="text-sm text-foreground">approves the request</span>
         <span className="text-xs text-muted">
-          {ai.model ? `using ${ai.model}` : "No AI model set up in Organization Settings"}
+          {ai.model ? `using ${ai.model}` : "AI features aren't set up in Organization Settings"}
         </span>
       </>,
       <AutoApprovalAiCondition
@@ -485,7 +485,7 @@ export const AutoApprovalRuleCard = ({
                     </DropdownMenuItem>
                     {!ai.model && (
                       <p className="max-w-64 px-2 pb-1.5 text-xs text-muted">
-                        Set up an AI model under Organization Settings &gt; General first.
+                        Set up AI features under Organization Settings &gt; General first.
                       </p>
                     )}
                   </>

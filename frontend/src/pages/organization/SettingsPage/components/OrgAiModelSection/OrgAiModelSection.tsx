@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -91,8 +92,12 @@ export const OrgAiModelSection = () => {
   const {
     data: allModels = [],
     isFetching: isModelsLoading,
-    isError: isModelsError
+    isError: isModelsError,
+    error: modelsError
   } = useListAnthropicModels(connectionId);
+  const modelsErrorMessage: unknown = axios.isAxiosError(modelsError)
+    ? modelsError.response?.data?.message
+    : undefined;
   const latestModels = getLatestModelPerFamily(allModels, model);
   const models =
     model && !latestModels.some((option) => option.id === model)
@@ -116,7 +121,11 @@ export const OrgAiModelSection = () => {
     created && !connections.some((connection) => connection.id === created.id)
       ? [...connections, created]
       : connections;
-  const selectedConnection = options.find((connection) => connection.id === connectionId) ?? null;
+  const selectedConnection =
+    options.find((connection) => connection.id === connectionId) ??
+    (config && config.connectionId === connectionId
+      ? { id: config.connectionId, name: config.connectionName, projectId: null }
+      : null);
 
   const onSubmit = async (data: FormData) => {
     await updateConfig.mutateAsync(data);
@@ -205,7 +214,9 @@ export const OrgAiModelSection = () => {
                     </Select>
                     {isModelsError && (
                       <FieldDescription className="text-danger">
-                        Couldn&apos;t list this connection&apos;s models. Check its API key.
+                        {typeof modelsErrorMessage === "string"
+                          ? modelsErrorMessage
+                          : "Couldn't list this connection's models. Check its API key."}
                       </FieldDescription>
                     )}
                     <FieldError>{error?.message}</FieldError>
