@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -13,6 +14,7 @@ const sts = vi.hoisted(() => ({
   externalIds: [] as (string | undefined)[],
   rejectedExternalIds: [] as string[]
 }));
+const credentials = vi.hoisted(() => ({ roleArn: "arn:aws:iam::123456789012:role/infisical" }));
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 vi.mock("@app/lib/crypto/cryptography", () => ({
@@ -29,7 +31,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 vi.mock("@app/services/app-connection/app-connection-fns", () => ({
   decryptAppConnection: async (connection: unknown) => connection,
-  decryptAppConnectionCredentials: async () => connection.credentials
+  decryptAppConnectionCredentials: async () => credentials
 }));
 vi.mock("@aws-sdk/client-sts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@aws-sdk/client-sts")>();
@@ -93,7 +95,7 @@ const connection = {
   id: "conn-1",
   app: AppConnection.AWS,
   method: AwsConnectionMethod.AssumeRole,
-  credentials: { roleArn: "arn:aws:iam::123456789012:role/infisical" },
+  credentials,
   orgId: "org-1",
   projectId: "proj-1",
   version: 2
