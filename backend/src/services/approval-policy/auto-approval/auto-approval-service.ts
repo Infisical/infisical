@@ -98,10 +98,7 @@ type TAutoApprovalServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-  userGroupMembershipDAL: Pick<
-    TUserGroupMembershipDALFactory,
-    "find" | "findUserGroupMembershipsInProjectByUserIds"
-  >;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findUserGroupMembershipsInProjectByUserIds">;
 };
 
 export type TAutoApprovalServiceFactory = ReturnType<typeof autoApprovalServiceFactory>;
@@ -207,9 +204,7 @@ export const autoApprovalServiceFactory = ({
         facts: {
           userId: requesterId,
           // A named group counts only while it's a member of the project
-          groupIds: groupMemberships
-            .map(({ groupId }) => groupId)
-            .filter((groupId) => groupIdsInProject.has(groupId)),
+          groupIds: groupMemberships.map(({ groupId }) => groupId).filter((groupId) => groupIdsInProject.has(groupId)),
           names: Object.fromEntries([
             ...users.map((user): [string, string] => [
               user.id,

@@ -1,5 +1,5 @@
-import { ActorType } from "@app/services/auth/auth-type";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { autoApprovalServiceFactory } from "./auto-approval-service";
 import {
@@ -321,14 +321,16 @@ describe("autoApprovalService requester checks", () => {
       { connectionId: null, constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: [engineering] }
     ]);
 
-    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: ["alice"] }])).rejects.toThrow(
-      "'Requester is' takes user IDs, and 'alice' isn't one"
-    );
+    await expect(
+      validate([{ constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: ["alice"] }])
+    ).rejects.toThrow("'Requester is' takes user IDs, and 'alice' isn't one");
     await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: [carol] }])).rejects.toThrow(
       `checks for user '${carol}', who isn't a member of the policy's project`
     );
     await expect(
-      validate([{ constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: ["0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e09"] }])
+      validate([
+        { constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: ["0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e09"] }
+      ])
     ).rejects.toThrow("which isn't a member of the policy's project");
     await expect(validate([{ constraint: "on-call", values: [alice] }])).rejects.toThrow(
       "which is not a check on the requester's Infisical user or groups"
