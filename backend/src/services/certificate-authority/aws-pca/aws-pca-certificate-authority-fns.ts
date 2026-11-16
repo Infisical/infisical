@@ -14,7 +14,7 @@ import {
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -219,7 +219,10 @@ const createPcaClient = async ({
   }
 
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
-  const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMPCAClient({
     sha256: CustomAWSHasher,

@@ -1,5 +1,6 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
+import { ProjectType } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -30,7 +31,10 @@ export const createAcmClient = async ({
   }
 
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
-  const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMClient({
     sha256: CustomAWSHasher,
