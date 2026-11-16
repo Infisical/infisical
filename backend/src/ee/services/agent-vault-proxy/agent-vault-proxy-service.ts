@@ -7,6 +7,7 @@ import {
   TAgentVaultProxies,
   TAgentVaultSessions
 } from "@app/db/schemas";
+import { TAgentVaultAccessService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -154,6 +155,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TLicenseService;
+  agentVaultAccessService: Pick<TAgentVaultAccessService, "assertCanBroker">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
@@ -213,6 +215,7 @@ export const agentVaultProxyServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
+  agentVaultAccessService,
   resourceAuthMethodService,
   agentVaultOauthService
 }: TAgentVaultProxyServiceFactoryDep) => {
@@ -993,6 +996,8 @@ export const agentVaultProxyServiceFactory = ({
       orgId,
       sessionToken
     });
+    // After the session check, so a refusal never tells a caller anything about a token that isn't theirs.
+    await agentVaultAccessService.assertCanBroker(orgId);
 
     // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
     // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
@@ -1295,6 +1300,7 @@ export const agentVaultProxyServiceFactory = ({
   // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
   const refreshCredential = async ({ rejectedTokenHash, ...dto }: TRefreshCredentialDTO) => {
     const { session, row } = await $findSessionOauthService(dto);
+    await agentVaultAccessService.assertCanBroker(dto.orgId);
     const result = await agentVaultOauthService.refreshServiceToken({
       serviceId: row.id,
       projectId: session.projectId,

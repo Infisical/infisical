@@ -3413,6 +3413,9 @@ export const AppConnections = {
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
     },
+    INCIDENT_IO: {
+      apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
+    },
     JIRA: {
       instanceUrl:
         "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
@@ -5447,6 +5450,23 @@ export const AGENT_VAULT = {
     limit: "The maximum number of users and groups to return.",
     offset: "How many users and groups to skip.",
     totalCount: "How many users and groups match, across every page."
+  },
+  ACCESS: {
+    state:
+      "Why the organization can or can't use Agent Vault: `self-hosted` and `plan` are never limited, `open` means the plan doesn't say yet and nothing is limited, `free` means it uses the free monthly requests, and `limit-reached` means it used them all this month.",
+    allowed: "Whether agents can use Agent Vault right now. False only once the free requests for this month are used.",
+    freeUsage:
+      "The organization's free requests this month, or `null` when it isn't on the free tier or the count couldn't be read.",
+    used: "How many free requests the organization used this month.",
+    limit: "How many free requests the organization gets each month.",
+    resetsAt: "When the free requests start again, at the start of next month (UTC).",
+    warn: "Whether the organization used most of its free requests this month, so the UI can warn before they run out."
+  },
+  USAGE: {
+    reportId:
+      "A random ID the proxy picks for this report. Send the same ID when you resend a report, so it is counted once.",
+    endedAt: "When the period this report covers ended. Send the same time when you resend a report.",
+    brokered: "How many requests the proxy brokered in this period, from 0 to 1,000,000."
   }
 };
 
@@ -5502,9 +5522,13 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+  conditionPrompt:
+    "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
+  conditionContextConnectionIds:
+    "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
   constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
   values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
   requestInputs:
@@ -5518,6 +5542,8 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSubject: "The subject the condition checks.",
   optionsConstraint: "The check to list values for.",
   optionsSearch: "Filters the values by this text.",
+  optionsSelected:
+    "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
@@ -5539,4 +5565,11 @@ export const AWS_HONEY_TOKENS = {
     unavailableReason:
       "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
   }
+};
+
+export const ORG_AI_CONFIG = {
+  connectionId:
+    "The ID of the organization-level Anthropic App Connection the organization's AI features use. Null turns AI features off.",
+  model: "The ID of the Anthropic model to use, such as 'claude-sonnet-4-5'. Required when connectionId is set.",
+  connectionName: "The name of the App Connection."
 };
