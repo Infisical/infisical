@@ -182,6 +182,7 @@ const orgSubjects = [
   "identity",
   "kms",
   "audit-logs",
+  "audit-log-streams",
   "project-templates",
   "app-connections",
   "machine-identity-auth-template",
@@ -220,6 +221,7 @@ const orgRoles: TOrgRole[] = [
     [
       { subject: "member", action: ["read"] },
       { subject: "audit-logs", action: ["read"] },
+      { subject: "audit-log-streams", action: ["read"] },
       { subject: "identity", action: ["read"] },
       { subject: "groups", action: ["read"] }
     ]

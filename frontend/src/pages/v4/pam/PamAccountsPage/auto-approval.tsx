@@ -86,7 +86,8 @@ const ValuePicker = ({
 }) => {
   const [search, setSearch] = useState("");
   const isMany = constraint.value === AutoApprovalConstraintValue.Many;
-  const { data: fetched = [], isPending } = useV4Adapter("pamAccess").useAutoApprovalOptions(
+  const pamAccess = useV4Adapter("pamAccess");
+  const { data: fetched = [], isPending } = pamAccess.useAutoApprovalOptions(
     {
       ...scope,
       connectionId,
@@ -97,11 +98,23 @@ const ValuePicker = ({
     },
     constraint.hasOptions
   );
+  const unlabelled = values.filter((value) => !fetched.some((option) => option.value === value));
+  const { data: saved = [] } = pamAccess.useAutoApprovalOptions(
+    {
+      ...scope,
+      connectionId,
+      subject,
+      constraint: constraint.id,
+      siblings,
+      selected: unlabelled
+    },
+    constraint.hasOptions && !isPending && fetched.length > 0 && unlabelled.length > 0
+  );
   const options = [
     ...fetched,
-    ...values
-      .filter((value) => !fetched.some((option) => option.value === value))
-      .map((value) => ({ value, label: value }))
+    ...unlabelled.map(
+      (value) => saved.find((option) => option.value === value) ?? { value, label: value }
+    )
   ];
   const create = (input: string) => {
     const value = input.trim();
@@ -588,7 +601,7 @@ export const AutoApprovalCard = ({
           }
     );
   };
-  const creation = useOrgConnectionCreation(data?.apps ?? [], (id) => {
+  const creation = useOrgConnectionCreation(data?.fieldApps ?? [], (id) => {
     addFieldForConnection(id);
   });
 
