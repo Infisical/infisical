@@ -44,7 +44,11 @@ fi
 
 if ! is_newer "${TAG#v}" "${CURRENT_APP_VERSION#v}"; then
   echo "Chart appVersion is $CURRENT_APP_VERSION, which is not older than $TAG. Nothing to do."
-  echo "changed=false" >> "$OUTPUT_FILE"
+  {
+    echo "changed=false"
+    echo "app_version=$CURRENT_APP_VERSION"
+    echo "chart_version=$CHART_VERSION"
+  } >> "$OUTPUT_FILE"
   exit 0
 fi
 
@@ -90,5 +94,6 @@ mv "$CHART_FILE.tmp" "$CHART_FILE"
 echo "Chart $CHART_VERSION -> $NEW_CHART_VERSION, appVersion $CURRENT_APP_VERSION -> $TAG"
 {
   echo "changed=true"
+  echo "app_version=$TAG"
   echo "chart_version=$NEW_CHART_VERSION"
 } >> "$OUTPUT_FILE"

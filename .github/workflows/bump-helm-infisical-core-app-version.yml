@@ -97,10 +97,12 @@ jobs:
             git push --force-with-lease="refs/heads/${BRANCH_NAME}:${REMOTE_SHA}" origin "$BRANCH_NAME"
           fi
 
+      # A rerun after the push finds the branch already bumped (changed=false), so the PR steps
+      # also run for an open PR, describing the version the branch is at rather than this tag.
       - name: Write PR body
-        if: steps.bump.outputs.changed == 'true'
+        if: steps.bump.outputs.changed == 'true' || steps.existing.outputs.pr != ''
         env:
-          TAG_NAME: ${{ steps.release.outputs.tag }}
+          TAG_NAME: ${{ steps.bump.outputs.app_version }}
           CHART_VERSION: ${{ steps.bump.outputs.chart_version }}
           BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main
         run: |
@@ -150,11 +152,11 @@ jobs:
 
       - name: Open or update PR
         id: pr
-        if: steps.bump.outputs.changed == 'true'
+        if: steps.bump.outputs.changed == 'true' || steps.existing.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ steps.release.outputs.tag }}
+          TAG_NAME: ${{ steps.bump.outputs.app_version }}
           EXISTING_PR: ${{ steps.existing.outputs.pr }}
         run: |
           PR_TITLE="chore(helm): update infisical-standalone appVersion to ${TAG_NAME}"
@@ -174,7 +176,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ steps.release.outputs.tag }}
+          TAG_NAME: ${{ steps.bump.outputs.app_version }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
