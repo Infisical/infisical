@@ -210,6 +210,7 @@ const useAccessRowControls = (secret: Secret) => {
   );
   return {
     canGrantAccess:
+      privilegesEnabled &&
       orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
       permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
       permission.can(

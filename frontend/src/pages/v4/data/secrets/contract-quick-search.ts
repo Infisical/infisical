@@ -9,7 +9,10 @@ import type {
 
 import type { V4QueryResult } from "../contract";
 
-type SearchResult<TData> = V4QueryResult<TData> & { isFetching: boolean };
+type SearchResult<TData> = V4QueryResult<TData> & {
+  isFetching: boolean;
+  refetch?: () => unknown;
+};
 
 export type SecretsQuickSearchAdapter = {
   useQuickSearch: (

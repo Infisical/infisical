@@ -34,7 +34,7 @@ import {
 import type { ProjectEnv } from "@app/hooks/api/projects/types";
 import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/types";
 
-import { failed, toast } from "../../../../access/toast";
+import { errorMessage, failed, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { v4Path } from "../../../../links";
 import type { ResourceKind } from "../../secrets-model";
@@ -142,7 +142,10 @@ const secretHit = (
     name: secret.key,
     environment: secret.env,
     location: secret.path ?? "/",
-    metadata: (secret.secretMetadata ?? []).map(({ key, value }) => ({ key, value })),
+    metadata: (secret.secretMetadata ?? []).map(({ key, value }) => ({
+      key,
+      value
+    })),
     tags: (secret.tags ?? []).map((tag) => tag.slug),
     valueHidden: secret.secretValueHidden,
     matched
@@ -332,7 +335,9 @@ function MetadataConditions({
             size="sm"
             icon="plus"
             onClick={() =>
-              onChange({ conditions: [...conditions, blankCondition(nextId(conditions))] })
+              onChange({
+                conditions: [...conditions, blankCondition(nextId(conditions))]
+              })
             }
           >
             Add condition
@@ -457,7 +462,10 @@ function SearchFilters({
             multiple
             label="Tags"
             placeholder="Any tag"
-            options={tagOptions.map((tag) => ({ value: tag.slug, label: tag.slug }))}
+            options={tagOptions.map((tag) => ({
+              value: tag.slug,
+              label: tag.slug
+            }))}
             value={filters.tags}
             onChange={(value) =>
               onChange({
@@ -549,11 +557,10 @@ function ResultsTable({
       header: "Name",
       primary: true,
       grow: true,
-      mono: true,
       minWidth: 240,
       text: (hit) => hit.name,
       render: (hit) => (
-        <span className={styles.name}>
+        <span className={styles.name} data-mono={hit.kind === "secret" || undefined}>
           <KindIcon kind={hit.kind} />
           <RowLink
             title={hit.name}
@@ -658,7 +665,10 @@ type SearchScope = {
 
 const activeConditionsOf = (conditions: Condition[]) =>
   conditions
-    .map((condition) => ({ key: condition.key.trim(), value: condition.value.trim() }))
+    .map((condition) => ({
+      key: condition.key.trim(),
+      value: condition.value.trim()
+    }))
     .filter((condition) => condition.key && condition.value);
 
 const scopeOf = (filters: Filters, environments: ProjectEnv[], metadataMode: boolean) => {
@@ -674,7 +684,13 @@ const scopeOf = (filters: Filters, environments: ProjectEnv[], metadataMode: boo
     Number(filters.tags.length > 0) +
     Number(visibleKinds.length < ALL_KINDS.length) +
     activeConditionsOf(filters.conditions).length;
-  return { environmentSlugs, folderEnvironment, secretPath, visibleKinds, activeCount };
+  return {
+    environmentSlugs,
+    folderEnvironment,
+    secretPath,
+    visibleKinds,
+    activeCount
+  };
 };
 
 const useFolderSearch = (scope: SearchScope, environments: ProjectEnv[], enabled: boolean) => {
@@ -716,15 +732,19 @@ const useFolderSearch = (scope: SearchScope, environments: ProjectEnv[], enabled
   if (metadataMode)
     return {
       results: metadataResults(metadataSearch.data, needle, scope.page, scope.perPage),
-      loading: metadataSearch.isPending || metadataSearch.isFetching,
-      searchLimit: metadataSearch.data?.searchLimit
+      loading: (metadataSearch.isPending || metadataSearch.isFetching) && !metadataSearch.error,
+      searchLimit: metadataSearch.data?.searchLimit,
+      error: metadataSearch.error,
+      retry: () => metadataSearch.refetch?.()
     };
   if (!quickEnabled) return { results: undefined, loading: false };
   return {
     results:
       quick.data &&
       quickResults(quick.data, needle, scope.visibleKinds, environments, scope.perPage),
-    loading: quick.isPending || quick.isFetching
+    loading: (quick.isPending || quick.isFetching) && !quick.error,
+    error: quick.error,
+    retry: () => quick.refetch?.()
   };
 };
 
@@ -733,14 +753,27 @@ function ResultsArea({
   loading,
   metadataMode,
   searchLimit,
+  error,
+  onRetry,
   table
 }: {
   results?: Results;
   loading: boolean;
   metadataMode: boolean;
   searchLimit?: number;
+  error?: unknown;
+  onRetry?: () => void;
   table: Omit<Parameters<typeof ResultsTable>[0], "results" | "loading">;
 }) {
+  if (error && !loading)
+    return (
+      <EmptyState
+        icon="alert"
+        title="Search failed"
+        description={errorMessage(error) ?? "Something went wrong. Try again."}
+        actions={<Button onClick={onRetry}>Retry</Button>}
+      />
+    );
   if (!results && !loading)
     return (
       <EmptyState
@@ -782,13 +815,19 @@ function SearchResults({
   const [paging, setPaging] = useState({ scope: "", page: 1 });
   const updateFilters = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
 
-  const live = JSON.stringify({ query, conditions: activeConditionsOf(filters.conditions) });
+  const live = JSON.stringify({
+    query,
+    conditions: activeConditionsOf(filters.conditions)
+  });
   const [settled, setSettled] = useState(live);
   useEffect(() => {
     const timer = window.setTimeout(() => setSettled(live), 300);
     return () => window.clearTimeout(timer);
   }, [live]);
-  const debounced = JSON.parse(settled) as { query: string; conditions: Metadata[] };
+  const debounced = JSON.parse(settled) as {
+    query: string;
+    conditions: Metadata[];
+  };
   const metadataMode = activeConditionsOf(filters.conditions).length > 0;
   const { environmentSlugs, folderEnvironment, secretPath, visibleKinds, activeCount } = scopeOf(
     filters,
@@ -798,7 +837,7 @@ function SearchResults({
 
   const pageScope = JSON.stringify([settled, environmentSlugs, secretPath, filters, perPage]);
   const page = paging.scope === pageScope ? paging.page : 1;
-  const { results, loading, searchLimit } = useFolderSearch(
+  const { results, loading, searchLimit, error, retry } = useFolderSearch(
     {
       projectId,
       query: debounced.query,
@@ -840,6 +879,8 @@ function SearchResults({
             loading={loading}
             metadataMode={metadataMode}
             searchLimit={searchLimit}
+            error={error}
+            onRetry={retry}
             table={{
               orgId,
               projectId,
@@ -850,7 +891,9 @@ function SearchResults({
               onPerPageChange: setPerPage,
               onSelect,
               onFilterMetadata: (entry) =>
-                updateFilters({ conditions: withMetadataCondition(filters.conditions, entry) }),
+                updateFilters({
+                  conditions: withMetadataCondition(filters.conditions, entry)
+                }),
               readSecretValue
             }}
           />

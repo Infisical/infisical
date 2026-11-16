@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { Field } from "@infisical/cipher/ui/field";
@@ -28,7 +30,10 @@ import styles from "./activation-nudge.module.css";
 
 const NUDGE_DELAY_MS = 1500;
 const SUCCESS_AUTO_DISMISS_MS = 3000;
-const SENT = { title: "Invites sent", description: "Your teammates will get an email to join." };
+const SENT = {
+  title: "Invites sent",
+  description: "Your teammates will get an email to join."
+};
 
 export const useSecretsActivationNudge = () => {
   const session = useV4Session();
@@ -110,7 +115,9 @@ const useInvite = (
         roleSlugs: [roleSlug]
       })
       .catch(readableFailure("Couldn't send invites"));
-    capture(AnalyticsEvent.SecretsActivationModalMembersInvited, { invitedCount: emails.length });
+    capture(AnalyticsEvent.SecretsActivationModalMembersInvited, {
+      invitedCount: emails.length
+    });
     return true;
   };
   return { capture, send };
@@ -141,6 +148,7 @@ function InviteMembersDialog({
   const [emails, setEmails] = useState<string[]>([]);
   const [roleSlug, setRoleSlug] = useState<string>();
   const viewed = useRef(false);
+  const sent = useRef(false);
 
   useEffect(() => {
     if (!open || viewed.current) return;
@@ -153,63 +161,78 @@ function InviteMembersDialog({
     setRoleSlug(undefined);
     onOpenChange(false);
   };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: emails.length > 0 || roleSlug !== undefined,
+    onDiscard: () => {
+      capture(AnalyticsEvent.SecretsActivationModalDismissed);
+      close();
+    }
+  });
 
   return (
-    <MultiStep
-      variant="dialog"
-      open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
-      title="Invite your team"
-      description="Teammates get an email to join this project."
-      completeLabel="Send invites"
-      onCancel={() => capture(AnalyticsEvent.SecretsActivationModalDismissed)}
-      steps={[
-        {
-          title: "Invite",
-          completeIcon: "user-plus",
-          validate: () =>
-            emails.length ? true : { fields: { emails: "Enter at least one email address" } },
-          content: (
-            <Stack gap={16}>
-              <Field label="Emails" name="emails">
-                <TagsInput
-                  label="Emails"
-                  placeholder="email@example.com, email2@example.com..."
-                  value={emails}
-                  onChange={setEmails}
-                  validate={validateEmail}
-                />
-              </Field>
-              <Field
-                label="Project role"
-                name="role"
-                help="Select which role to assign to the invited members in this project."
-              >
-                <Select
-                  aria-label="Project role"
-                  placeholder="Select role..."
-                  options={assignable.map((entry) => ({
-                    value: entry.slug,
-                    label: entry.name,
-                    description: entry.description ?? undefined
-                  }))}
-                  value={roleSlug ?? role?.slug}
-                  onValueChange={setRoleSlug}
-                />
-              </Field>
-            </Stack>
-          )
-        }
-      ]}
-      onComplete={async () => {
-        const slug = roleSlug ?? role?.slug;
-        if (!slug) return { fields: { role: "Select a role" } };
-        if (!(await send(emails, slug))) return false;
-        toast({ tone: "ok", ...SENT });
-        close();
-        return true;
-      }}
-    />
+    <>
+      <MultiStep
+        variant="dialog"
+        open={open}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else if (sent.current) {
+            sent.current = false;
+            close();
+          } else requestDiscard();
+        }}
+        title="Invite your team"
+        description="Teammates get an email to join this project."
+        completeLabel="Send invites"
+        steps={[
+          {
+            title: "Invite",
+            completeIcon: "user-plus",
+            validate: () =>
+              emails.length ? true : { fields: { emails: "Enter at least one email address" } },
+            content: (
+              <Stack gap={16}>
+                <Field label="Emails" name="emails">
+                  <TagsInput
+                    label="Emails"
+                    placeholder="email@example.com, email2@example.com..."
+                    value={emails}
+                    onChange={setEmails}
+                    validate={validateEmail}
+                  />
+                </Field>
+                <Field
+                  label="Project role"
+                  name="role"
+                  help="Select which role to assign to the invited members in this project."
+                >
+                  <Select
+                    aria-label="Project role"
+                    placeholder="Select role..."
+                    options={assignable.map((entry) => ({
+                      value: entry.slug,
+                      label: entry.name,
+                      description: entry.description ?? undefined
+                    }))}
+                    value={roleSlug ?? role?.slug}
+                    onValueChange={setRoleSlug}
+                  />
+                </Field>
+              </Stack>
+            )
+          }
+        ]}
+        onComplete={async () => {
+          const slug = roleSlug ?? role?.slug;
+          if (!slug) return { fields: { role: "Select a role" } };
+          if (!(await send(emails, slug))) return false;
+          toast({ tone: "ok", ...SENT });
+          sent.current = true;
+          return true;
+        }}
+      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 }
 

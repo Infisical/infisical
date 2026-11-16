@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
-import { envConfig } from "@app/config/env";
+import { getPostHog } from "@app/components/analytics/posthog";
 import { fetchSecretsActivationStatus, userActivationKeys } from "@app/hooks/api/userActivation";
 import { resolveFeatureFlagVariant } from "@app/lib/analytics/experiments/resolveFeatureFlagVariant";
 
@@ -30,14 +29,8 @@ export const secretsActivationLive: SecretsActivationAdapter = {
     const [resolved, setResolved] = useState<{ variant: ActivationVariant }>();
     useEffect(() => {
       if (!enabled || resolved) return undefined;
-      const posthog =
-        envConfig.ENV === "production" &&
-        envConfig.TELEMETRY_CAPTURING_ENABLED === true &&
-        envConfig.POSTHOG_API_KEY
-          ? new Telemetry().getInstance().api
-          : undefined;
       return resolveFeatureFlagVariant<ActivationVariant>({
-        client: posthog,
+        client: getPostHog(),
         fallback: null,
         featureFlag: "secrets-activation-presentation",
         onResolved: (variant) => setResolved({ variant }),

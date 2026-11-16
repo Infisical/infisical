@@ -1,6 +1,7 @@
 import type { Dispatch } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
@@ -16,8 +17,10 @@ import type {
 } from "@app/components/external-migrations/vaultImportSelection";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import type {
+  Queryable,
   TVaultMount,
   TVaultSecretPaths
 } from "../../../../data/secrets/contract-external-import";
@@ -49,6 +52,23 @@ function PathBadges({ paths, limit }: { paths: string[]; limit?: number }) {
 
 type SelectionDispatch = Dispatch<VaultImportSelectionAction<string[]>>;
 
+function LookupError({ what, query }: { what: string; query: Queryable<unknown> }) {
+  if (!query.error) return null;
+  return (
+    <Alert
+      tone="bad"
+      title={`Couldn't load ${what}`}
+      actions={
+        <Button variant="outline" size="sm" icon="sync" onClick={() => query.refetch?.()}>
+          Retry
+        </Button>
+      }
+    >
+      {errorMessage(query.error) ?? "Check the app connection and try again."}
+    </Alert>
+  );
+}
+
 function VaultMountField({
   namespace,
   mountPath,
@@ -57,11 +77,11 @@ function VaultMountField({
 }: {
   namespace: string | null;
   mountPath: string | null;
-  mounts: { data: TVaultMount[] | undefined; isPending: boolean };
+  mounts: Queryable<TVaultMount[]>;
   dispatch: SelectionDispatch;
 }) {
   const kvMounts = (mounts.data ?? []).filter((mount) => mount.type.startsWith("kv"));
-  const noKv = Boolean(namespace) && !mounts.isPending && !kvMounts.length;
+  const noKv = Boolean(namespace) && !mounts.isPending && !mounts.error && !kvMounts.length;
   return (
     <Field
       label="Secrets engine"
@@ -194,18 +214,21 @@ export function VaultSourceStep({
           onValueChange={(value) => dispatch({ type: "namespace", value })}
         />
       </Field>
+      <LookupError what="Vault namespaces" query={namespaces} />
       <VaultMountField
         namespace={namespace}
         mountPath={mountPath}
         mounts={mounts}
         dispatch={dispatch}
       />
+      <LookupError what="secrets engines" query={mounts} />
       <VaultPathsField
         mountPath={mountPath}
         selected={state.selection ?? []}
         paths={secretPaths.data}
         dispatch={dispatch}
       />
+      <LookupError what="secret paths" query={secretPaths} />
     </Stack>
   );
 }

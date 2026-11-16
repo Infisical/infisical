@@ -57,6 +57,7 @@ export function GrantAccessDialog({
   const [users, setUsers] = useState<string[]>([]);
   const [actions, setActions] = useState<string[]>(DEFAULT_ACTIONS);
   const submitting = useRef(false);
+  const pendingGrants = useRef<{ key: string; ids: string[] }>(undefined);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: users.length > 0,
     onDiscard: onClose
@@ -78,37 +79,47 @@ export function GrantAccessDialog({
   ];
   const parentPicked = users.filter((value) => value.startsWith(PARENT));
 
+  const addMemberships = async (usernames: string[]) => {
+    if (parentPicked.length) {
+      const picked = new Set(parentPicked);
+      const emails = (parentUsers.data ?? [])
+        .filter((user) => picked.has(`${PARENT}${user.username}`))
+        .map((user) => user.email ?? user.username);
+      await inviteUsers
+        .mutateAsync({
+          organizationId: orgId,
+          inviteeEmails: emails,
+          organizationRoleSlug: org.data?.defaultMembershipRole ?? "member"
+        })
+        .catch(readableFailure("Couldn't add the users to this organization."));
+    }
+    const result = (await addUsers
+      .mutateAsync({
+        projectId: secret.project,
+        orgId,
+        projectType: ProjectType.SecretManager,
+        usernames,
+        roleSlugs: ["no-access"]
+      })
+      .catch(readableFailure("Couldn't add the users to this project."))) as {
+      memberships?: { id: string }[];
+    };
+    return (result.memberships ?? []).map((membership) => membership.id);
+  };
+
   const submit = async () => {
     submitting.current = true;
     try {
-      if (parentPicked.length) {
-        const picked = new Set(parentPicked);
-        const emails = (parentUsers.data ?? [])
-          .filter((user) => picked.has(`${PARENT}${user.username}`))
-          .map((user) => user.email ?? user.username);
-        await inviteUsers
-          .mutateAsync({
-            organizationId: orgId,
-            inviteeEmails: emails,
-            organizationRoleSlug: org.data?.defaultMembershipRole ?? "member"
-          })
-          .catch(readableFailure("Couldn't add the users to this organization."));
-      }
-      const result = (await addUsers
-        .mutateAsync({
-          projectId: secret.project,
-          orgId,
-          projectType: ProjectType.SecretManager,
-          usernames: users.map((value) => value.replace(PARENT, "")),
-          roleSlugs: ["no-access"]
-        })
-        .catch(readableFailure("Couldn't add the users to this project."))) as {
-        memberships?: { id: string }[];
-      };
-      await Promise.all(
-        (result.memberships ?? []).map((membership) =>
+      const usernames = users.map((value) => value.replace(PARENT, ""));
+      const key = usernames.join("\n");
+      const ids =
+        pendingGrants.current?.key === key
+          ? pendingGrants.current.ids
+          : await addMemberships(usernames);
+      const results = await Promise.allSettled(
+        ids.map((projectMembershipId) =>
           createPrivilege.mutateAsync({
-            projectMembershipId: membership.id,
+            projectMembershipId,
             type: { isTemporary: false },
             permissions: [
               {
@@ -123,7 +134,18 @@ export function GrantAccessDialog({
             ]
           })
         )
-      ).catch(readableFailure("Couldn't grant access to this secret."));
+      );
+      const rejected = results.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      );
+      if (rejected) {
+        pendingGrants.current = {
+          key,
+          ids: ids.filter((_, index) => results[index].status === "rejected")
+        };
+        readableFailure("Couldn't grant access to this secret.")(rejected.reason);
+      }
+      pendingGrants.current = undefined;
       saved(
         `Granted ${users.length} ${users.length === 1 ? "user" : "users"} access to this secret`
       );

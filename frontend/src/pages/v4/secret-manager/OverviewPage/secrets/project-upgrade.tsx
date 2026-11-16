@@ -32,7 +32,8 @@ export function ProjectUpgradeState({
   const migrate = adapter.useMigrateProjectToV3();
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
-  const upgrading = upgradeStatus === IN_PROGRESS;
+  const [queued, setQueued] = useState(false);
+  const upgrading = upgradeStatus === IN_PROGRESS || (queued && upgradeStatus !== FAILED);
   useEffect(() => {
     if (!upgrading) return undefined;
     const timer = window.setInterval(onRefetch, 2000);
@@ -82,6 +83,7 @@ export function ProjectUpgradeState({
             return false;
           }
           saved("Project upgrade started");
+          setQueued(true);
           onRefetch();
           close();
           return true;

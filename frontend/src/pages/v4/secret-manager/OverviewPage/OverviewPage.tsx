@@ -672,10 +672,17 @@ export const OverviewPage = () => {
   }));
   const createSecretSync = adapter.useCreateSecretSync();
   const refetchProjectRef = useRef(projectQuery.refetch);
+  const refetchOverviewRef = useRef(overview.refetch);
   useLayoutEffect(() => {
     refetchProjectRef.current = projectQuery.refetch;
+    refetchOverviewRef.current = overview.refetch;
   });
-  const refetchProject = useCallback(() => refetchProjectRef.current?.(), []);
+  const refetchProject = useCallback(async () => {
+    const result = (await refetchProjectRef.current?.()) as
+      | { data?: { version?: ProjectVersion } }
+      | undefined;
+    if (result?.data?.version === ProjectVersion.V3) refetchOverviewRef.current();
+  }, []);
   const noEnvironments = projectQuery.isPending ? false : !projectEnvironments.length;
   const legacy = Boolean(projectQuery.data) && projectQuery.data?.version !== ProjectVersion.V3;
   const failed = Boolean(overview.error);
@@ -851,6 +858,11 @@ export const OverviewPage = () => {
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
           setReviewOpen(false);
+          if (
+            !response.approval &&
+            changes.some((change) => change.type === "create" && change.next?.kind === "secret")
+          )
+            activationNudge.checkActivation();
           toast(
             response.approval
               ? {

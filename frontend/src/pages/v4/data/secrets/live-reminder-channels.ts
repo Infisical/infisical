@@ -5,13 +5,13 @@ import type { SecretsReminderChannelsAdapter } from "./contract-reminder-channel
 
 export const secretsReminderChannelsLive: SecretsReminderChannelsAdapter = {
   useReminderAlerts: (dto, options) => {
-    const { data, isPending, isFetching, error } = useListAlerts(dto, {
+    const { data, isPending, isFetchedAfterMount, error } = useListAlerts(dto, {
       enabled: options?.enabled,
       refetchOnMount: "always"
     });
     return {
-      data: isFetching ? undefined : data,
-      isPending: isPending || isFetching,
+      data: isFetchedAfterMount ? data : undefined,
+      isPending: isPending || !isFetchedAfterMount,
       error
     };
   },
