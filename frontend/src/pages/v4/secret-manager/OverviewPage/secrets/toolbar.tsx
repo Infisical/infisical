@@ -36,6 +36,7 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
+import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
 import { KindIcon, NEXT_PHASE } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
@@ -372,6 +373,8 @@ function QuickAddValue({
   onSave: () => void;
   onReset: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  useRequestBreadth(editing);
   return (
     <ReferenceEditor
       ref={ref}
@@ -391,6 +394,8 @@ function QuickAddValue({
       {(control) => (
         <Textarea
           {...control}
+          onFocusCapture={() => setEditing(true)}
+          onBlurCapture={() => setEditing(false)}
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
