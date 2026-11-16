@@ -38,7 +38,9 @@ export const responsePolicyHeaders = fp(async (fastify) => {
         isHtml ? DOCUMENT_CONTENT_SECURITY_POLICY : API_CONTENT_SECURITY_POLICY
       );
     }
-    void res.header("Permissions-Policy", PERMISSIONS_POLICY);
+    if (!res.hasHeader("Permissions-Policy")) {
+      void res.header("Permissions-Policy", PERMISSIONS_POLICY);
+    }
     return payload;
   });
 });

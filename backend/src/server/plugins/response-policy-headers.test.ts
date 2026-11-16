@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { responsePolicyHeaders } from "./response-policy-headers";
 
 const ROUTE_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
+const ROUTE_DEVICE_POLICY = "camera=(self)";
 const API_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 const DEVICE_POLICY =
   "accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), " +
@@ -15,7 +16,9 @@ beforeAll(async () => {
   await app.register(responsePolicyHeaders);
   app.get("/json", async () => ({ ok: true }));
   app.get("/page", async (_req, res) => res.type("text/html").send("<!doctype html>"));
-  app.get("/own-policy", async (_req, res) => res.header("Content-Security-Policy", ROUTE_POLICY).send("ok"));
+  app.get("/own-policy", async (_req, res) =>
+    res.header("Content-Security-Policy", ROUTE_POLICY).header("Permissions-Policy", ROUTE_DEVICE_POLICY).send("ok")
+  );
 });
 
 afterAll(() => app.close());
@@ -31,9 +34,10 @@ describe("responsePolicyHeaders", () => {
     expect(res.headers["content-security-policy"]).toBe("frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
   });
 
-  test("keeps a policy the route set itself", async () => {
+  test("keeps the policies a route set itself", async () => {
     const res = await app.inject({ url: "/own-policy" });
     expect(res.headers["content-security-policy"]).toBe(ROUTE_POLICY);
+    expect(res.headers["permissions-policy"]).toBe(ROUTE_DEVICE_POLICY);
   });
 
   test("turns off device features on every response", async () => {
