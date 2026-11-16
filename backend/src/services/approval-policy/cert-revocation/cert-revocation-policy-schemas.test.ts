@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { ApprovalPolicyScope } from "../approval-policy-enums";
+import { ApprovalPolicyScope, ApproverType } from "../approval-policy-enums";
 import { CreateCertRevocationPolicySchema, UpdateCertRevocationPolicySchema } from "./cert-revocation-policy-schemas";
 
 const createInput = {
   scope: ApprovalPolicyScope.PkiApplication,
   scopeId: "6f1c1f1e-3a51-4b7e-9d7e-6c6d7f0b1a01",
   name: "prod-revocations",
-  steps: [],
+  steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "6f1c1f1e-3a51-4b7e-9d7e-6c6d7f0b1a09" }] }],
   conditions: [{ profileNames: ["prod-tls"] }]
 };
 
@@ -50,5 +50,20 @@ describe("UpdateCertRevocationPolicySchema.bypassForMachineIdentities", () => {
     const result = UpdateCertRevocationPolicySchema.safeParse({});
 
     expect(result.success && result.data.bypassForMachineIdentities).toBeUndefined();
+  });
+});
+
+describe("revocation policy steps", () => {
+  const noStepMessage = "A revocation approval policy needs at least one approval step";
+  const noApproverMessage = "Each approval step needs at least one approver";
+
+  it.each([
+    ["create", (steps: unknown) => CreateCertRevocationPolicySchema.safeParse({ ...createInput, steps })],
+    ["update", (steps: unknown) => UpdateCertRevocationPolicySchema.safeParse({ steps })]
+  ])("refuses a policy nobody could approve on %s", (_label, parse) => {
+    expect(parse([]).error?.issues).toEqual([expect.objectContaining({ path: ["steps"], message: noStepMessage })]);
+    expect(parse([{ requiredApprovals: 1, approvers: [] }]).error?.issues).toEqual([
+      expect.objectContaining({ path: ["steps", 0, "approvers"], message: noApproverMessage })
+    ]);
   });
 });

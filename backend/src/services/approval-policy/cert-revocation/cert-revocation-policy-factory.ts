@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { ResourceType } from "@app/db/schemas";
 import { RESOURCE_SCOPE } from "@app/db/schemas/models";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
@@ -16,7 +17,8 @@ import {
   ApprovalAuditAction,
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApproverType
 } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import {
@@ -29,6 +31,24 @@ type TCertRevocationApprovalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+};
+
+const findActiveApplicationMemberships = async (
+  membershipDAL: TCertRevocationApprovalResourceDep["membershipDAL"],
+  { projectId, applicationId }: { projectId: string; applicationId: string },
+  tx?: Knex
+) => {
+  const memberships = await membershipDAL.find(
+    {
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    },
+    { tx }
+  );
+  return memberships.filter((membership) => membership.isActive);
 };
 
 // A request snapshots its approvers when it is raised, and removing a member from the Application only edits the
@@ -43,27 +63,18 @@ const holdsApplicationMembership = async (
   }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> },
   tx?: Knex
 ) => {
-  const memberships = await membershipDAL.find(
-    {
-      scope: RESOURCE_SCOPE,
-      scopeProjectId: projectId,
-      scopeResourceType: ResourceType.CertificateApplication,
-      scopeResourceId: applicationId
-    },
-    { tx }
-  );
+  const memberships = await findActiveApplicationMemberships(membershipDAL, { projectId, applicationId }, tx);
   return memberships.some(
     (membership) =>
-      membership.isActive &&
-      (membership.actorUserId === userId ||
-        Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId)))
+      membership.actorUserId === userId || Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId))
   );
 };
 
 export const certRevocationApprovalResourceFactory = ({
   approvalPolicyDAL,
   certificateService,
-  membershipDAL
+  membershipDAL,
+  userGroupMembershipDAL
 }: TCertRevocationApprovalResourceDep): TApprovalResource<
   TCertRevocationPolicyInputs,
   TCertRevocationPolicy,
@@ -112,6 +123,34 @@ export const certRevocationApprovalResourceFactory = ({
     throw new ForbiddenRequestError({
       message: "You can't review this request because you're no longer a member of its Application."
     });
+  },
+
+  // Notifications name the certificate (and, on failure, why), and the request's approver snapshot outlives a
+  // member's removal from the Application, so only approvers who still hold a membership are told.
+  filterActiveApprovers: async (request, approvers) => {
+    if (!request.scopeId || approvers.length === 0) return [];
+    const memberships = await findActiveApplicationMemberships(
+      membershipDAL,
+      { projectId: request.projectId, applicationId: request.scopeId },
+      approvalPolicyDAL.primaryNode()
+    );
+    const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
+    const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
+
+    const usersToCheckViaGroups = approvers
+      .filter((a) => a.type === ApproverType.User && !memberUserIds.has(a.id))
+      .map((a) => a.id);
+    const memberViaGroup = new Set<string>();
+    if (usersToCheckViaGroups.length > 0 && memberGroupIds.size > 0) {
+      const links = await userGroupMembershipDAL.find({
+        $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] }
+      });
+      links.forEach((link) => memberViaGroup.add(link.userId));
+    }
+
+    return approvers.filter((a) =>
+      a.type === ApproverType.Group ? memberGroupIds.has(a.id) : memberUserIds.has(a.id) || memberViaGroup.has(a.id)
+    );
   },
 
   buildNotification: async ({ event, request, failureReason }) => {

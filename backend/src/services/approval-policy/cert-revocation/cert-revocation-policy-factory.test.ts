@@ -5,7 +5,8 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
-  ApprovalRequestApprovalDecision
+  ApprovalRequestApprovalDecision,
+  ApproverType
 } from "../approval-policy-enums";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation-policy-factory";
 
@@ -27,9 +28,20 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
 
 const primaryDb = { node: "primary" };
 
-const setup = (policies: unknown[], memberships: unknown[] = []) => {
+const setup = (
+  policies: unknown[],
+  memberships: unknown[] = [],
+  groupLinks: { userId: string; groupId: string }[] = []
+) => {
   const deps = {
     membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
+    userGroupMembershipDAL: {
+      find: vi
+        .fn()
+        .mockImplementation(async ({ $in }: { $in: { userId: string[]; groupId: string[] } }) =>
+          groupLinks.filter((l) => $in.userId.includes(l.userId) && $in.groupId.includes(l.groupId))
+        )
+    },
     approvalPolicyDAL: {
       findByProjectId: vi
         .fn()
@@ -226,5 +238,42 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
     await expect(
       resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
     ).resolves.toBe(false);
+  });
+});
+
+describe("certRevocationApprovalResourceFactory.filterActiveApprovers", () => {
+  it("notifies only approvers who still hold an active membership in the request's Application", async () => {
+    const { deps, resource } = setup(
+      [],
+      [
+        { actorUserId: "direct", actorGroupId: null, isActive: true },
+        { actorUserId: "deactivated", actorGroupId: null, isActive: false },
+        { actorUserId: null, actorGroupId: "member-group", isActive: true }
+      ],
+      [
+        { userId: "via-group", groupId: "member-group" },
+        { userId: "removed", groupId: "other-group" }
+      ]
+    );
+    const request = { projectId: "project", scopeId: applicationId } as never;
+
+    const eligible = await resource.filterActiveApprovers!(request, [
+      { type: ApproverType.User, id: "direct" },
+      { type: ApproverType.User, id: "via-group" },
+      { type: ApproverType.User, id: "removed" },
+      { type: ApproverType.User, id: "deactivated" },
+      { type: ApproverType.Group, id: "member-group" },
+      { type: ApproverType.Group, id: "removed-group" }
+    ]);
+
+    expect(eligible).toEqual([
+      { type: ApproverType.User, id: "direct" },
+      { type: ApproverType.User, id: "via-group" },
+      { type: ApproverType.Group, id: "member-group" }
+    ]);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId }),
+      { tx: primaryDb }
+    );
   });
 });

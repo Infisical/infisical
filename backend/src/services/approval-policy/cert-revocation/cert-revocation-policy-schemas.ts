@@ -18,6 +18,16 @@ const NoMachineIdentityBypassSchema = z.literal(false, {
   errorMap: () => ({ message: "Revocation approval policies can't be bypassed by machine identities" })
 });
 
+const PolicyStepSchema = BaseCreateApprovalPolicySchema.shape.steps.element;
+
+// Revocation has no auto-approval rules and no bypass, so a policy without an approver would hold every request it
+// matches with nobody able to approve it.
+const CertRevocationPolicyStepsSchema = PolicyStepSchema.extend({
+  approvers: PolicyStepSchema.shape.approvers.min(1, "Each approval step needs at least one approver")
+})
+  .array()
+  .min(1, "A revocation approval policy needs at least one approval step");
+
 export const CertRevocationPolicyInputsSchema = z.object({
   profileName: ProfileSlugSchema,
   applicationId: z.string().uuid()
@@ -56,12 +66,14 @@ export const CertRevocationPolicySchema = BaseApprovalPolicySchema.extend({
 
 export const CreateCertRevocationPolicySchema = BaseCreateApprovalPolicySchema.extend({
   conditions: CertRevocationPolicyConditionsSchema,
+  steps: CertRevocationPolicyStepsSchema,
   constraints: CertRevocationPolicyConstraintsSchema.optional().default({}),
   bypassForMachineIdentities: NoMachineIdentityBypassSchema.optional().default(false)
 });
 
 export const UpdateCertRevocationPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRevocationPolicyConditionsSchema.optional(),
+  steps: CertRevocationPolicyStepsSchema.optional(),
   constraints: CertRevocationPolicyConstraintsSchema.optional(),
   bypassForMachineIdentities: NoMachineIdentityBypassSchema.optional()
 });
