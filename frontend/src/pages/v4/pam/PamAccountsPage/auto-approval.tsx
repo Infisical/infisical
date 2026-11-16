@@ -588,7 +588,7 @@ export const AutoApprovalCard = ({
           }
     );
   };
-  const creation = useOrgConnectionCreation(data?.apps ?? [], (id) => {
+  const creation = useOrgConnectionCreation(data?.fieldApps ?? [], (id) => {
     addFieldForConnection(id);
   });
 
