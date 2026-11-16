@@ -402,6 +402,9 @@ const toReminderForm = (projectId: string, reminder?: SecretReminder, alert?: TA
 });
 type TReminderForm = ReturnType<typeof toReminderForm>;
 
+const comparable = (form: TReminderForm) =>
+  JSON.stringify(form, (key, value: unknown) => (key === "uid" ? undefined : value));
+
 const scheduleIssues = (form: TReminderForm) => {
   const issues: Record<string, string> = {};
   if (form.type === ONE_TIME) {
@@ -516,6 +519,8 @@ function ReminderForm({
   members,
   form,
   dirty,
+  pending,
+  onPending,
   onPatch,
   onClose,
   onSave
@@ -524,23 +529,24 @@ function ReminderForm({
   members: TMemberEmails;
   form: TReminderForm;
   dirty: boolean;
+  pending?: "save" | "delete";
+  onPending: (pending?: "save" | "delete") => void;
   onPatch: (value: Partial<TReminderForm>) => void;
   onClose: () => void;
 }) {
   const hasNoRecipients = Boolean(reminder) && !alert;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
-  const [pending, setPending] = useState<"save" | "delete">();
   const patch = (value: Partial<TReminderForm>) => {
     onPatch(value);
     setErrors({});
   };
   const run = async (kind: "save" | "delete", request: () => Promise<void>) => {
-    setPending(kind);
+    onPending(kind);
     try {
       await request();
     } finally {
-      setPending(undefined);
+      onPending(undefined);
     }
   };
   const submit = () => {
@@ -675,7 +681,8 @@ export function ReminderSheet({
   const alert = alerts.data?.[0];
   const initial = toReminderForm(props.projectId, props.reminder, alert);
   const [draft, setDraft] = useState<TReminderForm>();
-  const dirty = draft !== undefined && JSON.stringify(draft) !== JSON.stringify(initial);
+  const [pending, setPending] = useState<"save" | "delete">();
+  const dirty = draft !== undefined && comparable(draft) !== comparable(initial);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: dirty,
     onDiscard: () => props.onOpenChange(false)
@@ -686,7 +693,7 @@ export function ReminderSheet({
         open={open}
         onOpenChange={(next) => (next ? props.onOpenChange(true) : requestDiscard())}
       >
-        <SheetContent className={flowStyles.secretSheet}>
+        <SheetContent className={flowStyles.secretSheet} pending={Boolean(pending)}>
           <SheetHeader>
             <SheetTitle>{props.reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
             <SheetDescription>
@@ -714,6 +721,8 @@ export function ReminderSheet({
               members={toMemberEmails(orgUsers.data)}
               form={draft ?? initial}
               dirty={dirty}
+              pending={pending}
+              onPending={setPending}
               onPatch={(value) => setDraft((current) => ({ ...(current ?? initial), ...value }))}
               onClose={requestDiscard}
             />
