@@ -1,10 +1,10 @@
 ---
 title: "Auto-approval"
 sidebarTitle: "Auto-approval"
-description: "Approve PAM access requests as soon as they're submitted when the records that requesters link from other services pass the folder's rules."
+description: "Approve PAM access requests as soon as they're submitted when they pass one of the folder's rules."
 ---
 
-Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule checks a record that the requester links from another service, such as a Jira ticket. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket, have your organization's AI model review the request against your instructions, or both. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
 
 Auto-approval has two settings, each managed by a different role:
 
@@ -22,7 +22,8 @@ Infisical reads linked records through an [app connection](/integrations/app-con
 ## Prerequisites
 
 - Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
-- An app connection to a [supported service](#supported-services), whose user can read the records that requesters will link
+- If your rules check linked records, an app connection to a [supported service](#supported-services), whose user can read the records that requesters will link
+- If your rules use [AI checks](#ai-checks), your organization's [AI model](#set-up-the-ai-model)
 
 ## Turn on auto-approval in a template
 
