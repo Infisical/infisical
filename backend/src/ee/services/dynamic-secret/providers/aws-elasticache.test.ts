@@ -1,4 +1,8 @@
-import { UserAlreadyExistsFault, UserGroupNotFoundFault } from "@aws-sdk/client-elasticache";
+import {
+  UserAlreadyExistsFault,
+  UserGroupAlreadyExistsFault,
+  UserGroupNotFoundFault
+} from "@aws-sdk/client-elasticache";
 import { describe, expect, test, vi } from "vitest";
 
 import { TDynamicSecrets } from "@app/db/schemas";
@@ -11,6 +15,8 @@ type TCommand = {
     ReplicationGroupId: string;
     UserGroupId: string;
     UserId: string;
+    UserName: string;
+    AccessString: string;
     UserIds: string[];
     UserIdsToAdd: string[];
     UserGroupIdsToAdd: string[];
@@ -44,7 +50,7 @@ const SETTING_UP_MESSAGE = "ElastiCache is still setting up the user group for t
 const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroups: Record<string, string[]>) => {
   const clusters = { ...initialClusters };
   const userGroups = { ...initialUserGroups };
-  const users: string[] = [];
+  const users: Record<string, { UserName: string; AccessString: string }> = {};
   const creating = new Set<string>();
   const assertActive = (userGroupId: string) => {
     if (creating.has(userGroupId)) throw new Error(`User group ${userGroupId} has status creating`);
@@ -62,7 +68,10 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
           ]
         };
       case "CreateUserGroupCommand":
-        userGroups[input.UserGroupId] = input.UserIds;
+        if (userGroups[input.UserGroupId]) {
+          throw new UserGroupAlreadyExistsFault({ message: "exists", $metadata: {} });
+        }
+        userGroups[input.UserGroupId] = [...input.UserIds];
         creating.add(input.UserGroupId);
         return {};
       case "ModifyReplicationGroupCommand": {
@@ -75,8 +84,8 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         return {};
       }
       case "CreateUserCommand":
-        if (users.includes(input.UserId)) throw new UserAlreadyExistsFault({ message: "exists", $metadata: {} });
-        users.push(input.UserId);
+        if (users[input.UserId]) throw new UserAlreadyExistsFault({ message: "exists", $metadata: {} });
+        users[input.UserId] = { UserName: input.UserName, AccessString: input.AccessString };
         return {};
       case "ModifyUserGroupCommand":
         assertActive(input.UserGroupId);
@@ -136,33 +145,50 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
     expect(groupA.length).toBeLessThanOrEqual(40);
     expect(account.userGroups[groupA]).toEqual([DISABLED_DEFAULT_USER_ID, firstLeaseA.entityId, secondLeaseA.entityId]);
     expect(account.userGroups[groupB]).toEqual([DISABLED_DEFAULT_USER_ID, leaseB.entityId]);
+    expect(account.users[DISABLED_DEFAULT_USER_ID]).toEqual({ UserName: "default", AccessString: "off -@all" });
   });
 
   test("refuses a lease without creating a user while the cluster's user group is still being created", async () => {
     const account = fakeAccount({ "cluster-a": [] }, {});
 
     await expect(createLease("cluster-a")).rejects.toThrow(SETTING_UP_MESSAGE);
-    expect(account.users).toEqual([DISABLED_DEFAULT_USER_ID]);
+    expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID]);
 
     account.activateUserGroups();
     const lease = await createLease("cluster-a");
-    expect(account.users).toEqual([DISABLED_DEFAULT_USER_ID, lease.entityId]);
+    expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID, lease.entityId]);
   });
 
-  test("moves a cluster off the legacy shared group without dropping its active leases", async () => {
+  test("accepts dynamic secrets for the same cluster saved at the same time", async () => {
+    const account = fakeAccount({ "cluster-a": [] }, {});
+
+    await expect(Promise.all([saveDynamicSecret("cluster-a"), saveDynamicSecret("cluster-a")])).resolves.toEqual([
+      true,
+      true
+    ]);
+    expect(Object.keys(account.userGroups)).toHaveLength(1);
+  });
+
+  test("moves a cluster off the legacy shared group without dropping any of its leases", async () => {
     const account = fakeAccount(
       { "cluster-a": [LEGACY_SHARED_USER_GROUP_ID], "cluster-b": [LEGACY_SHARED_USER_GROUP_ID] },
       { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease"] }
     );
 
     await expect(createLease("cluster-a")).rejects.toThrow(SETTING_UP_MESSAGE);
+    // A server still running the previous version adds a lease to the legacy group mid-upgrade
+    account.userGroups[LEGACY_SHARED_USER_GROUP_ID].push("inf-lease-from-previous-version");
     account.activateUserGroups();
     const lease = await createLease("cluster-a");
 
     const [groupA] = account.clusters["cluster-a"];
     expect(groupA).not.toBe(LEGACY_SHARED_USER_GROUP_ID);
-    expect(account.userGroups[groupA]).toEqual([DISABLED_DEFAULT_USER_ID, "inf-existing-lease", lease.entityId]);
-    expect(account.userGroups[LEGACY_SHARED_USER_GROUP_ID]).toEqual(["default", "inf-existing-lease"]);
+    expect(account.userGroups[groupA]).toEqual([
+      DISABLED_DEFAULT_USER_ID,
+      lease.entityId,
+      "inf-existing-lease",
+      "inf-lease-from-previous-version"
+    ]);
     expect(account.clusters["cluster-b"]).toEqual([LEGACY_SHARED_USER_GROUP_ID]);
   });
 });

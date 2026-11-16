@@ -8,6 +8,7 @@ import {
   ModifyReplicationGroupCommand,
   ModifyUserGroupCommand,
   UserAlreadyExistsFault,
+  UserGroupAlreadyExistsFault,
   UserGroupNotFoundFault
 } from "@aws-sdk/client-elasticache";
 import handlebars from "handlebars";
@@ -102,60 +103,61 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     const userGroupId = getClusterUserGroupId(clusterName);
     if (await $getUserGroup(userGroupId)) return;
 
-    // A cluster holds a single user group, so the legacy group's users move into the new one to keep the cluster's
-    // existing leases working once the legacy group is swapped out. The legacy group doesn't record which cluster a
-    // user is for, so all of them move; each is deleted when its lease ends.
-    const legacyUserIds = (await $getReplicationGroupUserGroupIds(clusterName)).includes(LEGACY_SHARED_USER_GROUP_ID)
-      ? ((await $getUserGroup(LEGACY_SHARED_USER_GROUP_ID))?.UserIds ?? []).filter((userId) => userId !== "default")
-      : [];
-
     await $ensureDisabledDefaultUserExists();
-    await elastiCache.send(
-      new CreateUserGroupCommand({
-        UserGroupId: userGroupId,
-        UserIds: [DISABLED_DEFAULT_USER_ID, ...legacyUserIds],
-        Engine: "redis"
-      })
-    );
+    try {
+      await elastiCache.send(
+        new CreateUserGroupCommand({ UserGroupId: userGroupId, UserIds: [DISABLED_DEFAULT_USER_ID], Engine: "redis" })
+      );
+    } catch (err) {
+      if (!(err instanceof UserGroupAlreadyExistsFault)) throw err;
+    }
   };
 
-  const $resolveClusterUserGroup = async (clusterName: string) => {
-    const attachedUserGroupIds = await $getReplicationGroupUserGroupIds(clusterName);
+  const createUser = async (creationInput: TCreateElastiCacheUserInput, clusterName: string) => {
     const userGroupId = getClusterUserGroupId(clusterName);
-    if (attachedUserGroupIds.includes(userGroupId)) return userGroupId;
+    const attachedUserGroupIds = await $getReplicationGroupUserGroupIds(clusterName);
+    const isAttached = attachedUserGroupIds.includes(userGroupId);
+    const isOnLegacyGroup = attachedUserGroupIds.includes(LEGACY_SHARED_USER_GROUP_ID);
 
-    // AWS refuses to attach a user group until it is active.
-    if ((await $getUserGroup(userGroupId))?.Status !== "active") {
+    const userGroup = isAttached ? undefined : await $getUserGroup(userGroupId);
+    // AWS refuses to modify a user group until it is active.
+    if (!isAttached && userGroup?.Status !== "active") {
       throw new BadRequestError({
         message:
           "ElastiCache is still setting up the user group for this cluster. Try creating the lease again in a minute."
       });
     }
 
-    await elastiCache.send(
-      new ModifyReplicationGroupCommand({
-        ReplicationGroupId: clusterName,
-        UserGroupIdsToAdd: [userGroupId],
-        UserGroupIdsToRemove: attachedUserGroupIds.includes(LEGACY_SHARED_USER_GROUP_ID)
-          ? [LEGACY_SHARED_USER_GROUP_ID]
-          : [],
-        ApplyImmediately: true
-      })
-    );
-    return userGroupId;
-  };
-
-  const createUser = async (creationInput: TCreateElastiCacheUserInput, clusterName: string) => {
-    const userGroupId = await $resolveClusterUserGroup(clusterName);
+    // A cluster holds a single user group, so the legacy group's users are copied in right before it is swapped out,
+    // keeping the cluster's existing leases working. The legacy group doesn't record which cluster a user is for, so
+    // all of them move; each is deleted when its lease ends.
+    const legacyUserIds =
+      !isAttached && isOnLegacyGroup
+        ? ((await $getUserGroup(LEGACY_SHARED_USER_GROUP_ID))?.UserIds ?? []).filter(
+            (userId) => userId !== "default" && !userGroup?.UserIds?.includes(userId)
+          )
+        : [];
 
     await elastiCache.send(new CreateUserCommand(creationInput));
     await elastiCache.send(
       new ModifyUserGroupCommand({
         UserGroupId: userGroupId,
-        UserIdsToAdd: [creationInput.UserId],
+        UserIdsToAdd: [creationInput.UserId, ...legacyUserIds],
         UserIdsToRemove: []
       })
     );
+
+    if (!isAttached) {
+      // AWS accepts attaching a user group while the change above is still being applied.
+      await elastiCache.send(
+        new ModifyReplicationGroupCommand({
+          ReplicationGroupId: clusterName,
+          UserGroupIdsToAdd: [userGroupId],
+          UserGroupIdsToRemove: isOnLegacyGroup ? [LEGACY_SHARED_USER_GROUP_ID] : [],
+          ApplyImmediately: true
+        })
+      );
+    }
 
     return {
       userId: creationInput.UserId,
