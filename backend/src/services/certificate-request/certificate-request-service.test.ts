@@ -1102,7 +1102,11 @@ describe("CertificateRequestService", () => {
 
       beforeEach(() => {
         (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRequest);
-        (mockCertificateDAL.findById as any).mockResolvedValue({ id: "cert-new", serialNumber: "0a1b" });
+        (mockCertificateDAL.findById as any).mockResolvedValue({
+          id: "cert-new",
+          serialNumber: "0a1b",
+          renewedFromCertificateId: "cert-old"
+        });
         (mockCertificateRequestDAL.attachCertificate as any).mockResolvedValue({
           ...pendingRequest,
           status: CertificateRequestStatus.ISSUED,
@@ -1135,6 +1139,24 @@ describe("CertificateRequestService", () => {
             })
           }
         });
+      });
+
+      it("names the certificate the CA renewed when another renewal replaced the requested one meanwhile", async () => {
+        (mockCertificateDAL.findById as any).mockResolvedValue({
+          id: "cert-new",
+          serialNumber: "0a1b",
+          renewedFromCertificateId: "cert-mid"
+        });
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ originalCertificateId: "cert-mid" })
+            })
+          })
+        );
       });
 
       it("records nothing again when a retry attaches the same certificate", async () => {

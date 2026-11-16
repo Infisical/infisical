@@ -231,7 +231,7 @@ export const recordApprovedRenewalIssued = async (
       event: {
         type: EventType.RENEW_CERTIFICATE,
         metadata: {
-          originalCertificateId: approval.renewal.certificateId,
+          originalCertificateId: certificate?.renewedFromCertificateId ?? approval.renewal.certificateId,
           newCertificateId: certificateId,
           serialNumber: certificate?.serialNumber,
           certificateRequestId: certificateRequest.id,
