@@ -9909,13 +9909,13 @@ describe("Agent Vault V1 Router", async () => {
       expect(res.payload).toBe("");
     });
 
-    test("a usage report with a bad body is a 400", async () => {
+    test("a usage report with a bad body is a 422", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-bad-body" });
       const { proxyToken } = created.json() as { proxyToken: string };
 
-      expect((await reportUsage(proxyToken, { ...usageReport(), reportId: "not-a-uuid" })).statusCode).toBe(400);
-      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: -1 })).statusCode).toBe(400);
-      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: 1.5 })).statusCode).toBe(400);
+      expect((await reportUsage(proxyToken, { ...usageReport(), reportId: "not-a-uuid" })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: -1 })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: 1.5 })).statusCode).toBe(422);
     });
 
     test("a user's token can't report usage", async () => {
