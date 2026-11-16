@@ -1,3 +1,4 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
@@ -28,7 +29,9 @@ vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importO
   encryptLogStreamCredentials: async () => Buffer.from("encrypted")
 }));
 
-const buildService = () => {
+const allowAll = { relevantRuleFor: () => ({ inverted: false }) };
+
+const buildService = (permission: unknown = allowAll) => {
   const auditLogStreamDAL = {
     findById: vi.fn(async () => ({
       id: STREAM_ID,
@@ -37,7 +40,8 @@ const buildService = () => {
       streamMode: StreamMode.Batch,
       encryptedCredentials: Buffer.from("encrypted")
     })),
-    updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk }))
+    updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk })),
+    find: vi.fn(async () => [])
   };
 
   const licenseService = new FakeLicenseService();
@@ -51,7 +55,7 @@ const buildService = () => {
     auditLogStreamDAL,
     licenseService,
     permissionService: {
-      getOrgPermission: vi.fn(async () => ({ permission: { relevantRuleFor: () => ({ inverted: false }) } }))
+      getOrgPermission: vi.fn(async () => ({ permission }))
     },
     kmsService: {}
   } as unknown as TAuditLogStreamServiceFactoryDep;
@@ -120,5 +124,52 @@ describe("auditLogStreamServiceFactory updateById Splunk port", () => {
     expect(validateCredentials).toHaveBeenCalledWith({
       credentials: { hostname: "splunk.example.com", port: undefined, token: "token-1" }
     });
+  });
+});
+
+describe("auditLogStreamServiceFactory permissions", () => {
+  const settingsOnly = createMongoAbility([{ action: ["read", "create", "edit", "delete"], subject: "settings" }]);
+
+  test.each([
+    [
+      "create",
+      (service: ReturnType<typeof buildService>["service"]) =>
+        service.create({ provider: LogProvider.Splunk, credentials: { hostname: "h", token: "t" } }, actor)
+    ],
+    [
+      "updateById",
+      (service: ReturnType<typeof buildService>["service"]) =>
+        service.updateById(
+          { logStreamId: STREAM_ID, provider: LogProvider.Splunk, credentials: { hostname: "h", token: "t" } },
+          actor
+        )
+    ],
+    [
+      "deleteById",
+      (service: ReturnType<typeof buildService>["service"]) => service.deleteById(STREAM_ID, LogProvider.Splunk, actor)
+    ],
+    [
+      "getById",
+      (service: ReturnType<typeof buildService>["service"]) => service.getById(STREAM_ID, LogProvider.Splunk, actor)
+    ],
+    ["list", (service: ReturnType<typeof buildService>["service"]) => service.list(actor)]
+  ])("%s rejects a role that only has organization profile access", async (_name, call) => {
+    const { service } = buildService(settingsOnly);
+
+    await expect(call(service)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("list allows a role with read on audit log streams", async () => {
+    const { service } = buildService(createMongoAbility([{ action: "read", subject: "audit-log-streams" }]));
+
+    await expect(service.list(actor)).resolves.toEqual([]);
+  });
+
+  test("create rejects a role with only read on audit log streams", async () => {
+    const { service } = buildService(createMongoAbility([{ action: "read", subject: "audit-log-streams" }]));
+
+    await expect(
+      service.create({ provider: LogProvider.Splunk, credentials: { hostname: "h", token: "t" } }, actor)
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });

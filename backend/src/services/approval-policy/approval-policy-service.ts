@@ -2305,7 +2305,8 @@ export const approvalPolicyServiceFactory = ({
       subject,
       constraint,
       search,
-      siblings
+      siblings,
+      selected
     }: {
       scope: ApprovalPolicyScope;
       scopeId: string;
@@ -2314,6 +2315,7 @@ export const approvalPolicyServiceFactory = ({
       constraint: string;
       search?: string;
       siblings: Record<string, string[]>;
+      selected: string[];
     },
     actor: TApprovalActor
   ) => {
@@ -2327,7 +2329,16 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    return autoApprovalService.listOptions({ projectId, actor, connectionId, subject, constraint, search, siblings });
+    return autoApprovalService.listOptions({
+      projectId,
+      actor,
+      connectionId,
+      subject,
+      constraint,
+      search,
+      siblings,
+      selected
+    });
   };
 
   const $actorGrantFilter = (actor: TApprovalSubjectActor) =>

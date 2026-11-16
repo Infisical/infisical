@@ -13,6 +13,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState
@@ -418,6 +419,7 @@ type ControlProps = {
 const mask = "••••••••••••••••";
 
 export function ReferenceEditor({
+  ref,
   value,
   scope,
   multiline = false,
@@ -429,6 +431,7 @@ export function ReferenceEditor({
   onBlur,
   children
 }: {
+  ref?: Ref<Field | null>;
   value: string;
   scope?: Scope;
   multiline?: boolean;
@@ -445,6 +448,7 @@ export function ReferenceEditor({
   const wrap = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const control = useRef<Field>(null);
+  useImperativeHandle<Field | null, Field | null>(ref, () => control.current);
   const [active, setActive] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [highlighted, setHighlighted] = useState(0);

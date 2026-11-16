@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, type Ref, useRef, useState } from "react";
 import { Count } from "@infisical/cipher/ui/badge";
 import { Breadcrumb } from "@infisical/cipher/ui/breadcrumb";
 import { Button } from "@infisical/cipher/ui/button";
@@ -17,8 +17,8 @@ import {
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/popover";
-import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { TableCell, TableRow } from "@infisical/cipher/ui/table";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
   BellIcon,
@@ -37,13 +37,15 @@ import {
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
 import { ProviderIcon } from "../../../components/provider-icon";
-import type { ResourceKind, Secret } from "../secrets-model";
+import { useRequestBreadth } from "../bridge/scopes";
+import type { ResourceKind, Scope, Secret } from "../secrets-model";
 import {
   type ExternalImportSource,
   externalImportSources
 } from "./external-import/external-import";
 import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
+import { ReferenceEditor } from "./secret-references";
 import { Annotations } from "./secret-row";
 
 import styles from "./overview.module.css";
@@ -383,7 +385,60 @@ export type QuickAddAnnotations = Pick<Secret, "comment" | "tags" | "metadata">;
 type QuickAddAnnotation = "comment" | "tags" | "metadata";
 const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: [] };
 
+function QuickAddValue({
+  ref,
+  scope,
+  multiple,
+  value,
+  onChange,
+  onSave,
+  onReset
+}: {
+  ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
+  scope: Scope;
+  multiple: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onReset: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  useRequestBreadth(editing);
+  return (
+    <ReferenceEditor
+      ref={ref}
+      multiline
+      masked
+      value={value}
+      scope={scope}
+      onValueChange={onChange}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          onSave();
+        }
+        if (event.key === "Escape") onReset();
+      }}
+    >
+      {(control) => (
+        <Textarea
+          {...control}
+          onFocusCapture={() => setEditing(true)}
+          onBlurCapture={() => setEditing(false)}
+          rows={1}
+          className={styles.inlineInput}
+          aria-label="New secret value"
+          placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      )}
+    </ReferenceEditor>
+  );
+}
+
 export function QuickAddRow({
+  scope,
   multiple,
   colSpan,
   existing,
@@ -395,6 +450,7 @@ export function QuickAddRow({
   onPasteSecrets,
   typeMenu
 }: {
+  scope: Scope;
   multiple: boolean;
   colSpan: number;
   existing: string[];
@@ -417,7 +473,7 @@ export function QuickAddRow({
   const [annotations, setAnnotations] = useState(noAnnotations);
   const [overlay, setOverlay] = useState<QuickAddAnnotation>();
   const [saving, setSaving] = useState(false);
-  const valueRef = useRef<HTMLTextAreaElement>(null);
+  const valueRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const keyRef = useRef<HTMLInputElement>(null);
   const annotating = useRef(false);
   const chosen = useRef<QuickAddAnnotation>(undefined);
@@ -469,7 +525,7 @@ export function QuickAddRow({
   };
   return (
     <TableRow
-      className={styles.quickAdd}
+      className={`${styles.row} ${styles.quickAdd}`}
       focused={Boolean(overlay)}
       onBlurCapture={(event) => {
         if (
@@ -655,20 +711,14 @@ export function QuickAddRow({
         className={styles.valueCell}
       >
         <div className={styles.nameLine}>
-          <SecretInput
-            className={styles.inlineInput}
+          <QuickAddValue
             ref={valueRef}
-            aria-label="New secret value"
-            placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
+            scope={scope}
+            multiple={multiple}
             value={value}
             onChange={setValue}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                save();
-              }
-              if (event.key === "Escape") reset();
-            }}
+            onSave={save}
+            onReset={reset}
           />
           {dirty && (
             <span className={styles.quickActions}>

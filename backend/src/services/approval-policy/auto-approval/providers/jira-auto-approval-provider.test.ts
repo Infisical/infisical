@@ -144,7 +144,7 @@ describe("resolving a Jira ticket", () => {
       conn as Parameters<typeof resolve>[0],
       "PAY-123",
       ctx,
-      constraintIds,
+      Object.fromEntries(constraintIds.map((constraintId) => [constraintId, []])),
       {} as Parameters<typeof resolve>[4]
     ) as Promise<TJiraTicketFacts>;
 

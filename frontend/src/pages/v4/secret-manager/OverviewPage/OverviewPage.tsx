@@ -1980,6 +1980,7 @@ export const OverviewPage = () => {
                                   Add another resource type
                                 </Button>
                               )}
+                              scope={{ project, environment: activeEnvironment, path }}
                               multiple={!single}
                               colSpan={(single ? 1 : visibleEnvironments.length) + 1}
                               existing={ordered
