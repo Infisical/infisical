@@ -93,7 +93,8 @@ const ValuePicker = ({
       subject,
       constraint: constraint.id,
       search: isMany ? undefined : search.trim(),
-      siblings
+      siblings,
+      selected: values
     },
     constraint.hasOptions
   );

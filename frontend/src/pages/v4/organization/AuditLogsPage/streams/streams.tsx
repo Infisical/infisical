@@ -27,7 +27,7 @@ import { PencilIcon } from "lucide-react";
 
 import { AuditLogStreamsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
-  OrgPermissionActions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { getProviderUrl } from "@app/helpers/auditLogStreams";
@@ -121,13 +121,17 @@ export const AuditLogStreamsTab = () => {
       .sort((a, b) => compare(a, b, sort.columnId) * (sort.direction === "asc" ? 1 : -1));
   }, [streams, query, providerFilter, sort]);
 
-  const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+  const canRead = permission.can(
+    OrgPermissionAuditLogsActions.Read,
+    OrgPermissionSubjects.AuditLogStreams
+  );
   if (!permissionPending && !canRead)
-    return <AccessRestricted requirement="read organization settings" />;
+    return <AccessRestricted requirement="read audit log streams" />;
 
-  const canCreate = permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
-  const canEdit = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-  const canDelete = permission.can(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+  const canEdit = permission.can(
+    OrgPermissionAuditLogsActions.Edit,
+    OrgPermissionSubjects.AuditLogStreams
+  );
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pageCount);
   const isFiltered = Boolean(query.trim()) || providerFilter.length > 0;
@@ -208,7 +212,7 @@ export const AuditLogStreamsTab = () => {
           <Button
             variant="accent"
             icon="plus"
-            disabledReason={canCreate ? undefined : RESTRICTED}
+            disabledReason={canEdit ? undefined : RESTRICTED}
             onClick={() => {
               if (plan && !plan.auditLogStreams) {
                 setUpgrade("organization.audit-log-stream");
@@ -248,8 +252,8 @@ export const AuditLogStreamsTab = () => {
           renderMenu: (stream) => (
             <DropdownMenuItem
               variant="destructive"
-              disabled={!canDelete}
-              description={canDelete ? undefined : RESTRICTED}
+              disabled={!canEdit}
+              description={canEdit ? undefined : RESTRICTED}
               onSelect={() => setDeleting(stream)}
             >
               <Icon name="trash" />
