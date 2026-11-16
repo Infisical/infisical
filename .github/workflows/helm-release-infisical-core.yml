@@ -78,7 +78,9 @@ jobs:
           yamale_version: "6.0.0"
 
       - name: Run chart-testing (lint)
-        run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
+        # The version bump is checked on the PR. Here the code is already on main, which ct
+        # compares against, so the check would always fail; check-version guards publishing.
+        run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres --check-version-increment=false
 
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
