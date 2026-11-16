@@ -371,7 +371,7 @@ export const AddDataSourceSheet = ({
               isDiscoveryEnabled: draft.isDiscoveryEnabled && discovery
             } as TCreateSecretScanningDataSourceDTO);
           } catch (error) {
-            const duplicate = duplicateNameMessage(error);
+            const duplicate = duplicateNameMessage(error, draft.name.trim());
             if (duplicate) return { fields: { name: duplicate } };
             return readableFailure("Could not add the data source.")(error);
           }

@@ -177,7 +177,7 @@ const CreateSheet = ({
       onClose();
       return true;
     } catch (error) {
-      const duplicate = duplicateNameMessage(error);
+      const duplicate = duplicateNameMessage(error, name.trim());
       if (duplicate) return { fields: { name: duplicate } };
       return readableFailure("Couldn't create the signer.")(error);
     } finally {

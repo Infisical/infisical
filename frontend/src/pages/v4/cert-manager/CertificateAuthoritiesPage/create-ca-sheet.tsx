@@ -454,7 +454,7 @@ export const CreateCaSheet = ({
     try {
       created = await create.mutateAsync(toCreateCaDto(draft) as TCreateCertificateAuthorityDTO);
     } catch (error) {
-      const duplicate = duplicateNameMessage(error);
+      const duplicate = duplicateNameMessage(error, draft.name);
       if (duplicate) return { fields: { name: duplicate }, step: 0 };
       return readableFailure("Could not create the CA.")(error);
     }
