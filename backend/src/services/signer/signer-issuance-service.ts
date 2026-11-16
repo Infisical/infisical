@@ -57,6 +57,7 @@ import {
   hsmKeyAlgorithmToCertKeyAlgorithm,
   isDigiCertPlacementInFlight,
   TDigiCertExternalOrderRef,
+  TDigiCertLifecycle,
   verifyCodeSigningEku
 } from "./signer-issuance-fns";
 import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
@@ -163,7 +164,7 @@ type TRequestIssuanceInput = {
     actor?: Pick<THsmConnectorServiceActor, "type" | "id" | "authMethod" | "orgId">;
   };
   // DigiCert code signing only; absent means a fresh order.
-  digicertLifecycle?: { mode: DigiCertLifecycleMode; previousOrderId: number };
+  digicertLifecycle?: TDigiCertLifecycle;
   keepOrderId?: number;
 };
 
@@ -672,7 +673,15 @@ export const signerIssuanceServiceFactory = ({
       certBody: await certificateBodyDAL.findOne({ certId: certificateId }, tx),
       signer: await signerDAL.findById(job.signerId, tx)
     }));
-    if (!cert || !certBody?.encryptedCertificate || signer?.certificateId === certificateId) return false;
+    const certificateBeforeRequest = getJobDigiCertRef(job)?.lifecycle?.previousCertificateId;
+    if (
+      !cert ||
+      !certBody?.encryptedCertificate ||
+      certificateId === certificateBeforeRequest ||
+      certificateId === signer?.certificateId
+    ) {
+      return false;
+    }
     const certificateDer = await decryptForProject(cert.projectId, Buffer.from(certBody.encryptedCertificate));
     const csrPem = (await decryptForProject(cert.projectId, Buffer.from(job.encryptedCsr))).toString();
     try {
@@ -1068,7 +1077,7 @@ export const signerIssuanceServiceFactory = ({
             signatureHash,
             comments
           });
-          placedLifecycle = { mode: DigiCertLifecycleMode.Reissue, previousOrderId: lifecycle.previousOrderId };
+          placedLifecycle = { ...lifecycle, mode: DigiCertLifecycleMode.Reissue };
         }
       } else {
         placed = await digicertFns.orderCodeSigningCertificate({

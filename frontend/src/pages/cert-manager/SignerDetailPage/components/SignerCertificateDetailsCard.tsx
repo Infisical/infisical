@@ -34,28 +34,26 @@ const NotSet = () => <span className="text-muted">-</span>;
 
 const SignerCaDetail = ({ signer }: { signer: TSigner }) => {
   const { currentProject } = useProject();
-  if (!signer.caId || !signer.caName) return null;
-  const isInternalCa = signer.caType === CaType.INTERNAL;
+  const ca = signer.certificateAuthority;
+  if (!ca) return null;
 
   return (
     <Detail>
       <DetailLabel>Certificate Authority</DetailLabel>
       <DetailValue className="flex flex-wrap items-center gap-2">
         <Link
-          {...(isInternalCa
-            ? getCertManagerLink(currentProject, `ca/${signer.caId}`)
+          {...(ca.type === CaType.INTERNAL
+            ? getCertManagerLink(currentProject, `ca/${ca.id}`)
             : getCertManagerLink(currentProject, "certificate-authorities", {
                 selectedTab: CertificateAuthorityTab.External
               }))}
           className="inline-flex items-center gap-1 underline"
         >
-          {signer.caName}
+          {ca.name}
           <ExternalLinkIcon className="size-3.5 text-muted" />
         </Link>
-        {signer.caStatus && signer.caStatus !== CaStatus.ACTIVE && (
-          <Badge variant={getCaStatusBadgeVariant(signer.caStatus)}>
-            {caStatusToNameMap[signer.caStatus]}
-          </Badge>
+        {ca.status !== CaStatus.ACTIVE && (
+          <Badge variant={getCaStatusBadgeVariant(ca.status)}>{caStatusToNameMap[ca.status]}</Badge>
         )}
       </DetailValue>
     </Detail>

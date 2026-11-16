@@ -1352,9 +1352,14 @@ export const signerServiceFactory = ({
         ? await signerRevocationDAL.findUnsettledForSigner(signer.id)
         : null;
 
+    const { signerCaName, signerCaStatus, signerCaType, ...signerFields } = signer;
     return {
-      ...signer,
+      ...signerFields,
       status: computeEffectiveStatus(signer),
+      certificateAuthority:
+        signer.caId && signerCaName && signerCaStatus && signerCaType
+          ? { id: signer.caId, name: signerCaName, status: signerCaStatus, type: signerCaType }
+          : null,
       externalOrder,
       certificateRequest,
       revocation: revocation
@@ -1599,7 +1604,8 @@ export const signerServiceFactory = ({
         digicertLifecycle: ctx.digicertReissueOrderId
           ? {
               mode: ctx.isRenewal ? DigiCertLifecycleMode.Renew : DigiCertLifecycleMode.Reissue,
-              previousOrderId: ctx.digicertReissueOrderId
+              previousOrderId: ctx.digicertReissueOrderId,
+              previousCertificateId: ctx.currentCert?.id
             }
           : undefined,
         keepOrderId: ctx.isRenewal ? undefined : ctx.digicertReissueOrderId

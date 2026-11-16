@@ -22,8 +22,9 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateStatus: string | null;
   certificateCaId: string | null;
   caType: CaType | null;
-  caName?: string | null;
-  caStatus?: CaStatus | null;
+  signerCaName?: string | null;
+  signerCaStatus?: CaStatus | null;
+  signerCaType?: CaType | null;
   approvalPolicyName: string | null;
   hasOpenCertificateRequest: boolean;
 };
@@ -78,6 +79,11 @@ export const signerDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`
         )
         .leftJoin(`${TableName.CertificateAuthority} as signerCa`, `${TableName.PkiSigners}.caId`, "signerCa.id")
+        .leftJoin(
+          `${TableName.ExternalCertificateAuthority} as signerExternalCa`,
+          "signerExternalCa.caId",
+          "signerCa.id"
+        )
         .select(selectAllTableCols(TableName.PkiSigners))
         .select(
           db.raw("CASE WHEN ?? IS NULL THEN NULL ELSE COALESCE(??, ?) END AS ??", [
@@ -97,8 +103,14 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
-          db.ref("name").withSchema("signerCa").as("caName"),
-          db.ref("status").withSchema("signerCa").as("caStatus"),
+          db.ref("name").withSchema("signerCa").as("signerCaName"),
+          db.ref("status").withSchema("signerCa").as("signerCaStatus"),
+          db.raw("CASE WHEN ?? IS NULL THEN NULL ELSE COALESCE(??, ?) END AS ??", [
+            "signerCa.id",
+            "signerExternalCa.type",
+            CaType.INTERNAL,
+            "signerCaType"
+          ]),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
           selectHasOpenCertificateRequest()
         )

@@ -229,8 +229,7 @@ export type TSigner = {
   certificateHsmKeyLabel?: string | null;
   certificateStatus?: string | null;
   caType?: CaType | null;
-  caName?: string | null;
-  caStatus?: CaStatus | null;
+  certificateAuthority?: { id: string; name: string; status: CaStatus; type: CaType } | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
   externalOrder?: TSignerExternalOrder | null;

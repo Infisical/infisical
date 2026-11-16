@@ -388,7 +388,11 @@ describe("signerService.renewCertificate", () => {
     expect(signer().status).toBe(SignerStatus.Active);
     expect(deps.signerIssuanceService.requestIssuance).toHaveBeenCalledWith(
       expect.objectContaining({
-        digicertLifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: DIGICERT_ORDER_ID }
+        digicertLifecycle: {
+          mode: DigiCertLifecycleMode.Renew,
+          previousOrderId: DIGICERT_ORDER_ID,
+          previousCertificateId: OLD_CERT_ID
+        }
       })
     );
   });
@@ -442,7 +446,11 @@ describe("signerService.reissueCertificate", () => {
     expect(signer().status).toBe(SignerStatus.Pending);
     expect(deps.signerIssuanceService.requestIssuance).toHaveBeenCalledWith(
       expect.objectContaining({
-        digicertLifecycle: { mode: DigiCertLifecycleMode.Reissue, previousOrderId: DIGICERT_ORDER_ID }
+        digicertLifecycle: {
+          mode: DigiCertLifecycleMode.Reissue,
+          previousOrderId: DIGICERT_ORDER_ID,
+          previousCertificateId: OLD_CERT_ID
+        }
       })
     );
   });

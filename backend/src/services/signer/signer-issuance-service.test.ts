@@ -613,6 +613,36 @@ describe("signerIssuanceService DigiCert order that still holds the earlier cert
     lifecycle: { mode: DigiCertLifecycleMode.Reissue, previousOrderId: ORDER_ID }
   };
 
+  it("doesn't revoke the certificate the reissue replaced after the signer moved to another certificate", async () => {
+    const PRIOR_CERT_ID = "cert-prior";
+    const { service, deps } = buildService({
+      job: digicertJob(
+        {
+          orderId: ORDER_ID,
+          lifecycle: {
+            mode: DigiCertLifecycleMode.Reissue,
+            previousOrderId: ORDER_ID,
+            previousCertificateId: PRIOR_CERT_ID
+          }
+        },
+        { status: SignerIssuanceJobStatus.Cancelling }
+      )
+    });
+    deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus.mockResolvedValue({
+      status: CodeSigningOrderStatus.Issued,
+      certificateId: 555
+    });
+    deps.certificateIssuanceQueue.digicertFns.downloadCodeSigningCertificate.mockResolvedValue({
+      certificateId: PRIOR_CERT_ID
+    });
+    deps.certificateBodyDAL.findOne.mockResolvedValue({ encryptedCertificate: JOB_KEY_CERTIFICATE_DER });
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateService.revokeOwnedCertificate).not.toHaveBeenCalled();
+    expect(cancelledUpdate(deps.signerIssuanceJobDAL.update)).toBeDefined();
+  });
+
   it("doesn't revoke the earlier certificate when winding down a canceled reissue", async () => {
     const { service, deps } = buildService({
       job: digicertJob(reissueRef, { status: SignerIssuanceJobStatus.Cancelling })

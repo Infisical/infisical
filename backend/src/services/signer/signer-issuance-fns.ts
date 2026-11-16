@@ -527,13 +527,19 @@ export const assertHsmKeyMatchesCertificate = async (
 
 export const IN_FLIGHT_ATTEMPT_MS = 5 * 60_000;
 
+export type TDigiCertLifecycle = {
+  mode: DigiCertLifecycleMode;
+  previousOrderId: number;
+  previousCertificateId?: string;
+};
+
 export type TDigiCertExternalOrderRef = {
   digicert?: {
     orderId?: number;
     certificateId?: number | null;
     lastStatus?: string;
     lastCheckedAt?: string;
-    lifecycle?: { mode: DigiCertLifecycleMode; previousOrderId: number };
+    lifecycle?: TDigiCertLifecycle;
     revocationRequestId?: number;
   };
 };

@@ -40,8 +40,15 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
   caType: z.nativeEnum(CaType).nullable().optional(),
-  caName: z.string().nullable().optional(),
-  caStatus: z.nativeEnum(CaStatus).nullable().optional(),
+  certificateAuthority: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      status: z.nativeEnum(CaStatus),
+      type: z.nativeEnum(CaType)
+    })
+    .nullable()
+    .optional(),
   approvalPolicyName: z.string().nullable().optional(),
   externalOrder: ExternalOrderResponseSchema.nullable().optional(),
   hasOpenCertificateRequest: z.boolean().optional(),
