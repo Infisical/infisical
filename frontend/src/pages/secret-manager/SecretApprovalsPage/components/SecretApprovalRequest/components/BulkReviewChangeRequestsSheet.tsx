@@ -14,12 +14,15 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonGroup,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
   FieldLabel,
   IconButton,
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -103,7 +106,6 @@ const BulkReviewChangeRequestsSheetContent = ({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
-  const [submitMode, setSubmitMode] = useState<"review" | "merge" | null>(null);
 
   const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const detailQueries = useGetSecretApprovalRequestDetailsList({
@@ -171,7 +173,6 @@ const BulkReviewChangeRequestsSheetContent = ({
   };
 
   const handleSubmit = async (shouldMerge: boolean) => {
-    setSubmitMode(shouldMerge ? "merge" : "review");
     setIsSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
@@ -409,10 +410,6 @@ const BulkReviewChangeRequestsSheetContent = ({
         <SheetTitle>
           Review {requests.length} Change Request{requests.length === 1 ? "" : "s"}
         </SheetTitle>
-        <SheetDescription>
-          Approve or reject each request, then submit your reviews. To also merge approved requests
-          that meet their policy, use Submit & Merge.
-        </SheetDescription>
       </SheetHeader>
 
       {!outcomes && !isSubmitting && (
@@ -588,27 +585,39 @@ const BulkReviewChangeRequestsSheetContent = ({
                 <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
                   Cancel
                 </Button>
-                <Button
-                  variant={approveCount ? "outline" : "project"}
-                  size="sm"
-                  isDisabled={!isReadyToSubmit || isSubmitting}
-                  isPending={isSubmitting && submitMode === "review"}
-                  onClick={() => handleSubmit(false)}
-                >
-                  Submit Reviews
-                </Button>
-                {Boolean(approveCount) && (
-                  <Button
-                    variant="project"
-                    size="sm"
-                    isDisabled={!isReadyToSubmit || isSubmitting}
-                    isPending={isSubmitting && submitMode === "merge"}
-                    onClick={() => handleSubmit(true)}
-                  >
-                    <GitMergeIcon />
-                    Submit & Merge {approveCount}
-                  </Button>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="project"
+                      size="sm"
+                      isDisabled={!isReadyToSubmit || isSubmitting}
+                      isPending={isSubmitting}
+                    >
+                      Submit
+                      <ChevronDownIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    <DropdownMenuItem onClick={() => handleSubmit(false)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Submit Reviews</span>
+                        <span className="text-xs text-accent">
+                          Record your approvals and rejections without merging.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem isDisabled={!approveCount} onClick={() => handleSubmit(true)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          Submit & Merge{approveCount ? ` ${approveCount}` : ""}
+                        </span>
+                        <span className="text-xs text-accent">
+                          Also merge approved requests that meet their policy.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </>
           )}
@@ -629,7 +638,11 @@ export const BulkReviewChangeRequestsSheet = ({ isOpen, onOpenChange, ...content
         onOpenChange(open);
       }}
     >
-      <SheetContent size="wide" className="flex h-full flex-col gap-0 overflow-hidden">
+      <SheetContent
+        size="wide"
+        aria-describedby={undefined}
+        className="flex h-full flex-col gap-0 overflow-hidden"
+      >
         {isOpen && (
           <BulkReviewChangeRequestsSheetContent
             {...contentProps}
