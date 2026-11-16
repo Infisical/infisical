@@ -11,20 +11,30 @@ import { useAgentVaultFreeUsage } from "./useAgentVaultFreeUsage";
 export const AgentVaultFreeUsageNotice = () => {
   const [isClosed, setIsClosed] = useState(false);
   const hasTrackedView = useRef(false);
-  const { freeUsage, isLimitReached, warn, canAddCard, openAddCard, trackPaywall } =
-    useAgentVaultFreeUsage("agent-vault.free-usage-notice");
+  const {
+    freeUsage,
+    isLimitReached,
+    warn,
+    canAddCard,
+    isRootOrganization,
+    openAddCard,
+    trackPaywall
+  } = useAgentVaultFreeUsage("agent-vault.free-usage-notice");
 
   const isShown = Boolean(freeUsage) && warn && !isClosed;
   const limit = freeUsage ? formatFreeUsageCount(freeUsage.limit) : "";
   const until = canAddCard
     ? "until an admin adds a card or the month resets"
     : "until the month resets";
+  // A sub-org shares its root organization's free requests and billing.
+  const owner = isRootOrganization ? "This organization" : "Your root organization";
   const usageMessage = isLimitReached
-    ? `This organization used its ${limit} free Agent Vault requests this month. Agent requests are refused ${until}.`
-    : `This organization used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused ${until}.`;
-  const message = canAddCard
-    ? usageMessage
-    : `${usageMessage} Ask an organization admin to add a card.`;
+    ? `${owner} used its ${limit} free Agent Vault requests this month. Agent requests are refused ${until}.`
+    : `${owner} used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused ${until}.`;
+  const askAdmin = isRootOrganization
+    ? "Ask an organization admin to add a card."
+    : "Ask an admin of the root organization to add a card.";
+  const message = canAddCard ? usageMessage : `${usageMessage} ${askAdmin}`;
 
   useEffect(() => {
     if (!isShown || hasTrackedView.current) return;

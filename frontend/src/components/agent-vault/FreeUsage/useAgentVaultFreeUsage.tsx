@@ -59,6 +59,7 @@ export const useAgentVaultFreeUsage = (paywallKey: string) => {
     isLimitReached: access?.state === "limit-reached",
     warn: Boolean(access?.warn),
     canAddCard,
+    isRootOrganization,
     openAddCard,
     trackPaywall
   };
