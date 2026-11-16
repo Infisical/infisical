@@ -380,6 +380,8 @@ export const AgentVaultSessionsPage = () => {
                   <MetadataFilterSection
                     entries={pendingMetadataFilters}
                     onChange={setPendingMetadataFilters}
+                    labelClassName="normal-case text-accent"
+                    clearClassName="text-muted hover:text-foreground"
                   />
                   <Button
                     variant="av"
