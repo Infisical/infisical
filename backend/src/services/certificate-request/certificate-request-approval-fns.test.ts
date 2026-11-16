@@ -44,7 +44,7 @@ describe("holdCertificateRequestForApproval", () => {
 
     await expect(result).rejects.toThrow(BadRequestError);
     await expect(result).rejects.toThrow(
-      "This certificate needs approval under the approval policy 'production-cert-approval', but that policy can't approve requests. Approval step 1 ('Security review') has no approvers. Add at least one user or group. Ask an Application admin to update the policy."
+      "This certificate needs approval under the approval policy 'production-cert-approval', but that policy can't approve requests. Approval step 1 ('Security review') has no approvers. Ask an Application admin to update the policy."
     );
     expect(createCertificateRequest).not.toHaveBeenCalled();
     expect(deps.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("holdCertificateRequestForApproval", () => {
     );
 
     await expect(hold()).rejects.toThrow(
-      "Approval step 1 has no approvers. Add at least one user or group. Ask a Product Admin to update the policy."
+      "but that policy can't approve requests. Approval step 1 has no approvers. Ask a Product Admin to update the policy."
     );
     expect(createCertificateRequest).not.toHaveBeenCalled();
   });
@@ -65,7 +65,9 @@ describe("holdCertificateRequestForApproval", () => {
   it("refuses to hold a certificate under a policy with no steps", async () => {
     const { createCertificateRequest, hold } = setup([]);
 
-    await expect(hold()).rejects.toThrow("Add at least one approval step.");
+    await expect(hold()).rejects.toThrow(
+      "but that policy can't approve requests. The policy has no approval steps. Ask an Application admin to update the policy."
+    );
     expect(createCertificateRequest).not.toHaveBeenCalled();
   });
 

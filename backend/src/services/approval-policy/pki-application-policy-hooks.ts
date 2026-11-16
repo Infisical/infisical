@@ -7,7 +7,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 
 import { ApprovalPolicyScope } from "./approval-policy-enums";
-import { filterApproversByActiveMemberships } from "./approval-policy-fns";
+import { filterApproversByActiveMemberships, holdsMembershipDirectlyOrViaGroup } from "./approval-policy-fns";
 import { TApprovalResource } from "./approval-policy-types";
 import { TCertRequestPolicyConditions } from "./cert-request/cert-request-policy-types";
 
@@ -35,24 +35,19 @@ const findActiveApplicationMemberships = async (
 };
 
 // A request snapshots its approvers when it is raised, and removing a member from the Application only edits the
-// policy, so the snapshot alone would let a removed member decide requests that were already pending. Group
-// membership is read from the Application's own groups rather than the actor's org groups: a user who reaches a
-// sub-org only through a linked group has no org membership row there, so their org group lookup comes back empty.
+// policy, so the snapshot alone would let a removed member decide requests that were already pending.
 const holdsApplicationMembership = async (
   {
     membershipDAL,
     userGroupMembershipDAL
   }: Pick<TPkiApplicationPolicyHooksDep, "membershipDAL" | "userGroupMembershipDAL">,
   { projectId, applicationId, userId }: { projectId: string; applicationId: string; userId: string }
-) => {
-  const memberships = await findActiveApplicationMemberships(membershipDAL, projectId, applicationId);
-  if (memberships.some((membership) => membership.actorUserId === userId)) return true;
-
-  const groupIds = memberships.flatMap((membership) => (membership.actorGroupId ? [membership.actorGroupId] : []));
-  if (groupIds.length === 0) return false;
-  const viaGroup = await userGroupMembershipDAL.find({ $in: { userId: [userId], groupId: groupIds } });
-  return viaGroup.length > 0;
-};
+) =>
+  holdsMembershipDirectlyOrViaGroup(
+    userGroupMembershipDAL,
+    await findActiveApplicationMemberships(membershipDAL, projectId, applicationId),
+    userId
+  );
 
 // Certificate approval policies scoped to a PKI Application match on profile slugs and take their approvers from the
 // Application's members, so every certificate approval type shares these checks.

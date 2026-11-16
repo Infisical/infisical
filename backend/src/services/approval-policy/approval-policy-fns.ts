@@ -10,7 +10,8 @@ const describeStep = (step: Pick<ApprovalPolicyStep, "name">, index: number) =>
   step.name ? `Approval step ${index + 1} ('${step.name}')` : `Approval step ${index + 1}`;
 
 // A request is approved only by completing every step, so a policy any step of which can never complete leaves its
-// requests pending until they expire, or forever when the policy sets no max TTL.
+// requests pending until they expire, or forever when the policy sets no max TTL. `message` is for whoever edits the
+// policy; `problem` leaves out the fix, for someone who can't edit it.
 export const findPolicyStepsProblem = ({
   steps,
   hasAutoApprovalRules,
@@ -21,26 +22,31 @@ export const findPolicyStepsProblem = ({
   hasAutoApprovalRules: boolean;
   supportsAutoApproval: boolean;
   noStepsMeansNoApproval?: boolean;
-}): string | null => {
+}): { message: string; problem: string } | null => {
   if (steps.length === 0) {
     if (hasAutoApprovalRules || noStepsMeansNoApproval) return null;
-    return supportsAutoApproval
-      ? "Add at least one approval step or an auto-approval rule. Without either, requests on this policy can never be approved."
-      : "Add at least one approval step. Without one, requests on this policy can never be approved.";
+    return {
+      message: supportsAutoApproval
+        ? "Add at least one approval step or an auto-approval rule. Without either, requests on this policy can never be approved."
+        : "Add at least one approval step. Without one, requests on this policy can never be approved.",
+      problem: "The policy has no approval steps."
+    };
   }
 
   for (const [index, step] of steps.entries()) {
     if (step.approvers.length === 0) {
-      return `${describeStep(step, index)} has no approvers. Add at least one user or group.`;
+      const problem = `${describeStep(step, index)} has no approvers.`;
+      return { message: `${problem} Add at least one user or group.`, problem };
     }
 
     // A group's members can change after the policy is saved, so only a step naming users alone has a fixed size.
     if (!step.approvers.some((approver) => approver.type === ApproverType.Group)) {
       const userCount = new Set(step.approvers.map((approver) => approver.id)).size;
       if (step.requiredApprovals > userCount) {
-        return `${describeStep(step, index)} requires ${step.requiredApprovals} approvals but names only ${userCount} ${
+        const problem = `${describeStep(step, index)} requires ${step.requiredApprovals} approvals but names only ${userCount} ${
           userCount === 1 ? "approver" : "approvers"
-        }. Lower the required approvals or add approvers.`;
+        }.`;
+        return { message: `${problem} Lower the required approvals or add approvers.`, problem };
       }
     }
   }
@@ -49,8 +55,23 @@ export const findPolicyStepsProblem = ({
 };
 
 export const assertPolicyStepsCanApprove = (args: Parameters<typeof findPolicyStepsProblem>[0]) => {
-  const problem = findPolicyStepsProblem(args);
-  if (problem) throw new BadRequestError({ message: problem });
+  const stepsProblem = findPolicyStepsProblem(args);
+  if (stepsProblem) throw new BadRequestError({ message: stepsProblem.message });
+};
+
+// Reads the scope's own groups rather than the user's org groups: a user who reaches a sub-org only through a linked
+// group has no org membership row there, so their org group lookup comes back empty.
+export const holdsMembershipDirectlyOrViaGroup = async (
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">,
+  memberships: { actorUserId?: string | null; actorGroupId?: string | null }[],
+  userId: string
+) => {
+  if (memberships.some((membership) => membership.actorUserId === userId)) return true;
+
+  const groupIds = memberships.flatMap((membership) => (membership.actorGroupId ? [membership.actorGroupId] : []));
+  if (groupIds.length === 0) return false;
+  const viaGroup = await userGroupMembershipDAL.find({ $in: { userId: [userId], groupId: groupIds } });
+  return viaGroup.length > 0;
 };
 
 // A user named on a step can review while they reach the scope through a group, so notifications must count that

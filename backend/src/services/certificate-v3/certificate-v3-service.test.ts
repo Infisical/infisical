@@ -2748,6 +2748,46 @@ describe("CertificateV3Service", () => {
         );
       });
 
+      describe("under a policy that can't approve", () => {
+        const refusal =
+          "but that policy can't approve requests. Approval step 1 has no approvers. Ask a Product Admin to update the policy.";
+
+        beforeEach(() => {
+          setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+          mockApprovalPolicyDAL.findStepsByPolicyId.mockResolvedValue([
+            { id: "policy-step-1", stepNumber: 1, requiredApprovals: 1, approvers: [] }
+          ]);
+        });
+
+        it("records the scheduled renewal's refusal on the certificate, so auto-renewal shows it and stops retrying", async () => {
+          await expect(
+            service.renewCertificate({
+              certificateId: "cert-123",
+              actor: ActorType.PLATFORM,
+              actorId: "",
+              actorAuthMethod: null,
+              actorOrgId: "",
+              internal: true
+            })
+          ).rejects.toThrow(refusal);
+
+          expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+          expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+            renewalError: expect.stringMatching(
+              /Approval step 1 has no approvers\. Ask a Product Admin to update the policy\. Once it's updated, renew the certificate manually to resume auto-renewal\.$/
+            )
+          });
+        });
+
+        it("refuses a manual renewal without recording it, so auto-renewal keeps running", async () => {
+          await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(refusal);
+
+          expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith("cert-123", {
+            renewalError: expect.anything()
+          });
+        });
+      });
+
       it("holds a renewal that changes the certificate for approval", async () => {
         setupRenewal(mockOriginalCert);
 

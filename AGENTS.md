@@ -163,9 +163,11 @@ type whose conditions name things in its scope implements `validateConditions`, 
 matches nothing is refused on save instead of silently never applying. A type whose approvers must belong
 to the scope implements `assertCanReview`, `isLiveApprover` and `filterActiveApprovers`, because a
 request's approver snapshot outlives the membership behind it. All three must count membership through a
-group the same way (`filterApproversByActiveMemberships` for notifications), or someone who can review a
-request isn't told about it. Certificate types scoped to a PKI Application get all four from
-`pkiApplicationPolicyHooksFactory`.
+group the same way, reading the scope's own groups (`holdsMembershipDirectlyOrViaGroup` for review,
+`filterApproversByActiveMemberships` for notifications), or someone who can review a request isn't told
+about it. Certificate types scoped to a PKI Application get all four from
+`pkiApplicationPolicyHooksFactory`. Code signing doesn't implement them yet, so a member removed from a
+signer can still review requests already pending; don't copy it for a new type.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a

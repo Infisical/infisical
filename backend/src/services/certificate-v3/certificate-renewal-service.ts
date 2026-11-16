@@ -92,6 +92,7 @@ import {
 import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
+  ApprovalPolicyCannotApproveError,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy,
   TCertificateRequestApprovalPolicy
@@ -216,11 +217,8 @@ const isSourcedOutsideInfisical = (certificate: TCertificates) =>
   Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
 
 class RenewalBlockedError extends BadRequestError {
-  readonly renewalError: string;
-
   constructor(renewalError: string) {
     super({ message: renewalError });
-    this.renewalError = renewalError;
   }
 }
 
@@ -1755,8 +1753,15 @@ export const certificateRenewalServiceFactory = ({
     try {
       renewalResult = await runRenewal();
     } catch (err) {
+      // A recorded error stops auto-renewal for the certificate until a renewal succeeds, so fixing the policy alone
+      // doesn't bring it back. A manual renewal refused for approval may be one the scheduled run would never make (one
+      // that changes the certificate), and its caller sees the 400, so only the scheduled run records the refusal.
       if (err instanceof RenewalBlockedError) {
-        await certificateDAL.updateById(certificateId, { renewalError: err.renewalError });
+        await certificateDAL.updateById(certificateId, { renewalError: err.message });
+      } else if (err instanceof ApprovalPolicyCannotApproveError && actor === ActorType.PLATFORM) {
+        await certificateDAL.updateById(certificateId, {
+          renewalError: `${err.message} Once it's updated, renew the certificate manually to resume auto-renewal.`
+        });
       }
       throw err;
     }

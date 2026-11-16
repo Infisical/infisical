@@ -49,6 +49,9 @@ export const matchCertificateRequestApprovalPolicy = async (
   };
 };
 
+// Typed so a scheduled renewal can record it on the certificate, since nobody sees the 400 it would get.
+export class ApprovalPolicyCannotApproveError extends BadRequestError {}
+
 export const holdCertificateRequestForApproval = async (
   {
     certificateRequestDAL,
@@ -87,8 +90,8 @@ export const holdCertificateRequestForApproval = async (
   if (stepsProblem) {
     const policyEditor =
       approvalPolicy.scopeType === ApprovalPolicyScope.PkiApplication ? "an Application admin" : "a Product Admin";
-    throw new BadRequestError({
-      message: `This certificate needs approval under the approval policy '${approvalPolicy.name}', but that policy can't approve requests. ${stepsProblem} Ask ${policyEditor} to update the policy.`
+    throw new ApprovalPolicyCannotApproveError({
+      message: `This certificate needs approval under the approval policy '${approvalPolicy.name}', but that policy can't approve requests. ${stepsProblem.problem} Ask ${policyEditor} to update the policy.`
     });
   }
 
