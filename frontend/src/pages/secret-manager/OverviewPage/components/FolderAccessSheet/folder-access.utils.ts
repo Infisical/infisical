@@ -1,6 +1,5 @@
 import { format } from "date-fns";
 
-import { isInfisicalCloud } from "@app/helpers/platform";
 import { getInitials } from "@app/helpers/string";
 import {
   TFolderAccess,
@@ -171,6 +170,7 @@ export const normalizeFolderPath = (path: string) => {
 
 export const isRootFolderPath = (path: string) => normalizeFolderPath(path) === "/";
 
-// self-hosted instances grant folder access on the root folder without the plan
-export const canGrantFolderAccess = (hasFolderRbacPlan: boolean, folderPath: string) =>
-  hasFolderRbacPlan || (!isInfisicalCloud() && isRootFolderPath(folderPath));
+export const canGrantFolderAccess = (
+  hasFolderRbacPlan: boolean,
+  change: { isPermissionRecursive?: boolean } = {}
+) => hasFolderRbacPlan || !change.isPermissionRecursive;

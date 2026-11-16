@@ -51,7 +51,12 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleSave = async () => {
-    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), access.secretPath)) {
+    const fields = grant.updateFields();
+    if (
+      !canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), {
+        isPermissionRecursive: fields.isPermissionRecursive ?? access.isPermissionRecursive
+      })
+    ) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
         paywallKey: "project.folder-access-section"
@@ -62,7 +67,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       projectId: access.projectId,
       environmentSlug: access.environment,
       secretPath: access.secretPath,
-      ...grant.updateFields()
+      ...fields
     };
 
     if (actor.type === "user") {
