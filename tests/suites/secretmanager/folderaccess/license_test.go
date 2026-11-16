@@ -16,9 +16,9 @@ func TestFolderAccess_License(t *testing.T) {
 	h := harness.From(t)
 
 	withoutFolderRBAC := license.Enterprise().Without(license.SecretsFolderRBAC)
-	const planMessage = "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
+	const planMessage = "Failed to apply folder access to subfolders due to plan restriction. Upgrade your Infisical plan to apply folder access to subfolders."
 
-	t.Run("should refuse a grant create when the plan does not include folder rbac", func(t *testing.T) {
+	t.Run("should grant folder access when the plan does not include folder rbac", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -28,16 +28,14 @@ func TestFolderAccess_License(t *testing.T) {
 		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 
 		// Action
-		res := grantAs(t, tn.Admin, proj, pr, at("/app"), secretmanager.FolderRead, nil)
+		res := grantAs(t, tn.Admin, proj, pr, at("/app"), secretmanager.FolderManage, nil)
 
 		// Assert
-		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)
-		require.Equal(t, planMessage, res.message)
-		tn.SetPlan(t, license.Enterprise())
-		require.Empty(t, grantsOf(t, proj, pr))
+		require.Equalf(t, http.StatusOK, res.status, "granting: %s", res.body)
+		require.Len(t, grantsOf(t, proj, pr), 1)
 	})
 
-	t.Run("should refuse a root folder grant on cloud when the plan does not include folder rbac", func(t *testing.T) {
+	t.Run("should refuse folder access that applies to subfolders when the plan does not include folder rbac", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -46,7 +44,7 @@ func TestFolderAccess_License(t *testing.T) {
 		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 
 		// Action
-		res := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, nil)
+		res := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, map[string]any{"isPermissionRecursive": true})
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)

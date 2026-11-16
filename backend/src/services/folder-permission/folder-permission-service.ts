@@ -5,7 +5,6 @@ import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/m
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
-import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -93,15 +92,9 @@ export const folderPermissionServiceFactory = ({
     orgId: string,
     { isPermissionRecursive }: { isPermissionRecursive?: boolean }
   ) => {
+    if (!isPermissionRecursive) return;
     const plan = await licenseService.getPlan(orgId);
-    if (plan.has(PlanFeature.SecretsFolderRbac)) return;
-
-    if (getConfig().isCloud) {
-      throw new BadRequestError({
-        message: "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
-      });
-    }
-    if (isPermissionRecursive) {
+    if (!plan.has(PlanFeature.SecretsFolderRbac)) {
       throw new BadRequestError({
         message:
           "Failed to apply folder access to subfolders due to plan restriction. Upgrade your Infisical plan to apply folder access to subfolders."
