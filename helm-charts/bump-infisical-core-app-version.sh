@@ -4,15 +4,14 @@
 #
 # Usage: ./bump-infisical-core-app-version.sh v0.167.10
 #
-# If the current chart version is already in the registry, the chart version gets a
-# patch bump and a new CHANGELOG section. Otherwise the change joins that version's
-# section. The registry is the source of truth because CHANGELOG headings are dated by
-# hand after a release, so an undated heading can belong to a published chart. Never
-# moves appVersion backwards, so a patch release tagged on an older line after a newer
-# release leaves the chart alone.
+# The chart version must end up ahead of main's, as ct lint requires of every chart PR.
+# A version already ahead of main (an open bump PR, or a hand-made bump) is kept and the
+# change joins its CHANGELOG section; otherwise main's version gets a patch bump and a
+# new section. Every version merged to main is published, so none is skipped. Compares
+# against BASE_REF (default origin/main), so fetch it first. Never moves appVersion
+# backwards, so a patch release tagged on an older line after a newer release leaves the
+# chart alone.
 set -euo pipefail
-
-CHART_REF="oci://helm.oci.cloudsmith.io/infisical/helm-charts/infisical-standalone"
 
 TAG="${1:-}"
 if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -24,47 +23,44 @@ CHART_DIR="$(cd "$(dirname "$0")/infisical-standalone-postgres" && pwd)"
 CHART_FILE="$CHART_DIR/Chart.yaml"
 CHANGELOG_FILE="$CHART_DIR/CHANGELOG.md"
 OUTPUT_FILE="${GITHUB_OUTPUT:-/dev/null}"
+BASE_REF="${BASE_REF:-origin/main}"
 
 read_field() {
-  sed -n "s/^$1: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *$/\1/p" "$CHART_FILE"
+  sed -n "s/^$1: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *$/\1/p"
 }
 
-# Any registry error other than "not found" aborts, so an outage can't make a published
-# version look unpublished and get reused.
-is_published() {
-  local err
-  if err="$(helm show chart "$CHART_REF" --version "$1" 2>&1 >/dev/null)"; then
-    return 0
-  fi
-  if echo "$err" | grep -q ': not found$'; then
-    return 1
-  fi
-  echo "Could not check whether chart $1 is published: $err" >&2
-  exit 1
+is_newer() {
+  [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]
 }
 
-CURRENT_APP_VERSION="$(read_field appVersion)"
-CHART_VERSION="$(read_field version)"
+CURRENT_APP_VERSION="$(read_field appVersion < "$CHART_FILE")"
+CHART_VERSION="$(read_field version < "$CHART_FILE")"
+BASE_CHART_VERSION="$(git -C "$CHART_DIR" show "$BASE_REF:./Chart.yaml" | read_field version)"
 
-if [ -z "$CURRENT_APP_VERSION" ] || [ -z "$CHART_VERSION" ]; then
-  echo "Could not read version and appVersion from $CHART_FILE" >&2
+if [ -z "$CURRENT_APP_VERSION" ] || [ -z "$CHART_VERSION" ] || [ -z "$BASE_CHART_VERSION" ]; then
+  echo "Could not read version and appVersion from $CHART_FILE, or version from $BASE_REF" >&2
   exit 1
 fi
 
-NEWEST="$(printf '%s\n%s\n' "${CURRENT_APP_VERSION#v}" "${TAG#v}" | sort -V | tail -n 1)"
-if [ "$CURRENT_APP_VERSION" = "$TAG" ] || [ "$NEWEST" != "${TAG#v}" ]; then
+if ! is_newer "${TAG#v}" "${CURRENT_APP_VERSION#v}"; then
   echo "Chart appVersion is $CURRENT_APP_VERSION, which is not older than $TAG. Nothing to do."
   echo "changed=false" >> "$OUTPUT_FILE"
   exit 0
 fi
 
+if is_newer "$CHART_VERSION" "$BASE_CHART_VERSION"; then
+  NEW_CHART_VERSION="$CHART_VERSION"
+else
+  IFS=. read -r MAJOR MINOR PATCH <<< "$BASE_CHART_VERSION"
+  NEW_CHART_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+fi
+
 BULLET_PREFIX='* Updated the default Infisical image (`appVersion`) from '
 TOP_HEADING="$(grep -m 1 '^## ' "$CHANGELOG_FILE")"
 
-if [ "$TOP_HEADING" = "## $CHART_VERSION" ] && ! is_published "$CHART_VERSION"; then
-  NEW_CHART_VERSION="$CHART_VERSION"
+if [ "$TOP_HEADING" = "## $NEW_CHART_VERSION" ]; then
   if awk '/^## /{n++} n==1' "$CHANGELOG_FILE" | grep -qF "$BULLET_PREFIX"; then
-    # An earlier bump in this unreleased section keeps its original "from" version.
+    # An earlier bump in this section keeps its original "from" version.
     awk -v prefix="$BULLET_PREFIX" -v tag="$TAG" '
       /^## /{n++}
       n==1 && index($0, prefix) == 1 { sub(/to `[^`]*`\.$/, "to `" tag "`.") }
@@ -78,8 +74,6 @@ if [ "$TOP_HEADING" = "## $CHART_VERSION" ] && ! is_published "$CHART_VERSION"; 
     ' "$CHANGELOG_FILE" > "$CHANGELOG_FILE.tmp"
   fi
 else
-  IFS=. read -r MAJOR MINOR PATCH <<< "$CHART_VERSION"
-  NEW_CHART_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
   {
     printf '## %s\nChanges:\n%s`%s` to `%s`.\n\n' \
       "$NEW_CHART_VERSION" "$BULLET_PREFIX" "$CURRENT_APP_VERSION" "$TAG"

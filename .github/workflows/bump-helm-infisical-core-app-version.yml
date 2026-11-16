@@ -136,7 +136,7 @@ jobs:
 
           Checks don't run on pull requests opened by GitHub Actions. Close and reopen this PR to run the Helm chart tests, which install the chart's \`appVersion\`.
 
-          After merging, run the **Release Infisical Core Helm chart** workflow to publish chart \`${CHART_VERSION}\`.
+          Merging publishes chart \`${CHART_VERSION}\` through the **Release Infisical Core Helm chart** workflow.
 
           ## Type
 
