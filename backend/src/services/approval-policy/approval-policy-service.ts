@@ -1592,7 +1592,12 @@ export const approvalPolicyServiceFactory = ({
         ? await approvalPolicyDAL.findBypassersByPolicyId(request.policyId)
         : [];
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    // Group membership decides who may approve, so a replica that hasn't seen a removal or an addition answers wrong.
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      actor.id,
+      actor.orgId,
+      approvalPolicyDAL.primaryNode()
+    );
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
     if (bypassReason !== undefined) {
@@ -1819,7 +1824,11 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Current step not found" });
     }
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      actor.id,
+      actor.orgId,
+      approvalPolicyDAL.primaryNode()
+    );
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
     const isEligible = currentStep.approvers.some(

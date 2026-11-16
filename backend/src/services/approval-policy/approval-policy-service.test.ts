@@ -92,18 +92,22 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       transaction: vi.fn().mockRejectedValue(new Error("reached the decision"))
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
+    const primaryDb = { node: "primary" };
+    const approvalPolicyDAL = { findByProjectId: vi.fn(), primaryNode: vi.fn().mockReturnValue(primaryDb) };
+    const userGroupMembershipDAL = { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) };
     const revocationResource = certRevocationApprovalResourceFactory({
-      approvalPolicyDAL: { findByProjectId: vi.fn(), primaryNode: vi.fn() },
+      approvalPolicyDAL,
       certificateService,
       membershipDAL: { find: vi.fn().mockResolvedValue(applicationMemberships) }
     } as never);
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
+      approvalPolicyDAL,
       permissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
-      userGroupMembershipDAL: { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) },
+      userGroupMembershipDAL,
       resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
     } as unknown as TDeps);
-    return { service, approvalRequestDAL, certificateService };
+    return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb };
   };
 
   it("refuses the approval and leaves the certificate alone", async () => {
@@ -114,6 +118,11 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     ).rejects.toBeInstanceOf(ForbiddenRequestError);
     expect(ctx.approvalRequestDAL.transaction).not.toHaveBeenCalled();
     expect(ctx.certificateService.revokeApprovedCertificate).not.toHaveBeenCalled();
+    expect(ctx.userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      ctx.primaryDb
+    );
   });
 
   it("refuses the rejection", async () => {
@@ -123,6 +132,11 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       ctx.service.rejectRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)
     ).rejects.toBeInstanceOf(ForbiddenRequestError);
     expect(ctx.approvalRequestDAL.transaction).not.toHaveBeenCalled();
+    expect(ctx.userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      ctx.primaryDb
+    );
   });
 
   it("lets a current member of the Application go on to record the decision", async () => {
