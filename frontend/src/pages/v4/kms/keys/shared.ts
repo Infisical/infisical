@@ -58,7 +58,8 @@ export const useKeyPermissions = (projectId: string) => {
     generateMac: can(ProjectPermissionCmekActions.GenerateMac),
     verifyMac: can(ProjectPermissionCmekActions.VerifyMac),
     rotate: can(ProjectPermissionCmekActions.Rotate),
-    exportPrivateKey: can(ProjectPermissionCmekActions.ExportPrivateKey)
+    exportPrivateKey: can(ProjectPermissionCmekActions.ExportPrivateKey),
+    publishPublicKey: can(ProjectPermissionCmekActions.PublishPublicKey)
   };
 };
 

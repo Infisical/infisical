@@ -119,16 +119,29 @@ const rotateReason = (item: TCmek, permissions: KeyPermissions) => {
   return disabledReason(item);
 };
 
+const isServed = (item: TCmek) => item.isPublicKeyPublished && !item.isDisabled;
+
+const copy = async (value: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    saved(`${label} copied`);
+  } catch (error) {
+    failed(`Couldn't copy the ${label}`, error);
+  }
+};
+
 const KeyMenu = ({
   item,
   permissions,
   onOpen,
-  onToggle
+  onToggle,
+  onTogglePublish
 }: {
   item: TCmek;
   permissions: KeyPermissions;
   onOpen: (kind: Open["kind"]) => void;
   onToggle: () => void;
+  onTogglePublish: () => void;
 }) => {
   const editReason = permissions.edit ? undefined : RESTRICTED;
   let deleteReason: string | undefined;
@@ -146,6 +159,30 @@ const KeyMenu = ({
           {operation.label}
         </DropdownMenuItem>
       ))}
+      {item.kid && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabledReason={permissions.publishPublicKey ? undefined : RESTRICTED}
+            onSelect={onTogglePublish}
+          >
+            <Icon name="globe" />
+            {item.isPublicKeyPublished ? "Unpublish public key" : "Publish public key"}
+          </DropdownMenuItem>
+          {isServed(item) && item.jwksUrl && (
+            <DropdownMenuItem onSelect={() => item.jwksUrl && copy(item.jwksUrl, "JWKS URL")}>
+              <Icon name="link" />
+              Copy JWKS URL
+            </DropdownMenuItem>
+          )}
+          {isServed(item) && (
+            <DropdownMenuItem onSelect={() => item.kid && copy(item.kid, "kid")}>
+              <Icon name="copy" />
+              Copy kid
+            </DropdownMenuItem>
+          )}
+        </>
+      )}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         disabledReason={exportReason(item, permissions)}
@@ -252,6 +289,76 @@ const OpenDialog = ({
   }
 };
 
+const columns: DataTableColumn<TCmek>[] = [
+  {
+    id: "name",
+    header: "Name",
+    primary: true,
+    sortable: true,
+    grow: true,
+    text: (r) => `${r.name}: ${r.description ?? ""}`,
+    render: (r) => (
+      <Inline gap={8} align="center" wrap={false}>
+        {r.name}
+        {r.description && (
+          <Tooltip content={r.description} side="top">
+            <span aria-label={r.description} role="img">
+              <Icon name="info" size={14} />
+            </span>
+          </Tooltip>
+        )}
+        {!r.isExportable && (
+          <Tooltip content="Created as non-exportable" side="top">
+            <span aria-label="Not exportable" role="img">
+              <Icon name="lock" size={14} />
+            </span>
+          </Tooltip>
+        )}
+      </Inline>
+    )
+  },
+  {
+    id: "id",
+    header: "Key ID",
+    width: 196,
+    maxWidth: 196,
+    text: (r) => r.id,
+    render: (r) => <KeyId id={r.id} />
+  },
+  { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.keyUsage] },
+  {
+    id: "algorithm",
+    header: "Algorithm",
+    width: 128,
+    render: (r) => algorithmLabel(r.algorithm)
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: 160,
+    render: (r) => (
+      <Inline gap={4} align="center" wrap={false}>
+        {r.isDisabled ? (
+          <Badge tone="outline">Disabled</Badge>
+        ) : (
+          <Badge tone="ok" dot>
+            Active
+          </Badge>
+        )}
+        {isServed(r) && (
+          <Tooltip content={r.jwksUrl ?? "Public key published"} side="top">
+            <Badge tone="info" tabIndex={0}>
+              Public
+            </Badge>
+          </Tooltip>
+        )}
+      </Inline>
+    )
+  },
+  { id: "version", header: "Version", width: 72, render: (r) => `v${r.version}` },
+  { id: "created", header: "Created", width: 104, render: (r) => r.createdAt.slice(0, 10) }
+];
+
 export const OverviewPage = () => {
   const { orgId, projectId } = useKmsProjectId();
   const kms = useV4Adapter("kms");
@@ -303,6 +410,26 @@ export const OverviewPage = () => {
     }
   };
 
+  const togglePublish = async (item: TCmek) => {
+    try {
+      await updateKey.mutateAsync({
+        keyId: item.id,
+        projectId,
+        isPublicKeyPublished: !item.isPublicKeyPublished
+      });
+      saved(
+        item.isPublicKeyPublished
+          ? `Public key of ${item.name} unpublished`
+          : `Public key of ${item.name} published`
+      );
+    } catch (error) {
+      failed(
+        `Failed to ${item.isPublicKeyPublished ? "unpublish" : "publish"} the public key`,
+        error
+      );
+    }
+  };
+
   const exportSelected = async () => {
     try {
       const { keys: exported } = await bulkExport.mutateAsync({ keyIds: selected });
@@ -318,66 +445,6 @@ export const OverviewPage = () => {
       failed("Failed to export keys", error);
     }
   };
-
-  const columns: DataTableColumn<TCmek>[] = [
-    {
-      id: "name",
-      header: "Name",
-      primary: true,
-      sortable: true,
-      grow: true,
-      text: (r) => `${r.name}: ${r.description ?? ""}`,
-      render: (r) => (
-        <Inline gap={8} align="center" wrap={false}>
-          {r.name}
-          {r.description && (
-            <Tooltip content={r.description} side="top">
-              <span aria-label={r.description} role="img">
-                <Icon name="info" size={14} />
-              </span>
-            </Tooltip>
-          )}
-          {!r.isExportable && (
-            <Tooltip content="Created as non-exportable" side="top">
-              <span aria-label="Not exportable" role="img">
-                <Icon name="lock" size={14} />
-              </span>
-            </Tooltip>
-          )}
-        </Inline>
-      )
-    },
-    {
-      id: "id",
-      header: "Key ID",
-      width: 196,
-      maxWidth: 196,
-      text: (r) => r.id,
-      render: (r) => <KeyId id={r.id} />
-    },
-    { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.keyUsage] },
-    {
-      id: "algorithm",
-      header: "Algorithm",
-      width: 128,
-      render: (r) => algorithmLabel(r.algorithm)
-    },
-    {
-      id: "status",
-      header: "Status",
-      width: 112,
-      render: (r) =>
-        r.isDisabled ? (
-          <Badge tone="outline">Disabled</Badge>
-        ) : (
-          <Badge tone="ok" dot>
-            Active
-          </Badge>
-        )
-    },
-    { id: "version", header: "Version", width: 72, render: (r) => `v${r.version}` },
-    { id: "created", header: "Created", width: 104, render: (r) => r.createdAt.slice(0, 10) }
-  ];
 
   return (
     <TooltipProvider>
@@ -453,6 +520,7 @@ export const OverviewPage = () => {
                 permissions={permissions}
                 onOpen={(kind) => setOpen({ kind, key: r } as Open)}
                 onToggle={() => toggleKey(r)}
+                onTogglePublish={() => togglePublish(r)}
               />
             )
           }}

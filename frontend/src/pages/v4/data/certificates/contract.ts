@@ -4,6 +4,13 @@ import type { ProjectPermissionSet } from "@app/context/ProjectPermissionContext
 import type { TDigiCertOrder } from "@app/hooks/api/appConnections/digicert/queries";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import type {
+  TCertificateInventoryView,
+  TCreateInventoryViewDTO,
+  TDeleteInventoryViewDTO,
+  TListInventoryViewsResponse,
+  TUpdateInventoryViewDTO
+} from "@app/hooks/api/certificateInventoryViews/types";
+import type {
   TCertificateProfile,
   TListCertificateProfilesDTO
 } from "@app/hooks/api/certificateProfiles/types";
@@ -25,6 +32,7 @@ import type {
   TRevokeCertResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
+  TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "@app/hooks/api/certificates/types";
 import type { TCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
@@ -44,6 +52,19 @@ import type {
 import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type TListCertificatesDTO = Parameters<typeof useListWorkspaceCertificates>[0];
+
+export type TCertificateExportFormat = "pem" | "chain" | "pkcs12";
+
+export type TExportCertificateDTO = {
+  certificateId: string;
+  serialNumber: string;
+  fileName: string;
+  format: TCertificateExportFormat;
+  pkcs12?: { password: string; alias: string };
+};
+
+export const certificateFileName = (name: string) =>
+  name.replace(/^\*\./, "wildcard.").replace(/[^a-zA-Z0-9._-]+/g, "_") || "certificate";
 
 export type CertificatesAdapter = {
   useInstanceState: (orgId: string) => V4QueryResult<TCertManagerInstanceState>;
@@ -82,6 +103,19 @@ export type CertificatesAdapter = {
     TUnifiedCertificateIssuanceDTO,
     TUnifiedCertificateIssuanceResponse
   >;
+  useExportCertificate: V4Mutation<TExportCertificateDTO, void>;
+  useUpdateCertificateMetadata: V4Mutation<
+    TUpdateCertificateDTO,
+    { metadata: TUpdateCertificateDTO["metadata"] }
+  >;
+  useAssignToApplication: V4Mutation<
+    { certificateId: string; applicationId: string },
+    TCertificate
+  >;
+  useInventoryViews: () => V4QueryResult<TListInventoryViewsResponse>;
+  useCreateInventoryView: V4Mutation<TCreateInventoryViewDTO, TCertificateInventoryView>;
+  useUpdateInventoryView: V4Mutation<TUpdateInventoryViewDTO, TCertificateInventoryView>;
+  useDeleteInventoryView: V4Mutation<TDeleteInventoryViewDTO, TCertificateInventoryView>;
   useDigiCertOrders: (dto: {
     connectionId: string;
     organizationId: number;

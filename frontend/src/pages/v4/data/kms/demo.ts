@@ -13,6 +13,7 @@ import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { KmsAdapter } from "./contract";
 
 const projectId = "kms-keys";
+const jwksUrlOf = (id: string) => `https://app.infisical.com/api/v1/kms/keys/${id}/jwks.json`;
 const key = (
   id: string,
   name: string,
@@ -35,7 +36,7 @@ const key = (
   hasDeleteProtection: false,
   version: 1,
   isPublicKeyPublished: false,
-  kid: null,
+  kid: keyUsage === KmsKeyUsage.SIGN_VERIFY ? `${id}:v1` : null,
   jwksUrl: null,
   createdAt,
   updatedAt: createdAt,
@@ -93,7 +94,24 @@ const store = createFixtureStore<TCmek[]>([
     "Signs short-lived session tokens",
     KmsKeyUsage.SIGN_VERIFY,
     AsymmetricKeyAlgorithm.ECC_NIST_P256,
-    "2026-08-30T10:00:00Z"
+    "2026-08-30T10:00:00Z",
+    {
+      isPublicKeyPublished: true,
+      jwksUrl: jwksUrlOf("1d8a6f25-9e0b-4a73-b2c4-6f5e8d1a0c97")
+    }
+  ),
+  key(
+    "f3a9d2c4-7e15-4b80-9c6a-2d8e1b5f0a73",
+    "partner-federation-oidc-id-token-signing-key-eu-central-1-production",
+    "Signs OIDC ID tokens that partner identity providers verify through the published JWKS endpoint",
+    KmsKeyUsage.SIGN_VERIFY,
+    AsymmetricKeyAlgorithm.RSA_4096,
+    "2026-09-14T08:20:00Z",
+    {
+      isExportable: false,
+      isPublicKeyPublished: true,
+      jwksUrl: jwksUrlOf("f3a9d2c4-7e15-4b80-9c6a-2d8e1b5f0a73")
+    }
   ),
   key(
     "82c5e0f9-3b7d-4e1a-8a6c-0f4b9d2e7a18",
@@ -175,7 +193,10 @@ export const kmsDemo: KmsAdapter = {
     return created;
   }),
   useUpdateKey: fixtureMutation(({ keyId, projectId: _projectId, ...patch }) =>
-    change(keyId, () => patch)
+    change(keyId, (current) => {
+      const published = patch.isPublicKeyPublished ?? current.isPublicKeyPublished;
+      return { ...patch, jwksUrl: published && current.kid ? jwksUrlOf(keyId) : null };
+    })
   ),
   useRotateKey: fixtureMutation(({ keyId }) =>
     change(keyId, (current) => ({ version: current.version + 1 }))

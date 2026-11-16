@@ -1,4 +1,5 @@
 import { createMongoAbility } from "@casl/ability";
+import FileSaver from "file-saver";
 
 import {
   ProjectPermissionCertificateActions,
@@ -7,12 +8,21 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import type {
+  TCertificateInventoryView,
+  TListInventoryViewsResponse,
+  TSystemView
+} from "@app/hooks/api/certificateInventoryViews/types";
 import {
   EnrollmentType,
   IssuerType,
   type TCertificateProfile
 } from "@app/hooks/api/certificateProfiles/types";
-import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+import {
+  isPqcAlgorithm,
+  NON_PQC_KEY_ALGORITHMS,
+  PQC_KEY_ALGORITHMS
+} from "@app/hooks/api/certificates/constants";
 import {
   CertExtendedKeyUsage,
   CertificateRequestStatus,
@@ -195,7 +205,15 @@ const store = createFixtureStore<TCertificate[]>([
     84,
     tlsServer,
     CertKeyAlgorithm.RSA_2048,
-    { applicationName: "payments-api", renewBeforeDays: 30 }
+    {
+      applicationName: "payments-api",
+      renewBeforeDays: 30,
+      metadata: [
+        { key: "team", value: "payments" },
+        { key: "env", value: "production" },
+        { key: "cost-center", value: "cc-4410" }
+      ]
+    }
   ),
   certificate(
     "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41",
@@ -217,7 +235,12 @@ const store = createFixtureStore<TCertificate[]>([
     7,
     mtlsClient,
     CertKeyAlgorithm.ECDSA_P256,
-    { applicationName: "platform-core", renewBeforeDays: 7 }
+    {
+      applicationName: "platform-core",
+      renewBeforeDays: 7,
+      renewedFromCertificateId: "7b3a0e5d-9c81-4f26-a4d7-3e2c8b5f0a19",
+      metadata: [{ key: "team", value: "platform" }]
+    }
   ),
   certificate(
     "d84c1b6e-2f73-4a95-b0e8-7c5a3d9f1e26",
@@ -309,6 +332,52 @@ const store = createFixtureStore<TCertificate[]>([
     tlsServer,
     CertKeyAlgorithm.ML_DSA_65,
     { applicationName: "platform-core", renewBeforeDays: 10 }
+  ),
+  certificate(
+    "4c9e2b71-0d8f-4a36-b5e1-9f7a3c6d2e80",
+    "settlement-reconciliation-batch-worker.eu-central-1.payments-platform.internal.acme.dev",
+    [
+      "settlement-reconciliation-batch-worker.eu-central-1.payments-platform.internal.acme.dev",
+      "settlement-reconciliation-batch-worker-canary.eu-central-1.payments-platform.internal.acme.dev"
+    ],
+    "3B:E7:0C:5A:92:D1:6F:48",
+    41,
+    49,
+    tlsServer,
+    CertKeyAlgorithm.RSA_3072,
+    {
+      metadata: [
+        { key: "owner", value: "settlement-reconciliation-platform-oncall@acme.dev" },
+        { key: "compliance-scope", value: "pci-dss-v4.0.1-cardholder-data-environment" },
+        { key: "runbook", value: "https://runbooks.acme.dev/payments/settlement/reconciliation" },
+        { key: "env", value: "production" },
+        { key: "pending-review", value: "" }
+      ]
+    }
+  ),
+  certificate(
+    "b7d04e19-6a2c-4f85-93e0-1c8b5d7a4f62",
+    "vpn.legacy-office.acme.dev",
+    ["vpn.legacy-office.acme.dev"],
+    "0E:44:A9:7B:1D:C3:58:F2",
+    190,
+    175,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    {
+      caId: "",
+      caName: null,
+      profileId: undefined,
+      profileName: null,
+      enrollmentType: null,
+      orderId: undefined,
+      hasPrivateKey: false,
+      source: CertSource.Discovered,
+      discoveryMetadata: {
+        issuerCommonName: "DigiCert Global G2 TLS RSA SHA256 2020 CA1",
+        issuerOrganization: "DigiCert Inc"
+      }
+    }
   )
 ]);
 
@@ -508,6 +577,90 @@ const change = (id: string, patch: Partial<TCertificate>) => {
 
 export const demoCertificates = store;
 
+const systemView = (id: string, name: string, filters: TSystemView["filters"]): TSystemView => ({
+  id,
+  name,
+  filters,
+  columns: null,
+  isSystem: true,
+  createdByUserId: null
+});
+
+const systemViews = [
+  systemView("system-default", "Default", {}),
+  systemView("system-all", "All Certificates", { includeDeleted: true }),
+  systemView("system-expiring-7d", "Expiring in 7 days", { status: ["active"], notAfterTo: "+7d" }),
+  systemView("system-expiring-30d", "Expiring in 30 days", {
+    status: ["active"],
+    notAfterTo: "+30d"
+  }),
+  systemView("system-renewed", "Renewed", { status: ["renewed"] }),
+  systemView("system-expired", "Expired", { status: ["expired"] }),
+  systemView("system-revoked", "Revoked", { status: ["revoked"] }),
+  systemView("system-deleted", "Deleted", { status: [CertStatus.DELETED] }),
+  {
+    ...systemView("system-pqc", "Post-Quantum (PQC)", {}),
+    filters: { keyAlgorithm: [...PQC_KEY_ALGORITHMS] } as TSystemView["filters"]
+  },
+  {
+    ...systemView("system-non-pqc", "Classical (Non-PQC)", {}),
+    filters: { keyAlgorithm: [...NON_PQC_KEY_ALGORITHMS] } as TSystemView["filters"]
+  }
+];
+
+const savedView = (
+  id: string,
+  name: string,
+  filters: TCertificateInventoryView["filters"],
+  createdByUserId: string,
+  isShared: boolean
+): TCertificateInventoryView => ({
+  id,
+  projectId,
+  name,
+  filters,
+  columns: null,
+  createdByUserId,
+  isShared,
+  createdAt: day(-60),
+  updatedAt: day(-12)
+});
+
+const views = createFixtureStore<TCertificateInventoryView[]>([
+  savedView(
+    "6e1f3a92-4c7b-4d08-8a5e-2b9c0d7f1e34",
+    "Production TLS on RSA",
+    { keyAlgorithm: [CertKeyAlgorithm.RSA_2048, CertKeyAlgorithm.RSA_4096], status: "active" },
+    "u-marcus",
+    true
+  ),
+  savedView(
+    "a2c84e17-9b3d-4f60-b1e5-7d0a6c3f8e29",
+    "mTLS client certificates",
+    { profileIds: [mtlsClient.id] },
+    "u-sarah",
+    false
+  )
+]);
+
+const viewChange = (viewId: string, patch: Partial<TCertificateInventoryView>) => {
+  views.update((current) =>
+    current.map((view) => (view.id === viewId ? { ...view, ...patch, updatedAt: day(0) } : view))
+  );
+  const found = views.get().find((view) => view.id === viewId);
+  if (!found) throw new Error("View not found");
+  return found;
+};
+
+const demoPem = (cert: TCertificate, label: string) =>
+  [
+    `-----BEGIN ${label}-----`,
+    ...(btoa(`demo ${label.toLowerCase()} for ${cert.commonName} ${cert.serialNumber}`).match(
+      /.{1,64}/g
+    ) ?? []),
+    `-----END ${label}-----`
+  ].join("\n");
+
 export const certificatesDemo: CertificatesAdapter = {
   useInstanceState: () =>
     result({
@@ -538,7 +691,7 @@ export const certificatesDemo: CertificatesAdapter = {
     const enrollmentTypeSet = new Set<string>(dto.enrollmentTypes);
     const matched = store
       .use()
-      .filter((cert) => dto.includeDeleted || !cert.deletedAt)
+      .filter((cert) => dto.includeDeleted || statusSet.has(CertStatus.DELETED) || !cert.deletedAt)
       .filter(
         (cert) =>
           !needle ||
@@ -546,7 +699,10 @@ export const certificatesDemo: CertificatesAdapter = {
             value.toLowerCase().includes(needle)
           )
       )
-      .filter((cert) => !statusSet.size || statusSet.has(cert.status))
+      .filter(
+        (cert) =>
+          !statusSet.size || statusSet.has(cert.deletedAt ? CertStatus.DELETED : cert.status)
+      )
       .filter((cert) => !algorithmSet.size || algorithmSet.has(cert.keyAlgorithm ?? ""))
       .filter((cert) => !sourceSet.size || sourceSet.has(cert.source ?? CertSource.Issued))
       .filter((cert) => !keySizeSet.size || keySizeSet.has(keySize(cert.keyAlgorithm)))
@@ -799,6 +955,56 @@ export const certificatesDemo: CertificatesAdapter = {
       ...current
     ]);
     return { certificate: issuedResponse(issued), certificateRequestId };
+  }),
+  useExportCertificate: fixtureMutation(({ certificateId, fileName, format, pkcs12 }) => {
+    const cert = store.get().find((entry) => entry.id === certificateId);
+    if (!cert) throw new Error("Certificate not found");
+    if (format === "pkcs12") {
+      if (!pkcs12) throw new Error("A keystore password and alias are required");
+      FileSaver.saveAs(
+        new Blob([new TextEncoder().encode(demoPem(cert, "PKCS12"))], {
+          type: "application/octet-stream"
+        }),
+        `${fileName}.p12`
+      );
+      return;
+    }
+    const chain = authorities.map((ca) => demoPem({ ...cert, commonName: ca.name }, "CERTIFICATE"));
+    const body = [demoPem(cert, "CERTIFICATE"), ...(format === "chain" ? chain : [])].join("\n");
+    FileSaver.saveAs(
+      new Blob([`${body}\n`], { type: "application/x-pem-file" }),
+      `${fileName}${format === "chain" ? "-chain" : ""}.pem`
+    );
+  }),
+  useUpdateCertificateMetadata: fixtureMutation(({ certificateId, metadata }) => ({
+    metadata: change(certificateId, { metadata }).metadata ?? []
+  })),
+  useAssignToApplication: fixtureMutation(({ certificateId, applicationId }) =>
+    change(certificateId, { applicationId, applicationName: applicationName(applicationId) })
+  ),
+  useInventoryViews: () => {
+    const saved = views.use();
+    const data: TListInventoryViewsResponse = {
+      systemViews,
+      sharedViews: saved
+        .filter((view) => view.isShared)
+        .map((view) => ({ ...view, isSystem: false as const, isShared: true as const })),
+      customViews: saved
+        .filter((view) => !view.isShared && view.createdByUserId === "u-sarah")
+        .map((view) => ({ ...view, isSystem: false as const, isShared: false as const }))
+    };
+    return result(data);
+  },
+  useCreateInventoryView: fixtureMutation(({ name, filters, isShared }) => {
+    const created = savedView(crypto.randomUUID(), name, filters, "u-sarah", Boolean(isShared));
+    views.update((current) => [...current, created]);
+    return created;
+  }),
+  useUpdateInventoryView: fixtureMutation(({ viewId, ...patch }) => viewChange(viewId, patch)),
+  useDeleteInventoryView: fixtureMutation(({ viewId }) => {
+    const removed = viewChange(viewId, {});
+    views.update((current) => current.filter((view) => view.id !== viewId));
+    return removed;
   }),
   useDigiCertOrders: () => result([])
 };
