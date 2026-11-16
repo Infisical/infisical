@@ -639,6 +639,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
           onChange={(next) => {
             setFilters(next);
             setActiveViewId(null);
+            setViewScope(undefined);
             setPage(1);
           }}
           search={
