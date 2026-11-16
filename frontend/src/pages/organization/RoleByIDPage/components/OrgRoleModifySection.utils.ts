@@ -642,8 +642,8 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     actions: [
       {
         value: OrgPermissionAuditLogsActions.Read,
-        label: "View",
-        description: "View audit log streams and their alerts"
+        label: "Read",
+        description: "Read audit log streams and their alerts"
       },
       {
         value: OrgPermissionAuditLogsActions.Edit,
