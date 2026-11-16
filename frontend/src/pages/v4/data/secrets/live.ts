@@ -22,9 +22,11 @@ import { withMutationMeta } from "../contract";
 import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
 import { secretsAccessInsightsLive } from "./live-access-insights";
+import { secretsActivationLive } from "./live-activation";
 import { secretsChangeRequestsLive } from "./live-change-requests";
 import { secretsExternalImportLive } from "./live-external-import";
 import { secretsFlowsLive } from "./live-flows";
+import { secretsPlanLive } from "./live-plan";
 import { secretsQuickSearchLive } from "./live-quick-search";
 import { secretsReminderChannelsLive } from "./live-reminder-channels";
 import { secretsUpgradeLive } from "./live-upgrade";
@@ -37,6 +39,8 @@ export const secretsLive: SecretsAdapter = {
   ...secretsReminderChannelsLive,
   ...secretsQuickSearchLive,
   ...secretsExternalImportLive,
+  ...secretsPlanLive,
+  ...secretsActivationLive,
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,

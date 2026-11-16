@@ -25,9 +25,11 @@ import type { CreateTagDTO, UserWsTags, WsTag } from "@app/hooks/api/tags/types"
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsAccessInsightsAdapter } from "./contract-access-insights";
+import type { SecretsActivationAdapter } from "./contract-activation";
 import type { SecretsChangeRequestsAdapter } from "./contract-change-requests";
 import type { SecretsExternalImportAdapter } from "./contract-external-import";
 import type { SecretsFlowsAdapter } from "./contract-flows";
+import type { SecretsPlanAdapter } from "./contract-plan";
 import type { SecretsQuickSearchAdapter } from "./contract-quick-search";
 import type { SecretsReminderChannelsAdapter } from "./contract-reminder-channels";
 import type { SecretsUpgradeAdapter } from "./contract-upgrade";
@@ -38,7 +40,9 @@ export type SecretsAdapter = SecretsFlowsAdapter &
   SecretsAccessInsightsAdapter &
   SecretsReminderChannelsAdapter &
   SecretsQuickSearchAdapter &
-  SecretsExternalImportAdapter & {
+  SecretsExternalImportAdapter &
+  SecretsPlanAdapter &
+  SecretsActivationAdapter & {
     useProject: (projectId: string) => V4QueryResult<Project> & { refetch?: () => unknown };
     useCreateEnvironment: V4Mutation<CreateEnvironmentDTO, ProjectEnv>;
     useTags: (projectId: string) => V4QueryResult<UserWsTags>;

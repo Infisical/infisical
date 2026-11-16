@@ -91,6 +91,7 @@ import {
   stopRowClick,
   sameRow
 } from "./overview-cells";
+import { usePlanGates } from "./plan-gates";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
@@ -474,6 +475,7 @@ function SecretActionsRow({
   const later = (action: () => void) => () => {
     pending.current = action;
   };
+  const { guard } = usePlanGates();
   const select = (overlay: Overlay) =>
     later(() =>
       overlay === "share" || overlay === "references"
@@ -572,7 +574,7 @@ function SecretActionsRow({
           <Icon name="history" />
           Version history
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={select("access")}>
+        <DropdownMenuItem onSelect={later(() => guard("accessInsights", () => setOpen("access")))}>
           <Icon icon={UsersIcon} />
           View access
         </DropdownMenuItem>

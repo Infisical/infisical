@@ -20,29 +20,37 @@ const enabledTags = (tags: Record<string, boolean>) =>
     .filter(([, enabled]) => enabled)
     .map(([slug]) => slug);
 
-const grouped = <T>(items: T[], key: (item: T) => string) =>
-  items.reduce<Record<string, T[]>>((groups, item) => {
+const grouped = <T>(items: T[], key: (item: T) => string) => {
+  const groups: Record<string, T[]> = {};
+  items.forEach((item) => {
     const name = key(item);
-    return { ...groups, [name]: [...(groups[name] ?? []), item] };
-  }, {});
+    groups[name] = groups[name] ?? [];
+    groups[name].push(item);
+  });
+  return groups;
+};
 
 const quickSearchOf = (
   state: SecretsFixtures,
   dto: TGetDashboardProjectSecretsQuickSearchDTO
 ): TDashboardProjectSecretsQuickSearch => {
   const needle = dto.search.trim().toLowerCase();
-  const tags = enabledTags(dto.tags);
-  const environments =
-    state.projects.find((project) => project.id === dto.projectId)?.environments ?? [];
+  const tags = new Set(enabledTags(dto.tags));
+  const environmentIds = new Map(
+    (state.projects.find((project) => project.id === dto.projectId)?.environments ?? []).map(
+      (entry) => [entry.slug, entry.id]
+    )
+  );
+  const scopedEnvironments = new Set(dto.environments);
   const inScope = (projectId: string, environment: string, path: string) =>
     projectId === dto.projectId &&
-    dto.environments.includes(environment) &&
+    scopedEnvironments.has(environment) &&
     inFolder(path, dto.secretPath);
   const matches = (name: string) => !needle || name.toLowerCase().includes(needle);
   const offset = dto.offset ?? 0;
   const page = <T>(items: T[]) => items.slice(offset, offset + (dto.limit ?? items.length));
 
-  const folders = tags.length
+  const folders = tags.size
     ? []
     : state.folders
         .filter(
@@ -52,14 +60,14 @@ const quickSearchOf = (
         )
         .map(({ projectId: _project, environment, path, ...folder }) => ({
           ...folder,
-          envId: environments.find((entry) => entry.slug === environment)?.id ?? environment,
+          envId: environmentIds.get(environment) ?? environment,
           path: childPath(path, folder.name)
         }));
   const secrets = state.secrets
     .filter(
       (secret) =>
         inScope(secret.projectId, secret.env, secret.path) &&
-        (!tags.length || secret.tags?.some((tag) => tags.includes(tag.slug))) &&
+        (!tags.size || secret.tags?.some((tag) => tags.has(tag.slug))) &&
         (matches(secret.key) ||
           Boolean(secret.tags?.some((tag) => matches(tag.slug))) ||
           Boolean(
@@ -68,12 +76,12 @@ const quickSearchOf = (
           ))
     )
     .map(sanitize);
-  const dynamicSecrets = tags.length
+  const dynamicSecrets = tags.size
     ? []
     : state.dynamicSecrets.filter(
         (entry) => inScope(entry.projectId, entry.environment, entry.path) && matches(entry.name)
       );
-  const secretRotations = tags.length
+  const secretRotations = tags.size
     ? []
     : state.rotations.filter(
         (entry) =>
@@ -100,12 +108,13 @@ const metadataSearchOf = (
   state: SecretsFixtures,
   dto: TSearchSecretsByMetadataDTO
 ): TSearchSecretsByMetadataResponse => {
-  const tags = enabledTags(dto.tags);
+  const tags = new Set(enabledTags(dto.tags));
+  const environments = new Set(dto.environments);
   const secrets = state.secrets.filter((secret) => {
     if (secret.projectId !== dto.projectId) return false;
-    if (dto.environments?.length && !dto.environments.includes(secret.env)) return false;
+    if (environments.size && !environments.has(secret.env)) return false;
     if (dto.secretPath && !inFolder(secret.path, dto.secretPath)) return false;
-    if (tags.length && !secret.tags?.some((tag) => tags.includes(tag.slug))) return false;
+    if (tags.size && !secret.tags?.some((tag) => tags.has(tag.slug))) return false;
     const hits = dto.filters.map((filter) =>
       Boolean(
         secret.secretMetadata?.some(

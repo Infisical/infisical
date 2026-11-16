@@ -16,9 +16,11 @@ import {
 
 import type { SecretsAdapter } from "./contract";
 import { secretsAccessInsightsDemo } from "./demo-access-insights";
+import { secretsActivationDemo } from "./demo-activation";
 import { secretsChangeRequestsDemo } from "./demo-change-requests";
 import { secretsExternalImportDemo } from "./demo-external-import";
 import { secretsFlowsDemo } from "./demo-flows";
+import { secretsPlanDemo } from "./demo-plan";
 import { secretsQuickSearchDemo } from "./demo-quick-search";
 import { secretsReminderChannelsDemo } from "./demo-reminder-channels";
 import {
@@ -300,6 +302,8 @@ export const secretsDemo: SecretsAdapter = {
   ...secretsReminderChannelsDemo,
   ...secretsQuickSearchDemo,
   ...secretsExternalImportDemo,
+  ...secretsPlanDemo,
+  ...secretsActivationDemo,
   useProject: (projectId) => {
     const scenario = useScenario();
     const isUpgraded = upgraded.use();

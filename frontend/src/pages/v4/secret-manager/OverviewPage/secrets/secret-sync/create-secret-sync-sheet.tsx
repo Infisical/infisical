@@ -35,6 +35,7 @@ import { SmallText } from "@infisical/cipher/ui/text";
 import slugify from "@sindresorhus/slugify";
 import { ArrowRightIcon } from "lucide-react";
 
+import { EnterpriseSecretSyncsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   getSecretSyncDestinationConfig,
   SecretSyncFormSchema
@@ -60,6 +61,8 @@ import {
   connectionRedirect,
   startConnectionRedirect
 } from "../../../../data/integrations/connection-redirect";
+import { useV4Session } from "../../../../data/session/contract";
+import { useUpgradeGate } from "../../../../license";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
   ReviewSection,
@@ -137,6 +140,24 @@ const nameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;
 
 function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => void }) {
   const [search, setSearch] = useState("");
+  const { organization } = useV4Session();
+  const adapter = useV4Adapter("secrets");
+  const plan = adapter.useOverviewPlan(organization.id).data;
+  const syncOptions = adapter.useSecretSyncOptions().data;
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const choose = (destination: SecretSync) => {
+    const isEnterprise = syncOptions?.some(
+      (option) => option.destination === destination && option.enterprise
+    );
+    if (isEnterprise && plan && !plan.enterpriseSecretSyncs) {
+      openUpgradeGate({
+        intent: EnterpriseSecretSyncsUpgradeIntent,
+        paywallKey: "secret-manager.secret-sync-provider"
+      });
+      return;
+    }
+    onSelect(destination);
+  };
   const all = (Object.values(SecretSync) as SecretSync[])
     .filter((destination) => SECRET_SYNC_MAP[destination])
     .sort((first, second) => nameOf(first).localeCompare(nameOf(second)));
@@ -154,7 +175,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
         key={destination}
         media={<ProviderLogo image={image} size={24} />}
         title={name}
-        onClick={() => onSelect(destination)}
+        onClick={() => choose(destination)}
       >
         <span className={styles.category}>{category}</span>
       </Tile>
@@ -188,6 +209,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
           </section>
         </>
       )}
+      {upgradeGate}
     </Stack>
   );
 }

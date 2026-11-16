@@ -24,8 +24,12 @@ import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group"
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import {
+  type DashboardSecretValue,
   SecretMetadataSearchLogicalOperator,
-  SecretMetadataSearchOperator
+  SecretMetadataSearchOperator,
+  type TDashboardProjectSecretsQuickSearch,
+  type TGetSecretValueDTO,
+  type TSearchSecretsByMetadataResponse
 } from "@app/hooks/api/dashboard/types";
 import type { ProjectEnv } from "@app/hooks/api/projects/types";
 import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/types";
@@ -44,6 +48,14 @@ const PAGE_SIZES = [25, 50, 100];
 type SearchKind = Extract<ResourceKind, "folder" | "secret" | "dynamic" | "rotation">;
 type Metadata = { key: string; value: string | null };
 type Condition = { id: number; key: string; value: string };
+type Filters = {
+  environments: string[];
+  folderPath: string;
+  kinds: SearchKind[];
+  tags: string[];
+  conditions: Condition[];
+  match: "all" | "any";
+};
 type Hit = {
   id: string;
   kind: SearchKind;
@@ -55,6 +67,7 @@ type Hit = {
   valueHidden: boolean;
   matched?: string;
 };
+type Results = { hits: Hit[]; total: number; limitNote?: string };
 
 const KINDS: { kind: SearchKind; label: string; filterBy?: string }[] = [
   { kind: "folder", label: "Folders" },
@@ -63,9 +76,148 @@ const KINDS: { kind: SearchKind; label: string; filterBy?: string }[] = [
   { kind: "secret", label: "Secrets", filterBy: "secret" }
 ];
 const ALL_KINDS = KINDS.map((entry) => entry.kind);
+const blankCondition = (id: number): Condition => ({ id, key: "", value: "" });
+const nextId = (conditions: Condition[]) =>
+  Math.max(0, ...conditions.map((condition) => condition.id)) + 1;
+const INITIAL_FILTERS: Filters = {
+  environments: [],
+  folderPath: "/",
+  kinds: ALL_KINDS,
+  tags: [],
+  conditions: [blankCondition(1)],
+  match: "all"
+};
 
 const includesText = (text: string, needle: string) =>
   Boolean(needle) && text.toLowerCase().includes(needle);
+
+const metadataResults = (
+  data: TSearchSecretsByMetadataResponse | undefined,
+  needle: string,
+  page: number,
+  perPage: number
+): Results => {
+  const matches = (data?.secrets ?? [])
+    .filter(
+      (secret) =>
+        !needle || includesText(secret.secretKey, needle) || includesText(secret.secretPath, needle)
+    )
+    .sort(
+      (a, b) => a.secretKey.localeCompare(b.secretKey) || a.secretPath.localeCompare(b.secretPath)
+    );
+  return {
+    total: matches.length,
+    hits: matches.slice((page - 1) * perPage, page * perPage).map((secret) => ({
+      id: secret.secretId,
+      kind: "secret",
+      name: secret.secretKey,
+      environment: secret.environment,
+      location: secret.secretPath,
+      metadata: secret.metadata,
+      tags: secret.tags.map((tag) => tag.slug),
+      valueHidden: secret.secretValueHidden
+    })),
+    limitNote: matches.length
+      ? `Checks up to ${data?.searchLimit ?? 100} candidates per metadata query. Narrow your filters to see the rest.`
+      : undefined
+  };
+};
+
+const secretHit = (
+  secret: TDashboardProjectSecretsQuickSearch["secrets"][string][number],
+  needle: string
+): Hit => {
+  const tagMatch = secret.tags?.find((tag) => includesText(tag.slug, needle));
+  const metadataMatch = secret.secretMetadata?.some(
+    (entry) => includesText(entry.key, needle) || includesText(entry.value ?? "", needle)
+  );
+  let matched: string | undefined;
+  if (!includesText(secret.key, needle)) {
+    if (tagMatch) matched = `Matched tag ${tagMatch.slug}`;
+    else if (metadataMatch) matched = "Matched metadata";
+  }
+  return {
+    id: `secret:${secret.id}`,
+    kind: "secret",
+    name: secret.key,
+    environment: secret.env,
+    location: secret.path ?? "/",
+    metadata: (secret.secretMetadata ?? []).map(({ key, value }) => ({ key, value })),
+    tags: (secret.tags ?? []).map((tag) => tag.slug),
+    valueHidden: secret.secretValueHidden,
+    matched
+  };
+};
+
+const quickResults = (
+  data: TDashboardProjectSecretsQuickSearch,
+  needle: string,
+  kinds: SearchKind[],
+  environments: ProjectEnv[],
+  perPage: number
+): Results => {
+  const shown = new Set(kinds);
+  const slugById = new Map(environments.map((environment) => [environment.id, environment.slug]));
+  const plain = { metadata: [], tags: [], valueHidden: true };
+  const hits: Hit[] = [
+    ...(shown.has("folder") ? Object.values(data.folders).flat() : []).map((folder): Hit => ({
+      ...plain,
+      id: `folder:${folder.id}`,
+      kind: "folder",
+      name: folder.name,
+      environment: slugById.get(folder.envId) ?? folder.envId,
+      location: folder.path
+    })),
+    ...(shown.has("dynamic") ? Object.values(data.dynamicSecrets).flat() : []).map(
+      (entry): Hit => ({
+        ...plain,
+        id: `dynamic:${entry.id}`,
+        kind: "dynamic",
+        name: entry.name,
+        environment: entry.environment,
+        location: entry.path
+      })
+    ),
+    ...(shown.has("rotation") ? Object.values(data.secretRotations).flat() : []).map(
+      (entry): Hit => ({
+        ...plain,
+        id: `rotation:${entry.id}`,
+        kind: "rotation",
+        name: entry.name,
+        environment: entry.environment.slug,
+        location: entry.folder.path
+      })
+    ),
+    ...(shown.has("secret") ? Object.values(data.secrets).flat() : []).map((secret) =>
+      secretHit(secret, needle)
+    )
+  ];
+  const visible = Math.max(
+    shown.has("folder") ? data.totalFolderCount : 0,
+    shown.has("secret") ? data.totalSecretCount : 0,
+    shown.has("dynamic") ? data.totalDynamicSecretCount : 0,
+    shown.has("rotation") ? data.totalSecretRotationCount : 0
+  );
+  const total = Math.min(visible, data.searchLimit + perPage);
+  return {
+    hits,
+    total,
+    limitNote:
+      data.isSearchLimitReached || total < visible
+        ? `Only the first ${data.searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`
+        : undefined
+  };
+};
+
+const withMetadataCondition = (conditions: Condition[], { key, value }: Metadata) => {
+  if (!value) return conditions;
+  if (conditions.some((entry) => entry.key.trim() === key && entry.value.trim() === value))
+    return conditions;
+  const blank = conditions.find((entry) => !entry.key.trim() && !entry.value.trim());
+  if (blank)
+    return conditions.map((entry) => (entry.id === blank.id ? { ...entry, key, value } : entry));
+  return [...conditions, { id: nextId(conditions), key, value }];
+};
 
 function MetadataBadges({
   metadata,
@@ -108,237 +260,260 @@ function MetadataBadges({
   ));
 }
 
-function SearchResults({
+function MetadataConditions({
+  filters,
+  onChange
+}: {
+  filters: Filters;
+  onChange: (patch: Partial<Filters>) => void;
+}) {
+  const { conditions, match } = filters;
+  const updateCondition = (id: number, patch: Partial<Condition>) =>
+    onChange({
+      conditions: conditions.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))
+    });
+  return (
+    <FieldSet
+      legend="Metadata"
+      legendVariant="label"
+      actions={
+        <ToggleGroup
+          type="single"
+          size="sm"
+          aria-label="Match metadata conditions"
+          value={match}
+          onValueChange={(value) => value && onChange({ match: value as Filters["match"] })}
+        >
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+          <ToggleGroupItem value="any">Any</ToggleGroupItem>
+        </ToggleGroup>
+      }
+    >
+      <div className={styles.conditions}>
+        {conditions.map((condition, index) => (
+          <div key={condition.id} className={styles.condition}>
+            {index > 0 && <span className={styles.joiner}>{match === "all" ? "and" : "or"}</span>}
+            <div className={styles.conditionFields}>
+              <Input
+                mono
+                aria-label={`Metadata key ${index + 1}`}
+                placeholder="Key"
+                value={condition.key}
+                onChange={(event) => updateCondition(condition.id, { key: event.target.value })}
+              />
+              <span className={styles.operator}>is</span>
+              <Input
+                mono
+                aria-label={`Metadata value ${index + 1}`}
+                placeholder="Value"
+                value={condition.value}
+                onChange={(event) => updateCondition(condition.id, { value: event.target.value })}
+              />
+              {index > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  icon="x"
+                  iconOnly
+                  aria-label={`Remove condition ${index + 1}`}
+                  onClick={() =>
+                    onChange({
+                      conditions: conditions.filter((entry) => entry.id !== condition.id)
+                    })
+                  }
+                />
+              )}
+            </div>
+          </div>
+        ))}
+        <span>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="plus"
+            onClick={() =>
+              onChange({ conditions: [...conditions, blankCondition(nextId(conditions))] })
+            }
+          >
+            Add condition
+          </Button>
+        </span>
+      </div>
+    </FieldSet>
+  );
+}
+
+function SearchFilters({
+  environments,
+  tagOptions,
+  folderTree,
+  folderEnvironment,
+  filters,
+  activeCount,
+  shown,
+  onChange
+}: {
+  environments: ProjectEnv[];
+  tagOptions: { slug: string }[];
+  folderTree?: TProjectEnvironmentsFolders;
+  folderEnvironment?: string;
+  filters: Filters;
+  activeCount: number;
+  shown: (kind: SearchKind) => boolean;
+  onChange: (patch: Partial<Filters>) => void;
+}) {
+  const metadataReset = {
+    conditions: [blankCondition(nextId(filters.conditions))],
+    match: "all" as const
+  };
+  const toggleKind = (kind: SearchKind, checked: boolean) => {
+    const kinds = checked
+      ? [...filters.kinds, kind]
+      : filters.kinds.filter((entry) => entry !== kind);
+    const withSecrets = kinds.includes("secret");
+    onChange({
+      kinds,
+      ...(withSecrets ? {} : { tags: [] }),
+      ...(!withSecrets || kinds.some((entry) => entry !== "secret") ? metadataReset : {})
+    });
+  };
+  const folderOptions = [
+    ...new Set(
+      Object.values(folderTree ?? {})
+        .find((environment) => environment.slug === folderEnvironment)
+        ?.folders.map((folder) => folder.path) ?? []
+    )
+  ]
+    .filter((path) => path !== "/")
+    .sort((left, right) => left.localeCompare(right))
+    .map((path) => ({ value: path, label: path }));
+
+  return (
+    <Card
+      variant="framed"
+      size="sm"
+      title="Filters"
+      badges={activeCount > 0 ? <Count>{activeCount}</Count> : undefined}
+      action={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onChange({ ...INITIAL_FILTERS, ...metadataReset })}
+          disabled={!activeCount}
+        >
+          Reset
+        </Button>
+      }
+    >
+      <div className={styles.filterFields}>
+        {environments.length > 1 && (
+          <Field label="Environments">
+            <Combobox
+              multiple
+              label="Environments"
+              placeholder="All environments"
+              options={environments.map((environment) => ({
+                value: environment.slug,
+                label: environment.name
+              }))}
+              value={filters.environments}
+              onChange={(value) => onChange({ environments: value, folderPath: "/" })}
+              clearable
+            />
+          </Field>
+        )}
+        <Field
+          label="Folder"
+          description={folderEnvironment ? undefined : "Select one environment to choose a folder."}
+        >
+          <Combobox
+            key={folderEnvironment ?? "all"}
+            label="Folder"
+            placeholder="All folders"
+            options={folderOptions}
+            value={filters.folderPath === "/" ? "" : filters.folderPath}
+            onChange={(value) => onChange({ folderPath: value || "/" })}
+            disabled={!folderEnvironment}
+            clearable
+            clearLabel="Search all folders"
+            emptyText="No folders found."
+          />
+        </Field>
+        <Field label="Resource types" group>
+          <div className={styles.kinds}>
+            {KINDS.map((entry) => (
+              <Checkbox
+                key={entry.kind}
+                label={entry.label}
+                media={<KindIcon kind={entry.kind} />}
+                checked={shown(entry.kind)}
+                onChange={(checked) => toggleKind(entry.kind, checked)}
+              />
+            ))}
+          </div>
+        </Field>
+        <Field label="Tags">
+          <Combobox
+            multiple
+            label="Tags"
+            placeholder="Any tag"
+            options={tagOptions.map((tag) => ({ value: tag.slug, label: tag.slug }))}
+            value={filters.tags}
+            onChange={(value) =>
+              onChange({
+                tags: value,
+                ...(value.length && !filters.kinds.includes("secret")
+                  ? { kinds: [...filters.kinds, "secret"] }
+                  : {})
+              })
+            }
+            emptyText="No tags found."
+            clearable
+          />
+        </Field>
+        <MetadataConditions filters={filters} onChange={onChange} />
+      </div>
+    </Card>
+  );
+}
+
+function ResultsTable({
   orgId,
   projectId,
   environments,
-  tags: tagOptions,
-  folderTree,
-  initialQuery,
-  onSelect
-}: Omit<SearchAllFoldersSheetProps, "open" | "onOpenChange">) {
-  const adapter = useV4Adapter("secrets");
-  const readSecretValue = adapter.useReadSecretValue();
-  const [query, setQuery] = useState(initialQuery);
-  const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
-  const [folderPath, setFolderPath] = useState("/");
-  const [kinds, setKinds] = useState<SearchKind[]>(ALL_KINDS);
-  const [tags, setTags] = useState<string[]>([]);
-  const [conditions, setConditions] = useState<Condition[]>([{ id: 1, key: "", value: "" }]);
-  const [match, setMatch] = useState<"all" | "any">("all");
-  const [perPage, setPerPage] = useState(PAGE_SIZES[0]);
-  const [paging, setPaging] = useState({ scope: "", page: 1 });
-  const nextCondition = useRef(1);
-
-  const activeConditions = conditions
-    .map((condition) => ({ key: condition.key.trim(), value: condition.value.trim() }))
-    .filter((condition) => condition.key && condition.value);
-  const metadataMode = activeConditions.length > 0;
-  const live = JSON.stringify({ query, activeConditions });
-  const [settled, setSettled] = useState(live);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSettled(live), 300);
-    return () => window.clearTimeout(timer);
-  }, [live]);
-  const debounced = JSON.parse(settled) as {
-    query: string;
-    activeConditions: { key: string; value: string }[];
-  };
-  const needle = debounced.query.trim().toLowerCase();
-
-  const environmentSlugs = selectedEnvironments.length
-    ? selectedEnvironments
-    : environments.map((environment) => environment.slug);
-  const folderEnvironment = environmentSlugs.length === 1 ? environmentSlugs[0] : undefined;
-  const secretPath = folderEnvironment ? folderPath : "/";
-  const tagFilter = Object.fromEntries(tags.map((slug) => [slug, true]));
-  const shown = (kind: SearchKind) => (metadataMode ? kind === "secret" : kinds.includes(kind));
-
-  const scope = JSON.stringify([
-    settled,
-    environmentSlugs,
-    secretPath,
-    tags,
-    kinds,
-    match,
-    perPage
-  ]);
-  const page = paging.scope === scope ? paging.page : 1;
-  const setPage = (next: number) => setPaging({ scope, page: next });
-
-  const quickEnabled = Boolean(query.trim() || tags.length) && !metadataMode;
-  const quick = adapter.useQuickSearch(
-    {
-      projectId,
-      secretPath,
-      environments: environmentSlugs,
-      search: debounced.query,
-      tags: tagFilter,
-      limit: perPage,
-      offset: (page - 1) * perPage
-    },
-    { enabled: quickEnabled }
-  );
-  const metadataSearch = adapter.useMetadataSearch(
-    {
-      projectId,
-      environments: environmentSlugs,
-      secretPath,
-      operator:
-        match === "all"
-          ? SecretMetadataSearchLogicalOperator.And
-          : SecretMetadataSearchLogicalOperator.Or,
-      filters: debounced.activeConditions.map((condition) => ({
-        ...condition,
-        operator: SecretMetadataSearchOperator.Is
-      })),
-      tags: tagFilter
-    },
-    { enabled: metadataMode }
-  );
-
-  const environmentById = new Map(environments.map((environment) => [environment.id, environment]));
-
-  let hits: Hit[] = [];
-  let total = 0;
-  let limitNote: string | undefined;
-  if (metadataMode) {
-    const matches = (metadataSearch.data?.secrets ?? [])
-      .filter(
-        (secret) =>
-          !needle ||
-          includesText(secret.secretKey, needle) ||
-          includesText(secret.secretPath, needle)
-      )
-      .sort(
-        (a, b) => a.secretKey.localeCompare(b.secretKey) || a.secretPath.localeCompare(b.secretPath)
-      );
-    total = matches.length;
-    hits = matches.slice((page - 1) * perPage, page * perPage).map((secret) => ({
-      id: secret.secretId,
-      kind: "secret",
-      name: secret.secretKey,
-      environment: secret.environment,
-      location: secret.secretPath,
-      metadata: secret.metadata,
-      tags: secret.tags.map((tag) => tag.slug),
-      valueHidden: secret.secretValueHidden
-    }));
-    if (total)
-      limitNote = `Checks up to ${metadataSearch.data?.searchLimit ?? 100} candidates per metadata query. Narrow your filters to see the rest.`;
-  } else if (quickEnabled && quick.data) {
-    const { data } = quick;
-    const folders = shown("folder") ? Object.values(data.folders).flat() : [];
-    const secrets = shown("secret") ? Object.values(data.secrets).flat() : [];
-    const dynamicSecrets = shown("dynamic") ? Object.values(data.dynamicSecrets).flat() : [];
-    const rotations = shown("rotation") ? Object.values(data.secretRotations).flat() : [];
-    const plain = { metadata: [], tags: [], valueHidden: true };
-    hits = [
-      ...folders.map((folder): Hit => ({
-        ...plain,
-        id: `folder:${folder.id}`,
-        kind: "folder",
-        name: folder.name,
-        environment: environmentById.get(folder.envId)?.slug ?? folder.envId,
-        location: folder.path
-      })),
-      ...dynamicSecrets.map((entry): Hit => ({
-        ...plain,
-        id: `dynamic:${entry.id}`,
-        kind: "dynamic",
-        name: entry.name,
-        environment: entry.environment,
-        location: entry.path
-      })),
-      ...rotations.map((entry): Hit => ({
-        ...plain,
-        id: `rotation:${entry.id}`,
-        kind: "rotation",
-        name: entry.name,
-        environment: entry.environment.slug,
-        location: entry.folder.path
-      })),
-      ...secrets.map((secret): Hit => {
-        const tagMatch = secret.tags?.find((tag) => includesText(tag.slug, needle));
-        const metadataMatch = secret.secretMetadata?.some(
-          (entry) => includesText(entry.key, needle) || includesText(entry.value ?? "", needle)
-        );
-        let matched: string | undefined;
-        if (!includesText(secret.key, needle)) {
-          if (tagMatch) matched = `Matched tag ${tagMatch.slug}`;
-          else if (metadataMatch) matched = "Matched metadata";
-        }
-        return {
-          id: `secret:${secret.id}`,
-          kind: "secret",
-          name: secret.key,
-          environment: secret.env,
-          location: secret.path ?? "/",
-          metadata: (secret.secretMetadata ?? []).map(({ key, value }) => ({ key, value })),
-          tags: (secret.tags ?? []).map((tag) => tag.slug),
-          valueHidden: secret.secretValueHidden,
-          matched
-        };
-      })
-    ];
-    const visible = Math.max(
-      shown("folder") ? data.totalFolderCount : 0,
-      shown("secret") ? data.totalSecretCount : 0,
-      shown("dynamic") ? data.totalDynamicSecretCount : 0,
-      shown("rotation") ? data.totalSecretRotationCount : 0
-    );
-    total = Math.min(visible, data.searchLimit + perPage);
-    if (data.isSearchLimitReached || total < visible)
-      limitNote = `Only the first ${data.searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`;
-  }
-
-  const loading = metadataMode
-    ? metadataSearch.isPending || metadataSearch.isFetching
-    : quickEnabled && (quick.isPending || quick.isFetching);
-
+  results,
+  loading,
+  page,
+  perPage,
+  onPageChange,
+  onPerPageChange,
+  onSelect,
+  onFilterMetadata,
+  readSecretValue
+}: {
+  orgId: string;
+  projectId: string;
+  environments: ProjectEnv[];
+  results: Results;
+  loading: boolean;
+  page: number;
+  perPage: number;
+  onPageChange: (page: number) => void;
+  onPerPageChange: (perPage: number) => void;
+  onSelect: (selection: { path: string; search: string }) => void;
+  onFilterMetadata: (entry: Metadata) => void;
+  readSecretValue: (dto: TGetSecretValueDTO) => Promise<DashboardSecretValue>;
+}) {
+  const { hits, total, limitNote } = results;
   const groups = environments
     .map((environment) => ({
       id: environment.slug,
       label: environment.name,
-      meta: String(hits.filter((hit) => hit.environment === environment.slug).length),
       rows: hits.filter((hit) => hit.environment === environment.slug)
     }))
-    .filter((group) => group.rows.length);
+    .filter((group) => group.rows.length)
+    .map((group) => ({ ...group, meta: String(group.rows.length) }));
 
-  const filterOnMetadata = ({ key, value }: Metadata) => {
-    if (!value) return;
-    setConditions((current) => {
-      if (current.some((entry) => entry.key.trim() === key && entry.value.trim() === value))
-        return current;
-      const blank = current.find((entry) => !entry.key.trim() && !entry.value.trim());
-      if (blank)
-        return current.map((entry) => (entry.id === blank.id ? { ...entry, key, value } : entry));
-      nextCondition.current += 1;
-      return [...current, { id: nextCondition.current, key, value }];
-    });
-  };
-  const resetMetadata = () => {
-    nextCondition.current += 1;
-    setConditions([{ id: nextCondition.current, key: "", value: "" }]);
-    setMatch("all");
-  };
-  const toggleKind = (kind: SearchKind, checked: boolean) => {
-    const next = checked ? [...kinds, kind] : kinds.filter((entry) => entry !== kind);
-    if (!next.includes("secret")) setTags([]);
-    if (!next.includes("secret") || next.some((entry) => entry !== "secret")) resetMetadata();
-    setKinds(next);
-  };
-  const resetFilters = () => {
-    setSelectedEnvironments([]);
-    setFolderPath("/");
-    setTags([]);
-    setKinds(ALL_KINDS);
-    resetMetadata();
-  };
-  const updateCondition = (id: number, patch: Partial<Condition>) =>
-    setConditions((current) =>
-      current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))
-    );
   const copyValue = async (hit: Hit) => {
     try {
       const data = await readSecretValue({
@@ -361,7 +536,6 @@ function SearchResults({
       failed("Couldn't copy the secret value", error);
     }
   };
-
   const searchOf = (hit: Hit) => (hit.kind === "folder" ? "" : hit.name);
   const select = (event: MouseEvent, hit: Hit) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
@@ -417,7 +591,7 @@ function SearchResults({
       text: (hit) => hit.metadata.map((entry) => `${entry.key} ${entry.value ?? ""}`).join(", "),
       render: (hit) => (
         <span className={styles.badges}>
-          <MetadataBadges metadata={hit.metadata} onFilter={filterOnMetadata} />
+          <MetadataBadges metadata={hit.metadata} onFilter={onFilterMetadata} />
           {hit.tags.length > 0 && (
             <Tooltip content={hit.tags.join(", ")}>
               <Badge tone="soft" icon="flag" tabIndex={0} data-row-interactive>
@@ -430,39 +604,157 @@ function SearchResults({
     }
   ];
 
-  const activeFilters =
-    Number(selectedEnvironments.length > 0) +
+  return (
+    <DataTable<Hit>
+      label="Search results"
+      columns={columns}
+      groups={groups}
+      getRowId={(hit) => hit.id}
+      rowLabel={(hit) => hit.name}
+      loading={loading}
+      loadingRows={8}
+      rowActions={{
+        inline: [
+          {
+            label: "Copy secret value",
+            icon: "copy",
+            onSelect: copyValue,
+            disabledReason: (hit) => {
+              if (hit.kind !== "secret") return "Only secrets have a value to copy";
+              if (hit.valueHidden) return "You do not have permission to view this secret value";
+              return undefined;
+            }
+          }
+        ]
+      }}
+      persistentStatus={limitNote}
+      pagination={
+        total > 0 ? (
+          <Pagination
+            page={page}
+            total={total}
+            pageSize={perPage}
+            pageSizeOptions={PAGE_SIZES}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPerPageChange}
+          />
+        ) : undefined
+      }
+    />
+  );
+}
+
+type SearchScope = {
+  projectId: string;
+  query: string;
+  conditions: Metadata[];
+  filters: Filters;
+  environmentSlugs: string[];
+  secretPath: string;
+  visibleKinds: SearchKind[];
+  page: number;
+  perPage: number;
+};
+
+const activeConditionsOf = (conditions: Condition[]) =>
+  conditions
+    .map((condition) => ({ key: condition.key.trim(), value: condition.value.trim() }))
+    .filter((condition) => condition.key && condition.value);
+
+const scopeOf = (filters: Filters, environments: ProjectEnv[], metadataMode: boolean) => {
+  const environmentSlugs = filters.environments.length
+    ? filters.environments
+    : environments.map((environment) => environment.slug);
+  const folderEnvironment = environmentSlugs.length === 1 ? environmentSlugs[0] : undefined;
+  const secretPath = folderEnvironment ? filters.folderPath : "/";
+  const visibleKinds: SearchKind[] = metadataMode ? ["secret"] : filters.kinds;
+  const activeCount =
+    Number(filters.environments.length > 0) +
     Number(secretPath !== "/") +
-    Number(tags.length > 0) +
-    Number(ALL_KINDS.some((kind) => !shown(kind))) +
-    activeConditions.length;
+    Number(filters.tags.length > 0) +
+    Number(visibleKinds.length < ALL_KINDS.length) +
+    activeConditionsOf(filters.conditions).length;
+  return { environmentSlugs, folderEnvironment, secretPath, visibleKinds, activeCount };
+};
 
-  const folderOptions = [
-    ...new Set(
-      Object.values(folderTree ?? {})
-        .find((environment) => environment.slug === folderEnvironment)
-        ?.folders.map((folder) => folder.path) ?? []
-    )
-  ]
-    .filter((path) => path !== "/")
-    .sort((left, right) => left.localeCompare(right))
-    .map((path) => ({ value: path, label: path }));
+const useFolderSearch = (scope: SearchScope, environments: ProjectEnv[], enabled: boolean) => {
+  const adapter = useV4Adapter("secrets");
+  const metadataMode = scope.conditions.length > 0;
+  const quickEnabled = enabled && !metadataMode;
+  const tags = Object.fromEntries(scope.filters.tags.map((slug) => [slug, true]));
+  const needle = scope.query.trim().toLowerCase();
+  const quick = adapter.useQuickSearch(
+    {
+      projectId: scope.projectId,
+      secretPath: scope.secretPath,
+      environments: scope.environmentSlugs,
+      search: scope.query,
+      tags,
+      limit: scope.perPage,
+      offset: (scope.page - 1) * scope.perPage
+    },
+    { enabled: quickEnabled }
+  );
+  const metadataSearch = adapter.useMetadataSearch(
+    {
+      projectId: scope.projectId,
+      environments: scope.environmentSlugs,
+      secretPath: scope.secretPath,
+      operator:
+        scope.filters.match === "all"
+          ? SecretMetadataSearchLogicalOperator.And
+          : SecretMetadataSearchLogicalOperator.Or,
+      filters: scope.conditions.map((condition) => ({
+        key: condition.key,
+        value: condition.value ?? "",
+        operator: SecretMetadataSearchOperator.Is
+      })),
+      tags
+    },
+    { enabled: metadataMode }
+  );
+  if (metadataMode)
+    return {
+      results: metadataResults(metadataSearch.data, needle, scope.page, scope.perPage),
+      loading: metadataSearch.isPending || metadataSearch.isFetching,
+      searchLimit: metadataSearch.data?.searchLimit
+    };
+  if (!quickEnabled) return { results: undefined, loading: false };
+  return {
+    results:
+      quick.data &&
+      quickResults(quick.data, needle, scope.visibleKinds, environments, scope.perPage),
+    loading: quick.isPending || quick.isFetching
+  };
+};
 
-  let results;
-  if (!metadataMode && !quickEnabled)
-    results = (
+function ResultsArea({
+  results,
+  loading,
+  metadataMode,
+  searchLimit,
+  table
+}: {
+  results?: Results;
+  loading: boolean;
+  metadataMode: boolean;
+  searchLimit?: number;
+  table: Omit<Parameters<typeof ResultsTable>[0], "results" | "loading">;
+}) {
+  if (!results && !loading)
+    return (
       <EmptyState
         icon="search"
         title="Search across folders"
         description="Enter a resource name, choose a tag, or add a metadata condition."
       />
     );
-  else if (!loading && !groups.length)
-    results = metadataMode ? (
+  if (!loading && !results?.hits.length)
+    return metadataMode ? (
       <EmptyState
         icon="search"
         title="No secrets match these conditions"
-        description={`Try removing a condition or matching any. Search checks up to ${metadataSearch.data?.searchLimit ?? 100} candidates per metadata query.`}
+        description={`Try removing a condition or matching any. Search checks up to ${searchLimit ?? 100} candidates per metadata query.`}
       />
     ) : (
       <EmptyState
@@ -471,45 +763,56 @@ function SearchResults({
         description="Try a different search or remove a filter."
       />
     );
-  else
-    results = (
-      <DataTable<Hit>
-        label="Search results"
-        columns={columns}
-        groups={groups}
-        getRowId={(hit) => hit.id}
-        rowLabel={(hit) => hit.name}
-        loading={loading}
-        loadingRows={8}
-        rowActions={{
-          inline: [
-            {
-              label: "Copy secret value",
-              icon: "copy",
-              onSelect: copyValue,
-              disabledReason: (hit) => {
-                if (hit.kind !== "secret") return "Only secrets have a value to copy";
-                if (hit.valueHidden) return "You do not have permission to view this secret value";
-                return undefined;
-              }
-            }
-          ]
-        }}
-        persistentStatus={limitNote}
-        pagination={
-          total > 0 ? (
-            <Pagination
-              page={page}
-              total={total}
-              pageSize={perPage}
-              pageSizeOptions={PAGE_SIZES}
-              onPageChange={setPage}
-              onPageSizeChange={setPerPage}
-            />
-          ) : undefined
-        }
-      />
-    );
+  return <ResultsTable {...table} results={results ?? { hits: [], total: 0 }} loading={loading} />;
+}
+
+function SearchResults({
+  orgId,
+  projectId,
+  environments,
+  tags: tagOptions,
+  folderTree,
+  initialQuery,
+  onSelect
+}: Omit<SearchAllFoldersSheetProps, "open" | "onOpenChange">) {
+  const readSecretValue = useV4Adapter("secrets").useReadSecretValue();
+  const [query, setQuery] = useState(initialQuery);
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [perPage, setPerPage] = useState(PAGE_SIZES[0]);
+  const [paging, setPaging] = useState({ scope: "", page: 1 });
+  const updateFilters = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
+
+  const live = JSON.stringify({ query, conditions: activeConditionsOf(filters.conditions) });
+  const [settled, setSettled] = useState(live);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(live), 300);
+    return () => window.clearTimeout(timer);
+  }, [live]);
+  const debounced = JSON.parse(settled) as { query: string; conditions: Metadata[] };
+  const metadataMode = activeConditionsOf(filters.conditions).length > 0;
+  const { environmentSlugs, folderEnvironment, secretPath, visibleKinds, activeCount } = scopeOf(
+    filters,
+    environments,
+    metadataMode
+  );
+
+  const pageScope = JSON.stringify([settled, environmentSlugs, secretPath, filters, perPage]);
+  const page = paging.scope === pageScope ? paging.page : 1;
+  const { results, loading, searchLimit } = useFolderSearch(
+    {
+      projectId,
+      query: debounced.query,
+      conditions: metadataMode ? debounced.conditions : [],
+      filters,
+      environmentSlugs,
+      secretPath,
+      visibleKinds,
+      page,
+      perPage
+    },
+    environments,
+    Boolean(query.trim() || filters.tags.length)
+  );
 
   return (
     <SheetBody className={styles.body}>
@@ -521,164 +824,37 @@ function SearchResults({
         onChange={(event) => setQuery(event.target.value)}
       />
       <div className={styles.layout}>
-        <Card
-          variant="framed"
-          size="sm"
-          title="Filters"
-          badges={activeFilters > 0 ? <Count>{activeFilters}</Count> : undefined}
-          action={
-            <Button variant="ghost" size="sm" onClick={resetFilters} disabled={!activeFilters}>
-              Reset
-            </Button>
-          }
-        >
-          <div className={styles.filterFields}>
-            {environments.length > 1 && (
-              <Field label="Environments">
-                <Combobox
-                  multiple
-                  label="Environments"
-                  placeholder="All environments"
-                  options={environments.map((environment) => ({
-                    value: environment.slug,
-                    label: environment.name
-                  }))}
-                  value={selectedEnvironments}
-                  onChange={(value) => {
-                    setSelectedEnvironments(value);
-                    setFolderPath("/");
-                  }}
-                  clearable
-                />
-              </Field>
-            )}
-            <Field
-              label="Folder"
-              description={
-                folderEnvironment ? undefined : "Select one environment to choose a folder."
-              }
-            >
-              <Combobox
-                key={folderEnvironment ?? "all"}
-                label="Folder"
-                placeholder="All folders"
-                options={folderOptions}
-                value={folderPath === "/" ? "" : folderPath}
-                onChange={(value) => setFolderPath(value || "/")}
-                disabled={!folderEnvironment}
-                clearable
-                clearLabel="Search all folders"
-                emptyText="No folders found."
-              />
-            </Field>
-            <Field label="Resource types" group>
-              <div className={styles.kinds}>
-                {KINDS.map((entry) => (
-                  <Checkbox
-                    key={entry.kind}
-                    label={entry.label}
-                    media={<KindIcon kind={entry.kind} />}
-                    checked={shown(entry.kind)}
-                    onChange={(checked) => toggleKind(entry.kind, checked)}
-                  />
-                ))}
-              </div>
-            </Field>
-            <Field label="Tags">
-              <Combobox
-                multiple
-                label="Tags"
-                placeholder="Any tag"
-                options={tagOptions.map((tag) => ({ value: tag.slug, label: tag.slug }))}
-                value={tags}
-                onChange={(value) => {
-                  setTags(value);
-                  if (value.length && !kinds.includes("secret")) setKinds([...kinds, "secret"]);
-                }}
-                emptyText="No tags found."
-                clearable
-              />
-            </Field>
-            <FieldSet
-              legend="Metadata"
-              legendVariant="label"
-              actions={
-                <ToggleGroup
-                  type="single"
-                  size="sm"
-                  aria-label="Match metadata conditions"
-                  value={match}
-                  onValueChange={(value) => value && setMatch(value as "all" | "any")}
-                >
-                  <ToggleGroupItem value="all">All</ToggleGroupItem>
-                  <ToggleGroupItem value="any">Any</ToggleGroupItem>
-                </ToggleGroup>
-              }
-            >
-              <div className={styles.conditions}>
-                {conditions.map((condition, index) => (
-                  <div key={condition.id} className={styles.condition}>
-                    {index > 0 && (
-                      <span className={styles.joiner}>{match === "all" ? "and" : "or"}</span>
-                    )}
-                    <div className={styles.conditionFields}>
-                      <Input
-                        mono
-                        aria-label={`Metadata key ${index + 1}`}
-                        placeholder="Key"
-                        value={condition.key}
-                        onChange={(event) =>
-                          updateCondition(condition.id, { key: event.target.value })
-                        }
-                      />
-                      <span className={styles.operator}>is</span>
-                      <Input
-                        mono
-                        aria-label={`Metadata value ${index + 1}`}
-                        placeholder="Value"
-                        value={condition.value}
-                        onChange={(event) =>
-                          updateCondition(condition.id, { value: event.target.value })
-                        }
-                      />
-                      {index > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          icon="x"
-                          iconOnly
-                          aria-label={`Remove condition ${index + 1}`}
-                          onClick={() =>
-                            setConditions((current) =>
-                              current.filter((entry) => entry.id !== condition.id)
-                            )
-                          }
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="plus"
-                    onClick={() => {
-                      nextCondition.current += 1;
-                      setConditions((current) => [
-                        ...current,
-                        { id: nextCondition.current, key: "", value: "" }
-                      ]);
-                    }}
-                  >
-                    Add condition
-                  </Button>
-                </span>
-              </div>
-            </FieldSet>
-          </div>
-        </Card>
-        <div className={styles.results}>{results}</div>
+        <SearchFilters
+          environments={environments}
+          tagOptions={tagOptions}
+          folderTree={folderTree}
+          folderEnvironment={folderEnvironment}
+          filters={filters}
+          activeCount={activeCount}
+          shown={(kind) => visibleKinds.includes(kind)}
+          onChange={updateFilters}
+        />
+        <div className={styles.results}>
+          <ResultsArea
+            results={results}
+            loading={loading}
+            metadataMode={metadataMode}
+            searchLimit={searchLimit}
+            table={{
+              orgId,
+              projectId,
+              environments,
+              page,
+              perPage,
+              onPageChange: (next) => setPaging({ scope: pageScope, page: next }),
+              onPerPageChange: setPerPage,
+              onSelect,
+              onFilterMetadata: (entry) =>
+                updateFilters({ conditions: withMetadataCondition(filters.conditions, entry) }),
+              readSecretValue
+            }}
+          />
+        </div>
       </div>
     </SheetBody>
   );

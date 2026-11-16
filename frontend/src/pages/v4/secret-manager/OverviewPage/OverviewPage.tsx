@@ -116,6 +116,7 @@ import {
   type Secret,
   setEnvironmentOptions
 } from "./secrets-model";
+import { SecretsActivationNudge, useSecretsActivationNudge } from "./secrets/activation-nudge";
 import {
   type PendingChange,
   pendingIn,
@@ -150,6 +151,7 @@ import {
   TruncatedLabel,
   useStableHandlers
 } from "./secrets/overview-cells";
+import { usePlanGateHost } from "./secrets/plan-gates";
 import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
@@ -157,7 +159,7 @@ import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
 import { FolderActions } from "./secrets/row-actions/folder-actions";
 import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
 import { ImportActions } from "./secrets/row-actions/import-actions";
-import { useFolderAccessPlanBlock, useManagedBlock } from "./secrets/row-actions/permissions";
+import { useManagedBlock } from "./secrets/row-actions/permissions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import { ShareSecretSheet } from "./secrets/row-actions/share-secret-sheet";
@@ -232,7 +234,6 @@ export const OverviewPage = () => {
   const projectQuery = adapter.useProject(projectId);
   const blockFor = useManagedBlock(projectId);
   const { permission } = useProjectPermission(projectId);
-  const folderAccessPlanBlock = useFolderAccessPlanBlock();
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
@@ -300,6 +301,14 @@ export const OverviewPage = () => {
     label: environment.name
   }));
   setEnvironmentOptions(projectEnvironments);
+  const planGates = usePlanGateHost(projectId, projectEnvironments.length);
+  const activationNudge = useSecretsActivationNudge();
+  const startRowAction = (next: RowAction) =>
+    next.kind === "folder" && next.action === "access"
+      ? planGates.guard("folderAccess", () => setRowAction(next))
+      : setRowAction(next);
+  const viewCommits = (environment: { value: string; label: string }) =>
+    planGates.guard("commits", () => setCommitEnvironment(environment));
   const environmentIds = search.environments.filter((slug) =>
     projectEnvironments.some((environment) => environment.value === slug)
   );
@@ -610,6 +619,14 @@ export const OverviewPage = () => {
                 .join(". ")
             }
           : resolved;
+        const existing = new Set(before.map((resource) => resource.id));
+        const createdSecrets = after.filter(
+          (resource): resource is Secret =>
+            resource.kind === "secret" &&
+            !existing.has(resource.id) &&
+            !isHeld(resource.environment, resource.path)
+        );
+        if (createdSecrets.length) activationNudge.checkActivation();
         if (!result.share) {
           toast({
             tone: result.tone ?? "ok",
@@ -618,16 +635,7 @@ export const OverviewPage = () => {
           });
           return true;
         }
-        const existing = new Set(before.map((resource) => resource.id));
-        pushCreatedToast(
-          result,
-          after.filter(
-            (resource): resource is Secret =>
-              resource.kind === "secret" &&
-              !existing.has(resource.id) &&
-              !isHeld(resource.environment, resource.path)
-          )
-        );
+        pushCreatedToast(result, createdSecrets);
         return true;
       },
       (error: unknown) => {
@@ -890,7 +898,7 @@ export const OverviewPage = () => {
           : [...new Set([...selected, ...keys])]
       ),
     report,
-    onAction: setRowAction,
+    onAction: startRowAction,
     onSavePending: (id) =>
       commitChanges(
         pendingHere.filter((change) => pendingTarget(change).id === id),
@@ -1430,7 +1438,11 @@ export const OverviewPage = () => {
       accessBlocks={addBlocks}
       single={single}
       copyBlock={pendingHere.length ? "Commit or discard pending changes first" : undefined}
-      onAdd={(kind) => openFlow(kind)}
+      onAdd={(kind) =>
+        kind === "dynamic" || kind === "rotation" || kind === "honey"
+          ? planGates.guard(kind, () => openFlow(kind))
+          : openFlow(kind)
+      }
       onUpload={() => setImportRequest({ step: "upload" })}
       onCopySecrets={() =>
         setCopyInvocation({
@@ -1541,7 +1553,7 @@ export const OverviewPage = () => {
                   ? undefined
                   : "You don't have permission to add environments"
               }
-              onClick={() => setAddingEnvironment(true)}
+              onClick={() => planGates.guard("environment", () => setAddingEnvironment(true))}
             >
               Add environment
             </Button>
@@ -1657,7 +1669,7 @@ export const OverviewPage = () => {
           <Icon name="download" />
           Download as .env
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setCommitEnvironment(environment)}>
+        <DropdownMenuItem onSelect={() => viewCommits(environment)}>
           <Icon icon={GitCommitIcon} />
           View commit history
         </DropdownMenuItem>
@@ -1686,7 +1698,8 @@ export const OverviewPage = () => {
     },
     report: (message) => toast({ tone: "bad", title: message })
   };
-  return valueStore.provider(
+  const provide = (children: ReactNode) => valueStore.provider(planGates.provider(children));
+  return provide(
     <BreadthContext value={holdBreadth}>
       <ReferenceSourceProvider value={referenceSource}>
         <div ref={root}>
@@ -1764,14 +1777,12 @@ export const OverviewPage = () => {
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
-                      accessBlock={
-                        blockFor(
-                          ProjectPermissionSub.SecretFolders,
-                          ProjectPermissionSecretFolderActions.ManageAccess,
-                          { environment: activeEnvironment, secretPath: path },
-                          "manage access to this folder"
-                        ) ?? folderAccessPlanBlock
-                      }
+                      accessBlock={blockFor(
+                        ProjectPermissionSub.SecretFolders,
+                        ProjectPermissionSecretFolderActions.ManageAccess,
+                        { environment: activeEnvironment, secretPath: path },
+                        "manage access to this folder"
+                      )}
                       onManageAccess={
                         single
                           ? () => {
@@ -1787,7 +1798,7 @@ export const OverviewPage = () => {
                                 createdAt: "",
                                 updatedAt: ""
                               };
-                              setRowAction({
+                              startRowAction({
                                 kind: "folder",
                                 action: "access",
                                 entry: folder,
@@ -1904,10 +1915,12 @@ export const OverviewPage = () => {
                                       variant="ghost"
                                       size="xs"
                                       icon="git"
-                                      onClick={() => setCommitEnvironment(visibleEnvironments[0])}
+                                      onClick={() => viewCommits(visibleEnvironments[0])}
                                     >
                                       <span className={styles.headLabel}>
-                                        {`${commitCount} commit${commitCount === 1 ? "" : "s"}`}
+                                        {planGates.plan && !planGates.plan.pitRecovery
+                                          ? "Commit history"
+                                          : `${commitCount} commit${commitCount === 1 ? "" : "s"}`}
                                       </span>
                                     </Button>
                                     <SecretSyncStatusBadge
@@ -2461,6 +2474,12 @@ export const OverviewPage = () => {
             }}
           />
           {breadth.fetchers}
+          <SecretsActivationNudge
+            projectId={projectId}
+            open={activationNudge.open}
+            onOpenChange={activationNudge.setOpen}
+            lifted={selected.length > 0 || (pendingHere.length > 0 && !reviewOpen)}
+          />
         </div>
       </ReferenceSourceProvider>
     </BreadthContext>
