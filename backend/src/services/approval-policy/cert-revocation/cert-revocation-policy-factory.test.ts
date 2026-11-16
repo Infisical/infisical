@@ -276,4 +276,14 @@ describe("certRevocationApprovalResourceFactory.filterActiveApprovers", () => {
       { tx: primaryDb }
     );
   });
+
+  it("notifies no approver when the request names no Application", async () => {
+    const { resource } = setup([], [{ actorUserId: "direct", actorGroupId: null, isActive: true }]);
+
+    await expect(
+      resource.filterActiveApprovers!({ projectId: "project", scopeId: null } as never, [
+        { type: ApproverType.User, id: "direct" }
+      ])
+    ).resolves.toEqual([]);
+  });
 });

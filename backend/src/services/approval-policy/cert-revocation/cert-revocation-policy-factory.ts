@@ -129,10 +129,11 @@ export const certRevocationApprovalResourceFactory = ({
   // member's removal from the Application, so only approvers who still hold a membership are told.
   filterActiveApprovers: async (request, approvers) => {
     if (!request.scopeId || approvers.length === 0) return [];
+    const primaryDb = approvalPolicyDAL.primaryNode();
     const memberships = await findActiveApplicationMemberships(
       membershipDAL,
       { projectId: request.projectId, applicationId: request.scopeId },
-      approvalPolicyDAL.primaryNode()
+      primaryDb
     );
     const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
     const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
@@ -142,9 +143,10 @@ export const certRevocationApprovalResourceFactory = ({
       .map((a) => a.id);
     const memberViaGroup = new Set<string>();
     if (usersToCheckViaGroups.length > 0 && memberGroupIds.size > 0) {
-      const links = await userGroupMembershipDAL.find({
-        $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] }
-      });
+      const links = await userGroupMembershipDAL.find(
+        { $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] } },
+        { tx: primaryDb }
+      );
       links.forEach((link) => memberViaGroup.add(link.userId));
     }
 

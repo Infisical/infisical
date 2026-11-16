@@ -7,7 +7,9 @@ const createInput = {
   scope: ApprovalPolicyScope.PkiApplication,
   scopeId: "6f1c1f1e-3a51-4b7e-9d7e-6c6d7f0b1a01",
   name: "prod-revocations",
-  steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "6f1c1f1e-3a51-4b7e-9d7e-6c6d7f0b1a09" }] }],
+  steps: [
+    { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "6f1c1f1e-3a51-4b7e-9d7e-6c6d7f0b1a09" }] }
+  ],
   conditions: [{ profileNames: ["prod-tls"] }]
 };
 
