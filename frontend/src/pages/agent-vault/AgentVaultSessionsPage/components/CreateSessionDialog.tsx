@@ -36,6 +36,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
@@ -142,6 +143,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     ProjectPermissionIdentityActions.Read,
     ProjectPermissionSub.Identity
   );
+  // The no-proxy notice reads the proxy list, so without Read on proxies it stays hidden.
+  const canReadProxies = permission.can(
+    ProjectPermissionAgentVaultProxyActions.Read,
+    ProjectPermissionSub.AgentVaultProxies
+  );
 
   const [platform, setPlatform] = useState<TPlatformTab>(() => SandboxPlatform.Modal);
   const [tab, setTab] = useState<TCreateSessionTab>(() =>
@@ -168,7 +174,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     { limit: 1 },
     // The dialog stays mounted on the sessions page, so it must not poll while closed. Its notice
     // links to the proxies page in a new tab, so check again on return.
-    { enabled: isOpen, refetchOnWindowFocus: "always" }
+    { enabled: isOpen && canReadProxies, refetchOnWindowFocus: "always" }
   );
   // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
   const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
