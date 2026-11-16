@@ -108,7 +108,8 @@ const UnusedAccessActorRowSchema = z.object({
           folderId: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderId),
           environment: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderEnvironment),
           secretPath: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderSecretPath),
-          role: z.nativeEnum(SecretFolderRole).describe(INSIGHTS.GET_UNUSED_ACCESS.folderRole)
+          role: z.nativeEnum(SecretFolderRole).describe(INSIGHTS.GET_UNUSED_ACCESS.folderRole),
+          isPermissionRecursive: z.boolean().describe(INSIGHTS.GET_UNUSED_ACCESS.folderIsPermissionRecursive)
         })
         .array()
         .describe(INSIGHTS.GET_UNUSED_ACCESS.folderAccess)

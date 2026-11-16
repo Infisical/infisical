@@ -27,6 +27,7 @@ export type TFolderAccess = {
   temporaryRange: string | null;
   temporaryAccessStartTime: string | null;
   temporaryAccessEndTime: string | null;
+  isPermissionRecursive: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,6 +53,7 @@ export type TFolderAccessUser = {
   lastName: string | null;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
+  inheritedFolderRBACAccess: TFolderAccess | null;
 };
 
 export type TFolderAccessIdentity = {
@@ -59,12 +61,16 @@ export type TFolderAccessIdentity = {
   name: string;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
+  inheritedFolderRBACAccess: TFolderAccess | null;
 };
 
 // `users` have access on the folder and membership.roles holds only the roles granting it (empty
 // when the access comes from the folder grant alone). `usersWithoutAccess` have none, their
 // membership.roles holds every role, and folderRBACAccess is always null. search/offset/limit
 // apply to each group independently.
+// inheritedFolderRBACAccess is the active recursive grant on `/` of the same environment, null on
+// the root sheet and in the without-access lists; when folderRBACAccess is also set, that exact
+// grant is the effective role at this folder.
 export type TListFolderAccessUsersResponse = {
   users: TFolderAccessUser[];
   usersWithoutAccess: TFolderAccessUser[];
@@ -110,12 +116,14 @@ export type TCreateUserFolderAccessDTO = TFolderAccessTargetDTO & {
   userId: string;
   permission: SecretFolderRole;
   type?: TFolderGrantType;
+  isPermissionRecursive?: boolean;
 };
 
 export type TUpdateUserFolderAccessDTO = TFolderAccessTargetDTO & {
   userId: string;
   permission?: SecretFolderRole;
   type?: TFolderGrantType;
+  isPermissionRecursive?: boolean;
 };
 
 export type TDeleteUserFolderAccessDTO = TFolderAccessTargetDTO & {
@@ -126,12 +134,14 @@ export type TCreateIdentityFolderAccessDTO = TFolderAccessTargetDTO & {
   identityId: string;
   permission: SecretFolderRole;
   type?: TFolderGrantType;
+  isPermissionRecursive?: boolean;
 };
 
 export type TUpdateIdentityFolderAccessDTO = TFolderAccessTargetDTO & {
   identityId: string;
   permission?: SecretFolderRole;
   type?: TFolderGrantType;
+  isPermissionRecursive?: boolean;
 };
 
 export type TDeleteIdentityFolderAccessDTO = TFolderAccessTargetDTO & {

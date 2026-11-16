@@ -74,6 +74,7 @@ export type TUnusedAccessPaths = {
     environment: string;
     secretPath: string;
     role: SecretFolderRole;
+    isPermissionRecursive: boolean;
   }[];
 };
 

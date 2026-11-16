@@ -21,6 +21,7 @@ export type TResolvedFolder = {
   id: string;
   path: string;
   environmentSlug: string;
+  envId: string;
 };
 
 export type TCreateFolderGrantDTO = {
@@ -32,6 +33,7 @@ export type TCreateFolderGrantDTO = {
   role: SecretFolderRole;
   // undefined means a permanent grant
   type?: TFolderGrantTypeInput;
+  isPermissionRecursive?: boolean;
 };
 
 export type TUpdateFolderGrantDTO = {
@@ -44,6 +46,7 @@ export type TUpdateFolderGrantDTO = {
   // undefined leaves the temporal state unchanged; { isTemporary: false } makes the grant
   // permanent; a temporary payload restarts the window from its start time
   type?: TFolderGrantTypeInput;
+  isPermissionRecursive?: boolean;
 };
 
 export type TDeleteFolderGrantDTO = {
@@ -82,6 +85,7 @@ export type TFolderGrant = {
   temporaryRange: string | null;
   temporaryAccessStartTime: Date | null;
   temporaryAccessEndTime: Date | null;
+  isPermissionRecursive: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -144,4 +148,5 @@ export type TFolderAccessEntry<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   grant: TAdditionalPrivileges | null;
+  inheritedGrant: TAdditionalPrivileges | null;
 };

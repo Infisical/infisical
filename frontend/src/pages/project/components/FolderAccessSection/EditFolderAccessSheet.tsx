@@ -20,6 +20,7 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { ApplyToSubfoldersToggle } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/ApplyToSubfoldersToggle";
 import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   expiryOf,
@@ -50,6 +51,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const [isTemporary, setIsTemporary] = useState(access.isTemporary);
   const [range, setRange] = useState(access.temporaryRange ?? DEFAULT_TEMPORARY_RANGE);
   const [rangeTouched, setRangeTouched] = useState(false);
+  const [isRecursive, setIsRecursive] = useState(access.isPermissionRecursive);
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
@@ -58,9 +60,13 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const isRangeValid = !isTemporary || isValidTemporaryRange(range);
   const tierChanged = tier !== access.permission;
   const temporalChanged = isTemporary !== access.isTemporary || (isTemporary && rangeTouched);
+  const isRoot = access.secretPath === "/";
+  const recursiveChanged = isRoot && isRecursive !== access.isPermissionRecursive;
   const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
   const isSaveDisabled =
-    (!tierChanged && !temporalChanged) || !isRangeValid || isFullAccessTemporary;
+    (!tierChanged && !temporalChanged && !recursiveChanged) ||
+    !isRangeValid ||
+    isFullAccessTemporary;
 
   let temporaryLabel = "No expiration";
   if (isTemporary) {
@@ -88,7 +94,8 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       environmentSlug: access.environment,
       secretPath: access.secretPath,
       permission: tierChanged ? tier : undefined,
-      type
+      type,
+      isPermissionRecursive: recursiveChanged ? isRecursive : undefined
     };
 
     if (actor.type === "user") {
@@ -144,6 +151,10 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
             onRemove={() => setIsTemporary(false)}
           />
         </div>
+
+        {isRoot && (
+          <ApplyToSubfoldersToggle checked={isRecursive} onCheckedChange={setIsRecursive} />
+        )}
       </div>
 
       <SheetFooter className="justify-end border-t">
