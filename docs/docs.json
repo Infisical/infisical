@@ -1096,6 +1096,7 @@
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/imperva",
+                  "integrations/app-connections/incident-io",
                   "integrations/app-connections/jenkins",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
@@ -2136,6 +2137,18 @@
                           "api-reference/endpoints/app-connections/humanitec/create",
                           "api-reference/endpoints/app-connections/humanitec/update",
                           "api-reference/endpoints/app-connections/humanitec/delete"
+                        ]
+                      },
+                      {
+                        "group": "incident.io",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/incident-io/list",
+                          "api-reference/endpoints/app-connections/incident-io/available",
+                          "api-reference/endpoints/app-connections/incident-io/get-by-id",
+                          "api-reference/endpoints/app-connections/incident-io/get-by-name",
+                          "api-reference/endpoints/app-connections/incident-io/create",
+                          "api-reference/endpoints/app-connections/incident-io/update",
+                          "api-reference/endpoints/app-connections/incident-io/delete"
                         ]
                       },
                       {

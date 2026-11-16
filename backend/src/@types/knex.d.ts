@@ -107,6 +107,9 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditionContexts,
+  TApprovalPolicyAutoApprovalConditionContextsInsert,
+  TApprovalPolicyAutoApprovalConditionContextsUpdate,
   TApprovalPolicyAutoApprovalConditions,
   TApprovalPolicyAutoApprovalConditionsInsert,
   TApprovalPolicyAutoApprovalConditionsUpdate,
@@ -2064,6 +2067,11 @@ declare module "knex/types/tables" {
       TApprovalPolicyAutoApprovalConditions,
       TApprovalPolicyAutoApprovalConditionsInsert,
       TApprovalPolicyAutoApprovalConditionsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditionContexts]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditionContexts,
+      TApprovalPolicyAutoApprovalConditionContextsInsert,
+      TApprovalPolicyAutoApprovalConditionContextsUpdate
     >;
     [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
       TApprovalPolicySecretEnvironments,

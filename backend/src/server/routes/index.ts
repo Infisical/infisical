@@ -247,6 +247,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { aiServiceFactory } from "@app/services/ai/ai-service";
 import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
 import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -1831,8 +1832,7 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL,
-    usageMeteringService
+    projectMembershipDAL
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -2149,7 +2149,6 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2252,6 +2251,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -4131,10 +4131,19 @@ export const registerRoutes = async (
     }) as TApprovalResourceRegistry[ApprovalPolicyType]
   };
 
+  const aiService = aiServiceFactory({
+    orgDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsService
+  });
+
   const autoApprovalService = autoApprovalServiceFactory({
     approvalPolicyAutoApprovalDAL,
     appConnectionDAL,
     appConnectionService,
+    aiService,
     kmsService,
     gatewayV2Service,
     gatewayPoolService
@@ -4938,6 +4947,8 @@ export const registerRoutes = async (
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,
@@ -5039,6 +5050,7 @@ export const registerRoutes = async (
     approvalPolicy: approvalPolicyService,
     delegatedApproval: delegatedApprovalService,
     delegatedApprovalCallback: delegatedApprovalCallbackService,
+    ai: aiService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });
