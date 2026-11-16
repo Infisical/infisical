@@ -186,7 +186,7 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       { raisedByAutoRenewal: false },
       false
     ],
-    ["automatic renewal before the flag existed", { requesterId: null, machineIdentityId: null }, {}, true],
+    ["no requester before the flag existed", { requesterId: null, machineIdentityId: null }, {}, false],
     ["a user before the flag existed", { requesterId: "user-1", machineIdentityId: null }, {}, false]
   ])("records a rejected renewal raised by %s", async (_by, requester, origin, raisedByAutoRenewal) => {
     const { deps, resource } = setup(() => Promise.resolve());
