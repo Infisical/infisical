@@ -50,55 +50,57 @@ export const SessionMetadataFields = ({ idPrefix }: Props) => {
       <FieldLabel>
         Metadata <span className="text-muted">(optional)</span>
       </FieldLabel>
-      <FieldContent className="gap-2">
-        {fields.map((row, index) => (
-          <div
-            key={row.id}
-            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2"
-          >
-            <Controller
-              control={control}
-              name={`metadata.${index}.key`}
-              render={({ field, fieldState }) => (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <Input
-                    {...field}
-                    id={`${idPrefix}-metadata-${index}-key`}
-                    aria-label={`Metadata key ${index + 1}`}
-                    placeholder="runId"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </div>
-              )}
-            />
-            <Controller
-              control={control}
-              name={`metadata.${index}.value`}
-              render={({ field, fieldState }) => (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <Input
-                    {...field}
-                    id={`${idPrefix}-metadata-${index}-value`}
-                    aria-label={`Metadata value ${index + 1}`}
-                    placeholder="8812"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </div>
-              )}
-            />
-            <IconButton
-              type="button"
-              variant="ghost"
-              aria-label={`Remove metadata row ${index + 1}`}
-              onClick={() => remove(index)}
+      <FieldContent>
+        <div className="flex flex-col gap-2">
+          {fields.map((row, index) => (
+            <div
+              key={row.id}
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2"
             >
-              <Trash2Icon />
-            </IconButton>
-          </div>
-        ))}
-        {canAddRow && addRowButton}
+              <Controller
+                control={control}
+                name={`metadata.${index}.key`}
+                render={({ field, fieldState }) => (
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Input
+                      {...field}
+                      id={`${idPrefix}-metadata-${index}-key`}
+                      aria-label={`Metadata key ${index + 1}`}
+                      placeholder="runId"
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </div>
+                )}
+              />
+              <Controller
+                control={control}
+                name={`metadata.${index}.value`}
+                render={({ field, fieldState }) => (
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Input
+                      {...field}
+                      id={`${idPrefix}-metadata-${index}-value`}
+                      aria-label={`Metadata value ${index + 1}`}
+                      placeholder="8812"
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </div>
+                )}
+              />
+              <IconButton
+                type="button"
+                variant="ghost"
+                aria-label={`Remove metadata row ${index + 1}`}
+                onClick={() => remove(index)}
+              >
+                <Trash2Icon />
+              </IconButton>
+            </div>
+          ))}
+          {canAddRow && addRowButton}
+        </div>
         <FieldDescription>
           Key and value pairs that say who or what this session is for, such as a run ID or ticket.
         </FieldDescription>

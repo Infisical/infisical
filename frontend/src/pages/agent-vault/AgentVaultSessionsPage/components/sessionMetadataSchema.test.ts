@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isSameSessionMetadata,
   metadataRecordToRows,
   metadataRowsToRecord,
   SESSION_METADATA_MAX_KEYS,
@@ -61,5 +62,15 @@ describe("metadata conversion", () => {
   it("round-trips a record", () => {
     const metadata = { runId: "8812", ticket: "AGE2-320" };
     expect(metadataRowsToRecord(metadataRecordToRows(metadata))).toEqual(metadata);
+  });
+});
+
+describe("isSameSessionMetadata", () => {
+  it("ignores key order and spots any added, removed or changed entry", () => {
+    expect(isSameSessionMetadata({ a: "1", b: "2" }, { b: "2", a: "1" })).toBe(true);
+    expect(isSameSessionMetadata({ a: "1" }, { a: "1", b: "2" })).toBe(false);
+    expect(isSameSessionMetadata({ a: "1", b: "2" }, { a: "1" })).toBe(false);
+    expect(isSameSessionMetadata({ a: "1" }, { a: "2" })).toBe(false);
+    expect(isSameSessionMetadata({}, {})).toBe(true);
   });
 });

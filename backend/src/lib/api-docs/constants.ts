@@ -5337,7 +5337,7 @@ export const AGENT_VAULT = {
       "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. Leave it out to keep the current label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
     metadata:
       "Key/value pairs that describe the session, such as a run ID, a ticket or the end user an agent works for, so whoever reads the session later can tell what it was for. Up to 20 entries. Each key is 1 to 255 characters and each value up to 1020, without line breaks, tabs, or invisible characters. Keys and values are trimmed, and each key can be used once.",
-    metadataRead: "The session's metadata, as key/value pairs in the order they were set. Empty when it has none.",
+    metadataRead: "The session's metadata, as key/value pairs. Empty when it has none.",
     updateMetadata:
       "The session's new metadata. It replaces every existing entry, so send the full set you want to keep, or an empty object to remove them all. Leave it out to keep the current metadata. Up to 20 entries, with the same rules as at creation. You can't change the metadata once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:

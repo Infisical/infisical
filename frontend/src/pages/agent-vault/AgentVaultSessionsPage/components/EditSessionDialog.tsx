@@ -26,6 +26,7 @@ import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { sessionLabelSchema } from "./sessionLabelSchema";
 import { SessionMetadataFields } from "./SessionMetadataFields";
 import {
+  isSameSessionMetadata,
   metadataRecordToRows,
   metadataRowsToRecord,
   sessionMetadataRowsSchema
@@ -64,11 +65,22 @@ export const EditSessionDialog = ({ session, onOpenChange }: Props) => {
   const onSubmit = async ({ label, metadata }: FormData) => {
     if (!session) return;
 
+    // Only what the user changed is sent, so saving a label doesn't put back metadata a script changed since the
+    // dialog opened.
+    const nextLabel = label || null;
+    const nextMetadata = metadataRowsToRecord(metadata);
+    const labelChanged = nextLabel !== (session.label ?? null);
+    const metadataChanged = !isSameSessionMetadata(nextMetadata, session.metadata);
+    if (!labelChanged && !metadataChanged) {
+      onOpenChange(false);
+      return;
+    }
+
     try {
       await updateSession.mutateAsync({
         sessionId: session.id,
-        label: label || null,
-        metadata: metadataRowsToRecord(metadata)
+        label: labelChanged ? nextLabel : undefined,
+        metadata: metadataChanged ? nextMetadata : undefined
       });
       createNotification({ text: "Session updated", type: "success" });
       onOpenChange(false);

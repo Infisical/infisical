@@ -78,3 +78,8 @@ export const metadataRowsToRecord = (rows: TSessionMetadataRow[]): Record<string
 
 export const metadataRecordToRows = (metadata: Record<string, string>): TSessionMetadataRow[] =>
   Object.entries(metadata).map(([key, value]) => ({ key, value }));
+
+export const isSameSessionMetadata = (a: Record<string, string>, b: Record<string, string>) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => b[key] === a[key]);
+};
