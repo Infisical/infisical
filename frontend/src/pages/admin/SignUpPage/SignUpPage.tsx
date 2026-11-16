@@ -23,6 +23,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import { AdminSignUpFormData } from "./adminSignUpSchema";
@@ -56,6 +57,7 @@ export const SignUpPage = () => {
   const [activeStep, setActiveStep] = useState(BootstrapStep.Account);
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
+  const [passwordError, setPasswordError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const {
@@ -72,6 +74,7 @@ export const SignUpPage = () => {
   const handleAccountContinue = (values: AdminSignUpFormData) => {
     setAccountData(values);
     setFormError(undefined);
+    setPasswordError(undefined);
     setActiveStep(BootstrapStep.Organization);
   };
 
@@ -98,6 +101,12 @@ export const SignUpPage = () => {
       await router.invalidate();
       await navigate({ to: "/admin/setup" });
     } catch (error) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (breachedPasswordMessage) {
+        setPasswordError(breachedPasswordMessage);
+        setActiveStep(BootstrapStep.Account);
+        return;
+      }
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message
         : undefined;
@@ -121,7 +130,11 @@ export const SignUpPage = () => {
         </CardHeader>
         <CardContent>
           {activeStep === BootstrapStep.Account ? (
-            <AdminSignUpForm defaultValues={accountData} onContinue={handleAccountContinue} />
+            <AdminSignUpForm
+              defaultValues={accountData}
+              passwordError={passwordError}
+              onContinue={handleAccountContinue}
+            />
           ) : (
             <form className="flex flex-col gap-6" noValidate onSubmit={handleOrganizationSubmit}>
               {formError && (

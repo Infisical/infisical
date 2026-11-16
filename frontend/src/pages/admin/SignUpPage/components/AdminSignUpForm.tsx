@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
@@ -25,15 +25,21 @@ import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSche
 type AdminSignUpFormProps = {
   defaultValues?: AdminSignUpFormData;
   onContinue: (values: AdminSignUpFormData) => void;
+  passwordError?: string;
 };
 
-export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormProps) => {
+export const AdminSignUpForm = ({
+  defaultValues,
+  onContinue,
+  passwordError
+}: AdminSignUpFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
   const {
     formState: { errors, isSubmitting, submitCount },
     handleSubmit,
     register,
+    setError,
     watch
   } = useForm<AdminSignUpFormData>({
     resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
@@ -47,6 +53,10 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
       confirmPassword: ""
     }
   });
+
+  useEffect(() => {
+    if (passwordError) setError("password", { type: "server", message: passwordError });
+  }, [passwordError, setError]);
 
   const password = watch("password");
   const confirmPassword = watch("confirmPassword");
@@ -115,7 +125,9 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
           policy={config.passwordPolicy}
           placeholder="••••••••"
           registration={register("password")}
-          error={showDangerState ? errors.password : undefined}
+          error={
+            showDangerState || errors.password?.type === "server" ? errors.password : undefined
+          }
           submitCount={submitCount}
         />
         <AnimatedCollapse
