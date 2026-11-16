@@ -34,7 +34,6 @@ services:
     autoDeploy: false
     dockerfilePath: ./Dockerfile.standalone-infisical
     dockerContext: .
-    dockerCommand: sh -c 'export SITE_URL="${SITE_URL:-$RENDER_EXTERNAL_URL}"; exec ./standalone-entrypoint.sh'
     healthCheckPath: /api/status
     envVars:
       - key: DB_CONNECTION_URI
