@@ -25,6 +25,7 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onCommentChange?: (comment: string) => void;
   onBatchSave?: () => void;
@@ -38,6 +39,7 @@ export const SecretCommentForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
   onCommentChange,
   onBatchSave,
@@ -112,6 +114,7 @@ export const SecretCommentForm = ({
         text: "Successfully updated secret"
       });
     }
+    onSaved?.(!data.comment);
     onClose?.();
   };
 

@@ -16,7 +16,7 @@ import {
 type TCheckRunParams = {
   name?: string;
   conclusion?: string;
-  output: { annotations: { message: string }[] };
+  output: { annotations: { message: string; path?: string; annotation_level?: string }[] };
   actions?: { identifier: string }[];
 };
 
@@ -142,6 +142,53 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.offerSkipActions).toBe(true);
   });
 
+  test("passes as neutral and lists the files it couldn't scan", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [],
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      oversizedFiles: Array.from({ length: 12 }, (_, index) => ({
+        commitSha: "a".repeat(40),
+        filename: `gen-${index}.go`
+      })),
+      truncatedCommitShas: ["b".repeat(40)]
+    });
+
+    expect(result.conclusion).toBe("neutral");
+    expect(result.title).toBe("No secrets found, 12 file(s) not scanned");
+    expect(result.summary).toContain("\n\n> [!WARNING]\n> ");
+    expect(result.summary).toContain("> 1 commit(s) change more than 3,000 files");
+    expect(result.summary).toContain("didn't scan 12 file(s) larger than 10 MB");
+    expect(result.summary).toContain("> aaaaaaa gen-9.go\n> ```");
+    expect(result.summary).not.toContain("gen-10.go");
+    expect(result.summary).toContain("> 2 more file(s) were not scanned.");
+    expect(result.oversizedFiles).toHaveLength(12);
+  });
+
+  test("says the scan is incomplete when only commits were left out", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [],
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      truncatedCommitShas: ["b".repeat(40)]
+    });
+
+    expect(result.conclusion).toBe("neutral");
+    expect(result.title).toBe("Scan incomplete");
+  });
+
+  test("still fails on findings when files couldn't be scanned", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [makeFinding(0)],
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      oversizedFiles: [{ commitSha: "a".repeat(40), filename: "gen.go" }]
+    });
+
+    expect(result.conclusion).toBe("failure");
+    expect(result.summary).toContain("aaaaaaa gen.go");
+  });
+
   const makeLongPathFindings = (count: number, pathLength: number) =>
     Array.from({ length: count }, (_, index) => {
       const finding = makeFinding(index);
@@ -221,6 +268,26 @@ describe("completePullRequestCheckRun", () => {
     expect(second.actions).toBeUndefined();
     expect(JSON.stringify(checksUpdate.mock.calls)).not.toContain(SECRET_VALUE);
   });
+
+  test("marks each file it couldn't scan with a warning annotation", async () => {
+    await completePullRequestCheckRun({
+      installationId: "1",
+      repositoryFullName: "acme/api",
+      checkRunId: 99,
+      result: getPullRequestScanCheckRunResult({
+        findings: [makeFinding(0)],
+        scannedCommitCount: 1,
+        totalCommitCount: 1,
+        oversizedFiles: [{ commitSha: "a".repeat(40), filename: "data/app-logs.log" }]
+      })
+    });
+
+    const { annotations } = checksUpdate.mock.calls[0][0].output;
+
+    expect(annotations.map((annotation) => annotation.annotation_level)).toEqual(["failure", "warning"]);
+    expect(annotations[1]).toMatchObject({ path: "data/app-logs.log" });
+    expect(annotations[1].message).toContain("commit aaaaaaa");
+  });
 });
 
 describe("scanGitHubCommitsAndGetFindings", () => {
@@ -273,7 +340,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
       repositoryFullName: "acme/api",
       resourceName: "acme/api",
       commits: [commit],
-      requireCompleteCommits: true
+      failOnUnreadableFiles: true
     });
 
     expect(getCommit).toHaveBeenCalledTimes(3);
@@ -294,7 +361,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
         { index: 2, finding: { RuleID: "rule", StartLine: 2, EndLine: 2, StartColumn: 2, EndColumn: 4 } }
       ]);
 
-    const findings = await scanGitHubCommitsAndGetFindings({
+    const { findings } = await scanGitHubCommitsAndGetFindings({
       octokit: asOctokit(getCommit),
       repositoryFullName: "acme/api",
       resourceName: "acme/api",
@@ -306,25 +373,24 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:1`);
   });
 
-  test("fails a scan that requires every file when a commit has more files than GitHub lists", async () => {
+  test("scans the files GitHub lists for a commit with more, and returns the commit", async () => {
     let page = 0;
     const getCommit = vi.fn().mockImplementation(() => {
       page += 1;
       return Promise.resolve({ data: { files: makeFiles(100, (page - 1) * 100) } });
     });
 
-    await expect(
-      scanGitHubCommitsAndGetFindings({
-        octokit: asOctokit(getCommit),
-        repositoryFullName: "acme/api",
-        resourceName: "acme/api",
-        commits: [commit],
-        requireCompleteCommits: true
-      })
-    ).rejects.toThrow("changes more than 3,000 files");
+    const { truncatedCommitShas } = await scanGitHubCommitsAndGetFindings({
+      octokit: asOctokit(getCommit),
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [commit],
+      failOnUnreadableFiles: true
+    });
 
     expect(getCommit).toHaveBeenCalledTimes(30);
-    expect(scannedContents()).toEqual([]);
+    expect(scannedContents()).toHaveLength(3000);
+    expect(truncatedCommitShas).toEqual([commit.sha]);
   });
 
   test("scans every commit's files in one scan and maps each finding back to its file", async () => {
@@ -343,7 +409,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
       { index: 3, finding: { RuleID: "rule", StartLine: 3, EndLine: 3, StartColumn: 2, EndColumn: 4 } }
     ]);
 
-    const findings = await scanGitHubCommitsAndGetFindings({
+    const { findings } = await scanGitHubCommitsAndGetFindings({
       octokit: asOctokit(getCommit),
       repositoryFullName: "acme/api",
       resourceName: "acme/api",
@@ -442,18 +508,37 @@ describe("scanGitHubCommitsAndGetFindings", () => {
         repositoryFullName: "acme/api",
         resourceName: "acme/api",
         commits: [commit],
-        requireCompleteCommits: true
+        failOnUnreadableFiles: true
       });
 
       expect(getContent).not.toHaveBeenCalled();
       expect(scannedContents()).toEqual([]);
     });
 
-    test("fails a scan that requires every file when the file is too large to fetch, and skips it otherwise", async () => {
+    test("skips a file too large to fetch and returns it", async () => {
       const getContent = vi
         .fn()
-        .mockResolvedValue({ data: { type: "file", size: 50_000_000, sha: "blob", content: "" } });
-      const files = [{ status: "added", filename: "huge.txt", additions: 1 }];
+        .mockResolvedValue({ data: { type: "file", size: 60_000_000, sha: "blob", content: "" } });
+
+      const result = await scanGitHubCommitsAndGetFindings({
+        octokit: asOctokitWithContents([{ status: "added", filename: "huge.txt", additions: 1 }], getContent),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit],
+        failOnUnreadableFiles: true
+      });
+
+      expect(result).toEqual({
+        findings: [],
+        oversizedFiles: [{ commitSha: commit.sha, filename: "huge.txt" }],
+        truncatedCommitShas: []
+      });
+      expect(scannedContents()).toEqual([]);
+    });
+
+    test("fails a scan that requires every file when the file's contents can't be read, and skips it otherwise", async () => {
+      const getContent = vi.fn().mockRejectedValue(new Error("Bad gateway"));
+      const files = [{ status: "added", filename: "big.txt", additions: 1 }];
 
       await expect(
         scanGitHubCommitsAndGetFindings({
@@ -461,9 +546,9 @@ describe("scanGitHubCommitsAndGetFindings", () => {
           repositoryFullName: "acme/api",
           resourceName: "acme/api",
           commits: [commit],
-          requireCompleteCommits: true
+          failOnUnreadableFiles: true
         })
-      ).rejects.toThrow("huge.txt is too large for GitHub to include, and the file couldn't be scanned in full");
+      ).rejects.toThrow("big.txt is too large for GitHub to include, and the file's contents couldn't be read");
 
       await expect(
         scanGitHubCommitsAndGetFindings({
@@ -472,7 +557,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
           resourceName: "acme/api",
           commits: [commit]
         })
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ findings: [], oversizedFiles: [], truncatedCommitShas: [] });
 
       expect(scannedContents()).toEqual([]);
     });

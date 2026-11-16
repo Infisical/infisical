@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TemporaryPermissionMode } from "@app/db/schemas";
+import { isGlobSubsetOfGlob, literalPrefix } from "@app/lib/casl/glob-subset";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -35,6 +36,25 @@ export const getSecretAccessRequestData = ({ requestData }: { requestData?: unkn
   }
   return data;
 };
+
+// Same containment check that review applies, so any request created here can be reviewed. picomatch would read
+// the requested glob as a literal path and let "/apps/**" through a "/apps/*" policy.
+export const resolveSecretAccessPolicyForPath = <T extends { secretPath: string; createdAt: Date; id: string }>(
+  policies: T[],
+  secretPath: string
+) =>
+  policies
+    .filter((policy) => isGlobSubsetOfGlob(policy.secretPath, secretPath))
+    .sort(
+      (a, b) =>
+        Number(b.secretPath === secretPath) - Number(a.secretPath === secretPath) ||
+        literalPrefix(b.secretPath).length - literalPrefix(a.secretPath).length ||
+        Number(isGlobSubsetOfGlob(a.secretPath, b.secretPath)) -
+          Number(isGlobSubsetOfGlob(b.secretPath, a.secretPath)) ||
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id)
+    )
+    .shift() ?? null;
 
 // jsonb does not preserve object key order, so a stored permission set has to be
 // compared against the incoming one on a canonical form rather than raw JSON text.

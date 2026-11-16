@@ -31,6 +31,7 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onTagsChange?: (tags: { id: string; slug: string }[]) => void;
   onBatchSave?: () => void;
@@ -44,6 +45,7 @@ export const SecretTagForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
   onTagsChange,
   onBatchSave,
@@ -139,6 +141,7 @@ export const SecretTagForm = ({
         text: "Successfully updated tags"
       });
     }
+    onSaved?.(data.tags.length === 0);
     onClose?.();
   };
 

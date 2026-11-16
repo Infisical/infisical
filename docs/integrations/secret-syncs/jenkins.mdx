@@ -1,0 +1,164 @@
+---
+title: "Jenkins sync"
+sidebarTitle: "Jenkins"
+description: "Learn how to configure a Jenkins sync for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/jenkins/form-fields.mdx";
+
+A Jenkins Secret Sync pushes secrets from Infisical into Jenkins credentials, where your pipelines read them with the `withCredentials` step. Each Infisical secret becomes a Secret text credential whose ID is the secret's name, unless you customize key names to add a prefix or suffix.
+
+If you'd rather have pipelines fetch secrets from Infisical when they run, without storing copies in Jenkins, use the [Jenkins plugin](/integrations/cicd/jenkins) instead.
+
+<Note>
+    The Jenkins Secret Sync requires a [Jenkins app connection](/integrations/app-connections/jenkins). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A Jenkins user with the following permissions:
+  - Overall/Read
+  - Credentials/View, Credentials/Create, Credentials/Update, and Credentials/Delete, either across Jenkins or on the folder you plan to sync to
+  - Job/Read on the folder you plan to sync to and on every folder that contains it
+- An [API token](/integrations/app-connections/jenkins#step-1-generate-a-jenkins-api-token) for that user
+- The [Credentials Binding](https://plugins.jenkins.io/credentials-binding/) plugin, which adds the `withCredentials` step (Jenkins installs it with the suggested plugins)
+- To sync to a folder, the [Folders](https://plugins.jenkins.io/cloudbees-folder/) plugin (also installed with the suggested plugins)
+- If your Jenkins instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
+
+## Step 1: Set up the sync in Infisical
+
+<Tip>
+    To create the sync using the API, use the Jenkins [Create](/api-reference/endpoints/secret-syncs/jenkins/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Jenkins** sync.
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+        - **Include secrets from all subfolders**: Also syncs the secrets in every folder beneath the path
+
+        <Note>
+            Jenkins credential IDs can only contain letters, numbers, underscores (`_`), hyphens (`-`), and periods (`.`). If a secret's name contains any other character, such as a space or a slash added when you customize key names, the sync fails with an error that names the secret.
+        </Note>
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Jenkins app connection the sync will use, then choose where the credentials go in Jenkins.
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Jenkins Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Jenkins**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/jenkins#step-2-create-the-app-connection) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Jenkins Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **Scope**: **Global** writes the credentials to Jenkins's global credentials, which every job can use; **Folder** writes them to one folder's credentials, which only the jobs in that folder and its subfolders can use
+        - **Folder**: The folder that receives the credentials (only shown when **Scope** is **Folder**)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, select **Overwrite Destination Secrets**, then select **Continue**.
+
+        <Note>
+            Jenkins never returns a credential's secret through its API, so this sync can't import existing Jenkins credentials into Infisical. **Overwrite Destination Secrets** is the only option.
+        </Note>
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
+
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates credentials in Jenkins but never deletes them; enable this if you manage some Secret text credentials outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Jenkins automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every credential ID, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            A Jenkins credentials store also holds credentials that people and other tools create, so a sync can change Secret text credentials that were created outside Infisical. If you don't customize key names, the sync treats every Secret text credential in the store as one it manages:
+
+            - If a Secret text credential has the same ID as an Infisical secret, the sync overwrites the credential's secret
+            - If **Prevent secret deletion** is off, every Secret text credential that isn't in Infisical is deleted
+
+            With customized key names, the sync writes only IDs with your prefix or suffix, and deletes only Secret text credentials whose IDs match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Jenkins Sync configuration, then select **Create Sync**.
+
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to Jenkins right away.
+        </Check>
+    </Step>
+</Steps>
+
+## Step 2: Use the credentials in a pipeline
+
+Each synced secret appears in Jenkins as a Secret text credential with the description `Managed by Infisical`. To read one in a pipeline, bind it to an environment variable with the `withCredentials` step:
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Deploy') {
+            steps {
+                withCredentials([string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')]) {
+                    sh './deploy.sh'
+                }
+            }
+        }
+    }
+}
+```
+
+Replace `DB_PASSWORD` in `credentialsId` with the credential's ID. Inside the block, the secret is available as the environment variable you name in `variable`.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Does the sync change credentials that aren't Secret text?">
+        No. The sync never updates or deletes credentials of other types, such as usernames with passwords or SSH keys. If one of them has the same ID as a secret the sync writes, the sync fails with an error that names the secret. To fix the error, rename the secret in Infisical or customize key names.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Jenkins" icon="plug" href="/integrations/app-connections/jenkins">
+        Create an organization-level Jenkins connection to share across projects.
+    </Card>
+    <Card title="Secret syncs" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        Learn how secret syncs work and how to manage them.
+    </Card>
+</CardGroup>

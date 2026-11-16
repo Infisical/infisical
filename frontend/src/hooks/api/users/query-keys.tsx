@@ -1,6 +1,7 @@
 export const userKeys = {
   getUser: ["user"] as const,
   getMyDuplicateAccount: ["user-duplicate-account"] as const,
+  myDeletionEligibility: ["user-deletion-eligibility"] as const,
   getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
   userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,

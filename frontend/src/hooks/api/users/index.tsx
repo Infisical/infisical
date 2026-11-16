@@ -14,6 +14,7 @@ export {
   useDeleteMe,
   useDeleteOrgMembership,
   useEnrollMfa,
+  useGetMyDeletionEligibility,
   useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,

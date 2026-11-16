@@ -32,6 +32,7 @@ import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { JenkinsSyncFields } from "./JenkinsSyncFields";
 import { KeeperSyncFields } from "./KeeperSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
@@ -166,6 +167,8 @@ export const SecretSyncDestinationFields = () => {
       return <KeeperSyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

@@ -156,7 +156,7 @@ describe("Access approval request routing", () => {
     const res = await createAccessRequest(secretPath);
 
     expect(res.statusCode).toBe(404);
-    expect(res.json().message).toContain("No policy in environment");
+    expect(res.json().message).toContain("Access requests aren't enabled for secret path '/routing-legacy'");
     expect(await db(TableName.AccessApprovalRequest).where({ policyId: legacyPolicy.id })).toHaveLength(0);
   });
 

@@ -1,4 +1,5 @@
-import { InstanceType } from "@app/ee/services/license/license-types";
+import { InstanceType } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 
 import { assertCertificateAuthorityQuota, TCertificateAuthorityQuotaDeps } from "./certificate-authority-quota-fns";
 
@@ -16,10 +17,12 @@ const buildDeps = ({
   internalCasUsed?: number;
   instanceType?: InstanceType;
   countedOrgIds?: (string | null)[];
-}) =>
-  ({
+}) => {
+  const licenseService = new FakeLicenseService().setPlan("org-1", { maxCas, maxInternalCas });
+  licenseService.instance = { ...licenseService.instance, instanceType };
+  return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "org-1" }) },
-    licenseService: { getPlan: async () => ({ maxCas, maxInternalCas }), getInstanceType: () => instanceType },
+    licenseService,
     certificateAuthorityDAL: {
       countCasByOrgId: async (orgId: string | null) => {
         countedOrgIds.push(orgId);
@@ -30,7 +33,8 @@ const buildDeps = ({
         return internalCasUsed;
       }
     }
-  }) as unknown as TCertificateAuthorityQuotaDeps;
+  } as unknown as TCertificateAuthorityQuotaDeps;
+};
 
 const assertQuota = (deps: TCertificateAuthorityQuotaDeps, isInternal = true) =>
   assertCertificateAuthorityQuota({ projectId: "project-1", isInternal, deps });

@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
+import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
@@ -41,7 +42,6 @@ import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
@@ -92,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
     "create" | "find" | "countByHoneyTokenId" | "findByHoneyTokenId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -229,18 +229,18 @@ export const honeyTokenServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.honeyTokens) {
+    if (!plan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to create honey token due to plan restriction. Upgrade plan to use honey tokens."
       });
     }
 
-    if (plan.honeyTokenLimit !== null) {
+    if (plan.isLimited(PlanLimit.HoneyTokens)) {
       // From the primary: a replica behind the previous lock holder's commit would undercount.
       const honeyTokensCreated = await honeyTokenDAL.transaction((tx) => honeyTokenDAL.countByOrgId(actor.orgId, tx));
-      if (honeyTokensCreated >= plan.honeyTokenLimit) {
+      if (plan.exceeds(PlanLimit.HoneyTokens, honeyTokensCreated)) {
         throw new BadRequestError({
-          message: `Failed to create honey token because your organization has reached its honey token limit (${honeyTokensCreated}/${plan.honeyTokenLimit}).`
+          message: `Failed to create honey token because your organization has reached its honey token limit (${honeyTokensCreated}/${plan.limit(PlanLimit.HoneyTokens)}).`
         });
       }
     }
@@ -492,7 +492,7 @@ export const honeyTokenServiceFactory = ({
     );
 
     const updatePlan = await licenseService.getPlan(actor.orgId);
-    if (!updatePlan.honeyTokens) {
+    if (!updatePlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to update honey token due to plan restriction. Upgrade plan to use honey tokens."
       });
@@ -688,7 +688,7 @@ export const honeyTokenServiceFactory = ({
     );
 
     const revokePlan = await licenseService.getPlan(actor.orgId);
-    if (!revokePlan.honeyTokens) {
+    if (!revokePlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to revoke honey token due to plan restriction. Upgrade plan to use honey tokens."
       });
@@ -865,7 +865,7 @@ export const honeyTokenServiceFactory = ({
     );
 
     const limitPlan = await licenseService.getPlan(actor.orgId);
-    if (!limitPlan.honeyTokens) {
+    if (!limitPlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to access honey token limits due to plan restriction. Upgrade plan to use honey tokens."
       });
@@ -874,7 +874,7 @@ export const honeyTokenServiceFactory = ({
 
     return {
       used,
-      limit: limitPlan.honeyTokenLimit
+      limit: limitPlan.limit(PlanLimit.HoneyTokens)
     };
   };
 

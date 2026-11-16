@@ -49,9 +49,17 @@ export type TQueueGitHubResourceDiffScan = {
   scanId: string;
 };
 
+export type TGitHubOversizedFile = {
+  commitSha: string;
+  filename: string;
+};
+
 export type TGitHubRealtimeScanDetails = {
   scannedCommitCount: number;
   totalCommitCount: number;
+  oversizedFiles: TGitHubOversizedFile[];
+  // Commits that change more files than GitHub lists, so only the listed files were scanned.
+  truncatedCommitShas: string[];
 };
 
 // Webhook events are reduced to what processing them needs, so the queue never holds GitHub's full payload.

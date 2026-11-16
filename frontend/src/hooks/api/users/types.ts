@@ -256,3 +256,10 @@ export type TokenVersion = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TUserDeletionEligibility = {
+  canDelete: boolean;
+  isOnlyServerAdmin: boolean;
+  lastMemberOrganizations: { id: string; name: string }[];
+  lastAdminOrganizations: { id: string; name: string }[];
+};

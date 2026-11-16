@@ -722,4 +722,12 @@ export const appConnections = [
       "Learn how to connect Jira Cloud or Jira Data Center so Infisical can read your Jira tickets.",
     category: "SaaS",
   },
+  {
+    name: "Jenkins",
+    slug: "jenkins",
+    path: "/integrations/app-connections/jenkins",
+    description:
+      "Learn how to connect Jenkins to sync secrets from Infisical.",
+    category: "CI/CD",
+  },
 ];

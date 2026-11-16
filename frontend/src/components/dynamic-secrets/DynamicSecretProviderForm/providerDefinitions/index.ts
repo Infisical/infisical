@@ -8,6 +8,7 @@ export { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./identityAccessContra
 export { ldapDynamicSecretProvider } from "./ldap";
 export { managedStoresDynamicSecretProviders } from "./managedStores";
 export { oauth2DynamicSecretProvider } from "./oauth2";
+export { openRouterDynamicSecretProvider } from "./openRouter";
 export { relationalWarehouseDynamicSecretProviders } from "./relationalWarehouse";
 export { sshDynamicSecretProvider } from "./ssh";
 export { sshDynamicSecretCreateBoundary, SshDynamicSecretCreateForm } from "./sshCreateForm";

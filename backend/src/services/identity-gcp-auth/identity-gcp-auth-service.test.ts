@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { logger } from "@app/lib/logger";
 
 import { identityGcpAuthServiceFactory } from "./identity-gcp-auth-service";
@@ -90,7 +91,7 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}, authMethods: string[] =
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
-    licenseService: {} as never,
+    licenseService: new FakeLicenseService(),
     identityAccessTokenService: { issueIdentityAccessToken } as never,
     eventEmitter: { emit: vi.fn() } as never
   });

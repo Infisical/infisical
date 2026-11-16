@@ -46,6 +46,7 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onMetadataChange?: (metadata: { key: string; value: string; isEncrypted?: boolean }[]) => void;
   onBatchSave?: () => void;
@@ -59,6 +60,7 @@ export const SecretMetadataForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
   onMetadataChange,
   onBatchSave,
@@ -154,6 +156,7 @@ export const SecretMetadataForm = ({
         text: "Successfully updated metadata"
       });
     }
+    onSaved?.(data.metadata.length === 0);
     onClose?.();
   };
 

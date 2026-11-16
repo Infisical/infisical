@@ -28,7 +28,7 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import { TSecretAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TSecretAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { readRequestedScope } from "./access-approval-request-fns";
 import { ApprovalStatus, TSecretAccessApprovalRequestServiceFactoryDep } from "./access-approval-request-types";
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
@@ -254,13 +254,15 @@ export const notifySecretAccessBypass = async (
     policy,
     actingUser,
     environmentName,
+    secretPath,
     bypassReason
   }: {
     request: Pick<TSecretAccessRequestRow, "id" | "organizationId">;
     project: { id: string; name: string; orgId: string };
-    policy: { secretPath: string; approvers: { type: ApproverType; id?: string | null }[] };
+    policy: { approvers: { type: ApproverType; id?: string | null }[] };
     actingUser: Pick<TUsers, "id" | "firstName" | "lastName" | "email">;
     environmentName: string;
+    secretPath: string;
     bypassReason: string;
   },
   { userDAL, userGroupMembershipDAL, notificationService, smtpService }: TNotifySecretAccessBypassDep
@@ -288,7 +290,7 @@ export const notifySecretAccessBypass = async (
         orgId: request.organizationId,
         type: NotificationType.ACCESS_POLICY_BYPASSED,
         title: "Secret Access Policy Bypassed",
-        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
+        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${secretPath}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
         link: approvalPath
       }))
     );
@@ -303,7 +305,7 @@ export const notifySecretAccessBypass = async (
           requesterFullName: actingUserFullName,
           requesterEmail: actingUser.email,
           bypassReason,
-          secretPath: policy.secretPath || "/",
+          secretPath,
           environment: environmentName,
           approvalUrl: `${cfg.SITE_URL}${approvalPath}`,
           requestType: "access"
@@ -531,6 +533,8 @@ export const toSecretAccessRequestListItem = (
     row.approvedByUser?.userId ?? null
   );
 
+  const requested = readRequestedScope(data.permissions);
+
   let { status } = legacy;
   let environment: { slug: string; name: string };
   let policy: TSecretAccessRequestListPolicy;
@@ -539,12 +543,7 @@ export const toSecretAccessRequestListItem = (
     environment = row.environment;
     policy = row.policy;
   } else {
-    let requested: { envSlug: string; secretPath: string };
-    try {
-      requested = verifyRequestedPermissions({ permissions: data.permissions });
-    } catch {
-      return null;
-    }
+    if (!requested) return null;
     const requestedEnvironment = environmentsBySlug.get(requested.envSlug);
     if (!requestedEnvironment) return null;
 
@@ -575,7 +574,9 @@ export const toSecretAccessRequestListItem = (
     status,
     projectId,
     environment: environment.slug,
-    environmentName: environment.name,
+    // Despite the name, clients read this as the slug of the environment the request targets, which
+    // differs from the policy's first environment when the policy spans several.
+    environmentName: requested?.envSlug ?? environment.slug,
     policy,
     requestedByUser: row.requestedByUser,
     approvedByUser: row.approvedByUser,

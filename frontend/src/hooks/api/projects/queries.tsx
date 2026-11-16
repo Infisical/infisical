@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import {
   availableUsersUrl,
   groupMembershipsBase,
+  isCertManagerProject,
   userMembershipsBase
 } from "@app/hooks/api/certManagerAccess";
 
@@ -566,7 +567,8 @@ export const useDeleteUserFromWorkspace = () => {
       const {
         data: { deletedMembership }
       } = await apiRequest.delete(userMembershipsBase(projectType, projectId), {
-        data: { usernames }
+        data: { usernames },
+        params: isCertManagerProject(projectType) ? { projectId } : undefined
       });
       return deletedMembership;
     },
