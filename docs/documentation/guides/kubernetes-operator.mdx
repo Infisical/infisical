@@ -15,7 +15,7 @@ In this guide, you'll:
 <Note>
   This guide's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where.
 
-  Pushing and dynamic secrets have no `v1beta1` equivalents, so those sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
+  The push and dynamic secret sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. To push secrets with the `v1beta1` model instead, use [`InfisicalStaticSecretPush`](/integrations/platforms/kubernetes/infisical-static-secret-push-crd). See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
 </Note>
 
 ## Prerequisites

@@ -83,6 +83,7 @@ The operator is installed via [Helm](/self-hosting/helm-charts/secrets-operator)
     | [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) | Defines how to connect to an Infisical instance (host, TLS). Referenced by other CRDs. |
     | [InfisicalAuth](/integrations/platforms/kubernetes/infisical-auth-crd) | Defines authentication credentials for a machine identity. Referenced by other CRDs. |
     | [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. Replaces `InfisicalSecret`. |
+    | [InfisicalStaticSecretPush](/integrations/platforms/kubernetes/infisical-static-secret-push-crd) | Push secrets from a Kubernetes secret to Infisical. Replaces `InfisicalPushSecret`. |
   </Tab>
   <Tab title="v1alpha1">
     <Warning>
@@ -170,7 +171,7 @@ The operator exposes standard controller-runtime metrics. For a complete list of
 - `controller_runtime_reconcile_errors_total` - Error count  
 - `controller_runtime_reconcile_time_seconds` - Reconciliation duration
 
-**v1beta1 controllers:** `InfisicalStaticSecret`, `InfisicalAuth`, `InfisicalConnection`
+**v1beta1 controllers:** `InfisicalStaticSecret`, `InfisicalStaticSecretPush`, `InfisicalAuth`, `InfisicalConnection`
 
 **v1alpha1 controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
 
@@ -274,7 +275,7 @@ to point to a CA certificate stored in a Kubernetes secret resource.
 ## Migrating from v1alpha1 to v1beta1
 
 <Info>
-  This migration guide applies to `InfisicalSecret` only. `InfisicalPushSecret` and `InfisicalDynamicSecret` don't have v1beta1 replacements yet and should continue to be used as-is.
+  This migration guide applies to `InfisicalSecret`. To migrate an `InfisicalPushSecret`, see [Migrating from InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-static-secret-push-crd#migrating-from-infisicalpushsecret). `InfisicalDynamicSecret` doesn't have a v1beta1 replacement yet and should continue to be used as-is.
 </Info>
 
 The v1beta1 API introduces a cleaner separation of concerns. Instead of defining authentication and connection details inline in each secret CRD, you now create dedicated `InfisicalConnection` and `InfisicalAuth` resources that can be shared across multiple secret resources.
