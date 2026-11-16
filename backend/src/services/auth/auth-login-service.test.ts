@@ -35,25 +35,37 @@ const googleLogin = {
   userAgent: "test"
 };
 
-const existingAccount = (aliasEmail: string, isAliasVerified: boolean) => {
+const existingAccount = ({
+  email = "alice@corp.com",
+  alias
+}: {
+  email?: string;
+  alias?: { email: string; isEmailVerified: boolean };
+}) => {
   const user = {
     id: "user-1",
-    username: "alice@corp.com",
-    email: "alice@corp.com",
+    username: email,
+    email,
     isAccepted: true,
     isEmailVerified: true,
     authMethods: [AuthMethod.GOOGLE]
   };
-  const alias = { id: "alias-1", userId: "user-1", emails: [aliasEmail], isEmailVerified: isAliasVerified };
+  const aliasRow = alias && {
+    id: "alias-1",
+    userId: "user-1",
+    emails: [alias.email],
+    isEmailVerified: alias.isEmailVerified
+  };
   const userDAL = {
     findById: vi.fn().mockResolvedValue(user),
-    findOne: vi.fn().mockResolvedValue(undefined),
+    findOne: vi.fn().mockResolvedValue(aliasRow ? undefined : user),
     updateById: vi.fn(async (_id: string, data: object) => ({ ...user, ...data })),
     transaction: vi.fn(async (cb: (tx: object) => unknown) => cb({}))
   };
   const userAliasDAL = {
-    findOne: vi.fn().mockResolvedValue(alias),
-    updateById: vi.fn(async (_id: string, data: object) => ({ ...alias, ...data }))
+    findOne: vi.fn().mockResolvedValue(aliasRow),
+    create: vi.fn(async (data: object) => ({ id: "alias-1", ...data })),
+    updateById: vi.fn(async (_id: string, data: object) => ({ ...aliasRow, ...data }))
   };
   const smtpService = { sendMail: vi.fn() };
   const service = authLoginServiceFactory({
@@ -94,7 +106,9 @@ describe("oauth2Login", () => {
   });
 
   test("keeps the account's email when the provider now asserts a disposable address", async () => {
-    const { service, userDAL, userAliasDAL } = existingAccount("alice@corp.com", true);
+    const { service, userDAL, userAliasDAL } = existingAccount({
+      alias: { email: "alice@corp.com", isEmailVerified: true }
+    });
 
     const login = await service.oauth2Login(googleLogin);
 
@@ -105,12 +119,24 @@ describe("oauth2Login", () => {
   });
 
   test("sends a code to the account's email when an unverified alias asserts a disposable address", async () => {
-    const { service, userAliasDAL, smtpService } = existingAccount("alice@mailinator.com", false);
+    const { service, userAliasDAL, smtpService } = existingAccount({
+      alias: { email: "alice@mailinator.com", isEmailVerified: false }
+    });
 
     const login = await service.oauth2Login(googleLogin);
 
     expect(login.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
     expect(userAliasDAL.updateById).not.toHaveBeenCalled();
     expect(smtpService.sendMail).toHaveBeenCalledWith(expect.objectContaining({ recipients: ["alice@corp.com"] }));
+  });
+
+  test("signs in an existing account whose own email is on a disposable domain", async () => {
+    const { service, userAliasDAL, smtpService } = existingAccount({ email: "alice@mailinator.com" });
+
+    const login = await service.oauth2Login(googleLogin);
+
+    expect(login.result).toBe(ProviderAuthResult.SESSION);
+    expect(userAliasDAL.create).toHaveBeenCalledWith(expect.objectContaining({ isEmailVerified: true }));
+    expect(smtpService.sendMail).not.toHaveBeenCalled();
   });
 });
