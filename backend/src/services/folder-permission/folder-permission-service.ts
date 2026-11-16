@@ -5,7 +5,6 @@ import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/m
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
-import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -90,7 +89,7 @@ export const folderPermissionServiceFactory = ({
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
   const assertFolderRbacLicensed = async (orgId: string, folder: TResolvedFolder) => {
-    const { isCloud } = getConfig();
+    const isCloud = true;
     if (!isCloud && folder.path === "/") return;
 
     const plan = await licenseService.getPlan(orgId);

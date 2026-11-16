@@ -1,25 +1,54 @@
+# Render Blueprint: Infisical (PR #9471, cloud behavior) with Postgres and Redis.
+# Cloud: forces Infisical Cloud behavior, so every folder access grant (root included) needs secretsFolderRbac, like the free plan.
+# Apply from the Render Dashboard (New > Blueprint), pick this repo and branch.
+# No LICENSE_KEY is set, so the instance has no paid plan features
+# (secretsFolderRbac is off).
+#
+# Env vars:
+#   DB_CONNECTION_URI    Postgres internal connection string
+#   REDIS_URL            Key Value internal connection string
+#   ROOT_ENCRYPTION_KEY  generated 256-bit base64 key
+#   AUTH_SECRET          generated 256-bit base64 key
+#   SITE_URL             defaults to the service's onrender.com URL at start
+databases:
+  - name: infisical-cloud-db
+    databaseName: infisical
+    user: infisical
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    region: oregon
+
 services:
+  - type: keyvalue
+    name: infisical-cloud-redis
+    plan: starter
+    region: oregon
+    ipAllowList: []
+
   - type: web
-    name: infisical
-    env: docker
-    dockerfilePath: ./Dockerfile.standalone-infisical
+    name: infisical-cloud
+    runtime: docker
+    plan: standard
+    region: oregon
+    branch: eng-5961-folder-access-root-billing-render-cloud
     autoDeploy: false
-    # healthCheckPath: /api/status
-    repo: https://github.com/Infisical/infisical.git
+    dockerfilePath: ./Dockerfile.standalone-infisical
+    dockerContext: .
+    dockerCommand: sh -c 'export SITE_URL="${SITE_URL:-$RENDER_EXTERNAL_URL}"; exec ./standalone-entrypoint.sh'
+    healthCheckPath: /api/status
     envVars:
-      - key: ENCRYPTION_KEY
+      - key: DB_CONNECTION_URI
+        fromDatabase:
+          name: infisical-cloud-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: infisical-cloud-redis
+          type: keyvalue
+          property: connectionString
+      - key: ROOT_ENCRYPTION_KEY
         generateValue: true
-      - key: JWT_SIGNUP_SECRET
+      - key: AUTH_SECRET
         generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: JWT_SERVICE_SECRET
-        generateValue: true
-      - key: JWT_AUTH_SECRET
-        generateValue: true
-      - key: JWT_PROVIDER_AUTH_SECRET
-        generateValue: true
-      - key: MONGO_URL
-        sync: false
-      - key: PORT
-        value: 443
+      - key: TELEMETRY_ENABLED
+        value: "false"
