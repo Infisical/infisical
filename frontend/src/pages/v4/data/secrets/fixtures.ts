@@ -121,7 +121,7 @@ const project = (
   secretDetectionIgnoreValues: [],
   enforceEncryptedSecretManagerSecretMetadata: false,
   secretBlindIndexEnabled: true,
-  isLegacyAdditionalPrivilegesEnabled: false
+  isLegacyAdditionalPrivilegesEnabled: true
 });
 
 const tag = (slug: string): WsTag => ({

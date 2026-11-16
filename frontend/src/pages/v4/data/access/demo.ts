@@ -63,6 +63,8 @@ const stores = {
 const storeFor = (scenario: AccessScenario) =>
   scenario === "empty" ? stores.empty : stores.default;
 
+export const useDemoAccessState = () => storeFor(useAccessScenario()).use();
+
 const cache = new WeakMap<AccessState, Map<string, unknown>>();
 const cached = <T>(state: AccessState, key: string, compute: () => T): T => {
   let entries = cache.get(state);
@@ -1432,7 +1434,10 @@ export const accessDemo: AccessAdapter = {
         })),
         createdAt: stamp()
       }));
-    return done({ ...state, projectMemberships: [...state.projectMemberships, ...added] }, {});
+    return done(
+      { ...state, projectMemberships: [...state.projectMemberships, ...added] },
+      { memberships: added.map((entry) => ({ id: entry.id })) }
+    );
   }),
   useUpdateProjectUserRoles: demoMutation((dto, state) =>
     done(

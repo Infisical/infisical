@@ -720,6 +720,8 @@ function SecretActionsRow({
           {open === "reminder" && (
             <ReminderSheet
               open
+              secretId={secret.id}
+              projectId={secret.project}
               secretName={secret.name}
               environmentLabel={label}
               reminder={secret.reminder}
@@ -727,7 +729,7 @@ function SecretActionsRow({
               onOpenChange={(next) => {
                 if (!next) setOpen(undefined);
               }}
-              onSave={(reminder) => {
+              onSave={(reminder, channels) => {
                 const request = reminder
                   ? createReminder.mutateAsync({
                       secretId: secret.id,
@@ -737,7 +739,7 @@ function SecretActionsRow({
                       nextReminderDate: reminder.nextReminderDate
                         ? new Date(reminder.nextReminderDate)
                         : null,
-                      recipients: reminder.recipients
+                      channels
                     })
                   : deleteReminder.mutateAsync({
                       secretId: secret.id,

@@ -15,8 +15,10 @@ import {
 } from "@app/hooks/api/secrets/types";
 
 import type { SecretsAdapter } from "./contract";
+import { secretsAccessInsightsDemo } from "./demo-access-insights";
 import { secretsChangeRequestsDemo } from "./demo-change-requests";
 import { secretsFlowsDemo } from "./demo-flows";
+import { secretsReminderChannelsDemo } from "./demo-reminder-channels";
 import {
   childPath,
   demoMutation,
@@ -292,6 +294,8 @@ export const secretsDemo: SecretsAdapter = {
   ...secretsFlowsDemo,
   ...secretsChangeRequestsDemo,
   ...secretsUpgradeDemo,
+  ...secretsAccessInsightsDemo,
+  ...secretsReminderChannelsDemo,
   useProject: (projectId) => {
     const scenario = useScenario();
     const isUpgraded = upgraded.use();

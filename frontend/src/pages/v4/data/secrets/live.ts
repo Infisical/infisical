@@ -21,14 +21,18 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { withMutationMeta } from "../contract";
 import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
+import { secretsAccessInsightsLive } from "./live-access-insights";
 import { secretsChangeRequestsLive } from "./live-change-requests";
 import { secretsFlowsLive } from "./live-flows";
+import { secretsReminderChannelsLive } from "./live-reminder-channels";
 import { secretsUpgradeLive } from "./live-upgrade";
 
 export const secretsLive: SecretsAdapter = {
   ...secretsFlowsLive,
   ...secretsChangeRequestsLive,
   ...secretsUpgradeLive,
+  ...secretsAccessInsightsLive,
+  ...secretsReminderChannelsLive,
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,

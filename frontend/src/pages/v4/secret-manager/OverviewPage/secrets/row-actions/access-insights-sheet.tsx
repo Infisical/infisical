@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -36,16 +37,31 @@ import {
   TableRow
 } from "@infisical/cipher/ui/table";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { Link } from "@tanstack/react-router";
 import { BanIcon, FilterIcon, HardDriveIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
+import { accessLinks } from "../../../../access/links";
+import { useOrgPermission, useProjectPermission } from "../../../../access/permissions";
+import { useProjectScope } from "../../../../access/project/scope";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { TSecretAccessList } from "../../../../data/secrets/contract-flows";
-import { notPorted } from "../../../../not-ported";
+import { useV4Session } from "../../../../data/session/contract";
+import { useGo } from "../../../../links";
 import type { Secret } from "../../secrets-model";
-import { Gate } from "../flows/shared";
 import type { RowActionProps } from "../overview-cells";
+import { GrantAccessDialog } from "./access-grant-dialog";
+import { AdditionalPrivilegeSheet, type PrivilegeTarget } from "./access-privilege-sheet";
 
 import styles from "./row-actions.module.css";
 
@@ -53,6 +69,8 @@ type RowType = "user" | "identity" | "group";
 type Action = "describe" | "read" | "create" | "edit" | "delete";
 type AccessRow = {
   id: string;
+  entityId: string;
+  membershipId: string;
   type: RowType;
   name: string;
   actions: Action[];
@@ -112,6 +130,8 @@ const toRows = (list?: TSecretAccessList): AccessRow[] => {
       ].filter((action) => !actions.includes(action));
       return {
         id: `${type}-${entry.id}`,
+        entityId: entry.id,
+        membershipId: entry.membershipId,
         type,
         name: entry.name,
         actions,
@@ -124,11 +144,84 @@ const toRows = (list?: TSecretAccessList): AccessRow[] => {
     ...list.identities.map(member("identity", "identityIds")),
     ...list.groups.map((group) => ({
       id: `group-${group.id}`,
+      entityId: group.id,
+      membershipId: group.membershipId,
       type: "group" as const,
       name: group.name,
       actions: actionsOf(group.allowedActions)
     }))
   ];
+};
+
+const useAccessRowControls = (secret: Secret) => {
+  const go = useGo();
+  const scope = useProjectScope();
+  const session = useV4Session();
+  const { permission } = useProjectPermission(secret.project);
+  const { permission: orgPermission } = useOrgPermission();
+  const project = useV4Adapter("secrets").useProject(secret.project);
+  const privilegesEnabled = Boolean(project.data?.isLegacyAdditionalPrivilegesEnabled);
+  const isSelf = (row: AccessRow) => row.type === "user" && row.entityId === session.user.id;
+  const privilegeBlock = (row: AccessRow) => {
+    if (!privilegesEnabled) return "Additional privileges are turned off for this project";
+    if (isSelf(row)) return "You cannot modify your own privileges";
+    const allowed =
+      row.type === "user"
+        ? permission.can(
+            ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+            subject(ProjectPermissionSub.Member, { userEmail: row.name })
+          )
+        : permission.can(
+            ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+            subject(ProjectPermissionSub.Identity, { identityId: row.entityId })
+          );
+    return allowed ? undefined : "You do not have permission to perform this action";
+  };
+  const manageHref = (row: AccessRow) => {
+    if (row.type === "user") return accessLinks.projectMember(scope, row.membershipId);
+    if (row.type === "identity") return accessLinks.projectIdentity(scope, row.entityId);
+    return accessLinks.projectGroup(scope, row.entityId);
+  };
+  const menu = (row: AccessRow, onAddPrivilege: (target: PrivilegeTarget) => void) => (
+    <>
+      {row.type !== "group" && (
+        <DropdownMenuItem
+          disabledReason={privilegeBlock(row)}
+          onSelect={() =>
+            onAddPrivilege({
+              type: row.type === "user" ? "user" : "identity",
+              membershipId: row.membershipId,
+              identityId: row.entityId,
+              name: row.name
+            })
+          }
+        >
+          <Icon name="plus" />
+          Add additional privilege
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuItem asChild>
+        <Link {...go.link(manageHref(row))} target="_blank">
+          <Icon name="external" />
+          {isSelf(row) ? "View access" : "Manage access"}
+        </Link>
+      </DropdownMenuItem>
+    </>
+  );
+  return {
+    canGrantAccess:
+      orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
+      permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
+      permission.can(
+        ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+        ProjectPermissionSub.Member
+      ) &&
+      permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member),
+    canAddParentOrgUsers:
+      session.organization.isSubOrganization &&
+      orgPermission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member),
+    menu
+  };
 };
 
 export function AccessInsightsSheet({
@@ -145,6 +238,9 @@ export function AccessInsightsSheet({
   const [showAll, setShowAll] = useState(false);
   const [search, setSearch] = useState("");
   const [types, setTypes] = useState<RowType[]>([]);
+  const [granting, setGranting] = useState(false);
+  const [privilegeTarget, setPrivilegeTarget] = useState<PrivilegeTarget>();
+  const { canGrantAccess, canAddParentOrgUsers, menu } = useAccessRowControls(secret);
   const { data: accessList, isPending } = useV4Adapter("secrets").useSecretAccessList({
     projectId: secret.project,
     environment: secret.environment,
@@ -225,12 +321,17 @@ export function AccessInsightsSheet({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Gate reason={notPorted("Granting organization users access")}>
-                <Button disabled>
-                  <Icon icon={UserPlusIcon} />
-                  Grant organization user access
-                </Button>
-              </Gate>
+              <Button
+                icon={UserPlusIcon}
+                disabledReason={
+                  canGrantAccess
+                    ? undefined
+                    : "You do not have permission to add members to this project and manage their permissions"
+                }
+                onClick={() => setGranting(true)}
+              >
+                Grant organization user access
+              </Button>
             </div>
             {loading && (
               <span role="status" className="sr-only">
@@ -276,23 +377,7 @@ export function AccessInsightsSheet({
                   {rows.map((row) => {
                     const rowActions: RowActionProps = {
                       label: row.name,
-                      menu: (
-                        <>
-                          {row.type !== "group" && (
-                            <DropdownMenuItem
-                              disabled
-                              description={notPorted("Additional privileges")}
-                            >
-                              <Icon name="plus" />
-                              Add additional privilege
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem disabled description={notPorted("Managing access")}>
-                            <Icon name="external" />
-                            Manage access
-                          </DropdownMenuItem>
-                        </>
-                      )
+                      menu: menu(row, setPrivilegeTarget)
                     };
                     return (
                       <RowContextMenu key={row.id} {...rowActions}>
@@ -358,6 +443,21 @@ export function AccessInsightsSheet({
           </div>
         </SheetBody>
       </SheetContent>
+      {granting && (
+        <GrantAccessDialog
+          secret={secret}
+          canAddParentOrgUsers={canAddParentOrgUsers}
+          onClose={() => setGranting(false)}
+        />
+      )}
+      {privilegeTarget && (
+        <AdditionalPrivilegeSheet
+          key={privilegeTarget.membershipId}
+          secret={secret}
+          target={privilegeTarget}
+          onClose={() => setPrivilegeTarget(undefined)}
+        />
+      )}
     </Sheet>
   );
 }

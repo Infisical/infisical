@@ -104,7 +104,7 @@ const toFilters = (condition: TAlert["condition"]) =>
 const savedFlag = (value: unknown, previous: unknown) =>
   value === null ? false : Boolean(value) || Boolean(previous);
 
-const toStoredChannel = (
+export const toStoredChannel = (
   input: TAlertChannelInput,
   previous?: TAlertChannelEmbedded
 ): TAlertChannelEmbedded => {
