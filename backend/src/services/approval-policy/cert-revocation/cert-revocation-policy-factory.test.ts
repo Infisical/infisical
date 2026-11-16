@@ -189,7 +189,8 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
       resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
     ).resolves.toBe(true);
     expect(deps.membershipDAL.find).toHaveBeenCalledWith(
-      expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId })
+      expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId }),
+      { tx: primaryDb }
     );
   });
 

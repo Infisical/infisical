@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { ResourceType } from "@app/db/schemas";
 import { RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
@@ -38,14 +40,18 @@ const holdsApplicationMembership = async (
     applicationId,
     userId,
     userGroupIds
-  }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> }
+  }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> },
+  tx?: Knex
 ) => {
-  const memberships = await membershipDAL.find({
-    scope: RESOURCE_SCOPE,
-    scopeProjectId: projectId,
-    scopeResourceType: ResourceType.CertificateApplication,
-    scopeResourceId: applicationId
-  });
+  const memberships = await membershipDAL.find(
+    {
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    },
+    { tx }
+  );
   return memberships.some(
     (membership) =>
       membership.isActive &&
@@ -90,16 +96,16 @@ export const certRevocationApprovalResourceFactory = ({
   isLiveApprover: async ({ projectId, scopeId, actor, userGroupIds }) =>
     holdsApplicationMembership(membershipDAL, { projectId, applicationId: scopeId, userId: actor.id, userGroupIds }),
 
+  // A replica that hasn't seen a member's removal would still let them decide, so the decision reads the primary.
   assertCanReview: async ({ request, actor, userGroupIds }) => {
     const { projectId, scopeId } = request;
     if (
       scopeId &&
-      (await holdsApplicationMembership(membershipDAL, {
-        projectId,
-        applicationId: scopeId,
-        userId: actor.id,
-        userGroupIds
-      }))
+      (await holdsApplicationMembership(
+        membershipDAL,
+        { projectId, applicationId: scopeId, userId: actor.id, userGroupIds },
+        approvalPolicyDAL.primaryNode()
+      ))
     ) {
       return;
     }

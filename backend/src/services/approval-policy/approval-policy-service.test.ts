@@ -93,7 +93,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
     const revocationResource = certRevocationApprovalResourceFactory({
-      approvalPolicyDAL: { findByProjectId: vi.fn() },
+      approvalPolicyDAL: { findByProjectId: vi.fn(), primaryNode: vi.fn() },
       certificateService,
       membershipDAL: { find: vi.fn().mockResolvedValue(applicationMemberships) }
     } as never);
