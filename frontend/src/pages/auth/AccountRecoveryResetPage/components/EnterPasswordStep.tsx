@@ -5,8 +5,10 @@ import { Check, ChevronLeft, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import {
+  createPasswordSchema,
+  doesPasswordMeetPolicy
+} from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -21,6 +23,7 @@ import {
 import { useServerConfig } from "@app/context";
 import { useResetPasswordV2 } from "@app/hooks/api";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 
 const createSchema = (passwordPolicy: TPasswordPolicy) =>
   z
@@ -57,32 +60,26 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
   });
   const password = watch("password");
   const confirmPassword = watch("confirmPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
   const { mutateAsync: resetPasswordV2, isPending } = useResetPasswordV2();
 
   const handlePasswordReset = async ({ password: nextPassword }: FormData) => {
-    const latestBreachStatus = await validatePassword(nextPassword);
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
+    try {
+      await resetPasswordV2({
+        newPassword: nextPassword,
+        verificationToken
       });
+    } catch (error) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (!breachedPasswordMessage) throw error;
+      setError("password", { type: "server", message: breachedPasswordMessage });
       return;
     }
-
-    await resetPasswordV2({
-      newPassword: nextPassword,
-      verificationToken
-    });
     onComplete();
   };
 
   const isLoading = isSubmitting || isPending;
   const showDangerState = submitCount > 0;
-  const isPasswordValidated = breachStatus === "safe" || breachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   return (
@@ -102,7 +99,6 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
           id="account-recovery-password"
           value={password}
           policy={config.passwordPolicy}
-          breachStatus={breachStatus}
           registration={register("password")}
           error={errors.password}
           submitCount={submitCount}
@@ -152,12 +148,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
           ) : null}
         </Field>
       </AnimatedCollapse>
-      <Button
-        type="submit"
-        isFullWidth
-        isPending={isLoading}
-        isDisabled={isLoading || breachStatus === "checking" || breachStatus === "breached"}
-      >
+      <Button type="submit" isFullWidth isPending={isLoading} isDisabled={isLoading}>
         Change Password
       </Button>
       <div>

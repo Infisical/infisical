@@ -6,7 +6,6 @@ import { z } from "zod";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createNotification } from "@app/components/notifications";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   Button,
   Card,
@@ -23,6 +22,7 @@ import {
 } from "@app/components/v3";
 import { useServerConfig, useUser } from "@app/context";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { clearSession } from "@app/hooks/api/users/queries";
@@ -57,24 +57,11 @@ export const ChangePasswordSection = () => {
     mode: "onChange"
   });
   const newPassword = watch("newPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password: newPassword,
-    policy: config.passwordPolicy
-  });
   const sendSetupPasswordEmail = useSendPasswordSetupEmail();
   const { mutateAsync: resetPasswordV2 } = useResetUserPasswordV2();
 
   const onFormSubmit = async ({ oldPassword, newPassword: submittedPassword }: FormData) => {
     try {
-      const latestBreachStatus = await validatePassword(submittedPassword);
-      if (latestBreachStatus === "breached") {
-        setError("newPassword", {
-          type: "validate",
-          message: "This password was found in a known data breach."
-        });
-        return;
-      }
-
       if (user.encryptionVersion !== UserEncryptionVersion.V2) {
         createNotification({
           text: "Legacy encryption scheme not supported for changing password. Please contact support.",
@@ -97,7 +84,12 @@ export const ChangePasswordSection = () => {
 
       reset();
       navigate({ to: "/login" });
-    } catch {
+    } catch (error) {
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (breachedPasswordMessage) {
+        setError("newPassword", { type: "server", message: breachedPasswordMessage });
+        return;
+      }
       createNotification({
         text: "Failed to change password.",
         type: "error"
@@ -157,7 +149,6 @@ export const ChangePasswordSection = () => {
               label="New password"
               value={newPassword}
               policy={config.passwordPolicy}
-              breachStatus={breachStatus}
               registration={register("newPassword")}
               error={errors.newPassword}
               submitCount={submitCount}
@@ -165,13 +156,7 @@ export const ChangePasswordSection = () => {
           </FieldGroup>
         </CardContent>
         <CardFooter className="min-h-8 flex-wrap justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
-          <Button
-            type="submit"
-            variant="neutral"
-            size="sm"
-            isPending={isSubmitting}
-            isDisabled={breachStatus === "checking" || breachStatus === "breached"}
-          >
+          <Button type="submit" variant="neutral" size="sm" isPending={isSubmitting}>
             Change password
           </Button>
           <Button

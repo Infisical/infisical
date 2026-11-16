@@ -214,7 +214,6 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
                 placeholder="Enter keystore password"
                 value={pkcs12Password}
                 policy={config.pkcs12PasswordPolicy}
-                breachStatus="idle"
                 registration={register("pkcs12Password")}
                 error={errors.pkcs12Password}
                 submitCount={submitCount}

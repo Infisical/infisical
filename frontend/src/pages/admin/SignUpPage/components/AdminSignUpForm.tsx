@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import { doesPasswordMeetPolicy } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -34,7 +34,6 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
     formState: { errors, isSubmitting, submitCount },
     handleSubmit,
     register,
-    setError,
     watch
   } = useForm<AdminSignUpFormData>({
     resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
@@ -50,34 +49,15 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
   });
 
   const password = watch("password");
-  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
   const confirmPassword = watch("confirmPassword");
 
-  const onSubmit = async (values: AdminSignUpFormData) => {
-    const latestBreachStatus = await validatePassword(values.password);
-
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
-    }
-
-    onContinue(values);
-  };
-
   const showDangerState = submitCount > 0;
-  const isPasswordValidated =
-    passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canSubmit = isPasswordValidated && !isSubmitting;
 
   return (
-    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onContinue)}>
       <FieldGroup>
         <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
@@ -133,7 +113,6 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}
-          breachStatus={passwordBreachStatus}
           placeholder="••••••••"
           registration={register("password")}
           error={showDangerState ? errors.password : undefined}

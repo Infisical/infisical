@@ -10,8 +10,10 @@ import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
+import {
+  createPasswordSchema,
+  doesPasswordMeetPolicy
+} from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Button,
@@ -30,6 +32,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useServerConfig } from "@app/context";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { useSetupPassword } from "@app/hooks/api/auth/queries";
 
 const createSchema = (passwordPolicy: TPasswordPolicy) =>
@@ -66,24 +69,11 @@ export const PasswordSetupPage = () => {
   const setupPassword = useSetupPassword();
   const password = watch("password");
   const confirmPassword = watch("confirmPassword");
-  const { breachStatus, validatePassword } = usePasswordBreachCheck({
-    password,
-    policy: config.passwordPolicy
-  });
 
   const token = search.token as string;
   const email = (search.to as string)?.replace(" ", "+").trim();
 
   const handleSetPassword = async ({ password: nextPassword }: FormData) => {
-    const latestBreachStatus = await validatePassword(nextPassword);
-    if (latestBreachStatus === "breached") {
-      setError("password", {
-        type: "validate",
-        message: "This password was found in a known data breach."
-      });
-      return;
-    }
-
     try {
       await setupPassword.mutateAsync({ email, token, password: nextPassword });
       setIsRedirecting(true);
@@ -96,14 +86,20 @@ export const PasswordSetupPage = () => {
       setTimeout(() => {
         window.location.href = "/login";
       }, 3000);
-    } catch {
+    } catch (error) {
+      // The emailed token is still valid after this error.
+      const breachedPasswordMessage = getBreachedPasswordMessage(error);
+      if (breachedPasswordMessage) {
+        setError("password", { type: "server", message: breachedPasswordMessage });
+        return;
+      }
       navigate({ to: "/personal-settings" });
     }
   };
 
   const isLoading = isSubmitting || setupPassword.isPending || isRedirecting;
   const showDangerState = submitCount > 0;
-  const isPasswordValidated = breachStatus === "safe" || breachStatus === "unavailable";
+  const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   return (
@@ -121,7 +117,6 @@ export const PasswordSetupPage = () => {
               id="password-setup-password"
               value={password}
               policy={config.passwordPolicy}
-              breachStatus={breachStatus}
               registration={register("password")}
               error={showDangerState ? errors.password : undefined}
               submitCount={submitCount}
@@ -172,7 +167,7 @@ export const PasswordSetupPage = () => {
               </Field>
             </AnimatedCollapse>
             <Button
-              isDisabled={isLoading || breachStatus === "checking" || breachStatus === "breached"}
+              isDisabled={isLoading}
               variant="project"
               size="lg"
               type="submit"
