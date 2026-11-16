@@ -1,7 +1,8 @@
+import { createMongoAbility, subject } from "@casl/ability";
 import picomatch from "picomatch";
 import { describe, expect, test } from "vitest";
 
-import { getGlobMatcher, MAX_CACHED_GLOB_MATCHERS } from "./index";
+import { conditionsMatcher, getGlobMatcher, MAX_CACHED_GLOB_MATCHERS } from "./index";
 
 describe("getGlobMatcher", () => {
   test("matches the same paths as picomatch.isMatch", () => {
@@ -37,5 +38,37 @@ describe("getGlobMatcher", () => {
     expect(getGlobMatcher(`/filler-${MAX_CACHED_GLOB_MATCHERS - 1}/**`)).toBe(
       getGlobMatcher(`/filler-${MAX_CACHED_GLOB_MATCHERS - 1}/**`)
     );
+  });
+});
+
+describe("conditionsMatcher", () => {
+  const ability = createMongoAbility(
+    [
+      { action: "read", subject: "secrets" },
+      { action: "read", subject: "secrets", inverted: true, conditions: { environment: "dev", secretPath: "/locked" } },
+      {
+        action: "edit",
+        subject: "secrets",
+        conditions: { environment: "dev", secretPath: { $glob: "/app/**" } }
+      }
+    ],
+    { conditionsMatcher }
+  );
+
+  test.each(["/locked", "locked", "//locked", "/locked/", "/locked//"])(
+    "applies an exact-path rule to %p, which names the same folder",
+    (secretPath) => {
+      expect(ability.can("read", subject("secrets", { environment: "dev", secretPath }))).toBe(false);
+    }
+  );
+
+  test.each(["/app/api", "app/api", "//app//api", "/app/api/"])("applies a glob rule to %p", (secretPath) => {
+    expect(ability.can("edit", subject("secrets", { environment: "dev", secretPath }))).toBe(true);
+  });
+
+  test("leaves other folders and subjects without a path alone", () => {
+    expect(ability.can("read", subject("secrets", { environment: "dev", secretPath: "/locked-out" }))).toBe(true);
+    expect(ability.can("read", subject("secrets", { environment: "dev" }))).toBe(true);
+    expect(ability.can("edit", subject("secrets", { environment: "dev", secretPath: "/db" }))).toBe(false);
   });
 });

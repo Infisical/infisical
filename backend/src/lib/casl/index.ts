@@ -3,6 +3,8 @@ import { buildMongoQueryMatcher } from "@casl/ability";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 
+import { canonicalizeSecretPath } from "@app/lib/fn/string";
+
 const $glob: FieldInstruction<string> = {
   type: "field",
   validate(instruction, value) {
@@ -35,7 +37,19 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   return getGlobMatcher(permissionSecretGlobPath)(secretPath);
 };
 
-export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+const mongoQueryMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+
+// Rules name folders by their canonical path, so a subject must be matched on the folder its path resolves to,
+// whatever spelling of that path the caller sent.
+export const conditionsMatcher: typeof mongoQueryMatcher = (conditions) => {
+  const match = mongoQueryMatcher(conditions);
+  const matchCanonicalPath = (object: Record<string, unknown>) => {
+    if (typeof object?.secretPath !== "string") return match(object);
+    const secretPath = canonicalizeSecretPath(object.secretPath);
+    return match(secretPath === object.secretPath ? object : { ...object, secretPath });
+  };
+  return Object.assign(matchCanonicalPath, { ast: match.ast });
+};
 
 export enum PermissionConditionOperators {
   $IN = "$in",

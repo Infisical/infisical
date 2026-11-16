@@ -35,6 +35,26 @@ func TestFolderAccess_Scope(t *testing.T) {
 		require.Equalf(t, http.StatusOK, child.status, "listing below the granted path: %s", child.body)
 		require.Equal(t, map[string]string{"B_KEY": "b-value"}, child.values)
 	})
+
+	t.Run("should apply the grant when the granted path is sent without the leading slash or with extra slashes", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := newProject(t, h.NewTenant(t))
+		secretmanager.CreateFolder(t, proj, "dev", "/a")
+		secretmanager.CreateSecret(t, proj, "dev", "A_KEY", "a-value", secretmanager.WithPath("/a"))
+		member := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+		secretmanager.GrantFolderAccess(t, proj, member, at("/a"), secretmanager.FolderList)
+
+		for _, secretPath := range []string{"a", "//a", "/a//"} {
+			// Action
+			got := listSecrets(t, member, proj, secretPath, false)
+
+			// Assert
+			require.Equalf(t, http.StatusForbidden, got.status, "listing values at %q: %s", secretPath, got.body)
+			require.NotContains(t, string(got.body), "a-value")
+		}
+	})
 }
 
 func TestSecret_ListRecursive(t *testing.T) {

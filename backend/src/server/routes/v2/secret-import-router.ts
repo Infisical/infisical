@@ -3,7 +3,7 @@ import { z } from "zod";
 import { SecretImportsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -36,7 +36,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         import: z.object({
           sourceProjectId: z.string().trim().optional().describe(SECRET_IMPORTS.CREATE.import.projectId),
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
-          path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
+          path: z.string().trim().transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.CREATE.import.path)
         }),
         isReplication: z.boolean().default(false).describe(SECRET_IMPORTS.CREATE.isReplication)
       }),
@@ -131,7 +131,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
             .string()
             .trim()
             .optional()
-            .transform((val) => (val ? removeTrailingSlash(val) : val))
+            .transform((val) => (val ? canonicalizeSecretPath(val) : val))
             .describe(SECRET_IMPORTS.UPDATE.import.path),
           position: z.number().optional().describe(SECRET_IMPORTS.UPDATE.import.position)
         })

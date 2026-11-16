@@ -227,7 +227,7 @@ func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceR
 	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 q.ProjectID,
 		Environment:               q.Environment,
-		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
+		SecretPath:                fn.CanonicalSecretPath(fn.ValueOr(q.SecretPath, "/")),
 		UserID:                    getUserID(identity),
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
@@ -275,7 +275,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3Se
 	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 projectID,
 		Environment:               env,
-		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
+		SecretPath:                fn.CanonicalSecretPath(fn.ValueOr(q.SecretPath, "/")),
 		UserID:                    getUserID(identity),
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),

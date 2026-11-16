@@ -16,6 +16,9 @@ export const prefixWithSlash = (str: string) => {
   return `/${str}`;
 };
 
+// Folder lookups skip empty segments, so "prod", "//prod" and "/prod/" all name the "/prod" folder.
+export const canonicalizeSecretPath = (secretPath: string) => `/${secretPath.split("/").filter(Boolean).join("/")}`;
+
 const vowelRegex = new RE2(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);

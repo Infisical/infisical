@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { canonicalizeSecretPath } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import {
   TApprovalPolicyBypassersDALFactory,
@@ -102,7 +103,8 @@ export const resolvePolicyForPath = <T extends { secretPath?: string | null; cre
 ) =>
   policies
     .filter(
-      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
+      ({ secretPath: policyPath }) =>
+        !policyPath || picomatch.isMatch(canonicalizeSecretPath(secretPath), policyPath, { strictSlashes: false })
     )
     .sort(
       (a, b) =>

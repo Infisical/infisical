@@ -3,6 +3,7 @@ package secretmanager
 import (
 	"github.com/infisical/gocasl"
 
+	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/permission/project"
 )
 
@@ -23,7 +24,7 @@ func NewSecretAccessChecker(ability *gocasl.Ability) *SecretAccessChecker {
 func (c *SecretAccessChecker) CanDescribeSecret(env, path, key string, tagSlugs []string) bool {
 	subject := project.SecretSubject{
 		Environment: env,
-		SecretPath:  path,
+		SecretPath:  fn.CanonicalSecretPath(path),
 		SecretName:  key,
 		SecretTags:  tagSlugs,
 	}
@@ -39,7 +40,7 @@ func (c *SecretAccessChecker) CanDescribeSecret(env, path, key string, tagSlugs 
 func (c *SecretAccessChecker) CanReadSecretValue(env, path, key string, tagSlugs []string) bool {
 	subject := project.SecretSubject{
 		Environment: env,
-		SecretPath:  path,
+		SecretPath:  fn.CanonicalSecretPath(path),
 		SecretName:  key,
 		SecretTags:  tagSlugs,
 	}
