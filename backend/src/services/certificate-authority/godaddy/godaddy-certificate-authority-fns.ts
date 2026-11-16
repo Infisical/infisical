@@ -36,7 +36,7 @@ import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
-import { GoDaddyProductType } from "./godaddy-certificate-authority-enums";
+import { GoDaddyCertificateStatus, GoDaddyProductType } from "./godaddy-certificate-authority-enums";
 import {
   TCreateGoDaddyCertificateAuthorityDTO,
   TGoDaddyCertificateAuthority,
@@ -642,7 +642,33 @@ export const GoDaddyCertificateAuthorityFns = ({
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
-    await client.revokeCertificate(certificateId, mapCrlReasonToGoDaddyReason(reason));
+    try {
+      await client.revokeCertificate(certificateId, mapCrlReasonToGoDaddyReason(reason));
+    } catch (revokeError) {
+      // Renewal reuses the GoDaddy certificate id, so after a renewal the read-back reports the
+      // current certificate's status, not this superseded one's.
+      if (cert.renewedByCertificateId) {
+        throw revokeError;
+      }
+      // GoDaddy's revoke error doesn't say whether the certificate was already revoked, so read its status back.
+      const current = await client.getCertificate(certificateId).catch((readError: unknown) => {
+        logger.warn(
+          readError,
+          `Failed to read the GoDaddy certificate's status after a failed revoke [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}]`
+        );
+        return null;
+      });
+      if (
+        current?.status !== GoDaddyCertificateStatus.Revoked &&
+        current?.status !== GoDaddyCertificateStatus.RevokedUponIssuance
+      ) {
+        throw revokeError;
+      }
+      logger.info(
+        `GoDaddy certificate already revoked upstream, treating as success [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}] [status=${current.status}]`
+      );
+      return;
+    }
 
     logger.info(
       `GoDaddy certificate revocation submitted [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}] [reason=${reason}]`

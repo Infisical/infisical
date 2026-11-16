@@ -794,20 +794,37 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     });
     const revocationReason = CRL_REASON_TO_ACM_REVOCATION_REASON_MAP[reason];
 
-    let result;
+    const certificateArn = parsedMetadata.data.arn;
     try {
-      result = await acmClient.send(
+      const result = await acmClient.send(
         new RevokeCertificateCommand({
-          CertificateArn: parsedMetadata.data.arn,
+          CertificateArn: certificateArn,
           RevocationReason: revocationReason
         })
       );
+      logger.info(result, "AWS ACM RevokeCertificate result");
     } catch (error) {
+      // ACM documents no "already revoked" error, so read the certificate's status back.
+      const described = await acmClient
+        .send(new DescribeCertificateCommand({ CertificateArn: certificateArn }))
+        .catch((readError: unknown) => {
+          logger.warn(
+            readError,
+            `Failed to read the AWS ACM certificate's status after a failed revoke [caId=${caId}] [certificateId=${cert.id}] [certificateArn=${certificateArn}]`
+          );
+          return null;
+        });
+      const detail = described?.Certificate;
+      if (detail?.Status === CertificateStatus.REVOKED || detail?.RevokedAt) {
+        logger.info(
+          `AWS ACM certificate already revoked upstream, treating as success [caId=${caId}] [certificateId=${cert.id}] [certificateArn=${certificateArn}]`
+        );
+        return;
+      }
       throw new BadRequestError({
         message: `Failed to revoke certificate via AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
-    logger.info(result, "AWS ACM RevokeCertificate result");
   };
 
   return {

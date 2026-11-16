@@ -18,7 +18,7 @@ export const getPendingRevocations = (
   const pending = requests.filter(
     (request) =>
       request.status === ApprovalRequestStatus.Pending &&
-      (!request.expiresAt || new Date(request.expiresAt).getTime() > now)
+      (!request.expiresAt || new Date(request.expiresAt).getTime() >= now)
   );
   const expiries = pending.flatMap((request) =>
     request.expiresAt ? [new Date(request.expiresAt).getTime()] : []

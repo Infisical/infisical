@@ -124,10 +124,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   const findByProjectId = async (
     policyType: ApprovalPolicyType,
     projectId: string,
-    options?: { scopeType?: string | null; scopeId?: string | null }
+    options?: { scopeType?: string | null; scopeId?: string | null },
+    tx?: Knex
   ) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const baseQuery = dbInstance(TableName.ApprovalPolicies)
         .where({ type: policyType, projectId })
         .orderBy("id", "asc");
@@ -595,6 +596,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    primaryNode: () => db.primaryNode(),
     findByIdForUpdate,
     findByIdForShare,
     findStepsByPolicyId,

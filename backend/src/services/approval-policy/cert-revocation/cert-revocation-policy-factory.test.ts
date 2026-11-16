@@ -25,6 +25,8 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
   ...overrides
 });
 
+const primaryDb = { node: "primary" };
+
 const setup = (policies: unknown[], memberships: unknown[] = []) => {
   const deps = {
     membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
@@ -35,7 +37,8 @@ const setup = (policies: unknown[], memberships: unknown[] = []) => {
           (policies as { scopeType: string | null; scopeId: string | null }[]).filter(
             (p) => p.scopeType === scope.scopeType && p.scopeId === scope.scopeId
           )
-        )
+        ),
+      primaryNode: vi.fn().mockReturnValue(primaryDb)
     },
     certificateService: { revokeApprovedCertificate: vi.fn().mockResolvedValue(undefined) }
   };
@@ -55,10 +58,12 @@ describe("certRevocationApprovalResourceFactory.matchPolicy", () => {
     const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
 
     expect(policy?.id).toBe("match");
-    expect(deps.approvalPolicyDAL.findByProjectId).toHaveBeenCalledWith(expect.anything(), "project", {
-      scopeType: ApprovalPolicyScope.PkiApplication,
-      scopeId: applicationId
-    });
+    expect(deps.approvalPolicyDAL.findByProjectId).toHaveBeenCalledWith(
+      expect.anything(),
+      "project",
+      { scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId },
+      primaryDb
+    );
   });
 
   it("matches nothing when no policy lists the certificate's profile", async () => {
@@ -114,6 +119,42 @@ describe("certRevocationApprovalResourceFactory.buildNotification", () => {
       "The approved revocation of the certificate 'api.example.com' didn't complete. Reason: AWS PCA timed out"
     );
     expect(notification?.inApp?.link).toContain("/cert-manager/approvals/approval-1?policyType=cert-revocation");
+  });
+
+  describe("for a certificate with no common name", () => {
+    const unnamedRequest = {
+      id: "approval-1",
+      type: "cert-revocation",
+      organizationId: "org-1",
+      requesterName: "Alice",
+      requesterEmail: "alice@example.com",
+      requestData: { requestData: { commonName: "", serialNumber: "0a1b" } }
+    } as never;
+
+    it("names the certificate by its serial number in the review request", async () => {
+      const { resource } = setup([]);
+
+      const notification = await resource.buildNotification!({
+        event: ApprovalNotificationEvent.Requested,
+        request: unnamedRequest
+      });
+
+      expect(notification?.inApp?.body).toBe("Alice asked to revoke the certificate '0a1b'.");
+    });
+
+    it("names the certificate by its serial number in the failure notice", async () => {
+      const { resource } = setup([]);
+
+      const notification = await resource.buildNotification!({
+        event: ApprovalNotificationEvent.ApprovedActionFailed,
+        request: unnamedRequest,
+        failureReason: "AWS PCA timed out"
+      });
+
+      expect(notification?.inApp?.body).toBe(
+        "The approved revocation of the certificate '0a1b' didn't complete. Reason: AWS PCA timed out"
+      );
+    });
   });
 
   it("sends nothing for decisions, which show on the certificate itself", async () => {

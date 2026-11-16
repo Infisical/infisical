@@ -1,7 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -345,6 +345,8 @@ describe("certificate revocation behind an approval policy", () => {
     }
   } as unknown as TApprovalRequest;
 
+  const primaryDb = { node: "primary" } as unknown as Knex;
+
   type TAuditLog = { event: { type: EventType; metadata: Record<string, unknown> } };
 
   const buildRevocationService = ({
@@ -360,9 +362,13 @@ describe("certificate revocation behind an approval policy", () => {
         return [stored];
       }),
       transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
-      findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined)
+      findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined),
+      primaryNode: vi.fn().mockReturnValue(primaryDb)
     };
     const certificateAuthorityDAL = { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) };
+    const certificateProfileDAL = {
+      findById: vi.fn().mockResolvedValue({ id: "profile-1", slug: "web-servers" })
+    };
     const certificateAuthorityService = { revokeCertificate: vi.fn().mockResolvedValue(undefined) };
     const certificateAlertEventEmitter = { notify: vi.fn().mockResolvedValue(undefined) };
     const auditLogService = { createAuditLog: vi.fn().mockResolvedValue(undefined) };
@@ -375,6 +381,7 @@ describe("certificate revocation behind an approval policy", () => {
       notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined)
     };
     const approvalRequestDAL = { update: vi.fn().mockResolvedValue([{ id: "approval-request-0" }]) };
+    const pkiApplicationDAL = { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) };
 
     const deps = {
       certificateDAL,
@@ -387,13 +394,11 @@ describe("certificate revocation behind an approval policy", () => {
       certificateAuthorityCrlDAL: { primaryNode: vi.fn() },
       internalCertificateAuthorityDAL: { update: vi.fn().mockResolvedValue([]) },
       keyStore: { acquireLock: vi.fn().mockRejectedValue(new Error("redis unavailable")) },
-      certificateProfileDAL: {
-        findById: vi.fn().mockResolvedValue({ id: "profile-1", slug: "web-servers" })
-      },
+      certificateProfileDAL,
       certificateSyncDAL: { findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]) },
       pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
       pkiSyncQueue: { queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined) },
-      pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) },
+      pkiApplicationDAL,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
       userDAL: {
         findById: vi.fn().mockResolvedValue({ firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
@@ -409,11 +414,13 @@ describe("certificate revocation behind an approval policy", () => {
       service: certificateServiceFactory(deps),
       certificateDAL,
       certificateAuthorityDAL,
+      certificateProfileDAL,
       certificateAuthorityService,
       certificateAlertEventEmitter,
       approvalPolicyService,
       approvalRequestDAL,
       auditLogService,
+      pkiApplicationDAL,
       storedCertificate: () => stored,
       auditEvents: () => auditLogService.createAuditLog.mock.calls.map(([log]) => (log as TAuditLog).event)
     };
@@ -459,6 +466,36 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    describe("when the pending request expires at this very moment", () => {
+      const now = new Date("2026-11-16T12:00:00.000Z");
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(now);
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it("still treats it as waiting for approval, as the approval service does", async () => {
+        const ctx = buildRevocationService();
+        ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
+          id: "approval-request-0",
+          expiresAt: new Date(now)
+        });
+
+        const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(BadRequestError);
+        expect((error as Error).message).toBe(
+          `A revocation of certificate '${applicationCertificate.friendlyName}' is already waiting for approval.`
+        );
+        expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
+        expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      });
     });
 
     it("expires a lapsed pending request and opens a new one", async () => {
@@ -507,6 +544,28 @@ describe("certificate revocation behind an approval policy", () => {
         expect.objectContaining({ serialNumber: applicationCertificate.serialNumber })
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+    });
+
+    it("refuses a direct revocation when the certificate was revoked meanwhile, without writing it again", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue({ ...applicationCertificate, status: CertStatus.REVOKED });
+
+      const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect((error as Error).message).toBe(`Certificate '${applicationCertificate.friendlyName}' is already revoked.`);
+      expect(ctx.certificateDAL.findByIdForUpdate).toHaveBeenCalledWith("cert-1", tx);
+      expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+    });
+
+    it("reads the certificate and its profile from the primary to decide whether approval is needed", async () => {
+      const ctx = buildRevocationService();
+
+      await ctx.service.revokeCert(revokeRequest);
+
+      expect(ctx.certificateDAL.findById).toHaveBeenCalledWith("cert-1", primaryDb);
+      expect(ctx.certificateProfileDAL.findById).toHaveBeenCalledWith("profile-1", primaryDb);
     });
   });
 
@@ -597,7 +656,7 @@ describe("certificate revocation behind an approval policy", () => {
       ]);
     });
 
-    it("names the CA and says the certificate is still active when the CA fails unexpectedly", async () => {
+    it("names the CA and doesn't claim the certificate is still active when the CA fails unexpectedly", async () => {
       const ctx = buildRevocationService();
       ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
 
@@ -614,10 +673,12 @@ describe("certificate revocation behind an approval policy", () => {
             requesterName: "Ada Lovelace",
             requesterEmail: "requester@example.com",
             error:
-              "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error. The certificate is still active."
+              "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error. Infisical hasn't marked the certificate as revoked and couldn't confirm its state at the CA."
           }) as unknown
         })
       ]);
+      const [failure] = ctx.auditEvents();
+      expect(failure.metadata.error).not.toContain("still active");
     });
 
     it("passes on the CA's own message as a complete sentence", async () => {
@@ -632,8 +693,10 @@ describe("certificate revocation behind an approval policy", () => {
 
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
-        "Revoking the certificate at CA 'corp-adcs' (Microsoft ADCS) failed: Unable to connect to gateway, no platform connection details found. The certificate is still active."
+        "Revoking the certificate at CA 'corp-adcs' (Microsoft ADCS) failed: Unable to connect to gateway, no platform connection details found. Infisical hasn't marked the certificate as revoked."
       );
+      const [[, reason]] = ctx.approvalPolicyService.notifyApprovedActionFailed.mock.calls as [unknown, string][];
+      expect(reason).not.toContain("couldn't confirm");
     });
 
     it("doesn't blame the CA for a failure before Infisical called it", async () => {
@@ -649,6 +712,83 @@ describe("certificate revocation behind an approval policy", () => {
         approvedRevocation,
         "An unexpected error stopped the revocation. The certificate is still active."
       );
+    });
+
+    it("says the certificate is still active when an internal CA's revocation fails to save", async () => {
+      const ctx = buildRevocationService({ ca: internalCa });
+      ctx.certificateDAL.update.mockRejectedValue(new Error("Connection terminated unexpectedly"));
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "An unexpected error stopped the revocation. The certificate is still active."
+      );
+    });
+
+    it("says the CA accepted the revocation when only Infisical's record of it failed", async () => {
+      const adcsCa = { ...externalCa, name: "corp-adcs", externalCa: { id: "external-ca-2", type: CaType.ADCS } };
+      const ctx = buildRevocationService({ ca: adcsCa });
+      ctx.certificateDAL.update.mockRejectedValue(new Error("Connection terminated unexpectedly"));
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).toHaveBeenCalledTimes(1);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again to record it."
+      );
+      expect(ctx.auditEvents()).toEqual([
+        expect.objectContaining({
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: expect.objectContaining({
+            error:
+              "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again to record it."
+          }) as unknown
+        })
+      ]);
+    });
+
+    it("records nothing when the certificate was revoked meanwhile, after the CA accepted this revocation", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue({ ...applicationCertificate, status: CertStatus.REVOKED });
+
+      await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).toHaveBeenCalledTimes(1);
+      expect(ctx.certificateDAL.findByIdForUpdate).toHaveBeenCalledWith("cert-1", tx);
+      expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+      expect(ctx.auditEvents()).toEqual([]);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+    });
+
+    it("reads the certificate's status from the primary after a failed revocation", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateDAL.findById).toHaveBeenCalledTimes(2);
+      expect(ctx.certificateDAL.findById).toHaveBeenNthCalledWith(1, "cert-1", primaryDb);
+      expect(ctx.certificateDAL.findById).toHaveBeenNthCalledWith(2, "cert-1", primaryDb);
+    });
+
+    it("records nothing when the CA call fails but someone else revoked the certificate meanwhile", async () => {
+      const adcsCa = { ...externalCa, name: "corp-adcs", externalCa: { id: "external-ca-2", type: CaType.ADCS } };
+      const ctx = buildRevocationService({ ca: adcsCa });
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(
+        new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" })
+      );
+      ctx.certificateDAL.findById
+        .mockResolvedValueOnce(applicationCertificate)
+        .mockResolvedValueOnce({ ...applicationCertificate, status: CertStatus.REVOKED });
+
+      await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.auditEvents()).toEqual([]);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
     });
 
     it("doesn't say the certificate is still active when it's gone after the failure", async () => {
@@ -706,12 +846,13 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.auditEvents().map((event) => event.type)).toEqual([EventType.CERT_REVOCATION_FAILED]);
     });
 
-    it("records the revocation when a step after the local revoke fails", async () => {
+    it("records the revocation when a step after the CA and the local revoke fails", async () => {
       const ctx = buildRevocationService();
       ctx.certificateAlertEventEmitter.notify.mockRejectedValue(new Error("alert queue unavailable"));
 
       await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
 
+      expect(ctx.certificateAuthorityService.revokeCertificate).toHaveBeenCalledTimes(1);
       expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
       expect(ctx.auditEvents()).toEqual([
         expect.objectContaining({
@@ -764,12 +905,49 @@ describe("certificate revocation behind an approval policy", () => {
       ]);
     });
 
-    it("does not throw when the audit log can't be written", async () => {
+    it("names the certificate by its serial number when it no longer exists and has no common name", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findById.mockResolvedValue(undefined);
+      const { requestData } = approvedRevocation.requestData as { requestData: Record<string, unknown> };
+      const unnamedRevocation = {
+        ...approvedRevocation,
+        requestData: { version: 1, requestData: { ...requestData, commonName: "" } }
+      } as unknown as TApprovalRequest;
+
+      await ctx.service.revokeApprovedCertificate(unnamedRevocation);
+
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        unnamedRevocation,
+        `Certificate '${applicationCertificate.serialNumber}' no longer exists.`
+      );
+    });
+
+    it("records the failure and notifies when the Application's name can't be read", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(
+        new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" })
+      );
+      ctx.pkiApplicationDAL.findById.mockRejectedValue(new Error("Connection terminated unexpectedly"));
+
+      await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.auditEvents()).toEqual([
+        expect.objectContaining({
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: expect.objectContaining({ applicationId: "app-1", applicationName: null }) as unknown
+        })
+      ]);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledTimes(1);
+    });
+
+    it("still notifies, and doesn't throw, when the failure's audit event can't be written", async () => {
       const ctx = buildRevocationService();
       ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
       ctx.auditLogService.createAuditLog.mockRejectedValue(new Error("audit log unavailable"));
 
       await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledTimes(1);
     });
 
     it("records the CRL warning when the CRL couldn't be rebuilt", async () => {

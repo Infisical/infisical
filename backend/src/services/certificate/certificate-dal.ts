@@ -510,20 +510,22 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByThumbprintInOrg = async ({
-    orgId,
-    column,
-    fingerprint,
-    limit
-  }: {
-    orgId: string;
-    column: "fingerprintSha1" | "fingerprintSha256";
-    fingerprint: string;
-    limit?: number;
-  }): Promise<TCertificates[]> => {
+  const findByThumbprintInOrg = async (
+    {
+      orgId,
+      column,
+      fingerprint,
+      limit
+    }: {
+      orgId: string;
+      column: "fingerprintSha1" | "fingerprintSha256";
+      fingerprint: string;
+      limit?: number;
+    },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
     try {
-      const query = db
-        .replicaNode()(TableName.Certificate)
+      const query = (tx || db.replicaNode())(TableName.Certificate)
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)

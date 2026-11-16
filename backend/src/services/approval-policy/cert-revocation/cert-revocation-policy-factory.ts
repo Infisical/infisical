@@ -2,6 +2,7 @@ import { ResourceType } from "@app/db/schemas";
 import { RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -23,7 +24,7 @@ import {
 } from "./cert-revocation-policy-types";
 
 type TCertRevocationApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
 };
@@ -64,11 +65,15 @@ export const certRevocationApprovalResourceFactory = ({
 > => ({
   scopeType: ApprovalPolicyScope.PkiApplication,
 
+  // A missing policy sends the caller down the direct-revoke path, so a replica that hasn't seen a new policy
+  // would skip approval. The primary has every policy the moment it's saved.
   matchPolicy: async (projectId, inputs) => {
-    const policies = (await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRevocation, projectId, {
-      scopeType: ApprovalPolicyScope.PkiApplication,
-      scopeId: inputs.applicationId
-    })) as TCertRevocationPolicy[];
+    const policies = (await approvalPolicyDAL.findByProjectId(
+      ApprovalPolicyType.CertRevocation,
+      projectId,
+      { scopeType: ApprovalPolicyScope.PkiApplication, scopeId: inputs.applicationId },
+      approvalPolicyDAL.primaryNode()
+    )) as TCertRevocationPolicy[];
 
     return (
       policies.find(
@@ -104,7 +109,9 @@ export const certRevocationApprovalResourceFactory = ({
   },
 
   buildNotification: async ({ event, request, failureReason }) => {
-    const { commonName } = (request.requestData as { requestData: TCertRevocationRequestData }).requestData;
+    const certificateName = getCertificateDisplayName(
+      (request.requestData as { requestData: TCertRevocationRequestData }).requestData
+    );
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
 
@@ -113,7 +120,7 @@ export const certRevocationApprovalResourceFactory = ({
         inApp: {
           type: NotificationType.APPROVED_ACTION_FAILED,
           title: "Certificate Revocation Failed",
-          body: `The approved revocation of the certificate '${commonName}' didn't complete. Reason: ${failureReason}`,
+          body: `The approved revocation of the certificate '${certificateName}' didn't complete. Reason: ${failureReason}`,
           link: approvalUrl
         }
       };
@@ -125,7 +132,7 @@ export const certRevocationApprovalResourceFactory = ({
       inApp: {
         type: NotificationType.APPROVAL_REQUIRED,
         title: "Approval Required",
-        body: `${request.requesterName} asked to revoke the certificate '${commonName}'.`,
+        body: `${request.requesterName} asked to revoke the certificate '${certificateName}'.`,
         link: approvalUrl
       },
       email: cfg.SITE_URL

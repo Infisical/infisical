@@ -12,10 +12,11 @@ import {
 
 const ProfileSlugSchema = z.string().trim().min(1).max(255);
 
-// Revocation is rare and destructive, so no actor skips its approval.
-const NoMachineIdentityBypassSchema = z
-  .boolean()
-  .refine((value) => !value, { message: "Revocation approval policies can't be bypassed by machine identities" });
+// Revocation is rare and destructive, so no actor skips its approval. A literal, unlike a refine, shows the only
+// accepted value in the API docs.
+const NoMachineIdentityBypassSchema = z.literal(false, {
+  errorMap: () => ({ message: "Revocation approval policies can't be bypassed by machine identities" })
+});
 
 export const CertRevocationPolicyInputsSchema = z.object({
   profileName: ProfileSlugSchema,

@@ -1,4 +1,5 @@
 import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType } from "../approvalPolicies";
+import { CrlReason } from "../certificates/enums";
 import { TCodeSigningScope } from "../signers/types";
 
 export enum ApprovalRequestStatus {
@@ -91,7 +92,7 @@ export type CertRevocationRequestData = {
   profileId: string;
   profileName: string;
   applicationId: string;
-  revocationReason: string;
+  revocationReason: CrlReason;
 };
 
 export type CodeSigningRequestData = {

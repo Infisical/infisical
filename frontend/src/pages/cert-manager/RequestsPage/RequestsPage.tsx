@@ -107,7 +107,11 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
 const getApplicationRequestSummary = (request: TApprovalRequest) => {
   if (request.type === ApprovalPolicyType.CertRevocation) {
     const data = request.requestData.requestData as CertRevocationRequestData;
-    return { typeLabel: "Revocation", commonName: data.commonName, profileName: data.profileName };
+    return {
+      typeLabel: "Revocation",
+      commonName: data.commonName || data.serialNumber,
+      profileName: data.profileName
+    };
   }
 
   const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;

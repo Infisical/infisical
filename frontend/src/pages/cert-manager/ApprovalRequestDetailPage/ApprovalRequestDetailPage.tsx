@@ -34,7 +34,6 @@ import {
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
-import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import {
@@ -94,15 +93,14 @@ const RevocationDetailsSection = ({
                 {...getCertManagerLink(requestProject, `certificates/${requestData.certificateId}`)}
                 className="font-mono underline hover:text-foreground-secondary"
               >
-                {requestData.commonName || requestData.certificateId}
+                {requestData.commonName || requestData.serialNumber}
               </Link>
             </p>
           </div>
           <div>
             <span className="text-xs text-muted">Revocation Reason</span>
             <p className="text-sm text-foreground">
-              {crlReasonToNameMap[requestData.revocationReason as CrlReason] ??
-                requestData.revocationReason}
+              {crlReasonToNameMap[requestData.revocationReason] ?? requestData.revocationReason}
             </p>
           </div>
           <div>
@@ -404,7 +402,7 @@ const PageContent = () => {
           <p className="mt-1 text-sm text-muted">
             Revocation request for{" "}
             <span className="font-medium text-foreground-secondary">
-              {revocationData.commonName || revocationData.profileName}
+              {revocationData.commonName || revocationData.serialNumber}
             </span>{" "}
             by {request.requesterName || "Unknown"}
             {applicationLink}

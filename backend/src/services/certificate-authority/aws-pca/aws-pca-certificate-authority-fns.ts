@@ -7,6 +7,7 @@ import {
   DescribeCertificateAuthorityCommand,
   GetCertificateCommand,
   IssueCertificateCommand,
+  RequestAlreadyProcessedException,
   RequestInProgressException,
   RevokeCertificateCommand,
   ValidityPeriodType
@@ -926,15 +927,21 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     const revocationReason = CRL_REASON_TO_REVOCATION_REASON_MAP[reason];
 
-    const revokeResult = await pcaClient.send(
-      new RevokeCertificateCommand({
-        CertificateAuthorityArn: certificateAuthorityArn,
-        CertificateSerial: serialNumber,
-        RevocationReason: revocationReason
-      })
-    );
-
-    logger.info(revokeResult, "AWS PCA RevokeCertificate result");
+    try {
+      const revokeResult = await pcaClient.send(
+        new RevokeCertificateCommand({
+          CertificateAuthorityArn: certificateAuthorityArn,
+          CertificateSerial: serialNumber,
+          RevocationReason: revocationReason
+        })
+      );
+      logger.info(revokeResult, "AWS PCA RevokeCertificate result");
+    } catch (error) {
+      if (!(error instanceof RequestAlreadyProcessedException)) throw error;
+      logger.info(
+        `AWS PCA certificate already revoked upstream, treating as success [caId=${caId}] [serialNumber=${serialNumber}]`
+      );
+    }
   };
 
   return {
