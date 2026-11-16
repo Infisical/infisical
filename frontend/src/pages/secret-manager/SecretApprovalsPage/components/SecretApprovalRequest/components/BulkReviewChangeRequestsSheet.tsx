@@ -31,6 +31,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useOrganization } from "@app/context";
 import {
   useBulkActOnSecretApprovalRequests,
   useGetSecretApprovalRequestDetailsList
@@ -41,6 +42,7 @@ import {
   TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
@@ -103,6 +105,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
 
+  const { currentOrg } = useOrganization();
   const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const detailQueries = useGetSecretApprovalRequestDetailsList({
     ids: requests.map(({ id }) => id)
@@ -172,6 +175,26 @@ const BulkReviewChangeRequestsSheetContent = ({
         requests.filter(({ id }) => decisions[id] === decision).map(({ id }) => id);
       const approveIds = idsFor("approve");
       const rejectIds = idsFor("reject");
+
+      [
+        { decision: "approved" as const, count: approveIds.length },
+        { decision: "rejected" as const, count: rejectIds.length }
+      ]
+        .filter(({ count }) => count > 0)
+        .forEach(({ decision, count }) =>
+          analytics.captureForOrganization(
+            AnalyticsEvent.SecretApprovalReviewSubmitted,
+            currentOrg.id,
+            {
+              projectId,
+              mode: "bulk",
+              decision,
+              requestCount: count,
+              entryPoint: "bulk-review-sheet",
+              mergeRequested: decision === "approved"
+            }
+          )
+        );
 
       const approveResults = approveIds.length
         ? await bulkAct({
