@@ -1,0 +1,41 @@
+HARD EXCLUSIONS - Automatically exclude findings matching these patterns:
+1. Denial of service, resource exhaustion, memory or CPU exhaustion, and missing rate limiting
+2. Lack of input validation on fields with no security impact
+3. Missing hardening measures. Code is not expected to implement every best practice, only to avoid concrete vulnerabilities.
+4. Theoretical race conditions or timing attacks. Report a race only if it has a practical exploit path, such as a double-spend of a single-use token. Non-constant-time comparison of secrets, tokens, or signatures is not excluded.
+5. Vulnerabilities in third-party dependencies. These are tracked separately.
+6. Files that are only tests or test fixtures (*.test.ts, *.spec.ts, *_test.go, backend/e2e-test, e2e, seed data)
+7. Log spoofing. Writing unsanitized user input to logs is not a vulnerability unless it writes a secret value, token, or key.
+8. SSRF that only controls the URL path. SSRF matters when the attacker controls the host or protocol.
+9. Including user-controlled content in an AI prompt
+10. Crashes from undefined or null values that have no security impact
+11. Attacks that require raw database or disk access, reading process memory, physical access, or social engineering. These are outside the Infisical threat model. This does not cover code that stores secret material without encryption (precedent 21).
+
+SIGNAL QUALITY CRITERIA - For remaining findings, assess:
+1. Does a less privileged principal (org member, project member or viewer, machine identity, service token, or unauthenticated caller), or a principal in a different organization or project, reach data or actions beyond what their role grants?
+2. Does it expose a secret value, encryption key, access token, private key, or stored credential?
+3. Is there a concrete attack path through the code as changed by this PR?
+4. Would a security engineer act on it?
+
+PRECEDENTS -
+1. Org and project administrators are trusted by the threat model. Behavior reachable only by an org Admin or project Admin within their own organization is by design. The real finding is a non-admin, cross-tenant, or unauthenticated caller reaching it, or a grant that lets an actor hand out more than the privilege system allows.
+2. Do not dismiss a missing org or project scope check because the identifier is a UUID. IDs appear in URLs, audit logs, and shared links, and are not secrets. A query that resolves a row outside the caller's organization or project is a valid finding.
+3. An attack that starts from a valid stolen token, API key, or session acting as its legitimate owner is out of scope.
+4. Revealing that a secret exists, or its metadata (key name, path, tags, environment) to a principal holding DescribeSecret, is by design. Revealing a secret value to a principal without ReadValue is a valid finding.
+5. Using a resource without seeing its credential is by design: opening a PAM session without reading the account password, issuing a certificate without ReadPrivateKey, encrypting or decrypting with a KMS key without exporting it. The finding is when the credential-read, private-key, or key-export action is not enforced on its own.
+6. Machine identity auth methods trust the external issuer the operator configured. Trusting that issuer is by design. Accepting an assertion with a missing or unchecked signature, issuer, audience, or bound claim is a valid finding.
+7. Environment variables, CLI flags, the root encryption key, and infrastructure configuration are controlled by the operator. Attacks that require changing them are invalid. On self-hosted instances, the operator and anyone with server or database access are trusted. Cross-tenant isolation on Infisical Cloud is in scope.
+8. Ciphertext, encrypted blobs, or row metadata visible in the database is by design. A finding needs a way to recover plaintext without the key hierarchy.
+9. A missing audit log event is not a vulnerability. A path that lets a non-admin delete or alter audit log entries is.
+10. Logging a secret value, access token, encryption key, private key, password, or request header or body that carries one is a valid finding. Logging IDs, names, and URLs is not.
+11. Permission checks in frontend code are for UX. The backend enforces authorization, so missing checks in React components are not findings. Report the backend route instead if it lacks the check.
+12. React escapes output. Report XSS in React only when it uses dangerouslySetInnerHTML or renders untrusted HTML or markdown without sanitizing it.
+13. SSRF and path traversal in client-side code (frontend/) are not valid. Server-side requests to user-supplied URLs without safeRequest are valid.
+14. Tabnabbing, XS-Leaks, prototype pollution, and open redirects are low impact. Report them only with a concrete path to credential or session theft.
+15. This repository is public. A workflow that combines pull_request_target or workflow_run with checking out or running PR code, or that interpolates PR-controlled fields into a run: script, is a valid finding. Other workflow findings need a concrete attack path.
+16. Command injection in shell scripts needs a concrete path from untrusted input.
+17. Only include MEDIUM findings if they are obvious and concrete.
+18. A secret sharing link that anyone can open before it expires, when no organization or email restriction was set, is by design. Valid findings: a guessable link token, a link that ignores its expiry or max views, a restricted link that opens without the required auth, or a value still retrievable after the link is destroyed.
+19. Users in a target project reading a secret from another project through a reference or an import is by design when a project folder grant backs it and the organization's cross-project sharing setting is on. They need no permissions in the source project. Within a single project, a reference that resolves a secret in an environment or folder the caller's role denies is a valid finding. Also valid: reaching a folder that was never granted, a grant honored across organizations, or the organization setting not being enforced.
+20. PAM and Agent Vault run on one implicit project per organization whose roles are admin or member only, and access to individual PAM resources is granted at the resource level. A project member acting on a resource they hold a resource membership for is by design. Acting on a resource they were never granted is a valid finding.
+21. Code that writes a secret value, token, key, or credential to the database or disk without encrypting it through the KMS service is a valid finding, even though reading it back needs database access. The threat model excludes database access because data at rest is encrypted, so code that skips the encryption breaks that assumption. The same applies to a migration that can encrypt, decrypt, or rewrite data with the wrong key, even with no attacker involved.

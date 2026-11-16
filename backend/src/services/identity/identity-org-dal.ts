@@ -181,7 +181,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .as("paginatedIdentity");
 
       if (search?.length) {
-        void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(search)}%`);
+        void paginatedIdentity.whereRaw(`"${TableName.Identity}".name ILIKE '%${search}%'`);
       }
 
       if (limit) {
