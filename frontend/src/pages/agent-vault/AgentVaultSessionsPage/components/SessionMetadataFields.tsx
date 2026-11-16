@@ -5,7 +5,6 @@ import {
   Button,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -66,7 +65,7 @@ export const SessionMetadataFields = ({ idPrefix }: Props) => {
                       {...field}
                       id={`${idPrefix}-metadata-${index}-key`}
                       aria-label={`Metadata key ${index + 1}`}
-                      placeholder="runId"
+                      placeholder="Key"
                       isError={Boolean(fieldState.error)}
                     />
                     <FieldError>{fieldState.error?.message}</FieldError>
@@ -82,7 +81,7 @@ export const SessionMetadataFields = ({ idPrefix }: Props) => {
                       {...field}
                       id={`${idPrefix}-metadata-${index}-value`}
                       aria-label={`Metadata value ${index + 1}`}
-                      placeholder="8812"
+                      placeholder="Value"
                       isError={Boolean(fieldState.error)}
                     />
                     <FieldError>{fieldState.error?.message}</FieldError>
@@ -101,9 +100,6 @@ export const SessionMetadataFields = ({ idPrefix }: Props) => {
           ))}
           {canAddRow && addRowButton}
         </div>
-        <FieldDescription>
-          Key and value pairs that say who or what this session is for, such as a run ID or ticket.
-        </FieldDescription>
         <FieldError>{listError}</FieldError>
       </FieldContent>
     </Field>

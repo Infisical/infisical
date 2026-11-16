@@ -280,7 +280,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       <DetailLabel>Metadata</DetailLabel>
                       <DetailValue className="min-w-0">
                         {metadataEntries.length > 0 ? (
-                          <dl className="flex flex-col gap-1">
+                          <dl className="flex max-h-48 flex-col gap-1 overflow-y-auto">
                             {metadataEntries.map(([key, value]) => (
                               <div key={key} className="flex min-w-0 gap-2">
                                 <dt className="max-w-1/2 shrink-0 text-muted">{key}</dt>
