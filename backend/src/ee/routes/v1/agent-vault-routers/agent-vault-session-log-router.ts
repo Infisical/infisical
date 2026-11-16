@@ -27,7 +27,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "listAgentVaultSessionLogs",
       description:
-        "Lists a session's logs newest first, as encrypted chunks of [records](/documentation/platform/agent-vault/session-logs#what-gets-recorded). To decrypt them, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To follow new logs as they arrive, use [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail). If Infisical can't read session logs, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
+        "Lists a session's logs newest first, as encrypted chunks of [records](/documentation/platform/agent-vault/session-logs#log-contents). To decrypt them, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To follow new logs as they arrive, use [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail). If Infisical can't read session logs, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogHistoryQuerySchema,

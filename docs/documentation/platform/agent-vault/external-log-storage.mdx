@@ -1,0 +1,153 @@
+---
+title: "Store Agent Vault session logs externally"
+sidebarTitle: "External storage"
+description: "Store session logs in an Amazon S3 bucket that you own."
+---
+
+import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instance.mdx";
+import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
+import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
+
+To keep session logs longer than 30 days, or in your own AWS account, store them in an Amazon S3 bucket you own. This is called external storage.
+
+<Info>
+  External storage is a paid feature.
+
+  If you're using Infisical Cloud, it's available under the **Enterprise Tier**. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Infisical reaches your bucket through an [AWS app connection](/integrations/app-connections/aws/), which signs in to AWS by assuming an IAM role you create.
+
+You'll switch between Infisical and AWS during setup: Infisical generates the AWS policy for your bucket, you set up the bucket and role in AWS, and then you create the connection in Infisical with the role's ARN.
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
+- An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) to store the records in
+- Permission in AWS to edit the bucket's CORS configuration, create IAM roles, and attach policies to them
+
+## Step 1: Start in Infisical
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Administration** > **Settings** > **Session Logs** and select **Configure** or **Set Up Session Logs**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/settings-session-logs.png" alt="The Session Logs settings page of the project, showing session logs enabled in default storage, and its Configure button" />
+    </Frame>
+  </Step>
+  <Step>
+    Turn on **Enable**, then under **Storage**, select **External storage**.
+  </Step>
+  <Step>
+    Enter the **Region** and **Bucket** of your S3 bucket.
+  </Step>
+  <Step>
+    Optionally, enter a **Key Prefix** to store session logs under one path in a bucket you also use for other data.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-start.png" alt="The Session Logs dialog with Enable turned on, External storage selected, no AWS connection yet, and a region, bucket, and key prefix filled in" />
+    </Frame>
+  </Step>
+  <Step>
+    Select **View AWS Setup**. Infisical shows an **IAM policy** with your bucket and key prefix already filled in, so you can paste it into AWS as it is.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-aws-setup.png" alt="The AWS Setup dialog on the IAM Policy tab, showing a policy that allows s3:PutObject and s3:GetObject under the agent-vault prefix and s3:ListBucket on the bucket" />
+    </Frame>
+  </Step>
+</Steps>
+
+Leave the **Session Logs** dialog open. You'll fill in **AWS Connection** in [Step 3](#step-3-finish-in-infisical), after you create the role it uses. Open AWS in another browser tab.
+
+## Step 2: Set up in AWS
+
+### Add a CORS rule to the bucket
+
+Your browser downloads session logs directly from your bucket, so the bucket has to accept requests from Infisical. Add a CORS rule for Infisical to the bucket.
+
+<Steps>
+  <AgentVaultSessionLogsCorsRule />
+</Steps>
+
+### Create an IAM role for Infisical
+
+<Note>
+  If you already have an AWS app connection you want to use, skip to [Attach the IAM policy](#attach-the-iam-policy).
+</Note>
+
+Infisical assumes this role to write session logs to the bucket.
+
+<SelfHostedInstance />
+
+<Steps>
+  <CreateIamRole externalId="agent-vault-project" />
+</Steps>
+
+### Attach the IAM policy
+
+Attach the **IAM policy** from [Step 1](#step-1-start-in-infisical) to the IAM role, or to the role or user your existing connection signs in as.
+
+<Steps>
+  <Step>
+    In the IAM console, open the role or user. On the **Permissions** tab, select **Add permissions** > **Create inline policy**, switch to the **JSON** editor, and paste the policy.
+  </Step>
+  <Step>
+    Select **Next**, enter a **Policy name**, then select **Create policy**.
+  </Step>
+  <Step>
+    If you created a new role, copy its **ARN** from the **Summary** section.
+
+    ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
+  </Step>
+</Steps>
+
+## Step 3: Finish in Infisical
+
+Go back to the **Session Logs** dialog.
+
+<Steps>
+  <Step>
+    Under **AWS Connection**, select **Create New Connection**.
+
+    <Note>
+      If you already have an AWS app connection you want to use, select it here instead. Then, select **Save** and skip the remaining steps.
+    </Note>
+  </Step>
+  <Step>
+     Enter a **Name**, keep the **Assume Role (Recommended)** method, paste the role's ARN into **Role ARN**, and select **Connect to AWS**. Infisical creates the connection in your Agent Vault project and selects it.
+  </Step>
+  <Step>
+    Select **Save**.
+  </Step>
+</Steps>
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on, External storage selected, and the acme-session-logs AWS connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix filled in" />
+</Frame>
+
+When you save, Infisical checks that the bucket exists and that the IAM user or role can write to it. If either check fails, Infisical shows the error and doesn't save the settings. If your browser can't read from the bucket, the **Session Logs** card shows a warning after you save.
+
+<Check>
+  You've successfully set up external storage for session logs.
+</Check>
+
+## Connections
+
+If you use external storage, session logs use one AWS connection at a time, which you select in the **Session Logs** dialog.
+
+To update the connection's AWS credentials, open the menu next to **Configure** on the **Session Logs** card and select **Edit AWS Credentials**. If the connection belongs to your organization, update its credentials under **Integrations** in your organization instead.
+
+To add or delete the project's AWS connections, select **Manage Connections** from the same menu:
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing the project's two Assume Role AWS connections, with acme-session-logs marked In Use" />
+</Frame>
+
+You can't delete a connection while session logs use it. To delete the connection, first turn session logs off, select a different connection, or switch to default storage in the **Session Logs** dialog.
+
+## Troubleshooting
+
+If the AWS connection returns an error, a red alert icon appears next to **Settings** in the project's sidebar, and **Settings** > **Session Logs** shows the error.
+
+If you set up external storage before your organization had Agent Vault projects, the IAM role's trust policy may require your Organization ID as the External ID. Infisical now sends the ID of the Agent Vault project instead, so it can't assume the role. In AWS, change the `sts:ExternalId` value in the role's trust policy to the project's ID (see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)).
