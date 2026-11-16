@@ -179,6 +179,9 @@ export type TAutoApprovalAiContextConnection = {
 export type TAutoApprovalCatalog = {
   // Apps a connection can be created for to use in rules
   apps: AppConnection[];
+  // Apps that add a request form field, and apps whose rules check the requester
+  fieldApps: AppConnection[];
+  requesterApps: AppConnection[];
   ai: {
     model: string | null;
     contextApps: AppConnection[];
@@ -199,6 +202,7 @@ export type TListAutoApprovalOptionsDTO = TGetAutoApprovalCatalogDTO & {
   constraint: string;
   search?: string;
   siblings?: Record<string, string[]>;
+  selected?: string[];
 };
 
 export type TApprovalPolicy = {

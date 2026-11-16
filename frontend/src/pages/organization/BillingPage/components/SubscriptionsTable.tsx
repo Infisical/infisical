@@ -46,10 +46,7 @@ const MeterLabel = ({ dim }: { dim: BillingEntitlementDim }) => {
   else unit = `/ ${allowance === null ? "Unlimited" : allowance.toLocaleString()} ${noun}`;
   return (
     <span className="flex h-[18px] items-baseline gap-1 whitespace-nowrap tabular-nums">
-      <span className="text-[13px] leading-4 text-foreground">
-        {dim.used.toLocaleString()}
-        {isIdentityDim(dim) && "x"}
-      </span>
+      <span className="text-[13px] leading-4 text-foreground">{dim.used.toLocaleString()}</span>
       <span className="truncate text-[11px] leading-[14px] text-muted">{unit}</span>
     </span>
   );

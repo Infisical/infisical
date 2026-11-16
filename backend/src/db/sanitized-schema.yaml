@@ -1343,6 +1343,15 @@ tables:
       - projectId
       - expiryNotificationSent
 
+  - name: totp_configs
+    source: public.totp_configs
+    columns:
+      - id
+      - userId
+      - isVerified
+      - createdAt
+      - updatedAt
+
   - name: user_group_membership
     source: public.user_group_membership
     columns:

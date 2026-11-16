@@ -66,6 +66,8 @@ type Props = {
   showErrors: boolean;
   onChange: (rule: TDraftRule) => void;
   onRemove: () => void;
+  // Creates a connection whose rules check the requester, such as incident.io
+  onCreateConnection?: () => void;
 };
 
 const getSubjectChoices = (
@@ -239,7 +241,8 @@ export const AutoApprovalRuleCard = ({
   scopeId,
   showErrors,
   onChange,
-  onRemove
+  onRemove,
+  onCreateConnection
 }: Props) => {
   const nameInputId = useId();
   const choices = getSubjectChoices(inputs, catalog);
@@ -296,6 +299,8 @@ export const AutoApprovalRuleCard = ({
   let addConditionBlocker: string | undefined;
   if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions) {
     addConditionBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions.`;
+  } else if (onCreateConnection) {
+    addConditionBlocker = undefined;
   } else if (choices.length === 0 && !canAddAi) {
     addConditionBlocker = "Add a field under Request Form Fields first.";
   } else if (menuGroups.length === 0 && !canAddAi) {
@@ -488,6 +493,15 @@ export const AutoApprovalRuleCard = ({
                         Set up AI features under Organization Settings &gt; General first.
                       </p>
                     )}
+                  </>
+                )}
+                {onCreateConnection && (
+                  <>
+                    {(menuGroups.length > 0 || canAddAi) && <DropdownMenuSeparator />}
+                    <DropdownMenuItem onClick={onCreateConnection}>
+                      <Plus />
+                      Create App Connection
+                    </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>

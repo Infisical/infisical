@@ -16,6 +16,7 @@ import {
   TJiraIssue
 } from "@app/services/app-connection/jira";
 
+import { anyOf, AUTO_APPROVAL_MAX_OPTIONS as MAX_OPTIONS } from "../auto-approval-fns";
 import {
   AutoApprovalConstraintValue,
   TAutoApprovalContext,
@@ -52,12 +53,9 @@ export type TJiraTicketFacts = {
 const JIRA_TICKET_FIELDS = ["status", "project", "issuetype", "labels", "assignee"];
 const MAX_TICKET_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
-const MAX_OPTIONS = 100;
 const MAX_SIBLING_PROJECTS = 5;
 
 const TICKET_FORMAT_MESSAGE = "Enter a Jira ticket key like PAY-123, or a link to the ticket";
-
-const anyOf = (values: string[]) => values.join(" or ");
 
 const includesIgnoreCase = (values: string[], value: string | null) =>
   value !== null && values.some((candidate) => candidate.toLowerCase() === value.toLowerCase());
@@ -186,7 +184,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
         parse: parseJiraTicket,
         getUrl: (id, conn) => `${removeTrailingSlash(conn.credentials.instanceUrl)}/browse/${encodeURIComponent(id)}`
       },
-      resolve: async (conn, id, ctx, constraintIds, deps): Promise<TJiraTicketFacts> => {
+      resolve: async (conn, id, ctx, valuesByConstraint, deps): Promise<TJiraTicketFacts> => {
         if (!id) throw new BadRequestError({ message: "No Jira ticket was provided" });
 
         let issue: TJiraIssue;
@@ -205,10 +203,10 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
 
         const key = issue.key || id;
         const [assignee, approval] = await Promise.all([
-          constraintIds.includes(JiraTicketConstraint.AssignedToRequester)
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.AssignedToRequester)
             ? matchAssigneeToRequester({ ...issue, key }, ctx)
             : null,
-          constraintIds.includes(JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
         ]);
 
         return {

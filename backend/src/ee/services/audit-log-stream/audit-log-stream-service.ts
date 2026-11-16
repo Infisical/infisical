@@ -12,7 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
@@ -54,7 +54,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
     if (plan.exceeds(PlanLimit.AuditLogStreams, totalStreams.length)) {
@@ -109,7 +112,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -225,7 +231,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -251,7 +260,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -272,7 +284,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 
