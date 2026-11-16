@@ -25,9 +25,9 @@ import { MailIcon } from "lucide-react";
 
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
+import { notPorted } from "../../../../not-ported";
 import type { Secret, SecretReminder } from "../../secrets-model";
 import { Gate } from "../flows/shared";
-import { NEXT_PHASE } from "../overview-cells";
 
 import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
@@ -507,7 +507,7 @@ export function ReminderSheet({
                   <div className={styles.formLabel}>Channels</div>
                   <SmallText muted>Add at least one delivery channel.</SmallText>
                 </div>
-                <Gate reason={NEXT_PHASE}>
+                <Gate reason={notPorted("Reminder channels")}>
                   <Button type="button" variant="outline" size="xs" icon="plus" disabled>
                     Add channel
                   </Button>

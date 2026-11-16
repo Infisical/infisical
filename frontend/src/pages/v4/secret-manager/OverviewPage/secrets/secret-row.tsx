@@ -63,6 +63,7 @@ import {
 
 import { failed } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
+import { notPorted } from "../../../not-ported";
 import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
 import { valueKey } from "../bridge/view-model";
@@ -81,7 +82,6 @@ import {
   type EnvironmentStatus,
   ExpandCell,
   type KindOverlay,
-  NEXT_PHASE,
   PendingBadge,
   PendingMenuItems,
   ROW_ACTION_SLOTS,
@@ -1108,7 +1108,7 @@ function SecretRowView({
   const groupActions: RowActionProps = {
     label: name,
     menu: (
-      <DropdownMenuItem disabled description={NEXT_PHASE}>
+      <DropdownMenuItem disabled description={notPorted("Renaming across environments")}>
         <Icon icon={EditIcon} />
         Edit secret name
       </DropdownMenuItem>

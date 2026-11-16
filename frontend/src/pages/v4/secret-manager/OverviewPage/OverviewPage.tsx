@@ -100,6 +100,7 @@ import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
+import { notPorted } from "../../not-ported";
 import { withoutDefaults } from "../search-defaults";
 import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
@@ -140,7 +141,6 @@ import {
 } from "./secrets/import-secrets/import-secrets-sheet";
 import { SecretDropzone } from "./secrets/import-secrets/secret-dropzone";
 import {
-  NEXT_PHASE,
   ROW_ACTION_SLOTS,
   type RowContext,
   selectableKinds,
@@ -1402,7 +1402,7 @@ export const OverviewPage = () => {
                 Clear search
               </Button>
               {gate(
-                NEXT_PHASE,
+                notPorted("Search all folders"),
                 <Button variant="outline" disabled>
                   Search all folders
                 </Button>
@@ -1482,7 +1482,7 @@ export const OverviewPage = () => {
           icon="folder"
           title="No environments yet"
           actions={gate(
-            NEXT_PHASE,
+            notPorted("Adding environments"),
             <Button icon="plus" disabled>
               Add environment
             </Button>
@@ -1495,7 +1495,7 @@ export const OverviewPage = () => {
           icon="lock"
           title="Secrets engine upgrade required"
           description="This project uses the legacy secrets engine."
-          actions={gate(NEXT_PHASE, <Button disabled>Upgrade project</Button>)}
+          actions={gate(notPorted("Project upgrades"), <Button disabled>Upgrade project</Button>)}
         />
       );
     if (failed)
@@ -1707,9 +1707,6 @@ export const OverviewPage = () => {
                     writeBlock={writeBlock}
                     accessBlocks={addBlocks}
                     single={single}
-                    available={Object.fromEntries(
-                      Object.keys(addFlows).map((kind) => [kind, true])
-                    )}
                     copyBlock={
                       pendingHere.length ? "Commit or discard pending changes first" : undefined
                     }

@@ -19,8 +19,8 @@ import { HourglassIcon } from "lucide-react";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
+import { notPorted } from "../../../../not-ported";
 import { ProviderLogo } from "../flows/wizard-sheet";
-import { NEXT_PHASE } from "../overview-cells";
 import type { LocalSecretSync } from "./sync-model";
 
 import styles from "./secret-sync.module.css";
@@ -173,7 +173,7 @@ export function SecretSyncStatusBadge({
                       <ProviderLogo image={meta?.image} size={20} />
                     </TableCell>
                     <TableCell className={styles.nameCell}>
-                      <Tooltip content={`Sync details are ${NEXT_PHASE.toLowerCase()}`}>
+                      <Tooltip content={notPorted("Sync details")}>
                         <span className={styles.truncate}>{sync.name}</span>
                       </Tooltip>
                     </TableCell>

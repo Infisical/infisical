@@ -29,10 +29,9 @@ import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import type { Scope } from "../../secrets-model";
-import { NEXT_PHASE } from "../overview-cells";
 import { ReferenceEditor } from "../secret-references";
 import { PasswordGenerator } from "./password-generator";
-import { DiscardDialog, environmentLabel, folderExists, Gate, secretsAt } from "./shared";
+import { DiscardDialog, environmentLabel, folderExists, secretsAt } from "./shared";
 import type { AddFlowProps, NewResource } from "./types";
 
 import styles from "./flows.module.css";
@@ -597,20 +596,17 @@ export function CreateSecretFlow({
           </SheetBody>
           <SheetFooter>
             <Inline justify="between">
-              <Gate reason={onUploadSecrets ? undefined : NEXT_PHASE}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  icon="upload"
-                  disabled={!onUploadSecrets}
-                  onClick={() => {
-                    onOpenChange(false);
-                    onUploadSecrets?.();
-                  }}
-                >
-                  Upload
-                </Button>
-              </Gate>
+              <Button
+                type="button"
+                variant="outline"
+                icon="upload"
+                onClick={() => {
+                  onOpenChange(false);
+                  onUploadSecrets();
+                }}
+              >
+                Upload
+              </Button>
               <Inline gap={8}>
                 <Button type="button" variant="ghost" onClick={close}>
                   Cancel

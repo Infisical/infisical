@@ -42,9 +42,10 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 
 import { useV4Adapter } from "../../../../data/adapters";
 import type { TSecretAccessList } from "../../../../data/secrets/contract-flows";
+import { notPorted } from "../../../../not-ported";
 import type { Secret } from "../../secrets-model";
 import { Gate } from "../flows/shared";
-import { NEXT_PHASE, type RowActionProps } from "../overview-cells";
+import type { RowActionProps } from "../overview-cells";
 
 import styles from "./row-actions.module.css";
 
@@ -224,7 +225,7 @@ export function AccessInsightsSheet({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Gate reason={NEXT_PHASE}>
+              <Gate reason={notPorted("Granting organization users access")}>
                 <Button disabled>
                   <Icon icon={UserPlusIcon} />
                   Grant organization user access
@@ -278,12 +279,15 @@ export function AccessInsightsSheet({
                       menu: (
                         <>
                           {row.type !== "group" && (
-                            <DropdownMenuItem disabled description={NEXT_PHASE}>
+                            <DropdownMenuItem
+                              disabled
+                              description={notPorted("Additional privileges")}
+                            >
                               <Icon name="plus" />
                               Add additional privilege
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem disabled description={NEXT_PHASE}>
+                          <DropdownMenuItem disabled description={notPorted("Managing access")}>
                             <Icon name="external" />
                             Manage access
                           </DropdownMenuItem>

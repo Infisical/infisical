@@ -36,8 +36,9 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
+import { notPorted } from "../../../not-ported";
 import type { ResourceKind, Secret } from "../secrets-model";
-import { KindIcon, NEXT_PHASE } from "./overview-cells";
+import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
 import { Annotations } from "./secret-row";
 
@@ -177,7 +178,6 @@ export function AddNewMenu({
   writeBlock,
   accessBlocks = {},
   single,
-  available,
   copyBlock,
   onAdd,
   onUpload,
@@ -187,7 +187,6 @@ export function AddNewMenu({
   writeBlock?: string;
   accessBlocks?: AddNewBlocks;
   single: boolean;
-  available: Partial<Record<ResourceKind, boolean>>;
   copyBlock?: string;
   onAdd: (kind: ResourceKind) => void;
   onUpload: () => void;
@@ -195,7 +194,6 @@ export function AddNewMenu({
   onAddSync: () => void;
 }) {
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
-    if (!available[kind]) return NEXT_PHASE;
     if (writeBlock) return writeBlock;
     if (accessBlocks[kind]) return accessBlocks[kind];
     return singleReason && !single ? singleReason : undefined;
@@ -454,7 +452,13 @@ export function QuickAddRow({
     >
       <TableCell pin="start" selection divider={false}>
         <span className={styles.iconSlot}>
-          <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabledReason={NEXT_PHASE}>
+          <Button
+            variant="ghost"
+            size="icon-row"
+            iconOnly
+            icon="plus"
+            disabledReason={notPorted("Other resource types")}
+          >
             Add another resource type
           </Button>
         </span>

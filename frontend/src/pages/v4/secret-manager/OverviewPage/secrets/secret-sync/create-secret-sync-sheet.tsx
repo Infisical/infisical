@@ -68,7 +68,6 @@ import {
 } from "../flows/secret-rotation/fields";
 import { DiscardDialog, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
-import { NEXT_PHASE } from "../overview-cells";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
 import { enabledBadge, SyncConnections } from "./sync-fields";
@@ -150,18 +149,15 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
   });
   const card = (destination: SecretSync) => {
     const { name, image, category } = SECRET_SYNC_MAP[destination];
-    const ported = Boolean(SYNC_VIEWS[destination]);
     return (
-      <Gate key={destination} reason={ported ? undefined : NEXT_PHASE}>
-        <Tile
-          media={<ProviderLogo image={image} size={24} />}
-          title={name}
-          disabled={!ported}
-          onClick={() => onSelect(destination)}
-        >
-          <span className={styles.category}>{category}</span>
-        </Tile>
-      </Gate>
+      <Tile
+        key={destination}
+        media={<ProviderLogo image={image} size={24} />}
+        title={name}
+        onClick={() => onSelect(destination)}
+      >
+        <span className={styles.category}>{category}</span>
+      </Tile>
     );
   };
   const grid = (destinations: SecretSync[]) => (
@@ -1118,14 +1114,7 @@ export function CreateSecretSyncSheet({
   let body: ReactNode = null;
   if (destination && current) {
     if (step === 0) body = <SourceFields environments={environments} conflicts={conflicts} />;
-    if (step === 1)
-      body = Destination ? (
-        <Destination />
-      ) : (
-        <Alert tone="neutral" title={NEXT_PHASE}>
-          {destinationName} destination settings are not available in this composition yet.
-        </Alert>
-      );
+    if (step === 1) body = Destination ? <Destination /> : null;
     if (step === 2) body = <InitialSyncFields />;
     if (step === 3) body = <OptionsFields />;
     if (step === 4) body = <DetailsFields />;
