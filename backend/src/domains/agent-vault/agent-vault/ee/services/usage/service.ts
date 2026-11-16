@@ -22,6 +22,8 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
   ) {}
 
   async recordProxyUsage({ orgId, reportId, endedAt, brokered }: TRecordProxyUsageInput): Promise<void> {
+    if (brokered <= 0 || !this.licenseService.getInstanceEntitlements().isCloud()) return;
+
     const offsetMs = endedAt.getTime() - Date.now();
     if (offsetMs > MAX_REPORT_AHEAD_MS || -offsetMs > MAX_REPORT_AGE_MS) {
       throw new RuleViolationError({
@@ -30,7 +32,6 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
           "This proxy's clock is too far from Infisical's for its usage report to be recorded. Fix the clock on the machine running the proxy."
       });
     }
-    if (brokered <= 0 || !this.licenseService.getInstanceEntitlements().isCloud()) return;
 
     if (!(await this.freeUsageCache.claimReport(reportId))) return;
 

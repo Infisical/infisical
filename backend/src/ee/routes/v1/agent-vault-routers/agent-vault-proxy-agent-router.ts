@@ -135,9 +135,9 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       description: "Report how many requests a proxy brokered since its last report",
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
-        reportId: z.string().uuid(),
-        endedAt: z.coerce.date(),
-        brokered: z.number().int().min(0).max(1_000_000)
+        reportId: z.string().uuid().describe(AGENT_VAULT.USAGE.reportId),
+        endedAt: z.coerce.date().describe(AGENT_VAULT.USAGE.endedAt),
+        brokered: z.number().int().min(0).max(1_000_000).describe(AGENT_VAULT.USAGE.brokered)
       }),
       response: { 204: z.string().length(0) }
     },

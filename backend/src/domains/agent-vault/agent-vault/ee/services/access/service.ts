@@ -14,15 +14,7 @@ export class AgentVaultAccessService implements TAgentVaultAccessService {
   ) {}
 
   async assertCanBroker(orgId: string): Promise<void> {
-    const isCloud = this.licenseService.getInstanceEntitlements().isCloud();
-    if (!isCloud) return;
-
-    const plan = await this.licenseService.getPlan(orgId);
-    if (!AgentVaultAccess.isLimited({ isCloud, plan })) return;
-
-    const now = new Date();
-    const used = await this.readFreeUsage(orgId, now);
-    AgentVaultAccess.decide({ isCloud, plan, used, now }).assertAllowed();
+    (await this.getAccess(orgId)).assertAllowed();
   }
 
   async getAccess(orgId: string): Promise<AgentVaultAccess> {

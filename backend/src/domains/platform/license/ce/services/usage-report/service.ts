@@ -106,7 +106,10 @@ export class UsageReportService implements TUsageReportService {
         `usage-event-queue: reported metering events [orgId=${reportOrgId}] [count=${outcome.accepted + outcome.deduped}] [deduped=${outcome.deduped}]`
       );
     } catch (error) {
-      logger.error(error, `usage-event-queue: failed to report metering events [orgId=${reportOrgId}]`);
+      logger.error(
+        error,
+        `usage-event-queue: failed to report metering events [orgId=${orgId}] [reportOrgId=${reportOrgId}]`
+      );
       throw error;
     }
   }

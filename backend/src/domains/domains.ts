@@ -2,7 +2,7 @@ import { TDbClient } from "@app/db";
 import { TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 
-import { AgentVaultModule } from "./agent-vault/agent-vault/ee/module";
+import { AgentVaultEeModule } from "./agent-vault/agent-vault/ee/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
@@ -54,7 +54,7 @@ export const createDomains = async (deps: TDomainDeps) => {
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
 
-  const agentVault = new AgentVaultModule({
+  const agentVault = new AgentVaultEeModule({
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
     usageMeteringService: license.usageMeteringService,

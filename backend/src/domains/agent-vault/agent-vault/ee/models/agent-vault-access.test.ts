@@ -54,7 +54,7 @@ describe("AgentVaultAccess.decide", () => {
     expect(access.toJSON()).toEqual({ state: AgentVaultAccessState.Free, allowed: true, freeUsage: null, warn: false });
   });
 
-  test("should refuse with AgentVaultFreeLimitReached and the reset date only at the limit", () => {
+  test("should refuse with AgentVaultFreeLimitReached only at the limit", () => {
     // Setup
     const reached = AgentVaultAccess.decide({ isCloud: true, plan: plan(false), used: 5_000, now });
     const under = AgentVaultAccess.decide({ isCloud: true, plan: plan(false), used: 4_999, now });
@@ -62,12 +62,12 @@ describe("AgentVaultAccess.decide", () => {
     // Action, Assert
     expect(() => reached.assertAllowed()).toThrow(RuleViolationError);
     expect(() => reached.assertAllowed()).toThrow(
-      "This organization used its 5,000 free Agent Vault requests this month. An admin with billing access can add a card in Usage & Billing, or the limit resets on Dec 1."
+      "This organization used its 5,000 free Agent Vault requests this month. An admin can add a card in Usage & Billing, or wait for next month."
     );
     expect(() => under.assertAllowed()).not.toThrow();
   });
 
-  test("should name next year's January as the reset in December", () => {
+  test("should reset at next year's January in December", () => {
     // Setup
     const access = AgentVaultAccess.decide({
       isCloud: true,
@@ -78,7 +78,6 @@ describe("AgentVaultAccess.decide", () => {
 
     // Action, Assert
     expect(access.freeUsage?.resetsAt).toEqual(new Date("2027-01-01T00:00:00Z"));
-    expect(() => access.assertAllowed()).toThrow(/resets on Jan 1\./);
   });
 });
 

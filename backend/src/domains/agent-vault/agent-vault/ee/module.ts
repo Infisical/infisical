@@ -14,7 +14,7 @@ export type TAgentVaultDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-export class AgentVaultModule {
+export class AgentVaultEeModule {
   readonly agentVaultAccessService: TAgentVaultAccessService;
 
   readonly agentVaultUsageService: TAgentVaultUsageService;

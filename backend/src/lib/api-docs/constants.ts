@@ -5447,6 +5447,23 @@ export const AGENT_VAULT = {
     limit: "The maximum number of users and groups to return.",
     offset: "How many users and groups to skip.",
     totalCount: "How many users and groups match, across every page."
+  },
+  ACCESS: {
+    state:
+      "Why the organization can or can't use Agent Vault: `self-hosted` and `plan` are never limited, `open` means the plan doesn't say yet and nothing is limited, `free` means it uses the free monthly requests, and `limit-reached` means it used them all this month.",
+    allowed: "Whether agents can use Agent Vault right now. False only once the free requests for this month are used.",
+    freeUsage:
+      "The organization's free requests this month, or `null` when it isn't on the free tier or the count couldn't be read.",
+    used: "How many free requests the organization used this month.",
+    limit: "How many free requests the organization gets each month.",
+    resetsAt: "When the free requests start again, at the start of next month (UTC).",
+    warn: "Whether the organization used most of its free requests this month, so the UI can warn before they run out."
+  },
+  USAGE: {
+    reportId:
+      "A random ID the proxy picks for this report. Send the same ID when you resend a report, so it is counted once.",
+    endedAt: "When the period this report covers ended. Send the same time when you resend a report.",
+    brokered: "How many requests the proxy brokered in this period, from 0 to 1,000,000."
   }
 };
 

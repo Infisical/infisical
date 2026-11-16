@@ -66,14 +66,9 @@ export class AgentVaultAccess {
   assertAllowed(): void {
     if (this.allowed || !this.usage) return;
     const limit = this.usage.limit.toLocaleString("en-US");
-    const resetsOn = this.usage.resetsAt.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC"
-    });
     throw new RuleViolationError({
       name: "AgentVaultFreeLimitReached",
-      message: `This organization used its ${limit} free Agent Vault requests this month. An admin with billing access can add a card in Usage & Billing, or the limit resets on ${resetsOn}.`
+      message: `This organization used its ${limit} free Agent Vault requests this month. An admin can add a card in Usage & Billing, or wait for next month.`
     });
   }
 

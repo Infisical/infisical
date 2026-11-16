@@ -84,11 +84,10 @@ describe("AgentVaultAccessService.assertCanBroker", () => {
 
   test("should never count or limit self-hosted", async () => {
     // Setup
-    const { service, licenseService, freeUsageCache } = build({ isCloud: false, used: 9_000 });
+    const { service, freeUsageCache } = build({ isCloud: false, used: 9_000 });
 
     // Action, Assert
     await expect(service.assertCanBroker(ORG_ID)).resolves.toBeUndefined();
-    expect(licenseService.getPlan).not.toHaveBeenCalled();
     expect(freeUsageCache.read).not.toHaveBeenCalled();
   });
 });

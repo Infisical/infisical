@@ -9888,6 +9888,48 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("billing", async () => {
+    const reportUsage = (accessToken: string, body: Record<string, unknown>) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/usage",
+        headers: { authorization: `Bearer ${accessToken}` },
+        body
+      });
+
+    const usageReport = () => ({ reportId: crypto.randomUUID(), endedAt: new Date().toISOString(), brokered: 3 });
+
+    test("a proxy reports its usage with its proxy token and gets a 204", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-report" });
+      expect(created.statusCode).toBe(200);
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      const res = await reportUsage(proxyToken, usageReport());
+      expect(res.statusCode).toBe(204);
+      expect(res.payload).toBe("");
+    });
+
+    test("a usage report with a bad body is a 400", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-bad-body" });
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      expect((await reportUsage(proxyToken, { ...usageReport(), reportId: "not-a-uuid" })).statusCode).toBe(400);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: -1 })).statusCode).toBe(400);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: 1.5 })).statusCode).toBe(400);
+    });
+
+    test("a user's token can't report usage", async () => {
+      const res = await reportUsage(jwtAuthToken, usageReport());
+      expect(res.statusCode).toBe(403);
+    });
+
+    test("the access route wraps the org's access in `access`", async () => {
+      const res = await injectRaw("GET", "/api/v1/agent-vault/settings/access");
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ access: { state: "self-hosted", allowed: true, freeUsage: null, warn: false } });
+    });
+  });
+
   describe("roles", async () => {
     test("the predefined roles are admin and member only", async () => {
       const projectId = await getProjectId();

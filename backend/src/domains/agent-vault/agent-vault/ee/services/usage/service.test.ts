@@ -85,6 +85,40 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     expect(await selfHosted.freeUsageCache.read(ROOT_ORG_ID, new Date())).toBe(0);
   });
 
+  test("should still send a report to metering when counting it fails", async () => {
+    // Setup
+    const { service, usageMeteringService, freeUsageCache } = build();
+    vi.spyOn(freeUsageCache, "add").mockRejectedValue(new Error("redis down"));
+
+    // Action
+    await service.recordProxyUsage(report);
+
+    // Assert
+    expect(usageMeteringService.recordMeteringEvents).toHaveBeenCalledWith("org-sub", [
+      { eventId: "report-1", meter: Meter.AgentVaultBrokeredRequests, quantity: 100, occurredAt: report.endedAt }
+    ]);
+  });
+
+  test("should reject and send nothing when the report can't be claimed", async () => {
+    // Setup
+    const { service, usageMeteringService, freeUsageCache } = build();
+    vi.spyOn(freeUsageCache, "claimReport").mockRejectedValue(new Error("redis down"));
+
+    // Action, Assert
+    await expect(service.recordProxyUsage(report)).rejects.toThrow("redis down");
+    expect(usageMeteringService.recordMeteringEvents).not.toHaveBeenCalled();
+  });
+
+  test("should accept a self-hosted report whatever the proxy's clock says", async () => {
+    // Setup
+    const { service, usageMeteringService } = build(false);
+    const ahead = new Date(Date.now() + 10 * 60_000);
+
+    // Action, Assert
+    await expect(service.recordProxyUsage({ ...report, endedAt: ahead })).resolves.toBeUndefined();
+    expect(usageMeteringService.recordMeteringEvents).not.toHaveBeenCalled();
+  });
+
   test("should refuse a report dated too far from now", async () => {
     // Setup
     const { service, usageMeteringService } = build();

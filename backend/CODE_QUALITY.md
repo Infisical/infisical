@@ -370,12 +370,10 @@ decides what an already-built thing does.
 
 ### The exception: Agent Vault brokering
 
-Agent Vault refuses `resolveSession` and `refreshCredential` (`agent-vault-proxy-service.ts`) on Infisical Cloud
-once an org without Agent Vault on its plan has used its free requests for the month, on purpose. Those calls hand a
-credential to a running proxy, and each request the proxy then brokers is the usage Infisical bills for. "Existing
-objects keep working" would mean an org's proxies broker past the free limit indefinitely, since a session can be
-minted with no expiry. Nothing is deleted or hidden: bundles, services, sessions, proxies and session logs stay
-readable and editable, and brokering resumes on its own once the org adds a card or the month resets. The check lives in one place
-(`AgentVaultAccessService.assertCanBroker`, `src/domains/agent-vault/agent-vault/`). Do not copy this to another
-feature.
-
+On Infisical Cloud, Agent Vault refuses to broker credentials for an org without Agent Vault on its plan once
+the org has used its free requests for the month, on purpose. Each request a proxy brokers is the usage
+Infisical bills for, and "existing objects keep working" would mean an org's proxies broker past the free limit
+indefinitely, since a session can be minted with no expiry. Nothing is deleted or hidden: bundles, services,
+sessions, proxies and session logs stay readable and editable, and brokering resumes on its own once the org
+adds a card or the month resets. Which calls are gated is in `src/domains/agent-vault/agent-vault/AGENTS.md`. Do
+not copy this to another feature.

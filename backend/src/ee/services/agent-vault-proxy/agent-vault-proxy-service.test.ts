@@ -7,7 +7,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ConflictError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
@@ -139,6 +139,7 @@ const setup = (
   const createCipherPairWithDataKey = vi.fn(
     async () => ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
   );
+  const agentVaultAccessService = agentVaultAccess(freeLimitReached);
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => proxy,
@@ -182,7 +183,7 @@ const setup = (
     },
     kmsService: { createCipherPairWithDataKey },
     licenseService: new FakeLicenseService(),
-    agentVaultAccessService: agentVaultAccess(freeLimitReached),
+    agentVaultAccessService,
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -199,7 +200,8 @@ const setup = (
     findResolvableServices,
     findReachableBundles,
     createCipherPairWithDataKey,
-    findCaFingerprintsByProjectId
+    findCaFingerprintsByProjectId,
+    agentVaultAccessService
   };
 };
 
@@ -264,10 +266,28 @@ describe("an org past its free Agent Vault requests", () => {
     expect(refreshServiceToken).not.toHaveBeenCalled();
   });
 
-  test("the heartbeat still answers, so the proxy keeps running", async () => {
-    const { service, recordHeartbeat } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
+  test("the heartbeat never checks the free limit, so the proxy keeps running", async () => {
+    const { service, recordHeartbeat, agentVaultAccessService } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true
+    });
     await service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 });
     expect(recordHeartbeat).toHaveBeenCalled();
+    expect(agentVaultAccessService.assertCanBroker).not.toHaveBeenCalled();
+  });
+
+  test("a session the proxy doesn't own is a 404, not the free limit refusal", async () => {
+    const { service, agentVaultAccessService } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true,
+      proxy: { projectId: "other-project", orgId: "org-1", pollInterval: 60, name: "theirs", trafficPolicy: "any-host" }
+    });
+    const result = service.resolveSession({
+      proxyId: "proxy-1",
+      orgId: "org-1",
+      sessionToken: "token",
+      hasSessionLogKey: false
+    });
+    await expect(result).rejects.toThrow(NotFoundError);
+    expect(agentVaultAccessService.assertCanBroker).not.toHaveBeenCalled();
   });
 });
 

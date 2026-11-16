@@ -92,12 +92,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, the access rule and usage.
 
-- **Gate only brokering**: the proxy's per-poll `resolveSession` and `refreshCredential` call
-  `agentVaultAccessService.assertCanBroker` (after the session check, so a refusal says nothing about a token that
-  isn't the caller's). On Infisical Cloud it refuses an org without Agent Vault on its plan once the org has used its
-  free requests for the month. Minting sessions, creating proxies, rotating tokens, bootstrap and heartbeat stay
-  open so the proxy keeps running and resumes by itself. Everything else, reads, deletes and revokes included, never
-  checks the plan. This is the one written exception to the license rule in `backend/CODE_QUALITY.md`.
+- **Only brokering is gated, at the free limit on Infisical Cloud.** Which proxy calls check it, and which never do,
+  is in `src/domains/agent-vault/agent-vault/AGENTS.md`. This is the one written exception to the license rule in
+  `backend/CODE_QUALITY.md`.
 - **The refusal is a `RuleViolationError` named `AgentVaultFreeLimitReached`.** The CLI keys on that name, so
   keep it.
 - **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)

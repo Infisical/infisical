@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
@@ -33,21 +34,26 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       tags: [ApiDocsTags.AgentVaultSettings],
       response: {
         200: z.object({
-          state: z.nativeEnum(AgentVaultAccessState),
-          allowed: z.boolean(),
-          freeUsage: z
-            .object({
-              used: z.number(),
-              limit: z.number(),
-              resetsAt: z.date()
-            })
-            .nullable(),
-          warn: z.boolean()
+          access: z.object({
+            state: z.nativeEnum(AgentVaultAccessState).describe(AGENT_VAULT.ACCESS.state),
+            allowed: z.boolean().describe(AGENT_VAULT.ACCESS.allowed),
+            freeUsage: z
+              .object({
+                used: z.number().int().describe(AGENT_VAULT.ACCESS.used),
+                limit: z.number().int().describe(AGENT_VAULT.ACCESS.limit),
+                resetsAt: z.date().describe(AGENT_VAULT.ACCESS.resetsAt)
+              })
+              .nullable()
+              .describe(AGENT_VAULT.ACCESS.freeUsage),
+            warn: z.boolean().describe(AGENT_VAULT.ACCESS.warn)
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+    handler: async (req) => ({
+      access: (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+    })
   });
 
   server.route({
