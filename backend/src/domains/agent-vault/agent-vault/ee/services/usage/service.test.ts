@@ -131,15 +131,18 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
 
   test("should count and bill a report from a proxy whose clock runs ahead, at Infisical's time", async () => {
     // Setup
+    const now = new Date("2026-11-17T10:00:00Z");
+    vi.useFakeTimers({ now, toFake: ["Date"] });
     const { service, usageMeteringService, freeUsageCache } = build();
-    const ahead = new Date(Date.now() + 10 * 60_000);
+    const ahead = new Date(now.getTime() + 10 * 60_000);
 
     // Action
     await service.recordProxyUsage({ ...report, endedAt: ahead });
 
     // Assert
-    expect(await freeUsageCache.read(ROOT_ORG_ID, new Date())).toBe(100);
-    const [[, events]] = vi.mocked(usageMeteringService.recordMeteringEvents).mock.calls;
-    expect(events[0].occurredAt.getTime()).toBeLessThan(ahead.getTime() - 4 * 60_000);
+    expect(await freeUsageCache.read(ROOT_ORG_ID, now)).toBe(100);
+    expect(usageMeteringService.recordMeteringEvents).toHaveBeenCalledWith("org-sub", [
+      { eventId: "report-1", meter: Meter.AgentVaultBrokeredRequests, quantity: 100, occurredAt: now }
+    ]);
   });
 });
