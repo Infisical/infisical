@@ -254,7 +254,7 @@ export const certRequestApprovalResourceFactory = ({
     if (renewal && request.status === ApprovalRequestStatus.Rejected) {
       // A rejected request the daily job raised would otherwise be raised again the next day. A request raised
       // before the flag existed counts as manual: an empty requester can also be a deleted user, and stopping
-      // auto-renewal for them could let the certificate expire. Imported certificates stop either way.
+      // auto-renewal for them could let the certificate expire. Imported and discovered certificates stop either way.
       await certificateRenewalService.recordRejectedRenewal(renewal.certificateId, {
         raisedByAutoRenewal: renewal.raisedByAutoRenewal ?? false
       });

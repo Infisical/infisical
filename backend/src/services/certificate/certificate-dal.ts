@@ -912,7 +912,8 @@ export const certificateDALFactory = (db: TDbClient) => {
                 .orWhereRaw(
                   `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'raisedByAutoRenewal' = 'true'`
                 )
-                // Requests raised before the flag existed: the daily job raised them with no requester.
+                // Requests raised before the flag existed with no requester: usually the daily job, though a manual
+                // renewal whose requester was deleted looks the same. Skipping only waits for it to be decided.
                 .orWhere((legacyAutoRenewalQb) => {
                   void legacyAutoRenewalQb
                     .whereRaw(
