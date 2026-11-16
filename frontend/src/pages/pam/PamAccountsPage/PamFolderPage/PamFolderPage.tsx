@@ -123,8 +123,7 @@ export const PamFolderPage = () => {
   ] as const);
 
   const accountSheet = usePamSheetState("accountId");
-  // The folder is the page itself, so its settings sheet is local state rather than a URL param.
-  const [folderSheetTab, setFolderSheetTab] = useState<PamSheetTab | undefined>();
+  const folderSheet = usePamSheetState("folderId");
 
   const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
@@ -247,7 +246,9 @@ export const PamFolderPage = () => {
                     <div>
                       <DropdownMenuItem
                         isDisabled={!configureTab}
-                        onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
+                        onClick={() =>
+                          configureTab && folderSheet.openSheet(folderId, configureTab.value)
+                        }
                       >
                         <Settings />
                         Configure
@@ -427,12 +428,12 @@ export const PamFolderPage = () => {
       />
 
       <FolderDetailSheet
-        isOpen={Boolean(folderSheetTab)}
-        folder={folder}
-        activeTab={folderSheetTab}
-        onTabChange={(tab) => setFolderSheetTab(tab as PamSheetTab)}
+        isOpen={folderSheet.isOpen}
+        folder={folders.find((f) => f.id === folderSheet.selectedId)}
+        activeTab={folderSheet.tab}
+        onTabChange={folderSheet.setTab}
         onOpenChange={(open) => {
-          if (!open) setFolderSheetTab(undefined);
+          if (!open) folderSheet.closeSheet();
         }}
       />
 
