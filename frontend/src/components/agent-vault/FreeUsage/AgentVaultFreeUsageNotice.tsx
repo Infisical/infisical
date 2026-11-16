@@ -15,16 +15,16 @@ export const AgentVaultFreeUsageNotice = () => {
     freeUsage,
     isLimitReached,
     warn,
-    canAddCard,
+    canAddPaymentMethod,
     isRootOrganization,
-    openAddCard,
+    openAddPaymentMethod,
     trackPaywall
   } = useAgentVaultFreeUsage("agent-vault.free-usage-notice");
 
   const isShown = Boolean(freeUsage) && warn && !isClosed;
   const limit = freeUsage ? formatFreeUsageCount(freeUsage.limit) : "";
-  const until = canAddCard
-    ? "until an admin adds a card or the month resets"
+  const until = canAddPaymentMethod
+    ? "until an admin adds a payment method or the month resets"
     : "until the month resets";
   // A sub-org shares its root organization's free requests and billing.
   const owner = isRootOrganization ? "This organization" : "Your root organization";
@@ -32,9 +32,9 @@ export const AgentVaultFreeUsageNotice = () => {
     ? `${owner} used its ${limit} free Agent Vault requests this month. Agent requests are refused ${until}.`
     : `${owner} used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused ${until}.`;
   const askAdmin = isRootOrganization
-    ? "Ask an organization admin to add a card."
-    : "Ask an admin of the root organization to add a card.";
-  const message = canAddCard ? usageMessage : `${usageMessage} ${askAdmin}`;
+    ? "Ask an organization admin to add a payment method."
+    : "Ask an admin of the root organization to add a payment method.";
+  const message = canAddPaymentMethod ? usageMessage : `${usageMessage} ${askAdmin}`;
 
   useEffect(() => {
     if (!isShown || hasTrackedView.current) return;
@@ -49,10 +49,10 @@ export const AgentVaultFreeUsageNotice = () => {
       <TriangleAlertIcon />
       <AlertDescription>
         <p>{message}</p>
-        {canAddCard && (
+        {canAddPaymentMethod && (
           <AlertAction>
-            <Button variant="outline" size="sm" onClick={() => openAddCard(message)}>
-              Add Card
+            <Button variant="outline" size="sm" onClick={() => openAddPaymentMethod(message)}>
+              Add Payment Method
             </Button>
           </AlertAction>
         )}

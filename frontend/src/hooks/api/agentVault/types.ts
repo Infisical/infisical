@@ -1038,7 +1038,7 @@ export type TAgentVaultFreeUsage = {
 export type TAgentVaultAccess = {
   /** `free` and `limit-reached` are orgs without Agent Vault on their plan, counted against the free monthly requests. */
   state: "self-hosted" | "plan" | "open" | "free" | "limit-reached";
-  /** False once the free requests are used: proxies stop attaching credentials until a card is added or the month resets. */
+  /** False once the free requests are used: proxies refuse agent requests until a payment method is added or the month resets. */
   allowed: boolean;
   /** Only for an org on the free tier. Org-wide: sub-organizations share their root's count. */
   freeUsage: TAgentVaultFreeUsage | null;

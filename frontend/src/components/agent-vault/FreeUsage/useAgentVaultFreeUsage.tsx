@@ -21,7 +21,7 @@ export const useAgentVaultFreeUsage = (paywallKey: string) => {
   const route = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
   });
-  const canAddCard =
+  const canAddPaymentMethod =
     isRootOrganization &&
     permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing) &&
     permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
@@ -42,7 +42,7 @@ export const useAgentVaultFreeUsage = (paywallKey: string) => {
     [currentOrg.id, paywallKey, route, plan]
   );
 
-  const openAddCard = useCallback(
+  const openAddPaymentMethod = useCallback(
     (paywallText: string) => {
       trackPaywall(AnalyticsEvent.PaywallUpgradeClicked, paywallText);
       const search = new URLSearchParams({
@@ -58,9 +58,9 @@ export const useAgentVaultFreeUsage = (paywallKey: string) => {
     freeUsage: access?.freeUsage ?? null,
     isLimitReached: access?.state === "limit-reached",
     warn: Boolean(access?.warn),
-    canAddCard,
+    canAddPaymentMethod,
     isRootOrganization,
-    openAddCard,
+    openAddPaymentMethod,
     trackPaywall
   };
 };

@@ -9,7 +9,7 @@ import { useAgentVaultFreeUsage } from "./useAgentVaultFreeUsage";
 
 export const AgentVaultFreeUsageMeter = () => {
   const hasTrackedView = useRef(false);
-  const { freeUsage, isLimitReached, warn, canAddCard, openAddCard, trackPaywall } =
+  const { freeUsage, isLimitReached, warn, canAddPaymentMethod, openAddPaymentMethod, trackPaywall } =
     useAgentVaultFreeUsage("agent-vault.free-usage-meter");
 
   const summary = freeUsage ? formatFreeUsageSummary(freeUsage) : "";
@@ -37,9 +37,9 @@ export const AgentVaultFreeUsageMeter = () => {
       <div className="mx-2 mb-1 rounded-md border border-border bg-container p-3 group-data-[collapsible=icon]:hidden">
         <div className="flex items-center gap-2">
           <span className="flex-1 text-sm font-medium">Free</span>
-          {canAddCard && (
-            <Button variant="outline" size="xs" onClick={() => openAddCard(summary)}>
-              Add Card
+          {canAddPaymentMethod && (
+            <Button variant="outline" size="xs" onClick={() => openAddPaymentMethod(summary)}>
+              Add Payment Method
             </Button>
           )}
         </div>

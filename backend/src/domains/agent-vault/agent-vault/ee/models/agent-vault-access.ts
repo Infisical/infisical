@@ -68,7 +68,7 @@ export class AgentVaultAccess {
     const limit = this.usage.limit.toLocaleString("en-US");
     throw new RuleViolationError({
       name: "AgentVaultFreeLimitReached",
-      message: `This organization used its ${limit} free Agent Vault requests this month. An admin can add a card in Usage & Billing, or wait for next month.`
+      message: `This organization used its ${limit} free Agent Vault requests this month. An admin can add a payment method in Usage & Billing, or wait for next month.`
     });
   }
 

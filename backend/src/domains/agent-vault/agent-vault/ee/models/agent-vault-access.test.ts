@@ -62,7 +62,7 @@ describe("AgentVaultAccess.decide", () => {
     // Action, Assert
     expect(() => reached.assertAllowed()).toThrow(RuleViolationError);
     expect(() => reached.assertAllowed()).toThrow(
-      "This organization used its 5,000 free Agent Vault requests this month. An admin can add a card in Usage & Billing, or wait for next month."
+      "This organization used its 5,000 free Agent Vault requests this month. An admin can add a payment method in Usage & Billing, or wait for next month."
     );
     expect(() => under.assertAllowed()).not.toThrow();
   });

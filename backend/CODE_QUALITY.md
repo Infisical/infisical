@@ -375,5 +375,5 @@ the org has used its free requests for the month, on purpose. Each request a pro
 Infisical bills for, and "existing objects keep working" would mean an org's proxies broker past the free limit
 indefinitely, since a session can be minted with no expiry. Nothing is deleted or hidden: bundles, services,
 sessions, proxies and session logs stay readable and editable, and brokering resumes on its own once the org
-adds a card or the month resets. Which calls are gated is in `src/domains/agent-vault/agent-vault/AGENTS.md`. Do
-not copy this to another feature.
+adds a payment method or the month resets. Which calls are gated is in
+`src/domains/agent-vault/agent-vault/AGENTS.md`. Do not copy this to another feature.

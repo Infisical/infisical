@@ -342,7 +342,7 @@ export const AgentVaultUpgradeIntent = {
   upgradeLabel: "Unlock Agent Vault",
   title: "Add Agent Vault to Your Plan",
   description:
-    "Agent Vault is on the Pro plan. Add a card to keep brokering past the free requests."
+    "Agent Vault is on the Pro plan. Add a payment method to keep brokering past the free requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {
