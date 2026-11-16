@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { hasAwsTrustBinding, parseSignedGetCallerIdentityRequest } from "./identity-aws-auth-fns";
+import {
+  hasAwsTrustBinding,
+  isAwsRootPrincipalArn,
+  parseSignedGetCallerIdentityRequest
+} from "./identity-aws-auth-fns";
 
 describe("hasAwsTrustBinding", () => {
   test.each([
@@ -23,6 +27,22 @@ describe("hasAwsTrustBinding", () => {
   });
 });
 
+describe("isAwsRootPrincipalArn", () => {
+  test.each(["arn:aws:iam::123456789012:root", "arn:aws-us-gov:iam::123456789012:root"])("is true for %s", (arn) => {
+    expect(isAwsRootPrincipalArn(arn)).toBe(true);
+  });
+
+  test.each([
+    "arn:aws:iam::123456789012:user/root",
+    "arn:aws:iam::123456789012:role/root",
+    "arn:aws:sts::123456789012:assumed-role/root/session",
+    "arn:aws:sts::123456789012:root",
+    "root"
+  ])("is false for %s", (arn) => {
+    expect(isAwsRootPrincipalArn(arn)).toBe(false);
+  });
+});
+
 describe("parseSignedGetCallerIdentityRequest", () => {
   const authorizationFor = (region: string) =>
     `AWS4-HMAC-SHA256 Credential=AKIA/20260101/${region}/sts/aws4_request, SignedHeaders=host;x-amz-date, Signature=abc`;
@@ -39,12 +59,14 @@ describe("parseSignedGetCallerIdentityRequest", () => {
   const parse = ({
     method = "POST",
     body = "Action=GetCallerIdentity&Version=2011-06-15",
-    headers = signedHeaders as unknown
-  }: { method?: string; body?: string; headers?: unknown } = {}) =>
+    headers = signedHeaders as unknown,
+    stsEndpointOverride
+  }: { method?: string; body?: string; headers?: unknown; stsEndpointOverride?: string } = {}) =>
     parseSignedGetCallerIdentityRequest({
       iamHttpRequestMethod: method,
       iamRequestBody: Buffer.from(body).toString("base64"),
-      iamRequestHeaders: Buffer.from(JSON.stringify(headers)).toString("base64")
+      iamRequestHeaders: Buffer.from(JSON.stringify(headers)).toString("base64"),
+      stsEndpointOverride
     });
 
   test("targets the regional STS endpoint and forwards every header except routing and framing ones", () => {
@@ -178,5 +200,47 @@ describe("parseSignedGetCallerIdentityRequest", () => {
         iamRequestHeaders: Buffer.from("not json").toString("base64")
       })
     ).toThrow("must be base64-encoded JSON");
+  });
+
+  describe("with an operator-set STS endpoint", () => {
+    const stsEndpointOverride = "http://localstack:4566";
+
+    test("targets the operator's endpoint instead of the regional one and still drops Host and framing headers", () => {
+      expect(parse({ stsEndpointOverride })).toEqual({
+        url: stsEndpointOverride,
+        body: "Action=GetCallerIdentity&Version=2011-06-15",
+        headers: {
+          authorization: signedHeaders.Authorization,
+          "content-type": signedHeaders["Content-Type"],
+          "x-amz-date": signedHeaders["X-Amz-Date"],
+          "x-amz-security-token": signedHeaders["x-amz-security-token"]
+        }
+      });
+    });
+
+    test("accepts a request signed for the name the caller reaches that endpoint by", () => {
+      const headers = { ...signedHeaders, Host: "localhost.localstack.cloud:4566" };
+
+      expect(() => parse({ headers })).toThrow("invalid host header");
+      const parsed = parse({ headers, stsEndpointOverride });
+      expect(parsed.url).toBe(stsEndpointOverride);
+      expect(parsed.headers).not.toHaveProperty("host");
+    });
+
+    test("keeps every other check on the caller's input", () => {
+      expect(() => parse({ method: "GET", stsEndpointOverride })).toThrow("must be a POST of Action=GetCallerIdentity");
+      expect(() => parse({ body: "Action=AssumeRole", stsEndpointOverride })).toThrow(
+        "must be a POST of Action=GetCallerIdentity"
+      );
+      expect(() => parse({ headers: { Authorization: authorizationFor("s3") }, stsEndpointOverride })).toThrow(
+        "Invalid AWS region"
+      );
+      expect(() => parse({ headers: { ...signedHeaders, host: "second-spelling" }, stsEndpointOverride })).toThrow(
+        "invalid host header"
+      );
+      expect(() =>
+        parse({ headers: { ...signedHeaders, "x-amz-date": "20260102T000000Z" }, stsEndpointOverride })
+      ).toThrow("invalid x-amz-date header");
+    });
   });
 });

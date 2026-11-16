@@ -95,6 +95,13 @@ export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = fals
   return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
 
+// An account root principal (arn:aws:iam::123456789012:root) has no type/name resource part, so
+// extractPrincipalArnEntity cannot parse it
+export const isAwsRootPrincipalArn = (arn: string) => {
+  const parts = arn.split(":");
+  return parts.length === 6 && parts[0] === "arn" && parts[2] === "iam" && parts[5] === "root";
+};
+
 // Login only checks the lists that are set, so an empty pair would admit any valid AWS principal.
 export const hasAwsTrustBinding = ({
   allowedAccountIds,
@@ -134,11 +141,14 @@ const GLOBAL_STS_SIGNING_REGION = "us-east-1";
 export const parseSignedGetCallerIdentityRequest = ({
   iamHttpRequestMethod,
   iamRequestBody,
-  iamRequestHeaders
+  iamRequestHeaders,
+  stsEndpointOverride
 }: {
   iamHttpRequestMethod: string;
   iamRequestBody: string;
   iamRequestHeaders: string;
+  // Operator-set endpoint (AWS_ENDPOINT_URL_STS / AWS_ENDPOINT_URL); never a tenant- or caller-supplied value
+  stsEndpointOverride?: string;
 }) => {
   let rawHeaders: unknown;
   try {
@@ -179,6 +189,12 @@ export const parseSignedGetCallerIdentityRequest = ({
   const region = headers.authorization ? awsRegionFromAuthorizationHeader(headers.authorization) : null;
   if (!isValidAwsRegion(region)) {
     throw new BadRequestError({ message: "Invalid AWS region" });
+  }
+
+  // The operator's endpoint replaces the AWS one, and the caller signed for whatever name it reaches that endpoint by,
+  // so the signed Host is neither checked nor sent: the HTTP client derives it from the operator's URL
+  if (stsEndpointOverride) {
+    return { url: stsEndpointOverride, headers, body };
   }
 
   // SigV4 always signs Host, so the URL is built from the signed value; only the two names STS answers on are allowed
