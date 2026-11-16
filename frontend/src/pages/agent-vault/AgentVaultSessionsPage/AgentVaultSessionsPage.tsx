@@ -69,8 +69,10 @@ import {
   useOrganization,
   useProjectPermission,
   useSubscription,
-  useProject
+  useProject,
+  useUser
 } from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -126,6 +128,7 @@ export const AgentVaultSessionsPage = () => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
+  const { user } = useUser();
   const canReadAnySession = permission.can(
     ProjectPermissionAgentVaultSessionActions.ReadAny,
     ProjectPermissionSub.AgentVaultSessions
@@ -547,20 +550,29 @@ export const AgentVaultSessionsPage = () => {
                                 View Session Logs
                               </DropdownMenuItem>
                               {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
-                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
-                                <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
-                                  <PencilIcon />
-                                  {session.label ? "Edit Label" : "Add Label"}
+                              {session.actor.id !== null &&
+                                session.onBehalfOf?.id !== null &&
+                                canActOnAgentVaultSession(permission, user.id, session, "edit") && (
+                                  <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                    <PencilIcon />
+                                    {session.label ? "Edit Label" : "Add Label"}
+                                  </DropdownMenuItem>
+                                )}
+                              {canActOnAgentVaultSession(
+                                permission,
+                                user.id,
+                                session,
+                                "revoke"
+                              ) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                                  onClick={() => setSessionToRevoke(session)}
+                                >
+                                  <BanIcon />
+                                  Revoke Session
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem
-                                variant="danger"
-                                isDisabled={session.status !== AgentVaultSessionStatus.Active}
-                                onClick={() => setSessionToRevoke(session)}
-                              >
-                                <BanIcon />
-                                Revoke Session
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

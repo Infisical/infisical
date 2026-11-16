@@ -3037,6 +3037,9 @@ describe("Agent Vault V1 Router", async () => {
         // By id, a global variable reads to a member like one that does not exist, as another member's personal one does.
         expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(404);
         expect((await member.asIdentity("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(404);
+        const edited = await member.asIdentity("PATCH", `${variablesUrl}/${variable.id}`, { value: "smuggled" });
+        expect(edited.statusCode).toBe(404);
+        expect(edited.json().message).toBe(`Variable with ID '${variable.id}' not found`);
         expect(
           (await member.asIdentity("POST", variablesUrl, { scope: "global", key: "MINE", value: "x" })).statusCode
         ).toBe(403);
@@ -5595,7 +5598,10 @@ describe("Agent Vault V1 Router", async () => {
           member.as("DELETE", membersUrl, { userIds: [seedData1.id] })
         ]);
         expect(refused.map((res) => res.statusCode)).toEqual([403, 403, 403, 403]);
-        refused.forEach((res) => expect(res.json().message).toBe("Only Agent Vault admins can perform this action"));
+        refused.forEach((res) => {
+          expect(res.json().error).toBe("PermissionDenied");
+          expect(res.json().message).toMatch(/^You are not allowed to (read|create|edit|delete) on (member|groups|identity)$/);
+        });
 
         const listed = await listMembers("actorType=machineIdentity");
         expect(listed.members.find((row) => row.id === bystander.id)).toBeUndefined();
@@ -5752,7 +5758,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const everyone = await member.as("GET", "/api/v1/agent-vault/sessions?scope=all");
         expect(everyone.statusCode).toBe(403);
-        expect(everyone.json().message).toBe("Only an Agent Vault administrator can list everyone's sessions");
+        expect(everyone.json().message).toBe("You are not allowed to read-any on agent-vault-sessions");
         const own = await member.as("GET", "/api/v1/agent-vault/sessions?limit=100");
         expect(own.statusCode).toBe(200);
         expect((own.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([memberSession.id]);
@@ -5772,6 +5778,11 @@ describe("Agent Vault V1 Router", async () => {
 
         const readByAdmin = await inject("GET", `/api/v1/agent-vault/sessions/${memberSession.id}`);
         expect(readByAdmin.statusCode).toBe(200);
+        const relabelledByAdmin = await inject("PATCH", `/api/v1/agent-vault/sessions/${memberSession.id}`, {
+          label: "checked by admin"
+        });
+        expect(relabelledByAdmin.statusCode).toBe(200);
+        expect(relabelledByAdmin.json().session).toMatchObject({ id: memberSession.id, label: "checked by admin" });
         const revokedByAdmin = await inject("POST", `/api/v1/agent-vault/sessions/${memberSession.id}/revoke`);
         expect(revokedByAdmin.statusCode).toBe(200);
         expect(revokedByAdmin.json().session).toMatchObject({ id: memberSession.id, status: "revoked" });
@@ -7761,7 +7772,7 @@ describe("Agent Vault V1 Router", async () => {
         const refused = await member.as("POST", sessionsUrl, { ttl: "1h", services: [openai] });
         expect(refused.statusCode).toBe(403);
         expect(refused.json().message).toBe(
-          "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
+          "You are not allowed to create-with-inline-services on agent-vault-sessions. Name an access bundle instead."
         );
       } finally {
         await member.cleanup();

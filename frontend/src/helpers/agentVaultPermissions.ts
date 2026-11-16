@@ -8,6 +8,8 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
 // A member reads the skills on bundles they reach from those bundles. The library lists every skill in the project, so
 // it is for whoever can change it.
@@ -44,3 +46,30 @@ export const canSetUpAgentVault = (permission: MongoAbility<ProjectPermissionSet
     ProjectPermissionAgentVaultSessionActions.ReadAny,
     ProjectPermissionSub.AgentVaultSessions
   );
+
+const SESSION_ACTIONS = {
+  edit: [
+    ProjectPermissionAgentVaultSessionActions.Edit,
+    ProjectPermissionAgentVaultSessionActions.EditAny
+  ],
+  revoke: [
+    ProjectPermissionAgentVaultSessionActions.Revoke,
+    ProjectPermissionAgentVaultSessionActions.RevokeAny
+  ]
+} as const;
+
+// The API takes the plain action for every session and the -any one on top for a session someone else owns. The
+// dashboard always acts as a user, so a session is the caller's own when a user with their id holds it.
+export const canActOnAgentVaultSession = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  userId: string,
+  session: Pick<TAgentVaultSession, "actor">,
+  change: keyof typeof SESSION_ACTIONS
+) => {
+  const [own, any] = SESSION_ACTIONS[change];
+  const isOwn = session.actor.type === AgentVaultMemberType.User && session.actor.id === userId;
+  return (
+    permission.can(own, ProjectPermissionSub.AgentVaultSessions) &&
+    (isOwn || permission.can(any, ProjectPermissionSub.AgentVaultSessions))
+  );
+};

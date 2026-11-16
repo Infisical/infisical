@@ -8,13 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  InternalServerError,
-  NotFoundError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -146,11 +140,7 @@ export const agentVaultSessionLogServiceFactory = ({
     action: ProjectPermissionActions.Read | ProjectPermissionActions.Edit
   ) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    if (permission.cannot(action, ProjectPermissionSub.Settings)) {
-      throw new ForbiddenRequestError({
-        message: "Only an Agent Vault administrator can view or change session log settings"
-      });
-    }
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Settings);
   };
 
   // The storage a save replaced, named for the audit log while its connection still exists.

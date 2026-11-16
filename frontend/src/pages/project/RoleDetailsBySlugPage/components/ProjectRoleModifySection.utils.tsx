@@ -2574,7 +2574,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionAgentVaultSessionActions.Read,
-        description: "View sessions"
+        description: "View your own sessions"
       },
       {
         label: "Create",
@@ -2584,12 +2584,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Edit",
         value: ProjectPermissionAgentVaultSessionActions.Edit,
-        description: "Change a session's label"
+        description: "Change the label of your own sessions"
       },
       {
         label: "Revoke",
         value: ProjectPermissionAgentVaultSessionActions.Revoke,
-        description: "Revoke a session"
+        description: "Revoke your own sessions"
       },
       {
         label: "Read Any",

@@ -1,4 +1,4 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultServices } from "@app/db/schemas";
@@ -6,12 +6,17 @@ import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType
+} from "../agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE,
   AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
@@ -55,13 +60,18 @@ const buildService = ({
   firstRead,
   locked,
   hooksOnPlan = true,
-  member = false
+  member = false,
+  rules,
+  variableKeys = []
 }: {
   firstRead: TAgentVaultServices;
   locked: TAgentVaultServices;
   hooksOnPlan?: boolean;
   // A member reads the bundle's services but can't edit them.
   member?: boolean;
+  // A role of its own, in place of admin or member.
+  rules?: RawRuleOf<MongoAbility>[];
+  variableKeys?: string[];
 }) => {
   const tx = {};
   const agentVaultServiceDAL = {
@@ -102,6 +112,10 @@ const buildService = ({
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
   };
+  const agentVaultVariableDAL = {
+    findKeys: vi.fn().mockResolvedValue(variableKeys.map((key) => ({ id: `variable-${key}`, key }))),
+    lockForReference: vi.fn()
+  };
   const service = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL: {
       findByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID }),
@@ -115,19 +129,20 @@ const buildService = ({
       delete: vi.fn(),
       insertMany: vi.fn()
     },
-    agentVaultVariableDAL: { findKeys: vi.fn().mockResolvedValue([]), lockForReference: vi.fn() },
+    agentVaultVariableDAL,
     agentVaultPersonalValueDAL: { delete: vi.fn(), deleteForServiceExceptFields: vi.fn() },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(
-          member
-            ? [
-                {
-                  action: ProjectPermissionAgentVaultAccessBundleActions.Read,
-                  subject: ProjectPermissionSub.AgentVaultAccessBundles
-                }
-              ]
-            : [{ action: "manage", subject: "all" }]
+          rules ??
+            (member
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                  }
+                ]
+              : [{ action: "manage", subject: "all" }])
         ),
         hasRole: () => !member,
         memberships: []
@@ -140,7 +155,7 @@ const buildService = ({
     kmsService,
     licenseService
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
-  return { service, agentVaultServiceDAL, kmsService, licenseService };
+  return { service, agentVaultServiceDAL, agentVaultVariableDAL, kmsService, licenseService };
 };
 
 const updatePort = (
@@ -491,5 +506,116 @@ describe("service reads, hooks", () => {
     expect(JSON.parse(JSON.stringify(read.service))).not.toHaveProperty("hook");
     const list = await member.service.listServices({ projectId: PROJECT_ID, ctx, limit: 50, offset: 0 });
     expect(list.services[0].hook).toBeUndefined();
+  });
+});
+
+describe("global variable references", () => {
+  const bundleEditor = [
+    {
+      action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    }
+  ];
+  const withReadValue = [
+    ...bundleEditor,
+    {
+      action: ProjectPermissionAgentVaultVariableActions.ReadValue,
+      subject: ProjectPermissionSub.AgentVaultVariables
+    }
+  ];
+  const create = (service: ReturnType<typeof buildService>["service"], password: string) =>
+    service.createService({
+      projectId: PROJECT_ID,
+      ctx,
+      type: AgentVaultServiceType.Ssh,
+      name: "bastion",
+      host: "bastion.internal",
+      port: 22,
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password }
+    });
+
+  test.each(["{{DB_PASSWORD}}", "{{NOT_DEFINED}}"])(
+    "a bundle editor without read-value can't save %s, and the key is never looked up",
+    async (password) => {
+      const built = buildService({
+        firstRead: plainService(),
+        locked: plainService(),
+        rules: bundleEditor,
+        variableKeys: ["DB_PASSWORD"]
+      });
+
+      await expect(create(built.service, password)).rejects.toBeInstanceOf(ForbiddenError);
+      expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
+      expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+    }
+  );
+
+  test("a bundle editor without read-value can save a value that names no variable", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService(), rules: bundleEditor });
+
+    await create(built.service, "plain-password");
+    expect(built.agentVaultServiceDAL.create).toHaveBeenCalled();
+  });
+
+  test("with read-value, a reference is checked and stored", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: withReadValue,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await create(built.service, "{{DB_PASSWORD}}");
+    expect(built.agentVaultServiceDAL.create).toHaveBeenCalled();
+    await expect(create(built.service, "{{NOT_DEFINED}}")).rejects.toThrow("no global variable named 'NOT_DEFINED'");
+  });
+
+  test("an update that sends no new text needs no read-value", async () => {
+    const built = buildService({
+      firstRead: sshService({ hasCertificate: false, secret: "key" }),
+      locked: sshService({ hasCertificate: false, secret: "key" }),
+      rules: bundleEditor
+    });
+
+    await updatePort(built.service, undefined);
+    expect(built.agentVaultServiceDAL.updateById).toHaveBeenCalled();
+  });
+
+  test("an update that types a reference needs read-value", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: bundleEditor,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await expect(
+      updatePort(built.service, {
+        type: AgentVaultCredentialType.Basic,
+        username: "agent",
+        password: "{{DB_PASSWORD}}"
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(built.agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("loading an MCP server's tools with a typed reference needs read-value", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: bundleEditor,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await expect(
+      built.service.listMcpTools({
+        projectId: PROJECT_ID,
+        ctx,
+        serverUrl: "https://mcp.example.com/mcp",
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        credential: { type: AgentVaultCredentialType.Bearer, value: "{{DB_PASSWORD}}" }
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
   });
 });
