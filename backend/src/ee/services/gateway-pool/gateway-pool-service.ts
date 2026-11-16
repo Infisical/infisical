@@ -28,6 +28,7 @@ import {
   TCreateGatewayPoolDTO,
   TDeleteGatewayPoolDTO,
   TGetGatewayPoolByIdDTO,
+  TGatewayPoolMemberFilter,
   TGetPlatformConnectionDetailsByPoolIdDTO,
   TListGatewayPoolsDTO,
   TRemoveGatewayFromPoolDTO,
@@ -473,14 +474,18 @@ export const gatewayPoolServiceFactory = ({
   // Return gatewayId directly, or pick a random healthy pool member. Null when neither is set.
   const resolveEffectiveGatewayId = async ({
     gatewayId,
-    gatewayPoolId
+    gatewayPoolId,
+    filter,
+    unavailableMessage
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
+    filter?: TGatewayPoolMemberFilter;
+    unavailableMessage?: string;
   }): Promise<string | null> => {
     if (gatewayId) return gatewayId;
     if (gatewayPoolId) {
-      const picked = await pickHealthyGateway(gatewayPoolId);
+      const picked = await selectGatewayFromPool({ poolId: gatewayPoolId, filter, unavailableMessage });
       return picked.id;
     }
     return null;

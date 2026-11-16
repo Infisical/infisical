@@ -1441,7 +1441,6 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
     statusChangedByUserId: null,
     environment: "dev",
     environmentName: "Development",
-    requestFolderPath: "app",
     policyName: "dev-policy",
     policyEnforcementLevel: "soft",
     policyConstraints: { constraints: { allowedSelfApprovals: false } },

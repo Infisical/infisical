@@ -346,7 +346,10 @@ export const secretSyncQueueFactory = ({
       backoff,
       removeOnComplete: true,
       removeOnFail: true,
-      jobId: randomUUID()
+      deduplication: {
+        id: `secret-sync-sync-secrets-${payload.syncId}`,
+        keepLastIfActive: true
+      }
     });
   };
 

@@ -59,7 +59,9 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     start: vi.fn((name: string, fn: THandler) => {
       handlers.set(name, fn);
     }),
-    queue: vi.fn(async () => undefined)
+    queue: vi.fn<(name: string, job: string, data: unknown, opts: Record<string, unknown>) => Promise<void>>(
+      async () => undefined
+    )
   };
 
   const state = {
@@ -94,7 +96,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     })
   };
 
-  secretSyncQueueFactory({
+  const queue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
     keyStore: {
@@ -120,7 +122,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: ATTEMPTS }
     });
 
-  return { state, runSync, secretSyncDAL };
+  return { state, runSync, secretSyncDAL, queueService, queue };
 };
 
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
@@ -287,5 +289,43 @@ describe("secret sync status change", () => {
 
     expect(state.lastSyncResult).toBe("failed");
     expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+  });
+});
+
+describe("secret sync job deduplication", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("queues sync jobs under one deduplication id per sync instead of a random job id", async () => {
+    const { queue, queueService } = createHarness(healthy);
+
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-1" });
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-1" });
+    await queue.queueSecretSyncSyncSecretsById({ syncId: "sync-2" });
+
+    const queued = queueService.queue.mock.calls.map(([name, job, , opts]) => ({ name, job, opts }));
+    expect(queued.map(({ opts }) => opts.deduplication)).toEqual([
+      { id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true },
+      { id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true },
+      { id: "secret-sync-sync-secrets-sync-2", keepLastIfActive: true }
+    ]);
+    queued.forEach(({ name, job, opts }) => {
+      expect(name).toBe(QueueName.AppConnectionSecretSync);
+      expect(job).toBe(QueueJobs.SecretSyncSyncSecrets);
+      expect(opts).not.toHaveProperty("jobId");
+    });
+  });
+
+  test("requeues a lock failure under the same deduplication id, keeping its count and delay", async () => {
+    const { runSync, queueService } = createHarness(healthy, { lockFails: true });
+
+    await runSync(1, { failedToAcquireLockCount: 3 });
+
+    expect(queueService.queue).toHaveBeenCalledTimes(1);
+    const [, , data, opts] = queueService.queue.mock.calls[0];
+    expect(data).toEqual({ syncId: "sync-1", failedToAcquireLockCount: 4 });
+    expect(opts.deduplication).toEqual({ id: "secret-sync-sync-secrets-sync-1", keepLastIfActive: true });
+    expect(opts.delay).toBeGreaterThan(0);
   });
 });

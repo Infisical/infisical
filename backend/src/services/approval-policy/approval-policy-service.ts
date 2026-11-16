@@ -1751,7 +1751,8 @@ export const approvalPolicyServiceFactory = ({
 
     const newRequest = { ...finalRequest, steps: finalSteps };
 
-    if (finalRequest.status === ApprovalRequestStatus.Approved) {
+    // A concurrent approver can complete the request after this commit, so only the call that approved it runs this
+    if (updatedRequest.status === ApprovalRequestStatus.Approved) {
       await resource.postApprovalRoutine?.(newRequest as TApprovalRequest, actor);
       await $notify({ event: ApprovalNotificationEvent.Approved, request: finalRequest, comment });
     }
