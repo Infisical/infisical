@@ -113,11 +113,8 @@ const priceSummary = (ent: BillingEntitlement, isManaged: boolean) => {
   return null;
 };
 
-const Count = ({ value, isIdentity }: { value: number; isIdentity: boolean }) => (
-  <span className="tabular-nums">
-    {value.toLocaleString()}
-    {isIdentity && "x"}
-  </span>
+const Count = ({ value }: { value: number }) => (
+  <span className="tabular-nums">{value.toLocaleString()}</span>
 );
 
 const ScopeRow = ({
@@ -126,7 +123,6 @@ const ScopeRow = ({
   count,
   total,
   barClassName,
-  isIdentity,
   projects,
   orgLevelCount,
   hasChevronSlot
@@ -136,7 +132,6 @@ const ScopeRow = ({
   count: number;
   total: number;
   barClassName: string;
-  isIdentity: boolean;
   projects?: { id: string; name: string; count: number }[];
   orgLevelCount?: number;
   hasChevronSlot: boolean;
@@ -173,7 +168,7 @@ const ScopeRow = ({
           />
         </span>
         <span className="flex w-16 shrink-0 items-baseline justify-end gap-2">
-          <Count value={count} isIdentity={isIdentity} />
+          <Count value={count} />
           <span className="text-xs text-muted tabular-nums">{share(count, total)}</span>
         </span>
       </div>
@@ -182,13 +177,13 @@ const ScopeRow = ({
           {projects?.map((project) => (
             <span key={project.id} className="flex items-baseline justify-between gap-3 pr-2.5">
               <span className="truncate text-accent">{project.name}</span>
-              <Count value={project.count} isIdentity={isIdentity} />
+              <Count value={project.count} />
             </span>
           ))}
           {(orgLevelCount ?? 0) > 0 && (
             <span className="flex items-baseline justify-between gap-3 pr-2.5 text-muted">
               <span>Organization level · not in a project</span>
-              <Count value={orgLevelCount ?? 0} isIdentity={isIdentity} />
+              <Count value={orgLevelCount ?? 0} />
             </span>
           )}
         </div>
@@ -266,7 +261,6 @@ const BreakdownPanel = ({
               count={scope.count}
               total={total}
               barClassName={scope.isRoot ? "bg-org/85" : "bg-sub-org/85"}
-              isIdentity={isIdentity}
               projects={data.hasProjectDetail ? scope.projects : undefined}
               orgLevelCount={data.hasProjectDetail ? scope.orgLevelCount : undefined}
               hasChevronSlot={hasChevronSlot}
@@ -322,7 +316,7 @@ const BreakdownPanel = ({
                 />
               </span>
               <span className="flex w-16 shrink-0 items-baseline justify-end gap-2">
-                <Count value={row.count} isIdentity={isIdentity} />
+                <Count value={row.count} />
                 <span className="text-xs text-muted tabular-nums">{share(row.count, total)}</span>
               </span>
             </div>
@@ -402,7 +396,7 @@ const IdentitySection = ({
           <span className="text-sm font-medium">Billed identities</span>
           <span className="flex items-baseline gap-1 tabular-nums">
             <span className={cn("text-sm", overage > 0 && "text-warning")}>
-              {dim.used.toLocaleString()}x
+              {dim.used.toLocaleString()}
             </span>
             <span className="text-xs text-muted">
               / {allowance === null ? "Unlimited" : allowance.toLocaleString()}
