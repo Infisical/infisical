@@ -173,10 +173,7 @@ export const folderPermissionServiceFactory = ({
         });
       }
 
-      assertSubfolderAccessLicensed(
-        hasPlan,
-        Boolean(dto.isPermissionRecursive ?? existing.appliesToSubfolders)
-      );
+      assertSubfolderAccessLicensed(hasPlan, Boolean(dto.isPermissionRecursive ?? existing.appliesToSubfolders));
       assertFullAccessIsPermanent(
         (dto.role ?? existing.role) as SecretFolderRole,
         dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
