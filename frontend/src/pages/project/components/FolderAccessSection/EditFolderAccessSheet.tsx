@@ -52,7 +52,11 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
 
   const handleSave = async () => {
     const fields = grant.updateFields();
-    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), fields)) {
+    if (
+      !canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), {
+        isPermissionRecursive: fields.isPermissionRecursive ?? access.isPermissionRecursive
+      })
+    ) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
         paywallKey: "project.folder-access-section"

@@ -373,12 +373,12 @@ export const FolderAccessSheet = ({
     permission: SecretFolderRole,
     isPermissionRecursive = false
   ) => {
-    if (isGrantBlocked({ isPermissionRecursive: !actor.access && isPermissionRecursive })) return;
-    const target = { projectId, environmentSlug, secretPath: folderPath };
-    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const appliesToSubfolders = actor.access
       ? actor.access.isPermissionRecursive
       : isPermissionRecursive;
+    if (isGrantBlocked({ isPermissionRecursive: appliesToSubfolders })) return;
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
     const onSuccess = () =>
       notifySuccess(
@@ -430,7 +430,7 @@ export const FolderAccessSheet = ({
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
-    if (isGrantBlocked({})) return;
+    if (isGrantBlocked({ isPermissionRecursive: actor.access?.isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () =>
       notifySuccess(

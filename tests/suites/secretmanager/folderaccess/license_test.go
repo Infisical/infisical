@@ -53,6 +53,31 @@ func TestFolderAccess_License(t *testing.T) {
 		require.Empty(t, grantsOf(t, proj, pr))
 	})
 
+	t.Run("should refuse editing folder access that applies to subfolders after a downgrade unless the edit turns it off", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := newProject(t, tn)
+		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
+		created := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, map[string]any{"isPermissionRecursive": true})
+		require.Equalf(t, http.StatusOK, created.status, "granting: %s", created.body)
+		tn.SetPlan(t, withoutFolderRBAC)
+
+		// Action
+		roleChange := updateGrant(t, tn.Admin, proj, pr, at("/"), map[string]any{"permission": string(secretmanager.FolderEdit)})
+		recursionOff := updateGrant(t, tn.Admin, proj, pr, at("/"), map[string]any{"isPermissionRecursive": false})
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, roleChange.status, "changing the role: %s", roleChange.body)
+		require.Equal(t, planMessage, roleChange.message)
+		require.Equalf(t, http.StatusOK, recursionOff.status, "turning subfolders off: %s", recursionOff.body)
+		grants := grantsOf(t, proj, pr)
+		require.Len(t, grants, 1)
+		require.Equal(t, string(secretmanager.FolderRead), grants[0].Permission)
+		require.False(t, grants[0].IsPermissionRecursive)
+	})
+
 	t.Run("should keep an existing grant working after a downgrade", func(t *testing.T) {
 		t.Parallel()
 

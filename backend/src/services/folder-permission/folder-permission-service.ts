@@ -88,13 +88,11 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
-  const assertFolderRbacLicensed = async (
-    orgId: string,
-    { isPermissionRecursive }: { isPermissionRecursive?: boolean }
-  ) => {
-    if (!isPermissionRecursive) return;
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.has(PlanFeature.SecretsFolderRbac)) {
+  const hasFolderRbacPlan = async (orgId: string) =>
+    (await licenseService.getPlan(orgId)).has(PlanFeature.SecretsFolderRbac);
+
+  const assertSubfolderAccessLicensed = (hasPlan: boolean, appliesToSubfolders: boolean) => {
+    if (appliesToSubfolders && !hasPlan) {
       throw new BadRequestError({
         message:
           "Failed to apply folder access to subfolders due to plan restriction. Upgrade your Infisical plan to apply folder access to subfolders."
@@ -108,9 +106,9 @@ export const folderPermissionServiceFactory = ({
 
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(dto.permission.orgId, dto);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) {
+      assertSubfolderAccessLicensed(await hasFolderRbacPlan(dto.permission.orgId), true);
       assertRecursiveFolderIsRoot(folder);
       assertManageFolderSubtree(callerPermission, folder);
     }
@@ -158,10 +156,10 @@ export const folderPermissionServiceFactory = ({
     const { projectId, environmentSlug, secretPath, target } = dto;
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(dto.permission.orgId, dto);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) assertRecursiveFolderIsRoot(folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    const hasPlan = await hasFolderRbacPlan(dto.permission.orgId);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
@@ -175,6 +173,10 @@ export const folderPermissionServiceFactory = ({
         });
       }
 
+      assertSubfolderAccessLicensed(
+        hasPlan,
+        Boolean(dto.isPermissionRecursive ?? existing.appliesToSubfolders)
+      );
       assertFullAccessIsPermanent(
         (dto.role ?? existing.role) as SecretFolderRole,
         dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
