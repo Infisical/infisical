@@ -27,8 +27,7 @@ import { useProjectPermission, useSubscription, useProject } from "@app/context"
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
-  useGetAgentVaultSessionLogSettings,
-  useListGrantedAgentVaultServicesRequiringSetup
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -45,21 +44,12 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const sessionLogSettings = sessionLogState?.settings ?? null;
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
   const { subscription } = useSubscription();
-  // Services is where a member sets up their personal values. An admin can use any bundle, but the nav only nags about
-  // services in the ones granted to them.
-  const { data: grantedRequiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(projectId);
-  const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
   const setupProgress = useAgentVaultSetupProgress();
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
     { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
-    {
-      label: "Services",
-      icon: Plug,
-      pathSuffix: "services",
-      alertVariant: needsSetup ? "warning" : undefined
-    },
+    { label: "Services", icon: Plug, pathSuffix: "services" },
     { label: "Variables", icon: Braces, pathSuffix: "variables" },
     { label: "Skills", icon: BookOpenText, pathSuffix: "skills", hidden: !isAdmin }
   ];
