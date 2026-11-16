@@ -1,4 +1,10 @@
 {
+  "not-ported": {
+    "src/pages/v4/access/org/auth-methods.tsx": 2,
+    "src/pages/v4/access/project/identity-auth.tsx": 1,
+    "src/pages/v4/integrations/app-connection-dialogs.tsx": 1,
+    "src/pages/v4/integrations/app-connection-model.ts": 1
+  },
   "page-css-frame": {
     "src/pages/v4/access/access.module.css": 1,
     "src/pages/v4/access/org/org.module.css": 1,
