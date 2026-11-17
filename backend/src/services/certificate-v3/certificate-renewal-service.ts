@@ -326,8 +326,17 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
+    // Issuance runs between the eligibility check and this lock, so a revoke or another renewal may have landed.
     const lockedOriginalCert = await certificateDAL.findByIdForUpdate(originalCert.id, tx);
-    if (lockedOriginalCert) assertCertificateNotDeleted(lockedOriginalCert);
+    if (lockedOriginalCert) {
+      assertCertificateNotDeleted(lockedOriginalCert);
+      if (lockedOriginalCert.renewedByCertificateId || lockedOriginalCert.revokedAt) {
+        throw new BadRequestError({
+          message:
+            "The certificate was renewed or revoked while this renewal was in progress. Refresh to see its current state."
+        });
+      }
+    }
 
     const renewalUpdate: {
       profileId?: string | null;

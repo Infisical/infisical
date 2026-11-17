@@ -4078,6 +4078,35 @@ describe("CertificateV3Service", () => {
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
     });
+
+    it("refuses to link the renewal when the certificate is revoked while it is being issued", async () => {
+      let isIssuing = false;
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateDAL.findByIdForUpdate).mockImplementation((async () =>
+        isIssuing ? { ...mockOriginalCert, revokedAt: new Date() } : mockOriginalCert) as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        isIssuing = true;
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return { certificateId: "cert-456" };
+      }) as any);
+
+      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
+        /renewed or revoked while this renewal was in progress/
+      );
+      expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith(
+        "cert-123",
+        expect.objectContaining({ renewedByCertificateId: "cert-456" }),
+        expect.anything()
+      );
+    });
   });
 
   describe("updateRenewalConfig", () => {
