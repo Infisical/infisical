@@ -4,6 +4,8 @@ import { isMap, isNode, isScalar, isSeq, parseDocument } from "yaml";
 const LINE =
   /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|\S(?:\S|\s+(?=[^\s#]))*)?\s*(?:#.*)?(?:$|$)/gm;
 
+const DOUBLE_QUOTED_ESCAPES: Record<string, string> = { "\\": "\\", '"': '"', n: "\n", r: "\r" };
+
 const decodeSource = (src: ArrayBuffer | string) =>
   typeof src === "string" ? src : new TextDecoder("utf-8").decode(src);
 
@@ -51,10 +53,8 @@ export function parseDotEnv(src: ArrayBuffer | string) {
           // Remove surrounding quotes
           value = value.replace(/^(['"`])([\s\S]*)\1$/gm, "$2");
 
-          // Expand newlines if double quoted
           if (maybeQuote === '"') {
-            value = value.replace(/\\n/g, "\n");
-            value = value.replace(/\\r/g, "\r");
+            value = value.replace(/\\([\\"nr])/g, (_, char: string) => DOUBLE_QUOTED_ESCAPES[char]);
           }
           item = [key, value, comments];
         }
