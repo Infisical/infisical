@@ -137,9 +137,7 @@ const ProjectSelectInner = () => {
           }}
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
-          <ProjectIcon
-            className={`size-[14px] shrink-0 ${isAgentVault ? "text-product-av" : "text-project"}`}
-          />
+          <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
           <Badge variant={isAgentVault ? "av" : "project"} className="hidden lg:inline-flex">
             Project

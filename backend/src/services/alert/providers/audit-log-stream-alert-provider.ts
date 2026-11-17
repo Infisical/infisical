@@ -8,7 +8,7 @@ import {
   AuditLogStreamDeliveryFailedPayloadSchema
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
 import { listProviderOptions } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
@@ -139,13 +139,13 @@ export const auditLogStreamAlertProviderFactory = ({
     });
 
     const actions = (() => {
-      if (input.action === AlertPermissionAction.Read) return [OrgPermissionActions.Read];
-      if (input.action === AlertPermissionAction.Delete) return [OrgPermissionActions.Edit];
-      return [OrgPermissionActions.Edit, OrgPermissionActions.Read];
+      if (input.action === AlertPermissionAction.Read) return [OrgPermissionAuditLogsActions.Read];
+      if (input.action === AlertPermissionAction.Delete) return [OrgPermissionAuditLogsActions.Edit];
+      return [OrgPermissionAuditLogsActions.Edit, OrgPermissionAuditLogsActions.Read];
     })();
 
     for (const action of actions) {
-      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Settings);
+      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.AuditLogStreams);
     }
   };
 

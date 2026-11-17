@@ -247,6 +247,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { aiServiceFactory } from "@app/services/ai/ai-service";
 import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
 import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -277,6 +278,8 @@ import { secretReminderAlertDALFactory } from "@app/services/alert/providers/sec
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
 import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
+import { secretSyncAlertDALFactory } from "@app/services/alert/providers/secret-sync-alert-dal";
+import { secretSyncAlertProviderFactory } from "@app/services/alert/providers/secret-sync-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -584,6 +587,7 @@ import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-
 import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
 import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
 import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
+import { signerRevocationDALFactory } from "@app/services/signer/signer-revocation-dal";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -1124,6 +1128,13 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     honeyTokenAlertProviderFactory({
       honeyTokenAlertDAL: honeyTokenAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    secretSyncAlertProviderFactory({
+      secretSyncAlertDAL: secretSyncAlertDALFactory(db),
       folderDAL,
       permissionService
     })
@@ -1840,8 +1851,7 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL,
-    usageMeteringService
+    projectMembershipDAL
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -1954,6 +1964,7 @@ export const registerRoutes = async (
   const signerRequestDAL = signerRequestDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
   const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
+  const signerRevocationDAL = signerRevocationDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -2122,6 +2133,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
+    resourceMetadataDAL,
     membershipDAL,
     userDAL,
     orgDAL,
@@ -2158,7 +2170,6 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2261,6 +2272,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -2384,6 +2396,7 @@ export const registerRoutes = async (
 
   const secretSyncQueue = secretSyncQueueFactory({
     eventEmitter: eventOutboxService,
+    alertService,
     queueService,
     cronJob,
     secretSyncDAL,
@@ -2394,7 +2407,6 @@ export const registerRoutes = async (
     kmsService,
     keyStore,
     auditLogService,
-    smtpService,
     projectDAL,
     projectMembershipDAL,
     projectBotDAL,
@@ -2419,6 +2431,7 @@ export const registerRoutes = async (
     telemetryService,
     projectFolderGrantDAL,
     orgDAL,
+    userDAL,
     oidcIssuerService
   });
 
@@ -3590,7 +3603,8 @@ export const registerRoutes = async (
     secretSyncQueue,
     projectBotService,
     keyStore,
-    licenseService
+    licenseService,
+    alertService
   });
 
   const kmipService = kmipServiceFactory({
@@ -4138,10 +4152,19 @@ export const registerRoutes = async (
     }) as TApprovalResourceRegistry[ApprovalPolicyType]
   };
 
+  const aiService = aiServiceFactory({
+    orgDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsService
+  });
+
   const autoApprovalService = autoApprovalServiceFactory({
     approvalPolicyAutoApprovalDAL,
     appConnectionDAL,
     appConnectionService,
+    aiService,
     kmsService,
     gatewayV2Service,
     gatewayPoolService
@@ -4607,16 +4630,19 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     cronJob,
     hsmConnectorService,
-    certificateDAL
+    certificateDAL,
+    certificateService
   });
 
   const signerService = signerServiceFactory({
     signerDAL,
+    signerRevocationDAL,
     signingOperationDAL,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
+    certificateService,
     signerIssuanceService,
     internalCertificateAuthorityService,
     digicertFns: digicertCaFns,
@@ -4632,7 +4658,12 @@ export const registerRoutes = async (
     membershipRoleDAL,
     hsmConnectorService,
     licenseService,
-    orgDAL
+    orgDAL,
+    keyStore,
+    userGroupMembershipDAL,
+    notificationService,
+    userDAL,
+    auditLogService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -4945,6 +4976,8 @@ export const registerRoutes = async (
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,
@@ -5046,6 +5079,7 @@ export const registerRoutes = async (
     approvalPolicy: approvalPolicyService,
     delegatedApproval: delegatedApprovalService,
     delegatedApprovalCallback: delegatedApprovalCallbackService,
+    ai: aiService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });

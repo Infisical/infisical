@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { TriangleAlertIcon } from "lucide-react";
@@ -34,6 +34,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { sessionLabelSchema } from "./sessionLabelSchema";
+import { SessionMetadataFields } from "./SessionMetadataFields";
+import { metadataRowsToRecord, sessionMetadataRowsSchema } from "./sessionMetadataSchema";
 
 const NEVER_TTL = "never";
 const CUSTOM_TTL = "custom";
@@ -69,6 +71,7 @@ const getCustomTtlError = (value: string) => {
 const schema = z
   .object({
     label: sessionLabelSchema,
+    metadata: sessionMetadataRowsSchema,
     ttlPreset: z.string(),
     customTtl: z.string()
   })
@@ -81,7 +84,11 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export type TDashboardSessionInput = { label?: string; ttl: string };
+export type TDashboardSessionInput = {
+  label?: string;
+  metadata?: Record<string, string>;
+  ttl: string;
+};
 
 type Props = {
   formId: string;
@@ -93,10 +100,11 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
 
-  const { control, handleSubmit, watch } = useForm<FormData>({
+  const formMethods = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { label: "", ttlPreset: DEFAULT_TTL_PRESET, customTtl: "" }
+    defaultValues: { label: "", metadata: [], ttlPreset: DEFAULT_TTL_PRESET, customTtl: "" }
   });
+  const { control, handleSubmit, watch } = formMethods;
   const ttlPreset = watch("ttlPreset");
 
   const { data: bundleDetails } = useGetAgentVaultAccessBundle(projectId, accessBundle?.id ?? "");
@@ -116,12 +124,14 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit(({ label, ttlPreset: preset, customTtl }) =>
-        onSubmit({
+      onSubmit={handleSubmit(({ label, metadata, ttlPreset: preset, customTtl }) => {
+        const metadataRecord = metadataRowsToRecord(metadata);
+        return onSubmit({
           label: label || undefined,
+          metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
           ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
-        })
-      )}
+        });
+      })}
       className="flex flex-col gap-4"
     >
       <Controller
@@ -145,6 +155,10 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           </Field>
         )}
       />
+
+      <FormProvider {...formMethods}>
+        <SessionMetadataFields idPrefix="agent-vault-session" />
+      </FormProvider>
 
       <Field>
         <FieldLabel>Expires</FieldLabel>

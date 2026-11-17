@@ -380,6 +380,7 @@ output-options:
     - requestProjectAccess
     - resetHoneyToken
     - restoreEnvironment
+    - restoreProject
     - resyncSecretImportReplication
     - revealSecretRequestValue
     - revertFolderCommit
