@@ -29,7 +29,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       body: z.object({
         workspaceId: z.string().trim().describe(SECRET_IMPORTS.CREATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.environment),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.path),
+        path: z.string().trim().default("/").transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.CREATE.path),
         import: z.object({
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
           path: z.string().trim().transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.CREATE.import.path)
@@ -105,7 +105,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       body: z.object({
         workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path),
+        path: z.string().trim().default("/").transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.UPDATE.path),
         import: z.object({
           environment: z.string().trim().optional().describe(SECRET_IMPORTS.UPDATE.import.environment),
           path: z
