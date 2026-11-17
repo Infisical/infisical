@@ -96,32 +96,31 @@ export const getPolicyScore = (policy: { secretPath?: string | null }) =>
   // eslint-disable-next-line
   policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
 
-const isStoredAsAlias = (policy: { secretPath?: string | null }) =>
-  Boolean(policy.secretPath) && policy.secretPath !== canonicalizeSecretPathPattern(policy.secretPath as string);
-
 // picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
-// A policy stored with a non-canonical path ("prod") only governs where no canonically stored policy matches, so it can
-// never take precedence over the policy that already governed the folder.
+// A policy that matches only once its stored pattern is normalized ("prod" for "/prod") ranks below every policy that
+// matches as stored, so normalizing can fill a gap but never change which policy already governed the folder.
 export const resolvePolicyForPath = <T extends { secretPath?: string | null; createdAt: Date; id: string }>(
   policies: T[],
   secretPath: string
-) =>
-  policies
+) => {
+  const canonicalSecretPath = canonicalizeSecretPath(secretPath);
+  const matches = (pattern: string) => picomatch.isMatch(canonicalSecretPath, pattern, { strictSlashes: false });
+
+  return policies
+    .map((policy) => ({ policy, matchesAsStored: !policy.secretPath || matches(policy.secretPath) }))
     .filter(
-      ({ secretPath: policyPath }) =>
-        !policyPath ||
-        picomatch.isMatch(canonicalizeSecretPath(secretPath), canonicalizeSecretPathPattern(policyPath), {
-          strictSlashes: false
-        })
+      ({ policy, matchesAsStored }) =>
+        matchesAsStored || matches(canonicalizeSecretPathPattern(policy.secretPath as string))
     )
     .sort(
       (a, b) =>
-        Number(isStoredAsAlias(a)) - Number(isStoredAsAlias(b)) ||
-        getPolicyScore(b) - getPolicyScore(a) ||
-        a.createdAt.getTime() - b.createdAt.getTime() ||
-        a.id.localeCompare(b.id)
+        Number(b.matchesAsStored) - Number(a.matchesAsStored) ||
+        getPolicyScore(b.policy) - getPolicyScore(a.policy) ||
+        a.policy.createdAt.getTime() - b.policy.createdAt.getTime() ||
+        a.policy.id.localeCompare(b.policy.id)
     )
-    .shift();
+    .shift()?.policy;
+};
 
 /**
  * Returns the committer ID fields for a secret approval request,

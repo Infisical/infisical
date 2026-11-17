@@ -168,6 +168,15 @@ describe("resolvePolicyForPath", () => {
     expect(resolvePolicyForPath([olderAlias], "/prod")).toBe(olderAlias);
   });
 
+  test("keeps the precedence of a non-canonical pattern for the paths it already matched as stored", () => {
+    const olderBraces = makePathPolicy("older-braces", "{/prod/**,//staging/**}", "2025-01-01");
+    const newerCatchAll = makePathPolicy("newer-catch-all", "/**", "2026-02-01");
+
+    expect(resolvePolicyForPath([olderBraces, newerCatchAll], "/prod/api")).toBe(olderBraces);
+    expect(resolvePolicyForPath([olderBraces, newerCatchAll], "/staging/api")).toBe(newerCatchAll);
+    expect(resolvePolicyForPath([olderBraces], "/staging/api")).toBe(olderBraces);
+  });
+
   test("keeps glob patterns that start with a glob character or group paths in braces", () => {
     const braces = makePathPolicy("braces", "{/a,/b}");
     const star = makePathPolicy("star", "*");
