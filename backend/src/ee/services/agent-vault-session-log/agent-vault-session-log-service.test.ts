@@ -6,6 +6,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -188,7 +192,9 @@ const build = (overrides: TOverrides = {}) => {
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
+        permission: createMongoAbility(
+          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+        ),
         hasRole: () => overrides.isAdmin ?? true
       }))
     } as never,

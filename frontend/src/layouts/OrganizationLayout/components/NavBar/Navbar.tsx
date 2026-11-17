@@ -81,12 +81,10 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getOrgScopedProductFromPath, isAgentVaultProjectPath } from "@app/helpers/project";
-import { useToggle } from "@app/hooks";
+import { useActiveProduct, useToggle } from "@app/hooks";
 import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -186,6 +184,7 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
+  const activeProduct = useActiveProduct();
   const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
 
   const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
@@ -336,13 +335,7 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
-  const isPamScope = orgScopedProduct === ProjectType.PAM;
-  const isAgentVaultScope = isAgentVaultProjectPath(location.pathname);
-  const isProjectScope =
-    Boolean(orgScopedProduct) ||
-    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-      location.pathname !== `/organizations/${currentOrg.id}/projects`);
+  const isProjectScope = Boolean(activeProduct);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -377,13 +370,7 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel &&
-          isProjectScope &&
-          !isPamScope &&
-          !isAgentVaultScope &&
-          "from-project/5",
+        !isServerAdminPanel && isProjectScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}

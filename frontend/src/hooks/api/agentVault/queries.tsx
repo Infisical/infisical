@@ -29,6 +29,7 @@ import {
   TAgentVaultSessionLogChunkCache
 } from "./sessionLogDecrypt";
 import {
+  TAgentVaultAccess,
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
@@ -88,6 +89,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // Every key carries the org and the project. By-id routes take the project from the row, so without the project in
 // the key a switch to another project would serve the previous one's data from cache.
 export const agentVaultKeys = {
+  // Org-wide: the plan and the free monthly count belong to the org, not a project.
+  access: (orgId: string) => ["agent-vault", orgId, "access"] as const,
   oauthAuthorization: (orgId: string, authorizationId: string) =>
     ["agent-vault", orgId, "oauth-authorizations", authorizationId] as const,
   all: (orgId: string, projectId: string) => ["agent-vault", orgId, projectId] as const,
@@ -527,15 +530,21 @@ export const useListAgentVaultSessions = (
     ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, projectId, params),
     queryFn: async () => {
-      const { statuses, ...rest } = params ?? {};
+      const { statuses, metadata, ...rest } = params ?? {};
+      const metadataFilter = Object.entries(metadata ?? {}).map(
+        ([key, value]) => `${key}=${value}`
+      );
       const { data } = await apiRequest.get<TAgentVaultSessionList>(
         "/api/v1/agent-vault/sessions",
         {
           params: {
             ...rest,
             projectId,
-            status: statuses?.length ? statuses.join(",") : undefined
-          }
+            status: statuses?.length ? statuses.join(",") : undefined,
+            metadata: metadataFilter.length ? metadataFilter : undefined
+          },
+          // The API reads a repeated metadata=key=value, not axios's default metadata[]=.
+          paramsSerializer: { indexes: null }
         }
       );
       return data;
@@ -571,6 +580,21 @@ export const fetchAgentVaultProxyCa = async (proxyId: string) => {
     `/api/v1/agent-vault/proxies/${proxyId}/ca`
   );
   return data.ca;
+};
+
+export const useGetAgentVaultAccess = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    enabled,
+    queryKey: agentVaultKeys.access(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ access: TAgentVaultAccess }>(
+        "/api/v1/agent-vault/settings/access"
+      );
+      return data.access;
+    }
+  });
 };
 
 export const useGetAgentVaultSessionLogSettings = (projectId: string, enabled = true) => {

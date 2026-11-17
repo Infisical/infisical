@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
@@ -13,6 +14,7 @@ import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useActiveProduct } from "@app/hooks/useActiveProduct";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;
@@ -22,6 +24,8 @@ type TRouterContext = {
   // useImplicitProduct.
   implicitProjectId?: string;
   implicitProductType?: ProjectType;
+  // Published by every product's layout and org-level pages; see useActiveProduct.
+  productType?: ProjectType;
 };
 
 const RootCommandMenuMount = () => {
@@ -49,6 +53,14 @@ const RootCommandMenuMount = () => {
 
 const RootPage = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const activeProduct = useActiveProduct();
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (activeProduct) root.dataset.product = activeProduct;
+    else delete root.dataset.product;
+  }, [activeProduct]);
+
   return (
     <ThemeProvider pathname={pathname}>
       <TooltipProvider delayDuration={700} skipDelayDuration={300}>
