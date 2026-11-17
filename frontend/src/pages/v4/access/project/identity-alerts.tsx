@@ -571,7 +571,7 @@ const IdentityAlertMenu = ({
 
 export const IdentityAlertAction = (props: AlertActionProps) => {
   const query = useIdentityAlerts(props.identityId, props.projectId);
-  if (query.error || query.isPending)
+  if (!query.data)
     return (
       <Button
         variant="outline"
@@ -584,6 +584,6 @@ export const IdentityAlertAction = (props: AlertActionProps) => {
         Alerts
       </Button>
     );
-  if (!query.data?.length && props.readOnly) return null;
-  return <IdentityAlertMenu {...props} alerts={query.data ?? []} />;
+  if (!query.data.length && props.readOnly) return null;
+  return <IdentityAlertMenu {...props} alerts={query.data} />;
 };
