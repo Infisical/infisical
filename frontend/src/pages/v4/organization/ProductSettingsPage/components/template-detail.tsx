@@ -106,6 +106,7 @@ const TemplateRoleEditor = ({
       backHref={links.template}
       backLabel={template.name}
       describable={false}
+      projectType={template.type}
       subjects={template.type === ProjectType.KMS ? KMS_TEMPLATE_SUBJECTS : undefined}
       can={{ edit: canEdit, create: canEdit, delete: canEdit }}
       references={{ environments: template.environments?.map((environment) => environment.slug) }}

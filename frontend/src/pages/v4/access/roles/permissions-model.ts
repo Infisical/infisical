@@ -1,18 +1,29 @@
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionSub } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TPermission, TProjectPermission } from "@app/hooks/api/roles/types";
 import {
+  EXCLUDED_PERMISSION_SUBS,
   formRolePermission2API,
   isConditionalSubjects,
+  ProjectTypePermissionSubjects,
   rolePermission2Form,
+  RoleTemplates,
   type TFormSchema
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import {
   ACTION_ALLOWED_CONDITIONS,
+  AGENT_VAULT_SUBJECTS,
+  APPROVAL_SUBJECTS,
+  CERT_MANAGER_SUBJECTS,
   KMS_KEY_SUBJECTS,
   ORG_SUBJECTS,
   type PermissionSubject,
-  PROJECT_SUBJECTS
+  POLICY_TEMPLATES,
+  type PolicyTemplate,
+  PROJECT_SUBJECTS,
+  SECRET_SCANNING_SUBJECTS
 } from "./catalog";
 
 export type RoleScope = "org" | "project";
@@ -27,8 +38,72 @@ export type RuleErrors = {
 };
 export type PermissionErrors = Record<string, Record<number, RuleErrors>>;
 
-export const subjectsFor = (scope: RoleScope): PermissionSubject[] =>
-  scope === "org" ? ORG_SUBJECTS : PROJECT_SUBJECTS;
+const ALL_PROJECT_SUBJECTS = [
+  ...PROJECT_SUBJECTS,
+  ...KMS_KEY_SUBJECTS,
+  ...CERT_MANAGER_SUBJECTS,
+  ...SECRET_SCANNING_SUBJECTS,
+  ...AGENT_VAULT_SUBJECTS,
+  ...APPROVAL_SUBJECTS
+];
+
+export const subjectsFor = (
+  scope: RoleScope,
+  projectType: ProjectType = ProjectType.SecretManager
+): PermissionSubject[] => {
+  if (scope === "org") return ORG_SUBJECTS;
+  const enabled = ProjectTypePermissionSubjects[projectType];
+  return ALL_PROJECT_SUBJECTS.filter(
+    ({ subject }) =>
+      enabled[subject as ProjectPermissionSub] &&
+      !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub)
+  );
+};
+
+const INVALID_SUB_ORG_SUBJECTS: string[] = [
+  OrgPermissionSubjects.Sso,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
+  OrgPermissionSubjects.Billing,
+  OrgPermissionSubjects.SubOrganization
+];
+
+export const SUB_ORG_SUBJECTS = ORG_SUBJECTS.filter(
+  ({ subject }) => !INVALID_SUB_ORG_SUBJECTS.includes(subject)
+);
+
+const PRODUCT_TEMPLATES: Record<string, Pick<PolicyTemplate, "name" | "icon">> = {
+  "project-manager": { name: "Project management policies", icon: "Users" },
+  "kms-viewer": { name: "KMS viewing policies", icon: "Eye" },
+  "key-editor": { name: "KMS key editing policies", icon: "KeyRound" },
+  "kmip-editor": { name: "KMIP client editing policies", icon: "Server" },
+  "cert-viewer": { name: "Certificate viewing policies", icon: "Eye" },
+  "cert-editor": { name: "Certificate editing policies", icon: "Pencil" },
+  "scanning-viewer": { name: "Secret scanning viewing policies", icon: "Eye" },
+  "scanning-editor": { name: "Secret scanning editing policies", icon: "Pencil" }
+};
+
+export const policyTemplatesFor = (projectType: ProjectType): PolicyTemplate[] => {
+  if (projectType === ProjectType.SecretManager) return POLICY_TEMPLATES;
+  const subjects = subjectsFor("project", projectType);
+  return RoleTemplates[projectType].map((template) => ({
+    id: template.id,
+    ...PRODUCT_TEMPLATES[template.id],
+    permissions: template.permissions.flatMap(({ subject, actions }) => {
+      const config = subjects.find((item) => item.subject === subject);
+      if (!config) return [];
+      return [
+        {
+          subject,
+          title: config.title,
+          actions: config.actions.filter((action) => actions.includes(action.value))
+        }
+      ];
+    })
+  }));
+};
 
 export const ruleId = () => crypto.randomUUID();
 
@@ -60,7 +135,7 @@ export const allowedConditions = (
 };
 
 export const actionLabel = (scope: RoleScope, subject: string, action: string) =>
-  [...subjectsFor(scope), ...(scope === "project" ? KMS_KEY_SUBJECTS : [])]
+  (scope === "org" ? ORG_SUBJECTS : ALL_PROJECT_SUBJECTS)
     .find((item) => item.subject === subject)
     ?.actions.find((item) => item.value === action)?.label ?? action;
 

@@ -57,6 +57,7 @@ import {
   projectToApi,
   type RolePermissions,
   type RoleScope,
+  SUB_ORG_SUBJECTS,
   subjectsFor,
   validatePermissions
 } from "./permissions-model";
@@ -79,6 +80,7 @@ export type RoleEditorProps = {
   backHref: string;
   backLabel?: string;
   describable?: boolean;
+  projectType?: ProjectType;
   subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
   references: { environments?: readonly string[]; tags?: readonly string[] };
@@ -99,6 +101,7 @@ export const RoleEditor = ({
   backHref,
   backLabel,
   describable = true,
+  projectType,
   subjects,
   can,
   references,
@@ -273,7 +276,7 @@ export const RoleEditor = ({
       <RuleTable
         scope={scope}
         draft={current}
-        subjects={subjects ?? subjectsFor(scope)}
+        subjects={subjects ?? subjectsFor(scope, projectType)}
         editable={editable}
         reason={reason}
         errors={errors}
@@ -360,6 +363,7 @@ export const RoleEditor = ({
       {scope === "project" && (
         <>
           <PolicyTemplateSheet
+            projectType={projectType}
             open={overlay === "template"}
             onOpenChange={(next) => setOverlay(next ? "template" : undefined)}
             permissions={current}
@@ -411,11 +415,13 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   if (!role) return <NotFound backHref={backHref} />;
 
   const isCustom = isCustomOrgRole(role.slug);
+  const isSubOrganization = Boolean(org?.rootOrgId) && org?.rootOrgId !== org?.id;
   return (
     <RoleEditor
       key={role.id}
       scope="org"
       role={role}
+      subjects={isSubOrganization ? SUB_ORG_SUBJECTS : undefined}
       isCustom={isCustom}
       isDefault={org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug}
       taken={(roles ?? []).map((item) => item.slug)}
@@ -502,6 +508,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       isDefault={false}
       taken={(roles ?? []).map((item) => item.slug)}
       backHref={backHref}
+      projectType={scope.projectType}
       can={{
         edit: canEdit,
         create: permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role),
@@ -568,7 +575,8 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
 
 export const RoleDetail = () => {
   const params = useParams({ strict: false });
-  if (params.projectId && params.roleSlug)
-    return <ProjectRoleDetail projectId={params.projectId} roleSlug={params.roleSlug} />;
+  const { projectId } = useProjectScope();
+  if (projectId && params.roleSlug)
+    return <ProjectRoleDetail projectId={projectId} roleSlug={params.roleSlug} />;
   return <OrgRoleDetail orgId={params.orgId ?? ""} roleId={params.roleId ?? ""} />;
 };
