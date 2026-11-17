@@ -74,21 +74,6 @@
   color: var(--cipher-muted);
   text-align: center;
 }
-.split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
-  gap: var(--cipher-space-8);
-}
-.ipRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--cipher-space-8);
-}
-.dimmed {
-  opacity: 0.7;
-}
 .usageList {
   display: flex;
   flex-direction: column;

@@ -1,11 +1,19 @@
-import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
+import { IdentityAuthMethod, IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import type {
   ClientSecretData,
   Identity,
   IdentityAccessToken,
+  IdentityAliCloudAuth,
   IdentityAwsAuth,
+  IdentityAzureAuth,
+  IdentityGcpAuth,
+  IdentityJwtAuth,
   IdentityKubernetesAuth,
+  IdentityLdapAuth,
+  IdentityOciAuth,
   IdentityOidcAuth,
+  IdentitySpiffeAuth,
+  IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth
 } from "@app/hooks/api/identities/types";
@@ -105,6 +113,7 @@ export type AccessState = {
   identities: Identity[];
   identityOrgMemberships: DemoIdentityOrgMembership[];
   universalAuth: Record<string, IdentityUniversalAuth>;
+  authConfigs: Partial<Record<IdentityAuthMethod, Record<string, unknown>>>;
   clientSecrets: Record<string, ClientSecretData[]>;
   authTemplates: IdentityAuthTemplate[];
   templateUsages: Record<string, string[]>;
@@ -306,6 +315,12 @@ const CI_DEPLOYER = "4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11";
 const K8S_PAYMENTS = "9d27a4f1-0c3b-4e8a-b5f2-6a1d7c4e2b90";
 const TERRAFORM = "1f6c3e9b-7a24-4d0e-8b51-c2e9a7d40f36";
 const WEBHOOK_RELAY = "a3f09c6e-41d2-4b7a-9e58-2c6d0b8f1e43";
+const EDGE_FLEET = "5e8b1c3d-27a4-4f90-b6d1-8c2e4a7f0b15";
+const DIRECTORY_SYNC = "d1f4a7c2-9b36-4e05-8a7d-3c6e0f2b9a48";
+const MESH_WORKLOAD = "2c7e9a14-6d3b-4f8a-91c5-b0e7d3a6f412";
+const FEDERATION_BROKER = "8a3d6f20-1c9e-4b75-a4d8-6e2f0b9c3a57";
+const SETTLEMENT_BROKER = "f04b7d19-3e6a-4c82-b1d5-9a7e2c6f8d30";
+const LEDGER_EXPORTER = "6c1e8f42-b7d3-4a95-8e20-5f3a9d1c7b64";
 
 const groupMembers: DemoGroupMember[] = [
   { groupId: "g-platform", userId: "u-sarah", joinedGroupAt: day("2025-02-01") },
@@ -369,6 +384,38 @@ const identities: Identity[] = [
     IdentityAuthMethod.AWS_AUTH
   ]),
   identity("7b2d6e81-5f3a-4b9c-8e07-1a4c9d2f6b58", "cert-renewer", "2026-10-20", []),
+  identity(EDGE_FLEET, "edge-fleet-agent", "2026-07-08", [
+    IdentityAuthMethod.GCP_AUTH,
+    IdentityAuthMethod.AZURE_AUTH,
+    IdentityAuthMethod.OCI_AUTH,
+    IdentityAuthMethod.ALICLOUD_AUTH
+  ]),
+  identity(DIRECTORY_SYNC, "directory-sync", "2026-04-17", [
+    IdentityAuthMethod.LDAP_AUTH,
+    IdentityAuthMethod.JWT_AUTH
+  ]),
+  identity(
+    MESH_WORKLOAD,
+    "mesh-workload",
+    "2026-08-25",
+    [IdentityAuthMethod.TLS_CERT_AUTH, IdentityAuthMethod.SPIFFE_AUTH],
+    { projectId: "payments-api" }
+  ),
+  identity(
+    SETTLEMENT_BROKER,
+    "payments-settlement-broker-cross-account-reconciliation-pipeline",
+    "2026-03-02",
+    Object.values(IdentityAuthMethod),
+    { projectId: "payments-api", activeLockoutAuthMethods: [IdentityAuthMethod.UNIVERSAL_AUTH] }
+  ),
+  identity(LEDGER_EXPORTER, "ledger-exporter", "2026-11-02", [], { projectId: "payments-api" }),
+  identity(
+    FEDERATION_BROKER,
+    "federated-workload-broker-us-east-1-production-fleet",
+    "2026-02-14",
+    Object.values(IdentityAuthMethod),
+    { activeLockoutAuthMethods: [IdentityAuthMethod.LDAP_AUTH] }
+  ),
   identity(
     WEBHOOK_RELAY,
     "payments-webhook-relay",
@@ -418,7 +465,10 @@ const identityOrgMemberships: DemoIdentityOrgMembership[] = [
     1440,
     IdentityAuthMethod.AWS_AUTH
   ),
-  identityOrgMembership("7b2d6e81-5f3a-4b9c-8e07-1a4c9d2f6b58", "member")
+  identityOrgMembership("7b2d6e81-5f3a-4b9c-8e07-1a4c9d2f6b58", "member"),
+  identityOrgMembership(EDGE_FLEET, "member", 45, IdentityAuthMethod.GCP_AUTH),
+  identityOrgMembership(DIRECTORY_SYNC, "member", 300, IdentityAuthMethod.LDAP_AUTH),
+  identityOrgMembership(FEDERATION_BROKER, "member", 2, IdentityAuthMethod.AWS_AUTH)
 ];
 
 const ip = (ipAddress: string, type: "ipv4" | "ipv6", prefix: number) => ({
@@ -507,6 +557,239 @@ export const defaultOidcAuth = (identityId: string): IdentityOidcAuth => ({
   boundAudiences: "https://github.com/acme",
   boundClaims: {},
   boundSubject: "repo:acme/*:ref:refs/heads/main"
+});
+
+const pemBody = (seed: string, lines: number) =>
+  Array.from({ length: lines }, (_, index) =>
+    `${seed}${index.toString(36).toUpperCase()}`.repeat(8).slice(0, 64)
+  ).join("\n");
+
+const DEMO_CA_CERT = `-----BEGIN CERTIFICATE-----\n${pemBody("MIIDdzCCAl+gAwIBAgIUAcme", 6)}\n-----END CERTIFICATE-----`;
+
+const LONG_CA_CERT = [1, 2, 3]
+  .map(
+    (part) =>
+      `-----BEGIN CERTIFICATE-----\n${pemBody(`MIIF${part}zCCA1+gAwIBAgIQFederationBroker`, 28)}\n-----END CERTIFICATE-----`
+  )
+  .join("\n");
+
+export const defaultGcpAuth = (identityId: string): IdentityGcpAuth => ({
+  ...accessTokenDefaults(identityId),
+  type: "gce",
+  allowedServiceAccounts: "edge-agent@acme-edge.iam.gserviceaccount.com",
+  allowedProjects: "acme-edge",
+  allowedZones: "us-west2-a, us-central1-a"
+});
+
+export const defaultAzureAuth = (identityId: string): IdentityAzureAuth => ({
+  ...accessTokenDefaults(identityId),
+  tenantId: "6f1c2d3e-4a5b-4c6d-8e7f-90a1b2c3d4e5",
+  resource: "https://management.azure.com/",
+  allowedServicePrincipalIds: "0b9c8d7e-6f5a-4b3c-9d2e-1f0a9b8c7d6e"
+});
+
+export const defaultAliCloudAuth = (identityId: string): IdentityAliCloudAuth => ({
+  ...accessTokenDefaults(identityId),
+  type: "iam",
+  allowedArns: "acs:ram::1284730012345678:role/edge-agent"
+});
+
+export const defaultOciAuth = (identityId: string): IdentityOciAuth => ({
+  ...accessTokenDefaults(identityId),
+  type: "iam",
+  tenancyOcid: "ocid1.tenancy.oc1..aaaaaaaaedgefleet7q3x",
+  allowedUsernames: "edge-agent"
+});
+
+export const defaultLdapAuth = (identityId: string): IdentityLdapAuth => ({
+  ...accessTokenDefaults(identityId),
+  url: "ldaps://ldap.acme.dev:636",
+  bindDN: "cn=infisical,ou=services,dc=acme,dc=dev",
+  searchBase: "ou=machines,dc=acme,dc=dev",
+  searchFilter: "(uid={{username}})",
+  ldapCaCertificate: "",
+  allowedFields: [{ key: "memberOf", value: "cn=directory-sync,ou=groups,dc=acme,dc=dev" }],
+  lockoutEnabled: true,
+  lockoutThreshold: 3,
+  lockoutDurationSeconds: 300,
+  lockoutCounterResetSeconds: 30
+});
+
+export const defaultJwtAuth = (identityId: string): IdentityJwtAuth => ({
+  ...accessTokenDefaults(identityId),
+  configurationType: IdentityJwtConfigurationType.JWKS,
+  jwksUrl: "https://auth.acme.dev/.well-known/jwks.json",
+  jwksCaCert: "",
+  publicKeys: [],
+  boundIssuer: "https://auth.acme.dev",
+  boundAudiences: "infisical",
+  boundClaims: { team: "identity" },
+  boundSubject: "directory-sync"
+});
+
+export const defaultTlsCertAuth = (identityId: string): IdentityTlsCertAuth => ({
+  ...accessTokenDefaults(identityId),
+  caCertificate: DEMO_CA_CERT,
+  allowedCommonNames: "mesh-workload.svc.acme.dev",
+  allowedSubjectAltNames: ["URI:spiffe://acme.dev/mesh/workload"],
+  verifyClientCertificateChain: true,
+  bindAccessTokenToCertificate: false
+});
+
+export const defaultSpiffeAuth = (identityId: string): IdentitySpiffeAuth => ({
+  ...accessTokenDefaults(identityId),
+  trustDomain: "acme.dev",
+  allowedSpiffeIds: "spiffe://acme.dev/ns/mesh/sa/*",
+  allowedAudiences: "infisical",
+  trustBundleDistribution: {
+    profile: "https_web_bundle",
+    endpointUrl: "https://spire.acme.dev:8443",
+    caCert: "",
+    refreshHintSeconds: 3600,
+    cachedBundleLastRefreshedAt: hours(-2)
+  }
+});
+
+const stressIps = [
+  ip("10.24.0.0", "ipv4", 16),
+  ip("172.31.128.0", "ipv4", 20),
+  ip("192.168.240.0", "ipv4", 24),
+  ip("2600:1f18:4d2a:7b00::", "ipv6", 56),
+  ip("2a05:d014:9c3:8e00::", "ipv6", 56),
+  ip("203.0.113.42", "ipv4", 32)
+];
+
+const stressTokens = {
+  accessTokenTTL: 86400,
+  accessTokenMaxTTL: 7776000,
+  accessTokenNumUsesLimit: 25000,
+  accessTokenTrustedIps: stressIps
+};
+
+const stressClaims = Object.fromEntries([
+  ["repository", "acme-corp/federated-workload-broker-infrastructure-monorepo"],
+  ["repository_owner", "acme-corp"],
+  ["ref", "refs/heads/release/2026-11-production-rollout"],
+  ["environment", "production-us-east-1"],
+  ["workflow", "deploy-federated-broker.yml"],
+  ["job_workflow_ref", "acme-corp/shared-workflows/.github/workflows/deploy.yml@refs/tags/v4.12.0"],
+  ["runner_environment", "self-hosted"],
+  ["actor", "release-automation-bot"]
+]);
+
+const federationConfigs: Partial<Record<IdentityAuthMethod, unknown>> = {
+  [IdentityAuthMethod.KUBERNETES_AUTH]: {
+    ...defaultKubernetesAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    templateId: null,
+    kubernetesHost:
+      "https://federation-control-plane-api.us-east-1.eks.amazonaws.com.internal.acme-corp.example:6443",
+    allowedNamespaces:
+      "federation-broker-production, federation-broker-canary, federation-broker-shadow, payments-*, ledger-reconciliation-*",
+    allowedNames:
+      "federated-workload-broker, federated-workload-broker-canary, ledger-reconciliation-worker, settlement-exporter",
+    allowedAudience: "https://federation-control-plane-api.us-east-1.eks.amazonaws.com",
+    caCert: LONG_CA_CERT,
+    hasTokenReviewerJwt: true
+  },
+  [IdentityAuthMethod.AWS_AUTH]: {
+    ...defaultAwsAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    stsEndpoint: "https://sts.us-east-1.amazonaws.com/",
+    allowedPrincipalArns: [
+      "arn:aws:iam::441700233914:role/federated-workload-broker-production-execution-role",
+      "arn:aws:iam::441700233914:role/federated-workload-broker-canary-execution-role",
+      "arn:aws:sts::558213907761:assumed-role/OrganizationAccountAccessRole/release-automation",
+      "arn:aws:iam::902118446530:role/service-role/ledger-reconciliation-batch-processing-role"
+    ].join(", "),
+    allowedAccountIds: "441700233914, 558213907761, 902118446530, 117349026588"
+  },
+  [IdentityAuthMethod.OIDC_AUTH]: {
+    ...defaultOidcAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    templateId: null,
+    caCert: LONG_CA_CERT,
+    boundAudiences:
+      "https://github.com/acme-corp, sts.amazonaws.com, api://federated-workload-broker-production",
+    boundClaims: stressClaims,
+    claimMetadataMapping: { team: "repository_owner", pipeline: "workflow" },
+    boundSubject:
+      "repo:acme-corp/federated-workload-broker-infrastructure-monorepo:environment:production-us-east-1"
+  },
+  [IdentityAuthMethod.LDAP_AUTH]: {
+    ...defaultLdapAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    url: "ldaps://directory-primary.corp.us-east-1.acme-corp.example:636",
+    bindDN:
+      "cn=infisical-federation-broker,ou=service-accounts,ou=platform,dc=corp,dc=acme-corp,dc=example",
+    searchBase: "ou=federated-machines,ou=platform,dc=corp,dc=acme-corp,dc=example",
+    searchFilter:
+      "(&(objectClass=device)(uid={{username}})(memberOf=cn=federation,ou=groups,dc=corp))",
+    ldapCaCertificate: LONG_CA_CERT,
+    allowedFields: [
+      { key: "memberOf", value: "cn=federation-broker,ou=groups,dc=corp,dc=acme-corp,dc=example" },
+      { key: "departmentNumber", value: "platform-infrastructure-4411" },
+      { key: "employeeType", value: "service-account" }
+    ]
+  },
+  [IdentityAuthMethod.TLS_CERT_AUTH]: {
+    ...defaultTlsCertAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    caCertificate: LONG_CA_CERT,
+    allowedCommonNames:
+      "federated-workload-broker.production.svc.cluster.local, federated-workload-broker.canary.svc.cluster.local",
+    allowedSubjectAltNames: [
+      "URI:spiffe://acme-corp.example/ns/federation-broker-production/sa/federated-workload-broker",
+      "DNS:federated-workload-broker.us-east-1.internal.acme-corp.example",
+      "DNS:*.federation-broker-production.svc.cluster.local"
+    ],
+    bindAccessTokenToCertificate: true
+  },
+  [IdentityAuthMethod.SPIFFE_AUTH]: {
+    ...defaultSpiffeAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    trustDomain: "production.us-east-1.federation.acme-corp.example",
+    allowedSpiffeIds:
+      "spiffe://production.us-east-1.federation.acme-corp.example/ns/federation-broker-production/sa/**, spiffe://production.us-east-1.federation.acme-corp.example/workloads/ledger-*",
+    allowedAudiences: "infisical, https://federation-control-plane.acme-corp.example",
+    trustBundleDistribution: { profile: "static", bundle: LONG_CA_CERT }
+  },
+  [IdentityAuthMethod.JWT_AUTH]: {
+    ...defaultJwtAuth(FEDERATION_BROKER),
+    ...stressTokens,
+    configurationType: IdentityJwtConfigurationType.STATIC,
+    jwksUrl: "",
+    publicKeys: [LONG_CA_CERT, LONG_CA_CERT],
+    boundClaims: stressClaims
+  }
+};
+
+const authConfigs: AccessState["authConfigs"] = Object.fromEntries(
+  Object.entries(federationConfigs).map(([method, config]) => [
+    method,
+    {
+      [FEDERATION_BROKER]: config,
+      [SETTLEMENT_BROKER]: { ...(config as object), identityId: SETTLEMENT_BROKER },
+      ...(method === IdentityAuthMethod.LDAP_AUTH
+        ? {
+            [DIRECTORY_SYNC]: {
+              ...defaultLdapAuth(DIRECTORY_SYNC),
+              ldapCaCertificate: DEMO_CA_CERT
+            }
+          }
+        : {})
+    }
+  ])
+);
+
+const stressedUniversalAuth = (identityId: string): IdentityUniversalAuth => ({
+  ...defaultUniversalAuth(identityId),
+  ...stressTokens,
+  accessTokenPeriod: 0,
+  clientSecretTrustedIps: stressIps,
+  lockoutThreshold: 30,
+  lockoutDurationSeconds: 86400,
+  lockoutCounterResetSeconds: 3600
 });
 
 const tokenAuthToken = (
@@ -946,6 +1229,50 @@ const projectMemberships: DemoProjectMembership[] = [
   },
   {
     kind: "identity",
+    id: "pi-mesh",
+    projectId: "payments-api",
+    identityId: MESH_WORKLOAD,
+    roles: [grant("pi-6", "member")],
+    createdAt: day("2026-08-25"),
+    lastLoginTime: minutesAgo(8)
+  },
+  {
+    kind: "identity",
+    id: "pi-directory",
+    projectId: "payments-api",
+    identityId: DIRECTORY_SYNC,
+    roles: [grant("pi-7", "viewer")],
+    createdAt: day("2026-04-17"),
+    lastLoginTime: minutesAgo(300)
+  },
+  {
+    kind: "identity",
+    id: "pi-settlement",
+    projectId: "payments-api",
+    identityId: SETTLEMENT_BROKER,
+    roles: [grant("pi-9", "member")],
+    createdAt: day("2026-03-02"),
+    lastLoginTime: minutesAgo(1)
+  },
+  {
+    kind: "identity",
+    id: "pi-ledger",
+    projectId: "payments-api",
+    identityId: LEDGER_EXPORTER,
+    roles: [grant("pi-10", "viewer")],
+    createdAt: day("2026-11-02")
+  },
+  {
+    kind: "identity",
+    id: "pi-federation",
+    projectId: "payments-api",
+    identityId: FEDERATION_BROKER,
+    roles: [grant("pi-8", "member")],
+    createdAt: day("2026-02-14"),
+    lastLoginTime: minutesAgo(2)
+  },
+  {
+    kind: "identity",
     id: "opm-4",
     projectId: "kms-keys",
     identityId: CI_DEPLOYER,
@@ -1210,7 +1537,12 @@ export const seedAccessState = (): AccessState => ({
   groupMembers,
   identities,
   identityOrgMemberships,
-  universalAuth,
+  universalAuth: {
+    ...universalAuth,
+    [FEDERATION_BROKER]: stressedUniversalAuth(FEDERATION_BROKER),
+    [SETTLEMENT_BROKER]: stressedUniversalAuth(SETTLEMENT_BROKER)
+  },
+  authConfigs,
   clientSecrets,
   authTemplates,
   templateUsages: { "t-k8s": [K8S_PAYMENTS], "t-oidc": [CI_DEPLOYER] },
@@ -1233,6 +1565,7 @@ export const seedEmptyAccessState = (): AccessState => {
     identities: [],
     identityOrgMemberships: [],
     universalAuth: {},
+    authConfigs: {},
     clientSecrets: {},
     authTemplates: [],
     templateUsages: {},
