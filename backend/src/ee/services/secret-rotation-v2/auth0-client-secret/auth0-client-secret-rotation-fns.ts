@@ -29,6 +29,13 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
+  if (clientId === connection.credentials.clientId) {
+    throw new BadRequestError({
+      message:
+        "Cannot rotate the client secret of the application that this Auth0 connection authenticates with. Choose a different application or use a separate Auth0 connection."
+    });
+  }
+
   const $rotateClientSecret = async () => {
     const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const { audience } = connection.credentials;
@@ -37,7 +44,7 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
 
     await safeRequest.request({
       method: "PATCH",
-      url: `${audience}clients/${clientId}`,
+      url: `${audience}clients/${encodeURIComponent(clientId)}`,
       headers: { authorization: `Bearer ${accessToken}` },
       data: {
         client_secret: clientSecret
@@ -66,7 +73,7 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     // we just trigger an auth0 rotation to negate our credentials
     await safeRequest.request({
       method: "POST",
-      url: `${audience}clients/${clientId}/rotate-secret`,
+      url: `${audience}clients/${encodeURIComponent(clientId)}/rotate-secret`,
       headers: { authorization: `Bearer ${accessToken}` }
     });
 
