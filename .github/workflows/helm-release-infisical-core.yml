@@ -7,17 +7,16 @@ on:
     paths:
       - helm-charts/infisical-standalone-postgres/Chart.yaml
 
-concurrency:
-  group: helm-release-infisical-core
-  cancel-in-progress: false
-
+# No workflow-level concurrency group: GitHub cancels a run queued behind a newer one, so a
+# chart version merged between two others would never be published. Runs for different
+# versions are independent; the release job serializes runs for the same version.
 jobs:
-  # A published chart version must never change, so a version already in the registry is
-  # never pushed again. This also skips commits that touch Chart.yaml without a new version.
+  # Skips commits that touch Chart.yaml without a new version, before the slow tests.
   check-version:
     name: Check chart version is unpublished
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ steps.check.outputs.version }}
       publish: ${{ steps.check.outputs.publish }}
     steps:
       - name: Checkout
@@ -30,20 +29,7 @@ jobs:
 
       - name: Look up chart version in the registry
         id: check
-        run: |
-          set -euo pipefail
-          VERSION="$(yq '.version' helm-charts/infisical-standalone-postgres/Chart.yaml)"
-
-          if ERR="$(helm show chart oci://helm.oci.cloudsmith.io/infisical/helm-charts/infisical-standalone --version "$VERSION" 2>&1 >/dev/null)"; then
-            echo "::notice::Chart $VERSION is already published. Bump the chart version to release changes."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif echo "$ERR" | grep -q ': not found$'; then
-            echo "Chart $VERSION is not published yet."
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Could not check whether chart $VERSION is published: $ERR"
-            exit 1
-          fi
+        run: ./helm-charts/check-infisical-core-chart-unpublished.sh
 
   test-helm:
     name: Test Helm Chart
@@ -115,16 +101,27 @@ jobs:
       freeze: ${{ vars.DEPLOY_FREEZE }}
 
   release:
-    needs: [freeze-check]
+    needs: [check-version, freeze-check]
     runs-on: ubuntu-latest
+    # Two runs for the same version (a later commit that changed Chart.yaml without bumping it)
+    # wait for each other here, and the second finds the version published. A run queued behind
+    # a newer one for the same version may be cancelled, which loses nothing.
+    concurrency:
+      group: helm-release-infisical-core-${{ needs.check-version.outputs.version }}
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2 (outdated — consider upgrading to v4)
       - name: Install Helm
-        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3 latest
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
         with:
-          version: v3.10.0
+          version: v3.17.0
+      # The tests take minutes, so another run may have published this version since check-version.
+      - name: Check chart version is still unpublished
+        id: check
+        run: ./helm-charts/check-infisical-core-chart-unpublished.sh
       - name: Build and push helm package to Cloudsmith
+        if: steps.check.outputs.publish == 'true'
         run: cd helm-charts && sh upload-infisical-core-helm-cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
