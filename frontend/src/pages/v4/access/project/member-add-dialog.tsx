@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@infisical/cipher/ui/dialog";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
   OrgPermissionMemberActions,
@@ -44,7 +46,12 @@ export const AddMemberDialog = ({
   const project = access.useProject(projectId);
   const { assignable } = useMemberRoleAccess(projectId);
   const addUsers = access.useAddProjectUsers();
-  const [users, setUsers] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (search) => (search as { requesterEmail?: string }).requesterEmail
+  });
+  const [picked, setPicked] = useState<string[]>();
   const [roles, setRoles] = useState<string[]>([]);
   const [invited, setInvited] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
@@ -54,6 +61,15 @@ export const AddMemberDialog = ({
     OrgPermissionSubjects.Member
   );
   const available = useMemo(() => availableUsers.data ?? [], [availableUsers.data]);
+  const requester = requesterEmail
+    ? available.find((user) => user.username === requesterEmail)
+    : undefined;
+  const isRequesterMember = Boolean(
+    requesterEmail && members.data?.some((member) => member.user.username === requesterEmail)
+  );
+  const users = picked ?? (requester && !isRequesterMember ? [requester.username] : []);
+  const setUsers = (next: string[] | ((current: string[]) => string[])) =>
+    setPicked(typeof next === "function" ? next(users) : next);
   const known = useMemo(
     () =>
       new Set([
@@ -77,7 +93,13 @@ export const AddMemberDialog = ({
       : "No users match your search";
 
   const close = () => {
-    setUsers([]);
+    setPicked(undefined);
+    if (requesterEmail)
+      navigate({
+        to: ".",
+        search: (prev: object) => ({ ...prev, requesterEmail: "" }),
+        replace: true
+      });
     setRoles([]);
     setInvited([]);
     onOpenChange(false);
@@ -123,6 +145,18 @@ export const AddMemberDialog = ({
           }}
         >
           <Stack gap={16}>
+            {isRequesterMember && (
+              <Alert
+                tone="bad"
+                title={`The requested user is already part of ${accessThe(scope.projectType)}`}
+              />
+            )}
+            {requester && !isRequesterMember && (
+              <Alert
+                tone="info"
+                title={`Assign a role to give ${personName(requester) ?? requester.email ?? requester.username} access`}
+              />
+            )}
             <Combobox
               multiple
               label={`Invite users to ${accessNoun(scope.projectType)}`}

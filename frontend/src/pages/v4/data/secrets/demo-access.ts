@@ -146,7 +146,27 @@ const remove = (store: DemoStore, actor: string, dto: GrantDto) =>
     }
   }));
 
+const grantsOf = (state: DemoFolderAccess, projectId: string, actor: string) =>
+  state.grants
+    .filter((grant) => grant.actor === actor && grant.projectId === projectId)
+    .map(({ actor: _actor, ...grant }) => grant);
+
 export const secretsAccessDemo: SecretsAccessAdapter = {
+  useUserFolderAccess: ({ projectId, userId }) => ({
+    data: grantsOf(useStore().use().folderAccess, projectId, key("user", userId)).map((grant) => ({
+      ...grant,
+      userId
+    })),
+    isPending: false,
+    error: null
+  }),
+  useIdentityFolderAccess: ({ projectId, identityId }) => ({
+    data: grantsOf(useStore().use().folderAccess, projectId, key("identity", identityId)).map(
+      (grant) => ({ ...grant, identityId })
+    ),
+    isPending: false,
+    error: null
+  }),
   useFolderAccessUsers: (dto) => {
     const groups = split(useStore().use().folderAccess, dto, "user");
     return {

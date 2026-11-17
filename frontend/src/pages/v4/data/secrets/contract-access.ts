@@ -3,11 +3,15 @@ import type {
   TCreateUserFolderAccessDTO,
   TDeleteIdentityFolderAccessDTO,
   TDeleteUserFolderAccessDTO,
+  TIdentityFolderAccess,
   TListFolderAccessActorsDTO,
   TListFolderAccessIdentitiesResponse,
   TListFolderAccessUsersResponse,
+  TListIdentityFolderAccessDTO,
+  TListUserFolderAccessDTO,
   TUpdateIdentityFolderAccessDTO,
-  TUpdateUserFolderAccessDTO
+  TUpdateUserFolderAccessDTO,
+  TUserFolderAccess
 } from "@app/hooks/api/folderAccess/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
@@ -19,6 +23,12 @@ export type SecretsAccessAdapter = {
   useFolderAccessIdentities: (
     dto: TListFolderAccessActorsDTO
   ) => V4QueryResult<TListFolderAccessIdentitiesResponse>;
+  useUserFolderAccess: (
+    dto: TListUserFolderAccessDTO & { enabled?: boolean }
+  ) => V4QueryResult<TUserFolderAccess[]>;
+  useIdentityFolderAccess: (
+    dto: TListIdentityFolderAccessDTO & { enabled?: boolean }
+  ) => V4QueryResult<TIdentityFolderAccess[]>;
   useCreateUserFolderAccess: V4Mutation<TCreateUserFolderAccessDTO>;
   useUpdateUserFolderAccess: V4Mutation<TUpdateUserFolderAccessDTO>;
   useDeleteUserFolderAccess: V4Mutation<TDeleteUserFolderAccessDTO>;

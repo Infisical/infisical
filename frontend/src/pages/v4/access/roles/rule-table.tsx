@@ -27,7 +27,10 @@ import {
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
+import type { TProjectPermission } from "@app/hooks/api/roles/types";
+
 import { Gate, ListToolbar, Muted } from "../ui";
+import { AccessTreeSheet } from "./access-tree-sheet";
 import type { PermissionSubject } from "./catalog";
 import { ConditionsFields } from "./conditions";
 import {
@@ -36,6 +39,7 @@ import {
   type RolePermissions,
   type RoleScope,
   type Rule,
+  projectToApi,
   ruleId,
   validatePermissions
 } from "./permissions-model";
@@ -53,12 +57,42 @@ export type RuleTableProps = {
   errors?: PermissionErrors;
   onChange: (next: RolePermissions) => void;
   references: { environments?: readonly string[]; tags?: readonly string[] };
+  visualizeProjectId?: string;
 };
 
 type Row = { key: string; config: PermissionSubject; index: number; rule: Rule };
 type Editing = { subject?: string; index?: number; rule: Rule };
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+const VisualizeAccess = ({
+  projectId,
+  config,
+  permissions
+}: {
+  projectId?: string;
+  config?: PermissionSubject;
+  permissions: () => TProjectPermission[];
+}) => {
+  const [open, setOpen] = useState(false);
+  if (!projectId || !config || !VISUALIZABLE.includes(config.subject)) return <span />;
+  return (
+    <>
+      <Button type="button" variant="outline" icon="apps" onClick={() => setOpen(true)}>
+        Visualize access
+      </Button>
+      {open && (
+        <AccessTreeSheet
+          projectId={projectId}
+          subject={config.subject}
+          title={config.title}
+          permissions={permissions()}
+          onOpenChange={setOpen}
+        />
+      )}
+    </>
+  );
+};
 
 const RuleSheet = ({
   props,
@@ -77,6 +111,20 @@ const RuleSheet = ({
   const config = subjects.find((item) => item.subject === subject);
   const conditional = scope === "project" && Boolean(config?.conditional);
   const isNew = editing.index === undefined;
+  const withRule = (target: string) => {
+    const next = { ...draft };
+    if (!isNew && editing.subject && editing.subject !== target) {
+      const left = (draft[editing.subject] ?? []).filter((_, i) => i !== editing.index);
+      if (left.length) next[editing.subject] = left;
+      else delete next[editing.subject];
+    }
+    const current = draft[target] ?? [];
+    next[target] =
+      !isNew && editing.subject === target
+        ? current.map((item, i) => (i === editing.index ? rule : item))
+        : [...current, rule];
+    return next;
+  };
   const save = () => {
     if (!config) {
       setPolicyError("Select a policy");
@@ -87,18 +135,7 @@ const RuleSheet = ({
       setErrors(found);
       return;
     }
-    const next = { ...draft };
-    if (!isNew && editing.subject && editing.subject !== config.subject) {
-      const left = (draft[editing.subject] ?? []).filter((_, i) => i !== editing.index);
-      if (left.length) next[editing.subject] = left;
-      else delete next[editing.subject];
-    }
-    const current = draft[config.subject] ?? [];
-    next[config.subject] =
-      !isNew && editing.subject === config.subject
-        ? current.map((item, i) => (i === editing.index ? rule : item))
-        : [...current, rule];
-    onChange(next);
+    onChange(withRule(config.subject));
     onClose();
   };
   return (
@@ -208,15 +245,11 @@ const RuleSheet = ({
         </SheetBody>
         <SheetFooter>
           <Inline gap={8} justify="between">
-            {scope === "project" && config && VISUALIZABLE.includes(config.subject) ? (
-              <Gate allowed={false} reason="Access visualization is not part of this preview">
-                <Button type="button" variant="outline" icon="apps" disabled>
-                  Visualize access
-                </Button>
-              </Gate>
-            ) : (
-              <span />
-            )}
+            <VisualizeAccess
+              projectId={scope === "project" ? props.visualizeProjectId : undefined}
+              config={config}
+              permissions={() => (config ? projectToApi(withRule(config.subject)) : [])}
+            />
             <Inline gap={8}>
               <Button variant="ghost" onClick={onClose}>
                 Cancel

@@ -28,6 +28,12 @@ import type { ServiceToken } from "@app/hooks/api/serviceTokens/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import {
+  type DemoIdentityPrivilege,
+  type DemoUserPrivilege,
+  demoIdentityPrivileges,
+  demoUserPrivileges
+} from "./fixtures-privileges";
 
 export type DemoUser = {
   id: string;
@@ -101,6 +107,7 @@ export type DemoProject = {
   name: string;
   type: ProjectType;
   environments: { id: string; name: string; slug: string }[];
+  legacyPrivileges?: boolean;
 };
 
 export type AccessState = {
@@ -122,6 +129,8 @@ export type AccessState = {
   projectMemberships: DemoProjectMembership[];
   tokenAuthTokens: Record<string, IdentityAccessToken[]>;
   serviceTokens: ServiceToken[];
+  userPrivileges: DemoUserPrivilege[];
+  identityPrivileges: DemoIdentityPrivilege[];
 };
 
 export const DEMO_SELF_USER_ID = "u-sarah";
@@ -904,7 +913,8 @@ const projects: DemoProject[] = [
     id: "platform-core",
     name: "platform-core",
     type: ProjectType.SecretManager,
-    environments: standardEnvironments("platform-core")
+    environments: standardEnvironments("platform-core"),
+    legacyPrivileges: true
   },
   { id: "kms-keys", name: "kms-keys", type: ProjectType.KMS, environments: [] },
   { id: "edge-signing", name: "edge-signing", type: ProjectType.KMS, environments: [] },
@@ -1182,6 +1192,38 @@ const projectMemberships: DemoProjectMembership[] = [
       grant("pg-3", "deploy-bot-reviewer", { range: "30d", from: -24, to: 696 })
     ],
     createdAt: day("2025-05-07")
+  },
+  {
+    kind: "user",
+    id: "pcm-marcus",
+    projectId: "platform-core",
+    userId: "u-marcus",
+    roles: [grant("pcr-1", "member")],
+    createdAt: day("2025-06-20")
+  },
+  {
+    kind: "user",
+    id: "pcm-diego",
+    projectId: "platform-core",
+    userId: "u-diego",
+    roles: [grant("pcr-2", "viewer")],
+    createdAt: day("2025-07-11")
+  },
+  {
+    kind: "identity",
+    id: "pci-ci",
+    projectId: "platform-core",
+    identityId: CI_DEPLOYER,
+    roles: [grant("pci-1", "member")],
+    createdAt: day("2026-03-05")
+  },
+  {
+    kind: "identity",
+    id: "pci-tf",
+    projectId: "platform-core",
+    identityId: TERRAFORM,
+    roles: [grant("pci-2", "viewer")],
+    createdAt: day("2026-01-10")
   },
   {
     kind: "group",
@@ -1550,7 +1592,9 @@ export const seedAccessState = (): AccessState => ({
   projectRoles,
   projectMemberships,
   tokenAuthTokens,
-  serviceTokens
+  serviceTokens,
+  userPrivileges: demoUserPrivileges(),
+  identityPrivileges: demoIdentityPrivileges()
 });
 
 export const seedEmptyAccessState = (): AccessState => {
@@ -1576,7 +1620,9 @@ export const seedEmptyAccessState = (): AccessState => {
       (entry) => entry.kind === "user" && entry.userId === DEMO_SELF_USER_ID
     ),
     tokenAuthTokens: {},
-    serviceTokens: []
+    serviceTokens: [],
+    userPrivileges: [],
+    identityPrivileges: []
   };
 };
 

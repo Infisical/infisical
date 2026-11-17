@@ -61,7 +61,7 @@ const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {
       ? { username: "sarah@acme.dev", email: "sarah@acme.dev", projectMembershipId: null }
       : null,
     redactedAt: entry.redacted ? entry.createdAt : null,
-    redactedByUserId: entry.redacted ? "demo-user-sarah" : null
+    redactedByUserId: entry.redacted ? "u-sarah" : null
   }));
 };
 
