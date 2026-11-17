@@ -12,6 +12,8 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -19,8 +21,12 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -33,6 +39,7 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWebhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { fnTriggerWebhook } from "@app/services/webhook/webhook-fns";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -43,7 +50,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
-import { emitHoneyTokenTriggered } from "./honey-token-events";
+import { emitHoneyTokenTriggered, HONEY_TOKEN_RESOURCE_TYPE } from "./honey-token-events";
 import {
   getHoneyTokenProviderDefinition,
   getHoneyTokenServiceHooksByType,
@@ -116,6 +123,11 @@ export type THoneyTokenServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
+  userDAL: Pick<TUserDALFactory, "find">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -160,7 +172,12 @@ export const honeyTokenServiceFactory = ({
   projectEnvDAL,
   telemetryService,
   auditLogService,
-  keyStore
+  keyStore,
+  alertService,
+  notificationService,
+  projectMembershipDAL,
+  orgDAL,
+  userDAL
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     kmsService,
@@ -744,6 +761,11 @@ export const honeyTokenServiceFactory = ({
         },
         tx
       );
+
+      await alertService.deleteAlertsForResource(
+        { orgId: actor.orgId, projectId, resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceId: honeyTokenId },
+        tx
+      );
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
@@ -1007,6 +1029,38 @@ export const honeyTokenServiceFactory = ({
     }
   };
 
+  const $sendInAppTriggerNotification = async ({ orgId, honeyToken, eventMetadata }: TSendTriggerNotificationInput) => {
+    try {
+      const [adminUserIds, [folderInfo]] = await Promise.all([
+        findProjectAdminUserIds({ projectMembershipDAL, orgDAL, userDAL }, { orgId, projectId: honeyToken.projectId }),
+        folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId], undefined, {
+          includePendingDeletion: true
+        })
+      ]);
+      if (adminUserIds.size === 0) return;
+
+      const query = new URLSearchParams({ honeyTokenId: honeyToken.id, secretPath: folderInfo?.path || "/" });
+      const link = `/organizations/${orgId}/projects/secret-management/${honeyToken.projectId}/overview?${query.toString()}`;
+      const sourceIp = eventMetadata.sourceIp ?? "an unknown IP address";
+
+      await notificationService.createUserNotifications(
+        [...adminUserIds].map((userId) => ({
+          userId,
+          orgId,
+          type: NotificationType.HONEY_TOKEN_TRIGGERED,
+          title: "Honey Token Triggered",
+          body: `Honey token **${honeyToken.name}** was used to call \`${eventMetadata.eventName}\` from ${sourceIp}.`,
+          link
+        }))
+      );
+    } catch (err) {
+      logger.error(
+        { err, orgId, honeyTokenId: honeyToken.id },
+        `Failed to send honey token in-app notification [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      );
+    }
+  };
+
   const handleTrigger = async ({ type, signature, rawBody, payload }: THandleTriggerInput) => {
     logger.info({ signature, type }, `Honey token trigger received [type=${type}]`);
 
@@ -1111,6 +1165,11 @@ export const honeyTokenServiceFactory = ({
       .catch(() => {});
     if (updatedToken) {
       void $triggerWebhookNotification({
+        orgId: honeyToken.orgId,
+        honeyToken: honeyTokenWithFolder,
+        eventMetadata
+      });
+      void $sendInAppTriggerNotification({
         orgId: honeyToken.orgId,
         honeyToken: honeyTokenWithFolder,
         eventMetadata

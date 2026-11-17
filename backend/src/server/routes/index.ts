@@ -1043,13 +1043,6 @@ export const registerRoutes = async (
     envConfig
   });
 
-  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
-    honeyTokenDAL,
-    honeyTokenConfigDAL,
-    appConnectionDAL,
-    kmsService
-  });
-
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
     kmsRootConfigDAL,
@@ -1227,6 +1220,13 @@ export const registerRoutes = async (
     kmsService,
     alertProviderRegistry,
     alertHistoryDAL
+  });
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsService,
+    alertService
   });
   const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
     honeyTokenDAL,
@@ -3557,7 +3557,12 @@ export const registerRoutes = async (
     appConnectionService,
     telemetryService,
     auditLogService,
-    keyStore
+    keyStore,
+    alertService,
+    notificationService,
+    projectMembershipDAL,
+    orgDAL,
+    userDAL
   });
 
   const proxiedServiceService = proxiedServiceServiceFactory({

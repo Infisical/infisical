@@ -6,6 +6,11 @@ import { honeyTokenServiceFactory } from "./honey-token-service";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
+const findProjectAdminUserIds = vi.fn();
+vi.mock("@app/services/alert/alert-principal-scope-fns", () => ({
+  findProjectAdminUserIds: (...args: unknown[]) => findProjectAdminUserIds(...args) as unknown
+}));
+
 const authenticateTrigger = vi.fn();
 vi.mock("./honey-token-provider-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./honey-token-provider-fns")>()),
@@ -34,6 +39,7 @@ const buildService = () => {
   const recordedEvents: unknown[] = [];
   const emitted: { events: { type: string; data: Record<string, unknown> }[]; tx: unknown }[] = [];
   const auditLogs: unknown[] = [];
+  const notifications: { userId: string; orgId?: string; type: string; body?: string; link?: string }[] = [];
   let failNextEmit = false;
 
   const honeyTokenDAL = {
@@ -82,7 +88,17 @@ const buildService = () => {
       }
     },
     projectDAL: { findById: async () => null },
-    folderDAL: { findSecretPathByFolderIds: async () => [] }
+    folderDAL: {
+      findSecretPathByFolderIds: async () => [{ path: "/app", environmentSlug: "prod", environmentName: "Production" }]
+    },
+    notificationService: {
+      createUserNotifications: async (batch: typeof notifications) => {
+        notifications.push(...batch);
+      }
+    },
+    projectMembershipDAL: {},
+    orgDAL: {},
+    userDAL: {}
   } as never);
 
   const trigger = (eventName = "GetCallerIdentity") => {
@@ -111,14 +127,23 @@ const buildService = () => {
     recordedEvents,
     emitted,
     auditLogs,
+    notifications,
     failNextEmit: () => {
       failNextEmit = true;
     }
   };
 };
 
+// The in-app notification is sent after the response, so let its promise chain settle before asserting.
+const flushBackgroundWork = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
 describe("honey token trigger", () => {
   beforeEach(() => {
+    findProjectAdminUserIds.mockReset();
+    findProjectAdminUserIds.mockResolvedValue(new Set(["admin-1", "admin-2"]));
     authenticateTrigger.mockReset();
     authenticateTrigger.mockResolvedValue({
       outcome: "accepted",
@@ -207,5 +232,58 @@ describe("honey token trigger", () => {
     expect(harness.recordedEvents).toHaveLength(0);
     expect(harness.emitted).toHaveLength(0);
     expect(harness.row.lastTriggeredAt).toBeNull();
+  });
+
+  test("notifies the project admins in-app, whether or not the token has an alert", async () => {
+    const harness = buildService();
+
+    await harness.trigger();
+    await flushBackgroundWork();
+
+    expect(findProjectAdminUserIds).toHaveBeenCalledWith(expect.anything(), { orgId: "org-1", projectId: "proj-1" });
+    expect(harness.notifications.map((n) => n.userId).sort()).toEqual(["admin-1", "admin-2"]);
+    const [notification] = harness.notifications;
+    expect(notification).toMatchObject({ orgId: "org-1", type: "honey-token-triggered" });
+    expect(notification.body).toContain("prod-aws-decoy");
+    expect(notification.body).toContain("GetCallerIdentity");
+    expect(notification.body).toContain("203.0.113.7");
+    expect(notification.link).toBe(
+      "/organizations/org-1/projects/secret-management/proj-1/overview?honeyTokenId=honey-token-1&secretPath=%2Fapp"
+    );
+  });
+
+  test("a trigger inside the cooldown sends no second in-app notification", async () => {
+    const harness = buildService();
+
+    await harness.trigger();
+    await harness.trigger("ListBuckets");
+    await flushBackgroundWork();
+
+    expect(harness.notifications).toHaveLength(2);
+  });
+
+  test("a failed in-app notification does not fail the trigger", async () => {
+    findProjectAdminUserIds.mockRejectedValue(new Error("db down"));
+    const harness = buildService();
+
+    await expect(harness.trigger()).resolves.toEqual({ acknowledged: true });
+    await flushBackgroundWork();
+
+    expect(harness.emitted).toHaveLength(1);
+    expect(harness.notifications).toHaveLength(0);
+  });
+
+  test("a revoked token's trigger sends no in-app notification", async () => {
+    authenticateTrigger.mockResolvedValue({
+      outcome: "accepted",
+      honeyToken: { ...HONEY_TOKEN, status: HoneyTokenStatus.Revoked },
+      telemetryProperties: { managedBy: "organization" }
+    });
+    const harness = buildService();
+
+    await harness.trigger();
+    await flushBackgroundWork();
+
+    expect(harness.notifications).toHaveLength(0);
   });
 });

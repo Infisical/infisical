@@ -62,7 +62,7 @@ The honey token is now **Active**. The decoy secrets appear alongside your real 
 
 ## Get alerted when a honey token is triggered
 
-When someone uses a honey token's credentials to make an AWS API call, Infisical marks the honey token as **Triggered**, records the event, and sends the honey token's alert to your team by email, Slack, webhook, or PagerDuty. The alert includes:
+When someone uses a honey token's credentials to make an AWS API call, Infisical marks the honey token as **Triggered**, records the event, and sends the honey token's alert to your team by email, Slack, webhook, or PagerDuty. Project admins also get an in-app notification, even if the honey token has no alert. The alert includes:
 
 - The name, environment, and path of the honey token
 - The AWS API call that was made, such as `GetUser` or `ListBuckets`
@@ -73,8 +73,8 @@ When someone uses a honey token's credentials to make an AWS API call, Infisical
 If you create a honey token in the Infisical UI and can edit honey tokens in its environment and path, the alert is on by default, with an email to the project's admins. If a honey token existed before honey token alerts were available, it has the same alert.
 
 <Note>
-  To avoid alert fatigue, Infisical sends at most one alert per honey token
-  every 24 hours. Infisical still records every use of the credentials in the
+  To avoid alert fatigue, Infisical sends at most one alert and one in-app
+  notification per honey token every 24 hours. Infisical still records every use of the credentials in the
   event log.
 </Note>
 
@@ -117,6 +117,7 @@ To permanently deactivate a honey token, select **Revoke**. This will:
 - Delete the IAM user and access key from AWS
 - Remove the decoy secrets from the project
 - Mark the honey token as **Revoked**
+- Delete the honey token's alert
 
 Revocation is irreversible.
 
