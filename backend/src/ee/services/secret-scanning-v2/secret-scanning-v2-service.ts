@@ -427,7 +427,7 @@ export const secretScanningV2ServiceFactory = ({
               return dataSource;
             });
           } catch (error) {
-            // The provider-side webhook outlives the rolled back transaction, so it is removed here.
+            // The provider-side webhook survives the rollback, so tear it down here.
             if (credentials) {
               try {
                 await factory.teardown({

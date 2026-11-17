@@ -1220,7 +1220,7 @@ export const gatewayV2ServiceFactory = ({
       );
     }
 
-    // Fetched before the transaction: KMS Core is never called inside one.
+    // Fetched before the transaction: calling KMS Core inside it without joining would grab a second pool connection.
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId

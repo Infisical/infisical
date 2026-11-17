@@ -4,8 +4,7 @@ import { EncryptedDataKey } from "./encrypted-data-key";
 
 export type TDataKeyOwnerKind = "organization" | "project";
 
-// What an organization and a project both carry: the KMS key that encrypts their data key, and that data key. Each is
-// set once, on first use, and KMS Core is the only writer of these columns.
+// The KMS key and the data key it wraps. Each is set once, on first use, and only KMS Core writes these columns.
 export abstract class DataKeyOwner {
   protected constructor(
     readonly kind: TDataKeyOwnerKind,

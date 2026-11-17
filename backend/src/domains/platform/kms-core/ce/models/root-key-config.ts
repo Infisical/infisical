@@ -7,19 +7,16 @@ export enum RootKeyEncryptionStrategy {
   HSM = "HSM"
 }
 
-/**
- * The row holding the currently active wrapped root key. A compatibility handle: a version predating
- * rotation looks this id up and knows nothing about staged or retained rows, so keeping the active key here
- * is what lets it boot. New code finds rows by trial decryption.
- */
+// The active root key's row. Releases older than rotation look up this id and know nothing about staged or retained
+// rows, so the active key has to stay here for them to boot. New code finds rows by trial decryption.
 export const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const ABANDONED_ROTATION_MAX_AGE_MS = 30 * DAY_MS;
 
-// How recent a superseded-key boot has to be for the expiring-key delete to treat it as a live straggler and ask
-// the operator to confirm. Shorter than the removal window: the weekly cleanup has nobody to make that judgement.
+// A superseded-key boot this recent counts as a live straggler, so the expiring-key delete asks the operator to
+// confirm. Shorter than the removal window: the weekly cleanup has nobody to make that call.
 const STRAGGLER_EVIDENCE_WINDOW_MS = 60 * 60 * 1000;
 
 const HSM_ROTATION_REFUSED =
@@ -67,7 +64,7 @@ export class RootKeyConfig {
     );
   }
 
-  // The first root key of an instance. Migrations leave activatedAt unset: they run before the rotation columns exist.
+  // Migrations leave activatedAt unset: they run before the rotation columns exist.
   static bootstrap(input: {
     encryptedRootKey: Buffer;
     strategy: RootKeyEncryptionStrategy;
@@ -110,7 +107,6 @@ export class RootKeyConfig {
     return !this.isActive && !this.activatedOn;
   }
 
-  // The key a promotion replaced, still held for pods that have not rolled over.
   get isRetained(): boolean {
     return !this.isActive && Boolean(this.supersededOn);
   }
@@ -151,14 +147,14 @@ export class RootKeyConfig {
     return new Date(Math.max(supersededAt, lastResolvedAt) + retentionDays * DAY_MS);
   }
 
-  // lastResolvedAt can only prove presence: a straggler that never restarts leaves no stamp, so the retention
-  // window covers it.
+  // lastResolvedAt only proves presence: a straggler that never restarts leaves no stamp, so the retention window
+  // covers it.
   isRemovalDue(now: Date, retentionDays: number): boolean {
     const eligibleAt = this.removalEligibleAt(retentionDays);
     return eligibleAt !== null && eligibleAt.getTime() <= now.getTime();
   }
 
-  // A staged key nobody deployed for a month is a live working key that would promote itself if it reached a deployment.
+  // A staged key nobody deployed for a month still works and would promote itself if it reached a deployment.
   isAbandoned(now: Date): boolean {
     return this.isStaged && now.getTime() - new Date(this.createdOn).getTime() >= ABANDONED_ROTATION_MAX_AGE_MS;
   }
@@ -168,8 +164,8 @@ export class RootKeyConfig {
       throw new RuleViolationError({ message: HSM_ROTATION_REFUSED });
   }
 
-  // The operator names the key they mean, so a rotation staged or applied by someone else since they loaded the page
-  // is never discarded or removed by mistake.
+  // The operator names the key they mean, so a rotation someone else staged or applied since they loaded the page
+  // isn't discarded or removed by mistake.
   assertNamed(label: string): void {
     if (this.label === label) return;
     if (this.isStaged) {
@@ -186,11 +182,9 @@ export class RootKeyConfig {
     });
   }
 
-  /**
-   * An instance that started on this key within the hour is very likely still running, and removing the key would
-   * break its next restart. Nothing reports whether it rolled forward, so the operator confirms with `force`.
-   * Returns whether `force` overrode that evidence, for the caller to log.
-   */
+  // An instance that started on this key within the hour is likely still running, and removing the key would break
+  // its next restart. Nothing reports whether it rolled forward, so the operator confirms with `force`. Returns
+  // whether `force` overrode that, for the caller to log.
   assertRemovable(now: Date, force: boolean): boolean {
     if (!this.resolvedOn) return false;
     const lastResolvedAt = new Date(this.resolvedOn).getTime();
@@ -205,8 +199,8 @@ export class RootKeyConfig {
     return true;
   }
 
-  // A software-wrapped active row written by a different key than this instance runs with cannot be rewrapped
-  // here: the operator would be re-encrypting under a key that is not the one the database holds.
+  // Rewrapping a software row written with a different key than this instance runs with would re-encrypt under a
+  // key the database doesn't hold.
   assertWrittenWith(currentKekLabel: string | null): void {
     if (this.strategy !== RootKeyEncryptionStrategy.Software) return;
     if (this.label && currentKekLabel && this.label !== currentKekLabel) {
@@ -216,7 +210,7 @@ export class RootKeyConfig {
     }
   }
 
-  // A strategy change prepares its wrapped key before the transaction, so it must find the row it read unchanged.
+  // A strategy change wraps its key before the transaction, so the row must still be the one it read.
   assertWrappedAs(encryptedRootKey: Buffer): void {
     if (!this.wrappedRootKey.equals(encryptedRootKey)) {
       throw new StateConflictError({
@@ -226,30 +220,28 @@ export class RootKeyConfig {
     }
   }
 
-  // The same root key under another strategy. Software carries the KEK label, HSM has none.
+  // Software carries the KEK label, HSM has none.
   rewrap(encryptedRootKey: Buffer, strategy: RootKeyEncryptionStrategy, currentKekLabel: string | null): void {
     this.wrappedRootKey = encryptedRootKey;
     this.strategyName = strategy;
     this.label = strategy === RootKeyEncryptionStrategy.Software ? currentKekLabel : null;
   }
 
-  // Rows written before the label existed get it from the pod that can decrypt them, the only place it is derivable.
-  // Returns whether anything changed.
+  // Unlabelled rows get the label from the pod that can decrypt them, the only place it's derivable.
   labelWith(kekLabel: string | null): boolean {
     if (this.label || !kekLabel) return false;
     this.label = kekLabel;
     return true;
   }
 
-  // Only a retained copy is worth stamping: it is evidence a straggler still holds that key, which makes the cleanup
-  // decline to remove it. Returns whether anything changed.
+  // Only a retained copy is worth stamping: it's evidence a straggler still holds that key, so the cleanup won't
+  // remove it.
   recordResolution(now: Date): boolean {
     if (!this.supersededOn) return false;
     this.resolvedOn = now;
     return true;
   }
 
-  // The retained copy a promotion leaves of the key it replaces.
   retainedCopy(now: Date): RootKeyConfig {
     return new RootKeyConfig(
       randomUUID(),
@@ -264,11 +256,7 @@ export class RootKeyConfig {
     );
   }
 
-  /**
-   * The moment a rotation takes effect: the active row takes the staged key's wrapped copy, strategy and label.
-   * Returns the retained copy of the key it replaces, which the caller inserts so pods that have not rolled over
-   * can still boot.
-   */
+  // The caller inserts the returned retained copy so pods that haven't rolled over can still boot.
   promote(staged: RootKeyConfig, fallbackKekLabel: string | null, now: Date): RootKeyConfig {
     if (!this.isActive) {
       throw new RuleViolationError({ message: "Only the active root key config can be replaced by a staged key." });

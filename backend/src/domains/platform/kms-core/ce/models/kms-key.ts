@@ -44,10 +44,9 @@ export type TKmsKeyRecord = {
   external: TExternalKeyConfigRecord | null;
 };
 
-// A key's kms_keys columns, without its material.
 export type TKmsKeyColumns = Omit<TKmsKeyRecord, "internal" | "external">;
 
-// What callers outside the domain see of a key: its kms_keys columns, never its material.
+// What callers outside the domain see: never the material.
 export type TKmsKeyDetails = TKmsKeyColumns & {
   isExternal: boolean;
   encryptionAlgorithm?: string;
@@ -64,7 +63,6 @@ const generatedName = () =>
     Array.from(crypto.randomBytes(GENERATED_NAME_LENGTH), (byte) => NAME_ALPHABET[byte % NAME_ALPHABET.length]).join("")
   );
 
-// A key in kms_keys with either internal material (internal_kms) or an external provider config (external_kms).
 export class KmsKey {
   private constructor(
     readonly id: string,
@@ -106,7 +104,7 @@ export class KmsKey {
     );
   }
 
-  // `name` defaults to a generated slug. A key made without saying whether it is reserved is Infisical-managed.
+  // A key made without saying whether it's reserved is Infisical-managed.
   static createInternal(input: {
     orgId: string;
     projectId?: string | null;
@@ -141,7 +139,7 @@ export class KmsKey {
     );
   }
 
-  // The key an org or project gets on first use: AES-256, generated name, Infisical-managed.
+  // The key an org or project gets on first use.
   static createReserved(input: { orgId: string; rootKey: RootKey }): KmsKey {
     return KmsKey.createInternal({
       orgId: input.orgId,
@@ -153,7 +151,6 @@ export class KmsKey {
     });
   }
 
-  // `name` defaults to a generated slug.
   static createExternal(input: {
     orgId: string;
     name?: string;
@@ -206,22 +203,19 @@ export class KmsKey {
     return this.external !== null;
   }
 
-  // An Infisical-managed key an org or project owns, as opposed to a customer's or a provider's.
   get isInfisicalManaged(): boolean {
     return this.isReserved && !this.isExternal;
   }
 
-  // Null for an external key.
   get encryptionAlgorithm(): TKmsKeyAlgorithmName | null {
     return this.internal?.algorithm ?? null;
   }
 
-  // Null for an external key.
   get version(): number | null {
     return this.internal?.version ?? null;
   }
 
-  // The id archived versions of the material are stored under. Null for an external key, which has none.
+  // The id archived versions are stored under.
   get materialId(): string | null {
     return this.internal?.id ?? null;
   }
@@ -231,7 +225,6 @@ export class KmsKey {
     return this.external?.refFor(this.id, this.orgId) ?? null;
   }
 
-  // Null for an internal key.
   externalStatus(): TExternalKeyStatus | null {
     return this.external?.summary() ?? null;
   }
@@ -297,8 +290,7 @@ export class KmsKey {
     this.touch();
   }
 
-  // Archives the current material as a version and installs fresh material as the next one. Ciphertext written
-  // under the archived version stays readable once the caller stores `archived`.
+  // Ciphertext written under the old material stays readable only once the caller stores `archived`.
   rotate(rootKey: RootKey): { archived: KmsKeyVersion; version: number } {
     this.assertRotatable();
     if (!this.internal)
@@ -349,7 +341,6 @@ export class KmsKey {
     return !this.deleteProtected;
   }
 
-  // The key's own material, for an export the key allows.
   exportMaterial(rootKey: RootKey, suffix = ""): Buffer {
     this.assertExportable(suffix);
     return this.requireInternal().open(rootKey, this.keyUsage).exportBytes();
@@ -362,8 +353,8 @@ export class KmsKey {
     return ({ plainText }) => ({ cipherTextBlob: KmsCiphertext.encodeForKey(material.encrypt(plainText), version) });
   }
 
-  // `loadArchived` runs at most once, on the first ciphertext the current material cannot open, and its failure
-  // propagates: a database error is never a failed decrypt.
+  // `loadArchived` runs at most once, on the first miss, and its failure propagates: a database error is never a
+  // failed decrypt.
   decryptor(rootKey: RootKey, loadArchived: () => Promise<readonly KmsKeyVersion[]>): TKeyDecryptor {
     let versions = KeyMaterialVersions.of(rootKey, this.requireInternal(KmsKeyUsage.ENCRYPT_DECRYPT));
     return async ({ cipherTextBlob }) => {
@@ -375,8 +366,7 @@ export class KmsKey {
     };
   }
 
-  // Opens an org's or project's data key that this key wrapped. `archived` is needed only when the key was rotated
-  // after it wrapped it.
+  // `archived` is only needed when this key was rotated after it wrapped the data key.
   openDataKey(rootKey: RootKey, encryptedDataKey: Buffer, archived: readonly KmsKeyVersion[] = []): DataKey {
     const versions = KeyMaterialVersions.of(rootKey, this.requireInternal(KmsKeyUsage.ENCRYPT_DECRYPT), archived);
     return DataKey.fromBytes(versions.decryptOrThrow(KmsCiphertext.decode(encryptedDataKey)));
@@ -465,8 +455,8 @@ export class KmsKey {
     };
   }
 
-  // The internal material, after checking the key is used the way the caller needs. The usage check comes first so
-  // an external key asked to sign says it is the wrong kind of key, not that it has no material.
+  // Usage is checked first so an external key asked to sign says it's the wrong kind of key, not that it has no
+  // material.
   private requireInternal(forceType?: KmsKeyUsage): InternalKeyMaterial {
     KeyMaterial.assertAlgorithmFits(this.keyUsage, this.internal?.algorithm as TKmsKeyAlgorithmName, forceType);
     if (!this.internal) throw new RuleViolationError({ message: `KMS with ID '${this.id}' has no key material` });

@@ -877,8 +877,7 @@ export const AcmeCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
-    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
-    // connection.
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
     if (configuration) {
       const { dnsAppConnectionId, dnsProviderConfig, dnsResolver } = configuration;
       const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);

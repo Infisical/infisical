@@ -7,10 +7,10 @@ import { DatabaseError } from "@app/lib/errors";
 import { ProjectKey } from "../models/project-key";
 import { TProjectKeyStore } from "../services/dependencies";
 
-// The key columns on projects, which no domain owns yet; KMS Core writes only these columns.
+// No domain owns projects yet. KMS Core writes only its key columns.
 export class ProjectKeyStore implements TProjectKeyStore {
-  // Data migrations older than 20260602100100_add-soft-delete-to-projects run KMS Core before the column exists. Once
-  // it has been seen it stays, so the schema is asked only until then.
+  // Data migrations older than 20260602100100_add-soft-delete-to-projects run KMS Core before this column exists.
+  // Once seen it stays, so the schema is only probed until then.
   private static deleteAfterColumnSeen = false;
 
   constructor(private readonly connection: TStoreConnection) {}

@@ -8,7 +8,6 @@ export type TOrganizationKeyRecord = {
   encryptedDataKey: Buffer | null;
 };
 
-// The key columns an organization carries.
 export class OrganizationKey extends DataKeyOwner {
   private constructor(orgId: string, kmsKeyId: string | null, dataKey: Buffer | null) {
     super("organization", orgId, orgId, kmsKeyId, dataKey);

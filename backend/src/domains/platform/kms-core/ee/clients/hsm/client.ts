@@ -14,8 +14,8 @@ export type THsmClient = ReturnType<typeof createHsmClient>;
 type SyncOrAsync<T> = T | Promise<T>;
 type SessionCallback<T> = (session: pkcs11js.Handle) => SyncOrAsync<T>;
 
-// The PKCS#11 session client: AES-CBC-PAD plus HMAC-SHA256 under the device keys HSM_KEY_LABEL and
-// ${HSM_KEY_LABEL}_HMAC. Wire format: [iv 16][ciphertext][hmac 32]. Frozen: the root key is stored this way.
+// PKCS#11 session client: AES-CBC-PAD plus HMAC-SHA256 under the device keys HSM_KEY_LABEL and ${HSM_KEY_LABEL}_HMAC.
+// Wire format: [iv 16][ciphertext][hmac 32]. Frozen: the root key is stored this way.
 export const createHsmClient = ({ hsmModule: { isInitialized, pkcs11 }, envConfig }: THsmClientDeps) => {
   // Constants for buffer structures
   const IV_LENGTH = 16; // Luna HSM typically expects 16-byte IV for cbc

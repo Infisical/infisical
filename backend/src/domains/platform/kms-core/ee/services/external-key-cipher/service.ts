@@ -6,8 +6,8 @@ import { TExternalKmsHook } from "../../../ce/services/dependencies";
 import { TExternalKmsProviders } from "../dependencies";
 import { openProviderInputs } from "../helpers/provider-inputs";
 
-// Encrypts and decrypts with an external key's provider: what KMS Core calls when a project's data key sits behind
-// AWS or GCP. Built before KMS Core, so it holds nothing of it: the org data-key cipher arrives with each call.
+// What KMS Core calls when a data key sits behind AWS or GCP. Built before KMS Core, so it holds nothing of it: the
+// org data-key cipher arrives with each call.
 export class ExternalKeyCipherService implements TExternalKmsHook {
   constructor(private readonly providers: TExternalKmsProviders) {}
 

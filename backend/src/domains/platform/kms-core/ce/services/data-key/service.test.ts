@@ -56,7 +56,7 @@ const externalKeyIn = async (mem: InMemoryKmsCoreStores) => {
   return external;
 };
 
-// A replica that has not caught up with a project committed a moment ago.
+// A replica that hasn't caught up with a just-committed project.
 const withLaggingReplica = (mem: InMemoryKmsCoreStores, projectId: string) => {
   const projectKeyStore = Object.create(mem.projectKeyStore) as TProjectKeyStore;
   projectKeyStore.find = async (id: string, options?: TReadOptions) =>

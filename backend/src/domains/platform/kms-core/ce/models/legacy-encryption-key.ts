@@ -14,18 +14,15 @@ export type TLegacyEncryptionKeyRecord = {
 const hasKey = (snapshot?: TLegacyKeySnapshot): snapshot is TLegacyKeySnapshot =>
   Boolean(snapshot && (snapshot.ENCRYPTION_KEY || snapshot.ROOT_ENCRYPTION_KEY));
 
-// The env keys of the pre-KMS tier, snapshotted under the root key so rotating the env key cannot strand its rows.
+// The pre-KMS tier's env keys, snapshotted under the root key so rotating the env key can't strand its rows.
 export class LegacyEncryptionKey {
   private constructor(
     readonly id: string,
     readonly encryptedKeySnapshot: Buffer
   ) {}
 
-  /**
-   * What to snapshot from the environment, or null when there is nothing to keep (pure HSM, no env key: the legacy
-   * tier keeps throwing as it does today). `original` is the env before the FIPS relabel, which can drop a key
-   * existing rows were written under.
-   */
+  // Null when there's nothing to keep (pure HSM, no env key: the legacy tier keeps throwing). `original` is the env
+  // before the FIPS relabel, which can drop a key existing rows were written under.
   static materialFromEnv(input: {
     current: TLegacyKeySnapshot;
     original?: TLegacyKeySnapshot;

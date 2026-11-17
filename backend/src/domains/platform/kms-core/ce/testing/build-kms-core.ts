@@ -8,7 +8,7 @@ import { rootKeyTestEnv } from "./root-key-fixture";
 
 type TBuildOptions = { env?: Partial<TKmsCoreEnv>; hooks?: TKmsCoreHooks; isFipsEnabled?: () => boolean };
 
-// KMS Core over in-memory stores. Load fixture rows into `memory` first: the root key is loaded while building.
+// Load fixture rows into `memory` first: the root key is loaded while building.
 export const buildInMemoryKmsCore = async ({
   env,
   hooks = {},
@@ -25,8 +25,7 @@ export const buildInMemoryKmsCore = async ({
   return { module, memory };
 };
 
-// KMS Core on an integration database. The template database's migrations already bootstrapped a root key with the
-// test encryption key, which this loads.
+// The template database's migrations already bootstrapped a root key with the test encryption key.
 export const buildPostgresKmsCore = (db: TDbClient, { env, hooks = {} }: TBuildOptions = {}) =>
   KmsCoreModule.create({
     db,

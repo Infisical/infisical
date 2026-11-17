@@ -934,8 +934,8 @@ export const certificateRenewalServiceFactory = ({
     }
   };
 
-  // Generates and encrypts outside any transaction, then one short transaction persists the certificate and
-  // re-locks the original through $linkRenewedCertificate.
+  // Generates and encrypts outside any transaction, then saves the cert and re-locks the original
+  // ($linkRenewedCertificate) in one short transaction.
   const $completeSelfSignedRenewal = async ({
     keySource,
     certificateSecret,

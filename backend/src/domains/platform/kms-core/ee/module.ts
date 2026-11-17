@@ -10,21 +10,21 @@ import { ExternalKeyCipherService } from "./services/external-key-cipher/service
 
 export type TKmsCoreEeDeps = {
   hsmConfig: THsmConfig;
-  // The instance license's HSM entitlement, read on every check (migrations answer true: the license is not read yet).
+  // Read on every check. Migrations answer true since the license isn't read yet.
   isHsmEntitled: () => boolean;
   providers?: TExternalKmsProviders;
 };
 
-// HSM root key wrapping and encryption with external KMS keys, handed to KMS Core as its hooks. External key management
-// is ExternalKmsEeModule, built after KMS Core.
+// HSM root key wrapping and external key encryption, handed to KMS Core as hooks. External key management lives in
+// ExternalKmsEeModule, built after KMS Core.
 export class KmsCoreEeModule {
   private constructor(
     readonly hooks: TKmsCoreHooks,
     private hsmModule: HsmModule
   ) {}
 
-  // Initialises the PKCS#11 library and creates the device keys when an HSM is configured. Built before
-  // KmsCoreModule.create, which may need the HSM to unwrap the root key.
+  // Inits PKCS#11 and creates the device keys when an HSM is configured. Build before KmsCoreModule.create, which may
+  // need the HSM to unwrap the root key.
   static async create(deps: TKmsCoreEeDeps): Promise<KmsCoreEeModule> {
     const hsmModule = initializeHsmModule(deps.hsmConfig);
     const client = createHsmClient({ hsmModule, envConfig: deps.hsmConfig });
@@ -36,7 +36,6 @@ export class KmsCoreEeModule {
     );
   }
 
-  // Releases the PKCS#11 library on shutdown.
   stop() {
     if (!this.hsmModule.isInitialized) return;
     try {

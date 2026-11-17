@@ -16,7 +16,7 @@ export type TKmsCoreEnv = {
   ENCRYPTION_KEY?: string;
   ROOT_ENCRYPTION_KEY?: string;
   KMS_ROOT_KEY_RETENTION_DAYS: number;
-  // Whether HSM variables are set, which decides whether HSM is offered as a strategy.
+  // Whether HSM variables are set, which decides if HSM is offered as a strategy.
   isHsmConfigured: boolean;
 };
 
@@ -40,7 +40,7 @@ export type TCreatedRotation = {
   label: string;
   // Returned exactly once. Never stored, never logged.
   key: string;
-  // Set when the previous rotation's key has not been removed yet: applying this key removes it immediately.
+  // Set when the previous rotation's key hasn't been removed yet: applying this key removes it right away.
   removesExpiringKey?: { label: string | null; lastResolvedAt: Date | null };
 };
 
@@ -216,7 +216,7 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     });
   }
 
-  // The weekly cron: drops abandoned staged keys and retained keys past their retention.
+  // Weekly cron: drops abandoned staged keys and retained keys past retention.
   async removeInactiveKeys() {
     const retentionDays = this.env.KMS_ROOT_KEY_RETENTION_DAYS;
     const ring = await this.readRing();
@@ -241,8 +241,8 @@ export class KmsRootKeyService implements TKmsRootKeyService {
 
     if (!retained.length) return;
 
-    // lastResolvedAt can only prove presence: a straggler that never restarts leaves no stamp, so the retention
-    // window covers it. Getting it wrong costs an instance that fails its next restart naming the key it needs.
+    // lastResolvedAt can only prove presence: a straggler that never restarts leaves no stamp, so the retention window
+    // covers it. Getting this wrong means an instance fails its next restart, naming the key it needs.
     const eligible = retained.filter((row) => row.isRemovalDue(now, retentionDays));
     for (const row of eligible) {
       // eslint-disable-next-line no-await-in-loop -- at most a couple of rows

@@ -7,7 +7,7 @@ import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { TKmsKeyStore } from "../dependencies";
 import { requireKey } from "./key-cipher";
 
-// A replica that has not caught up with a key committed a moment ago.
+// A replica that hasn't caught up with a just-committed key.
 const laggingKeyStore = (mem: InMemoryKmsCoreStores, lagging: string) => {
   const reads: (TReadOptions | undefined)[] = [];
   const store = Object.create(mem.stores.kmsKeyStore) as TKmsKeyStore;

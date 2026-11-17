@@ -46,8 +46,7 @@ const NEW_KEY: TCredential = { keyId: "mk_new", apiKey: "rk_test_mk_new" };
 /** The rotation service hands the factory a transaction body; this stands in for its return. */
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
-// The factory hands appConnectionDAL, kmsDataKeyService and keyStore to the authorization check, which is
-// mocked, so none of these are reached.
+// These only reach the authorization check, which is mocked, so they're never used.
 const UNUSED_DEPENDENCIES = [{}, {}, {}, {}, {}] as unknown as [
   Parameters<typeof stripeApiKeyRotationFactory>[1],
   Parameters<typeof stripeApiKeyRotationFactory>[2],

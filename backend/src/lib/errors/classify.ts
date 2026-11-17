@@ -77,7 +77,7 @@ export const classifyError = (err: unknown): ErrorType => {
     return "permission";
   if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
-  // The HTTP error handler turns StateConflictError into ConflictError before this runs.
+  // StateConflictError only gets here outside HTTP: the HTTP error handler maps it to ConflictError first.
   if (
     err instanceof BadRequestError ||
     err instanceof ConflictError ||

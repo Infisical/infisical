@@ -101,7 +101,7 @@ export class KmsKeyStore implements TKmsKeyStore {
     return key ?? null;
   }
 
-  // Reads projects, which no domain owns yet: a project pending deletion stops publishing, like a deleted one.
+  // Reads projects (no domain owns it yet). A project pending deletion stops publishing, like a deleted one.
   async findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
     if (!UUID_PATTERN.test(id)) return null;
     try {
@@ -163,7 +163,7 @@ export class KmsKeyStore implements TKmsKeyStore {
     }
   }
 
-  // Reads projects, which no domain owns yet, to count a product's keys for org stats.
+  // Reads projects, which no domain owns yet.
   async countProjectKeysInOrg(orgId: string, projectType: ProjectType, options?: TReadOptions): Promise<number> {
     try {
       const result = (await this.connection
@@ -269,8 +269,8 @@ export class KmsKeyStore implements TKmsKeyStore {
     }
   }
 
-  // Both finders that precede a save take the same two row locks in the same order. save writes the attributes and
-  // the material together, so a read that held only one of the rows could write back what the other's writer changed.
+  // Locks both rows, kms_keys first. save writes attributes and material together, so locking only one could write
+  // back what another writer changed.
   private async lockRows(id: string, name: string): Promise<void> {
     if (!UUID_PATTERN.test(id)) return;
     try {

@@ -187,8 +187,8 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
-  // issueCertFromCa persists in its own transaction and hands the caller's bookkeeping the new row through
-  // onPersisted; that row is what certificateDAL.findById returns for the issued id.
+  // issueCertFromCa persists in its own transaction and passes the new row to onPersisted. Here that row is
+  // whatever certificateDAL.findById returns for the issued id.
   const mockIssueCertFromCaResult = (result: { certificateId?: string; [key: string]: unknown }) =>
     vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
       await dto.onPersisted?.(await mockCertificateDAL.findById(result.certificateId as string), {});

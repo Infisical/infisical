@@ -5,7 +5,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { OrganizationKey } from "../models/organization-key";
 import { TOrganizationKeyStore } from "../services/dependencies";
 
-// The key columns on organizations, which no domain owns yet; KMS Core writes only these columns.
+// No domain owns organizations yet. KMS Core writes only its key columns.
 export class OrganizationKeyStore implements TOrganizationKeyStore {
   constructor(private readonly connection: TStoreConnection) {}
 

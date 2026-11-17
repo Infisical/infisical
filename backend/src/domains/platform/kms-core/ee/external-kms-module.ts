@@ -11,14 +11,14 @@ import { ExternalKmsService } from "./services/external-kms/service";
 
 export type TExternalKmsEeDeps = {
   db: TDbClient;
-  // Where reads outside a transaction go: the replica.
+  // Reads outside a transaction: the replica.
   readKnex: () => Knex;
   kmsDataKeyService: TKmsDataKeyService;
   providers?: TExternalKmsProviders;
 };
 
-// External key management. Unlike KmsCoreEeModule it is built after KmsCoreModule: provider inputs are encrypted with
-// the org data key, which it reads through kmsDataKeyService.
+// Built after KmsCoreModule, unlike KmsCoreEeModule: provider inputs are encrypted with the org data key, read through
+// kmsDataKeyService.
 export class ExternalKmsEeModule {
   readonly externalKmsService: TExternalKmsService;
 

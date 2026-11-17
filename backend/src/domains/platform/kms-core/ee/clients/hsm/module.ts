@@ -18,7 +18,7 @@ export type THsmConfig = Pick<
   "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured"
 >;
 
-// Loads and initialises the PKCS#11 library named by HSM_LIB_PATH. A no-op when no HSM is configured.
+// Loads the PKCS#11 library at HSM_LIB_PATH. No-op when no HSM is configured.
 export const initializeHsmModule = (config: Pick<THsmConfig, "isHsmConfigured" | "HSM_LIB_PATH">): HsmModule => {
   const pkcs11 = new pkcs11js.PKCS11();
   if (!config.isHsmConfigured) return { pkcs11, isInitialized: false };

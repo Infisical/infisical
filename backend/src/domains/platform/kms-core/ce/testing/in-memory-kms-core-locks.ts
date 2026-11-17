@@ -2,7 +2,7 @@ import { TStoreLocks } from "@app/domains/lib/transactions";
 
 import { TKmsCoreLocks } from "../services/dependencies";
 
-// The same lock names as Postgres, held by the in-memory transaction runner's per-key mutexes.
+// Same lock names as Postgres, held by the in-memory runner's per-key mutexes.
 export class InMemoryKmsCoreLocks implements TKmsCoreLocks {
   constructor(private readonly locks: TStoreLocks) {}
 

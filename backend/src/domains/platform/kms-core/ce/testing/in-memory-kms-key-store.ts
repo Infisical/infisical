@@ -90,7 +90,7 @@ export class InMemoryKmsKeyStore implements TKmsKeyStore {
     this.keys.set(record.id, record);
   }
 
-  // Writes only the columns the Postgres store writes: what a key cannot change after creation stays as stored.
+  // Same columns as the Postgres store: what a key can't change after creation stays as stored.
   async save(key: KmsKey): Promise<void> {
     const stored = this.keys.get(key.id);
     if (!stored) return;

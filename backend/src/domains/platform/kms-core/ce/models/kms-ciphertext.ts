@@ -1,24 +1,22 @@
 // Frozen wire format: old and new pods read each other's ciphertext during a rolling deploy.
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
-// v02 blobs also embed the key material version that encrypted them: [ciphertext][4-byte BE version]["v02"].
-// Written only for keys with version > 1 so never-rotated keys keep producing byte-identical v01 blobs.
+// v02 layout: [ciphertext][4-byte BE key version]["v02"]. Only written for version > 1, so never-rotated keys keep
+// producing byte-identical v01 blobs.
 const KMS_VERSION_V2 = "v02";
 const KMS_KEY_VERSION_BLOB_LENGTH = 4;
-// AES-GCM output is at least a 12-byte IV and a 16-byte tag. Anything shorter that ends in "v02" is malformed input
-// and must fall through to the v01 path rather than read out of bounds.
+// AES-GCM output is at least a 12-byte IV plus a 16-byte tag. Anything shorter ending in "v02" is malformed and falls
+// through to v01 instead of reading out of bounds.
 const MIN_AES_GCM_BLOB_LENGTH = 12 + 16;
 const MIN_V02_BLOB_LENGTH = MIN_AES_GCM_BLOB_LENGTH + KMS_KEY_VERSION_BLOB_LENGTH + KMS_VERSION_BLOB_LENGTH;
 
-// A stored ciphertext's trailer: which key version wrote it, if it says.
 export class KmsCiphertext {
   private constructor(
     readonly cipherText: Buffer,
-    // The version a v02 blob names; null for v01, where every version is a candidate.
+    // Null for v01, so every version is a candidate.
     readonly keyVersion: number | null
   ) {}
 
-  // Internal KMS key blobs: v01 for a never-rotated key, v02 with the version once rotated.
   static encodeForKey(encryptedBlob: Buffer, keyVersion: number): Buffer<ArrayBuffer> {
     if (keyVersion > 1) {
       const keyVersionBlob = Buffer.alloc(KMS_KEY_VERSION_BLOB_LENGTH);
@@ -28,7 +26,6 @@ export class KmsCiphertext {
     return KmsCiphertext.encodeV01(encryptedBlob);
   }
 
-  // Data-key and input-key blobs, which are always v01.
   static encodeV01(encryptedBlob: Buffer): Buffer<ArrayBuffer> {
     return Buffer.concat([encryptedBlob, Buffer.from(KMS_VERSION, "utf8")]);
   }
@@ -37,7 +34,7 @@ export class KmsCiphertext {
     return blob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
   }
 
-  // v02 is recognised structurally, never by trusting the embedded version alone.
+  // v02 is detected by its structure too, never by trusting the trailer alone.
   static decode(blob: Buffer): KmsCiphertext {
     const suffix =
       blob.length >= KMS_VERSION_BLOB_LENGTH ? blob.subarray(-KMS_VERSION_BLOB_LENGTH).toString("utf8") : "";

@@ -13,8 +13,8 @@ type TKeyCipherStores = Pick<TKmsCoreStores, "kmsKeyStore" | "kmsKeyVersionStore
 
 export const notFoundKey = (kmsId: string) => new EntityNotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
-// A key missing on the replica is read once more on the primary: one created a moment ago (a project's first
-// certificate key, a new CMEK) may not have replicated yet, and callers such as signer jobs treat a miss as final.
+// A miss on the replica retries once on the primary: a just-created key (a project's first certificate key, a new
+// CMEK) may not have replicated yet, and callers like signer jobs treat a miss as final.
 export const requireKey = async (kmsKeyStore: TKmsKeyStore, kmsId: string, options?: TReadOptions): Promise<KmsKey> => {
   const found = await kmsKeyStore.findById(kmsId, options);
   if (found) return found;
@@ -44,7 +44,7 @@ const internalDecryptor = (
   options?: TReadOptions
 ): TAsyncDecryptor => key.decryptor(rootKey, () => listArchived(stores, key, options));
 
-// The org's data key, which must already exist: an external key's inputs were encrypted with it when it was stored.
+// The org's data key must already exist: an external key's inputs were encrypted with it when stored.
 const existingOrgCipher = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,
@@ -101,7 +101,6 @@ export const keyDecryptor = async (
   return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
 };
 
-// Opens a data key with the key that wrapped it, internal or external.
 export const openDataKey = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,

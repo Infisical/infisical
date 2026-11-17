@@ -7,14 +7,14 @@ import { RootKey } from "./root-key";
 
 type TVersionSource = InternalKeyMaterial | KmsKeyVersion;
 
-// The material versions of one internal key and the order a ciphertext is tried against them. Archived versions are
-// optional: most keys never rotate and most ciphertext is current, so the caller loads them only after a miss.
+// Archived versions are optional: most keys never rotate and most ciphertext is current, so callers load them only
+// after a miss.
 export class KeyMaterialVersions {
   private constructor(
     private readonly rootKey: RootKey,
     private readonly current: InternalKeyMaterial,
     private readonly archived: readonly KmsKeyVersion[] | null,
-    // Unwrapped material per version, kept so one decryptor unwraps each version once.
+    // Cached so one decryptor unwraps each version once.
     private readonly opened: Map<TVersionSource, KeyMaterial>
   ) {}
 
@@ -30,8 +30,7 @@ export class KeyMaterialVersions {
     return new KeyMaterialVersions(this.rootKey, this.current, archived, this.opened);
   }
 
-  // Null when no known version decrypts it. An unwrap failure is not a miss: it means the stored material is
-  // damaged, so it propagates.
+  // An unwrap failure isn't a miss: it means the stored material is damaged, so it propagates.
   tryDecrypt(ciphertext: KmsCiphertext): Buffer<ArrayBuffer> | null {
     for (const source of this.candidates(ciphertext.keyVersion)) {
       const material = this.material(source);
@@ -44,7 +43,7 @@ export class KeyMaterialVersions {
     return null;
   }
 
-  // The last resort fails because of the ciphertext, not the stored material, so it gets its own error type.
+  // This fails because of the ciphertext, not the stored material, so it gets its own error type.
   decryptOrThrow(ciphertext: KmsCiphertext): Buffer<ArrayBuffer> {
     const decrypted = this.tryDecrypt(ciphertext);
     if (decrypted) return decrypted;
@@ -55,8 +54,7 @@ export class KeyMaterialVersions {
     }
   }
 
-  // The version a v02 blob names first, then the current one (which also covers rotated material re-imported as
-  // version 1), then archived versions newest first.
+  // Current comes right after the named version since it also covers rotated material re-imported as version 1.
   private candidates(named: number | null): TVersionSource[] {
     const archived = [...(this.archived ?? [])].sort((a, b) => b.version - a.version);
     const ordered: TVersionSource[] = [this.current, ...archived];

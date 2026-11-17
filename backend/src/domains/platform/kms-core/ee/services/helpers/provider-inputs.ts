@@ -16,7 +16,7 @@ export type TOpenedInputs =
   | { type: KmsProviders.Aws; inputs: TExternalKmsAwsSchema }
   | { type: KmsProviders.Gcp; inputs: TExternalKmsGcpSchema };
 
-// Provider inputs are stored encrypted with the org data key of the key's org.
+// Inputs are encrypted with the data key of the key's org.
 export const openProviderInputs = (ref: TExternalKeyRef, orgCipher: TCipherPair): TOpenedInputs => {
   const raw = JSON.parse(
     orgCipher.decryptor({ cipherTextBlob: ref.encryptedProviderInputs }).toString("utf8")

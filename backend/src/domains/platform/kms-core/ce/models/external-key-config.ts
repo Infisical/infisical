@@ -9,7 +9,7 @@ export type TExternalKeyConfigRecord = {
   statusDetails: string | null;
 };
 
-// An external key as the provider client sees it: the stored row and its provider inputs, still encrypted.
+// What the provider client gets. The inputs are still encrypted.
 export type TExternalKeyRef = {
   kmsKeyId: string;
   orgId: string;
@@ -17,7 +17,6 @@ export type TExternalKeyRef = {
   encryptedProviderInputs: Buffer;
 };
 
-// An external key's provider and connection state, without its inputs.
 export type TExternalKeyStatus = {
   id: string;
   provider: string;
@@ -25,7 +24,6 @@ export type TExternalKeyStatus = {
   statusDetails: string | null;
 };
 
-// How a KMS key reaches its provider (external_kms): which provider, and the credentials and key reference it needs.
 export class ExternalKeyConfig {
   private constructor(
     readonly id: string,

@@ -40,7 +40,7 @@ export const fakeHsm = ({
   unwrap: async (wrapped) => Buffer.from(wrapped).reverse()
 });
 
-// The wrappings the module builds, for tests that construct the loader or the service themselves.
+// For tests that construct the loader or the service themselves.
 export const rootKeyWrappingsFor = (
   env: TKmsCoreEnv,
   {
@@ -58,7 +58,7 @@ export type TRootKeyLoaderDeps = {
   skipRotationState?: boolean;
 };
 
-// Builds the loader the way the module does and loads the root key, for tests that vary one dependency at a time.
+// For tests that vary one dependency at a time.
 export const loadRootKeyWith = (deps: TRootKeyLoaderDeps) =>
   new RootKeyLoader(
     deps.transactionRunner,
@@ -69,7 +69,7 @@ export const loadRootKeyWith = (deps: TRootKeyLoaderDeps) =>
     deps.skipRotationState
   ).load();
 
-// Boots an in-memory instance the way the module does: load the root key once, then build the service around it.
+// Same order as the module: load the root key once, then build the service around it.
 export const bootRootKeyService = async ({
   env: envOverrides,
   rootKeyWrapper,

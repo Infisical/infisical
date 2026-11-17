@@ -10,8 +10,8 @@ export type TInMemoryProjectRow = {
   kmsCertificateKeyId: string | null;
 };
 
-// The organizations and projects rows the in-memory stores read: those tables belong to no domain yet. Rows are
-// replaced, never changed in place, so a shallow copy of each map is a full snapshot.
+// organizations and projects belong to no domain yet. Rows are replaced, never changed in place, so a shallow copy of
+// each map is a full snapshot.
 export class InMemoryPlatformRows {
   // For consumers' tests: an org or project the stores have never seen is created on first read.
   autoCreate = false;

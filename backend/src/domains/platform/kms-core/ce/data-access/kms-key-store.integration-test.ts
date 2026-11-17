@@ -95,8 +95,8 @@ describe("KmsKeyStore on Postgres", () => {
     }
   };
 
-  // save writes the attributes and the material together, so findForUpdate must hold both rows' locks: a writer that
-  // read before the other committed would write the other's change back.
+  // save writes attributes and material together, so findForUpdate must lock both rows: a writer that read before
+  // the other committed would write the other's change back.
   describe("save after a concurrent change", () => {
     const race = async (first: "rotate" | "change", second: "rotate" | "change") => {
       const tn = await h.newTenant();

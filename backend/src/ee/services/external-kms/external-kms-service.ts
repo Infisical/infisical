@@ -27,7 +27,7 @@ type TExternalKmsServiceFactoryDep = {
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;
 
-// The provider inputs KMS Core returns, typed for the routes that sanitize them.
+// Types the provider input KMS Core returns, for the routes that sanitize it.
 const typed = (details: TExternalKmsDetails) => ({
   ...details,
   external: {
@@ -36,9 +36,8 @@ const typed = (details: TExternalKmsDetails) => ({
   }
 });
 
-// Org permissions and the externalKms plan for external KMS keys; KMS Core's enterprise edition stores them and talks
-// to the providers.
-// Creating, changing or browsing provider keys needs the plan; reading or deleting an existing key does not.
+// Only checks org permissions and the externalKms plan. KMS Core's enterprise edition stores keys and calls providers.
+// Creating, changing or browsing provider keys needs the plan; reading or deleting an existing key doesn't.
 export const externalKmsServiceFactory = ({
   permissionService,
   licenseService,

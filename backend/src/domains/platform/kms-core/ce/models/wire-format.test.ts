@@ -13,7 +13,6 @@ const b64 = (value: string) => Buffer.from(value, "base64");
 
 type TRow = Record<string, unknown>;
 
-// The fixture's root config wraps the root key with the instance encryption key, as every stored root key is.
 const loadFixture = () => {
   const fixture = kmsWireFormatFixture();
   const kek = Buffer.from(fixture.encryptionKey, "utf8");

@@ -28,11 +28,8 @@ import { openProviderInputs, providerError, TProviderInput } from "../helpers/pr
 
 const notFound = (kmsId: string) => new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
-/**
- * Creates, changes and reads external KMS keys. Provider inputs are validated against the provider before anything
- * is stored, and encrypted with the org data key, which is why this is built after KMS Core and takes its data-key
- * service. No permission or plan checks: the caller owns those.
- */
+// Provider inputs are validated against the provider before anything is stored, and encrypted with the org data key,
+// which is why this is built after KMS Core. No permission or plan checks: the caller owns those.
 export class ExternalKmsService implements TExternalKmsService {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
@@ -126,7 +123,7 @@ export class ExternalKmsService implements TExternalKmsService {
     return { key, orgCipher: await this.orgCipher(key.orgId) };
   }
 
-  // Validates against the provider before anything is stored. AWS may create a key and return its id in the inputs.
+  // AWS may create a key and return its id in the inputs.
   private async validateNew(provider: TExternalKmsInputSchema): Promise<TProviderInput> {
     switch (provider.type) {
       case KmsProviders.Aws: {
@@ -182,7 +179,7 @@ export class ExternalKmsService implements TExternalKmsService {
     }
   }
 
-  // Runs one provider call, words its failure for the user, and always releases the client.
+  // Words a provider failure for the user and always releases the client.
   private static async withClient<T>(
     client: { cleanup(): Promise<void> },
     provider: string,

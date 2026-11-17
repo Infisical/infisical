@@ -466,8 +466,7 @@ export const VenafiTppCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `Certificate authority with ID '${id}' not found` });
     }
 
-    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
-    // connection.
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
     if (configuration) {
       if (configuration.appConnectionId) {
         const appConnection = await appConnectionDAL.findById(configuration.appConnectionId);

@@ -57,8 +57,8 @@ const codeSigningEkuMissing = () =>
     message: "The issued certificate does not have the codeSigning extended key usage set."
   });
 
-// Checked on the row signCertFromCa writes, inside its transaction: the stored usages are the ones it put in the
-// certificate's extension, so no decrypt is needed.
+// Runs on the row signCertFromCa writes, inside its transaction. The stored usages match the cert's extension,
+// so no decrypt is needed.
 const assertIssuedWithCodeSigningEku = (cert: TCertificates) => {
   if (!cert.extendedKeyUsages?.includes(CertExtendedKeyUsage.CODE_SIGNING)) throw codeSigningEkuMissing();
 };
@@ -151,7 +151,7 @@ export const issueSignerCertificate = async (
   });
   const csrPem = csrObj.toString("pem");
 
-  // Encrypted before signing, so the key is stored in the same transaction as the certificate.
+  // Encrypted before signing so the key is stored in the cert's transaction.
   const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
   const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const skLeafPem = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey).export({

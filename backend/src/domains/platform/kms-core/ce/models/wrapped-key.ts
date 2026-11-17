@@ -4,8 +4,8 @@ const WRAPPED_KEY_LABEL_BYTES = 32;
 
 const hashLabel = (label: string) => createHash("sha256").update(label).digest();
 
-// A key bound to a label: sha256(label) || key. A key copied onto a row with another label fails to open there
-// instead of being handed out. Agent Vault session keys have always used this layout.
+// sha256(label) || key, so a key copied onto a row with another label fails to open instead of being handed out.
+// Agent Vault session keys have always used this layout.
 export class WrappedKeyPayload {
   private constructor(readonly payload: Buffer) {}
 

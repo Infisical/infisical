@@ -38,8 +38,7 @@ const OPENSSL_TO_KMS: Record<string, string> = Object.fromEntries(
   Object.entries(KMS_TO_OPENSSL_NAME).map(([kms, openssl]) => [openssl, kms])
 );
 
-// The plaintext material of an internal KMS key. It exists only between unwrapping and use, so nothing holds it for
-// the life of a request.
+// Plaintext material only lives between unwrapping and use, so nothing holds it for the life of a request.
 export class KeyMaterial {
   private constructor(
     private readonly bytes: Buffer,
@@ -47,8 +46,7 @@ export class KeyMaterial {
     readonly algorithm: TKmsKeyAlgorithmName
   ) {}
 
-  // Refuses an algorithm the key usage cannot use, and an unknown usage. `forceType` also refuses a key used for
-  // something other than the operation the caller needs.
+  // `forceType` also refuses a key whose usage isn't the operation the caller needs.
   static assertAlgorithmFits(usage: KmsKeyUsage, algorithm: TKmsKeyAlgorithmName, forceType?: KmsKeyUsage) {
     if (forceType && usage !== forceType) {
       throw new RuleViolationError({ message: `Unsupported key type, expected ${forceType} but got ${usage}` });
@@ -129,7 +127,6 @@ export class KeyMaterial {
     });
   }
 
-  // Refuses imported material that does not fit the declared usage and algorithm.
   static async import(bytes: Buffer, usage: KmsKeyUsage, algorithm: TKmsKeyAlgorithmName): Promise<KeyMaterial> {
     KeyMaterial.assertAlgorithmFits(usage, algorithm);
 
@@ -177,7 +174,6 @@ export class KeyMaterial {
     return new KeyMaterial(bytes, usage, algorithm);
   }
 
-  // Bytes a root key unwrapped from stored material.
   static restore(bytes: Buffer, usage: KmsKeyUsage, algorithm: TKmsKeyAlgorithmName): KeyMaterial {
     return new KeyMaterial(bytes, usage, algorithm);
   }
@@ -200,12 +196,10 @@ export class KeyMaterial {
     }
   }
 
-  // What the root key stores in internal_kms.
   wrap(rootKey: RootKey): Buffer {
     return rootKey.encrypt(this.bytes);
   }
 
-  // The raw bytes, for an export the key allows.
   exportBytes(): Buffer {
     return this.bytes;
   }

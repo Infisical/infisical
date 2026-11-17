@@ -17,7 +17,6 @@ export type TProjectKeyRecord = {
 
 const BACKUP_FOREIGN = "Backup does not belong to project";
 
-// The key columns a project carries: its data key pair, plus the certificate key.
 export class ProjectKey extends DataKeyOwner {
   private constructor(
     readonly projectId: string,
@@ -50,8 +49,7 @@ export class ProjectKey extends DataKeyOwner {
     this.certificateKeyId = kmsKeyId;
   }
 
-  // Points the project at another KMS key and the data key ciphertext it produced. Returns the key id it used, which
-  // the store compares against so a concurrent switch is never overwritten.
+  // Returns the previous key id so the store can refuse to overwrite a concurrent switch.
   switchTo(kmsKeyId: string, encryptedDataKey: Buffer): string {
     if (!this.kmsKeyId || !this.dataKey) {
       throw new RuleViolationError({ message: `Project '${this.projectId}' has no data key to switch` });
@@ -72,7 +70,7 @@ export class ProjectKey extends DataKeyOwner {
     });
   }
 
-  // Run before decrypting the backup, so a backup of another project or org is refused before any key is opened.
+  // Runs before decrypting, so a backup of another project or org is refused before any key is opened.
   assertRestorable(backup: ProjectKeyBackup, backupKeyOrgId: string): void {
     if (backup.projectId !== this.projectId || backupKeyOrgId !== this.orgId) {
       throw new RuleViolationError({ message: BACKUP_FOREIGN });

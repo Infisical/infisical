@@ -13,8 +13,7 @@ const ROTATION_IN_PROGRESS =
 const ALREADY_STAGED =
   "A key is already staged. Deploy that key, discard it, or retry with replaceStaged=true to replace it.";
 
-// Every wrapped copy of the root key the database holds: the active one, at most one staged rotation and at most
-// one retained key.
+// At most one staged and at most one retained copy next to the active one.
 export class RootKeyRing {
   private constructor(private readonly configs: readonly RootKeyConfig[]) {}
 
@@ -34,7 +33,7 @@ export class RootKeyRing {
     return this.configs.find((config) => config.isStaged) ?? null;
   }
 
-  // The newest retained key, the one the cleanup and the operator's "previous key" refer to.
+  // The newest one: what the cleanup and the operator's "previous key" mean.
   get retained(): RootKeyConfig | null {
     return this.retainedNewestFirst()[0] ?? null;
   }
@@ -52,11 +51,8 @@ export class RootKeyRing {
     return active;
   }
 
-  /**
-   * The order matters twice: it keeps resolution deterministic when a key is rotated away from and later back
-   * to (two rows then open with the same key), and it makes the steady state a single decrypt, which under HSM
-   * is a device round trip.
-   */
+  // Order matters: it keeps resolution deterministic when a key is rotated away and back (two rows then open with
+  // the same key), and makes the steady state one decrypt, which under HSM is a device round trip.
   resolutionOrder(): RootKeyConfig[] {
     const sentinel = this.configs.filter((config) => config.isActive);
     const others = this.configs.filter((config) => !config.isActive);
@@ -67,11 +63,8 @@ export class RootKeyRing {
     ];
   }
 
-  /**
-   * The moment a rotation takes effect. Null when `stagedId` is no longer staged: another pod promoted it first.
-   * The active row takes the staged key, and the key it replaces is kept as the one retained copy, so pods that have
-   * not rolled over can still boot. Every older retained key is returned for removal: exactly one survives.
-   */
+  // Null when `stagedId` is no longer staged (another pod promoted it first). The replaced key becomes the one
+  // retained copy so pods that haven't rolled over can still boot. Older retained keys come back for removal.
   promote(
     stagedId: string,
     fallbackKekLabel: string | null,
@@ -87,8 +80,7 @@ export class RootKeyRing {
     return { active, retained, superseded };
   }
 
-  // A strategy change is a fleet-wide cutover: a pod holding the retained software copy would otherwise boot without
-  // the device.
+  // A strategy change is a fleet-wide cutover: a pod holding the retained software copy would boot without the device.
   assertNoRotationInProgress(): void {
     if (this.staged || this.retained) throw new RuleViolationError({ message: ROTATION_IN_PROGRESS });
   }
@@ -98,7 +90,7 @@ export class RootKeyRing {
     if (this.staged && !replaceStaged) throw new RuleViolationError({ message: ALREADY_STAGED });
   }
 
-  // A key staged when the request was read can be applied by a running instance before the request gets its lock.
+  // A running instance can apply a key staged when the request was read before the request gets its lock.
   assertStagedNotApplied(readEarlier: RootKeyRing): void {
     if (readEarlier.staged && !this.staged) {
       throw new StateConflictError({
@@ -122,8 +114,7 @@ export class RootKeyRing {
     return {
       encryptionStrategy: active.strategy,
       active: {
-        // The active row is the instance-wide answer; the in-memory label covers a row the boot backfill has not
-        // labelled yet.
+        // The in-memory label covers an active row the boot backfill hasn't labelled yet.
         label: active.kekLabel ?? currentKekLabel,
         activatedAt: active.activatedAt ?? active.createdAt
       },

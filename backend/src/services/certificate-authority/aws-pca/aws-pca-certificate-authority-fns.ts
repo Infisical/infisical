@@ -462,7 +462,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
-    // Validated before the transaction: the connection decrypt reaches KMS Core and the describe call reaches AWS.
+    // Validated before the transaction since the decrypt goes through KMS Core and the describe call hits AWS.
     if (configuration) {
       const { appConnectionId, certificateAuthorityArn, region } = configuration;
 

@@ -16,7 +16,7 @@ const decodeRow = (row: Record<string, unknown>) =>
 
 const b64 = (value: string | null) => (value ? Buffer.from(value, "base64") : null);
 
-// The rows and vectors the legacy KMS service wrote (scripts/generate-kms-fixtures.ts), decoded.
+// Frozen rows and vectors from scripts/generate-kms-fixtures.ts, decoded.
 export const kmsWireFormatFixture = () => ({
   encryptionKey: fixture.env.ENCRYPTION_KEY,
   rows: {

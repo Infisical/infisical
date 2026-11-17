@@ -15,15 +15,12 @@ export type TInstanceEncryptionKeyEnv = {
   ROOT_ENCRYPTION_KEY?: string;
 };
 
-// The env key that wraps the root key under the software strategy (the KEK).
+// The env key (KEK) that wraps the root key under the software strategy.
 export class InstanceEncryptionKey {
   private constructor(private readonly buffer: Buffer) {}
 
-  /**
-   * The AES key an environment resolves to. Single-sourced: a rotation predicts exactly what a booting instance
-   * will compute from the value it hands the operator, so a second copy of this rule would drift into a key that
-   * does not boot.
-   */
+  // Keep this the only copy of the rule: a rotation predicts the key a booting instance will compute from the value
+  // it hands the operator, so a second copy could drift into a key that doesn't boot.
   static fromEnv(env: TInstanceEncryptionKeyEnv): InstanceEncryptionKey {
     const encryptionKey = env.ENCRYPTION_KEY || env.ROOT_ENCRYPTION_KEY;
     if (!encryptionKey) {
@@ -45,15 +42,13 @@ export class InstanceEncryptionKey {
     return new InstanceEncryptionKey(buffer);
   }
 
-  // The key a newly generated rotation value resolves to, under the same rule as a booting instance.
   static fromRotationValue(value: string, isFipsEnabled: boolean): InstanceEncryptionKey {
     return InstanceEncryptionKey.fromEnv(isFipsEnabled ? { ROOT_ENCRYPTION_KEY: value } : { ENCRYPTION_KEY: value });
   }
 
-  // What a software-strategy boot needs before it reads anything: a key is set and, under FIPS, it is base64 for 256 bits.
   static assertConfigured(env: TInstanceEncryptionKeyEnv, isFipsEnabled: boolean): void {
     if (isFipsEnabled) {
-      // Under FIPS the environment moves ENCRYPTION_KEY into ROOT_ENCRYPTION_KEY, so that is where it is checked.
+      // Under FIPS the env moves ENCRYPTION_KEY into ROOT_ENCRYPTION_KEY, so check that too.
       const key = env.ENCRYPTION_KEY ?? env.ROOT_ENCRYPTION_KEY;
       if (!key) {
         throw new RuleViolationError({
@@ -79,7 +74,6 @@ export class InstanceEncryptionKey {
     }
   }
 
-  // The software strategy is only a valid switch target when this instance has a key to wrap with.
   static assertConfiguredForSwitch(env: TInstanceEncryptionKeyEnv): void {
     if (!env.ROOT_ENCRYPTION_KEY && !env.ENCRYPTION_KEY) {
       throw new RuleViolationError({
@@ -89,10 +83,8 @@ export class InstanceEncryptionKey {
     }
   }
 
-  /**
-   * A label, never a lookup key: it lets an operator match a restored dump against an archived key. Truncated
-   * SHA-256 over a key of at least 128 bits is not reversible, so it is safe to log and expose.
-   */
+  // Only for matching a restored dump to an archived key, never a lookup key. Truncated SHA-256 of a 128+ bit key
+  // isn't reversible, so it's safe to log and expose.
   get label(): string {
     return createHash("sha256").update(KEK_LABEL_DOMAIN).update(this.buffer).digest("hex").slice(0, 32);
   }

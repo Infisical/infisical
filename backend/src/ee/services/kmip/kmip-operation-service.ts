@@ -410,7 +410,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    // KMIP here only handles symmetric keys, so a project's sign-verify and MAC keys are not KMIP objects.
+    // KMIP here only handles symmetric keys, so sign-verify and MAC keys aren't KMIP objects.
     const keys = (await kmsKeyService.findKeys({ projectId, isReserved: false, keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT }))
       .filter((key) => !key.isExternal)
       .map((key) => ({

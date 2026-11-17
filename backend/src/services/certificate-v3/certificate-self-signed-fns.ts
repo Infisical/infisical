@@ -46,7 +46,7 @@ export type TPreparedSelfSignedCertificate = {
   encryptedPrivateKey: Buffer;
 };
 
-// Generates and encrypts the certificate before the caller opens its transaction: KMS Core is never called inside one.
+// Runs before the caller opens its transaction, so key generation and KMS calls don't hold it open.
 export const prepareSelfSignedCertificate = async ({
   certificateRequest,
   policy,

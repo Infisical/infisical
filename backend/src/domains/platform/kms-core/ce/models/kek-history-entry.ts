@@ -10,8 +10,7 @@ export type TKekHistoryEntryRecord = {
   updatedAt: Date;
 };
 
-// Which encryption key wrapped the root key, and when. Never pruned: it is how a restored dump is matched to an
-// archived key.
+// Never pruned: it's how a restored dump gets matched to an archived key.
 export class KekHistoryEntry {
   private constructor(
     readonly id: string,
@@ -48,7 +47,6 @@ export class KekHistoryEntry {
     return this.retiredOn;
   }
 
-  // A newer key took over.
   supersede(at: Date): void {
     this.supersededOn = at;
   }

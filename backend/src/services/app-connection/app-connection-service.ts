@@ -691,7 +691,7 @@ export const appConnectionServiceFactory = ({
       validatedCredentials = await runValidation(gatewayId);
     }
 
-    // Revokes the credential a new rotation replaced, so it is called only after the transaction commits.
+    // Revokes the credential the new rotation replaced, so it only runs after commit.
     let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
     try {
@@ -1030,7 +1030,7 @@ export const appConnectionServiceFactory = ({
     }
 
     try {
-      // Revokes the credential a new rotation replaced, so it is called only after the transaction commits.
+      // Revokes the credential the new rotation replaced, so it only runs after commit.
       let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx: Knex) => {

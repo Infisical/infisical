@@ -8,7 +8,7 @@ export type TGcpKmsProvider = TExternalKmsProviderFns & {
   getKeysList: () => Promise<{ keys: string[] }>;
 };
 
-// The provider clients, replaceable so tests can stand in a fake provider. `inputs` are validated by the client.
+// Replaceable so tests can use a fake provider. The client validates `inputs`.
 export type TExternalKmsProviders = {
   aws: (args: { inputs: unknown }) => Promise<TAwsKmsProvider>;
   gcp: (args: { inputs: unknown }) => Promise<TGcpKmsProvider>;

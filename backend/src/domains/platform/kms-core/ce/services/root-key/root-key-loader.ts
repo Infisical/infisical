@@ -14,9 +14,9 @@ import { removeRootKeyConfig } from "./root-key-helpers";
 import { RootKeyWrappings } from "./root-key-wrappings";
 import type { TKmsCoreEnv } from "./service";
 
-// The one place a pod learns the root key: resolved from the stored configs (or bootstrapped on an empty instance),
-// with the rotation bookkeeping a boot owns. Root key state is read from the primary: a lagging replica could miss
-// the key this pod holds, or show a superseded view to promote against.
+// The one place a pod learns the root key (bootstrapping it on an empty instance), plus the rotation bookkeeping a
+// boot owns. Reads the primary: a lagging replica could miss the key this pod holds, or show a stale view to promote
+// against.
 export class RootKeyLoader {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
@@ -25,11 +25,8 @@ export class RootKeyLoader {
     private readonly rootKeyWrappings: RootKeyWrappings,
     // The env as first parsed, before the FIPS relabel replaced ROOT_ENCRYPTION_KEY.
     private readonly originalEnv?: TLegacyKeySnapshot,
-    /**
-     * For callers inside a database migration. Historical migrations start KMS Core to re-encrypt data long before
-     * the migration that adds the rotation columns and tables, so they only load the root key: no promotion, no
-     * labels, no legacy snapshot (the legacy helpers fall back to the environment, which is right for a migration).
-     */
+    // For migrations. Historical ones start KMS Core long before the rotation columns and tables exist, so they only
+    // load the root key (the legacy helpers fall back to the env, which is right for a migration).
     private readonly skipRotationState = false
   ) {}
 
@@ -40,7 +37,7 @@ export class RootKeyLoader {
     const strategy = active?.strategy ?? null;
     const isHsmConfigured = await this.rootKeyWrappings.isHsmConfigured();
 
-    // A new instance bootstraps on the HSM when one is plugged in, and on the env key otherwise.
+    // A new instance bootstraps on the HSM when one is plugged in, otherwise on the env key.
     if (strategy) this.rootKeyWrappings.for(strategy).assertCanBoot();
     else if (!isHsmConfigured) this.rootKeyWrappings.for(RootKeyEncryptionStrategy.Software).assertCanBoot();
 
@@ -94,7 +91,7 @@ export class RootKeyLoader {
     const wrapping = this.rootKeyWrappings.for(strategy);
     const rootKey = await wrapping.generate();
 
-    // Wrapped before the transaction opens: this can be an HSM round trip. A pod that loses the race below
+    // Wrap before the transaction opens, since this can be an HSM round trip. A pod that loses the race below
     // discards its key unused.
     const encryptedRootKey = await wrapping.wrap(rootKey).catch((err) => {
       logger.error({ hsmEnabled: isHsmConfigured, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");

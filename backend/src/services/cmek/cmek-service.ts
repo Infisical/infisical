@@ -58,7 +58,7 @@ type TCmekServiceFactoryDep = {
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
-// A customer managed key: a project key that is not reserved and holds internal material.
+// A CMEK is a non-reserved project key with internal material.
 const toCmek = ({ isExternal, ...key }: TKmsKeyDetails) => ({
   ...key,
   encryptionAlgorithm: key.encryptionAlgorithm as string,

@@ -47,11 +47,9 @@ export type TKmsDataKeyService = {
   within(tx: TTransaction): TKmsDataKeyTransaction;
 };
 
-/**
- * The calls a caller can make inside its own transaction, which see its uncommitted rows. First use takes the frozen
- * org and project locks, held until the caller commits, and an external key's provider is called inside it. Any
- * error leaves the caller's transaction unusable: roll it back.
- */
+// Calls inside the caller's transaction, seeing its uncommitted rows. First use takes the frozen org and project locks
+// until the caller commits, and calls an external key's provider inside it. Any error leaves the transaction unusable:
+// roll it back.
 export type TKmsDataKeyTransaction = {
   createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO): Promise<TCipherPair>;
   getProjectSecretManagerKmsKeyId(projectId: string): Promise<string>;
@@ -61,8 +59,7 @@ export type TKmsDataKeyTransaction = {
 
 const onPrimary: TReadOptions = { readFrom: ReadFrom.Primary };
 
-// A row missing on the replica is read once more on the primary: an org or project created a moment ago may not have
-// replicated yet. Only a miss pays for the second read.
+// A miss on the replica retries once on the primary: a just-created org or project may not have replicated yet.
 const findOnReplicaThenPrimary = async <T>(
   find: (options?: TReadOptions) => Promise<T | null>,
   notFound: () => Error,
@@ -73,7 +70,6 @@ const findOnReplicaThenPrimary = async <T>(
   return found;
 };
 
-// How first use reaches one owner: its row, its frozen locks and its claims.
 type TOwnerAccess<K extends DataKeyOwner> = {
   find(stores: TKmsCoreStores, options?: TReadOptions): Promise<K>;
   lockKmsKey(stores: TKmsCoreStores): Promise<void>;
@@ -108,9 +104,9 @@ const projectAccess = (projectId: string): TOwnerAccess<ProjectKey> => ({
   claimDataKey: (stores, owner) => stores.projectKeyStore.claimDataKey(owner)
 });
 
-// A claim fails when another call set the column first: one joined to the same caller transaction (a session does not
-// wait on its own advisory lock) or a writer that takes no lock. The winner is visible on these stores either way, so
-// first use adopts it instead of failing.
+// A claim loses when someone else set the column first: a call joined to the same transaction (a session doesn't wait
+// on its own advisory lock) or a writer that takes no lock. Either way the winner is visible here, so first use adopts
+// it instead of failing.
 const claimConflict = (what: string) =>
   new StateConflictError({
     message: `The ${what} was set by another request while this one was running. Retry the request.`
@@ -121,13 +117,9 @@ const claimedKeyId = (keyId: string | null, what: string): string => {
   return keyId;
 };
 
-/**
- * The KMS key and data key an org or project gets on first use, the project certificate key, the switch between
- * internal and external keys, and backups. Every first-use creation runs under the frozen locks and writes a column
- * only while it is empty.
- */
+// Every first-use creation runs under the frozen locks and writes a column only while it's empty.
 export class KmsDataKeyService implements TKmsDataKeyService {
-  // `cache` is left out for a service bound to a caller's transaction, and for migrations.
+  // No `cache` for a service bound to a caller's transaction, or for migrations.
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly stores: TKmsCoreStores,
@@ -136,8 +128,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     private readonly cache?: TProjectDataKeyCache
   ) {}
 
-  // Every read and write goes through the caller's transaction, through a service built on its stores and without
-  // the cache.
+  // Runs everything in the caller's transaction, on its stores and without the cache.
   within(tx: TTransaction): TKmsDataKeyTransaction {
     const runner = this.transactionRunner.within(tx);
     const joined = <T>(work: (service: KmsDataKeyService) => Promise<T>) =>
@@ -152,7 +143,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     };
   }
 
-  // A caller that has just committed the org or project passes ReadFrom.Primary: a replica may not have it yet.
+  // Pass ReadFrom.Primary right after committing the org or project: a replica may not have it yet.
   async createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions): Promise<TCipherPair> {
     const dataKey =
       context.type === KmsDataKey.SecretManager
@@ -172,7 +163,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const projectKey = await this.findProjectKey(projectId);
     if (projectKey.certificateKmsKeyId) return projectKey.certificateKmsKeyId;
 
-    // The losing key is deleted rather than rolled back: inside a caller's transaction there is nothing to roll back.
+    // The losing key is deleted, not rolled back: inside a caller's transaction there's nothing to roll back.
     const key = KmsKey.createReserved({ orgId: projectKey.orgId, rootKey: this.rootKey });
     const claimed = await this.transactionRunner.run(async ({ stores }) => {
       await stores.kmsKeyStore.insert(key);
@@ -200,7 +191,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return encryptor({ plainText: WrappedKeyPayload.build(label, key).payload }).cipherTextBlob;
   }
 
-  // Null when the key was not wrapped for this label. Throws when the ciphertext does not decrypt.
+  // Null when the key wasn't wrapped for this label. Throws when the ciphertext doesn't decrypt.
   async unwrapKey({
     projectId,
     label,
@@ -216,8 +207,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return WrappedKeyPayload.restore(decryptor({ cipherTextBlob: wrappedKey })).open(label, keyBytes);
   }
 
-  // Re-wraps the project's data key under another key. The data key itself does not change, so existing
-  // ciphertext stays readable.
+  // The data key itself doesn't change, so existing ciphertext stays readable.
   async updateProjectSecretManagerKmsKey({
     projectId,
     kms
@@ -241,8 +231,8 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     }
 
     const { owner: projectKey, dataKey } = await this.ensureDataKey(access, keyed, currentKey);
-    // An external target is sealed with the org data key, which a replica may not have yet for a new org key. Only
-    // the reads run on the primary: the provider call happens after the short run returns.
+    // An external target is sealed with the org data key, which may not be on a replica yet. Only the reads hit the
+    // primary: the provider call happens after they return.
     const encrypt = await keyEncryptor(this.stores, this.rootKey, this.externalKms, target, {
       readFrom: ReadFrom.Primary
     });
@@ -291,7 +281,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       EncryptedDataKey.restore({ kmsKeyId: newKey.id, encryptedDataKey: sealed, orgId: newKey.orgId })
     );
 
-    // A cached entry would keep serving the replaced data key: refuse the restore if it cannot be cleared first.
+    // A cached entry would keep serving the old data key, so refuse the restore if it can't be evicted first.
     if (this.cache) await this.cache.evict(projectId);
     await this.transactionRunner.run(async ({ stores, tx }) => {
       this.evictAfterCommit(tx, projectId);
@@ -301,7 +291,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return { secretManagerKmsKey: newKey.details() };
   }
 
-  // Deletes the reserved keys a project owned, once nothing references them. Call after the project is gone.
+  // Call after the project is gone. Deletes only reserved keys nothing references anymore.
   async deleteProjectKeys({ orgId, kmsKeyIds }: { orgId: string; kmsKeyIds: string[] }): Promise<void> {
     for (const kmsKeyId of kmsKeyIds) {
       // eslint-disable-next-line no-await-in-loop -- at most two keys per project
@@ -322,8 +312,8 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     if (cache) tx.afterCommit(() => cache.evict(projectId));
   }
 
-  // The cache holds the encrypted data key read from the primary. An entry that no longer opens (a switch whose
-  // eviction failed, a key deleted since) is replaced from the primary, once.
+  // The cache holds the encrypted data key as read from the primary. An entry that no longer opens (a switch whose
+  // eviction failed, a key deleted since) gets replaced from the primary, once.
   private async projectDataKey(projectId: string, options?: TReadOptions): Promise<DataKey> {
     const { cache } = this;
     if (!cache || options?.readFrom === ReadFrom.Primary) {
@@ -347,8 +337,8 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const { projectKey, dataKey } = await this.resolveProjectKey(projectId, { readFrom: ReadFrom.Primary });
     const material = projectKey.material();
     await cache.set(projectId, material);
-    // A key switch can commit and evict between the read above and the write: read the row again after writing, and
-    // drop the entry if it no longer matches, so this refill cannot undo that eviction.
+    // A key switch can commit and evict between the read above and this write. Re-read after writing and drop the
+    // entry if it no longer matches, so this refill can't undo that eviction.
     const current = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
     if (!current.hasDataKey() || !current.material().equals(material)) {
       await cache.evict(projectId).catch((err: unknown) => {
@@ -377,8 +367,8 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return dataKey;
   }
 
-  // A key switch can commit, and delete the old reserved key, between reading the project and reading its key. Read
-  // both again from the primary, once.
+  // A key switch can commit (and delete the old reserved key) between reading the project and its key, so re-read
+  // both from the primary, once.
   private async resolveProjectKey(
     projectId: string,
     options?: TReadOptions
@@ -401,7 +391,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return { projectKey: withDataKey, dataKey };
   }
 
-  // The owner's KMS key, created on first use. The row and the key it names are read together.
+  // Reads the row and the key it names together.
   private async ensureKmsKey<K extends DataKeyOwner>(
     access: TOwnerAccess<K>,
     owner: K,
@@ -428,9 +418,8 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     });
   }
 
-  // The owner's data key, created on first use. The returned owner always holds it, so a project switch can re-wrap
-  // it. A winner's data key may be wrapped by another KMS key than `kmsKey` (a switch committed meanwhile), so it is
-  // opened with the key the row names.
+  // The returned owner always holds the data key, so a project switch can re-wrap it. A winner's data key may be
+  // wrapped by another KMS key than `kmsKey` (a switch committed meanwhile), so open it with the key the row names.
   private async ensureDataKey<K extends DataKeyOwner>(
     access: TOwnerAccess<K>,
     owner: K,

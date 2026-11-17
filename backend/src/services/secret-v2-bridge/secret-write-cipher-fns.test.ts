@@ -17,7 +17,7 @@ const makeDataKeyService = () => ({
 });
 
 describe("prepareSecretWriteCiphers", () => {
-  // Each resolution of a data key is a few queries and, for a key on an external KMS, a provider call.
+  // Each data key resolution costs a few queries, plus a provider call on an external KMS.
   it("should resolve each data key once, however many values the blind indexer digests", async () => {
     // Setup
     const kmsDataKeyService = makeDataKeyService();

@@ -7,7 +7,7 @@ import { KmsCiphertext } from "./kms-ciphertext";
 export type TEncryptor = (input: { plainText: Buffer }) => { cipherTextBlob: Buffer<ArrayBuffer> };
 export type TDecryptor = (input: { cipherTextBlob: Buffer }) => Buffer<ArrayBuffer>;
 
-// What callers encrypt with. The data key stays inside these closures.
+// The data key stays inside these closures.
 export type TCipherPair = {
   encryptor: TEncryptor;
   decryptor: TDecryptor;
@@ -16,7 +16,7 @@ export type TCipherPair = {
 
 const dataCipher = () => symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
-// An org's or project's data key (and the key behind encryptWithInputKey). Its blobs always end in v01.
+// Also the key behind encryptWithInputKey. Its blobs always end in v01.
 export class DataKey {
   private constructor(private readonly bytes: Buffer) {}
 
@@ -24,7 +24,6 @@ export class DataKey {
     return new DataKey(crypto.randomBytes(32));
   }
 
-  // Bytes a KMS key unwrapped, or a key a caller supplies.
   static fromBytes(bytes: Buffer): DataKey {
     return new DataKey(bytes);
   }

@@ -14,7 +14,7 @@ import { TKeyValueStoreDALFactory } from "./key-value-store-dal";
 export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
-  // 2025 is taken: KMS Core holds it for the root key (KMS_LOCK_IDS in kms-core-locks.ts).
+  // 2025 is taken by KMS Core's root key lock (KMS_LOCK_IDS in kms-core-locks.ts).
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),

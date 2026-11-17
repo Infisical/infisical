@@ -55,7 +55,7 @@ const kmsCoreEnv = (envConfig: TKmsCoreEnvConfig) => ({
   isHsmConfigured: envConfig.isHsmConfigured
 });
 
-// The enterprise module comes first: the HSM may be what unwraps the root key.
+// EE module first: the HSM may be what unwraps the root key.
 const buildKmsCore = async ({
   db,
   readKnex,
@@ -84,9 +84,9 @@ const buildKmsCore = async ({
   return { kmsCoreEe, kmsCore };
 };
 
-// KMS Core for code that runs outside the server: migrations and seed scripts. Runs every query on `db`, which in a
-// migration is the migration's own transaction, and loads only the root key (no rotation state, which historical
-// migrations predate). HSM counts as entitled: the license has not been read yet.
+// KMS Core for migrations and seed scripts. Every query runs on `db` (in a migration, its own transaction) and only
+// the root key loads, since historical migrations predate rotation state. HSM counts as entitled: the license isn't
+// read yet.
 export const startStandaloneKmsCore = async ({
   db,
   envConfig
@@ -136,12 +136,11 @@ export const createDomains = async (deps: TDomainDeps) => {
     organizationsProjectsService
   });
 
-  // Before KMS Core, which writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot
-  // before anything is wrapped with its FIPS-format key.
+  // Before KMS Core writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot before
+  // anything gets wrapped with its FIPS-format key.
   crypto.verifyFipsLicense(license.licenseService.getInstanceEntitlements().has(InstanceFeature.Fips));
 
-  // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition, which reads the
-  // instance's HSM entitlement from License.
+  // KMS Core depends on no other domain. Its EE edition (HSM, external keys) reads the HSM entitlement from License.
   const { kmsCoreEe, kmsCore } = await buildKmsCore({
     db: deps.db,
     readKnex: () => deps.db.replicaNode(),

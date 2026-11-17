@@ -19,8 +19,8 @@ describe("KmsKeyService on Postgres", () => {
     return new KmsKeyService(transactionRunner, stores, RootKey.generate(), undefined);
   };
 
-  // Saving writes every attribute it read, so an edit that read before a concurrent one committed would write
-  // that one's change back. The row lock makes the second edit read after the first commits.
+  // Save writes back every attribute it read, so an edit that read before a concurrent one committed would undo that
+  // change. The row lock makes the second edit read after the first commits.
   test("should keep a concurrent edit to the key's attributes", async () => {
     // Setup
     const tn = await h.newTenant();

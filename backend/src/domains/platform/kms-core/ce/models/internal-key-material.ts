@@ -12,7 +12,6 @@ export type TInternalKeyMaterialRecord = {
   version: number;
 };
 
-// The wrapped material an internal KMS key currently encrypts with (internal_kms), and which version of it that is.
 export class InternalKeyMaterial {
   private constructor(
     readonly id: string,
@@ -38,7 +37,6 @@ export class InternalKeyMaterial {
     return KeyMaterial.restore(rootKey.decrypt(this.encryptedKey), usage, this.algorithm);
   }
 
-  // The same material for another version, once its predecessor is archived.
   succeededBy(material: KeyMaterial, rootKey: RootKey): InternalKeyMaterial {
     return new InternalKeyMaterial(this.id, material.wrap(rootKey), this.algorithm, this.version + 1);
   }

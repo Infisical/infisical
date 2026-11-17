@@ -100,8 +100,8 @@ const cryptographyFactory = () => {
     }
   };
 
-  // The ENCRYPTION_KEY format FIPS requires is checked by KMS Core when it loads the root key, the only place that
-  // knows whether the root key is wrapped with that key at all.
+  // KMS Core checks the FIPS ENCRYPTION_KEY format when it loads the root key: only it knows if the root key is
+  // wrapped with that key at all.
   const $setFipsModeEnabled = (enabled: boolean) => {
     if (enabled) crypto.setFips(true);
     $fipsEnabled = enabled;

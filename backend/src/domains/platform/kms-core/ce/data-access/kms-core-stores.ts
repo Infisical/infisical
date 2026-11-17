@@ -25,11 +25,10 @@ const buildKmsCoreStores = (connection: TStoreConnection, locks: TKmsCoreLocks):
   locks
 });
 
-// `db` is the server's client, or a migration's own connection. `readKnex` is where stores read outside a transaction
-// unless the caller asks for the primary: the replica on the server, the same connection in a migration (never the
-// global replica).
-// The runner's generic store locks are not used: KMS Core takes its frozen lock ids, which pods of the previous
-// release share during a deploy.
+// `db` is the server's client or a migration's own connection. `readKnex` is the replica on the server, but the same
+// connection in a migration (never the global replica).
+// Uses KMS Core's frozen lock ids instead of the runner's generic store locks: pods of the previous release share
+// them during a deploy.
 export const buildKmsCoreStoreAccess = (db: TDbClient, readKnex: () => Knex) => ({
   transactionRunner: new TransactionRunner<TKmsCoreStores>(db, (trx) =>
     buildKmsCoreStores(singleStoreConnection(trx), new PostgresKmsCoreLocks(trx))

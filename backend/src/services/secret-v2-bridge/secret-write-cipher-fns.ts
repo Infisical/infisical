@@ -6,10 +6,9 @@ import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { buildSecretBlindIndexer } from "./secret-blind-index-fns";
 import { TSecretWriteCiphers } from "./secret-v2-bridge-types";
 
-// The ciphers a secret write needs, fetched once per request rather than once per secret, since each resolution
-// can be a round trip to an external KMS. Without a transaction the project and org ciphers are fetched in
-// parallel. On the caller's transaction they are fetched one after the other, so the locks a first use takes are
-// acquired in a fixed order.
+// Fetched once per request, not per secret, since each resolution can hit an external KMS. Without a transaction
+// the project and org ciphers load in parallel. On the caller's transaction they load one after the other, so
+// first-use locks are always taken in the same order.
 export const prepareSecretWriteCiphers = async ({
   kmsDataKeyService,
   projectId,

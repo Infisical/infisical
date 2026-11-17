@@ -404,8 +404,8 @@ export const getCaCredentials = async ({
     });
   }
 
-  // The OCSP signing path resolves the key once per CA and passes it, rather than reading the project
-  // row again for every in-flight signature against a ten-connection pool.
+  // OCSP signing resolves the key once per CA and passes it in, so in-flight signatures don't each re-read the
+  // project row on a ten-connection pool.
   const keyId = prefetched?.kmsKeyId ?? (await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId));
 
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({

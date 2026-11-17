@@ -91,7 +91,7 @@ export type TKmsKeyService = {
   rotateKmsKey(kmsId: string): Promise<{ id: string; version: number }>;
   getKmsById(kmsId: string): Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
   findKeyById(kmsId: string): Promise<TKmsKeyDetails | undefined>;
-  // Read from the primary: undefined when unpublished, missing, or its project is pending deletion.
+  // Reads the primary. Undefined when unpublished, missing, or its project is pending deletion.
   findPublishedKeyById(kmsId: string): Promise<TKmsKeyDetails | undefined>;
   findKeys(filter: TKmsKeyFilter, options?: TReadOptions): Promise<TKmsKeyDetails[]>;
   listProjectKeys(input: TListKmsKeysDTO): Promise<{ keys: TKmsKeyDetails[]; totalCount: number }>;
@@ -133,8 +133,8 @@ export type TKmsKeyService = {
   within(tx: TTransaction): TKmsKeyTransaction;
 };
 
-// The calls a caller can make inside its own transaction. The encryptor and decryptor they return stay usable after
-// it ends. Any error leaves the caller's transaction unusable: roll it back.
+// Calls inside the caller's transaction. The encryptor and decryptor they return stay usable after it ends. Any error
+// leaves the transaction unusable: roll it back.
 export type TKmsKeyTransaction = Pick<TKmsKeyService, "encryptWithKmsKey" | "decryptWithKmsKey" | "getKmsById">;
 
 export class KmsKeyService implements TKmsKeyService {
@@ -213,7 +213,7 @@ export class KmsKeyService implements TKmsKeyService {
     return this.insertKey(key);
   }
 
-  // Archives the current material and installs new material. Old ciphertext stays readable.
+  // Archives the current material, so old ciphertext stays readable.
   rotateKmsKey(kmsId: string) {
     return this.transactionRunner.run(async ({ stores }) => {
       const key = await stores.kmsKeyStore.findForUpdate(kmsId);
@@ -235,7 +235,7 @@ export class KmsKeyService implements TKmsKeyService {
     return key?.details();
   }
 
-  // Reads the primary: a lagging replica could still show a key that was just unpublished or disabled.
+  // Reads the primary: a lagging replica could still show a just-unpublished or disabled key.
   async findPublishedKeyById(kmsId: string) {
     const key = await this.stores.kmsKeyStore.findPublishedById(kmsId, { readFrom: ReadFrom.Primary });
     return key?.details();
@@ -344,8 +344,8 @@ export class KmsKeyService implements TKmsKeyService {
     return ({ data, mac }: { data: Buffer; mac: Buffer }) => key.verifyMac(this.rootKey, data, mac);
   }
 
-  // The key row and its material commit together. A duplicate name in a project fails on the unique index; callers
-  // translate that DatabaseError into their own message. The result carries no material, wrapped or not.
+  // Key row and material commit together. A duplicate name in a project hits the unique index: callers turn that
+  // DatabaseError into their own message. The result carries no material, wrapped or not.
   private async insertKey(key: KmsKey): Promise<TKmsKeyDetails> {
     await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.insert(key));
     return key.details();

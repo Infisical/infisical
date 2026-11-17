@@ -121,7 +121,7 @@ const main = async () => {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await initEnvConfig(superAdminDAL, logger);
-  // Loads only the root key, as a migration does: enough for createCipherPairWithDataKey against an org.
+  // Only loads the root key (like a migration), which is all an org's createCipherPairWithDataKey needs.
   const { kmsDataKeyService } = await startStandaloneKmsCore({ db: knex, envConfig });
 
   let org = await knex(TableName.Organization).where({ slug: orgSlug }).first();

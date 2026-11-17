@@ -13,7 +13,7 @@ import { InMemoryPlatformRows } from "./in-memory-platform-rows";
 import { InMemoryProjectKeyStore } from "./in-memory-project-key-store";
 import { InMemoryRootKeyConfigStore } from "./in-memory-root-key-config-store";
 
-// KMS Core's stores in memory: one state behind the transaction runner and the stores used outside a transaction.
+// One state behind both the transaction runner and the stores used outside a transaction.
 export class InMemoryKmsCoreStores {
   readonly platformRows = new InMemoryPlatformRows();
 

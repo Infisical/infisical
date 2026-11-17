@@ -11,7 +11,7 @@ import { rootKeyTestEnv } from "./root-key-fixture";
 
 type TAsync<T> = { [K in keyof T]: T[K] extends (...args: never[]) => Promise<unknown> ? K : never }[keyof T];
 
-// Calls the real service once the in-memory module has loaded the root key.
+// Waits for the in-memory module to load the root key, then calls the real service.
 const delegate = <T extends object>(service: Promise<T>, methods: TAsync<T>[]): T =>
   Object.fromEntries(
     methods.map((method) => [
@@ -23,11 +23,8 @@ const delegate = <T extends object>(service: Promise<T>, methods: TAsync<T>[]): 
     ])
   ) as T;
 
-/**
- * For consumers of KMS Core: the real services over in-memory stores, with real AES-GCM. Orgs and projects are
- * created the first time a test names them, so a test only passes ids. `memory` exposes the stores. `within` ignores
- * the transaction: a consumer's test hands it a fake one, and there is only one in-memory state to join.
- */
+// Real services over in-memory stores with real AES-GCM. Orgs and projects are created the first time a test names
+// them. `within` ignores the transaction: a consumer's test hands it a fake one, and there's only one state to join.
 export class FakeKmsCore {
   readonly memory = new InMemoryKmsCoreStores();
 

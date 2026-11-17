@@ -18,7 +18,6 @@ export class ProjectKeyBackup {
     return new ProjectKeyBackup(input.projectId, input.kmsKeyId, input.encryptedDataKey, `${body}.${hash}`);
   }
 
-  // Refuses a backup whose hash does not match, and one written for another project.
   static parse(backup: string, expectedProjectId: string): ProjectKeyBackup {
     const [, projectId, , kmsKeyId, base64EncryptedDataKey, hash] = backup.split(".");
     const computed = createHash("sha256")

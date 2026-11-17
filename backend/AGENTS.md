@@ -1195,15 +1195,15 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 
 ### Instance Root Encryption Key (rotation)
 
-`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; the design is documented
-in `kms-service.ts` and `kms-root-config-dal.ts`. Two rules for code elsewhere:
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; KMS Core owns it (see
+`src/domains/platform/kms-core/AGENTS.md`). Two rules for code elsewhere:
 
 - **`KMS_ROOT_CONFIG_UUID` always holds the active key** so app versions predating rotation can boot. New
   code never looks a root config row up by id or by `kekLabel`; it trial-decrypts (sentinel, staged, retained).
-- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: they run before
-  `kmsService.startService`, so they fall back to the environment key, which on a rotated instance is wrong:
-  decrypts fail the auth tag and encrypts silently write unreadable rows. Oxlint blocks this under
-  `src/db/migrations/`.
+- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: KMS Core starts in a
+  migration without the legacy key snapshot (`startStandaloneKmsCore`), so they fall back to the environment key,
+  which on a rotated instance is wrong: decrypts fail the auth tag and encrypts silently write unreadable rows.
+  Oxlint blocks this under `src/db/migrations/`.
 
 ### Database Configuration
 
