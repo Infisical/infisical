@@ -129,8 +129,46 @@ export const createApplicationWithApiProfile = async (dto: {
   return application;
 };
 
-const applicationMemberUrl = (applicationId: string, kind: "users" | "groups", memberId: string) =>
+// Attaches another profile to an Application and enables API enrollment for it.
+export const attachApiProfile = async (dto: { applicationId: string; profileId: string; authToken: string }) => {
+  await request(
+    {
+      method: "POST",
+      url: `/api/v1/cert-manager/applications/${dto.applicationId}/profiles`,
+      headers: auth(dto.authToken),
+      body: { profileIds: [dto.profileId] }
+    },
+    ok
+  );
+  await request(
+    {
+      method: "PUT",
+      url: `/api/v1/cert-manager/applications/${dto.applicationId}/profiles/${dto.profileId}/enrollment/api`,
+      headers: auth(dto.authToken),
+      body: {}
+    },
+    ok
+  );
+};
+
+const applicationMemberUrl = (applicationId: string, kind: "users" | "groups" | "identities", memberId: string) =>
   `/api/v1/cert-manager/applications/${applicationId}/${kind}/${memberId}`;
+
+export const addApplicationIdentity = (dto: {
+  applicationId: string;
+  identityId: string;
+  role: ResourceMembershipRole;
+  authToken: string;
+}) =>
+  request(
+    {
+      method: "POST",
+      url: applicationMemberUrl(dto.applicationId, "identities", dto.identityId),
+      headers: auth(dto.authToken),
+      body: { role: dto.role }
+    },
+    ok
+  );
 
 export const addApplicationUsers = (dto: {
   applicationId: string;
@@ -233,6 +271,7 @@ export const revokeCertificate = (dto: { certificateId: string; authToken: strin
 export type TRevocationPolicyStep = {
   requiredApprovals: number;
   approvers: { type: ApproverType; id: string }[];
+  notifyApprovers?: boolean;
 };
 
 const revocationPoliciesUrl = "/api/v1/approval-policies/cert-revocation";
@@ -296,6 +335,27 @@ export const listProjectRevocationRequests = (dto: { projectId: string; authToke
       query: { scope: ApprovalPolicyScope.Project, id: dto.projectId }
     },
     (res) => ok<{ requests: { id: string }[] }>(res).requests
+  );
+
+export const listApplicationRevocationRequests = (dto: { applicationId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `${revocationPoliciesUrl}/requests`,
+      headers: auth(dto.authToken),
+      query: { scope: ApprovalPolicyScope.PkiApplication, id: dto.applicationId }
+    },
+    (res) => ok<{ requests: { id: string }[] }>(res).requests
+  );
+
+export const cancelRevocationRequest = (dto: { requestId: string; authToken: string }) =>
+  request(
+    {
+      method: "POST",
+      url: `${revocationPoliciesUrl}/requests/${dto.requestId}/cancel`,
+      headers: auth(dto.authToken)
+    },
+    (res) => ok<{ request: { id: string; status: string } }>(res).request
   );
 
 export const getRevocationRequest = (dto: { requestId: string; authToken: string }) =>

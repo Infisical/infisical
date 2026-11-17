@@ -1970,11 +1970,54 @@ export const approvalPolicyServiceFactory = ({
 
     const ctx = $buildDecorationContext(actor);
 
+    // Opening a request checks Read on its own Application (getRequestById), so a Project-scope list of a type whose
+    // policies live on Applications does too: project-wide read doesn't reach into an Application the actor isn't a
+    // member of.
+    const readsPerApplication =
+      scope === ApprovalPolicyScope.Project && resources[policyType]?.scopeType === ApprovalPolicyScope.PkiApplication;
+    const applicationScopeIds = readsPerApplication
+      ? [
+          ...new Set(
+            requests.flatMap((request) =>
+              request.scopeType === ApprovalPolicyScope.PkiApplication && request.scopeId ? [request.scopeId] : []
+            )
+          )
+        ]
+      : [];
+    const readableApplicationIds = new Set<string>();
+    await Promise.all(
+      applicationScopeIds.map(async (applicationId) => {
+        try {
+          const { permission: resourcePermission } = await permissionService.getResourcePermission({
+            actor: actor.type,
+            actorId: actor.id,
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            resourceId: applicationId,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId
+          });
+          if (
+            resourcePermission.can(ProjectPermissionApprovalRequestActions.Read, ResourcePermissionSub.ApprovalRequests)
+          ) {
+            readableApplicationIds.add(applicationId);
+          }
+        } catch (error) {
+          if (!(error instanceof ForbiddenRequestError)) throw error;
+        }
+      })
+    );
+    const canRead = (request: (typeof requests)[number]) =>
+      readsPerApplication && request.scopeType === ApprovalPolicyScope.PkiApplication
+        ? Boolean(request.scopeId && readableApplicationIds.has(request.scopeId))
+        : hasReadPermission;
+
     const visibleRequests = await (async () => {
-      if (hasReadPermission) return requests;
+      const unreadable = requests.filter((request) => !canRead(request));
+      if (unreadable.length === 0) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
-      const named = requests.filter(
+      const named = unreadable.filter(
         (request) =>
           !$isRequester(request, actor) &&
           request.steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds))
@@ -1996,7 +2039,9 @@ export const approvalPolicyServiceFactory = ({
       const isLive = (request: (typeof requests)[number]) =>
         !checkLiveApprover || !request.scopeId || liveScopeIds.has(request.scopeId);
 
-      return requests.filter((request) => $isRequester(request, actor) || (named.includes(request) && isLive(request)));
+      return requests.filter(
+        (request) => canRead(request) || $isRequester(request, actor) || (named.includes(request) && isLive(request))
+      );
     })();
 
     if (visibleRequests.length > 0) {
