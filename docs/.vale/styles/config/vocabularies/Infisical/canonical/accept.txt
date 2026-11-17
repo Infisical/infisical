@@ -350,6 +350,7 @@ Sentinel
 Elasticsearch
 Cassandra
 Couchbase
+Neon
 RabbitMQ
 Vertica
 Milvus
