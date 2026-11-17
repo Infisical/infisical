@@ -468,7 +468,11 @@ export const kmsServiceFactory = ({
           );
 
           externalKms = await AwsKmsProviderFactory({
-            inputs: decryptedProviderInput
+            inputs: decryptedProviderInput,
+            inputsVersion: kmsDoc.externalKms.providerInputsVersion,
+            orgId: kmsDoc.orgId,
+            orgDAL,
+            projectDAL
           });
           break;
         }
@@ -878,7 +882,11 @@ export const kmsServiceFactory = ({
           );
 
           externalKms = await AwsKmsProviderFactory({
-            inputs: decryptedProviderInput
+            inputs: decryptedProviderInput,
+            inputsVersion: kmsDoc.externalKms.providerInputsVersion,
+            orgId: kmsDoc.orgId,
+            orgDAL,
+            projectDAL
           });
           break;
         }

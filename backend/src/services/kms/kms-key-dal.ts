@@ -57,6 +57,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
           db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
           db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
+          db.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion"),
           db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
           db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
         )
@@ -79,6 +80,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
               id: result.externalKmsId,
               provider: result.externalKmsProvider,
               encryptedProviderInput: result.externalKmsEncryptedProviderInput,
+              providerInputsVersion: result.externalKmsProviderInputsVersion,
               status: result.externalKmsStatus,
               statusDetails: result.externalKmsStatusDetails
             }
@@ -116,6 +118,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
           db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
           db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
+          db.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion"),
           db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
           db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
         )
@@ -136,6 +139,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
               id: result.externalKmsId,
               provider: result.externalKmsProvider,
               encryptedProviderInput: result.externalKmsEncryptedProviderInput,
+              providerInputsVersion: result.externalKmsProviderInputsVersion,
               status: result.externalKmsStatus,
               statusDetails: result.externalKmsStatusDetails
             }

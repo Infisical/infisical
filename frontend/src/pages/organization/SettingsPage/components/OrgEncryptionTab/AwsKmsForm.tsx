@@ -1,17 +1,27 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  CodeBlock,
+  CopyButton,
   DialogFooter,
+  DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   SecretInput,
   Select,
   SelectContent,
@@ -67,6 +77,14 @@ const AWS_REGIONS = [
   { name: "AWS US ISO (West)", slug: "us-iso-west-1" }
 ];
 
+const AWS_KMS_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms";
+
+type AwsKmsCredential = Extract<
+  AddExternalKmsType["configuration"],
+  { type: ExternalKmsProvider.Aws }
+>["inputs"]["credential"];
+
 type Props = {
   onCompleted: () => void;
   onCancel: () => void;
@@ -110,8 +128,7 @@ export const AwsKmsForm = ({
                     accessKey: kms.externalKms.configuration.credential.data?.accessKey ?? "",
                     secretKey: kms.externalKms.configuration.credential.data?.secretKey ?? "",
                     assumeRoleArn:
-                      kms.externalKms.configuration.credential.data?.assumeRoleArn ?? "",
-                    externalId: kms.externalKms.configuration.credential.data?.externalId ?? ""
+                      kms.externalKms.configuration.credential.data?.assumeRoleArn ?? ""
                   }
                 }
               }
@@ -135,6 +152,17 @@ export const AwsKmsForm = ({
   );
 
   const selectedAwsAuthType = watch("configuration.inputs.credential.type");
+  const hasLegacyExternalId = Boolean(kms?.externalKms?.hasLegacyExternalId);
+  const trustPolicyCondition = JSON.stringify(
+    { Condition: { StringEquals: { "sts:ExternalId": currentOrg.id } } },
+    null,
+    2
+  );
+
+  const withOrgExternalId = (credential: AwsKmsCredential): AwsKmsCredential =>
+    credential.type === KmsAwsCredentialType.AssumeRole
+      ? { ...credential, data: { ...credential.data, externalId: currentOrg.id } }
+      : credential;
 
   const handleAwsKmsFormSubmit = async (data: AddExternalKmsType) => {
     const { name, description, configuration } = data;
@@ -151,7 +179,7 @@ export const AwsKmsForm = ({
             configuration: {
               type: ExternalKmsProvider.Aws,
               inputs: {
-                credential: { ...awsInputs.credential },
+                credential: awsInputs.credential && withOrgExternalId(awsInputs.credential),
                 awsRegion: awsInputs.awsRegion,
                 kmsKeyId: awsInputs.kmsKeyId
               }
@@ -176,7 +204,16 @@ export const AwsKmsForm = ({
         await addAwsExternalKms({
           name,
           description,
-          configuration
+          configuration:
+            configuration.type === ExternalKmsProvider.Aws
+              ? {
+                  ...configuration,
+                  inputs: {
+                    ...configuration.inputs,
+                    credential: withOrgExternalId(configuration.inputs.credential)
+                  }
+                }
+              : configuration
         });
 
         createNotification({
@@ -207,7 +244,10 @@ export const AwsKmsForm = ({
         type="submit"
         variant={isSubOrganization ? "sub-org" : "org"}
         isPending={isSubmitting}
-        isDisabled={isSubmitting || Boolean(kms && !isDirty)}
+        isDisabled={
+          isSubmitting ||
+          Boolean(kms && !isDirty && !(mode === "credentials" && hasLegacyExternalId))
+        }
       >
         {submitLabel}
       </Button>
@@ -278,7 +318,6 @@ export const AwsKmsForm = ({
                       setValue("configuration.inputs.credential.data.accessKey", "");
                       setValue("configuration.inputs.credential.data.secretKey", "");
                       setValue("configuration.inputs.credential.data.assumeRoleArn", "");
-                      setValue("configuration.inputs.credential.data.externalId", "");
                       onChange(nextValue);
                     }}
                   >
@@ -360,23 +399,42 @@ export const AwsKmsForm = ({
                     </Field>
                   )}
                 />
-                <Controller
-                  control={control}
-                  name="configuration.inputs.credential.data.externalId"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="aws-kms-external-id">External ID</FieldLabel>
-                      <Input
-                        {...field}
-                        id="aws-kms-external-id"
-                        value={field.value ?? ""}
-                        isError={Boolean(error)}
-                        placeholder="Optional"
+                {hasLegacyExternalId && (
+                  <Alert variant="warning">
+                    <TriangleAlertIcon />
+                    <AlertTitle>External ID Not Tied to This Organization</AlertTitle>
+                    <AlertDescription>
+                      <p>
+                        This key keeps working with its current external ID. Updating its
+                        credentials switches it to your organization ID, so add that value to the
+                        role&apos;s trust policy first.
+                      </p>
+                      <DocumentationLinkBadge
+                        href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
                       />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <Field>
+                  <FieldLabel htmlFor="aws-kms-external-id">External ID</FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput id="aws-kms-external-id" value={currentOrg.id} readOnly />
+                    <InputGroupAddon align="inline-end">
+                      <CopyButton
+                        key={currentOrg.id}
+                        type="button"
+                        value={currentOrg.id}
+                        ariaLabel="Copy external ID"
+                      />
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <FieldDescription>
+                    Infisical sends your organization ID when it assumes the role. Add this
+                    condition to the role&apos;s trust policy so no other organization can use it.
+                  </FieldDescription>
+                  <CodeBlock label="Trust Policy Condition" value={trustPolicyCondition} />
+                  <DocumentationLinkBadge href={`${AWS_KMS_DOCS_URL}#prerequisites`} />
+                </Field>
               </>
             )}
           </>

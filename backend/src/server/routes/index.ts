@@ -1077,7 +1077,9 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     externalKmsDAL,
-    licenseService
+    licenseService,
+    orgDAL,
+    projectDAL
   });
 
   const trustedIpService = trustedIpServiceFactory({

@@ -10,6 +10,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey, KmsKeyUsage } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -23,11 +25,12 @@ import {
   TListExternalKmsDTO,
   TUpdateExternalKmsDTO
 } from "./external-kms-types";
-import { AwsKmsProviderFactory } from "./providers/aws-kms";
+import { AwsKmsProviderFactory, hasLegacyAwsKmsExternalId, resolveAwsKmsInputsVersion } from "./providers/aws-kms";
 import { GcpKmsProviderFactory } from "./providers/gcp-kms";
 import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
+  ExternalKmsProviderInputsVersion,
   KmsProviders,
   TExternalKmsAwsSchema,
   TExternalKmsGcpSchema
@@ -39,6 +42,8 @@ type TExternalKmsServiceFactoryDep = {
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;
@@ -48,7 +53,9 @@ export const externalKmsServiceFactory = ({
   permissionService,
   licenseService,
   kmsService,
-  kmsDAL
+  kmsDAL,
+  orgDAL,
+  projectDAL
 }: TExternalKmsServiceFactoryDep) => {
   const create = async ({
     provider,
@@ -83,7 +90,13 @@ export const externalKmsServiceFactory = ({
     switch (provider.type) {
       case KmsProviders.Aws:
         {
-          const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs }).catch((error) => {
+          const externalKms = await AwsKmsProviderFactory({
+            inputs: provider.inputs,
+            inputsVersion: ExternalKmsProviderInputsVersion.OrgBoundExternalId,
+            orgId: actorOrgId,
+            orgDAL,
+            projectDAL
+          }).catch((error) => {
             if (error instanceof STSServiceException || error instanceof KMSServiceException) {
               throw new InternalServerError({
                 message: error.message ? `AWS error: ${error.message}` : ""
@@ -161,6 +174,7 @@ export const externalKmsServiceFactory = ({
         {
           provider: provider.type,
           encryptedProviderInputs,
+          providerInputsVersion: ExternalKmsProviderInputsVersion.OrgBoundExternalId,
           kmsKeyId: kms.id
         },
         tx
@@ -209,6 +223,7 @@ export const externalKmsServiceFactory = ({
 
     let sanitizedProviderInput = "";
     let sanitizedProviderInputObject: TExternalKmsAwsSchema | TExternalKmsGcpSchema;
+    let providerInputsVersion: number | undefined;
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
       await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -225,10 +240,25 @@ export const externalKmsServiceFactory = ({
             const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
               JSON.parse(decryptedProviderInputBlob.toString())
             );
-            const updatedProviderInput = { ...decryptedProviderInput, ...provider.inputs };
-            const externalKms = await AwsKmsProviderFactory({ inputs: updatedProviderInput });
+            const updatedInputs = await ExternalKmsAwsSchema.parseAsync({
+              ...decryptedProviderInput,
+              ...provider.inputs
+            });
+            providerInputsVersion = resolveAwsKmsInputsVersion({
+              currentVersion: externalKmsDoc.providerInputsVersion,
+              storedInputs: decryptedProviderInput,
+              updatedInputs
+            });
+            const externalKms = await AwsKmsProviderFactory({
+              inputs: updatedInputs,
+              inputsVersion: providerInputsVersion,
+              orgId: kmsDoc.orgId,
+              orgDAL,
+              projectDAL
+            });
             try {
               await externalKms.validateConnection();
+              const updatedProviderInput = externalKms.getProviderInputs();
               sanitizedProviderInputObject = updatedProviderInput;
               sanitizedProviderInput = JSON.stringify(updatedProviderInput);
             } catch (error) {
@@ -297,7 +327,8 @@ export const externalKmsServiceFactory = ({
         const externalKmsCfg = await externalKmsDAL.updateById(
           externalKmsDoc.id,
           {
-            encryptedProviderInputs
+            encryptedProviderInputs,
+            providerInputsVersion
           },
           tx
         );
@@ -409,7 +440,15 @@ export const externalKmsServiceFactory = ({
         const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
           JSON.parse(decryptedProviderInputBlob.toString())
         );
-        return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
+        const hasLegacyExternalId = hasLegacyAwsKmsExternalId({
+          inputs: decryptedProviderInput,
+          inputsVersion: externalKmsDoc.providerInputsVersion,
+          orgId: kmsDoc.orgId
+        });
+        return {
+          ...kmsDoc,
+          external: { ...externalKmsDoc, providerInput: decryptedProviderInput, hasLegacyExternalId }
+        };
       }
       case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
@@ -458,7 +497,15 @@ export const externalKmsServiceFactory = ({
         const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
           JSON.parse(decryptedProviderInputBlob.toString())
         );
-        return { ...kmsDoc, external: { ...externalKmsDoc, providerInput: decryptedProviderInput } };
+        const hasLegacyExternalId = hasLegacyAwsKmsExternalId({
+          inputs: decryptedProviderInput,
+          inputsVersion: externalKmsDoc.providerInputsVersion,
+          orgId: kmsDoc.orgId
+        });
+        return {
+          ...kmsDoc,
+          external: { ...externalKmsDoc, providerInput: decryptedProviderInput, hasLegacyExternalId }
+        };
       }
       case KmsProviders.Gcp: {
         const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(

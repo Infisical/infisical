@@ -1,11 +1,109 @@
 import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, KMSClient } from "@aws-sdk/client-kms";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { z } from "zod";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { deterministicStringify } from "@app/lib/fn/object";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
+import {
+  ExternalKmsAwsSchema,
+  ExternalKmsProviderInputsVersion,
+  KmsAwsCredentialType,
+  TExternalKmsAwsSchema,
+  TExternalKmsProviderFns
+} from "./model";
+
+type TInfisicalIdLookupDeps = {
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+};
+
+const isOrgId = (externalId: string, orgId: string) => externalId.toLowerCase() === orgId.toLowerCase();
+
+export const bindAwsKmsExternalIdToOrg = ({
+  inputs,
+  orgId
+}: {
+  inputs: TExternalKmsAwsSchema;
+  orgId: string;
+}): TExternalKmsAwsSchema => {
+  if (inputs.credential.type !== KmsAwsCredentialType.AssumeRole) return inputs;
+
+  const { externalId } = inputs.credential.data;
+  if (!externalId) {
+    return {
+      ...inputs,
+      credential: { ...inputs.credential, data: { ...inputs.credential.data, externalId: orgId } }
+    };
+  }
+
+  if (isOrgId(externalId, orgId)) return inputs;
+
+  throw new BadRequestError({
+    message: `The AWS external ID must be your organization ID (${orgId}). Set the sts:ExternalId condition in the IAM role's trust policy to your organization ID and use the same value here.`
+  });
+};
+
+// Legacy rows keep their stored external ID, except one that names another organization or one of its
+// projects: no customer sets that up for themselves, and it is what a cross-organization takeover stores.
+export const assertAwsKmsLegacyExternalIdNotForeign = async ({
+  inputs,
+  orgId,
+  orgDAL,
+  projectDAL
+}: TInfisicalIdLookupDeps & { inputs: TExternalKmsAwsSchema; orgId: string }) => {
+  if (inputs.credential.type !== KmsAwsCredentialType.AssumeRole) return;
+
+  const { externalId } = inputs.credential.data;
+  if (!externalId || isOrgId(externalId, orgId) || !z.string().uuid().safeParse(externalId).success) return;
+
+  const [org, project] = await Promise.all([orgDAL.findById(externalId), projectDAL.findById(externalId)]);
+  if (!org && (!project || project.orgId === orgId)) return;
+
+  throw new BadRequestError({
+    message: `This AWS external KMS sends an external ID that belongs to another Infisical organization or one of its projects. Update its credentials to use your organization ID (${orgId}), and require the same value in the IAM role's trust policy.`
+  });
+};
+
+export const hasLegacyAwsKmsExternalId = ({
+  inputs,
+  inputsVersion,
+  orgId
+}: {
+  inputs: TExternalKmsAwsSchema;
+  inputsVersion: number;
+  orgId: string;
+}) => {
+  if (inputsVersion !== ExternalKmsProviderInputsVersion.Legacy) return false;
+  if (inputs.credential.type !== KmsAwsCredentialType.AssumeRole) return false;
+
+  const { externalId } = inputs.credential.data;
+  return !externalId || !isOrgId(externalId, orgId);
+};
+
+// A legacy row keeps its stored external ID only while its credential is unchanged. Any change, such as a
+// new role ARN, moves it to the current rules, or a legacy value could be pointed at another role.
+export const resolveAwsKmsInputsVersion = ({
+  currentVersion,
+  storedInputs,
+  updatedInputs
+}: {
+  currentVersion: number;
+  storedInputs: TExternalKmsAwsSchema;
+  updatedInputs: TExternalKmsAwsSchema;
+}) => {
+  if (
+    currentVersion === ExternalKmsProviderInputsVersion.Legacy &&
+    deterministicStringify(storedInputs.credential) === deterministicStringify(updatedInputs.credential)
+  ) {
+    return ExternalKmsProviderInputsVersion.Legacy;
+  }
+  return ExternalKmsProviderInputsVersion.OrgBoundExternalId;
+};
 
 const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
   if (providerInputs.credential.type === KmsAwsCredentialType.AssumeRole) {
@@ -51,15 +149,31 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
   return kmsClient;
 };
 
-type AwsKmsProviderArgs = {
+type AwsKmsProviderArgs = TInfisicalIdLookupDeps & {
   inputs: unknown;
+  inputsVersion: number;
+  orgId: string;
 };
 type TAwsKmsProviderFactoryReturn = TExternalKmsProviderFns & {
   generateInputKmsKey: () => Promise<TExternalKmsAwsSchema>;
+  getProviderInputs: () => TExternalKmsAwsSchema;
 };
 
-export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Promise<TAwsKmsProviderFactoryReturn> => {
-  let providerInputs = await ExternalKmsAwsSchema.parseAsync(inputs);
+export const AwsKmsProviderFactory = async ({
+  inputs,
+  inputsVersion,
+  orgId,
+  orgDAL,
+  projectDAL
+}: AwsKmsProviderArgs): Promise<TAwsKmsProviderFactoryReturn> => {
+  const parsedInputs = await ExternalKmsAwsSchema.parseAsync(inputs);
+  if (inputsVersion === ExternalKmsProviderInputsVersion.Legacy) {
+    await assertAwsKmsLegacyExternalIdNotForeign({ inputs: parsedInputs, orgId, orgDAL, projectDAL });
+  }
+  let providerInputs =
+    inputsVersion === ExternalKmsProviderInputsVersion.Legacy
+      ? parsedInputs
+      : bindAwsKmsExternalIdToOrg({ inputs: parsedInputs, orgId });
   let awsClient = await getAwsKmsClient(providerInputs);
 
   const generateInputKmsKey = async () => {
@@ -121,6 +235,7 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
 
   return {
     generateInputKmsKey,
+    getProviderInputs: () => providerInputs,
     validateConnection,
     encrypt,
     decrypt,
