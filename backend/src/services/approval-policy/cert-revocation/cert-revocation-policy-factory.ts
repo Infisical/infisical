@@ -1,13 +1,14 @@
 import { Knex } from "knex";
 
 import { ResourceType } from "@app/db/schemas";
-import { RESOURCE_SCOPE } from "@app/db/schemas/models";
+import { RESOURCE_SCOPE, ResourceMembershipRole } from "@app/db/schemas/models";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -31,30 +32,42 @@ type TCertRevocationApprovalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
 };
 
-const findActiveApplicationMemberships = async (
-  membershipDAL: TCertRevocationApprovalResourceDep["membershipDAL"],
+type TMembershipDeps = Pick<TCertRevocationApprovalResourceDep, "membershipDAL" | "membershipRoleDAL">;
+
+// A request snapshots its approvers when it is raised. Removing a member from the Application or demoting them to
+// Auditor only edits the policy, so the snapshot alone would let them decide requests that were already pending.
+// A membership counts only while it is active and holds a role that can approve.
+const findApprovingApplicationMemberships = async (
+  { membershipDAL, membershipRoleDAL }: TMembershipDeps,
   { projectId, applicationId }: { projectId: string; applicationId: string },
   tx?: Knex
 ) => {
-  const memberships = await membershipDAL.find(
-    {
-      scope: RESOURCE_SCOPE,
-      scopeProjectId: projectId,
-      scopeResourceType: ResourceType.CertificateApplication,
-      scopeResourceId: applicationId
-    },
-    { tx }
+  const memberships = (
+    await membershipDAL.find(
+      {
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: projectId,
+        scopeResourceType: ResourceType.CertificateApplication,
+        scopeResourceId: applicationId
+      },
+      { tx }
+    )
+  ).filter((membership) => membership.isActive);
+  if (memberships.length === 0) return [];
+
+  const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
+  const approvingMembershipIds = new Set(
+    roles.filter((r) => r.role !== ResourceMembershipRole.Auditor).map((r) => r.membershipId)
   );
-  return memberships.filter((membership) => membership.isActive);
+  return memberships.filter((membership) => approvingMembershipIds.has(membership.id));
 };
 
-// A request snapshots its approvers when it is raised, and removing a member from the Application only edits the
-// policy, so the snapshot alone would let a removed member decide requests that were already pending.
-const holdsApplicationMembership = async (
-  membershipDAL: TCertRevocationApprovalResourceDep["membershipDAL"],
+const holdsApprovingMembership = async (
+  deps: TMembershipDeps,
   {
     projectId,
     applicationId,
@@ -63,7 +76,7 @@ const holdsApplicationMembership = async (
   }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> },
   tx?: Knex
 ) => {
-  const memberships = await findActiveApplicationMemberships(membershipDAL, { projectId, applicationId }, tx);
+  const memberships = await findApprovingApplicationMemberships(deps, { projectId, applicationId }, tx);
   return memberships.some(
     (membership) =>
       membership.actorUserId === userId || Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId))
@@ -74,6 +87,7 @@ export const certRevocationApprovalResourceFactory = ({
   approvalPolicyDAL,
   certificateService,
   membershipDAL,
+  membershipRoleDAL,
   userGroupMembershipDAL
 }: TCertRevocationApprovalResourceDep): TApprovalResource<
   TCertRevocationPolicyInputs,
@@ -105,15 +119,19 @@ export const certRevocationApprovalResourceFactory = ({
   validateConstraints: () => ({ valid: true }),
 
   isLiveApprover: async ({ projectId, scopeId, actor, userGroupIds }) =>
-    holdsApplicationMembership(membershipDAL, { projectId, applicationId: scopeId, userId: actor.id, userGroupIds }),
+    holdsApprovingMembership(
+      { membershipDAL, membershipRoleDAL },
+      { projectId, applicationId: scopeId, userId: actor.id, userGroupIds }
+    ),
 
-  // A replica that hasn't seen a member's removal would still let them decide, so the decision reads the primary.
+  // A replica that hasn't seen a member's removal or demotion would still let them decide, so the decision reads the
+  // primary.
   assertCanReview: async ({ request, actor, userGroupIds }) => {
     const { projectId, scopeId } = request;
     if (
       scopeId &&
-      (await holdsApplicationMembership(
-        membershipDAL,
+      (await holdsApprovingMembership(
+        { membershipDAL, membershipRoleDAL },
         { projectId, applicationId: scopeId, userId: actor.id, userGroupIds },
         approvalPolicyDAL.primaryNode()
       ))
@@ -121,17 +139,18 @@ export const certRevocationApprovalResourceFactory = ({
       return;
     }
     throw new ForbiddenRequestError({
-      message: "You can't review this request because you're no longer a member of its Application."
+      message:
+        "You can't review this request because you no longer have a role in its Application that can approve requests."
     });
   },
 
   // Notifications name the certificate (and, on failure, why), and the request's approver snapshot outlives a
-  // member's removal from the Application, so only approvers who still hold a membership are told.
+  // member's removal or demotion, so only approvers who can still approve are told.
   filterActiveApprovers: async (request, approvers) => {
     if (!request.scopeId || approvers.length === 0) return [];
     const primaryDb = approvalPolicyDAL.primaryNode();
-    const memberships = await findActiveApplicationMemberships(
-      membershipDAL,
+    const memberships = await findApprovingApplicationMemberships(
+      { membershipDAL, membershipRoleDAL },
       { projectId: request.projectId, applicationId: request.scopeId },
       primaryDb
     );

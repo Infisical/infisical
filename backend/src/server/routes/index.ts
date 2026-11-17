@@ -4395,6 +4395,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     certificateService,
     membershipDAL,
+    membershipRoleDAL,
     userGroupMembershipDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
