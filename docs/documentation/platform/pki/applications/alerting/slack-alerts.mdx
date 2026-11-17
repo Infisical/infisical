@@ -225,16 +225,3 @@ The message color shows the alert's severity:
 | Red | Critical or error | A certificate expires within 14 days |
 | Amber | Warning | A certificate expires within 15 to 30 days, or a certificate was revoked |
 | Blue | Info | A certificate expires in more than 30 days, or a certificate was issued or renewed |
-
-## Troubleshooting
-
-If you select **Send test** and a Slack channel doesn't get the message, the error names the channel and the cause. If an alert fails when it fires, its **Last Run** column shows **Failed**, and **Send test** shows the same errors.
-
-| Error | Fix |
-|-------|-----|
-| The Infisical app isn't in the channel | In Slack, add the Infisical app to the channel |
-| The channel wasn't found | The channel was deleted, or it's a private channel that the Infisical app isn't in. Edit the alert and pick another channel, or add the Infisical app to the private channel in Slack. |
-| The channel is archived | Restore the channel in Slack, or edit the alert and pick another channel |
-| Slack rejected the integration's access token | Reconnect the Slack integration under **Integrations** > **Workflow Integrations** in your organization |
-
-If an alert posts to several Slack channels and only some of them fail, Infisical still counts the alert as delivered. In that case, **Send test** shows a warning that names the channels that failed.
