@@ -78,7 +78,7 @@ const getTerraformCloudVariables = async (
     source
   }));
 
-  return variables;
+  return variables.filter((variable) => variable.category === destinationConfig.category);
 };
 
 const deleteVariable = async (
