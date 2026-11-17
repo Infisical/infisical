@@ -9,7 +9,7 @@ import {
 } from "@aws-sdk/client-elastic-load-balancing-v2";
 import { z } from "zod";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { ProjectType, TCertificateSyncs } from "@app/db/schemas";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -110,7 +110,10 @@ const getAwsElbClient = async (
       });
   }
 
-  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ElasticLoadBalancingV2Client(awsConfig);
 };
@@ -154,7 +157,10 @@ const getAwsAcmClient = async (
       });
   }
 
-  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMClient(awsConfig);
 };
