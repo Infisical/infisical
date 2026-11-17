@@ -1,7 +1,8 @@
-import { ComponentProps, forwardRef, type JSX, useEffect, useRef, useState } from "react";
+import { ComponentProps, forwardRef, type JSX } from "react";
 import { Check, CircleAlert, Copy } from "lucide-react";
 
 import { copyToClipboard } from "@app/helpers/clipboard";
+import { useTimedReset } from "@app/hooks";
 
 import { cn } from "../../utils";
 import { IconButton } from "../IconButton";
@@ -12,26 +13,16 @@ type CopyButtonProps = Omit<ComponentProps<"button">, "value" | "children"> & {
   ariaLabel: string;
 } & Pick<ComponentProps<typeof IconButton>, "variant" | "size">;
 
-type CopyStatus = "idle" | "copied" | "failed";
-
-const COPY_FAILED_MESSAGE = "Could not copy to clipboard";
-const STATUS_RESET_DELAY_MS = 2000;
+const COPY_FAILED_MESSAGE = "Couldn't copy to clipboard";
 
 export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
   (
     { value, ariaLabel, variant = "ghost", size = "xs", onClick, className, ...props },
     ref
   ): JSX.Element => {
-    const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
-    const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-    useEffect(() => () => clearTimeout(resetTimer.current), []);
-
-    const showStatus = (status: CopyStatus) => {
-      clearTimeout(resetTimer.current);
-      setCopyStatus(status);
-      resetTimer.current = setTimeout(() => setCopyStatus("idle"), STATUS_RESET_DELAY_MS);
-    };
+    const [copyStatus, , setCopyStatus] = useTimedReset<"idle" | "copied" | "failed">({
+      initialState: "idle"
+    });
     const isFailed = copyStatus === "failed";
 
     return (
@@ -45,12 +36,13 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
             className={cn(isFailed && "text-danger hover:text-danger", className)}
             aria-label={isFailed ? COPY_FAILED_MESSAGE : ariaLabel}
             onClick={async (event) => {
+              onClick?.(event);
+              setCopyStatus("idle");
               try {
-                await copyToClipboard(value);
-                showStatus("copied");
-                onClick?.(event);
+                await copyToClipboard(value, event.currentTarget);
+                setCopyStatus("copied");
               } catch {
-                showStatus("failed");
+                setCopyStatus("failed");
               }
             }}
           >
@@ -59,7 +51,7 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
             {copyStatus === "idle" && <Copy />}
           </IconButton>
         </TooltipTrigger>
-        <TooltipContent>{COPY_FAILED_MESSAGE}</TooltipContent>
+        <TooltipContent side="bottom">{COPY_FAILED_MESSAGE}</TooltipContent>
       </Tooltip>
     );
   }

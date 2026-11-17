@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type MouseEvent, useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -23,14 +23,13 @@ export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
   const isCopying = useRef(false);
 
-  const copyLinkToClipboard = async () => {
+  const copyLinkToClipboard = async (event: MouseEvent<HTMLButtonElement>) => {
     if (isInviteLinkCopied || isCopying.current) return;
     isCopying.current = true;
 
     try {
-      await copyToClipboard(invite.link);
-      setInviteLinkCopied.on();
-      setTimeout(setInviteLinkCopied.off, 2000);
+      await copyToClipboard(invite.link, event.currentTarget);
+      setInviteLinkCopied.timedToggle();
 
       createNotification({
         type: "info",
@@ -39,7 +38,7 @@ export const OrgInviteLink = ({ invite }: Props) => {
     } catch {
       createNotification({
         type: "error",
-        text: "Could not copy the invitation link. Please copy it manually."
+        text: "Couldn't access the clipboard. Select the link in the field and copy it."
       });
     } finally {
       isCopying.current = false;
