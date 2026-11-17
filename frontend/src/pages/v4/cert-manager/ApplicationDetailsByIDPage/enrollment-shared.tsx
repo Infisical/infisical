@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,11 +10,24 @@ import {
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
-import { Inline } from "@infisical/cipher/ui/layout";
-import { SheetFooter } from "@infisical/cipher/ui/sheet";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { SheetBody, SheetFooter } from "@infisical/cipher/ui/sheet";
 
 import { failed, saved } from "../../access/toast";
-import { type EnrollmentMethod, METHOD_LABELS } from "./enrollment-model";
+import { type EnrollmentBodyProps, type EnrollmentMethod, METHOD_LABELS } from "./enrollment-model";
+
+export const EnrollmentBody = ({
+  lead,
+  children,
+  ...panel
+}: EnrollmentBodyProps & { children: ReactNode }) => (
+  <SheetBody {...panel}>
+    <Stack gap={16}>
+      {lead}
+      {children}
+    </Stack>
+  </SheetBody>
+);
 
 type MethodMutation = {
   mutateAsync: (input: { applicationId: string; profileId: string }) => Promise<unknown>;

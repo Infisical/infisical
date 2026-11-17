@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
-import { SheetBody, SheetSections } from "@infisical/cipher/ui/sheet";
+import { SheetSections } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Textarea } from "@infisical/cipher/ui/textarea";
@@ -10,7 +10,7 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { type EnrollmentPanelProps, type EstDraft, withDraft } from "./enrollment-model";
-import { EnrollmentFooter } from "./enrollment-shared";
+import { EnrollmentBody, EnrollmentFooter } from "./enrollment-shared";
 
 const CA_CHAIN_PLACEHOLDER = [
   "-----BEGIN CERTIFICATE-----",
@@ -23,6 +23,7 @@ export const EstEnrollmentPanel = ({
   profileId,
   state,
   header,
+  body,
   draft,
   onDraft,
   onSaved,
@@ -85,7 +86,7 @@ export const EstEnrollmentPanel = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <form
           id={formId}
           noValidate
@@ -154,7 +155,7 @@ export const EstEnrollmentPanel = ({
             </FieldSet>
           </Stack>
         </form>
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };

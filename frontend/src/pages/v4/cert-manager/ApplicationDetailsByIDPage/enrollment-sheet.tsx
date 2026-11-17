@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -18,11 +18,10 @@ import {
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetSubheader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Spinner } from "@infisical/cipher/ui/spinner";
-import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 
 import { CertificateEnrollmentUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import type { TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
@@ -93,37 +92,34 @@ const AddMethodMenu = ({ methods, locked, disabled, onAdd }: AddMenuProps) => (
 
 const EnrollmentHeader = ({
   profileSlug,
+  tabsId,
   visible,
   active,
   unsaved,
-  onSelect,
-  ...menu
-}: AddMenuProps & {
+  disabled,
+  onSelect
+}: {
   profileSlug: string;
+  tabsId: string;
   visible: EnrollmentMethod[];
   active?: EnrollmentMethod;
   unsaved: ReadonlySet<EnrollmentMethod>;
+  disabled: boolean;
   onSelect: (method: EnrollmentMethod) => void;
 }) => (
-  <>
-    <SheetHeader>
-      <SheetTitle
-        badges={<DocumentationLink href={ENROLLMENT_DOCS.overview} subject="enrollment methods" />}
-      >
-        Enrollment for {profileSlug}
-      </SheetTitle>
-    </SheetHeader>
-    {visible.length > 0 && (
-      <SheetSubheader>
-        <Inline gap={12} justify="between" align="center" wrap={false}>
-          <Tabs
-            label="Enrollment methods"
-            value={active}
-            onChange={(next) => onSelect(next as EnrollmentMethod)}
-            tabs={visible.map((method) => ({
-              value: method,
-              disabled: menu.disabled,
-              label: (
+  <SheetHeader
+    tabs={
+      visible.length > 0 && (
+        <Tabs value={active} onChange={(next) => onSelect(next as EnrollmentMethod)}>
+          <TabsList aria-label="Enrollment methods">
+            {visible.map((method) => (
+              <TabsTrigger
+                key={method}
+                value={method}
+                disabled={disabled}
+                id={`${tabsId}-${method}`}
+                aria-controls={`${tabsId}-panel`}
+              >
                 <Inline gap={6} align="center" wrap={false}>
                   {METHOD_LABELS[method]}
                   {unsaved.has(method) && (
@@ -132,14 +128,19 @@ const EnrollmentHeader = ({
                     </Badge>
                   )}
                 </Inline>
-              )
-            }))}
-          />
-          {menu.methods.length > 0 && <AddMethodMenu {...menu} />}
-        </Inline>
-      </SheetSubheader>
-    )}
-  </>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )
+    }
+  >
+    <SheetTitle
+      badges={<DocumentationLink href={ENROLLMENT_DOCS.overview} subject="enrollment methods" />}
+    >
+      Enrollment for {profileSlug}
+    </SheetTitle>
+  </SheetHeader>
 );
 
 type SharedPanelProps = Omit<EnrollmentPanelProps<EnrollmentMethod>, "draft" | "onDraft">;
@@ -209,6 +210,7 @@ const EnrollmentView = ({
   const [drafts, setDrafts] = useState<EnrollmentDrafts>({});
   const [busy, setBusy] = useState(false);
   const [discarding, setDiscarding] = useState<EnrollmentMethod | null>(null);
+  const tabsId = useId();
 
   const configured = new Set(
     state ? ENROLLMENT_METHODS.filter((method) => isMethodConfigured(state, method)) : []
@@ -268,8 +270,9 @@ const EnrollmentView = ({
   };
   const header = (
     <EnrollmentHeader
-      {...menu}
       profileSlug={profileSlug}
+      tabsId={tabsId}
+      disabled={busy}
       visible={visible}
       active={active}
       unsaved={
@@ -317,6 +320,16 @@ const EnrollmentView = ({
               projectId={projectId}
               state={state}
               header={header}
+              body={{
+                role: "tabpanel",
+                id: `${tabsId}-panel`,
+                "aria-labelledby": `${tabsId}-${active}`,
+                lead: menu.methods.length > 0 && (
+                  <Inline justify="end">
+                    <AddMethodMenu {...menu} />
+                  </Inline>
+                )
+              }}
               busy={busy}
               run={run}
               onSaved={() => forget(active)}

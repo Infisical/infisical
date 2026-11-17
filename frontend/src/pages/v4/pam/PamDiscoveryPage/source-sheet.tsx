@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
@@ -22,7 +22,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { Meta, SmallText } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -431,13 +431,11 @@ const ConfigurationTab = ({
 const SourceBody = ({
   source,
   tab,
-  onTabChange,
   draft,
   onDraft
 }: {
   source: TPamDiscoverySource;
   tab: PamSheetTab;
-  onTabChange: (tab: string) => void;
   draft?: TSourceForm;
   onDraft: (draft?: TSourceForm) => void;
 }) => {
@@ -490,17 +488,6 @@ const SourceBody = ({
           ["Last run", formatDate(source.lastRunAt) ?? "Never"]
         ]}
       />
-      <Tabs
-        label="Discovery source sections"
-        value={tab}
-        onChange={onTabChange}
-        tabs={[
-          { value: PamSheetTab.General, label: "Staged accounts" },
-          { value: PamSheetTab.Stale, label: "Stale accounts" },
-          { value: PamSheetTab.Runs, label: "Runs" },
-          { value: PamSheetTab.Configuration, label: "Configuration" }
-        ]}
-      />
       {tab === PamSheetTab.General && (
         <StagedTab source={source} typeMap={typeMap} showDependencies={showDependencies} />
       )}
@@ -514,10 +501,10 @@ const SourceBody = ({
 };
 
 const SOURCE_TABS = [
-  PamSheetTab.General,
-  PamSheetTab.Stale,
-  PamSheetTab.Runs,
-  PamSheetTab.Configuration
+  { value: PamSheetTab.General, label: "Staged accounts" },
+  { value: PamSheetTab.Stale, label: "Stale accounts" },
+  { value: PamSheetTab.Runs, label: "Runs" },
+  { value: PamSheetTab.Configuration, label: "Configuration" }
 ];
 
 export const SourceSheet = ({
@@ -542,7 +529,9 @@ export const SourceSheet = ({
     onClose();
   };
   const guard = useDiscardChangesGuard({ isDirty: Boolean(draft), onDiscard: close });
-  const activeTab = tab && SOURCE_TABS.includes(tab) ? tab : PamSheetTab.General;
+  const activeTab =
+    tab && SOURCE_TABS.some(({ value }) => value === tab) ? tab : PamSheetTab.General;
+  const tabsId = useId();
 
   const scan = async () => {
     if (!source) return;
@@ -562,18 +551,37 @@ export const SourceSheet = ({
     <>
       <Sheet open={Boolean(sourceId)} onOpenChange={(open) => !open && guard.requestDiscard()}>
         <SheetContent size="lg">
-          <SheetHeader>
+          <SheetHeader
+            tabs={
+              source && (
+                <Tabs value={activeTab} onChange={onTabChange}>
+                  <TabsList aria-label="Discovery source sections">
+                    {SOURCE_TABS.map(({ value, label }) => (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        id={`${tabsId}-${value}`}
+                        aria-controls={`${tabsId}-panel`}
+                      >
+                        {label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )
+            }
+          >
             <SheetTitle>{source?.name ?? "Discovery source"}</SheetTitle>
           </SheetHeader>
-          <SheetBody>
+          <SheetBody
+            {...(source && {
+              role: "tabpanel",
+              id: `${tabsId}-panel`,
+              "aria-labelledby": `${tabsId}-${activeTab}`
+            })}
+          >
             {source ? (
-              <SourceBody
-                source={source}
-                tab={activeTab}
-                onTabChange={onTabChange}
-                draft={draft}
-                onDraft={setDraft}
-              />
+              <SourceBody source={source} tab={activeTab} draft={draft} onDraft={setDraft} />
             ) : (
               <Stack gap={16}>
                 <Skeleton height={32} width={240} />
