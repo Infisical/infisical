@@ -9,6 +9,7 @@ import { RootKey } from "../../models/root-key";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { TInMemoryProjectRow } from "../../testing/in-memory-platform-rows";
 import { TExternalKmsHook, TKmsCoreStores, TProjectKeyStore } from "../dependencies";
+import { KeyCipher } from "../helpers/key-cipher";
 import { KmsDataKeyService, KmsDataKey, KmsType } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -26,7 +27,12 @@ const build = (externalKms?: TExternalKmsHook) => {
   const mem = new InMemoryKmsCoreStores();
   mem.platformRows.addProject("project-1", "org-1");
   const rootKey = RootKey.generate();
-  const service = new KmsDataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms);
+  const service = new KmsDataKeyService(
+    mem.transactionRunner,
+    mem.stores,
+    rootKey,
+    new KeyCipher(mem.stores, rootKey, externalKms)
+  );
   return { mem, rootKey, service };
 };
 
@@ -36,7 +42,13 @@ const buildCached = (externalKms?: TExternalKmsHook) => {
   const rootKey = RootKey.generate();
   const keyStore = new InMemoryKeyStore();
   const cache = new ProjectDataKeyCache(keyStore);
-  const service = new KmsDataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms, cache);
+  const service = new KmsDataKeyService(
+    mem.transactionRunner,
+    mem.stores,
+    rootKey,
+    new KeyCipher(mem.stores, rootKey, externalKms),
+    cache
+  );
   return { mem, rootKey, keyStore, cache, service };
 };
 
@@ -62,7 +74,8 @@ const withLaggingReplica = (mem: InMemoryKmsCoreStores, projectId: string) => {
   projectKeyStore.find = async (id: string, options?: TReadOptions) =>
     id === projectId && options?.readFrom !== ReadFrom.Primary ? null : mem.stores.projectKeyStore.find(id, options);
   const replica: TKmsCoreStores = { ...mem.stores, projectKeyStore };
-  return new KmsDataKeyService(mem.transactionRunner, replica, RootKey.generate(), undefined);
+  const rootKey = RootKey.generate();
+  return new KmsDataKeyService(mem.transactionRunner, replica, rootKey, new KeyCipher(replica, rootKey, undefined));
 };
 
 const setProjectRow = (mem: InMemoryKmsCoreStores, projectId: string, patch: Partial<TInMemoryProjectRow>) => {

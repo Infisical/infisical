@@ -9,6 +9,7 @@ import { KmsKey, KmsKeyUsage } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { TExternalKmsHook } from "../dependencies";
+import { KeyCipher } from "../helpers/key-cipher";
 import { KmsKeyService } from "./service";
 
 const setup = (options: { withHook?: boolean } = {}) => {
@@ -26,7 +27,7 @@ const setup = (options: { withHook?: boolean } = {}) => {
     memory.transactionRunner,
     memory.stores,
     rootKey,
-    options.withHook === false ? undefined : hook
+    new KeyCipher(memory.stores, rootKey, options.withHook === false ? undefined : hook)
   );
 
   const seedOrgKey = async (orgId: string) => {

@@ -850,13 +850,11 @@ export const folderCommitServiceFactory = ({
     );
   };
 
-  const compareSecretVersions = async (
+  const compareSecretVersions = (
     version1: TSecretVersionsV2 & { tags: { id: string }[] },
     version2: TSecretVersionsV2 & { tags: { id: string }[] },
-    projectId: string,
-    tx?: Knex
+    secretManagerDecryptor: TSecretManagerDecryptor
   ) => {
-    const secretManagerDecryptor = await $getSecretManagerDecryptor(projectId, tx);
     const objectsEqual = (o1: unknown, o2: unknown): boolean => {
       if (typeof o1 !== "object" || o1 === null || typeof o2 !== "object" || o2 === null) {
         return o1 === o2;
@@ -917,10 +915,12 @@ export const folderCommitServiceFactory = ({
     tx?: Knex
   ) => {
     let filteredChanges = [...changes];
+    let secretManagerDecryptor: TSecretManagerDecryptor | undefined;
     for (const change of changes) {
       if (change.type === ChangeType.ADD && change.isUpdate && change.secretVersionId) {
         const secretVersions = await secretVersionV2BridgeDAL.findByIdAndPreviousVersion(change.secretVersionId, tx);
-        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId, tx);
+        secretManagerDecryptor ??= await $getSecretManagerDecryptor(projectId, tx);
+        const comparison = compareSecretVersions(secretVersions[0], secretVersions[1], secretManagerDecryptor);
         if (comparison) {
           filteredChanges = filteredChanges.filter(
             (filteredChange) => filteredChange.secretVersionId !== change.secretVersionId

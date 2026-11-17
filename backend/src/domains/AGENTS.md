@@ -36,7 +36,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 | `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
 | `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
-| `lib/data-access/` | `ReadFrom`, `TReadOptions`, `TStoreConnection`, `poolStoreConnection`, `singleStoreConnection`, `toCount` and other row helpers every store needs | |
+| `lib/data-access/` | `ReadFrom`, `TReadOptions`, `TStoreConnection`, `poolStoreConnection`, `singleStoreConnection`, `findOnReplicaThenPrimary`, `toCount` and other row helpers every store needs | |
 | `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
 
 Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
@@ -133,8 +133,10 @@ rule about it shows up.
   runs on the same reader. Writes, claims, deletes and lock-taking reads (`forUpdate`) use `this.connection.writer()`
   and take no options: they always run on the primary.
 - Outside a transaction reads go to a replica and can lag. A read that must see a write just made passes
-  `{ readFrom: ReadFrom.Primary }`, written inline: there is no shared constant. A read that guards a write goes
-  through `run` (or `within(tx)`), so it runs on the transaction under its lock.
+  `{ readFrom: ReadFrom.Primary }`, written inline: there is no shared constant. A read that must find a row another
+  request may have just committed, and treats a miss as final, goes through `findOnReplicaThenPrimary`, so only a
+  miss costs a primary read. A read that guards a write goes through `run` (or `within(tx)`), so it runs on the
+  transaction under its lock.
 - Inside `run` and `within(tx)` the stores are bound to the transaction, so `readFrom` changes nothing: every read sees
   the transaction, uncommitted rows included. Never read `this.stores` inside `run`: it is the replica, not the
   transaction.

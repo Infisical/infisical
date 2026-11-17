@@ -9,7 +9,7 @@ product built on it.
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ce/models/`      | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KeyMaterial`, `RootKey`, `RootKeyConfig`, `RootKeyRing`, `KekHistoryEntry`, `OrganizationKey`, `ProjectKey`, `DataKey`, `EncryptedDataKey`, and the frozen formats (`KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey`) |
 | `ce/data-access/` | One store per entity, `kms-core-locks.ts` (the frozen lock ids), `kms-core-stores.ts` (`buildKmsCoreStoreAccess`), `project-data-key-cache.ts` (Redis)                                                                                                                                                           |
-| `ce/services/`    | `root-key/` (`KmsRootKeyService`, `RootKeyLoader`, `RootKeyWrappings`: the software or HSM wrapping per strategy), `kms-key/` (`KmsKeyService`), `data-key/` (`KmsDataKeyService`), `helpers/key-cipher.ts` (internal or external key dispatch), `dependencies.ts` (store, cache and enterprise port types) |
+| `ce/services/`    | `root-key/` (`KmsRootKeyService`, `RootKeyLoader`, `RootKeyWrappings`: the software or HSM wrapping per strategy), `kms-key/` (`KmsKeyService`), `data-key/` (`KmsDataKeyService`), `helpers/key-cipher.ts` (`KeyCipher`: internal or external key dispatch, one per store binding), `dependencies.ts` (store, cache and enterprise port types) |
 | `ee/`             | `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-key-cipher/` (`ExternalKeyCipherService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`; `services/external-kms/` (`ExternalKmsService`, key management) built by `ExternalKmsEeModule` |
 
 `KmsCoreModule.create` loads the root key (from the env key or the HSM, bootstrapping it on a new instance) before any
@@ -29,7 +29,7 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
   on rolling back its own work does it explicitly instead: a lost certificate key claim deletes the key it inserted.
   Any error from a joined call means the caller rolls back.
 - **Closures must not outlive the transaction.** `kmsKeyService.within(tx).decryptWithKmsKey` loads archived key
-  versions up front (`keyDecryptor(..., { loadArchivedNow })`), because a decryptor called after the commit cannot
+  versions up front (the `KeyCipher` from `keyCipher.joined(stores)`), because a decryptor called after the commit cannot
   use the transaction.
 - **First use writes only an empty column, under the frozen locks.** Org and project keys take the advisory lock,
   re-read and claim (`claimKmsKey`, `claimDataKey`); joined, the lock is held until the caller commits. The certificate

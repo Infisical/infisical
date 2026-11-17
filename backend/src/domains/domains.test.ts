@@ -16,7 +16,7 @@ vi.mock("./platform/kms-core/ee/external-kms-module", () => ({
     readonly externalKmsService = {};
   }
 }));
-const createKmsCore = vi.hoisted(() => vi.fn(async () => ({ start: vi.fn() })));
+const createKmsCore = vi.hoisted(() => vi.fn(async () => ({})));
 vi.mock("./platform/kms-core/ce/module", () => ({
   KmsCoreModule: { create: createKmsCore }
 }));

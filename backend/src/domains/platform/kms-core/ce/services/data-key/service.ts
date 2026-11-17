@@ -1,4 +1,4 @@
-import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
+import { findOnReplicaThenPrimary, ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, StateConflictError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
@@ -12,8 +12,8 @@ import { ProjectKey } from "../../models/project-key";
 import { ProjectKeyBackup } from "../../models/project-key-backup";
 import { RootKey } from "../../models/root-key";
 import { WrappedKeyPayload } from "../../models/wrapped-key";
-import { TExternalKmsHook, TKmsCoreStores, TProjectDataKeyCache } from "../dependencies";
-import { keyEncryptor, openDataKey, requireKey, sealDataKey } from "../helpers/key-cipher";
+import { TKmsCoreStores, TProjectDataKeyCache } from "../dependencies";
+import { KeyCipher, requireKey } from "../helpers/key-cipher";
 
 export enum KmsDataKey {
   Organization,
@@ -55,19 +55,6 @@ export type TKmsDataKeyTransaction = {
   getProjectSecretManagerKmsKeyId(projectId: string): Promise<string>;
   getProjectCertificateKmsKeyId(projectId: string): Promise<string>;
   deleteProjectKeys(input: { orgId: string; kmsKeyIds: string[] }): Promise<void>;
-};
-
-const onPrimary: TReadOptions = { readFrom: ReadFrom.Primary };
-
-// A miss on the replica retries once on the primary: a just-created org or project may not have replicated yet.
-const findOnReplicaThenPrimary = async <T>(
-  find: (options?: TReadOptions) => Promise<T | null>,
-  notFound: () => Error,
-  options?: TReadOptions
-): Promise<T> => {
-  const found = (await find(options)) ?? (options?.readFrom === ReadFrom.Primary ? null : await find(onPrimary));
-  if (!found) throw notFound();
-  return found;
 };
 
 type TOwnerAccess<K extends DataKeyOwner> = {
@@ -124,7 +111,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
-    private readonly externalKms: TExternalKmsHook | undefined,
+    private readonly keyCipher: KeyCipher,
     private readonly cache?: TProjectDataKeyCache
   ) {}
 
@@ -132,7 +119,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
   within(tx: TTransaction): TKmsDataKeyTransaction {
     const runner = this.transactionRunner.within(tx);
     const joined = <T>(work: (service: KmsDataKeyService) => Promise<T>) =>
-      runner.run(({ stores }) => work(new KmsDataKeyService(runner, stores, this.rootKey, this.externalKms)));
+      runner.run(({ stores }) =>
+        work(new KmsDataKeyService(runner, stores, this.rootKey, this.keyCipher.joined(stores)))
+      );
     return {
       createCipherPairWithDataKey: (context) => joined((service) => service.createCipherPairWithDataKey(context)),
       getProjectSecretManagerKmsKeyId: (projectId) =>
@@ -233,9 +222,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const { owner: projectKey, dataKey } = await this.ensureDataKey(access, keyed, currentKey);
     // An external target is sealed with the org data key, which may not be on a replica yet. Only the reads hit the
     // primary: the provider call happens after they return.
-    const encrypt = await keyEncryptor(this.stores, this.rootKey, this.externalKms, target, {
-      readFrom: ReadFrom.Primary
-    });
+    const encrypt = await this.keyCipher.encryptor(target, { readFrom: ReadFrom.Primary });
     const { cipherTextBlob: sealed } = await encrypt({ plainText: dataKey.exportForWrapping() });
 
     return this.transactionRunner.run(async ({ stores, tx }) => {
@@ -256,7 +243,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
   async getProjectKeyBackup(projectId: string): Promise<{ secretManager: string }> {
     const { projectKey, dataKey } = await this.resolveProjectKey(projectId);
     const { kmsKey: orgKmsKey } = await this.orgKmsKey(projectKey.orgId);
-    const cipherTextBlob = await sealDataKey(this.stores, this.rootKey, this.externalKms, orgKmsKey, dataKey);
+    const cipherTextBlob = await this.keyCipher.sealDataKey(orgKmsKey, dataKey);
     const wrapped = EncryptedDataKey.restore({
       kmsKeyId: orgKmsKey.id,
       encryptedDataKey: cipherTextBlob,
@@ -272,9 +259,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const backupKey = await this.readKey(parsed.kmsKeyId, { readFrom: ReadFrom.Primary });
     projectKey.assertRestorable(parsed, backupKey.orgId);
 
-    const dataKey = await openDataKey(this.stores, this.rootKey, this.externalKms, backupKey, parsed.encryptedDataKey);
+    const dataKey = await this.keyCipher.openDataKey(backupKey, parsed.encryptedDataKey);
     const newKey = KmsKey.createReserved({ orgId: projectKey.orgId, rootKey: this.rootKey });
-    const sealed = await sealDataKey(this.stores, this.rootKey, this.externalKms, newKey, dataKey);
+    const sealed = await this.keyCipher.sealDataKey(newKey, dataKey);
     projectKey.restoreFrom(
       parsed,
       backupKey.orgId,
@@ -430,7 +417,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     }
 
     const dataKey = DataKey.generate();
-    const sealed = await sealDataKey(this.stores, this.rootKey, this.externalKms, kmsKey, dataKey);
+    const sealed = await this.keyCipher.sealDataKey(kmsKey, dataKey);
     const outcome = await this.transactionRunner.run(async ({ stores }) => {
       await access.lockDataKey(stores);
       const adopt = async (current: K) => {
@@ -455,6 +442,6 @@ export class KmsDataKeyService implements TKmsDataKeyService {
   }
 
   private open(kmsKey: KmsKey, encryptedDataKey: Buffer): Promise<DataKey> {
-    return openDataKey(this.stores, this.rootKey, this.externalKms, kmsKey, encryptedDataKey);
+    return this.keyCipher.openDataKey(kmsKey, encryptedDataKey);
   }
 }

@@ -12,6 +12,7 @@ import { ProjectDataKeyCache } from "./data-access/project-data-key-cache";
 import { RootKey } from "./models/root-key";
 import { KmsDataKeyService, TKmsDataKeyService } from "./services/data-key/service";
 import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
+import { KeyCipher } from "./services/helpers/key-cipher";
 import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
 import { RootKeyLoader } from "./services/root-key/root-key-loader";
 import { RootKeyWrappings } from "./services/root-key/root-key-wrappings";
@@ -99,8 +100,9 @@ export class KmsCoreModule {
       rootKeyWrappings
     );
     const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
-    const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
-    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms);
+    const keyCipher = new KeyCipher(stores, rootKey, externalKms);
+    const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, keyCipher, cache);
+    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, keyCipher);
     return new KmsCoreModule(kmsRootKeyService, kmsKeyService, kmsDataKeyService);
   }
 

@@ -148,7 +148,6 @@ export const createDomains = async (deps: TDomainDeps) => {
     isHsmEntitled: () => license.licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm),
     keyStore: deps.keyStore
   });
-  kmsCore.start(deps.cronJob);
   const externalKms = new ExternalKmsEeModule({
     db: deps.db,
     readKnex: () => deps.db.replicaNode(),

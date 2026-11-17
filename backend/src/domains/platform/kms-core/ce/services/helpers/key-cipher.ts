@@ -1,4 +1,4 @@
-import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
+import { findOnReplicaThenPrimary, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 
 import { DataKey, TCipherPair } from "../../models/data-key";
@@ -13,114 +13,87 @@ type TKeyCipherStores = Pick<TKmsCoreStores, "kmsKeyStore" | "kmsKeyVersionStore
 
 export const notFoundKey = (kmsId: string) => new EntityNotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
-// A miss on the replica retries once on the primary: a just-created key (a project's first certificate key, a new
-// CMEK) may not have replicated yet, and callers like signer jobs treat a miss as final.
-export const requireKey = async (kmsKeyStore: TKmsKeyStore, kmsId: string, options?: TReadOptions): Promise<KmsKey> => {
-  const found = await kmsKeyStore.findById(kmsId, options);
-  if (found) return found;
-  if (options?.readFrom === ReadFrom.Primary) throw notFoundKey(kmsId);
-  const onPrimary = await kmsKeyStore.findById(kmsId, { readFrom: ReadFrom.Primary });
-  if (!onPrimary) throw notFoundKey(kmsId);
-  return onPrimary;
-};
+export const requireKey = (kmsKeyStore: TKmsKeyStore, kmsId: string, options?: TReadOptions): Promise<KmsKey> =>
+  findOnReplicaThenPrimary(
+    (readOptions) => kmsKeyStore.findById(kmsId, readOptions),
+    () => notFoundKey(kmsId),
+    options
+  );
 
-export const requireExternalKms = (externalKms: TExternalKmsHook | undefined): TExternalKmsHook => {
+const requireExternalKms = (externalKms: TExternalKmsHook | undefined): TExternalKmsHook => {
   if (!externalKms) {
     throw new RuleViolationError({ message: "External KMS keys require the Infisical enterprise edition." });
   }
   return externalKms;
 };
 
-const listArchived = async (stores: TKeyCipherStores, key: KmsKey, options?: TReadOptions) => {
-  const { materialId } = key;
-  return materialId ? stores.kmsKeyVersionStore.listByInternalKmsId(materialId, options) : [];
-};
+// Encrypts and decrypts with a KMS key, internal or external, reading what it needs through one set of stores.
+export class KeyCipher {
+  constructor(
+    private readonly stores: TKeyCipherStores,
+    private readonly rootKey: RootKey,
+    private readonly externalKms: TExternalKmsHook | undefined,
+    // Set for stores bound to a caller's transaction: a decryptor called after it ends cannot use them, so archived
+    // versions load when the decryptor is made instead of on the first ciphertext the current material can't open.
+    private readonly loadArchivedNow = false
+  ) {}
 
-// Archived versions load only on the first ciphertext the current material cannot open.
-const internalDecryptor = (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  key: KmsKey,
-  options?: TReadOptions
-): TAsyncDecryptor => key.decryptor(rootKey, () => listArchived(stores, key, options));
-
-// The org's data key must already exist: an external key's inputs were encrypted with it when stored.
-const existingOrgCipher = async (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  orgId: string,
-  options?: TReadOptions
-): Promise<TCipherPair> => {
-  const orgKey = await stores.organizationKeyStore.find(orgId, options);
-  if (!orgKey) throw new RuleViolationError({ message: "Invalid organization KMS" });
-  const material = orgKey.material();
-  const kmsKey = await requireKey(stores.kmsKeyStore, material.kmsKeyId, options);
-  const dataKey = await internalDecryptor(
-    stores,
-    rootKey,
-    kmsKey,
-    options
-  )({ cipherTextBlob: material.encryptedDataKey });
-  return DataKey.fromBytes(dataKey).toCipherPair();
-};
-
-// The provider call runs when the encryptor is called, after every database read here has returned.
-export const keyEncryptor = async (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  externalKms: TExternalKmsHook | undefined,
-  key: KmsKey,
-  options?: TReadOptions
-): Promise<TAsyncEncryptor> => {
-  const ref = key.externalRef();
-  if (!ref) {
-    const encrypt = key.encryptor(rootKey);
-    return ({ plainText }) => Promise.resolve(encrypt({ plainText }));
+  joined(stores: TKeyCipherStores): KeyCipher {
+    return new KeyCipher(stores, this.rootKey, this.externalKms, true);
   }
-  const provider = requireExternalKms(externalKms);
-  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId, options);
-  return async ({ plainText }) => ({ cipherTextBlob: await provider.encrypt(ref, orgCipher, plainText) });
-};
 
-// `loadArchivedNow` is for stores bound to a caller's transaction, which a decryptor called later cannot use.
-export const keyDecryptor = async (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  externalKms: TExternalKmsHook | undefined,
-  key: KmsKey,
-  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {}
-): Promise<TAsyncDecryptor> => {
-  const ref = key.externalRef();
-  if (!ref && loadArchivedNow) {
-    const archived = await listArchived(stores, key);
-    return key.decryptor(rootKey, () => Promise.resolve(archived));
+  // The provider call runs when the encryptor is called, after every database read here has returned.
+  async encryptor(key: KmsKey, options?: TReadOptions): Promise<TAsyncEncryptor> {
+    const ref = key.externalRef();
+    if (!ref) {
+      const encrypt = key.encryptor(this.rootKey);
+      return ({ plainText }) => Promise.resolve(encrypt({ plainText }));
+    }
+    const provider = requireExternalKms(this.externalKms);
+    const orgCipher = await this.existingOrgCipher(key.orgId, options);
+    return async ({ plainText }) => ({ cipherTextBlob: await provider.encrypt(ref, orgCipher, plainText) });
   }
-  if (!ref) return internalDecryptor(stores, rootKey, key);
-  const provider = requireExternalKms(externalKms);
-  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId);
-  return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
-};
 
-export const openDataKey = async (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  externalKms: TExternalKmsHook | undefined,
-  key: KmsKey,
-  encryptedDataKey: Buffer
-): Promise<DataKey> => {
-  const decrypt = await keyDecryptor(stores, rootKey, externalKms, key);
-  const bytes = await decrypt({ cipherTextBlob: encryptedDataKey });
-  return DataKey.fromBytes(bytes);
-};
+  async decryptor(key: KmsKey): Promise<TAsyncDecryptor> {
+    if (!key.externalRef() && this.loadArchivedNow) {
+      const archived = await this.listArchived(key);
+      return key.decryptor(this.rootKey, () => Promise.resolve(archived));
+    }
+    return this.decryptorNow(key);
+  }
 
-export const sealDataKey = async (
-  stores: TKeyCipherStores,
-  rootKey: RootKey,
-  externalKms: TExternalKmsHook | undefined,
-  key: KmsKey,
-  dataKey: DataKey
-): Promise<Buffer> => {
-  const encrypt = await keyEncryptor(stores, rootKey, externalKms, key);
-  const { cipherTextBlob } = await encrypt({ plainText: dataKey.exportForWrapping() });
-  return cipherTextBlob;
-};
+  async openDataKey(key: KmsKey, encryptedDataKey: Buffer): Promise<DataKey> {
+    const decrypt = await this.decryptorNow(key);
+    return DataKey.fromBytes(await decrypt({ cipherTextBlob: encryptedDataKey }));
+  }
+
+  async sealDataKey(key: KmsKey, dataKey: DataKey): Promise<Buffer> {
+    const encrypt = await this.encryptor(key);
+    const { cipherTextBlob } = await encrypt({ plainText: dataKey.exportForWrapping() });
+    return cipherTextBlob;
+  }
+
+  // For a decryptor used before this call returns, so archived versions can load lazily even on joined stores.
+  private async decryptorNow(key: KmsKey, options?: TReadOptions): Promise<TAsyncDecryptor> {
+    const ref = key.externalRef();
+    if (!ref) return key.decryptor(this.rootKey, () => this.listArchived(key, options));
+    const provider = requireExternalKms(this.externalKms);
+    const orgCipher = await this.existingOrgCipher(key.orgId, options);
+    return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
+  }
+
+  private async listArchived(key: KmsKey, options?: TReadOptions) {
+    const { materialId } = key;
+    return materialId ? this.stores.kmsKeyVersionStore.listByInternalKmsId(materialId, options) : [];
+  }
+
+  // The org's data key must already exist: an external key's inputs were encrypted with it when stored.
+  private async existingOrgCipher(orgId: string, options?: TReadOptions): Promise<TCipherPair> {
+    const orgKey = await this.stores.organizationKeyStore.find(orgId, options);
+    if (!orgKey) throw new RuleViolationError({ message: "Invalid organization KMS" });
+    const material = orgKey.material();
+    const kmsKey = await requireKey(this.stores.kmsKeyStore, material.kmsKeyId, options);
+    const decrypt = await this.decryptorNow(kmsKey, options);
+    return DataKey.fromBytes(await decrypt({ cipherTextBlob: material.encryptedDataKey })).toCipherPair();
+  }
+}

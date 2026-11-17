@@ -665,6 +665,7 @@ export const registerRoutes = async (
     envConfig
   });
   domains.license.start();
+  domains.kmsCore.start(cronJob);
   const { usageMeteringService, licenseService } = domains.license;
   const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = domains.kmsCore;
   const { organizationsProjectsService } = domains.organizationsProjects;

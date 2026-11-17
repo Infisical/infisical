@@ -9,15 +9,8 @@ import { OrderByDirection } from "@app/lib/types";
 import { KeyMaterial } from "../../models/key-material";
 import { KmsKey, KmsKeyUsage, TKmsKeyDetails } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
-import { TExternalKmsHook, TKmsCoreStores, TKmsKeyFilter } from "../dependencies";
-import {
-  keyDecryptor,
-  keyEncryptor,
-  notFoundKey,
-  requireKey,
-  TAsyncDecryptor,
-  TAsyncEncryptor
-} from "../helpers/key-cipher";
+import { TKmsCoreStores, TKmsKeyFilter } from "../dependencies";
+import { KeyCipher, notFoundKey, requireKey, TAsyncDecryptor, TAsyncEncryptor } from "../helpers/key-cipher";
 
 export enum KmsKeyOrderBy {
   Name = "name"
@@ -142,15 +135,13 @@ export class KmsKeyService implements TKmsKeyService {
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
-    private readonly externalKms: TExternalKmsHook | undefined,
-    // Set for a service bound to a caller's transaction.
-    private readonly isJoined = false
+    private readonly keyCipher: KeyCipher
   ) {}
 
   within(tx: TTransaction): TKmsKeyTransaction {
     const runner = this.transactionRunner.within(tx);
     const joined = <T>(work: (service: KmsKeyService) => Promise<T>) =>
-      runner.run(({ stores }) => work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, true)));
+      runner.run(({ stores }) => work(new KmsKeyService(runner, stores, this.rootKey, this.keyCipher.joined(stores))));
     return {
       encryptWithKmsKey: (input) => joined((service) => service.encryptWithKmsKey(input)),
       decryptWithKmsKey: (input) => joined((service) => service.decryptWithKmsKey(input)),
@@ -309,12 +300,12 @@ export class KmsKeyService implements TKmsKeyService {
 
   async encryptWithKmsKey({ kmsId }: { kmsId: string }) {
     const key = await requireKey(this.stores.kmsKeyStore, kmsId);
-    return keyEncryptor(this.stores, this.rootKey, this.externalKms, key);
+    return this.keyCipher.encryptor(key);
   }
 
   async decryptWithKmsKey({ kmsId }: { kmsId: string }) {
     const key = await requireKey(this.stores.kmsKeyStore, kmsId);
-    return keyDecryptor(this.stores, this.rootKey, this.externalKms, key, { loadArchivedNow: this.isJoined });
+    return this.keyCipher.decryptor(key);
   }
 
   async getPublicKey({ kmsId }: { kmsId: string }, options?: TReadOptions) {
