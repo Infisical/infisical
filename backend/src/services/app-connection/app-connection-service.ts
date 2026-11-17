@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
@@ -693,6 +693,16 @@ export const appConnectionServiceFactory = ({
 
     // Revokes the credential the new rotation replaced, so it only runs after commit.
     let revokeReplacedCredential: (() => Promise<void>) | undefined;
+
+    // A project or org's first use of its data key creates it under advisory locks. Inside the create transaction
+    // those locks would be held through the rotation's call to the provider, so create the key first, on its own.
+    if (isAutoRotationEnabled && rotation) {
+      await kmsDataKeyService.createCipherPairWithDataKey(
+        projectId
+          ? { type: KmsDataKey.SecretManager, projectId }
+          : { type: KmsDataKey.Organization, orgId: actor.orgId }
+      );
+    }
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
