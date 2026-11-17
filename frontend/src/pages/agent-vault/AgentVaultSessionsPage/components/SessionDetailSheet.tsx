@@ -26,7 +26,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -44,26 +45,30 @@ type Props = {
   session: TAgentVaultSession | undefined;
   isPending?: boolean;
   onRevoke: (session: TAgentVaultSession) => void;
-  onEditLabel: (session: TAgentVaultSession) => void;
+  onEdit: (session: TAgentVaultSession) => void;
 };
 
-export const SessionDetailSheet = ({
-  session,
-  isPending = false,
-  onRevoke,
-  onEditLabel
-}: Props) => {
+export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdit }: Props) => {
   const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
 
   const isOwnerDeleted = session?.actor.id === null;
-  // The API refuses label edits once the owner, or the user it acts on behalf of, is deleted.
-  const canEditLabel = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
+  // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEdit =
+    !isOwnerDeleted &&
+    session?.onBehalfOf?.id !== null &&
+    Boolean(session && canActOnAgentVaultSession(permission, user.id, session, "edit"));
+  const canRevoke = Boolean(
+    session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
+  );
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const metadataEntries = Object.entries(session?.metadata ?? {});
   const services = session?.services ?? [];
   const shownServices = services.slice(0, SHOWN_INLINE_SERVICES);
   const moreServices = services.slice(SHOWN_INLINE_SERVICES);
@@ -258,7 +263,7 @@ export const SessionDetailSheet = ({
                       <SessionStatusBadge status={session.status} />
                     </Detail>
                   </div>
-                  {session.status === AgentVaultSessionStatus.Active && (
+                  {session.status === AgentVaultSessionStatus.Active && canRevoke && (
                     <Button
                       variant="danger"
                       size="sm"
@@ -271,20 +276,39 @@ export const SessionDetailSheet = ({
                   )}
                 </div>
                 <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-                  <Detail className="min-w-0 flex-1">
-                    <DetailLabel>Label</DetailLabel>
-                    <DetailValue
-                      className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
-                    >
-                      {session.label ?? "No label"}
-                    </DetailValue>
-                  </Detail>
-                  {canEditLabel && (
+                  <div className="flex min-w-0 flex-1 flex-col gap-3">
+                    <Detail>
+                      <DetailLabel>Label</DetailLabel>
+                      <DetailValue
+                        className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
+                      >
+                        {session.label ?? "No label"}
+                      </DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Metadata</DetailLabel>
+                      <DetailValue className="min-w-0">
+                        {metadataEntries.length > 0 ? (
+                          <dl className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                            {metadataEntries.map(([key, value]) => (
+                              <div key={key} className="flex min-w-0 gap-2">
+                                <dt className="max-w-1/2 shrink-0 text-muted">{key}</dt>
+                                <dd className="min-w-0 break-words">{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <span className="text-muted">No metadata</span>
+                        )}
+                      </DetailValue>
+                    </Detail>
+                  </div>
+                  {canEdit && (
                     <IconButton
                       variant="ghost"
                       size="xs"
-                      aria-label={session.label ? "Edit label" : "Add label"}
-                      onClick={() => onEditLabel(session)}
+                      aria-label="Edit session"
+                      onClick={() => onEdit(session)}
                     >
                       <PencilIcon />
                     </IconButton>

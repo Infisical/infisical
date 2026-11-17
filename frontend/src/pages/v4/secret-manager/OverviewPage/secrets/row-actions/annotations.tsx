@@ -7,17 +7,9 @@ import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { Select } from "@infisical/cipher/ui/select";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
@@ -510,53 +502,145 @@ function ScheduleFields({
   );
 }
 
-function ReminderForm({
+function ReminderFields({
   secretId,
   projectId,
-  reminder,
   canEdit,
   alert,
   members,
   form,
-  dirty,
-  pending,
-  onPending,
+  errors,
+  channelErrors,
+  hasNoRecipients,
   onPatch,
-  onClose,
-  onSave
-}: Omit<ReminderSheetProps, "open" | "secretName" | "environmentLabel" | "onOpenChange"> & {
+  onChannelErrorsChange
+}: {
+  secretId: string;
+  projectId: string;
+  canEdit: boolean;
   alert?: TAlert;
   members: TMemberEmails;
   form: TReminderForm;
-  dirty: boolean;
-  pending?: "save" | "delete";
-  onPending: (pending?: "save" | "delete") => void;
+  errors: Record<string, string>;
+  channelErrors: TFieldErrors;
+  hasNoRecipients: boolean;
   onPatch: (value: Partial<TReminderForm>) => void;
-  onClose: () => void;
+  onChannelErrorsChange: (errors: TFieldErrors) => void;
 }) {
-  const hasNoRecipients = Boolean(reminder) && !alert;
+  return (
+    <div className={styles.sheetForm}>
+      <ScheduleFields form={form} errors={errors} canEdit={canEdit} onChange={onPatch} />
+      <Field label="Note">
+        <Textarea
+          value={form.message}
+          placeholder="Remember to rotate this secret every month."
+          disabled={!canEdit}
+          onChange={(event) => onPatch({ message: event.target.value })}
+        />
+      </Field>
+      <div className={styles.channels}>
+        <div className={styles.formLabel}>Channels</div>
+        {hasNoRecipients && (
+          <SmallText muted>This reminder has nobody to notify. Choose recipients.</SmallText>
+        )}
+        <ChannelsStep
+          channels={form.channels}
+          errors={channelErrors}
+          onChange={(channels) => onPatch({ channels })}
+          onErrorsChange={onChannelErrorsChange}
+          projectId={projectId}
+          alertId={alert?.id}
+          members={members}
+          hasEnterprise
+          projectRecipients
+          resource={{
+            resourceType: AlertResourceType.SecretReminder,
+            resourceId: secretId
+          }}
+        />
+        {errors.channels && <FieldError>{errors.channels}</FieldError>}
+      </div>
+      {!canEdit && (
+        <SmallText muted>You do not have permission to manage reminders on this secret.</SmallText>
+      )}
+    </div>
+  );
+}
+
+const reminderDisabledReason = ({
+  canEdit,
+  isLoading,
+  loadFailed,
+  pending,
+  dirty
+}: {
+  canEdit: boolean;
+  isLoading: boolean;
+  loadFailed: boolean;
+  pending?: "save" | "delete";
+  dirty: boolean;
+}) => {
+  if (!canEdit) return "You don't have permission to manage reminders";
+  if (isLoading && loadFailed) return "Couldn't load this reminder's channels";
+  if (isLoading) return "Loading this reminder's channels";
+  if (pending === "delete") return "Deleting the reminder";
+  if (!dirty) return "No changes to save";
+  return undefined;
+};
+
+export function ReminderSheet({
+  open,
+  secretId,
+  projectId,
+  secretName,
+  environmentLabel,
+  reminder,
+  canEdit,
+  onOpenChange,
+  onSave
+}: ReminderSheetProps) {
+  const adapter = useV4Adapter("secrets");
+  const orgId = useOrgId();
+  const alerts = adapter.useReminderAlerts(
+    {
+      resourceType: AlertResourceType.SecretReminder,
+      projectId,
+      resourceId: secretId
+    },
+    { enabled: Boolean(reminder) }
+  );
+  const orgUsers = adapter.useReminderMembers(orgId);
+  const isLoading = Boolean(reminder) && !alerts.data;
+  const alert = alerts.data?.[0];
+  const initial = toReminderForm(projectId, reminder, alert);
+  const [draft, setDraft] = useState<TReminderForm>();
+  const [pending, setPending] = useState<"save" | "delete">();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
-  const patch = (value: Partial<TReminderForm>) => {
-    onPatch(value);
-    setErrors({});
-  };
+  const form = draft ?? initial;
+  const dirty = draft !== undefined && comparable(draft) !== comparable(initial);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => onOpenChange(false)
+  });
   const run = async (kind: "save" | "delete", request: () => Promise<void>) => {
-    onPending(kind);
+    setPending(kind);
     try {
       await request();
     } finally {
-      onPending(undefined);
+      setPending(undefined);
     }
   };
-  const submit = () => {
+  const validate = () => {
     const issues = scheduleIssues(form);
     if (!form.channels.length) issues.channels = "At least one channel is required";
     const nextChannelErrors = validateChannels(form.channels);
     setErrors(issues);
     setChannelErrors(nextChannelErrors);
-    if (Object.keys(issues).length || Object.keys(nextChannelErrors).length) return undefined;
-    return run("save", () =>
+    return !Object.keys(issues).length && !Object.keys(nextChannelErrors).length;
+  };
+  const save = async () => {
+    await run("save", () =>
       onSave(
         {
           ...(form.type === RECURRING
@@ -571,164 +655,86 @@ function ReminderForm({
         form.channels.map((channel) => toChannelInput(channelFormSchema.parse(channel)))
       )
     );
+    return false;
   };
+  let content = (
+    <ReminderFields
+      secretId={secretId}
+      projectId={projectId}
+      canEdit={canEdit}
+      alert={alert}
+      members={toMemberEmails(orgUsers.data)}
+      form={form}
+      errors={errors}
+      channelErrors={channelErrors}
+      hasNoRecipients={Boolean(reminder) && !alert}
+      onPatch={(value) => {
+        setDraft((current) => ({ ...(current ?? initial), ...value }));
+        setErrors({});
+      }}
+      onChannelErrorsChange={setChannelErrors}
+    />
+  );
+  if (isLoading && alerts.error)
+    content = (
+      <SmallText muted>
+        Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+      </SmallText>
+    );
+  else if (isLoading)
+    content = (
+      <Stack gap={12}>
+        <Skeleton height={56} />
+        <Skeleton height={56} />
+        <Skeleton height={160} />
+      </Stack>
+    );
   return (
     <>
-      <SheetBody>
-        <form
-          id="secret-reminder-form"
-          className={styles.sheetForm}
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <ScheduleFields form={form} errors={errors} canEdit={canEdit} onChange={patch} />
-          <Field label="Note">
-            <Textarea
-              value={form.message}
-              placeholder="Remember to rotate this secret every month."
-              disabled={!canEdit}
-              onChange={(event) => patch({ message: event.target.value })}
-            />
-          </Field>
-          <div className={styles.channels}>
-            <div className={styles.formLabel}>Channels</div>
-            {hasNoRecipients && (
-              <SmallText muted>This reminder has nobody to notify. Choose recipients.</SmallText>
-            )}
-            <ChannelsStep
-              channels={form.channels}
-              errors={channelErrors}
-              onChange={(channels) => patch({ channels })}
-              onErrorsChange={setChannelErrors}
-              projectId={projectId}
-              alertId={alert?.id}
-              members={members}
-              hasEnterprise
-              projectRecipients
-              resource={{
-                resourceType: AlertResourceType.SecretReminder,
-                resourceId: secretId
-              }}
-            />
-            {errors.channels && <FieldError>{errors.channels}</FieldError>}
-          </div>
-          {!canEdit && (
-            <SmallText muted>
-              You do not have permission to manage reminders on this secret.
-            </SmallText>
-          )}
-        </form>
-      </SheetBody>
-      <SheetFooter>
-        <Inline gap={8} justify="between">
-          <span>
-            {reminder && canEdit && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="xs"
-                icon="trash"
-                loading={pending === "delete"}
-                disabled={Boolean(pending)}
-                onClick={() => run("delete", () => onSave(undefined))}
-              >
-                Delete
-              </Button>
-            )}
-          </span>
-          <Inline gap={8}>
-            <Button type="button" variant="ghost" size="xs" onClick={onClose}>
-              Close
-            </Button>
-            {canEdit && (
-              <Button
-                type="submit"
-                form="secret-reminder-form"
-                size="xs"
-                disabled={!dirty || Boolean(pending)}
-                loading={pending === "save"}
-              >
-                {reminder ? "Update reminder" : "Create reminder"}
-              </Button>
-            )}
-          </Inline>
-        </Inline>
-      </SheetFooter>
-    </>
-  );
-}
-
-export function ReminderSheet({
-  open,
-  secretName,
-  environmentLabel,
-  ...props
-}: ReminderSheetProps) {
-  const adapter = useV4Adapter("secrets");
-  const orgId = useOrgId();
-  const alerts = adapter.useReminderAlerts(
-    {
-      resourceType: AlertResourceType.SecretReminder,
-      projectId: props.projectId,
-      resourceId: props.secretId
-    },
-    { enabled: Boolean(props.reminder) }
-  );
-  const orgUsers = adapter.useReminderMembers(orgId);
-  const isLoading = Boolean(props.reminder) && !alerts.data;
-  const alert = alerts.data?.[0];
-  const initial = toReminderForm(props.projectId, props.reminder, alert);
-  const [draft, setDraft] = useState<TReminderForm>();
-  const [pending, setPending] = useState<"save" | "delete">();
-  const dirty = draft !== undefined && comparable(draft) !== comparable(initial);
-  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: dirty,
-    onDiscard: () => props.onOpenChange(false)
-  });
-  return (
-    <>
-      <Sheet
+      <MultiStep
+        variant="sheet"
+        className={flowStyles.secretSheet}
         open={open}
-        onOpenChange={(next) => (next ? props.onOpenChange(true) : requestDiscard())}
-      >
-        <SheetContent className={flowStyles.secretSheet} pending={Boolean(pending)}>
-          <SheetHeader>
-            <SheetTitle>{props.reminder ? "Edit reminder" : "Add reminder"}</SheetTitle>
-            <SheetDescription>
-              {`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
-            </SheetDescription>
-          </SheetHeader>
-          {isLoading ? (
-            <SheetBody>
-              {alerts.error ? (
-                <SmallText muted>
-                  Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
-                </SmallText>
-              ) : (
-                <Stack gap={12}>
-                  <Skeleton height={56} />
-                  <Skeleton height={56} />
-                  <Skeleton height={160} />
-                </Stack>
-              )}
-            </SheetBody>
-          ) : (
-            <ReminderForm
-              {...props}
-              alert={alert}
-              members={toMemberEmails(orgUsers.data)}
-              form={draft ?? initial}
-              dirty={dirty}
-              pending={pending}
-              onPending={setPending}
-              onPatch={(value) => setDraft((current) => ({ ...(current ?? initial), ...value }))}
-              onClose={requestDiscard}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else if (!pending) requestDiscard();
+        }}
+        title={reminder ? "Edit reminder" : "Add reminder"}
+        description={`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
+        cancelLabel="Close"
+        completeLabel={reminder ? "Update reminder" : "Create reminder"}
+        onComplete={save}
+        footerStart={
+          reminder &&
+          canEdit && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              icon="trash"
+              loading={pending === "delete"}
+              disabled={Boolean(pending)}
+              onClick={() => run("delete", () => onSave(undefined))}
+            >
+              Delete
+            </Button>
+          )
+        }
+        steps={[
+          {
+            title: "Reminder",
+            disabledReason: reminderDisabledReason({
+              canEdit,
+              isLoading,
+              loadFailed: Boolean(alerts.error),
+              pending,
+              dirty
+            }),
+            validate,
+            content
+          }
+        ]}
+      />
       <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
   );

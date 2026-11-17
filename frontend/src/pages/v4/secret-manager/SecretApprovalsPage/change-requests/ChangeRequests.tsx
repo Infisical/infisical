@@ -311,6 +311,7 @@ export const ChangeRequests = ({
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert"
@@ -379,6 +380,7 @@ export const ChangeRequests = ({
         }
       />
       <DataTable
+        filtered={isFiltered}
         label={isOpen ? "Open change requests" : "Closed change requests"}
         rows={requests}
         columns={columns}

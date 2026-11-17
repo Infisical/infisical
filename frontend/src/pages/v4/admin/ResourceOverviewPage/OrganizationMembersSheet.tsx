@@ -191,6 +191,7 @@ export const OrganizationMembersSheet = ({
               }}
             />
             <DataTable
+              ghost={false}
               label={`Members of ${organization?.name ?? "organization"}`}
               rows={filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)}
               columns={columns}

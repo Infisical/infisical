@@ -382,6 +382,7 @@ const UsagesDialog = ({
           <DialogTitle>{`Usages for identity auth template: ${template.name}`}</DialogTitle>
         </DialogHeader>
         <DataTable
+          ghost={false}
           label={`Machine identities using ${template.name}`}
           rows={usages}
           columns={columns}
@@ -530,6 +531,7 @@ export const AuthTemplatesSection = () => {
             }}
           />
           <DataTable
+            filtered={searching}
             label="Machine identity auth templates"
             rows={rows}
             columns={columns}

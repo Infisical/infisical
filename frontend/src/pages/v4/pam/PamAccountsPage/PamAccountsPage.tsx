@@ -274,6 +274,7 @@ export const PamAccountsPage = () => {
           }
         />
         <DataTable
+          filtered={filterActive}
           label="Accounts"
           rows={folders.length || filterActive ? rows : []}
           columns={columns}
@@ -304,10 +305,10 @@ export const PamAccountsPage = () => {
               const { account } = row;
               return (
                 <AccountMenu
-                  orgId={orgId}
                   account={account}
                   onConfigure={(tab) => overlays.openAccount(account.id, tab)}
                   onRequestAccess={(accessType) => overlays.openRequestAccess(account, accessType)}
+                  onLaunch={() => overlays.openLaunch(account)}
                   onViewCredentials={() => overlays.openCredentials(account)}
                   onDelete={() =>
                     overlays.openDeleteAccount({

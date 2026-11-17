@@ -35,7 +35,7 @@ import type {
   TAgentVaultMintedSession,
   TAgentVaultSession,
   TCreateAgentVaultSessionDTO,
-  TUpdateAgentVaultSessionLabelDTO,
+  TUpdateAgentVaultSessionDTO,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultDecryptedSessionLogPage,
@@ -350,7 +350,7 @@ export const agentVaultLive: AgentVaultAdapter = {
   useUpdateSessionLabel: (orgId, projectId) => {
     const invalidate = useInvalidateSessions(orgId, projectId);
     return useMutation({
-      mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+      mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionDTO) => {
         const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
           `/api/v1/agent-vault/sessions/${sessionId}`,
           { label }

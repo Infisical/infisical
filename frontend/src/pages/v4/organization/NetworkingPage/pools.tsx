@@ -135,6 +135,7 @@ const PoolResourcesSheet = ({
         </SheetHeader>
         <SheetBody>
           <DataTable
+            ghost={false}
             label="Connected resources"
             rows={rows}
             loading={isPending}
@@ -361,6 +362,7 @@ export const PoolsTable = ({
   if (!isEnterprise)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="globe"
         title="Gateway pools need an Enterprise plan"
@@ -416,6 +418,7 @@ export const PoolsTable = ({
   return (
     <>
       <DataTable
+        filtered={pools.length > 0}
         label="Gateway pools"
         rows={list.pageRows}
         loading={isEnterprise && isPending}

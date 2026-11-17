@@ -228,6 +228,7 @@ export const OrgGroupsTab = () => {
         }
       />
       <DataTable
+        filtered={searching || roleFilter.length > 0}
         label="Organization groups"
         rows={groups}
         columns={columns}

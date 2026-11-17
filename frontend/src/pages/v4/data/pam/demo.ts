@@ -185,6 +185,19 @@ const credentialFieldsFor = (type: PamAccountType): TPamFieldDescriptor[] => {
   return [text("username", "Username"), password];
 };
 
+const WEB_ACCESS_TYPES = new Set<PamAccountType>([
+  PamAccountType.Postgres,
+  PamAccountType.CockroachDB,
+  PamAccountType.MySQL,
+  PamAccountType.Redis,
+  PamAccountType.Snowflake,
+  PamAccountType.ClickHouse,
+  PamAccountType.SSH,
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd,
+  PamAccountType.AwsIam
+]);
+
 const accountTypes: TPamAccountTypeMetadata[] = (
   [
     [PamAccountType.Postgres, "PostgreSQL", "Postgres.png"],
@@ -207,7 +220,7 @@ const accountTypes: TPamAccountTypeMetadata[] = (
   type,
   name,
   icon,
-  supportsWebAccess: false,
+  supportsWebAccess: WEB_ACCESS_TYPES.has(type),
   requiresGateway: type !== PamAccountType.AwsIam,
   supportsDependencies: false,
   connectionStringSchemes: CONNECTION_STRING_SCHEMES[type],
@@ -449,6 +462,7 @@ const detailsFor = (account: TPamAccountListItem): AccountDetails => {
       return [field.key, field.defaultValue ?? ""];
     })
   );
+  if (type === PamAccountType.ClickHouse) delete connection.port;
   if (type === PamAccountType.WindowsAd)
     connection.hosts = ["dc01.corp.acme.dev", "dc02.corp.acme.dev", "fs01.corp.acme.dev"];
   const credentials: Record<string, unknown> = {};
@@ -873,6 +887,7 @@ export const pamDemo: PamAdapter = {
     const overrides = overridesStore.use();
     const account = allAccounts.find(({ id }) => id === accountId);
     if (!account) return { data: undefined, isPending: Boolean(accountId), error: null };
+    const accountDetails = details[account.id] ?? detailsFor(account);
     return {
       data: {
         ...account,
@@ -880,7 +895,12 @@ export const pamDemo: PamAdapter = {
         templatePolicies: {},
         templateSettings: {},
         settingsOverrides: overrides[account.id] ?? null,
-        ...(details[account.id] ?? detailsFor(account))
+        ...accountDetails,
+        webAccessUnavailableReason:
+          account.accountType === PamAccountType.ClickHouse &&
+          accountDetails.connectionDetails.port === undefined
+            ? "Web access needs ClickHouse's HTTP interface. Set an HTTP port on this account, or connect with a native client through the CLI."
+            : null
       },
       isPending: false,
       error: null

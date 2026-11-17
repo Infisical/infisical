@@ -364,6 +364,7 @@ const EmptyConnections = ({
   if (error)
     return (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"
@@ -617,6 +618,7 @@ export const AppConnectionsTable = ({
         }
       />
       <DataTable
+        filtered={scoped.length > 0}
         label="App connections"
         rows={visible.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

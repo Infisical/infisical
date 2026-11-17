@@ -209,6 +209,7 @@ const RequestsTable = ({
         }
       />
       <DataTable
+        filtered={requests.length > 0}
         label={isSigning ? "Signing requests" : "Application requests"}
         rows={rows}
         loading={loading}

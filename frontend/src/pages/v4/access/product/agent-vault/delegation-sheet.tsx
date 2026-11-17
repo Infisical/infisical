@@ -296,6 +296,7 @@ const Content = ({ identity }: { identity: Identity }) => {
                   In delegation
                 </Heading>
                 <DataTable
+                  ghost={false}
                   label="In delegation"
                   rows={shown}
                   columns={inDelegationColumns}
@@ -328,6 +329,7 @@ const Content = ({ identity }: { identity: Identity }) => {
                   Not in delegation
                 </Heading>
                 <DataTable
+                  ghost={false}
                   label="Not in delegation"
                   rows={candidates}
                   columns={candidateColumns}

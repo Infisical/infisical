@@ -876,6 +876,7 @@ export const SessionLogsPanel = ({
       )}
 
       <DataTable<TAgentVaultSessionLogRecord>
+        ghost={false}
         label="Session requests"
         rows={visible}
         columns={columns}

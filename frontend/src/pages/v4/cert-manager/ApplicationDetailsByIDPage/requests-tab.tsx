@@ -291,6 +291,7 @@ export const RequestsTab = ({
         />
       )}
       <DataTable
+        filtered={filtered}
         label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
         rows={rows}
         loading={isPending}
@@ -347,7 +348,12 @@ export const RequestsTab = ({
         }}
         empty={
           (Boolean(loadError) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load certificate requests" />
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert"
+              title="Couldn't load certificate requests"
+            />
           )) ||
           (filtered ? (
             <EmptyState

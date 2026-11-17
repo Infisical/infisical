@@ -167,6 +167,7 @@ export const ServiceTokensTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label="Service tokens"
         rows={list.pageRows}
         columns={columns}

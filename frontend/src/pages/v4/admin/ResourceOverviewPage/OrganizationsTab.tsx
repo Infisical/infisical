@@ -165,6 +165,7 @@ export const OrganizationsTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Organizations"
         rows={organizations}
         columns={columns}

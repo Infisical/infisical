@@ -230,6 +230,7 @@ const ManageAccessContent = ({
               Has access
             </Heading>
             <DataTable
+              ghost={false}
               label={`Members with access to ${accessBundle.name}`}
               rows={members}
               columns={memberColumns}
@@ -269,6 +270,7 @@ const ManageAccessContent = ({
               No access
             </Heading>
             <DataTable
+              ghost={false}
               label={`Members without access to ${accessBundle.name}`}
               rows={candidates}
               columns={candidateColumns}

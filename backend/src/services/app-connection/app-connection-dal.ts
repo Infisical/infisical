@@ -19,6 +19,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
   const findWithProjectDetails = async (filter: AppConnectionFindFilter, tx?: Knex) => {
     const query = (tx || db.replicaNode())(TableName.AppConnection)
       .leftJoin(TableName.Project, `${TableName.AppConnection}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .leftJoin(
         TableName.AppConnectionCredentialRotation,
         `${TableName.AppConnection}.id`,

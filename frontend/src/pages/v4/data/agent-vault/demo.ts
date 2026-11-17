@@ -28,7 +28,7 @@ import type {
   TCreateAgentVaultSessionDTO,
   TSetAgentVaultDelegationDTO,
   TUpdateAgentVaultMemberRolesDTO,
-  TUpdateAgentVaultSessionLabelDTO
+  TUpdateAgentVaultSessionDTO
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
@@ -179,6 +179,7 @@ seedDemoProject("agent-platform", {
     ([label, actor, onBehalfOf, bundle, services, status, created, expires], index) => ({
       id: uuid("d1", index + 1),
       label,
+      metadata: {},
       actor,
       onBehalfOf,
       status,
@@ -663,6 +664,7 @@ export const agentVaultDemo: AgentVaultAdapter = {
       const session: TAgentVaultSession = {
         id: crypto.randomUUID(),
         label: label ?? null,
+        metadata: {},
         actor: sarah,
         onBehalfOf: null,
         status: Active,
@@ -680,6 +682,7 @@ export const agentVaultDemo: AgentVaultAdapter = {
       return {
         id: session.id,
         label: session.label,
+        metadata: session.metadata,
         token: randomToken(),
         expiresAt: session.expiresAt,
         createdAt: session.createdAt,
@@ -689,11 +692,13 @@ export const agentVaultDemo: AgentVaultAdapter = {
       };
     })(),
   useUpdateSessionLabel: (_, projectId) =>
-    fixtureMutation(({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+    fixtureMutation(({ sessionId, label }: TUpdateAgentVaultSessionDTO) => {
       updateDemoProject(projectId, (project) => ({
         ...project,
         sessions: project.sessions.map((session) =>
-          session.id === sessionId ? { ...session, label } : session
+          session.id === sessionId
+            ? { ...session, label: label === undefined ? session.label : label }
+            : session
         )
       }));
       return findSession(sessionId) as TAgentVaultSession;

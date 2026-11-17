@@ -13,12 +13,15 @@ import {
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Item } from "@infisical/cipher/ui/item";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Heading, Meta, SmallText, StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
   OrgPermissionAppConnectionActions,
@@ -30,6 +33,7 @@ import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/app
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
+  type TAutoApprovalCatalog,
   type TAutoApprovalCatalogConnection,
   type TAutoApprovalCatalogConstraint
 } from "@app/hooks/api/approvalPolicies";
@@ -41,6 +45,7 @@ import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { INLINE_CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import {
+  aiConditionError,
   ASSIGNED_TO_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_LIMITS,
   conditionError,
@@ -53,12 +58,17 @@ import {
   subjectDisplayLabel,
   subjectsMissingCheck,
   type TAutoApprovalDraft,
+  type TDraftAiCondition,
   type TDraftCondition,
   type TDraftRule,
   UNUSED_CONSTRAINT
 } from "./auto-approval-draft";
 
 type Scope = ReturnType<typeof folderAutoApprovalScope>;
+type TAi = TAutoApprovalCatalog["ai"];
+
+const NO_AI: TAi = { model: null, contextApps: [], contextConnections: [] };
+const NO_AI_MODEL = "Needs an AI model in Organization Settings";
 
 const ConnectionIcon = ({ app }: { app: string }) => {
   const details = APP_CONNECTION_MAP[app as AppConnection];
@@ -234,10 +244,114 @@ const ConditionRow = ({
   );
 };
 
+const AiConditionRow = ({
+  condition,
+  ai,
+  showErrors,
+  onChange,
+  onRemove
+}: {
+  condition: TDraftAiCondition;
+  ai: TAi;
+  showErrors: boolean;
+  onChange: (condition: TDraftAiCondition) => void;
+  onRemove: () => void;
+}) => {
+  const error = showErrors ? aiConditionError(condition) : null;
+  const selected = condition.contextConnectionIds;
+  const selectedIds = new Set(selected);
+  const availableIds = new Set(ai.contextConnections.map(({ id }) => id));
+  const atLimit = selected.length >= AUTO_APPROVAL_LIMITS.aiContextConnections;
+  const options = [
+    ...ai.contextConnections.map((connection) => ({
+      value: connection.id,
+      label: connection.name,
+      meta: APP_CONNECTION_MAP[connection.app as AppConnection]?.name ?? connection.app,
+      disabled: atLimit && !selectedIds.has(connection.id)
+    })),
+    ...selected
+      .filter((id) => !availableIds.has(id))
+      .map((id) => ({
+        value: id,
+        label: "Unavailable connection",
+        description: "You may not have access to it."
+      }))
+  ];
+
+  return (
+    <Item
+      variant="outline"
+      size="sm"
+      icon="sparkles"
+      title={
+        <Inline gap={8} align="center">
+          <span>AI approves the request</span>
+          {ai.model ? (
+            <Meta mono={false}>using {ai.model}</Meta>
+          ) : (
+            <StatusText tone="warn" icon="alert">
+              No AI model set up in Organization Settings
+            </StatusText>
+          )}
+        </Inline>
+      }
+      actions={
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          icon="x"
+          iconOnly
+          aria-label="Remove AI condition"
+          onClick={onRemove}
+        />
+      }
+    >
+      <Stack gap={12}>
+        <Field label="Instructions" wide error={error ?? undefined}>
+          <Textarea
+            rows={3}
+            maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
+            aria-invalid={Boolean(error)}
+            placeholder="Approve if the linked Jira ticket is an open incident assigned to the requester."
+            value={condition.prompt}
+            onChange={(event) => onChange({ ...condition, prompt: event.target.value })}
+          />
+        </Field>
+        <Field
+          wide
+          label="Additional context"
+          description="The AI can also read the connections your request form fields use."
+        >
+          <MultiSelect
+            label="Additional context"
+            size="sm"
+            searchable
+            quickActions={false}
+            options={options}
+            value={selected}
+            onChange={(value) =>
+              onChange({
+                ...condition,
+                contextConnectionIds: value.slice(0, AUTO_APPROVAL_LIMITS.aiContextConnections)
+              })
+            }
+            placeholder="Connections the AI can read from..."
+          />
+        </Field>
+        <Alert
+          tone="warn"
+          title="Requesters write the reason and form fields, and can try to instruct the AI through them. Keep the assignee and reuse checks in this rule."
+        />
+      </Stack>
+    </Item>
+  );
+};
+
 const RuleCard = ({
   rule,
   inputs,
   catalog,
+  ai,
   scope,
   showErrors,
   onChange,
@@ -246,6 +360,7 @@ const RuleCard = ({
   rule: TDraftRule;
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
+  ai: TAi;
   scope: Scope;
   showErrors: boolean;
   onChange: (rule: TDraftRule) => void;
@@ -310,11 +425,15 @@ const RuleCard = ({
     }))
     .filter(({ constraints }) => constraints.length > 0);
 
+  const aiConditions = rule.aiConditions ?? [];
+  const canAddAi = aiConditions.length === 0;
+
   let addBlocker: string | undefined;
-  if (choices.length === 0) addBlocker = "Add a request form field first";
-  else if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions)
+  if (rule.conditions.length + aiConditions.length >= AUTO_APPROVAL_LIMITS.conditions)
     addBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions`;
-  else if (menuGroups.length === 0) addBlocker = "Every available check is already in this rule";
+  else if (choices.length === 0 && !canAddAi) addBlocker = "Add a request form field first";
+  else if (menuGroups.length === 0 && !canAddAi)
+    addBlocker = "Every available check is already in this rule";
 
   const addCondition = (condition: Omit<TDraftCondition, "key" | "values">) =>
     onChange({
@@ -371,6 +490,26 @@ const RuleCard = ({
               onChange({
                 ...rule,
                 conditions: rule.conditions.filter(({ key }) => key !== condition.key)
+              })
+            }
+          />
+        ))}
+        {aiConditions.map((condition) => (
+          <AiConditionRow
+            key={condition.key}
+            condition={condition}
+            ai={ai}
+            showErrors={showErrors}
+            onChange={(next) =>
+              onChange({
+                ...rule,
+                aiConditions: aiConditions.map((entry) => (entry.key === next.key ? next : entry))
+              })
+            }
+            onRemove={() =>
+              onChange({
+                ...rule,
+                aiConditions: aiConditions.filter(({ key }) => key !== condition.key)
               })
             }
           />
@@ -433,6 +572,24 @@ const RuleCard = ({
                   ))}
                 </div>
               ))}
+              {canAddAi && (
+                <>
+                  {menuGroups.length > 0 && <DropdownMenuSeparator />}
+                  {menuGroups.length > 0 && <DropdownMenuLabel>AI</DropdownMenuLabel>}
+                  <DropdownMenuItem
+                    disabledReason={ai.model ? undefined : NO_AI_MODEL}
+                    onSelect={() =>
+                      onChange({
+                        ...rule,
+                        aiConditions: [{ key: newKey(), prompt: "", contextConnectionIds: [] }]
+                      })
+                    }
+                  >
+                    <Icon name="sparkles" />
+                    AI approves the request...
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {error && (
@@ -481,6 +638,7 @@ const useOrgConnectionCreation = (
 const RulesSection = ({
   draft,
   catalog,
+  ai,
   scope,
   showErrors,
   hasApprovers,
@@ -488,6 +646,7 @@ const RulesSection = ({
 }: {
   draft: TAutoApprovalDraft;
   catalog: TAutoApprovalCatalogConnection[];
+  ai: TAi;
   scope: Scope;
   showErrors: boolean;
   hasApprovers: boolean;
@@ -548,6 +707,7 @@ const RulesSection = ({
               rule={rule}
               inputs={draft.inputs}
               catalog={catalog}
+              ai={ai}
               scope={scope}
               showErrors={showErrors}
               onChange={(next) =>
@@ -567,6 +727,73 @@ const RulesSection = ({
   );
 };
 
+const InputRow = ({
+  input,
+  catalog,
+  onRemove
+}: {
+  input: TAutoApprovalDraft["inputs"][number];
+  catalog: TAutoApprovalCatalogConnection[];
+  onRemove: () => void;
+}) => {
+  const { connection, subject } = findSubject(catalog, input.connectionId, input.subject);
+  return (
+    <Item
+      variant="outline"
+      size="sm"
+      media={connection && <ConnectionIcon app={connection.app} />}
+      title={subject?.input?.label ?? input.subject}
+      description={connection?.name ?? "Connection unavailable. You may not have access to it."}
+      badge={<Badge tone="outline">Optional</Badge>}
+      actions={
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          icon="x"
+          iconOnly
+          aria-label="Remove field"
+          onClick={onRemove}
+        />
+      }
+    />
+  );
+};
+
+const InputList = ({
+  inputs,
+  catalog,
+  hasAiModel,
+  onRemove
+}: {
+  inputs: TAutoApprovalDraft["inputs"];
+  catalog: TAutoApprovalCatalogConnection[];
+  hasAiModel: boolean;
+  onRemove: (connectionId: string, subject: string) => void;
+}) => {
+  if (inputs.length === 0)
+    return (
+      <EmptyState
+        size="sm"
+        media="bare"
+        icon="file-text"
+        title="No request form fields"
+        description={
+          hasAiModel
+            ? "Rules can only use AI until you add one."
+            : "Rules have nothing to check until you add one."
+        }
+      />
+    );
+  return inputs.map((input) => (
+    <InputRow
+      key={`${input.connectionId}:${input.subject}`}
+      input={input}
+      catalog={catalog}
+      onRemove={() => onRemove(input.connectionId, input.subject)}
+    />
+  ));
+};
+
 export const AutoApprovalCard = ({
   scope,
   draft,
@@ -583,6 +810,7 @@ export const AutoApprovalCard = ({
   const { data, isPending, error, refetch } =
     useV4Adapter("pamAccess").useAutoApprovalCatalog(scope);
   const catalog = data?.connections ?? [];
+  const ai = data?.ai ?? NO_AI;
 
   const addFieldForConnection = async (connectionId: string) => {
     const latestCatalog = await refetch();
@@ -683,50 +911,17 @@ export const AutoApprovalCard = ({
               }}
             />
           </Inline>
-          {draft.inputs.length === 0 ? (
-            <EmptyState
-              size="sm"
-              media="bare"
-              icon="file-text"
-              title="No request form fields"
-              description="Rules have nothing to check until you add one."
-            />
-          ) : (
-            draft.inputs.map((input) => {
-              const { connection, subject } = findSubject(
-                catalog,
-                input.connectionId,
-                input.subject
-              );
-              return (
-                <Item
-                  key={`${input.connectionId}:${input.subject}`}
-                  variant="outline"
-                  size="sm"
-                  media={connection && <ConnectionIcon app={connection.app} />}
-                  title={subject?.input?.label ?? input.subject}
-                  description={
-                    connection?.name ?? "Connection unavailable. You may not have access to it."
-                  }
-                  badge={<Badge tone="outline">Optional</Badge>}
-                  actions={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      icon="x"
-                      iconOnly
-                      aria-label="Remove field"
-                      onClick={() => removeInput(input.connectionId, input.subject)}
-                    />
-                  }
-                />
-              );
-            })
-          )}
+          <InputList
+            inputs={draft.inputs}
+            catalog={catalog}
+            hasAiModel={Boolean(ai.model)}
+            onRemove={removeInput}
+          />
         </Stack>
         <RulesSection
           draft={draft}
           catalog={catalog}
+          ai={ai}
           scope={scope}
           showErrors={showErrors}
           hasApprovers={hasApprovers}

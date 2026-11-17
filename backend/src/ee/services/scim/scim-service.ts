@@ -1127,7 +1127,6 @@ export const scimServiceFactory = ({
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
     usageMeteringService.emit(membership.scopeOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(membership.scopeOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(membership.scopeOrgId, Meter.AgentVaultIdentities);
 
     await scimEventsDAL.create({
       orgId,

@@ -251,7 +251,6 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     }
     return { membership };
   };
@@ -553,7 +552,6 @@ export const membershipIdentityServiceFactory = ({
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
 
     if (needsRevocationBump && externalTx) {
       return {

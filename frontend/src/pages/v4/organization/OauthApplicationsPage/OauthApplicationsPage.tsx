@@ -202,6 +202,7 @@ const OauthClientsList = ({
         }
       />
       <DataTable
+        filtered={oauthClients.length > 0}
         label="OAuth applications"
         rows={rows}
         columns={columns}

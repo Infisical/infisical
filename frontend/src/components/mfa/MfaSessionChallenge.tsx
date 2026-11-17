@@ -2,6 +2,7 @@ import { ComponentProps, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 
 import { Button, FieldError, VerificationCodeForm } from "@app/components/v3";
+import { getApiErrorMessage, getErrorMessage, hasErrorName } from "@app/helpers/errors";
 import { isMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useVerifyMfaSession } from "@app/hooks/api/mfaSession";
@@ -58,10 +59,10 @@ export const MfaSessionChallenge = ({
         mfaMethod
       });
       await onVerified();
-    } catch (err: any) {
+    } catch (err) {
       if (handleLockout(err)) return;
 
-      setError(err?.response?.data?.message || "Invalid MFA code. Please try again.");
+      setError(getApiErrorMessage(err) || "Invalid MFA code. Please try again.");
       setMfaCode("");
       setCodeInputKey((key) => key + 1);
     } finally {
@@ -86,16 +87,14 @@ export const MfaSessionChallenge = ({
         });
         await onVerified();
       }
-    } catch (err: any) {
+    } catch (err) {
       if (handleLockout(err)) return;
 
       let errorMessage = "Failed to verify passkey";
-      if (err.name === "NotAllowedError") {
+      if (hasErrorName(err, "NotAllowedError")) {
         errorMessage = "Passkey verification was cancelled or timed out";
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
+      } else {
+        errorMessage = getErrorMessage(err) || errorMessage;
       }
 
       setError(errorMessage);

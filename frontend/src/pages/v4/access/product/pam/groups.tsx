@@ -288,6 +288,7 @@ export const PamGroupsTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label="Groups"
         rows={list.pageRows}
         columns={columns}
@@ -300,7 +301,7 @@ export const PamGroupsTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(groups.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load groups" />
           )) ||
           (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No groups match search" />

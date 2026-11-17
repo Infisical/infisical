@@ -1,10 +1,10 @@
 ---
 title: "Auto-approval"
 sidebarTitle: "Auto-approval"
-description: "Approve PAM access requests as soon as they're submitted when they pass the folder's rules."
+description: "Approve PAM access requests as soon as they're submitted when they pass one of the folder's rules."
 ---
 
-Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule checks a record that the requester links from another service, such as a Jira ticket, or checks whether the requester is on call in incident.io. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket, check whether the requester is on call in incident.io, have your organization's AI model review the request against your instructions, or combine these. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
 
 Auto-approval has two settings, each managed by a different role:
 
@@ -23,7 +23,8 @@ Infisical reads each service through an [app connection](/integrations/app-conne
 ## Prerequisites
 
 - Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
-- An app connection to a [supported service](#supported-services) that can read the records your rules check, such as Jira tickets or incident.io schedules
+- If your rules check linked records or the requester's account, an app connection to a [supported service](#supported-services) that can read what your rules check, such as Jira tickets or incident.io schedules
+- If your rules use [AI checks](#ai-checks), your organization's [AI model](#set-up-the-ai-model)
 
 ## Turn on auto-approval in a template
 
@@ -103,6 +104,50 @@ To require sign-off in Jira, use **is approved in Jira** rather than **has statu
 
 Infisical only checks the schedule when the request is submitted, so the access lasts for the full duration the requester asked for, even after their shift ends.
 
+## AI checks
+
+An AI check has your organization's AI model review a request against instructions you write. Use it for criteria the other checks can't express, such as whether a linked ticket describes an open incident.
+
+### Set up the AI model
+
+To set up the model, you need permission to edit organization settings:
+
+<Steps>
+  <Step>
+    In your organization, go to **Organization Settings** > **General**.
+  </Step>
+  <Step>
+    In the **AI Features** card, choose an organization-level [Anthropic connection](/integrations/app-connections/anthropic) under **Anthropic Connection**, then choose a **Model**.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+### Add an AI check to a rule
+
+<Steps>
+  <Step>
+    In a rule, select **Add Condition**, then select **AI approves the request**.
+  </Step>
+  <Step>
+    Under **Instructions**, describe when to approve, such as `Approve if the linked Jira ticket is an open incident assigned to the requester.`
+  </Step>
+  <Step>
+    Under **Additional Context**, choose any connections the AI can read from beyond the ones your request form fields use, then select **Save Changes**.
+  </Step>
+</Steps>
+
+The AI reads the requester's reason, the request details, and the linked records. Through a Jira connection, from a request form field or **Additional Context**, it can also read a ticket, read a ticket's Jira Service Management approvals, find users by email, and search tickets with JQL (up to 10 results), but it can't change anything in Jira. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
+
+The AI check passes only if the model approves. If the model declines or errors, the check fails like any other check. Infisical allows 30 seconds for all of a request's AI checks together: a check that hasn't decided by then fails, and AI checks in later rules aren't run.
+
+<Warning>
+  The requester writes the reason and the linked tickets, so they can try to give the AI instructions. Keep the **is assigned to the requester** and **hasn't been used before** checks in every rule with an AI check.
+</Warning>
+
+Approvers see the model's reasoning and the tickets it looked up under **Auto-approval status**. The requester isn't told why the AI didn't approve, only that the request wasn't auto-approved.
+
 ## Request access with a linked record
 
 If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
@@ -112,6 +157,8 @@ After you submit the request, the confirmation message shows whether a rule appr
 - If a rule approved it, the access you asked for starts right away
 - If no rule approved it, the request waits for an approver, and the message shows why the rule that came closest didn't pass
 - If no rule approved it and the folder has no approvers, the request is rejected (the message shows why the rule that came closest didn't pass)
+
+If the closest rule failed only on its [AI check](#ai-checks), the message doesn't give a reason.
 
 If you turn on **Break glass** in the form, the record fields disappear, because [break-glass](/documentation/platform/pam/access-requests/break-glass) requests skip the rules.
 

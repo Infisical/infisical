@@ -19,7 +19,7 @@ import type {
   TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
   TListAgentVaultProxiesDTO,
-  TUpdateAgentVaultSessionLabelDTO,
+  TUpdateAgentVaultSessionDTO,
   TAgentVaultProductMember,
   TChangeAgentVaultDelegationSubjectsDTO,
   TSetAgentVaultDelegationDTO,
@@ -104,7 +104,7 @@ export type AgentVaultAdapter = {
   useUpdateSessionLabel: (
     orgId: string,
     projectId: string
-  ) => ReturnType<V4Mutation<TUpdateAgentVaultSessionLabelDTO, TAgentVaultSession>>;
+  ) => ReturnType<V4Mutation<TUpdateAgentVaultSessionDTO, TAgentVaultSession>>;
   useRevokeSession: (
     orgId: string,
     projectId: string

@@ -199,6 +199,7 @@ export const SecretSyncsTab = ({
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"
@@ -380,6 +381,7 @@ export const SecretSyncsTab = ({
         }
       />
       <DataTable
+        filtered={isFiltered && syncs.length > 0}
         label="Secret syncs"
         rows={filtered.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

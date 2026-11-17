@@ -162,6 +162,7 @@ const StagedTab = ({
         onChange={(event) => paging.setSearch(event.target.value)}
       />
       <DataTable
+        ghost={false}
         label="Staged accounts"
         rows={rows}
         columns={columns}
@@ -288,6 +289,7 @@ const StaleTab = ({
         onChange={(event) => paging.setSearch(event.target.value)}
       />
       <DataTable
+        ghost={false}
         label="Stale accounts"
         rows={data?.accounts ?? []}
         columns={columns}
@@ -341,6 +343,7 @@ const RunResult = ({ run }: { run: TPamDiscoveryRun }) => {
 
 const RunsTab = ({ runs, isPending }: { runs: TPamDiscoveryRun[]; isPending: boolean }) => (
   <DataTable
+    ghost={false}
     label="Scan history"
     rows={runs}
     loading={isPending}

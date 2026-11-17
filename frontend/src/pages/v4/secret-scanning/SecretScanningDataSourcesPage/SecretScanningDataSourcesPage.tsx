@@ -506,6 +506,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
           }
         />
         <DataTable
+          filtered={isFiltered && dataSources.length > 0}
           label="Data sources"
           rows={filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)}
           columns={columns}

@@ -436,6 +436,7 @@ export type TAgentVaultSessionOnBehalfOf = Extract<
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
@@ -497,6 +498,7 @@ export type TSetAgentVaultDelegationDTO = {
 export type TAgentVaultMintedSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   token: string;
   expiresAt: string | null;
   createdAt: string;
@@ -539,6 +541,7 @@ export type TListAgentVaultSessionsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  metadata?: Record<string, string>;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {
@@ -684,11 +687,14 @@ export type TCreateAgentVaultSessionDTO = {
   accessBundle: string;
   ttl: string;
   label?: string;
+  metadata?: Record<string, string>;
 };
 
-export type TUpdateAgentVaultSessionLabelDTO = {
+export type TUpdateAgentVaultSessionDTO = {
   sessionId: string;
-  label: string | null;
+  label?: string | null;
+  /** Replaces the session's whole metadata set; an empty object clears it. */
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultProxySettingsDTO = {
@@ -1027,4 +1033,21 @@ export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   skillId: string;
   /** The version the files were edited from. The server refuses the save when a newer one was published since. */
   baseVersion?: number;
+};
+
+export type TAgentVaultFreeUsage = {
+  used: number;
+  limit: number;
+  resetsAt: string;
+};
+
+export type TAgentVaultAccess = {
+  /** `free` and `limit-reached` are orgs without Agent Vault on their plan, counted against the free monthly requests. */
+  state: "self-hosted" | "plan" | "open" | "free" | "limit-reached";
+  /** False once the free requests are used: proxies refuse agent requests until a payment method is added or the month resets. */
+  allowed: boolean;
+  /** Only for an org on the free tier. Org-wide: sub-organizations share their root's count. */
+  freeUsage: TAgentVaultFreeUsage | null;
+  /** True from 80% of the free requests. */
+  warn: boolean;
 };

@@ -430,6 +430,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert"
@@ -542,6 +543,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
           )}
         </Inline>
         <DataTable<AuditLog>
+          filtered
           key={[active.from, active.to, JSON.stringify(filters)].join()}
           label={`Audit log, ${active.title}`}
           rows={rows}

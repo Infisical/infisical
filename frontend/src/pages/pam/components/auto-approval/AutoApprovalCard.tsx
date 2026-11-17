@@ -27,7 +27,8 @@ import { AppConnection, TAppConnection } from "@app/hooks/api/appConnections";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  TAutoApprovalCatalog
 } from "@app/hooks/api/approvalPolicies";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
@@ -42,6 +43,8 @@ import {
 } from "./autoApprovalDraft";
 import { ConnectionIcon, DisabledReason, LogicConnector } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
+
+const NO_AI: TAutoApprovalCatalog["ai"] = { model: null, contextApps: [], contextConnections: [] };
 
 type Props = {
   policyType: ApprovalPolicyType;
@@ -70,6 +73,7 @@ export const AutoApprovalCard = ({
     refetch
   } = useQuery(approvalPolicyQuery.autoApprovalCatalog({ policyType, scope, scopeId }));
   const catalog = catalogData?.connections ?? [];
+  const ai = catalogData?.ai ?? NO_AI;
 
   const { permission } = useOrgPermission();
   const canCreateConnection = permission.can(
@@ -249,7 +253,10 @@ export const AutoApprovalCard = ({
                 {draft.inputs.length === 0 ? (
                   <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
                     No request form fields added.
-                    {!hasRequesterChecks && " Rules have nothing to check until you add one."}
+                    {!hasRequesterChecks &&
+                      (ai.model
+                        ? " Rules can only use AI until you add one."
+                        : " Rules have nothing to check until you add one.")}
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-border rounded-md border border-border">
@@ -337,6 +344,7 @@ export const AutoApprovalCard = ({
                             rule={rule}
                             inputs={draft.inputs}
                             catalog={catalog}
+                            ai={ai}
                             policyType={policyType}
                             scope={scope}
                             scopeId={scopeId}

@@ -155,6 +155,7 @@ export const AgentVaultIdentitiesTab = () => {
         }
       />
       <DataTable
+        filtered={list.searching}
         label="Machine identities"
         rows={list.rows}
         columns={columns}
@@ -178,7 +179,12 @@ export const AgentVaultIdentitiesTab = () => {
         loadingRows={10}
         empty={
           (Boolean(list.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load machine identities" />
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert"
+              title="Couldn't load machine identities"
+            />
           )) ||
           (list.searching ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />

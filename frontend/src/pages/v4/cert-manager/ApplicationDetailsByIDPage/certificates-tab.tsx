@@ -261,6 +261,7 @@ export const CertificatesTab = ({
         />
       )}
       <DataTable
+        filtered={filtered}
         label={`Certificates in ${application.name}`}
         rows={rows}
         loading={isPending}

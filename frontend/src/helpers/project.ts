@@ -172,8 +172,6 @@ export const getOrgScopedProductFromPath = (pathname: string): ProjectType | nul
 
 const AGENT_VAULT_PROJECT_PATH_RE = /^\/organizations\/[^/]+\/projects\/agent-vault(?:\/|$)/;
 
-// Agent Vault keeps its own product colour on its project list and inside a project, so cosmetic chrome reads it
-// off the path.
 export const isAgentVaultProjectPath = (pathname: string) =>
   AGENT_VAULT_PROJECT_PATH_RE.test(pathname);
 

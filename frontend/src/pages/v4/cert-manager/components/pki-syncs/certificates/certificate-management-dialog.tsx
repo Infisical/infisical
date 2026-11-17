@@ -227,6 +227,7 @@ export const CertificateManagementDialog = ({
               }
             />
             <DataTable
+              ghost={false}
               label="Certificates"
               rows={certificates}
               columns={columns}

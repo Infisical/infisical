@@ -110,6 +110,7 @@ export const AccountList = ({
         }
       />
       <DataTable
+        filtered={filters.active}
         label={label}
         rows={accounts}
         columns={columns}
@@ -121,10 +122,10 @@ export const AccountList = ({
           menuLabel: "Account options",
           renderMenu: (account) => (
             <AccountMenu
-              orgId={orgId}
               account={account}
               onConfigure={(tab) => overlays.openAccount(account.id, tab)}
               onRequestAccess={(accessType) => overlays.openRequestAccess(account, accessType)}
+              onLaunch={() => overlays.openLaunch(account)}
               onViewCredentials={() => overlays.openCredentials(account)}
               onDelete={() =>
                 overlays.openDeleteAccount({

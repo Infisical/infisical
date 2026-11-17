@@ -201,6 +201,7 @@ export const EmailDomainsTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Email domains"
         rows={emailDomains}
         columns={columns}

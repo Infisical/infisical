@@ -154,6 +154,7 @@ export const UsersTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(debouncedSearch) || adminsOnly}
         label="Users"
         rows={users}
         columns={columns}
