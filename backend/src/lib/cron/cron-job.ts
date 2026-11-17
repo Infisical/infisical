@@ -40,6 +40,7 @@ export const CronJobName = {
   CaCrlRotation: "ca-crl-rotation",
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
   SignerIssuancePolling: "signer-issuance-polling",
+  SignerPendingRevocationSync: "signer-pending-revocation-sync",
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",

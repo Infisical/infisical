@@ -2,6 +2,8 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { ProjectType } from "@app/hooks/api/projects/types";
+
 import { SecretSharingPage } from "./SecretSharingPage";
 
 const SecretSharingQueryParams = z.object({
@@ -18,6 +20,7 @@ export const Route = createFileRoute(
     middlewares: [stripSearchParams({ selectedTab: "" })]
   },
   context: () => ({
+    productType: ProjectType.SecretManager,
     breadcrumbs: [
       {
         label: "Secret Sharing"
