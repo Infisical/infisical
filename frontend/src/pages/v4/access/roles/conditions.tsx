@@ -56,6 +56,8 @@ const assignable = (target: string): ConditionOption[] => [
   }
 ];
 
+const NAME: ConditionOption = { value: "name", label: "Name" };
+
 const GENERAL = [ENVIRONMENT, SECRET_PATH];
 
 export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
@@ -115,7 +117,27 @@ export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
       value: "connectionId",
       label: "Connection ID"
     }
-  ]
+  ],
+  "certificate-authorities": [NAME],
+  certificates: [
+    {
+      value: "commonName",
+      label: "Common name",
+      description: "The common name (CN) of the certificate"
+    },
+    {
+      value: "altNames",
+      label: "Subject alternative names",
+      description: "The subject alternative names (SANs) of the certificate"
+    },
+    { value: "serialNumber", label: "Serial number" },
+    { value: "metadataKey", label: "Metadata key" },
+    { value: "metadataValue", label: "Metadata value" }
+  ],
+  "certificate-profiles": [{ value: "slug", label: "Name" }],
+  "certificate-policies": [NAME],
+  "pki-subscribers": [NAME],
+  "pki-syncs": [{ value: "name", label: "Sync name" }]
 };
 
 const EQ = { value: "$eq", label: "Equal" };
@@ -123,7 +145,9 @@ const NEQ = { value: "$ne", label: "Not equal" };
 const IN = { value: "$in", label: "In" };
 const GLOB = { value: "$glob", label: "Glob match" };
 
-const operatorsFor = (lhs: string) => {
+const operatorsFor = (lhs: string, subject: string) => {
+  if (subject === "certificates" && (lhs === "metadataKey" || lhs === "metadataValue"))
+    return [EQ, IN];
   if (lhs === "secretTags")
     return [
       { value: "$in", label: "Contains" },
@@ -370,7 +394,7 @@ export const ConditionsFields = ({
                         label={`Condition ${index + 1} operator for ${scopeLabel}`}
                         value={condition.operator}
                         disabled={disabled}
-                        options={operatorsFor(condition.lhs)}
+                        options={operatorsFor(condition.lhs, subject)}
                         onChange={(operator) => patch(index, { operator: operator as Operator })}
                       />
                     </div>

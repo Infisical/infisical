@@ -57,6 +57,7 @@ import {
   projectToApi,
   type RolePermissions,
   type RoleScope,
+  SUB_ORG_SUBJECTS,
   subjectsFor,
   validatePermissions
 } from "./permissions-model";
@@ -66,6 +67,7 @@ import { RuleTable } from "./rule-table";
 import { VaultImportSheet } from "./vault-import-sheet";
 
 const BUILT_IN = "Built-in roles are read only";
+const ADMIN_OR_MEMBER_PRODUCTS = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
@@ -79,6 +81,8 @@ export type RoleEditorProps = {
   backHref: string;
   backLabel?: string;
   describable?: boolean;
+  readOnlyReason?: string;
+  projectType?: ProjectType;
   subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
   references: { environments?: readonly string[]; tags?: readonly string[] };
@@ -99,6 +103,8 @@ export const RoleEditor = ({
   backHref,
   backLabel,
   describable = true,
+  readOnlyReason,
+  projectType,
   subjects,
   can,
   references,
@@ -118,8 +124,8 @@ export const RoleEditor = ({
   const [overlay, setOverlay] = useState<Overlay>();
   const [saving, setSaving] = useState(false);
   const current = draft ?? stored;
-  const editable = isCustom && can.edit;
-  const reason = isCustom ? RESTRICTED : BUILT_IN;
+  const editable = isCustom && can.edit && !readOnlyReason;
+  const reason = readOnlyReason ?? (isCustom ? RESTRICTED : BUILT_IN);
   const dirty =
     draft !== undefined &&
     JSON.stringify(permissionsToApi(scope, draft)) !==
@@ -273,7 +279,7 @@ export const RoleEditor = ({
       <RuleTable
         scope={scope}
         draft={current}
-        subjects={subjects ?? subjectsFor(scope)}
+        subjects={subjects ?? subjectsFor(scope, projectType)}
         editable={editable}
         reason={reason}
         errors={errors}
@@ -360,6 +366,7 @@ export const RoleEditor = ({
       {scope === "project" && (
         <>
           <PolicyTemplateSheet
+            projectType={projectType}
             open={overlay === "template"}
             onOpenChange={(next) => setOverlay(next ? "template" : undefined)}
             permissions={current}
@@ -411,11 +418,13 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   if (!role) return <NotFound backHref={backHref} />;
 
   const isCustom = isCustomOrgRole(role.slug);
+  const isSubOrganization = Boolean(org?.rootOrgId) && org?.rootOrgId !== org?.id;
   return (
     <RoleEditor
       key={role.id}
       scope="org"
       role={role}
+      subjects={isSubOrganization ? SUB_ORG_SUBJECTS : undefined}
       isCustom={isCustom}
       isDefault={org?.defaultMembershipRole === role.id || org?.defaultMembershipRole === role.slug}
       taken={(roles ?? []).map((item) => item.slug)}
@@ -487,6 +496,8 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const createRole = access.useCreateProjectRole();
   const deleteRole = access.useDeleteProjectRole();
   const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
+  const writeType =
+    scope.projectType === ProjectType.CertificateManager ? undefined : scope.projectType;
 
   const canRead = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   if (permissionPending || (canRead && isPending)) return <PageLoader label="Loading role" />;
@@ -502,6 +513,12 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       isDefault={false}
       taken={(roles ?? []).map((item) => item.slug)}
       backHref={backHref}
+      projectType={scope.projectType}
+      readOnlyReason={
+        ADMIN_OR_MEMBER_PRODUCTS.has(scope.projectType)
+          ? "This product only applies the Admin and Member roles, so rules on other roles have no effect"
+          : undefined
+      }
       can={{
         edit: canEdit,
         create: permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role),
@@ -516,7 +533,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       savePermissions={async (permissions) => {
         await updateRole.mutateAsync({
           projectId,
-          projectType: scope.projectType,
+          projectType: writeType,
           id: role.id,
           permissions: projectToApi(permissions)
         });
@@ -525,7 +542,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         try {
           const next = await updateRole.mutateAsync({
             projectId,
-            projectType: scope.projectType,
+            projectType: writeType,
             id: role.id,
             ...draft
           });
@@ -541,7 +558,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         try {
           const created = await createRole.mutateAsync({
             projectId,
-            projectType: scope.projectType,
+            projectType: writeType,
             ...draft,
             permissions: sanitizeDuplicateRolePermissions(role.permissions)
           });
@@ -555,7 +572,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       }}
       remove={async () => {
         try {
-          await deleteRole.mutateAsync({ projectId, projectType: scope.projectType, id: role.id });
+          await deleteRole.mutateAsync({ projectId, projectType: writeType, id: role.id });
           saved("Successfully deleted project role");
           go(backHref);
         } catch (error) {
@@ -568,7 +585,8 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
 
 export const RoleDetail = () => {
   const params = useParams({ strict: false });
-  if (params.projectId && params.roleSlug)
-    return <ProjectRoleDetail projectId={params.projectId} roleSlug={params.roleSlug} />;
+  const { projectId } = useProjectScope();
+  if (projectId && params.roleSlug)
+    return <ProjectRoleDetail projectId={projectId} roleSlug={params.roleSlug} />;
   return <OrgRoleDetail orgId={params.orgId ?? ""} roleId={params.roleId ?? ""} />;
 };

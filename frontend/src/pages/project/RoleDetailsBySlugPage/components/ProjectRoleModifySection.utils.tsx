@@ -1072,6 +1072,14 @@ const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition
 };
 
 // convert role permission to form compatible data structure
+const AGENT_VAULT_FORM_SUBJECTS = new Set<ProjectPermissionSub>([
+  ProjectPermissionSub.AgentVaultAccessBundles,
+  ProjectPermissionSub.AgentVaultSessions,
+  ProjectPermissionSub.AgentVaultProxies,
+  ProjectPermissionSub.AgentVaultSkills,
+  ProjectPermissionSub.AgentVaultVariables
+]);
+
 export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Partial<TFormSchema["permissions"]> = {};
 
@@ -1991,6 +1999,14 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
+    }
+
+    if (AGENT_VAULT_FORM_SUBJECTS.has(subject)) {
+      const agentVaultForm = formVal as Record<string, Record<string, boolean>[]>;
+      agentVaultForm[subject] ??= [{}];
+      [action].flat().forEach((value) => {
+        agentVaultForm[subject][0][value] = true;
+      });
     }
   });
 

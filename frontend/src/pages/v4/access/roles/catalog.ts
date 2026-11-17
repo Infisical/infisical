@@ -2426,3 +2426,479 @@ export const KMS_KEY_SUBJECTS: PermissionSubject[] = [
     ]
   }
 ];
+
+export const CERT_MANAGER_SUBJECTS: PermissionSubject[] = [
+  {
+    subject: "certificate-authorities",
+    title: "Certificate authorities",
+    conditional: true,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "View certificate authorities and their configuration"
+      },
+      { value: "create", label: "Create", description: "Create new certificate authorities" },
+      { value: "edit", label: "Modify", description: "Update certificate authority settings" },
+      { value: "delete", label: "Remove", description: "Delete certificate authorities" },
+      {
+        value: "issue-ca-certificate",
+        label: "Issue CA certificate",
+        description: "Issue certificates from a certificate authority"
+      },
+      {
+        value: "sign-intermediate",
+        label: "Sign intermediate",
+        description: "Sign intermediate CA certificates"
+      }
+    ]
+  },
+  {
+    subject: "certificates",
+    title: "Certificates",
+    conditional: true,
+    actions: [
+      { value: "read", label: "Read", description: "View certificates and their metadata" },
+      {
+        value: "read-private-key",
+        label: "Read private key",
+        description: "Access and view certificate private keys (sensitive operation)"
+      },
+      {
+        value: "import",
+        label: "Import",
+        description: "Import existing certificates into the system"
+      },
+      { value: "edit", label: "Modify", description: "Update certificate properties" },
+      { value: "delete", label: "Remove", description: "Delete certificates" }
+    ]
+  },
+  {
+    subject: "certificate-profiles",
+    title: "Certificate profiles",
+    conditional: true,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "View certificate profiles and their configuration"
+      },
+      { value: "create", label: "Create", description: "Create new certificate profiles" },
+      { value: "edit", label: "Modify", description: "Update certificate profile settings" },
+      { value: "delete", label: "Remove", description: "Delete certificate profiles" },
+      {
+        value: "issue-cert",
+        label: "Request certificates",
+        description: "Request new certificates using a profile"
+      }
+    ]
+  },
+  {
+    subject: "certificate-policies",
+    title: "Certificate policies",
+    conditional: true,
+    actions: [
+      { value: "read", label: "Read", description: "View certificate policies and their rules" },
+      { value: "create", label: "Create", description: "Create new certificate policies" },
+      { value: "edit", label: "Modify", description: "Update certificate policy rules" },
+      { value: "delete", label: "Remove", description: "Delete certificate policies" }
+    ]
+  },
+  {
+    subject: "certificate-application",
+    title: "Applications",
+    description: "Services and workloads that issue their own certificates",
+    conditional: false,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description:
+          "See all applications in Certificate Manager. An application's details stay hidden unless you are a member of it"
+      },
+      { value: "list", label: "List", description: "List the applications in Certificate Manager" },
+      { value: "create", label: "Create", description: "Create new applications" }
+    ]
+  },
+  {
+    subject: "pki-subscribers",
+    title: "PKI subscribers",
+    description: "Entities that receive certificates",
+    conditional: true,
+    actions: [
+      { value: "read", label: "Read", description: "View PKI subscribers and their details" },
+      { value: "create", label: "Create", description: "Register new PKI subscribers" },
+      { value: "edit", label: "Modify", description: "Update subscriber configuration" },
+      { value: "delete", label: "Remove", description: "Remove PKI subscribers" },
+      {
+        value: "list-certs",
+        label: "List certificates",
+        description: "View certificates associated with a subscriber"
+      }
+    ]
+  },
+  {
+    subject: "pki-collections",
+    title: "PKI collections",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View PKI collections" },
+      { value: "create", label: "Create", description: "Create new certificate collections" },
+      { value: "edit", label: "Modify", description: "Update collection properties" },
+      { value: "delete", label: "Remove", description: "Delete PKI collections" }
+    ]
+  },
+  {
+    subject: "pki-alerts",
+    title: "PKI alerts",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View PKI alerts and notifications" },
+      { value: "create", label: "Create", description: "Set up new certificate expiration alerts" },
+      { value: "edit", label: "Modify", description: "Update alert configuration" },
+      { value: "delete", label: "Remove", description: "Delete PKI alerts" }
+    ]
+  },
+  {
+    subject: "certificate-inventory-views",
+    title: "Inventory views",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View saved inventory views" },
+      { value: "create", label: "Create", description: "Create new inventory views" },
+      { value: "edit", label: "Modify", description: "Update inventory views and toggle sharing" },
+      { value: "delete", label: "Remove", description: "Delete inventory views" }
+    ]
+  },
+  {
+    subject: "pki-syncs",
+    title: "Certificate syncs",
+    conditional: true,
+    actions: [
+      { value: "read", label: "Read", description: "View certificate sync configurations" },
+      { value: "create", label: "Create", description: "Set up new certificate syncs" },
+      { value: "edit", label: "Modify", description: "Update sync configuration" },
+      { value: "delete", label: "Remove", description: "Delete certificate sync configurations" },
+      {
+        value: "sync-certificates",
+        label: "Trigger syncs",
+        description: "Manually trigger certificate synchronization"
+      },
+      {
+        value: "import-certificates",
+        label: "Import certificates from destination",
+        description: "Import certificates from the sync destination"
+      },
+      {
+        value: "remove-certificates",
+        label: "Remove certificates from destination",
+        description: "Remove synced certificates from the destination"
+      },
+      {
+        value: "set-health-check-command",
+        label: "Set health check",
+        description: "Set the command a sync runs on the destination host before delivering"
+      },
+      {
+        value: "set-post-sync-command",
+        label: "Set post-sync command",
+        description: "Set the command a sync runs on the destination host after delivering"
+      },
+      {
+        value: "set-target-host",
+        label: "Set target host",
+        description:
+          "Choose which host a sync delivers to when using an LDAP connection. The sync authenticates to that host with the connection's credential"
+      }
+    ]
+  },
+  {
+    subject: "pki-discovery",
+    title: "PKI discovery",
+    conditional: false,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "View PKI discovery configurations and results"
+      },
+      { value: "create", label: "Create", description: "Set up new PKI discovery scans" },
+      { value: "edit", label: "Modify", description: "Update discovery configuration" },
+      { value: "delete", label: "Remove", description: "Delete PKI discovery configurations" },
+      { value: "run-scan", label: "Run scan", description: "Trigger a certificate discovery scan" }
+    ]
+  },
+  {
+    subject: "pki-certificate-installations",
+    title: "Certificate installations",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View certificate installation records" },
+      { value: "edit", label: "Modify", description: "Update installation properties" },
+      { value: "delete", label: "Remove", description: "Remove certificate installation records" }
+    ]
+  },
+  {
+    subject: "code-signers",
+    title: "PKI code signing",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View code signers and signing operations" },
+      { value: "create", label: "Create", description: "Create new code signers" },
+      { value: "edit", label: "Modify", description: "Update code signer configuration" },
+      { value: "delete", label: "Remove", description: "Delete code signers" },
+      { value: "sign", label: "Sign", description: "Perform code signing operations" }
+    ]
+  },
+  {
+    subject: "hsm-connectors",
+    title: "HSM connectors",
+    description: "Bridge Infisical to your HSM",
+    conditional: false,
+    actions: [
+      {
+        value: "read-hsm-connectors",
+        label: "Read",
+        description: "View HSM Connectors and their configuration (PIN is never returned)"
+      },
+      {
+        value: "create-hsm-connectors",
+        label: "Create",
+        description: "Create a new HSM Connector"
+      },
+      {
+        value: "edit-hsm-connectors",
+        label: "Update",
+        description: "Edit name, description, key name prefix, routing, or rotate the PIN"
+      },
+      {
+        value: "delete-hsm-connectors",
+        label: "Delete",
+        description: "Delete an HSM Connector (blocked if any certificate references it)"
+      },
+      {
+        value: "test-hsm-connectors",
+        label: "Verify",
+        description: "Verify the connector reaches the HSM through the gateway"
+      },
+      {
+        value: "attach-hsm-connectors",
+        label: "Attach",
+        description:
+          "Attach an HSM Connector when issuing a certificate (mints a fresh keypair on the HSM)"
+      }
+    ]
+  }
+];
+
+export const SECRET_SCANNING_SUBJECTS: PermissionSubject[] = [
+  {
+    subject: "secret-scanning-data-sources",
+    title: "Secret scanning data sources",
+    conditional: false,
+    actions: [
+      {
+        value: "read-data-sources",
+        label: "Read data sources",
+        description: "View configured data sources for secret scanning"
+      },
+      {
+        value: "create-data-sources",
+        label: "Create data sources",
+        description: "Add new data sources"
+      },
+      {
+        value: "edit-data-sources",
+        label: "Modify data sources",
+        description: "Update data source configuration"
+      },
+      {
+        value: "delete-data-sources",
+        label: "Delete data sources",
+        description: "Remove data sources"
+      },
+      {
+        value: "read-data-source-resources",
+        label: "Read resources",
+        description: "View discovered resources within data sources"
+      },
+      {
+        value: "read-data-source-scans",
+        label: "Read scans",
+        description: "View scan history and results"
+      },
+      {
+        value: "trigger-data-source-scans",
+        label: "Trigger scans",
+        description: "Manually initiate secret scanning"
+      }
+    ]
+  },
+  {
+    subject: "secret-scanning-findings",
+    title: "Secret scanning findings",
+    conditional: false,
+    actions: [
+      {
+        value: "read-findings",
+        label: "Read findings",
+        description: "View detected secrets and vulnerabilities"
+      },
+      {
+        value: "update-findings",
+        label: "Update findings",
+        description: "Mark findings as resolved or false positive"
+      }
+    ]
+  },
+  {
+    subject: "secret-scanning-configs",
+    title: "Secret scanning config",
+    conditional: false,
+    actions: [
+      {
+        value: "read-configs",
+        label: "Read config",
+        description: "View secret scanning configuration"
+      },
+      {
+        value: "update-configs",
+        label: "Update config",
+        description: "Modify scanning rules and settings"
+      }
+    ]
+  }
+];
+
+export const AGENT_VAULT_SUBJECTS: PermissionSubject[] = [
+  {
+    subject: "agent-vault-access-bundles",
+    title: "Access bundles",
+    description: "What an agent can reach and who can reach it",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View access bundles and their connections" },
+      {
+        value: "create",
+        label: "Create",
+        description: "Create access bundles and add connections"
+      },
+      {
+        value: "edit",
+        label: "Modify",
+        description: "Update access bundles and their credentials"
+      },
+      { value: "delete", label: "Remove", description: "Delete access bundles" },
+      {
+        value: "manage-members",
+        label: "Manage members",
+        description: "Grant and revoke access to a bundle"
+      }
+    ]
+  },
+  {
+    subject: "agent-vault-sessions",
+    title: "Sessions",
+    description: "The tokens agents run with",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View your own sessions" },
+      {
+        value: "create",
+        label: "Create",
+        description: "Mint a session over access bundles you can reach"
+      },
+      { value: "edit", label: "Edit", description: "Change the label of your own sessions" },
+      { value: "revoke", label: "Revoke", description: "Revoke your own sessions" },
+      {
+        value: "read-any",
+        label: "Read any",
+        description: "View everyone's sessions and their session logs"
+      },
+      { value: "edit-any", label: "Edit any", description: "Change the label of anyone's session" },
+      { value: "revoke-any", label: "Revoke any", description: "Revoke anyone's session" },
+      {
+        value: "create-with-inline-services",
+        label: "Create with inline services",
+        description: "Send services with a session instead of only naming an access bundle"
+      }
+    ]
+  },
+  {
+    subject: "agent-vault-proxies",
+    title: "Proxies",
+    description: "The egress proxies that attach credentials",
+    conditional: false,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "View proxies, their health and certificate authority fingerprints"
+      },
+      {
+        value: "create",
+        label: "Create",
+        description: "Register a proxy and issue its enrollment token"
+      },
+      { value: "edit", label: "Modify", description: "Update proxy settings" },
+      { value: "delete", label: "Remove", description: "Delete proxies" },
+      {
+        value: "issue-token",
+        label: "Issue token",
+        description: "Issue a replacement enrollment token for a proxy"
+      },
+      { value: "revoke", label: "Revoke", description: "Revoke a proxy's access token" }
+    ]
+  },
+  {
+    subject: "agent-vault-skills",
+    title: "Skills",
+    description: "The skills access bundles deliver to agents",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View skills, their versions and files" },
+      { value: "create", label: "Create", description: "Add skills" },
+      { value: "edit", label: "Modify", description: "Publish and restore skill versions" },
+      { value: "delete", label: "Remove", description: "Delete skills" }
+    ]
+  },
+  {
+    subject: "agent-vault-variables",
+    title: "Variables",
+    description: "The global variables services can use",
+    conditional: false,
+    actions: [
+      {
+        value: "read",
+        label: "Read",
+        description: "View global variables and the services that use them"
+      },
+      { value: "create", label: "Create", description: "Add global variables" },
+      { value: "edit", label: "Modify", description: "Change a global variable's key or value" },
+      { value: "delete", label: "Remove", description: "Delete global variables" },
+      { value: "read-value", label: "Read value", description: "Reveal a global variable's value" }
+    ]
+  }
+];
+
+export const APPROVAL_SUBJECTS: PermissionSubject[] = [
+  {
+    subject: "approval-requests",
+    title: "Access requests",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View all pending access requests" },
+      { value: "create", label: "Create", description: "Submit new access requests" }
+    ]
+  },
+  {
+    subject: "approval-request-grants",
+    title: "Access grants",
+    description: "Access granted by approved requests",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View active and past access grants" },
+      { value: "revoke", label: "Revoke", description: "Revoke active access grants" }
+    ]
+  }
+];

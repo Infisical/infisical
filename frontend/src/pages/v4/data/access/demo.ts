@@ -705,7 +705,7 @@ const scenarioRules = (scenario: AccessScenario, blocked: string[]) => {
   return ALL_RULE;
 };
 
-const organization = (state: AccessState): Organization => ({
+const organization = (state: AccessState, subOrganization: boolean): Organization => ({
   id: V4_DEMO_ORG_ID,
   name: state.subOrg ? "acme-eu" : "Acme Corp",
   createAt: "2025-01-04T12:00:00.000Z",
@@ -732,10 +732,14 @@ const organization = (state: AccessState): Organization => ({
   blockDuplicateSecretSyncDestinations: false,
   allowCrossProjectSecretSharing: false,
   requireGatewayPools: false,
-  parentOrgId: state.subOrg ? DEMO_ROOT_ORG_ID : null,
-  rootOrgId: state.subOrg ? DEMO_ROOT_ORG_ID : null,
+  parentOrgId: subOrganization ? DEMO_ROOT_ORG_ID : null,
+  rootOrgId: subOrganization ? DEMO_ROOT_ORG_ID : null,
   pamProjectId: null
 });
+
+const useDemoOrganization = demoQuery("organization", (state, subOrganization: boolean) =>
+  organization(state, subOrganization)
+);
 
 const project = (state: AccessState, projectId: string): Project | undefined => {
   const found = projectOf(state, projectId);
@@ -893,9 +897,14 @@ const privilegeWindow = (
 const PRODUCT_ROLE_PROJECTS = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 
 const projectRolesFor = (state: AccessState, projectId: string) => {
-  const productRoles = PRODUCT_ROLE_PROJECTS.has(projectOf(state, projectId)?.type as ProjectType);
+  const type = projectOf(state, projectId)?.type;
+  const productRoles = PRODUCT_ROLE_PROJECTS.has(type as ProjectType);
   return state.projectRoles
-    .filter((role) => !productRoles || role.slug === "admin" || role.slug === "member")
+    .filter((role) =>
+      BUILT_IN_PROJECT_ROLES.includes(role.slug)
+        ? !productRoles || role.slug === "admin" || role.slug === "member"
+        : projectOf(state, role.projectId)?.type === type
+    )
     .map((role) => ({ ...role, projectId }));
 };
 
@@ -944,7 +953,7 @@ export const accessDemo: AccessAdapter = {
       error: null
     };
   },
-  useOrganization: demoQuery("organization", (state) => organization(state)),
+  useOrganization: () => useDemoOrganization(useAccessScenario() === "sub-org"),
   useUpgradePrivilegeSystem: demoMutation((_dto: void, state) =>
     done({ ...state, legacyPrivileges: false }, {} as never)
   ),

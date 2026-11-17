@@ -28,14 +28,17 @@ import {
   ListIcon,
   type LucideIcon,
   PencilIcon,
+  ServerIcon,
   Share2Icon,
   ShieldIcon,
   TagIcon,
   UsersIcon
 } from "lucide-react";
 
-import { POLICY_TEMPLATES, type PolicyTemplate } from "./catalog";
-import { type RolePermissions, ruleId } from "./permissions-model";
+import { ProjectType } from "@app/hooks/api/projects/types";
+
+import type { PolicyTemplate } from "./catalog";
+import { policyTemplatesFor, type RolePermissions, ruleId } from "./permissions-model";
 
 import styles from "./roles.module.css";
 
@@ -45,6 +48,8 @@ const TEMPLATE_ICONS: Record<string, Glyph> = {
   Eye: { name: "eye" },
   Pencil: { icon: PencilIcon },
   Users: { icon: UsersIcon },
+  KeyRound: { name: "key" },
+  Server: { icon: ServerIcon },
   Share2: { icon: Share2Icon },
   Bot: { name: "agent" }
 };
@@ -142,21 +147,23 @@ const DetailedView = ({ template }: { template: PolicyTemplate }) => (
 );
 
 export const PolicyTemplateSheet = ({
+  projectType = ProjectType.SecretManager,
   open,
   onOpenChange,
   permissions,
   onApply
 }: {
+  projectType?: ProjectType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   permissions: RolePermissions;
   onApply: (permissions: RolePermissions) => void;
 }) => {
-  const [selectedId, setSelectedId] = useState(POLICY_TEMPLATES[0].id);
+  const templates = useMemo(() => policyTemplatesFor(projectType), [projectType]);
+  const [selectedId, setSelectedId] = useState(templates[0].id);
   const [layout, setLayout] = useState<"compact" | "detailed">("detailed");
   const [conflicts, setConflicts] = useState<string[]>([]);
-  const selected =
-    POLICY_TEMPLATES.find((template) => template.id === selectedId) ?? POLICY_TEMPLATES[0];
+  const selected = templates.find((template) => template.id === selectedId) ?? templates[0];
   const count = useMemo(
     () => selected.permissions.reduce((total, group) => total + group.actions.length, 0),
     [selected]
@@ -196,7 +203,7 @@ export const PolicyTemplateSheet = ({
           <SheetBody>
             <div className={styles.templateLayout}>
               <nav aria-label="Policy templates" className={styles.templateNav}>
-                {POLICY_TEMPLATES.map((template) => {
+                {templates.map((template) => {
                   const active = template.id === selected.id;
                   return (
                     <button

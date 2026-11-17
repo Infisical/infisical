@@ -260,6 +260,30 @@ const orgRoles: TOrgRole[] = [
       { subject: "groups", action: ["read"] },
       { subject: "workspace", action: ["create"] }
     ]
+  ),
+  orgRole(
+    "r-identity-platform",
+    "identity-and-access-platform-administrators",
+    "Identity and access platform administrators (all regions, break-glass)",
+    "Runs sign-in, provisioning and machine identity policy for every team, including SSO and SCIM",
+    [
+      { subject: "member", action: ["read", "create", "edit", "delete"] },
+      { subject: "role", action: ["read", "create", "edit"] },
+      { subject: "groups", action: ["read", "create", "edit", "delete"] },
+      { subject: "identity", action: ["read", "create", "edit", "delete"] },
+      { subject: "sso", action: ["read", "edit"] },
+      { subject: "ldap", action: ["read", "edit"] },
+      { subject: "scim", action: ["read", "create", "edit", "delete"] },
+      { subject: "github-org-sync", action: ["read", "edit"] },
+      { subject: "billing", action: ["read"] },
+      { subject: "audit-logs", action: ["read"] },
+      { subject: "audit-log-streams", action: ["read", "create", "edit"] },
+      { subject: "app-connections", action: ["read", "create", "edit", "connect"] },
+      { subject: "gateway", action: ["list-gateways", "create-gateways"] },
+      { subject: "machine-identity-auth-template", action: ["list-templates", "create-templates"] },
+      { subject: "settings", action: ["read", "edit"] },
+      { subject: "incident-contact", action: ["read", "create"] }
+    ]
   )
 ];
 
@@ -974,13 +998,14 @@ const projectRole = (
   slug: string,
   name: string,
   description: string,
-  permissions: TProjectRole["permissions"]
+  permissions: TProjectRole["permissions"],
+  projectId = "payments-api"
 ): TProjectRole => ({
   id,
   slug,
   name,
   description,
-  projectId: "payments-api",
+  projectId,
   createdAt: day("2025-01-04"),
   updatedAt: day("2025-01-04"),
   permissions
@@ -1084,6 +1109,198 @@ const projectRoles: TProjectRole[] = [
       { subject: "member", action: ["read"] },
       { subject: "commits", action: ["read"] }
     ]
+  ),
+  projectRole(
+    "p-certificate-operator",
+    "certificate-operator",
+    "Certificate operator",
+    "Issues and renews certificates for the payments services",
+    [
+      {
+        subject: "certificates",
+        action: ["read", "import", "edit"],
+        conditions: { commonName: { $glob: "*.payments.acme.io" } }
+      },
+      {
+        subject: "certificate-profiles",
+        action: ["read", "issue-cert"],
+        conditions: { slug: { $in: ["payments-tls", "payments-mtls"] } }
+      },
+      { subject: "certificate-authorities", action: ["read"] },
+      { subject: "pki-alerts", action: ["read", "create", "edit"] },
+      {
+        subject: "pki-syncs",
+        action: ["read", "sync-certificates"],
+        conditions: { name: { $eq: "aws-acm-prod" } }
+      },
+      { subject: "approval-requests", action: ["read", "create"] }
+    ],
+    "internal-pki"
+  ),
+  projectRole(
+    "p-pki-break-glass",
+    "pki-platform-operations-emea-production-break-glass",
+    "PKI platform operations (EMEA production, break-glass on-call rotation)",
+    "Full certificate lifecycle for the EMEA production estate during incidents, except private keys and root CA signing, reviewed quarterly by the security team",
+    [
+      {
+        subject: "certificates",
+        action: ["read", "import", "edit", "delete"],
+        conditions: {
+          commonName: { $glob: "*.eu-west-1.prod.payments.internal.acme-platform-services.io" },
+          altNames: { $in: ["api.eu.acme.io", "checkout.eu.acme.io", "ledger.eu.acme.io"] },
+          metadata: { $elemMatch: { key: { $eq: "cost-center" }, value: { $eq: "emea-payments" } } }
+        }
+      },
+      {
+        subject: "certificates",
+        action: ["read-private-key", "delete"],
+        inverted: true,
+        conditions: { serialNumber: { $in: ["4f:1a:9c:22:7e:01", "4f:1a:9c:22:7e:02"] } }
+      },
+      {
+        subject: "certificate-authorities",
+        action: ["read", "issue-ca-certificate"],
+        conditions: { name: { $glob: "emea-intermediate-*" } }
+      },
+      {
+        subject: "certificate-authorities",
+        action: ["sign-intermediate", "delete"],
+        inverted: true,
+        conditions: { name: { $eq: "acme-root-ca-2026" } }
+      },
+      {
+        subject: "certificate-profiles",
+        action: ["read", "issue-cert", "edit"],
+        conditions: { slug: { $glob: "emea-prod-*" } }
+      },
+      {
+        subject: "certificate-policies",
+        action: ["read", "edit"],
+        conditions: { name: { $ne: "global-baseline-policy" } }
+      },
+      { subject: "pki-subscribers", action: crud, conditions: { name: { $glob: "emea-*" } } },
+      {
+        subject: "pki-syncs",
+        action: ["read", "sync-certificates", "import-certificates", "remove-certificates"],
+        conditions: { name: { $in: ["aws-acm-eu-west-1", "azure-key-vault-weu", "f5-emea-edge"] } }
+      },
+      { subject: "pki-alerts", action: crud },
+      { subject: "pki-collections", action: crud },
+      { subject: "certificate-inventory-views", action: crud },
+      { subject: "pki-discovery", action: ["read", "create", "edit", "run-scan"] },
+      { subject: "pki-certificate-installations", action: ["read", "edit"] },
+      { subject: "code-signers", action: ["read", "sign"] },
+      {
+        subject: "hsm-connectors",
+        action: ["read-hsm-connectors", "test-hsm-connectors", "attach-hsm-connectors"]
+      },
+      { subject: "certificate-application", action: ["read", "list"] },
+      { subject: "approval-requests", action: ["read", "create"] },
+      { subject: "approval-request-grants", action: ["read", "revoke"] },
+      { subject: "audit-logs", action: ["read"] },
+      { subject: "member", action: ["read"] }
+    ],
+    "internal-pki"
+  ),
+  projectRole(
+    "p-scanning-triage",
+    "scanning-triage",
+    "Scanning triage",
+    "Reviews findings and keeps scans running",
+    [
+      {
+        subject: "secret-scanning-data-sources",
+        action: ["read-data-sources", "read-data-source-scans", "trigger-data-source-scans"]
+      },
+      { subject: "secret-scanning-findings", action: ["read-findings", "update-findings"] },
+      { subject: "secret-scanning-configs", action: ["read-configs"] }
+    ],
+    "secret-scanning"
+  ),
+  projectRole(
+    "p-scanning-stress",
+    "secret-scanning-platform-owners-all-regions",
+    "Secret scanning platform owners (all regions, all data sources, incident response)",
+    "Owns every data source and finding across the GitHub, GitLab and Bitbucket estates, including scan configuration and resource discovery",
+    [
+      {
+        subject: "secret-scanning-data-sources",
+        action: [
+          "read-data-sources",
+          "create-data-sources",
+          "edit-data-sources",
+          "delete-data-sources",
+          "read-data-source-resources",
+          "read-data-source-scans",
+          "trigger-data-source-scans"
+        ]
+      },
+      { subject: "secret-scanning-findings", action: ["read-findings", "update-findings"] },
+      { subject: "secret-scanning-configs", action: ["read-configs", "update-configs"] },
+      { subject: "approval-requests", action: ["read", "create"] },
+      { subject: "approval-request-grants", action: ["read", "revoke"] },
+      { subject: "app-connections", action: ["read-app-connections", "connect-app-connections"] },
+      { subject: "audit-logs", action: ["read"] },
+      { subject: "member", action: ["read", "create", "edit"] },
+      { subject: "groups", action: ["read"] },
+      { subject: "identity", action: ["read", "create", "edit"] },
+      { subject: "role", action: ["read"] },
+      { subject: "settings", action: ["read", "edit"] }
+    ],
+    "secret-scanning"
+  ),
+  projectRole(
+    "p-agent-operator",
+    "agent-operator",
+    "Agent operator",
+    "Runs support agents and manages their sessions",
+    [
+      { subject: "agent-vault-access-bundles", action: ["read"] },
+      { subject: "agent-vault-sessions", action: ["read", "create", "edit", "revoke"] },
+      { subject: "agent-vault-proxies", action: ["read"] },
+      { subject: "agent-vault-skills", action: ["read"] }
+    ],
+    "agent-platform"
+  ),
+  projectRole(
+    "p-agent-stress",
+    "agent-platform-administrators-production-and-staging",
+    "Agent platform administrators (production and staging fleets, on-call)",
+    "Manages every bundle, proxy, skill and variable for the agent fleet, and can revoke anyone's session during an incident",
+    [
+      {
+        subject: "agent-vault-access-bundles",
+        action: ["read", "create", "edit", "delete", "manage-members"]
+      },
+      {
+        subject: "agent-vault-sessions",
+        action: [
+          "read",
+          "create",
+          "edit",
+          "revoke",
+          "read-any",
+          "edit-any",
+          "revoke-any",
+          "create-with-inline-services"
+        ]
+      },
+      {
+        subject: "agent-vault-proxies",
+        action: ["read", "create", "edit", "delete", "issue-token", "revoke"]
+      },
+      { subject: "agent-vault-skills", action: crud },
+      { subject: "agent-vault-variables", action: [...crud, "read-value"] },
+      { subject: "approval-requests", action: ["read", "create"] },
+      { subject: "approval-request-grants", action: ["read", "revoke"] },
+      { subject: "audit-logs", action: ["read"] },
+      { subject: "member", action: ["read", "create", "edit"] },
+      { subject: "identity", action: ["read", "create", "edit"] },
+      { subject: "groups", action: ["read"] },
+      { subject: "settings", action: ["read", "edit"] }
+    ],
+    "agent-platform"
   )
 ];
 
