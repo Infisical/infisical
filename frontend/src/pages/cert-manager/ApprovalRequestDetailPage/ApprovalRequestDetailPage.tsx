@@ -234,12 +234,13 @@ const PageContent = () => {
   const isRevocation = resolvedPolicyType === ApprovalPolicyType.CertRevocation;
   const returnsToRequests = from === "root-requests" || isRevocation;
 
-  const { data: request, isPending } = useQuery(
+  const { data, isPending } = useQuery(
     approvalRequestQuery.getById({
       policyType: resolvedPolicyType,
       requestId: approvalRequestId
     })
   );
+  const request = data?.request;
 
   const requestApplicationId =
     request?.scopeType === ApprovalPolicyScope.PkiApplication ? (request.scopeId ?? "") : "";
@@ -552,7 +553,7 @@ const PageContent = () => {
         <div className="flex flex-col justify-center gap-4 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">{renderDetailsSection()}</div>
           <div className="flex flex-col gap-4 lg:w-96 lg:flex-shrink-0">
-            <RequestActionsSection request={request} />
+            <RequestActionsSection request={request} canReview={data?.canReview ?? false} />
             <ApprovalStepsSection request={request} />
           </div>
         </div>

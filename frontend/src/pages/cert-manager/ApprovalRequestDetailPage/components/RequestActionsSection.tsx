@@ -30,9 +30,10 @@ import {
 
 type Props = {
   request: TApprovalRequest;
+  canReview: boolean;
 };
 
-export const RequestActionsSection = ({ request }: Props) => {
+export const RequestActionsSection = ({ request, canReview }: Props) => {
   const { user } = useUser();
   const { memberships } = useProjectPermission();
   const [comment, setComment] = useState("");
@@ -60,7 +61,7 @@ export const RequestActionsSection = ({ request }: Props) => {
     approver.type === ApproverType.User ? approver.id === userId : userGroups.includes(approver.id)
   );
 
-  if (!isApprover) {
+  if (!isApprover || !canReview) {
     return null;
   }
 

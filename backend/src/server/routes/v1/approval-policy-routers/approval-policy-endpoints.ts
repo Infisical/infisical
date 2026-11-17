@@ -603,13 +603,21 @@ export const registerApprovalPolicyEndpoints = ({
       }),
       response: {
         200: z.object({
-          request: requestResponseSchema
+          request: requestResponseSchema,
+          canReview: z
+            .boolean()
+            .describe(
+              "Whether the caller can approve or reject this request now, checked against their current access."
+            )
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
+      const { request, canReview } = await server.services.approvalPolicy.getRequestById(
+        req.params.requestId,
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -628,7 +636,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      return { request };
+      return { request, canReview };
     }
   });
 

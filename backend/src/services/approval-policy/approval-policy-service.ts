@@ -1545,7 +1545,9 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const decorated = await $decorateRequest({ ...request, steps }, actor);
-    return { request: decorated };
+    // The request's saved approver list outlives a removal or demotion, so the page needs the live answer to decide
+    // whether to offer approve and reject.
+    return { request: decorated, canReview: isApprover };
   };
 
   const approveRequest = async (
