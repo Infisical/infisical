@@ -26,10 +26,6 @@
   line-height: var(--cipher-type-mono-sm-line-height);
   letter-spacing: var(--cipher-type-mono-sm-letter-spacing);
 }
-.capped {
-  max-height: 16lh;
-  overflow-y: auto;
-}
 .split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
