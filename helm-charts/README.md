@@ -11,7 +11,7 @@ helm repo add infisical 'https://dl.cloudsmith.io/public/infisical/helm-charts/h
 # Install Infisical (default values)
 helm upgrade --install --atomic \
   -n infisical --create-namespace \
-  infisical infisical/infisical
+  infisical infisical/infisical-standalone
   
 # Install Infisical Secrets Operator (default values)
 helm upgrade --install --atomic \
@@ -23,8 +23,7 @@ helm upgrade --install --atomic \
 
 Here's the link to our charts corresponding documentation :
 
-- [**`infisical`**](./infisical/README.md)
-- [**`secrets-operator`**](./secrets-operator/README.md)
+- [**`infisical-standalone`**](./infisical-standalone-postgres/README.md)
 
 ## Documentation
 
