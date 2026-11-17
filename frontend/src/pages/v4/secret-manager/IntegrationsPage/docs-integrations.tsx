@@ -1,12 +1,5 @@
-import { useState } from "react";
-import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
-import { Badge } from "@infisical/cipher/ui/badge";
-import { Button } from "@infisical/cipher/ui/button";
-import { Empty, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
-import { Icon, type IconName } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
-import { List, ListRow } from "@infisical/cipher/ui/list";
+import { TilePicker, type TilePickerItem } from "@infisical/cipher/patterns/tile-picker";
+import type { IconName } from "@infisical/cipher/ui/icon";
 
 import frameworks from "@app/const/integrationDocs/frameworkIntegrations.json";
 import infrastructure from "@app/const/integrationDocs/infrastructureIntegrations.json";
@@ -40,91 +33,38 @@ const TOOLING: DocsEntry[] = [
 
 const byName = (a: DocsEntry, b: DocsEntry) => a.name.localeCompare(b.name);
 
+const toItem = (entry: DocsEntry): TilePickerItem => ({
+  value: entry.slug,
+  title: entry.name,
+  eyebrow: entry.category,
+  icon: entry.icon,
+  media: entry.image && <ProviderIcon icon={`${entry.image}.png`} alt="" />,
+  keywords: [entry.slug],
+  href: entry.docsLink,
+  external: true
+});
+
 const SOURCES = {
   frameworks: {
-    label: "Frameworks",
-    entries: [...[...frameworks].sort(byName), ...TOOLING] as DocsEntry[]
+    label: "frameworks",
+    placeholder: "Search frameworks, such as Next.js, Django or Rails",
+    items: [...[...frameworks].sort(byName), ...TOOLING].map(toItem)
   },
   infrastructure: {
-    label: "Infrastructure integrations",
-    entries: [...infrastructure].sort(byName) as DocsEntry[]
+    label: "integrations",
+    placeholder: "Search integrations, such as Kubernetes, Terraform or Jenkins",
+    items: [...infrastructure].sort(byName).map(toItem)
   }
 };
 
 export const DocsIntegrationsTab = ({ kind }: { kind: keyof typeof SOURCES }) => {
-  const { label, entries } = SOURCES[kind];
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
-  const categories = filters.find((entry) => entry.field === "category")?.values ?? [];
-  const query = search.trim().toLowerCase();
-  const visible = entries.filter(
-    (entry) =>
-      (!categories.length || categories.includes(entry.category)) &&
-      (!query ||
-        [entry.name, entry.slug, entry.category].some((text) => text.toLowerCase().includes(query)))
-  );
-
+  const { label, placeholder, items } = SOURCES[kind];
   return (
-    <Stack gap={16}>
-      <FilterBar
-        label={`${label} filters`}
-        fields={[
-          {
-            key: "category",
-            label: "Category",
-            type: "multi-select",
-            options: [...new Set(entries.map((entry) => entry.category))]
-              .sort()
-              .map((category) => ({ value: category, label: category }))
-          }
-        ]}
-        value={filters}
-        onChange={setFilters}
-        search={
-          <Input
-            icon="search"
-            aria-label={`Search ${label.toLowerCase()}`}
-            placeholder={`Search ${label.toLowerCase()}...`}
-            slashShortcut
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        }
-      />
-      <List
-        label={label}
-        empty={
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>No matching integrations</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        }
-      >
-        {visible.map((entry) => (
-          <ListRow
-            key={entry.slug}
-            value={entry.slug}
-            label={entry.name}
-            title={entry.name}
-            media={
-              entry.image ? (
-                <ProviderIcon icon={`${entry.image}.png`} alt={`${entry.name} logo`} size="md" />
-              ) : (
-                entry.icon && <Icon name={entry.icon} />
-              )
-            }
-            badge={<Badge tone="soft">{entry.category}</Badge>}
-            actions={
-              <Button asChild variant="outline" size="xs" icon="external">
-                <a href={entry.docsLink} target="_blank" rel="noopener noreferrer">
-                  Docs
-                </a>
-              </Button>
-            }
-          />
-        ))}
-      </List>
-    </Stack>
+    <TilePicker
+      items={items}
+      searchLabel={`Search ${label}`}
+      searchPlaceholder={placeholder}
+      noun={label}
+    />
   );
 };
