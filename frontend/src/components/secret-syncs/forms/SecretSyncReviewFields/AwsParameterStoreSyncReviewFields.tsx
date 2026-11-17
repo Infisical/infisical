@@ -87,7 +87,11 @@ export const AwsParameterStoreDestinationReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
-  const [{ region, path }] = watch(["destinationConfig"]);
+  const [{ region, path }, includeAllSubFolders, preserveFolderStructure] = watch([
+    "destinationConfig",
+    "includeAllSubFolders",
+    "syncOptions.preserveFolderStructure"
+  ]);
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === region);
 
@@ -104,6 +108,16 @@ export const AwsParameterStoreDestinationReviewFields = () => {
         <DetailLabel>Path</DetailLabel>
         <DetailValue>{path}</DetailValue>
       </Detail>
+      {includeAllSubFolders && (
+        <Detail>
+          <DetailLabel>Mirror Folder Structure</DetailLabel>
+          <DetailValue>
+            <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
+              {preserveFolderStructure ? "Enabled" : "Disabled"}
+            </Badge>
+          </DetailValue>
+        </Detail>
+      )}
     </>
   );
 };

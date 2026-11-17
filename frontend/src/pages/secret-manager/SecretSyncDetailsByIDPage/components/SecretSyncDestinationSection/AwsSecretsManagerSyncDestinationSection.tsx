@@ -10,7 +10,11 @@ type Props = {
 };
 
 export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) => {
-  const { destinationConfig } = secretSync;
+  const {
+    destinationConfig,
+    includeAllSubFolders,
+    syncOptions: { preserveFolderStructure }
+  } = secretSync;
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === destinationConfig.region);
 
@@ -35,6 +39,17 @@ export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) =
           <DetailValue>{destinationConfig.secretName}</DetailValue>
         </Detail>
       )}
+      {includeAllSubFolders &&
+        destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne && (
+          <Detail>
+            <DetailLabel>Mirror Folder Structure</DetailLabel>
+            <DetailValue>
+              <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
+                {preserveFolderStructure ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+        )}
     </>
   );
 };

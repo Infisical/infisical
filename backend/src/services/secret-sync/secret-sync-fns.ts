@@ -94,7 +94,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { TSecretSyncPayload } from "./secret-sync-payload";
+import { getMirroredFolder, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -234,8 +234,50 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
+// Destinations that can write each secret under its folder, given their destination config.
+// Secrets Manager's many-to-one mapping writes every secret into one AWS secret, so it can't.
+const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
+  Record<SecretSync, (destinationConfig: Record<string, unknown>) => boolean>
+> = {
+  [SecretSync.AWSParameterStore]: () => true,
+  [SecretSync.AWSSecretsManager]: (destinationConfig) =>
+    destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne
+};
+
+// The save-time duplicate check and the sync jobs both ask this, so a stored option the
+// destination config no longer allows (a Secrets Manager sync switched to many-to-one) is treated
+// as flattening everywhere, and a duplicate name is refused at save rather than failing every run.
+export const preservesFolderStructure = ({
+  destination,
+  destinationConfig,
+  includeAllSubFolders,
+  syncOptions
+}: {
+  destination: SecretSync;
+  destinationConfig: unknown;
+  includeAllSubFolders: boolean;
+  syncOptions?: Record<string, unknown>;
+}) =>
+  includeAllSubFolders &&
+  Boolean(syncOptions?.preserveFolderStructure) &&
+  Boolean(FOLDER_STRUCTURE_DESTINATION_MAP[destination]?.(destinationConfig as Record<string, unknown>));
+
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
+export const matchesSchema = (
+  key: string,
+  environment: string,
+  schema?: string,
+  { mirroredFolders }: { mirroredFolders?: Set<string> } = {}
+): boolean => {
+  // With folders preserved, a name belongs to the sync only in a folder it mirrors (see
+  // mirroredFolders() in secret-sync-payload.ts), and the key schema only names the last segment.
+  if (mirroredFolders) {
+    return (
+      mirroredFolders.has(getMirroredFolder(key)) &&
+      matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema)
+    );
+  }
+
   if (!schema) return true;
 
   const compiledSchemaPattern = handlebars.compile(schema)({

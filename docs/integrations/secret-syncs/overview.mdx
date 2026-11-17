@@ -95,7 +95,7 @@ via the UI or API for the third-party service you intend to sync secrets to.
 
 A Secret Sync covers only the secrets in its source folder by default. Turn on **Include secrets from all subfolders** on the source step and the sync covers every folder beneath that path as well, however deep. Adding or changing a secret in any of those folders syncs it to the destination, the same as a change in the source folder itself.
 
-Destinations store secrets in one flat list, so the folder structure isn't carried over. A secret named `DB_URL` in `/backend` and a secret named `DB_URL` in `/backend/api` both map to the same destination key, and the sync fails with an error naming both folders rather than picking one. Infisical checks for these collisions while you configure the sync, so you can rename or move one of the two before you save.
+Most destinations store secrets in one flat list, so the folder structure isn't carried over. A secret named `DB_URL` in `/backend` and a secret named `DB_URL` in `/backend/api` both map to the same destination key, and the sync fails with an error naming both folders rather than picking one. Infisical checks for these collisions while you configure the sync, so you can rename or move one of the two before you save.
 
 <div align="center">
     ```mermaid
@@ -111,6 +111,10 @@ Destinations store secrets in one flat list, so the folder structure isn't carri
 <Note>
     A sync that includes subfolders can't import secrets from the destination into Infisical, because there's no single folder to import them into. Its initial sync behavior is always overwrite destination.
 </Note>
+
+### Keep the folder structure at the destination
+
+AWS Parameter Store and AWS Secrets Manager can keep each secret's folder in its name at the destination instead of flattening the folders. If you turn on **Mirror folder structure** in the destination step, a secret in `/backend/api` synced from `/backend` is written under `api/`, so it doesn't collide with a secret of the same name in `/backend`. For the exact names each service uses, see [AWS Parameter Store](/integrations/secret-syncs/aws-parameter-store) and [AWS Secrets Manager](/integrations/secret-syncs/aws-secrets-manager).
 
 ## Key schemas
 
