@@ -503,6 +503,7 @@ function CellEditor({
   onInvalidBlur: (message: string) => void;
   onDone: () => void;
 }) {
+  useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
   const finish = (blurred: boolean) => {
@@ -606,7 +607,18 @@ function EditableCell({
     if (loaded !== undefined) setInitial(loaded);
   };
   return (
-    <TableCell {...cell} data-editable={canEdit || undefined} onClick={() => begin()}>
+    <TableCell
+      {...cell}
+      data-editable={canEdit || undefined}
+      tabIndex={canEdit && initial === undefined ? 0 : undefined}
+      onClick={() => begin()}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== "F2") return;
+        event.preventDefault();
+        begin();
+      }}
+    >
       <div className={styles.nameLine}>
         {initial === undefined ? (
           children
@@ -1311,9 +1323,10 @@ function SingleSecretRowView({
   const loadValue = async () => {
     const current = readableValue(first);
     if (current !== undefined || first.value.status === "unreadable") return current ?? "";
-    const values = await loader.ensure([first]);
+    const stored = { ...first, name: ctx.renamedFrom?.[first.id] ?? first.name };
+    const values = await loader.ensure([stored]);
     const loaded =
-      values[valueKey(first.environment, first.path, first.name, false, first.version)];
+      values[valueKey(stored.environment, stored.path, stored.name, false, stored.version)];
     if (typeof loaded !== "string") ctx.report(`Could not read ${first.name}.`, "bad");
     return typeof loaded === "string" ? loaded : undefined;
   };
@@ -1345,7 +1358,7 @@ function SingleSecretRowView({
           pinOffset="var(--cipher-size-row)"
           className={styles.nameCell}
           data-override-rule={first.override !== undefined || undefined}
-          canEdit={editable}
+          canEdit={editable && first.override === undefined}
           load={async () => name}
           editor={{
             label: `Name of ${name}`,

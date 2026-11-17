@@ -952,6 +952,16 @@ export const OverviewPage = () => {
     expanded: expandedRows,
     pending: pendingMarks(pendingHere),
     inReview,
+    renamedFrom: Object.fromEntries(
+      pendingHere.flatMap((change) =>
+        change.type === "update" &&
+        change.original &&
+        change.next &&
+        change.original.name !== change.next.name
+          ? [[change.original.id, change.original.name]]
+          : []
+      )
+    ),
     selectionDisabled: pendingHere.length > 0,
     ...rowEvents
   };
@@ -1380,8 +1390,11 @@ export const OverviewPage = () => {
     resources,
     tagOptions,
     autoCapitalize: Boolean(projectQuery.data?.autoCapitalization),
-    secretNames: scoped.flatMap((resource) =>
-      resource.kind === "secret" && resource.environment === activeEnvironment
+    secretNames: shown.flatMap((resource) =>
+      resource.kind === "secret" &&
+      resource.project === project &&
+      resource.path === path &&
+      resource.environment === activeEnvironment
         ? [resource.name]
         : []
     )

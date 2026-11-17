@@ -54,6 +54,7 @@ export type RowContext = {
   onAction: (action: RowAction) => void;
   pending?: Record<string, PendingType>;
   inReview?: string[];
+  renamedFrom?: Record<string, string>;
   selectionDisabled?: boolean;
   onSavePending?: (id: string) => void;
   onRevertPending?: (id: string) => void;
