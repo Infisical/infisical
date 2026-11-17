@@ -1,13 +1,10 @@
-import RE2 from "re2";
-
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
+import { CliCapability, cliSupports, isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -67,10 +64,12 @@ import {
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
+  AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials,
-  generateRdsAuthToken
+  generateRdsAuthToken,
+  toAwsRoleSessionName
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -292,6 +291,22 @@ export const pamSessionServiceFactory = ({
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AwsIam) {
+      const stsCredentials = await generateAwsIamSessionCredentials({
+        roleArn: connectionDetails.roleArn as string,
+        externalId: orgId,
+        roleSessionName: toAwsRoleSessionName(session.actorEmail || session.actorName),
+        sessionDuration: Math.max(
+          AWS_STS_MIN_DURATION_SECONDS,
+          Math.min(remainingSeconds, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS)
+        )
+      });
+      credentials.accessKeyId = stsCredentials.accessKeyId;
+      credentials.secretAccessKey = stsCredentials.secretAccessKey;
+      credentials.sessionToken = stsCredentials.sessionToken;
+      credentials.expiresAt = stsCredentials.expiresAt.toISOString();
     }
 
     if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
@@ -625,8 +640,26 @@ export const pamSessionServiceFactory = ({
       });
     }
 
-    // AWS IAM: no gateway, no proxy -- generate STS credentials directly
-    if (account.accountType === PamAccountType.AwsIam) {
+    // An AWS IAM account with a gateway brokers CLI sessions through it, where credentials are re-minted
+    // as they expire. The console, and any account without a gateway, gets credentials directly.
+    const awsIamThroughGateway =
+      account.accountType === PamAccountType.AwsIam &&
+      accessMethod === PamAccessMethod.Cli &&
+      Boolean(account.gatewayId ?? account.templateGatewayId ?? account.gatewayPoolId ?? account.templateGatewayPoolId);
+
+    if (
+      awsIamThroughGateway &&
+      isCliUserAgent(actorUserAgent) &&
+      !cliSupports(actorUserAgent, CliCapability.AwsIamGateway)
+    ) {
+      throw new BadRequestError({
+        message:
+          "This AWS IAM account connects through a gateway, which needs a newer Infisical CLI. Update the CLI and try again."
+      });
+    }
+
+    if (account.accountType === PamAccountType.AwsIam && !awsIamThroughGateway) {
+      sessionDurationMs = Math.min(sessionDurationMs, AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS * 1000);
       const stsDurationSeconds = Math.floor(sessionDurationMs / 1000);
 
       if (stsDurationSeconds < AWS_STS_MIN_DURATION_SECONDS) {
@@ -641,20 +674,12 @@ export const pamSessionServiceFactory = ({
       // Machine identities have no email; fall back to the identity name for STS attribution.
       const federatedUsername = actorEmail || actorName;
 
-      // STS requires roleSessionName to be 2-64 chars; pad short names with random characters
-      // so the actor's name stays recognizable in CloudTrail (1-char identity name, user with
-      // no email and empty names)
-      let roleSessionName = federatedUsername.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64);
-      if (roleSessionName.length < 2) {
-        roleSessionName = `${roleSessionName}${alphaNumericNanoId(8)}`;
-      }
-
       const stsCredentials = await generateAwsIamSessionCredentials({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
         externalId: actor.actorOrgId,
-        roleSessionName,
+        roleSessionName: toAwsRoleSessionName(federatedUsername),
         sessionDuration: stsDurationSeconds
       });
 
@@ -824,6 +849,13 @@ export const pamSessionServiceFactory = ({
       metadata.clientId = rawCredentials.clientId as string;
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
+    } else if (account.accountType === PamAccountType.AwsIam) {
+      metadata.roleArn = rawConnectionDetails.roleArn as string;
+      metadata.expiresAt = expiresAt.toISOString();
+      const awsAccountId = extractAwsAccountIdFromArn(metadata.roleArn);
+      if (awsAccountId) {
+        metadata.awsAccountId = awsAccountId;
       }
     } else if (account.accountType === PamAccountType.Snowflake) {
       for (const key of ["account", "warehouse", "database", "schema", "role"]) {
