@@ -139,6 +139,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
   const [matchingSelection, setMatchingSelection] = useState<{
     filtersKey: string;
+    totalCount: number;
     ids: string[];
   } | null>(null);
   const selectionVersion = useRef(0);
@@ -285,6 +286,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const listFiltersKey = JSON.stringify(listFilters);
   const isEveryKnownMatchSelected =
     matchingSelection?.filtersKey === listFiltersKey &&
+    matchingSelection.totalCount === totalApprovalCount &&
     matchingSelection.ids.every((id) => selectedRequests[id]);
   const canSelectAllMatching =
     isOpenTab &&
@@ -305,16 +307,19 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       if (version !== selectionVersion.current) return;
       const unselected = approvals.filter(({ id }) => !selectedRequests[id]);
       const added = unselected.slice(0, Math.max(0, MAX_BULK_SELECTION - selectedCount));
-      const leftOutCount = totalCount - approvals.length + unselected.length - added.length;
-      setMatchingSelection({ filtersKey: listFiltersKey, ids: approvals.map(({ id }) => id) });
+      setMatchingSelection({
+        filtersKey: listFiltersKey,
+        totalCount,
+        ids: approvals.map(({ id }) => id)
+      });
       setSelectedRequests((prev) => ({
         ...prev,
         ...Object.fromEntries(added.map((request) => [request.id, request]))
       }));
-      if (leftOutCount > 0) {
+      if (unselected.length > added.length || totalCount > approvals.length) {
         createNotification({
           type: "info",
-          text: `Selected ${added.length} more. ${leftOutCount} matching change requests were left out because you can select up to ${MAX_BULK_SELECTION} at once.`
+          text: `Selected ${added.length} more. You can select up to ${MAX_BULK_SELECTION} change requests at once, so some matching requests were left out.`
         });
       }
     } catch {

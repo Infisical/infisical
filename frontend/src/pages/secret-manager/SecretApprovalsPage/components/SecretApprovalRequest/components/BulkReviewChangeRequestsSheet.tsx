@@ -576,7 +576,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
                     <DropdownMenuItem
-                      className="text-success focus:bg-success/10 [&_svg]:!text-success"
+                      variant="success"
                       isDisabled={!remainingCount}
                       onClick={() => decideAll("approve", { onlyRemaining: true })}
                     >
@@ -603,7 +603,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="text-success focus:bg-success/10 [&_svg]:!text-success"
+                      variant="success"
                       onClick={() => decideAll("approve", { onlyRemaining: false })}
                     >
                       <CheckIcon className="mt-0.5 self-start" />
