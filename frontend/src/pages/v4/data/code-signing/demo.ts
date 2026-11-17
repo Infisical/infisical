@@ -279,8 +279,6 @@ const requests = createFixtureStore<TSignerRequest[]>([
     status: SignerRequestStatus.Approved,
     accessStatus: SignerRequestStatus.Approved,
     grantStatus: "active",
-    requesterName: "Diego Alvarez",
-    requesterEmail: "diego.alvarez@acme.dev",
     justification: "Standing grant for the build farm",
     createdAt: hoursAgo(20)
   }),
