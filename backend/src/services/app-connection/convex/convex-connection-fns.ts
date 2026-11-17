@@ -118,9 +118,26 @@ export const listConvexDeployments = async ({
   const headers = getConvexApiHeaders(credentials.accessToken);
 
   const teamIds = await listConvexTeamIds(baseUrl, headers);
-  const teamDeployments = await Promise.all(
+  const results = await Promise.allSettled(
     teamIds.map((teamId) => listConvexTeamDeployments(baseUrl, headers, teamId))
   );
+
+  // One team the token cannot read should not hide the others; only fail when every team does
+  const teamDeployments: TConvexApiDeployment[][] = [];
+  let firstFailure: unknown;
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      teamDeployments.push(result.value);
+      return;
+    }
+    firstFailure ??= result.reason;
+    logger.warn(
+      { error: getConvexErrorMessage(result.reason) },
+      `Failed to list Convex deployments for team [teamId=${teamIds[index]}]`
+    );
+  });
+
+  if (teamIds.length && !teamDeployments.length) throw firstFailure;
 
   // Local deployments run on a developer's machine and have no URL Infisical could reach
   return teamDeployments

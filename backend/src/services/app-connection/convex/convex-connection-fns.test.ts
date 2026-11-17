@@ -8,7 +8,9 @@ import { TConvexConnection } from "./convex-connection-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }));
+const { get, loggerWarn } = vi.hoisted(() => ({ get: vi.fn(), loggerWarn: vi.fn() }));
+
+vi.mock("@app/lib/logger", () => ({ logger: { warn: loggerWarn, error: vi.fn() } }));
 
 vi.mock("@app/lib/validator", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -68,6 +70,34 @@ describe("listConvexDeployments", () => {
     );
 
     await expect(listConvexDeployments(connection)).rejects.toThrow("exceeds the listing cap");
+  });
+
+  it("keeps the deployments of the teams that answer and logs the team that failed", async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === `${BASE_URL}/api/dashboard/teams`) return { data: [{ id: 1 }, { id: 2 }] };
+      if (url === `${BASE_URL}/v1/teams/1/list_deployments`) throw new Error("Forbidden");
+      return { data: { items: [deployment("second-one-4")], pagination: { hasMore: false } } };
+    });
+
+    await expect(listConvexDeployments(connection)).resolves.toEqual([{ name: "second-one-4", type: "prod" }]);
+    expect(loggerWarn).toHaveBeenCalledTimes(1);
+    expect(loggerWarn).toHaveBeenCalledWith({ error: "Forbidden" }, expect.stringContaining("[teamId=1]"));
+  });
+
+  it("fails when every team fails", async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === `${BASE_URL}/api/dashboard/teams`) return { data: [{ id: 1 }, { id: 2 }] };
+      throw new Error(`Forbidden ${url}`);
+    });
+
+    await expect(listConvexDeployments(connection)).rejects.toThrow("Forbidden");
+    expect(loggerWarn).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns an empty list when the token has no teams", async () => {
+    get.mockResolvedValue({ data: [] });
+
+    await expect(listConvexDeployments(connection)).resolves.toEqual([]);
   });
 });
 
