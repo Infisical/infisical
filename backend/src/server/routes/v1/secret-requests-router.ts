@@ -250,7 +250,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     schema: {
       operationId: "listSecretRequests",
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0),
+        offset: z.coerce.number().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
       }),
       response: {

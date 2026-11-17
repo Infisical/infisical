@@ -11,6 +11,7 @@ const REQUEST_ID = "6f1c2c1e-6c55-4b39-9a39-2f3c8a1d9b7e";
 
 const buildServer = async () => {
   const sendPostHogEvents = vi.fn().mockResolvedValue(undefined);
+  const getSharedSecrets = vi.fn().mockResolvedValue({ secrets: [], totalCount: 200 });
 
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
@@ -19,6 +20,7 @@ const buildServer = async () => {
   app.decorate("services", {
     secretSharing: {
       createSecretRequest: vi.fn().mockResolvedValue({ id: REQUEST_ID }),
+      getSharedSecrets,
       deleteSharedSecretById: vi.fn().mockResolvedValue({
         id: REQUEST_ID,
         type: "request",
@@ -42,7 +44,7 @@ const buildServer = async () => {
   await app.register(registerSecretRequestsRouter as never, { prefix: URL });
   await app.ready();
 
-  return { app, sendPostHogEvents };
+  return { app, sendPostHogEvents, getSharedSecrets };
 };
 
 describe("secret request routes", () => {
@@ -52,6 +54,29 @@ describe("secret request routes", () => {
     await app?.close();
     app = undefined;
   });
+
+  test("lists secret requests past the first 100 records", async () => {
+    const server = await buildServer();
+    app = server.app;
+
+    const res = await app.inject({ method: "GET", url: `${URL}?offset=110&limit=10` });
+
+    expect(res.statusCode).toBe(200);
+    expect(server.getSharedSecrets).toHaveBeenCalledWith(expect.objectContaining({ offset: 110, limit: 10 }));
+  });
+
+  test.each(["offset=-1&limit=10", "offset=9007199254740992&limit=10", "offset=0&limit=101"])(
+    "rejects invalid list pagination: %s",
+    async (query) => {
+      const server = await buildServer();
+      app = server.app;
+
+      const res = await app.inject({ method: "GET", url: `${URL}?${query}` });
+
+      expect(res.statusCode).toBe(400);
+      expect(server.getSharedSecrets).not.toHaveBeenCalled();
+    }
+  );
 
   test.each([
     ["created", { method: "POST", url: URL, body: { expiresIn: "1d" } }],
