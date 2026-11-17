@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -29,12 +29,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   DocumentationLinkBadge,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -44,9 +43,14 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Label,
   OverflowBadgeList,
   PageHeader,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
   Skeleton,
   Table,
   TableBody,
@@ -61,6 +65,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -95,10 +100,14 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
-import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { EditSessionDialog } from "./components/EditSessionDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
@@ -110,6 +119,10 @@ import {
   TSessionAccessItem
 } from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
+import {
+  SESSION_METADATA_MAX_KEYS,
+  sessionMetadataRowsSchema
+} from "./components/sessionMetadataSchema";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -145,6 +158,26 @@ export const AgentVaultSessionsPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const metadataFilter = useMemo(() => {
+    const entries = appliedMetadataFilters
+      .map(({ key, value }) => [key.trim(), value.trim()] as const)
+      .filter(([key, value]) => key && value);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  }, [appliedMetadataFilters]);
+  // The same limits the API applies, checked here so a refused filter never reads as "no sessions match".
+  const metadataFilterErrors = useMemo(() => {
+    const errors: (string | undefined)[] = pendingMetadataFilters.map(() => undefined);
+    const result = sessionMetadataRowsSchema.safeParse(pendingMetadataFilters);
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        const [row] = issue.path;
+        if (typeof row === "number" && !errors[row]) errors[row] = issue.message;
+      });
+    }
+    return errors;
+  }, [pendingMetadataFilters]);
   const [scope, setScope] = useState(() => {
     const stored = getUserTablePreference(
       "agentVaultSessionsTable",
@@ -160,7 +193,7 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
-  const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
+  const [sessionToEdit, setSessionToEdit] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
@@ -168,6 +201,7 @@ export const AgentVaultSessionsPage = () => {
     scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
+    metadata: metadataFilter,
     limit: perPage,
     offset: (page - 1) * perPage
   });
@@ -204,7 +238,8 @@ export const AgentVaultSessionsPage = () => {
 
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
-  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
+  const isFiltered =
+    Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
 
@@ -212,7 +247,7 @@ export const AgentVaultSessionsPage = () => {
   let emptyDescription: string;
   if (isFiltered) {
     emptyTitle = "No sessions match these filters";
-    emptyDescription = "Try a different search term or status.";
+    emptyDescription = "Try a different search term, status or metadata.";
   } else if (!hasReachableBundles) {
     emptyTitle = canCreateBundles ? "No sessions yet" : "No access bundles granted to you";
     emptyDescription = canCreateBundles
@@ -358,40 +393,77 @@ export const AgentVaultSessionsPage = () => {
                 placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <IconButton
                   aria-label="Filter sessions"
-                  variant={statuses.length ? "av" : "outline"}
+                  variant={statuses.length || metadataFilter ? "av" : "outline"}
                 >
                   <FilterIcon />
                 </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Status</DropdownMenuLabel>
-                {STATUS_OPTIONS.map((status) => {
-                  const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={status}
-                      checked={statuses.includes(status)}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setStatuses((prev) =>
-                          prev.includes(status)
-                            ? prev.filter((s) => s !== status)
-                            : [...prev, status]
-                        );
-                        setPage(1);
-                      }}
-                    >
-                      <Icon className={iconClassName} />
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="flex max-h-(--radix-popover-content-available-height) flex-col gap-3 overflow-y-auto"
+              >
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-accent">Status</span>
+                  {STATUS_OPTIONS.map((status) => {
+                    const {
+                      label,
+                      icon: Icon,
+                      iconClassName
+                    } = SESSION_STATUS_PRESENTATION[status];
+                    const checkboxId = `session-status-filter-${status}`;
+                    return (
+                      <div key={status} className="flex items-center gap-2">
+                        <Checkbox
+                          id={checkboxId}
+                          variant="av"
+                          isChecked={statuses.includes(status)}
+                          onCheckedChange={() => {
+                            setStatuses((prev) =>
+                              prev.includes(status)
+                                ? prev.filter((s) => s !== status)
+                                : [...prev, status]
+                            );
+                            setPage(1);
+                          }}
+                        />
+                        <Label htmlFor={checkboxId}>
+                          <Icon className={cn("size-4", iconClassName)} />
+                          {label}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Separator />
+                <MetadataFilterSection
+                  entries={pendingMetadataFilters}
+                  onChange={setPendingMetadataFilters}
+                  labelClassName="normal-case text-accent"
+                  clearClassName="text-muted hover:text-foreground"
+                  errors={metadataFilterErrors}
+                  maxEntries={SESSION_METADATA_MAX_KEYS}
+                />
+                <Button
+                  variant="av"
+                  size="sm"
+                  isDisabled={
+                    metadataFilterErrors.some(Boolean) ||
+                    JSON.stringify(pendingMetadataFilters) ===
+                      JSON.stringify(appliedMetadataFilters)
+                  }
+                  onClick={() => {
+                    setAppliedMetadataFilters(pendingMetadataFilters);
+                    setPage(1);
+                  }}
+                >
+                  Apply
+                </Button>
+              </PopoverContent>
+            </Popover>
             {canReadAnySession && (
               <Tabs
                 value={scope}
@@ -549,13 +621,13 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
+                              {/* The API refuses edits once the session's owner, or the user it acts on behalf of, is deleted */}
                               {session.actor.id !== null &&
                                 session.onBehalfOf?.id !== null &&
                                 canActOnAgentVaultSession(permission, user.id, session, "edit") && (
-                                  <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                  <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
                                     <PencilIcon />
-                                    {session.label ? "Edit Label" : "Add Label"}
+                                    Edit Session
                                   </DropdownMenuItem>
                                 )}
                               {canActOnAgentVaultSession(
@@ -618,13 +690,13 @@ export const AgentVaultSessionsPage = () => {
         session={openSession}
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
-        onEditLabel={setSessionToLabel}
+        onEdit={setSessionToEdit}
       />
 
-      <EditSessionLabelDialog
-        session={sessionToLabel}
+      <EditSessionDialog
+        session={sessionToEdit}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setSessionToLabel(null);
+          if (!isOpen) setSessionToEdit(null);
         }}
       />
 
