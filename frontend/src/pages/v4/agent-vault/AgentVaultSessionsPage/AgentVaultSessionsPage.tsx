@@ -125,7 +125,7 @@ const Access = ({
 };
 
 const Expiry = ({ session }: { session: TAgentVaultSession }) => {
-  if (session.status === AgentVaultSessionStatus.Revoked) return <Meta>-</Meta>;
+  if (session.status === AgentVaultSessionStatus.Revoked) return null;
   if (!session.expiresAt) return <NoExpiry />;
   return (
     <Tooltip content={formatTimestamp(session.expiresAt)}>
