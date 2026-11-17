@@ -5,7 +5,7 @@ import { SecretApprovalRequestsSchema, SecretFoldersSchema } from "@app/db/schem
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
-import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -383,7 +383,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/commits/:commitId/rollback",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "rollbackFolderCommit",
@@ -458,7 +458,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/commits/:commitId/revert",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "revertFolderCommit",
