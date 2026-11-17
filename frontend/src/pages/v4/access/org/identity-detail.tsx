@@ -92,11 +92,11 @@ const EditIdentityDialog = ({
   const updateIdentity = access.useUpdateOrgIdentity();
   const { identity } = membership;
   const [name, setName] = useState(identity.name);
-  const [role, setRole] = useState(
+  const [role, setRole] = useState(() =>
     orgRoleSlug(roles, { role: membership.role, roleId: membership.customRole?.id })
   );
   const [protectedFlag, setProtected] = useState(identity.hasDeleteProtection);
-  const [metadata, setMetadata] = useState<MetadataEntry[]>(
+  const [metadata, setMetadata] = useState<MetadataEntry[]>(() =>
     membership.metadata.map(({ key, value }) => ({ key, value }))
   );
   const [errors, setErrors] = useState<{
@@ -288,12 +288,7 @@ export const OrgIdentityDetail = () => {
       {
         label: "Edit auth method",
         icon: PencilIcon,
-        disabledReason: (method) => {
-          if (!canEditAuth) return RESTRICTED;
-          return method === IdentityAuthMethod.UNIVERSAL_AUTH
-            ? undefined
-            : "Only Universal Auth can be edited from this page";
-        },
+        disabledReason: () => (canEditAuth ? undefined : RESTRICTED),
         onSelect: (method) => setAuthForm({ method })
       }
     ],
