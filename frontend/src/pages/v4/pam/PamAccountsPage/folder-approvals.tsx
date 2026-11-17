@@ -455,6 +455,7 @@ const ApprovalsEditor = ({
   const draft = edited ?? savedState;
   const latest = useRef(savedState);
   const [showErrors, setShowErrors] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string>();
   const { approvers, breakGlass, notifications, autoApproval } = draft;
@@ -513,6 +514,9 @@ const ApprovalsEditor = ({
     if (autoApproval.rules.some((rule) => !isRuleComplete(rule, catalog?.connections))) {
       setShowErrors(true);
       setFormError("Finish the auto-approval rules before saving.");
+      requestAnimationFrame(() =>
+        bodyRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      );
       return;
     }
     setFormError(undefined);
@@ -536,7 +540,7 @@ const ApprovalsEditor = ({
 
   return (
     <>
-      <SheetBody>
+      <SheetBody ref={bodyRef}>
         <Stack gap={24}>
           {lead}
           <Stack gap={16}>

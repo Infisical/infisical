@@ -19,7 +19,7 @@ import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Meta } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 
-import type { TPamAccount } from "@app/hooks/api/pam";
+import type { TPamAccount, TPamAccountTypeMetadata } from "@app/hooks/api/pam";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -46,14 +46,64 @@ export const CliCommand = ({
   </Field>
 );
 
+const MethodPicker = ({
+  method,
+  browserReason,
+  onChange
+}: {
+  method: LaunchMethod;
+  browserReason?: string;
+  onChange: (method: LaunchMethod) => void;
+}) => (
+  <RadioGroup
+    aria-label="Launch method"
+    columns={2}
+    value={method}
+    onValueChange={(value) => onChange(value as LaunchMethod)}
+  >
+    <RadioGroupCard
+      value="browser"
+      title="Browser"
+      media={<Icon name="globe" />}
+      description={browserReason}
+      disabled={Boolean(browserReason)}
+    />
+    <RadioGroupCard value="cli" title="CLI" media={<Icon name="terminal" />} />
+  </RadioGroup>
+);
+
+const useBrowserSupport = (account: TPamAccount) => {
+  const { data: accountTypes = [], isPending, error } = useV4Adapter("pam").useAccountTypes();
+  const meta = accountTypes.find(({ type }) => type === account.accountType);
+  if (!meta && isPending) return { meta, browserReason: "Checking browser support" };
+  return { meta, browserReason: browserUnavailableReason(meta, account, Boolean(error)) };
+};
+
+const LaunchHeader = ({
+  account,
+  meta
+}: {
+  account: TPamAccount;
+  meta?: TPamAccountTypeMetadata;
+}) => (
+  <DialogHeader>
+    <DialogTitle>
+      <Inline gap={8} align="center">
+        {meta && <ProviderIcon icon={meta.icon} alt="" size="sm" />}
+        <span style={{ overflowWrap: "anywhere" }}>{account.name}</span>
+        <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
+      </Inline>
+    </DialogTitle>
+    {account.folderName && <Meta mono={false}>{account.folderName}</Meta>}
+  </DialogHeader>
+);
+
 const LaunchSession = ({ account }: { account: TPamAccount }) => {
   const go = useGo();
   const { orgId } = useParams({ strict: false }) as { orgId: string };
-  const { data: accountTypes = [] } = useV4Adapter("pam").useAccountTypes();
-  const meta = accountTypes.find(({ type }) => type === account.accountType);
-  const unavailable = browserUnavailableReason(meta, account);
+  const { meta, browserReason } = useBrowserSupport(account);
   const [picked, setPicked] = useState<LaunchMethod>("browser");
-  const method: LaunchMethod = unavailable ? "cli" : picked;
+  const method: LaunchMethod = browserReason ? "cli" : picked;
   const hosts = accountHosts(account);
   const [pickedHost, setPickedHost] = useState("");
   const host = hosts.length > 1 ? pickedHost || undefined : hosts[0];
@@ -70,32 +120,9 @@ const LaunchSession = ({ account }: { account: TPamAccount }) => {
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
-          <Inline gap={8} align="center">
-            {meta && <ProviderIcon icon={meta.icon} alt="" size="sm" />}
-            <span style={{ overflowWrap: "anywhere" }}>{account.name}</span>
-            <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
-          </Inline>
-        </DialogTitle>
-        {account.folderName && <Meta mono={false}>{account.folderName}</Meta>}
-      </DialogHeader>
+      <LaunchHeader account={account} meta={meta} />
       <DialogBody>
-        <RadioGroup
-          aria-label="Launch method"
-          columns={2}
-          value={method}
-          onValueChange={(value) => setPicked(value as LaunchMethod)}
-        >
-          <RadioGroupCard
-            value="browser"
-            title="Browser"
-            media={<Icon name="globe" />}
-            description={unavailable}
-            disabled={Boolean(unavailable)}
-          />
-          <RadioGroupCard value="cli" title="CLI" media={<Icon name="terminal" />} />
-        </RadioGroup>
+        <MethodPicker method={method} browserReason={browserReason} onChange={setPicked} />
         {hosts.length > 1 && (
           <Field label="Host">
             <Select

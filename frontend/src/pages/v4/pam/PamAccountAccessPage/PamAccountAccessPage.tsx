@@ -44,9 +44,13 @@ const AccountAccess = () => {
   const { host } = useSearch({ from: route });
   const pam = useV4Adapter("pam");
   const { data: account, isPending } = pam.useAccount(accountId);
-  const { data: accountTypes = [] } = pam.useAccountTypes();
+  const {
+    data: accountTypes = [],
+    isPending: typesPending,
+    error: typesError
+  } = pam.useAccountTypes();
 
-  if (isPending) return <Spinner size="page" label="Loading account" />;
+  if (isPending || typesPending) return <Spinner size="page" label="Loading account" />;
   if (!account)
     return (
       <EmptyState
@@ -57,10 +61,12 @@ const AccountAccess = () => {
     );
   const unavailable = browserUnavailableReason(
     accountTypes.find(({ type }) => type === account.accountType),
-    account
+    account,
+    Boolean(typesError)
   );
+  const hosts = accountHosts(account);
+  const validHost = host && hosts.includes(host) ? host : undefined;
   if (unavailable) {
-    const hosts = accountHosts(account);
     return (
       <Empty>
         <EmptyHeader>
@@ -73,7 +79,7 @@ const AccountAccess = () => {
         <EmptyContent style={{ width: "min(100%, 40rem)" }}>
           <CliCommand
             account={account}
-            host={hosts.length > 1 ? (host ?? "HOST") : (host ?? hosts[0])}
+            host={hosts.length > 1 ? (validHost ?? "HOST") : hosts[0]}
           />
         </EmptyContent>
       </Empty>

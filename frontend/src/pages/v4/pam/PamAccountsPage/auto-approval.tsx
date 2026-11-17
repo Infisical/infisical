@@ -295,7 +295,6 @@ const AiConditionRow = ({
           )}
         </Inline>
       }
-      error={error ?? undefined}
       actions={
         <Button
           variant="ghost"
@@ -308,7 +307,7 @@ const AiConditionRow = ({
       }
     >
       <Stack gap={12}>
-        <Field label="Instructions" wide>
+        <Field label="Instructions" wide error={error ?? undefined}>
           <Textarea
             rows={3}
             maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
