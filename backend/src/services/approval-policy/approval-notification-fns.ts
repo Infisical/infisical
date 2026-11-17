@@ -47,6 +47,7 @@ const resolveRecipients = async (
 
   const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
   if (actorId) userIds.delete(actorId);
+  if (event === ApprovalNotificationEvent.Requested && request.requesterId) userIds.delete(request.requesterId);
   return userIds;
 };
 

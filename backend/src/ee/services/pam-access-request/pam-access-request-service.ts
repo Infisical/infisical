@@ -527,12 +527,7 @@ export const pamAccessRequestServiceFactory = ({
       toApprovalActor(ctx)
     );
 
-    const folder = folderId ? await pamFolderDAL.findById(folderId) : null;
-
-    return {
-      requests: await pamAccessApprovalResource.decorateRequests(requests),
-      folderName: folder?.projectId === projectId ? folder.name : undefined
-    };
+    return { requests: await pamAccessApprovalResource.decorateRequests(requests) };
   };
 
   const getCount = async ({ projectId, ...ctx }: TGetAccessRequestCountDTO) => {

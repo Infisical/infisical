@@ -7437,8 +7437,6 @@ interface ApprovalRequestListEvent {
   metadata: {
     policyType: string;
     count: number;
-    folderId?: string;
-    folderName?: string;
   };
 }
 
