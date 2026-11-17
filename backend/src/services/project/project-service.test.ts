@@ -257,7 +257,10 @@ describe("certificate search with current status", () => {
     ]);
     expect(result.totalCount).toBe(3);
 
-    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0];
+    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0] as [
+      unknown,
+      { sortByCurrentStatus?: boolean; statusAt?: Date }
+    ];
     expect(listOptions.sortByCurrentStatus).toBe(true);
     expect(listOptions.statusAt).toBeInstanceOf(Date);
     expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
