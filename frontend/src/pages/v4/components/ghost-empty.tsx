@@ -29,7 +29,7 @@ export const GhostEmpty = ({
         <span key={id} className={styles.ghost} />
       ))}
     </div>
-    <Empty size="sm" className={styles.content}>
+    <Empty size="sm" ghost={false} className={styles.content}>
       <EmptyMedia>
         <Icon name={icon} />
       </EmptyMedia>

@@ -131,6 +131,7 @@ export const ServicesTable = ({
   sort,
   onSortChange,
   empty,
+  filtered,
   pagination,
   onEdit,
   onSetUp
@@ -144,6 +145,7 @@ export const ServicesTable = ({
   sort: { columnId: string; direction: "asc" | "desc" };
   onSortChange: (sort: { columnId: string; direction: "asc" | "desc" }) => void;
   empty: ReactNode;
+  filtered?: boolean;
   pagination?: ReactNode;
   onEdit: (service: TAgentVaultService) => void;
   onSetUp: (service: TAgentVaultService) => void;
@@ -280,6 +282,7 @@ export const ServicesTable = ({
   return (
     <>
       <DataTable
+        filtered={filtered}
         label="Services"
         rows={services}
         columns={columns}

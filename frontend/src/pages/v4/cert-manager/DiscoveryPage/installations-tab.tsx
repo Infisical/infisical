@@ -138,6 +138,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load installations"
@@ -171,6 +172,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
         }}
       />
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Installations"
         rows={rows}
         columns={columns}

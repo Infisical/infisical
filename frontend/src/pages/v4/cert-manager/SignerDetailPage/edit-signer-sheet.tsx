@@ -26,6 +26,7 @@ import {
   type SignerCertErrors,
   SignerCertificateFields,
   SignerKeyFields,
+  SignerStatusBadge,
   useHsmKeyLookup,
   usesExistingCertificate,
   useSignerCaOptions
@@ -199,7 +200,12 @@ const EditSheet = ({
         variant="sheet"
         size="lg"
         title={`Edit ${signer.name}`}
-        description={<DocumentationLink href={CODE_SIGNING_DOCS.editSigner} subject="Signers" />}
+        badges={
+          <>
+            <SignerStatusBadge signer={signer} />
+            <DocumentationLink href={CODE_SIGNING_DOCS.editSigner} subject="Signers" />
+          </>
+        }
         open
         step={step}
         onStepChange={setStep}

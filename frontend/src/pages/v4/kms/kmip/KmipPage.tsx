@@ -146,6 +146,7 @@ export const KmipPage = () => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load KMIP clients"
@@ -202,6 +203,7 @@ export const KmipPage = () => {
               }}
             />
             <DataTable
+              filtered={Boolean(debouncedSearch)}
               label="KMIP clients"
               rows={clients}
               columns={columns}

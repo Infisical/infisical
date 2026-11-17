@@ -185,6 +185,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
           }}
         />
         <DataTable
+          filtered={Boolean(searchTerm)}
           label="Skills"
           rows={skills}
           columns={columns}

@@ -131,6 +131,7 @@ export const ProjectGroupsTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label={`${accessLabel(scope.projectType, "groups")}`}
         rows={list.pageRows}
         columns={columns}
@@ -143,7 +144,7 @@ export const ProjectGroupsTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(groups.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load groups" />
           )) ||
           (list.search.trim() ? (
             <EmptyState

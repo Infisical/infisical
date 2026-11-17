@@ -151,9 +151,7 @@ const PolicySheet = ({
         variant="sheet"
         size="lg"
         title={policy?.hasSteps ? "Edit approval policy" : "Add approval policy"}
-        description={
-          <DocumentationLink href={CODE_SIGNING_DOCS.policy} subject="Signer approvals" />
-        }
+        badges={<DocumentationLink href={CODE_SIGNING_DOCS.policy} subject="Signer approvals" />}
         open
         step={Math.min(step, steps.length ? 1 : 0)}
         onStepChange={setStep}

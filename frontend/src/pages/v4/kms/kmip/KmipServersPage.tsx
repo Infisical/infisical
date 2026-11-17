@@ -102,6 +102,7 @@ export const KmipServersPage = () => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load KMIP servers"
@@ -149,6 +150,7 @@ export const KmipServersPage = () => {
           onChange={(event) => setSearch(event.target.value)}
         />
         <DataTable
+          filtered={servers.length > 0}
           label="KMIP servers"
           rows={rows}
           columns={columns}

@@ -175,6 +175,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load discovery jobs"
@@ -218,6 +219,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
         </Button>
       </Inline>
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Discovery jobs"
         rows={rows}
         columns={columns}

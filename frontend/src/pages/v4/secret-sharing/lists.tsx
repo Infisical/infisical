@@ -168,6 +168,7 @@ export const SharedSecretsTable = ({ subOrganization }: { subOrganization?: stri
         empty={
           error ? (
             <EmptyState
+              ghost={false}
               size="sm"
               media="bare"
               icon="alert"
@@ -303,6 +304,7 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
         empty={
           error ? (
             <EmptyState
+              ghost={false}
               size="sm"
               media="bare"
               icon="alert"

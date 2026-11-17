@@ -261,6 +261,7 @@ export const GatewaysPanel = ({
         />
       ) : (
         <DataTable
+          filtered={gateways.length > 0}
           label="Gateways"
           rows={list.pageRows}
           loading={isPending}

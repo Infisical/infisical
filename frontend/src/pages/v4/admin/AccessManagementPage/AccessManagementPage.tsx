@@ -137,6 +137,7 @@ export const AccessManagementPage = () => {
           }
         />
         <DataTable
+          filtered={Boolean(debouncedSearch)}
           label="Server admins"
           rows={users}
           columns={columns}

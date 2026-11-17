@@ -203,6 +203,7 @@ export const PkiSyncsTable = ({
   if (error)
     emptyState = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"
@@ -306,6 +307,7 @@ export const PkiSyncsTable = ({
         actions={actions}
       />
       <DataTable
+        filtered={isFiltered && syncs.length > 0}
         label={label}
         rows={filtered.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

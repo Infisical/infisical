@@ -194,6 +194,7 @@ export const PamDiscoveryPage = () => {
           }
         />
         <DataTable
+          filtered={Boolean(query)}
           label="Discovery sources"
           rows={rows}
           columns={columns}

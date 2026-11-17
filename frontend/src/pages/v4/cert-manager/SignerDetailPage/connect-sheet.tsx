@@ -12,7 +12,7 @@ import type { TSigner } from "@app/hooks/api/signers/types";
 
 import { Muted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
-import { CODE_SIGNING_DOCS } from "../CodeSigningPage/signer-shared";
+import { CODE_SIGNING_DOCS, SignerStatusBadge } from "../CodeSigningPage/signer-shared";
 import {
   jarsignerConfigSnippet,
   kspCertSnippet,
@@ -91,7 +91,12 @@ export const ConnectSignerSheet = ({
       variant="sheet"
       size="lg"
       title={`Set up signing for ${signer.name}`}
-      description={<DocumentationLink href={CODE_SIGNING_DOCS.connect} subject="Code signing" />}
+      badges={
+        <>
+          <SignerStatusBadge signer={signer} />
+          <DocumentationLink href={CODE_SIGNING_DOCS.connect} subject="Code signing" />
+        </>
+      }
       open
       step={step}
       onStepChange={setStep}

@@ -407,6 +407,7 @@ export const PamTemplatesPage = () => {
           }
         />
         <DataTable
+          filtered={isFiltered}
           label="Account templates"
           rows={rows}
           columns={columns}

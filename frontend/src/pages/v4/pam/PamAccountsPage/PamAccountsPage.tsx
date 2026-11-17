@@ -274,6 +274,7 @@ export const PamAccountsPage = () => {
           }
         />
         <DataTable
+          filtered={filterActive}
           label="Accounts"
           rows={folders.length || filterActive ? rows : []}
           columns={columns}

@@ -277,6 +277,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
         </Button>
       </Inline>
       <DataTable
+        filtered={Boolean(searchTerm)}
         label={isPersonal ? "Personal variables" : "Global variables"}
         rows={variables}
         columns={columns}

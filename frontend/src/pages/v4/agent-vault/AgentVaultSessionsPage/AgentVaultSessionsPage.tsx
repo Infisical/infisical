@@ -478,6 +478,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           }
         />
         <DataTable
+          filtered={isFiltered}
           label="Sessions"
           rows={sessions}
           columns={columns}

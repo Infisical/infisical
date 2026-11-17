@@ -244,6 +244,7 @@ export const OrgIdentityDetail = () => {
   const canEdit = can(OrgPermissionIdentityActions.Edit);
   const canEditAuth = can(OrgPermissionIdentityActions.EditAuth);
   const canDelete = can(OrgPermissionIdentityActions.Delete);
+  const canRevokeAuth = can(OrgPermissionIdentityActions.RevokeAuth);
   const isOwnIdentity = identity.orgId === orgId;
   const allConfigured = AUTH_METHOD_ORDER.every((method) => methods.includes(method));
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
@@ -305,8 +306,8 @@ export const OrgIdentityDetail = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
-          disabled={!canDelete}
-          description={canDelete ? undefined : RESTRICTED}
+          disabled={!canRevokeAuth}
+          description={canRevokeAuth ? undefined : RESTRICTED}
           onSelect={() => setRemovingAuth(method)}
         >
           <Icon name="trash" />

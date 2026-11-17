@@ -659,7 +659,7 @@ const JobSheet = ({
         variant="sheet"
         size="lg"
         title={title}
-        description={
+        badges={
           type ? (
             <DocumentationLink href={getDiscoveryDocsUrl(type)} subject="Certificate discovery" />
           ) : undefined

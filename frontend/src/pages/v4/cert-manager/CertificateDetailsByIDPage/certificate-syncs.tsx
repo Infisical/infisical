@@ -192,6 +192,7 @@ const SyncsDialog = ({
               }}
             />
             <DataTable
+              ghost={false}
               label="Certificate syncs"
               rows={pageSyncs}
               columns={columns}

@@ -245,6 +245,7 @@ export const WorkflowIntegrationsTab = () => {
         actions={<AddMenu canCreate={canCreate} onAdd={add} />}
       />
       <DataTable
+        filtered={isFiltered}
         label="Workflow integrations"
         rows={visible}
         loading={isPending || permissionPending}
