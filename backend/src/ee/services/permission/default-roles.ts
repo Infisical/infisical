@@ -6,6 +6,7 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -818,7 +819,11 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionAgentVaultSessionActions.Revoke
+      ProjectPermissionAgentVaultSessionActions.Revoke,
+      ProjectPermissionAgentVaultSessionActions.ReadAny,
+      ProjectPermissionAgentVaultSessionActions.EditAny,
+      ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -843,6 +848,17 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSkillActions.Delete
     ],
     ProjectPermissionSub.AgentVaultSkills
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultVariableActions.Read,
+      ProjectPermissionAgentVaultVariableActions.Create,
+      ProjectPermissionAgentVaultVariableActions.Edit,
+      ProjectPermissionAgentVaultVariableActions.Delete,
+      ProjectPermissionAgentVaultVariableActions.ReadValue
+    ],
+    ProjectPermissionSub.AgentVaultVariables
   );
 
   can(

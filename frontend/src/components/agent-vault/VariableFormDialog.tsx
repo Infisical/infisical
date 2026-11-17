@@ -225,7 +225,7 @@ const VariableForm = ({
         <DialogDescription>
           {isPersonal
             ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
-            : "Store a value once and use it from any service in any access bundle. Only admins can manage it and see its value."}
+            : "Store a value once and use it from any service in any access bundle. Managing it and seeing its value each take their own permission."}
         </DialogDescription>
       </DialogHeader>
 
