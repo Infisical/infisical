@@ -303,7 +303,10 @@ const DisableEnrollmentButton = ({
             <AlertDialogMedia>
               <AlertTriangleIcon className="text-warning" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Disable {method} enrollment for this profile?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Disable {method === "Microsoft Autoenrollment" ? method : `${method} enrollment`} for
+              this profile?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Clients using {method} against this profile via this application will stop being able
               to request certificates. Existing certificates remain valid.

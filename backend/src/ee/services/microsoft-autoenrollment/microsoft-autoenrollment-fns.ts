@@ -12,7 +12,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentAllowedGroup } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 
-import { resolveTemplatePrivateKey } from "./microsoft-autoenrollment-template-fns";
+import { isTemplateKeyAlgorithmSupported, resolveTemplatePrivateKey } from "./microsoft-autoenrollment-template-fns";
 
 const MAX_CNAME_HOPS = 10;
 const CNAME_END_OF_CHAIN_CODES = ["ENODATA", "ENOTFOUND"];
@@ -133,6 +133,12 @@ const checkProfileCaCompatibility = async (
     ? caKeyAlgorithm.startsWith("EC_")
     : caKeyAlgorithm.startsWith("RSA_");
 
+  if (keyAlgorithm && !isTemplateKeyAlgorithmSupported(keyAlgorithm)) {
+    return {
+      shortReason: `Windows autoenrollment supports only RSA and ECDSA keys, not the profile's ${keyAlgorithm} default`,
+      message: `Profile '${profileSlug}' has ${keyAlgorithm} as its default key algorithm, but Windows autoenrollment supports only RSA and ECDSA keys. Change the profile's default key algorithm to RSA or ECDSA.`
+    };
+  }
   if (isInternalCa && isCompatibleCaKey) return null;
   if (!isInternalCa) {
     return {

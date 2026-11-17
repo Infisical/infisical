@@ -37,7 +37,12 @@ vi.mock("@app/services/project/project-fns", () => ({
   getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-id")
 }));
 
-vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => ({ getCaCertChain: vi.fn() }));
+vi.mock("@app/services/certificate-authority/certificate-authority-fns", async (importOriginal) => ({
+  assertCaInProfileProject: (
+    await importOriginal<typeof import("@app/services/certificate-authority/certificate-authority-fns")>()
+  ).assertCaInProfileProject,
+  getCaCertChain: vi.fn()
+}));
 
 vi.mock("@app/services/app-connection/ldap/ldap-directory-fns", () => ({ findDirectoryComputerBySid: vi.fn() }));
 
@@ -242,6 +247,7 @@ describe("microsoftAutoenrollmentService", () => {
     });
     deps.certificatePolicyDAL.findById.mockResolvedValue({ validity: undefined });
     deps.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+      projectId: "project-id",
       internalCa: { activeCaCertId: "ca-cert-id" }
     });
     deps.projectDAL.findOne.mockResolvedValue({ id: "project-id", orgId: "org-id" });
@@ -290,6 +296,7 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(500);
       expect(response.body).toContain("<s:Fault>");
       expect(deps.keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
     });
   });
 

@@ -45,6 +45,7 @@ export const buildMicrosoftAutoenrollmentState = ({
   profileName: string;
   config: TMicrosoftAutoenrollmentConfigWithGroups;
 }) => ({
+  id: config.id,
   policyUrl: buildPolicyUrl(applicationId, profileId),
   policyId: buildPolicyId(applicationProfileId),
   templateName: profileName,

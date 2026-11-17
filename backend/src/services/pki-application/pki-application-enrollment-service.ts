@@ -1240,7 +1240,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorOrgId
     );
     if (!junction.microsoftAutoenrollmentConfigId) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Microsoft Autoenrollment is not turned on for this profile in the application."
       });
     }

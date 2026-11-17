@@ -24,7 +24,10 @@ import { findDirectoryComputerBySid } from "@app/services/app-connection/ldap/ld
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { getCaCertChain } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  getCaCertChain
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   CertificateIssuanceOperation,
   CertSubjectAlternativeNameType
@@ -190,30 +193,24 @@ export const microsoftAutoenrollmentServiceFactory = ({
     ]);
     if (!profile?.caId) return null;
 
-    const [kmsDecryptor, { orgId, plan }] = await Promise.all([
-      getProjectKmsCertificateKeyId({ projectId: profile.projectId, projectDAL, kmsService }).then((kmsId) =>
-        kmsService.decryptWithKmsKey({ kmsId })
-      ),
-      projectDAL
-        .findOne({ id: profile.projectId })
-        .then(async (project) => ({ orgId: project.orgId, plan: await licenseService.getPlan(project.orgId) }))
-    ]);
-    const keytabEntries = parseKeytab(await kmsDecryptor({ cipherTextBlob: config.encryptedKeytab }));
+    const { orgId } = await projectDAL.findOne({ id: profile.projectId });
 
-    return {
-      applicationId,
-      junction,
-      config,
-      profile,
-      caId: profile.caId,
-      orgId,
-      kmsDecryptor,
-      keytabEntries,
-      isEntitled: plan.has(PlanFeature.PkiMicrosoftAutoenrollment)
-    };
+    return { applicationId, junction, config, profile, caId: profile.caId, orgId };
   };
 
-  type TContext = NonNullable<Awaited<ReturnType<typeof $loadContext>>>;
+  const $decryptKeytab = async (profileContext: NonNullable<Awaited<ReturnType<typeof $loadContext>>>) => {
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: await getProjectKmsCertificateKeyId({
+        projectId: profileContext.profile.projectId,
+        projectDAL,
+        kmsService
+      })
+    });
+    const keytabEntries = parseKeytab(await kmsDecryptor({ cipherTextBlob: profileContext.config.encryptedKeytab }));
+    return { ...profileContext, kmsDecryptor, keytabEntries };
+  };
+
+  type TContext = Awaited<ReturnType<typeof $decryptKeytab>>;
 
   const $recordRefusal = async (
     context: TContext,
@@ -325,6 +322,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
   const $buildPolicyTemplate = async (context: TContext) => {
     const { profile, config, applicationId } = context;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(context.caId);
+    if (ca) assertCaInProfileProject(ca, profile);
     if (!ca?.internalCa?.activeCaCertId) {
       throw new BadRequestError({
         message: `The certificate authority of profile '${profile.slug}' has no active certificate, so it cannot issue certificates.`
@@ -708,8 +706,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
       envelope: TParsedSoapEnvelope
     ) => Promise<string | TMicrosoftAutoenrollmentResponse>
   ): Promise<TMicrosoftAutoenrollmentResponse> => {
-    const context = await $loadContext(applicationId, profileId);
-    if (!context) {
+    const profileContext = await $loadContext(applicationId, profileId);
+    if (!profileContext) {
       return $soapResponse(
         buildSoapFault({
           relatesTo: null,
@@ -719,9 +717,11 @@ export const microsoftAutoenrollmentServiceFactory = ({
         NOT_ENABLED_STATUS_CODE
       );
     }
-    if (!context.isEntitled) {
+    const plan = await licenseService.getPlan(profileContext.orgId);
+    if (!plan.has(PlanFeature.PkiMicrosoftAutoenrollment)) {
       return $fault(null, "The organization's plan does not include Microsoft Autoenrollment.");
     }
+    const context = await $decryptKeytab(profileContext);
 
     const authentication = await $authenticate(context, authorizationHeader, clientIp);
     if (authentication.refusal) return authentication.refusal;

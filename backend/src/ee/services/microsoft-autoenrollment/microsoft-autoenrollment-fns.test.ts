@@ -77,6 +77,18 @@ describe("getMicrosoftAutoenrollmentUnsupportedReason", () => {
       )
     ).resolves.toMatch(/asks Windows for an RSA key, but its certificate authority's key is EC_prime256v1/);
   });
+
+  test.each([CertKeyAlgorithm.ML_DSA_65, CertKeyAlgorithm.SLH_DSA_SHA2_128F])(
+    "refuses a %s default key, since Windows autoenrollment only makes RSA and ECDSA keys",
+    async (keyAlgorithm) => {
+      await expect(
+        getMicrosoftAutoenrollmentUnsupportedReason(
+          { profileSlug: "web", caId: "ca-id", keyAlgorithm },
+          withCa(internalCa("RSA_2048"))
+        )
+      ).resolves.toMatch(new RegExp(`${keyAlgorithm} as its default key algorithm.*only RSA and ECDSA`));
+    }
+  );
 });
 
 describe("normalizeHttpServicePrincipalName", () => {

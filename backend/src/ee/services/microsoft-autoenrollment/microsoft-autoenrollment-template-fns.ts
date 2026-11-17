@@ -55,6 +55,9 @@ export const buildPolicyId = (applicationProfileId: string) => {
   return `{${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}}`.toUpperCase();
 };
 
+export const isTemplateKeyAlgorithmSupported = (keyAlgorithm?: CertKeyAlgorithm) =>
+  !keyAlgorithm || Boolean(RSA_KEY_LENGTH_BY_ALGORITHM[keyAlgorithm] || ELLIPTIC_CURVE_BY_ALGORITHM[keyAlgorithm]);
+
 export const resolveTemplatePrivateKey = (keyAlgorithm?: CertKeyAlgorithm): TTemplatePrivateKey => {
   const curve = keyAlgorithm ? ELLIPTIC_CURVE_BY_ALGORITHM[keyAlgorithm] : undefined;
   if (curve) {

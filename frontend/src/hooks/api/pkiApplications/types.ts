@@ -101,6 +101,7 @@ export type TMicrosoftAutoenrollmentGroup = {
 };
 
 export type TMicrosoftAutoenrollmentEnrollment = {
+  id: string;
   policyUrl: string;
   policyId: string;
   templateName: string;

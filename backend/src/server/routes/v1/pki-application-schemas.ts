@@ -18,6 +18,7 @@ export const ApplicationProfileSchema = z.object({
 });
 
 export const MicrosoftAutoenrollmentStateSchema = z.object({
+  id: z.string().uuid(),
   policyUrl: z.string(),
   policyId: z.string(),
   templateName: z.string(),
