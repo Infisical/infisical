@@ -231,7 +231,7 @@ export const secretReplicationServiceFactory = ({
 
     // the the replicated imports made to the source. These are the destinations
     const destinationSecretImports = await secretImportDAL.find({
-      importPath: secretPath,
+      importPath: folder.path,
       importEnv: folder.envId
     });
 

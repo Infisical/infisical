@@ -2410,6 +2410,7 @@ export const secretServiceFactory = ({
                 secretComment: el.secretComment,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 secretKey: el.secretKey,
+                newSecretName: el.newSecretName,
                 secretMetadata: el.secretMetadata
               }))
             }

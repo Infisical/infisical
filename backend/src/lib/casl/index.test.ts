@@ -66,6 +66,31 @@ describe("conditionsMatcher", () => {
     expect(ability.can("edit", subject("secrets", { environment: "dev", secretPath }))).toBe(true);
   });
 
+  test.each([
+    { secretPath: "//locked" },
+    { secretPath: { $eq: "locked/" } },
+    { secretPath: { $in: ["/other", "//locked"] } }
+  ])("applies a rule saved with path %j to /locked", (conditions) => {
+    const legacy = createMongoAbility(
+      [
+        { action: "read", subject: "secrets" },
+        { action: "read", subject: "secrets", inverted: true, conditions: { environment: "dev", ...conditions } }
+      ],
+      { conditionsMatcher }
+    );
+    expect(legacy.can("read", subject("secrets", { environment: "dev", secretPath: "/locked" }))).toBe(false);
+    expect(legacy.can("read", subject("secrets", { environment: "dev", secretPath: "//locked" }))).toBe(false);
+  });
+
+  test("applies a $ne rule saved with a non-canonical path", () => {
+    const legacy = createMongoAbility(
+      [{ action: "read", subject: "secrets", conditions: { secretPath: { $ne: "//locked" } } }],
+      { conditionsMatcher }
+    );
+    expect(legacy.can("read", subject("secrets", { secretPath: "/locked" }))).toBe(false);
+    expect(legacy.can("read", subject("secrets", { secretPath: "/open" }))).toBe(true);
+  });
+
   test("leaves other folders and subjects without a path alone", () => {
     expect(ability.can("read", subject("secrets", { environment: "dev", secretPath: "/locked-out" }))).toBe(true);
     expect(ability.can("read", subject("secrets", { environment: "dev" }))).toBe(true);

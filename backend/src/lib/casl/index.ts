@@ -39,10 +39,29 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
 
 const mongoQueryMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
+const canonicalizePathValue = (value: unknown): unknown =>
+  typeof value === "string" ? canonicalizeSecretPath(value) : value;
+
+// Rules saved before paths were canonicalized can name a folder as "//prod", so plain path values in a rule are
+// canonicalized too. Glob patterns are left as they are.
+const canonicalizeSecretPathCondition = (condition: unknown): unknown => {
+  if (!condition || typeof condition !== "object" || Array.isArray(condition)) return canonicalizePathValue(condition);
+  const operators: Record<string, unknown> = { ...condition };
+  if ("$eq" in operators) operators.$eq = canonicalizePathValue(operators.$eq);
+  if ("$ne" in operators) operators.$ne = canonicalizePathValue(operators.$ne);
+  if (Array.isArray(operators.$in)) operators.$in = (operators.$in as unknown[]).map(canonicalizePathValue);
+  return operators;
+};
+
 // Rules name folders by their canonical path, so a subject must be matched on the folder its path resolves to,
 // whatever spelling of that path the caller sent.
 export const conditionsMatcher: typeof mongoQueryMatcher = (conditions) => {
-  const match = mongoQueryMatcher(conditions);
+  const secretPathCondition = (conditions as Record<string, unknown> | undefined)?.secretPath;
+  const match = mongoQueryMatcher(
+    secretPathCondition === undefined
+      ? conditions
+      : ({ ...conditions, secretPath: canonicalizeSecretPathCondition(secretPathCondition) } as typeof conditions)
+  );
   const matchCanonicalPath = (object: Record<string, unknown>) => {
     if (typeof object?.secretPath !== "string") return match(object);
     const secretPath = canonicalizeSecretPath(object.secretPath);
