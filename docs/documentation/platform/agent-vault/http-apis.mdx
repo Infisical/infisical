@@ -3,11 +3,14 @@ title: "HTTP APIs"
 description: "External APIs that an AI agent can securely call during a session."
 ---
 
-An HTTP service is a [service](/documentation/platform/agent-vault/services) for one external API that an agent can access during a [session](/documentation/platform/agent-vault/sessions). Each HTTP service defines the external API’s [host URL](#host-patterns), its [authentication method](#credential-types), and a real credential to attach when forwarding requests from the agent.
-
+An HTTP service is a [service](/documentation/platform/agent-vault/services) for one external API that an agent can call during a [session](/documentation/platform/agent-vault/sessions). Each HTTP service defines the API's [hosts](#host-patterns), its [credential type](#credential-types), and the real credential that the proxy attaches to the agent's requests.
 <Tip>
-An HTTP service can also limit which [HTTP methods and paths](#methods-and-paths) the agent can use, [add custom headers](#custom-headers) to each request, and [replace placeholder values](#substitutions) the agent sends with real ones.
+An HTTP service can also limit which [HTTP methods and paths](#methods-and-paths) the agent can use, [add custom headers](#custom-headers) to each request, and [replace placeholder values](#substitutions) that the agent sends with real ones.
 </Tip>
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
 
 ## Add an HTTP service
 
@@ -25,7 +28,7 @@ To add an HTTP service to an access bundle:
     </Frame>
   </Step>
   <Step>
-    Follow the steps and paste your credentials in the **Credential** section.
+    Fill in the template's steps. Enter the API's credential on the **Credential** step.
 
     To use a value that several services share, type `{{` in a [field that accepts variables](/documentation/platform/agent-vault/variables#use-a-variable-in-a-service) and select a variable from the list that opens.
 
@@ -40,11 +43,11 @@ To add an HTTP service to an access bundle:
 
 ## Credential types
 
-When configuring a service, you have the option to set its credential type. This determines what the proxy attaches to outbound requests.
+A service's credential type decides what the proxy attaches to the agent's requests to the service. If you start from a template, you can usually keep the template's credential type.
 
-<Tip>
-If you're configuring a service with a template, you can usually leave the credential type set to the default.
-</Tip>
+<Note>
+For **Bearer** and **Basic** services, if the agent's request already has a header with the same name as the service's credential header, the proxy replaces the agent's header with the credential.
+</Note>
 
 ### Bearer
 
@@ -63,10 +66,6 @@ Basic is the right choice for APIs behind HTTP basic authentication, including o
 The proxy attaches no credential. Unless the service adds [custom headers](#custom-headers) or [substitutions](#substitutions), the proxy forwards the agent's request to the API unchanged.
 
 Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
-
-<Note>
-For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.
-</Note>
 
 ## Member-provided values
 
@@ -198,21 +197,17 @@ If a service has path prefixes, the proxy also refuses any path that different s
 
 ### Refused requests
 
-If a request breaks either rule, the proxy refuses the request with a 403. The message names the service and the method or path it doesn't allow:
+If a request breaks either rule, the proxy refuses the request with a `403` response and the `policy_blocked` error code. The response's message names the service and the method or path that the service doesn't allow. For example:
 
-```text
-HTTP/1.1 403 Forbidden
-
-service "github" does not allow POST: blocked by service policy
 ```
-
-```text
-HTTP/1.1 403 Forbidden
-
 service "github" does not allow path "/admin": blocked by service policy
 ```
 
+For the response's full format, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
+
+<Note>
 If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response that holds your hook server's message.
+</Note>
 
 ## Custom headers
 
@@ -230,8 +225,6 @@ A custom header's value can include a [substitution](#substitutions) placeholder
 
 ## Substitutions
 
-Instead of attaching headers to an agent's request, you can configure your service to use substitution instead.
-
 With a substitution, you give the agent a placeholder instead of the real credential, such as a fake API token. The agent sends the placeholder in its requests, and the proxy replaces it with the real value before forwarding each request. For example, if you set the agent's GitHub token to `__GITHUB_PAT__`, the agent sends:
 
 ```text
@@ -241,10 +234,6 @@ Authorization: Bearer __GITHUB_PAT__
 GitHub receives the real token, and the agent never holds it.
 
 We recommend using substitutions when your agent's tool won't run without a token of its own, or when the API expects the credential outside a header, such as in the URL path or the query string.
-
-<Info>
-Substitutions work with every credential type, including pass-through.
-</Info>
 
 ### Add a substitution
 
