@@ -171,13 +171,13 @@ export const InviteUsersSheet = ({
               ? "Add member from your organization"
               : `Invite others to ${session.organization.name}`}
           </SheetTitle>
-          <SheetDescription>
-            {links && "No email provider is set up. Share these invite links manually."}
-            {!links &&
-              (subOrg
-                ? "Add existing users from your root organization to this sub-organization."
-                : "Invites are tied to one email address and expire after 1 day.")}
-          </SheetDescription>
+          {!subOrg && (
+            <SheetDescription>
+              {links
+                ? "No email provider is set up. Share these invite links manually."
+                : "Invites are tied to one email address and expire after 1 day."}
+            </SheetDescription>
+          )}
         </SheetHeader>
         <SheetBody>
           {links ? (
