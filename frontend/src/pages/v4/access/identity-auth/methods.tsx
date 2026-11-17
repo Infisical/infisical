@@ -1524,25 +1524,15 @@ const ldap = define<IdentityLdapAuth, LdapDraft>({
           value={draft.searchFilter}
           onChange={(searchFilter) => set({ searchFilter })}
         />
-        {ctx.isUpdate ? (
-          <TextField
-            name="ldapCaCertificate"
-            label="CA certificate"
-            optional
-            disabledReason="Can't be changed after LDAP Auth is added. Remove and add it again to use a different certificate."
-            value={draft.ldapCaCertificate}
-            onChange={(ldapCaCertificate) => set({ ldapCaCertificate })}
-          />
-        ) : (
-          <TextAreaField
-            name="ldapCaCertificate"
-            label="CA certificate"
-            optional
-            placeholder={CERT_PLACEHOLDER}
-            value={draft.ldapCaCertificate}
-            onChange={(ldapCaCertificate) => set({ ldapCaCertificate })}
-          />
-        )}
+        <TextAreaField
+          name="ldapCaCertificate"
+          label="CA certificate"
+          optional
+          readOnly={ctx.isUpdate}
+          placeholder={ctx.isUpdate ? undefined : CERT_PLACEHOLDER}
+          value={draft.ldapCaCertificate}
+          onChange={(ldapCaCertificate) => set({ ldapCaCertificate })}
+        />
       </Group>
       <Group legend="User access">
         <SwitchField

@@ -353,9 +353,9 @@ export function CreateSecretFlow({
   const [createdTags, setCreatedTags] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [discard, setDiscard] = useState(false);
-  const pristine = useRef(JSON.stringify({ selected, entries }));
+  const [pristine] = useState(() => JSON.stringify({ selected, entries }));
   const keyInputs = useRef<Record<string, HTMLInputElement | null>>({});
-  const dirty = JSON.stringify({ selected, entries }) !== pristine.current;
+  const dirty = JSON.stringify({ selected, entries }) !== pristine;
   const tagOptions = useMemo(
     () =>
       [
