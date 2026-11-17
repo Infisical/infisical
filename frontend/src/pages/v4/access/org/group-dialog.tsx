@@ -291,7 +291,7 @@ const SubOrgAddGroupDialog = ({ open, roleLabel, onOpenChange }: GroupDialogProp
             saved("Successfully linked group");
             finish();
             go(accessLinks.orgGroup(orgId, draft.groupId));
-            return;
+            return true;
           }
           try {
             await create.mutateAsync({
@@ -307,6 +307,7 @@ const SubOrgAddGroupDialog = ({ open, roleLabel, onOpenChange }: GroupDialogProp
           }
           saved("Successfully created group");
           finish();
+          return true;
         }}
         steps={[
           {
