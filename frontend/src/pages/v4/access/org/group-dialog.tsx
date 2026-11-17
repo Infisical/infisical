@@ -16,6 +16,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Tabs } from "@infisical/cipher/ui/tabs";
+import { isAxiosError } from "axios";
 
 import { findOrgMembershipRole } from "@app/helpers/roles";
 
@@ -234,6 +235,12 @@ const EMPTY_SUB_ORG_GROUP: SubOrgGroupDraft = {
   groupId: ""
 };
 
+const groupConflictMessage = (error: unknown) => {
+  if (!isAxiosError(error) || error.response?.status !== 400) return undefined;
+  const message: unknown = error.response.data?.message;
+  return typeof message === "string" && message.includes("already in use") ? message : undefined;
+};
+
 const validateSubOrgGroup = (draft: SubOrgGroupDraft) => {
   if (draft.mode === "assign")
     return draft.groupId ? true : { fields: { group: "Select a group" } };
@@ -286,9 +293,18 @@ const SubOrgAddGroupDialog = ({ open, roleLabel, onOpenChange }: GroupDialogProp
             go(accessLinks.orgGroup(orgId, draft.groupId));
             return;
           }
-          await create
-            .mutateAsync({ name: draft.name.trim(), slug: draft.slug, role, organizationId: orgId })
-            .catch(readableFailure("Couldn't create group"));
+          try {
+            await create.mutateAsync({
+              name: draft.name.trim(),
+              slug: draft.slug,
+              role,
+              organizationId: orgId
+            });
+          } catch (error) {
+            const conflict = groupConflictMessage(error);
+            if (conflict) return { fields: { name: conflict, slug: conflict } };
+            return readableFailure("Couldn't create group")(error);
+          }
           saved("Successfully created group");
           finish();
         }}
