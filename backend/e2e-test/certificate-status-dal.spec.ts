@@ -120,6 +120,25 @@ describe("certificate current status (postgres)", { timeout: 60_000 }, () => {
     }
   );
 
+  test.each([OrderByDirection.ASC, OrderByDirection.DESC])(
+    "sorting by a column every row shares breaks ties by id, %s, so pages never repeat or skip rows",
+    async (direction) => {
+      const sortOptions = { sort: [["projectId", direction]] as [string, OrderByDirection][] };
+      const expected = Object.values(certificates)
+        .map((certificate) => certificate.id)
+        .sort();
+      if (direction === OrderByDirection.DESC) expected.reverse();
+
+      const paged: string[] = [];
+      for (let offset = 0; offset < expected.length; offset += 3) {
+        // eslint-disable-next-line no-await-in-loop
+        const page = await search({ includeDeleted: true }, { ...sortOptions, offset, limit: 3 });
+        paged.push(...page.map((row) => row.id));
+      }
+      expect(paged).toEqual(expected);
+    }
+  );
+
   test("filters by status as of the given time", async () => {
     const statusAt = new Date(now - 2 * DAY_MS);
     const rows = await search({ status: [CertStatus.ACTIVE] }, { statusAt });

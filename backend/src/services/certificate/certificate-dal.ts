@@ -1101,16 +1101,18 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (options?.limit) {
         query = query.limit(options.limit);
       }
-      if (options?.sort) {
+      if (options?.sort?.length) {
         options.sort.forEach(([column, direction]) => {
           if (column === "status" && options.sortByCurrentStatus) {
-            query = query
-              .orderByRaw(`${CURRENT_STATUS_SQL} ${direction === OrderByDirection.ASC ? "ASC" : "DESC"}`, [statusAt])
-              .orderBy(`${TableName.Certificate}.id`, direction);
+            query = query.orderByRaw(`${CURRENT_STATUS_SQL} ${direction === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+              statusAt
+            ]);
             return;
           }
           query = query.orderBy(`${TableName.Certificate}.${column}`, direction);
         });
+        // sort columns are not unique, so without a tiebreaker offset paging can repeat or skip rows
+        query = query.orderBy(`${TableName.Certificate}.id`, options.sort[options.sort.length - 1][1]);
       }
 
       const results = await query;

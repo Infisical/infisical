@@ -39,7 +39,6 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
-import { resolveCurrentCertificateStatus } from "@app/services/certificate/certificate-fns";
 import {
   CertificateSearchResultSchema,
   SanitizedCertificateSchema
@@ -832,27 +831,35 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.SEARCH_CERTIFICATES.offset),
         limit: z.number().int().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
         search: z.string().trim().max(4096).optional().describe(CERTIFICATES.SEARCH.search),
-        commonName: z.string().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
+        commonName: z.string().trim().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
         status: z
           .array(z.nativeEnum(CertStatus))
           .min(1)
           .max(Object.values(CertStatus).length)
           .optional()
           .describe(CERTIFICATES.SEARCH.status),
-        profileIds: z.array(z.string().uuid()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
-        caIds: z.array(z.string().uuid()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
+        profileIds: z
+          .array(z.string().uuid())
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
+        caIds: z.array(z.string().uuid()).min(1).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
         applicationIds: z
           .array(z.string().uuid())
+          .min(1)
           .max(100)
           .optional()
           .describe(PROJECTS.SEARCH_CERTIFICATES.applicationIds),
         enrollmentTypes: z
           .array(z.nativeEnum(EnrollmentType))
+          .min(1)
           .max(Object.values(EnrollmentType).length)
           .optional()
           .describe(PROJECTS.SEARCH_CERTIFICATES.enrollmentTypes),
         source: z
           .array(z.nativeEnum(CertificateSource))
+          .min(1)
           .max(Object.values(CertificateSource).length)
           .optional()
           .describe(CERTIFICATES.SEARCH.source),
@@ -863,15 +870,22 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               value: z.string().trim().max(1020).optional()
             })
           )
-          .max(100)
+          .min(1)
+          .max(10, "You can only filter by up to 10 metadata fields")
           .optional()
           .describe(PROJECTS.SEARCH_CERTIFICATES.metadata),
         keyAlgorithm: z
-          .array(z.string().trim().max(255))
+          .array(z.string().trim().min(1).max(255))
+          .min(1)
           .max(100)
           .optional()
           .describe(CERTIFICATES.SEARCH.keyAlgorithm),
-        keySizes: z.array(z.number().int()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
+        keySizes: z
+          .array(z.number().int().positive())
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
         signatureAlgorithm: z
           .string()
           .trim()
@@ -905,8 +919,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { metadata, sortBy, sortOrder, createdAtFrom, createdAtTo, ...filters } = req.body;
-      const statusAt = new Date();
-      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+      return server.services.project.searchCertificatesWithCurrentStatus({
         filter: {
           projectId: req.internalCertManagerProjectId,
           type: ProjectFilterType.ID
@@ -921,17 +934,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         metadataFilter: metadata,
         sortBy,
         sortOrder,
-        sortByCurrentStatus: true,
-        statusAt,
         excludeFriendlyNameFromSearch: true
       });
-      return {
-        certificates: certificates.map((certificate) => ({
-          ...certificate,
-          status: resolveCurrentCertificateStatus(certificate, statusAt)
-        })),
-        totalCount
-      };
     }
   });
 

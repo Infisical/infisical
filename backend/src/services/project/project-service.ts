@@ -86,6 +86,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { resolveCurrentCertificateStatus } from "../certificate/certificate-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
@@ -1804,6 +1805,24 @@ export const projectServiceFactory = ({
     };
   };
 
+  const searchCertificatesWithCurrentStatus = async (
+    dto: Omit<TListProjectCertsDTO, "sortByCurrentStatus" | "statusAt">
+  ) => {
+    const statusAt = new Date();
+    const { certificates, totalCount } = await listProjectCertificates({
+      ...dto,
+      sortByCurrentStatus: true,
+      statusAt
+    });
+    return {
+      certificates: certificates.map((certificate) => ({
+        ...certificate,
+        status: resolveCurrentCertificateStatus(certificate, statusAt)
+      })),
+      totalCount
+    };
+  };
+
   const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
@@ -2674,6 +2693,7 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    searchCertificatesWithCurrentStatus,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend,
