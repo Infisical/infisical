@@ -16,6 +16,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import {
+  ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
@@ -106,6 +107,11 @@ export const SessionMachineIdentityField = ({
     ProjectPermissionIdentityActions.Create,
     ProjectPermissionSub.Identity
   );
+  // The grant check reads the bundle's members, which takes ManageMembers, as does granting from the warning.
+  const canManageBundleMembers = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const [search, setSearch] = useState("");
   const [isCreatingIdentity, setIsCreatingIdentity] = useState(false);
@@ -121,7 +127,7 @@ export const SessionMachineIdentityField = ({
     useIsAgentVaultAccessBundleMember(
       projectId,
       accessBundle?.id ?? "",
-      identity
+      identity && canManageBundleMembers
         ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
         : null
     );
@@ -129,7 +135,11 @@ export const SessionMachineIdentityField = ({
     identity,
     accessBundle,
     needsGrant:
-      Boolean(identity && accessBundle) && isGranted !== undefined && !isAdminIdentity && !isGranted
+      canManageBundleMembers &&
+      Boolean(identity && accessBundle) &&
+      isGranted !== undefined &&
+      !isAdminIdentity &&
+      !isGranted
   };
   // The check keeps the previous identity and bundle's answer until the new one loads, which would
   // flash the warning for a pair that has the grant. Until then the warning keeps naming the pair

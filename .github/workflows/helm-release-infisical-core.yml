@@ -1,10 +1,40 @@
 name: Release Infisical Core Helm chart
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - helm-charts/infisical-standalone-postgres/Chart.yaml
 
+# No workflow-level concurrency group: GitHub cancels a run queued behind a newer one, so a
+# chart version merged between two others would never be published. Runs for different
+# versions are independent; the release job serializes runs for the same version.
 jobs:
+  # Skips commits that touch Chart.yaml without a new version, before the slow tests.
+  check-version:
+    name: Check chart version is unpublished
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+
+      - name: Set up Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
+        with:
+          version: v3.17.0
+
+      - name: Look up chart version in the registry
+        id: check
+        run: ./helm-charts/check-infisical-core-chart-unpublished.sh
+
   test-helm:
     name: Test Helm Chart
+    needs: [check-version]
+    if: needs.check-version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,7 +64,9 @@ jobs:
           yamale_version: "6.0.0"
 
       - name: Run chart-testing (lint)
-        run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
+        # The version bump is checked on the PR. Here the code is already on main, which ct
+        # compares against, so the check would always fail; check-version guards publishing.
+        run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres --check-version-increment=false
 
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
@@ -56,9 +88,11 @@ jobs:
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
             --helm-extra-args="--timeout=300s" \
-            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.167.0 --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
+            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
             --namespace infisical-standalone-postgres
 
+  # Nothing retriggers a release this blocks, so run this workflow by hand after the unfreeze.
+  # check-version makes that safe: it publishes only a version that is still unpublished.
   freeze-check:
     name: Release freeze check
     needs: [test-helm]
@@ -67,16 +101,27 @@ jobs:
       freeze: ${{ vars.DEPLOY_FREEZE }}
 
   release:
-    needs: [freeze-check]
+    needs: [check-version, freeze-check]
     runs-on: ubuntu-latest
+    # Two runs for the same version (a later commit that changed Chart.yaml without bumping it)
+    # wait for each other here, and the second finds the version published. A run queued behind
+    # a newer one for the same version may be cancelled, which loses nothing.
+    concurrency:
+      group: helm-release-infisical-core-${{ needs.check-version.outputs.version }}
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2 (outdated — consider upgrading to v4)
       - name: Install Helm
-        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3 latest
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
         with:
-          version: v3.10.0
+          version: v3.17.0
+      # The tests take minutes, so another run may have published this version since check-version.
+      - name: Check chart version is still unpublished
+        id: check
+        run: ./helm-charts/check-infisical-core-chart-unpublished.sh
       - name: Build and push helm package to Cloudsmith
+        if: steps.check.outputs.publish == 'true'
         run: cd helm-charts && sh upload-infisical-core-helm-cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}

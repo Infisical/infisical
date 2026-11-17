@@ -36,22 +36,7 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope =
-  | "org"
-  | "sub-org"
-  | "project"
-  | "pam"
-  | "agent-vault"
-  | "secret-scanning"
-  | "admin";
-
-// Products that own a colour repoint the shared --color-project variable rather than adding a parallel
-// set of scope classes.
-const SIDEBAR_SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
-  pam: { "--color-project": "#ed3453" },
-  "agent-vault": { "--color-project": "var(--color-product-av)" },
-  "secret-scanning": { "--color-project": "var(--color-product-ss)" }
-};
+type SidebarScope = "org" | "sub-org" | "project" | "admin";
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
 
@@ -210,19 +195,14 @@ function Sidebar({
               data-mobile="true"
               className={cn(
                 "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground in-data-[theme=light]:bg-none [&>button]:hidden",
-                (scope === "project" ||
-                  scope === "pam" ||
-                  scope === "agent-vault" ||
-                  scope === "secret-scanning") &&
-                  "from-project/5",
+                scope === "project" && "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
               )}
               style={
                 {
-                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-                  ...(SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] ?? {})
+                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE
                 } as React.CSSProperties
               }
               side={side}
@@ -250,17 +230,12 @@ function Sidebar({
             className={cn(
               "flex h-full flex-col overflow-hidden border-r border-border-soft bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear in-data-[theme=light]:bg-none",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              (scope === "project" ||
-                scope === "pam" ||
-                scope === "agent-vault" ||
-                scope === "secret-scanning") &&
-                "from-project/5",
+              scope === "project" && "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",
               className
             )}
-            style={SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] as React.CSSProperties | undefined}
             {...props}
           >
             {children}
@@ -664,9 +639,6 @@ const sidebarMenuButtonVariants = cva(
         org: "data-active:border-l-org data-active:[&_svg]:text-org",
         "sub-org": "data-active:border-l-sub-org data-active:[&_svg]:text-sub-org",
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
-        pam: "data-active:border-l-project data-active:[&_svg]:text-project",
-        "agent-vault": "data-active:border-l-project data-active:[&_svg]:text-project",
-        "secret-scanning": "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },

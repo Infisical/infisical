@@ -218,10 +218,11 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
 
 ## Session options
 
-The API and both SDKs can set every option in this section. The dashboard and the CLI can set only the access bundle, the duration, and the label.
+The API and both SDKs can set every option in this section. The dashboard and the CLI can set only the access bundle, the duration, the label, and metadata.
 
 - **Access bundle:** the bundle whose services the agent can use (a session has at most one, and you can't change it after you create the session)
-- **Label:** a short description of what the session is for, such as `nightly deploy`, which you can search for on the **Sessions** page (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session) for its limits and how to change it later)
+- **Label:** a short description of what the session is for, such as `nightly deploy`, which you can search for on the **Sessions** page (you can [change it later](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata))
+- **Metadata:** keys and values that record which run the session belongs to, such as a run ID or a ticket, which you can [list sessions by](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata)
 - **On behalf of a user:** the user whose [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) the session uses, if a machine identity creates the session for that person (see [Sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users))
 - **Inline services:** services and credentials that your code sends with the session instead of adding them to an access bundle in advance (only admins of the project can send them; see [Inline services](/documentation/platform/agent-vault/inline-services))
 

@@ -8,8 +8,10 @@ import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integrati
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ApprovalNotificationEvent, ApproverType } from "./approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import { TApprovalNotification, TApprovalResource } from "./approval-policy-types";
+
+const SELF_APPROVAL_BLOCKED_TYPES = new Set([ApprovalPolicyType.PamAccess, ApprovalPolicyType.CertCodeSigning]);
 
 export type TApprovalNotificationDeps = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -47,6 +49,13 @@ const resolveRecipients = async (
 
   const userIds = await expandApproversToUserIds(approvers, userGroupMembershipDAL);
   if (actorId) userIds.delete(actorId);
+  if (
+    event === ApprovalNotificationEvent.Requested &&
+    request.requesterId &&
+    SELF_APPROVAL_BLOCKED_TYPES.has(request.type as ApprovalPolicyType)
+  ) {
+    userIds.delete(request.requesterId);
+  }
   return userIds;
 };
 

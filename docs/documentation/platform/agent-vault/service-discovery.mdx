@@ -32,7 +32,7 @@ curl -sS --noproxy "" "<your-instance-url>/api/v1/agent-vault/session/services"
   `--noproxy ""` sends the request through the proxy even if the `NO_PROXY` environment variable lists your Infisical instance's host. The proxy adds the session's token to the request, so without it, Infisical refuses the request.
 </Note>
 
-Each request for the list appears in the session's [logs](/documentation/platform/agent-vault/session-logs#log-contents) with the outcome **Listed Services**.
+Each request for the list appears in the session's [logs](/documentation/platform/agent-vault/session-logs#log-contents) with the outcome **Passthrough**.
 
 ## List contents
 
