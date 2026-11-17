@@ -450,6 +450,7 @@ export const ApprovalPolicies = ({
         empty={
           (isError && !policies.length && (
             <EmptyState
+              ghost={false}
               size="sm"
               icon="alert"
               title="Couldn't load approval policies"

@@ -292,7 +292,12 @@ export const ProjectIdentitiesTab = () => {
         }}
         empty={
           (Boolean(identitiesError) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load machine identities" />
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert"
+              title="Couldn't load machine identities"
+            />
           )) ||
           (searching ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />

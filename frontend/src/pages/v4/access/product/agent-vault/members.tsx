@@ -163,7 +163,7 @@ export const AgentVaultMembersTab = () => {
         loadingRows={10}
         empty={
           (Boolean(list.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load users" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load users" />
           )) ||
           (list.searching ? (
             <EmptyState size="sm" icon="search" title="No users match search" />

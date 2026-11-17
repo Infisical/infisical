@@ -175,6 +175,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load discovery jobs"

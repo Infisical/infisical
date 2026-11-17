@@ -199,6 +199,7 @@ export const SecretSyncsTab = ({
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"

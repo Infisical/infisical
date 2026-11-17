@@ -348,7 +348,12 @@ export const RequestsTab = ({
         }}
         empty={
           (Boolean(loadError) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load certificate requests" />
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert"
+              title="Couldn't load certificate requests"
+            />
           )) ||
           (filtered ? (
             <EmptyState

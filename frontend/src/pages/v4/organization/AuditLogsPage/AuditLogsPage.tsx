@@ -430,6 +430,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert"

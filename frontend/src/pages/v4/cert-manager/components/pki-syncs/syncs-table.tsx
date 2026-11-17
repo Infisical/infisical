@@ -203,6 +203,7 @@ export const PkiSyncsTable = ({
   if (error)
     emptyState = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"

@@ -144,7 +144,7 @@ export const ProjectGroupsTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(groups.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load groups" />
           )) ||
           (list.search.trim() ? (
             <EmptyState

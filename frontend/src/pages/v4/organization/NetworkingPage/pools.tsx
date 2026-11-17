@@ -362,6 +362,7 @@ export const PoolsTable = ({
   if (!isEnterprise)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="globe"
         title="Gateway pools need an Enterprise plan"

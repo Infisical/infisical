@@ -431,7 +431,7 @@ export const PamIdentitiesTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(identities.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load identities" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load identities" />
           )) ||
           (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />

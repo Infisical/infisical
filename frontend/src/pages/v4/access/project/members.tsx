@@ -227,7 +227,7 @@ export const ProjectMembersTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(members.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load users" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load users" />
           )) ||
           (searching ? (
             <EmptyState

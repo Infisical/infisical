@@ -102,6 +102,7 @@ export const KmipServersPage = () => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load KMIP servers"

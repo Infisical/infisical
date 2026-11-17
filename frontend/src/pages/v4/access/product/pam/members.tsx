@@ -339,7 +339,7 @@ export const PamMembersTab = () => {
         onSortChange={list.setSort}
         empty={
           (Boolean(members.error) && (
-            <EmptyState size="sm" icon="alert" title="Couldn't load members" />
+            <EmptyState ghost={false} size="sm" icon="alert" title="Couldn't load members" />
           )) ||
           (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No members match search" />
