@@ -158,6 +158,15 @@ export const MFASection = () => {
 
   const canEnable = availableMethods.length > 0;
 
+  // The preference is account-wide; an enforcing org that doesn't allow it challenges another method there.
+  const orgsNotAllowingPreferred = selectedMethod
+    ? organizations.filter((org) => {
+        if (!org.enforceMfa) return false;
+        const allowed = org.allowedMfaMethods?.length ? org.allowedMfaMethods : [MfaMethod.EMAIL];
+        return !allowed.includes(selectedMethod);
+      })
+    : [];
+
   const hasRecoveryCodes = user.isMfaEnabled;
 
   const handleEnable = () => {
@@ -238,6 +247,14 @@ export const MFASection = () => {
           </SelectContent>
         </Select>
       </div>
+      {selectedMethod && orgsNotAllowingPreferred.length > 0 && (
+        <p className="text-sm text-muted">
+          {orgsNotAllowingPreferred.map((org) => org.name).join(", ")}{" "}
+          {orgsNotAllowingPreferred.length === 1 ? "does" : "do"} not allow{" "}
+          {MFA_METHOD_LABELS[selectedMethod].toLowerCase()}, so you sign in there with another
+          method it allows.
+        </p>
+      )}
     </section>
   );
 

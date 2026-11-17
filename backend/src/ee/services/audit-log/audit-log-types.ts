@@ -6003,6 +6003,7 @@ interface OrgUpdateEvent {
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
     selectedMfaMethod?: string;
+    allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;
     userTokenExpiration?: string;

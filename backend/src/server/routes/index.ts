@@ -1621,7 +1621,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     permissionService,
-    mfaLockoutService
+    mfaLockoutService,
+    userService
   });
 
   const samlService = samlConfigServiceFactory({
@@ -4228,6 +4229,7 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     mfaSessionService,
+    userService,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -4299,6 +4301,7 @@ export const registerRoutes = async (
     pamSessionExpirationService,
     pamAccessRequestService,
     mfaSessionService,
+    userService,
     orgDAL,
     telemetryService
   });
@@ -4324,6 +4327,7 @@ export const registerRoutes = async (
     kmsService,
     userDAL,
     mfaSessionService,
+    userService,
     orgDAL,
     membershipDAL,
     membershipRoleDAL,

@@ -147,7 +147,7 @@ describe("requestEmailChangeOTP managed-email gate", () => {
 
 type TMfaOverrides = {
   userRow?: { email?: string | null; isMfaEnabled?: boolean; selectedMfaMethod?: MfaMethod | null };
-  orgs?: { id: string; rootOrgId?: string | null; enforceMfa?: boolean; selectedMfaMethod?: MfaMethod | null }[];
+  orgs?: { id: string; rootOrgId?: string | null; enforceMfa?: boolean; allowedMfaMethods?: MfaMethod[] | null }[];
   memberOrgIds?: string[];
   hasTotp?: boolean;
   passkeyCount?: number;
@@ -274,7 +274,7 @@ describe("getStepUpMfaMethod", () => {
   test("challenges the org-enforced method and accepts nothing else", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] }]
     });
 
     await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
@@ -288,7 +288,7 @@ describe("getStepUpMfaMethod", () => {
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
       orgs: [
         { id: "sub-org", rootOrgId: ENFORCED_ORG_ID },
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] }
       ]
     });
 
@@ -316,7 +316,7 @@ describe("getStepUpMfaMethod", () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }],
       hasTotp: true,
       passkeyCount: 1
     });
@@ -333,7 +333,7 @@ describe("getStepUpMfaMethod", () => {
       memberOrgIds: ["loose-org", ENFORCED_ORG_ID],
       orgs: [
         { id: "loose-org", enforceMfa: false },
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }
       ],
       hasTotp: true
     });
@@ -360,7 +360,7 @@ describe("getStepUpMfaMethod", () => {
 });
 
 describe("getFactorEnrollmentStepUpMfaMethods", () => {
-  const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN };
+  const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] };
 
   test("lets an account with no factor enroll its first one unchallenged", async () => {
     const service = buildMfaService({ memberOrgIds: [ENFORCED_ORG_ID], orgs: [passkeyEnforcingOrg] });
@@ -386,7 +386,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       memberOrgIds: [ENFORCED_ORG_ID, "totp-org"],
-      orgs: [passkeyEnforcingOrg, { id: "totp-org", enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }],
+      orgs: [passkeyEnforcingOrg, { id: "totp-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }],
       hasTotp: true,
       passkeyCount: 1
     });
@@ -439,7 +439,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
   test("counts email when an org's login requires it", async () => {
     const service = buildMfaService({
       memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.EMAIL }]
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] }]
     });
 
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({

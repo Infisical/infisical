@@ -29,6 +29,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserServiceFactory } from "@app/services/user/user-service";
 
 import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
@@ -116,7 +117,8 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "findRootOrgDetails">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
@@ -213,6 +215,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     userDAL,
     orgDAL,
     mfaSessionService,
+    userService,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -582,7 +585,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         });
       }
       await enforceMfa(
-        { mfaSessionService, orgDAL, userDAL },
+        { mfaSessionService, orgDAL, userDAL, userService },
         {
           userId: ctx.actorId,
           orgId: ctx.actorOrgId,

@@ -58,7 +58,9 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
+import { MfaMethod } from "../auth/auth-type";
 import {
   ActorAuthMethod,
   ActorType,
@@ -488,6 +490,7 @@ export const orgServiceFactory = ({
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -553,16 +556,32 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (enforceMfa !== undefined) {
+    // Stored strongest first, so the first entry is the strongest allowed method. selectedMfaMethod is the
+    // deprecated single-method form of the same setting.
+    let allowedMfaMethodsUpdate: MfaMethod[] | undefined;
+    if (allowedMfaMethods !== undefined) {
+      allowedMfaMethodsUpdate = MFA_METHOD_PRIORITY.filter((method) => allowedMfaMethods.includes(method));
+    } else if (selectedMfaMethod !== undefined) {
+      allowedMfaMethodsUpdate = [selectedMfaMethod];
+    }
+
+    if (enforceMfa !== undefined || allowedMfaMethodsUpdate) {
       if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
       }
 
-      if (!appCfg.isSmtpConfigured) {
+      // Email codes need SMTP; passkeys and authenticator apps don't, so only an allowlist with email does.
+      const orgBeforeUpdate = await orgDAL.findById(orgId);
+      const willEnforceMfa = enforceMfa ?? orgBeforeUpdate?.enforceMfa;
+      const willAllowEmail = (allowedMfaMethodsUpdate ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
+        MfaMethod.EMAIL
+      );
+      if (willEnforceMfa && willAllowEmail && !appCfg.isSmtpConfigured) {
         throw new BadRequestError({
-          message: "Failed to enforce user MFA due to missing instance SMTP configuration."
+          message:
+            "Email MFA codes need SMTP, which is not configured for this instance. Remove Email from the allowed MFA methods or configure SMTP."
         });
       }
     }
@@ -714,7 +733,10 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      selectedMfaMethod,
+      allowedMfaMethods: allowedMfaMethodsUpdate,
+      // Kept in step with the first allowed method so a server on the previous release, which reads only
+      // selectedMfaMethod, still enforces a method the org chose.
+      selectedMfaMethod: allowedMfaMethodsUpdate?.[0],
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,

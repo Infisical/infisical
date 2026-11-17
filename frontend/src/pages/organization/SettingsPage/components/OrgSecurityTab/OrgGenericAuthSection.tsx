@@ -1,4 +1,5 @@
 import { MfaEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import { MFA_METHOD_LABELS } from "@app/components/mfa/setup";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -10,13 +11,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  Combobox,
   Field,
+  FieldDescription,
   FieldLabel,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Toggle
 } from "@app/components/v3";
 import {
@@ -29,12 +27,27 @@ import { useUpdateOrg } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+type TMfaMethodOption = { value: MfaMethod; label: string };
+
+const MFA_METHOD_OPTIONS: TMfaMethodOption[] = [
+  MfaMethod.WEBAUTHN,
+  MfaMethod.TOTP,
+  MfaMethod.EMAIL
+].map((value) => ({ value, label: MFA_METHOD_LABELS[value] }));
+
 export const OrgGenericAuthSection = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const { mutateAsync } = useUpdateOrg();
+
+  const allowedMethods = currentOrg?.allowedMfaMethods?.length
+    ? currentOrg.allowedMfaMethods
+    : [MfaMethod.EMAIL];
+  const selectedOptions = MFA_METHOD_OPTIONS.filter((option) =>
+    allowedMethods.includes(option.value)
+  );
 
   const handleEnforceMfaToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
@@ -54,20 +67,27 @@ export const OrgGenericAuthSection = () => {
     });
   };
 
-  const handleUpdateSelectedMfa = async (selectedMfaMethod: MfaMethod) => {
+  const handleUpdateAllowedMfa = async (options: TMfaMethodOption[]) => {
     if (!currentOrg?.id) return;
     if (!subscription?.enforceMfa) {
       handlePopUpOpen("upgradePlan");
       return;
     }
+    if (!options.length) {
+      createNotification({
+        text: "Keep at least one MFA method. Members need a method to sign in.",
+        type: "error"
+      });
+      return;
+    }
 
     await mutateAsync({
       orgId: currentOrg?.id,
-      selectedMfaMethod
+      allowedMfaMethods: options.map((option) => option.value)
     });
 
     createNotification({
-      text: "Successfully updated selected MFA method",
+      text: "Allowed MFA methods updated",
       type: "success"
     });
   };
@@ -99,35 +119,35 @@ export const OrgGenericAuthSection = () => {
           </CardAction>
         </CardHeader>
         {currentOrg?.enforceMfa && (
-          <CardContent className="max-w-md px-6 pb-6">
-            <Field>
-              <FieldLabel htmlFor="org-mfa-method">MFA Method</FieldLabel>
-              <Select
-                value={currentOrg.selectedMfaMethod ?? MfaMethod.EMAIL}
-                onValueChange={(value) => handleUpdateSelectedMfa(value as MfaMethod)}
-              >
-                <SelectTrigger id="org-mfa-method" className="w-full max-w-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  <SelectItem value={MfaMethod.EMAIL} key="mfa-method-email">
-                    Email
-                  </SelectItem>
-                  <SelectItem value={MfaMethod.TOTP} key="mfa-method-totp">
-                    Mobile Authenticator
-                  </SelectItem>
-                  <SelectItem value={MfaMethod.WEBAUTHN} key="mfa-method-webauthn">
-                    Passkey (WebAuthn)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
+          <CardContent className="max-w-lg px-6 pb-6">
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Field>
+                  <FieldLabel htmlFor="org-mfa-methods">Allowed MFA Methods</FieldLabel>
+                  <Combobox
+                    id="org-mfa-methods"
+                    multiple
+                    isClearable={false}
+                    isDisabled={!isAllowed}
+                    value={selectedOptions}
+                    onValueChange={handleUpdateAllowedMfa}
+                    options={MFA_METHOD_OPTIONS}
+                    getOptionValue={(option) => option.value}
+                    getOptionLabel={(option) => option.label}
+                    placeholder="Select methods..."
+                  />
+                  <FieldDescription>
+                    Members sign in with their preferred method from this list.
+                  </FieldDescription>
+                </Field>
+              )}
+            </OrgPermissionCan>
           </CardContent>
         )}
         <CardFooter className="min-h-8 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
           <p className="text-sm text-muted">
             {currentOrg?.enforceMfa
-              ? "MFA is enforced. Members must complete a second authentication factor to sign in."
+              ? "MFA is enforced. Members must sign in with one of the allowed methods."
               : "MFA is not enforced. Members choose whether to set up a second factor."}
           </p>
         </CardFooter>
