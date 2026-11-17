@@ -109,7 +109,7 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-const MAX_BULK_SELECTION = 25;
+const MAX_BULK_SELECTION = 100;
 
 type Props = {
   onConfigurePolicies: () => void;
