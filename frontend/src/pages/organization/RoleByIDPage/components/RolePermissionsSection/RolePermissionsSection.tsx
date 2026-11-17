@@ -164,6 +164,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   ([subject]) =>
                     (permissions?.[subject as keyof typeof permissions] as unknown[])?.length > 0
                 )
+                .sort(([, a], [, b]) => a.title.localeCompare(b.title))
                 .map(([subject, config]) => (
                   <GeneralPermissionPolicies
                     key={`org-role-${roleId}-permission-${subject}`}
