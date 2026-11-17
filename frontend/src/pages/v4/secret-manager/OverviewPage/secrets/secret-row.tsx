@@ -1,4 +1,13 @@
-import { type ComponentProps, memo, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ComponentProps,
+  type KeyboardEvent,
+  memo,
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,13 +20,16 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
+  DropdownMenu,
   DropdownMenuCheckboxItem,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -35,6 +47,7 @@ import {
   TableRow,
   TableRowIndicators
 } from "@infisical/cipher/ui/table";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
   BellIcon,
@@ -81,11 +94,11 @@ import {
   type EnvironmentStatus,
   ExpandCell,
   type KindOverlay,
-  PendingBadge,
   PendingMenuItems,
   ROW_ACTION_SLOTS,
   type RowActionProps,
   type RowContext,
+  RowStateBadges,
   SelectCell,
   StatusCell,
   stopRowClick,
@@ -122,6 +135,7 @@ export type SecretRowHandlers = {
   resources: readonly Resource[];
   tagOptions: string[];
   autoCapitalize: boolean;
+  secretNames: string[];
   onRename: (
     secrets: Secret[],
     name: string,
@@ -361,6 +375,271 @@ export function Annotations({
     </span>
   );
 }
+
+export type AnnotationKind = Annotation | "reminder";
+
+export function AnnotateMenu({
+  ref,
+  label,
+  annotations,
+  tagsBlock,
+  reminderBlock,
+  revealed,
+  onOpenChange,
+  onChoose,
+  ...rest
+}: {
+  ref?: Ref<HTMLSpanElement>;
+  label: string;
+  annotations: Pick<Secret, "comment" | "tags" | "metadata"> & { reminder?: unknown };
+  tagsBlock?: string;
+  reminderBlock?: string;
+  revealed?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onChoose: (kind: AnnotationKind | undefined) => void;
+}) {
+  const chosen = useRef<AnnotationKind>(undefined);
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      ref={ref}
+      className={styles.annotateSlot}
+      data-revealed={revealed || open || undefined}
+      {...rest}
+    >
+      <DropdownMenu
+        open={open}
+        onOpenChange={(next) => {
+          if (next) chosen.current = undefined;
+          setOpen(next);
+          onOpenChange?.(next);
+        }}
+      >
+        <Tooltip content="Annotate">
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              iconOnly
+              tabIndex={-1}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Icon icon={PencilLineIcon} />
+              <span className="sr-only">{`Annotate ${label}`}</span>
+            </Button>
+          </DropdownMenuTrigger>
+        </Tooltip>
+        <DropdownMenuContent
+          align="start"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            onChoose(chosen.current);
+          }}
+        >
+          <DropdownMenuLabel>Annotate</DropdownMenuLabel>
+          <DropdownMenuItem
+            onSelect={() => {
+              chosen.current = "comment";
+            }}
+          >
+            <Icon icon={MessageSquareIcon} />
+            {annotations.comment ? "Edit comment" : "Add comment"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={Boolean(tagsBlock)}
+            description={tagsBlock}
+            onSelect={() => {
+              chosen.current = "tags";
+            }}
+          >
+            <Icon icon={TagsIcon} />
+            {annotations.tags.length ? "Edit tags" : "Add tags"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={Boolean(reminderBlock)}
+            description={reminderBlock}
+            onSelect={() => {
+              chosen.current = "reminder";
+            }}
+          >
+            <Icon icon={BellIcon} />
+            {annotations.reminder ? "Edit reminder" : "Add reminder"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              chosen.current = "metadata";
+            }}
+          >
+            <Icon icon={CodeXmlIcon} />
+            {annotations.metadata.length ? "Edit metadata" : "Add metadata"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </span>
+  );
+}
+
+function CellEditor({
+  label,
+  initial,
+  scope,
+  multiline,
+  placeholder,
+  transform,
+  validate,
+  onCommit,
+  onInvalidBlur,
+  onDone
+}: {
+  label: string;
+  initial: string;
+  scope: Scope;
+  multiline?: boolean;
+  placeholder?: string;
+  transform?: (value: string) => string;
+  validate?: (value: string) => string | undefined;
+  onCommit: (value: string) => void;
+  onInvalidBlur: (message: string) => void;
+  onDone: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState("");
+  const finish = (blurred: boolean) => {
+    const next = multiline ? draft : draft.trim();
+    if (next === initial) {
+      onDone();
+      return;
+    }
+    const problem = validate?.(next);
+    if (problem && !blurred) {
+      setError(problem);
+      return;
+    }
+    if (problem) onInvalidBlur(problem);
+    else onCommit(next);
+    onDone();
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      finish(false);
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onDone();
+    }
+  };
+  const change = (value: string) => {
+    setDraft(transform ? transform(value) : value);
+    setError("");
+  };
+  return (
+    <div className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
+      {multiline ? (
+        <ReferenceEditor
+          value={draft}
+          scope={scope}
+          multiline
+          onValueChange={change}
+          onKeyDown={onKeyDown}
+          onBlur={() => finish(true)}
+        >
+          {(control) => (
+            <Textarea
+              {...control}
+              autoFocus
+              rows={1}
+              className={styles.inlineInput}
+              aria-invalid={Boolean(error) || undefined}
+              aria-label={label}
+              placeholder={placeholder}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          )}
+        </ReferenceEditor>
+      ) : (
+        <Input
+          autoFocus
+          value={draft}
+          className={styles.inlineInput}
+          aria-invalid={Boolean(error) || undefined}
+          aria-label={label}
+          placeholder={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => change(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => finish(true)}
+        />
+      )}
+      {error && (
+        <span role="alert" className={styles.fieldError}>
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function EditableCell({
+  canEdit,
+  load,
+  editor,
+  trailing,
+  children,
+  ...cell
+}: Omit<ComponentProps<typeof TableCell>, "onClick"> & {
+  canEdit: boolean;
+  load: () => Promise<string | undefined>;
+  editor: Omit<ComponentProps<typeof CellEditor>, "initial" | "onDone">;
+  trailing?: ReactNode;
+}) {
+  const [initial, setInitial] = useState<string>();
+  const begin = async () => {
+    if (!canEdit || initial !== undefined) return;
+    const loaded = await load();
+    if (loaded !== undefined) setInitial(loaded);
+  };
+  return (
+    <TableCell {...cell} data-editable={canEdit || undefined} onClick={() => begin()}>
+      <div className={styles.nameLine}>
+        {initial === undefined ? (
+          children
+        ) : (
+          <CellEditor {...editor} initial={initial} onDone={() => setInitial(undefined)} />
+        )}
+        {trailing}
+      </div>
+    </TableCell>
+  );
+}
+
+const canEditInline = (secret: Secret, ctx: RowContext) => {
+  const pendingType = ctx.pending?.[secret.id];
+  const denied = ctx.blockFor?.(
+    ProjectPermissionSub.Secrets,
+    pendingType === "create"
+      ? ProjectPermissionSecretActions.Create
+      : ProjectPermissionSecretActions.Edit,
+    {
+      environment: secret.environment,
+      secretPath: secret.path,
+      secretName: secret.name,
+      secretTags: ["*"]
+    },
+    "edit this secret"
+  );
+  return (
+    !ctx.writeBlock &&
+    !denied &&
+    !secret.honeyToken &&
+    !secret.managedBy &&
+    pendingType !== "delete"
+  );
+};
 
 function SecretActionsRow({
   secret,
@@ -998,6 +1277,164 @@ function OverrideRow({
   );
 }
 
+function SingleSecretRowView({
+  rowKey,
+  entries,
+  ctx,
+  revealAll,
+  handlers
+}: {
+  rowKey: string;
+  entries: Secret[];
+  ctx: RowContext;
+  revealAll: boolean;
+  handlers: SecretRowHandlers;
+}) {
+  const [overlay, setOverlay] = useState<Overlay>();
+  const [creatingOverride, setCreatingOverride] = useState(false);
+  const loader = useValueLoader();
+  const first = entries[0];
+  const { name } = first;
+  const showOverride = first.override !== undefined || creatingOverride;
+  const pendingType = ctx.pending?.[first.id];
+  const editable = canEditInline(first, ctx);
+  const tagsBlock = ctx.blockFor?.(
+    ProjectPermissionSub.Tags,
+    ProjectPermissionActions.Read,
+    { environment: first.environment, secretPath: first.path },
+    "read tags"
+  )
+    ? "Access denied"
+    : undefined;
+  const loadValue = async () => {
+    const current = readableValue(first);
+    if (current !== undefined || first.value.status === "unreadable") return current ?? "";
+    const values = await loader.ensure([first]);
+    const loaded =
+      values[valueKey(first.environment, first.path, first.name, false, first.version)];
+    if (typeof loaded !== "string") ctx.report(`Could not read ${first.name}.`, "bad");
+    return typeof loaded === "string" ? loaded : undefined;
+  };
+  return (
+    <>
+      <SecretActionsRow
+        secret={first}
+        ctx={ctx}
+        handlers={handlers}
+        onAddOverride={() => setCreatingOverride(true)}
+        open={overlay}
+        setOpen={setOverlay}
+        row={{
+          "data-recent": ctx.recent.includes(rowKey) || undefined,
+          "data-pending": pendingType,
+          className: styles.row
+        }}
+      >
+        <SelectCell
+          kind="secret"
+          keys={[selectionKey(first)]}
+          label={name}
+          ctx={ctx}
+          selectable
+          overlay={overlayOf(first)}
+        />
+        <EditableCell
+          pin="start"
+          pinOffset="var(--cipher-size-row)"
+          className={styles.nameCell}
+          data-override-rule={first.override !== undefined || undefined}
+          canEdit={editable}
+          load={async () => name}
+          editor={{
+            label: `Name of ${name}`,
+            scope: first,
+            placeholder: "Secret name",
+            transform: handlers.autoCapitalize ? (value) => value.toUpperCase() : undefined,
+            validate: (next) => {
+              if (!next) return "Secret name is required";
+              if (handlers.secretNames.includes(next))
+                return "A secret with this name already exists";
+              return undefined;
+            },
+            onCommit: (next) =>
+              handlers.onUpdate(first, { name: next }, { title: `Renamed ${name}` }),
+            onInvalidBlur: (message) => ctx.report(message, "bad")
+          }}
+          trailing={
+            pendingType !== "delete" && (
+              <AnnotateMenu
+                label={name}
+                annotations={first}
+                tagsBlock={tagsBlock}
+                reminderBlock={
+                  pendingType === "create" ? "Commit the secret to add a reminder" : undefined
+                }
+                onChoose={(kind) => {
+                  if (kind) setOverlay(kind);
+                }}
+              />
+            )
+          }
+        >
+          <span className={styles.truncate} title={name}>
+            {name}
+          </span>
+          <Annotations secret={first} onOpen={setOverlay} />
+          <RowStateBadges rowKey={rowKey} resource={first} ctx={ctx} />
+        </EditableCell>
+        <EditableCell
+          className={styles.valueCell}
+          canEdit={editable}
+          load={loadValue}
+          editor={{
+            multiline: true,
+            label: `Value of ${name}`,
+            scope: first,
+            placeholder: first.value.status === "unreadable" ? "Enter a new value" : "Secret value",
+            onCommit: (value) => handlers.onUpdate(first, { value }, { title: `Updated ${name}` }),
+            onInvalidBlur: (message) => ctx.report(message, "bad")
+          }}
+        >
+          <SecretValue secret={first} visible={revealAll} />
+          <Indicators secret={first} />
+        </EditableCell>
+      </SecretActionsRow>
+      {showOverride && (
+        <OverrideRow
+          secret={first}
+          label={`${name} override`}
+          creating={creatingOverride}
+          ctx={ctx}
+          onUpdate={handlers.onUpdate}
+        >
+          <TableCell pin="start" selection divider={false}>
+            <span className={styles.iconSlot}>
+              <Icon icon={GitBranchIcon} label="Personal override" />
+            </span>
+          </TableCell>
+          <TableCell
+            pin="start"
+            pinOffset="var(--cipher-size-row)"
+            className={styles.nameCell}
+            data-override-rule
+          >
+            <span className={styles.truncate}>{name}</span>
+          </TableCell>
+          <TableCell className={styles.valueCell}>
+            <OverrideValue
+              secret={first}
+              creating={creatingOverride}
+              visible={revealAll}
+              onStopCreating={() => setCreatingOverride(false)}
+              onUpdate={handlers.onUpdate}
+            />
+          </TableCell>
+        </OverrideRow>
+      )}
+    </>
+  );
+}
+
 function SecretRowView({
   rowKey,
   entries,
@@ -1016,7 +1453,6 @@ function SecretRowView({
   const [visibleOverride, setVisibleOverride] = useState<{ base: boolean; value: boolean }>();
   const rowVisible = visibleOverride?.base === revealAll ? visibleOverride.value : revealAll;
   const setRowVisible = (value: boolean) => setVisibleOverride({ base: revealAll, value });
-  const [overlay, setOverlay] = useState<Overlay>();
   const [overlays, setOverlays] = useState<Record<string, Overlay | undefined>>({});
   const overlayFor = (environment: string) => (next: Overlay | undefined) =>
     setOverlays((current) => ({ ...current, [environment]: next }));
@@ -1028,88 +1464,6 @@ function SecretRowView({
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
     setCreatingOverride((current) => [...current, environment]);
-  if (ctx.single) {
-    const showOverride =
-      first.override !== undefined || creatingOverride.includes(first.environment);
-    return (
-      <>
-        <SecretActionsRow
-          secret={first}
-          ctx={ctx}
-          handlers={handlers}
-          onAddOverride={() => startCreating(first.environment)}
-          open={overlay}
-          setOpen={setOverlay}
-          row={{
-            "data-state": ctx.recent.includes(rowKey) ? "selected" : undefined,
-            "data-pending": ctx.pending?.[first.id],
-            className: styles.row
-          }}
-        >
-          <SelectCell
-            kind="secret"
-            keys={[selectionKey(first)]}
-            label={name}
-            ctx={ctx}
-            selectable
-            overlay={overlayOf(first)}
-          />
-          <TableCell
-            pin="start"
-            pinOffset="var(--cipher-size-row)"
-            className={styles.nameCell}
-            data-override-rule={first.override !== undefined || undefined}
-          >
-            <div className={styles.nameLine}>
-              <span className={styles.truncate} title={name}>
-                {name}
-              </span>
-              <Annotations secret={first} onOpen={setOverlay} />
-              <PendingBadge type={ctx.pending?.[first.id]} />
-            </div>
-          </TableCell>
-          <TableCell className={styles.valueCell}>
-            <div className={styles.nameLine}>
-              <SecretValue secret={first} visible={revealAll} />
-              <Indicators secret={first} />
-            </div>
-          </TableCell>
-        </SecretActionsRow>
-        {showOverride && (
-          <OverrideRow
-            secret={first}
-            label={`${name} override`}
-            creating={creatingOverride.includes(first.environment)}
-            ctx={ctx}
-            onUpdate={handlers.onUpdate}
-          >
-            <TableCell pin="start" selection divider={false}>
-              <span className={styles.iconSlot}>
-                <Icon icon={GitBranchIcon} label="Personal override" />
-              </span>
-            </TableCell>
-            <TableCell
-              pin="start"
-              pinOffset="var(--cipher-size-row)"
-              className={styles.nameCell}
-              data-override-rule
-            >
-              <span className={styles.truncate}>{name}</span>
-            </TableCell>
-            <TableCell className={styles.valueCell}>
-              <OverrideValue
-                secret={first}
-                creating={creatingOverride.includes(first.environment)}
-                visible={revealAll}
-                onStopCreating={() => stopCreating(first.environment)}
-                onUpdate={handlers.onUpdate}
-              />
-            </TableCell>
-          </OverrideRow>
-        )}
-      </>
-    );
-  }
   const status = (environment: string): EnvironmentStatus => {
     const secret = entries.find((entry) => entry.environment === environment);
     if (secret && readableValue(secret) === "") return "empty";
@@ -1167,7 +1521,7 @@ function SecretRowView({
     <>
       <RowContextMenu {...groupActions}>
         <TableRow
-          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          data-recent={ctx.recent.includes(rowKey) || undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
           data-has-selection={
@@ -1186,6 +1540,7 @@ function SecretRowView({
               <span className={styles.truncate} title={name}>
                 {name}
               </span>
+              <RowStateBadges rowKey={rowKey} ctx={ctx} />
             </div>
           </TableCell>
           {ctx.environments.map((environment) => {
@@ -1383,4 +1738,8 @@ function SecretRowView({
   );
 }
 
-export const SecretRow = memo(SecretRowView, sameRow);
+export const SecretRow = memo(
+  (props: ComponentProps<typeof SecretRowView>) =>
+    props.ctx.single ? <SingleSecretRowView {...props} /> : <SecretRowView {...props} />,
+  sameRow
+);

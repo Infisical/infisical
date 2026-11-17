@@ -292,6 +292,7 @@ export const OverviewPage = () => {
   const [externalImport, setExternalImport] = useState<ExternalImportSource>();
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [discardingPending, setDiscardingPending] = useState(false);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
     label: string;
@@ -739,6 +740,31 @@ export const OverviewPage = () => {
     ].map((entry) => entry.id)
   );
   const pendingIds = new Set(pendingHere.map((change) => pendingTarget(change).id));
+  const openRequests =
+    adapter.useApprovalRequests({
+      projectId,
+      environment: activeEnvironment,
+      status: "open",
+      limit: 50
+    }).data?.approvals ?? [];
+  const inReview = [
+    ...new Set(
+      adapter
+        .useApprovalRequestDetailsList(
+          single
+            ? openRequests
+                .filter((request) => request.secretPath === path)
+                .map((request) => request.id)
+            : []
+        )
+        .flatMap(({ data }) =>
+          (data?.commits ?? []).flatMap((commit) => [
+            commit.secretKey,
+            commit.secretVersion?.secretKey ?? commit.secretKey
+          ])
+        )
+    )
+  ];
   const shown = pendingHere.length ? withPending(resources, pendingHere) : resources;
   const scoped = shown.filter(
     (resource) =>
@@ -815,9 +841,7 @@ export const OverviewPage = () => {
     const signature = recent.join("|");
     if (!signature || !isRecentShown || revealed.current === signature) return;
     revealed.current = signature;
-    root.current
-      ?.querySelector('tbody tr[data-state="selected"]')
-      ?.scrollIntoView({ block: "nearest" });
+    root.current?.querySelector("tbody tr[data-recent]")?.scrollIntoView({ block: "nearest" });
   }, [recent, isRecentShown]);
   const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = tagList.map((tag) => tag.slug).sort();
@@ -927,6 +951,7 @@ export const OverviewPage = () => {
     recent,
     expanded: expandedRows,
     pending: pendingMarks(pendingHere),
+    inReview,
     selectionDisabled: pendingHere.length > 0,
     ...rowEvents
   };
@@ -1293,7 +1318,10 @@ export const OverviewPage = () => {
       node
     );
   const secretEvents = useStableHandlers<
-    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize">
+    Omit<
+      SecretRowHandlers,
+      "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize" | "secretNames"
+    >
   >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
@@ -1351,7 +1379,12 @@ export const OverviewPage = () => {
     copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
     tagOptions,
-    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization)
+    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization),
+    secretNames: scoped.flatMap((resource) =>
+      resource.kind === "secret" && resource.environment === activeEnvironment
+        ? [resource.name]
+        : []
+    )
   };
   const allOnPage =
     selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
@@ -2142,11 +2175,7 @@ export const OverviewPage = () => {
                   label="Pending change actions"
                   count={reviewOpen ? 0 : pendingHere.length}
                   noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
-                  onClear={() =>
-                    setPending((current) =>
-                      current.filter((change) => !pendingHere.includes(change))
-                    )
-                  }
+                  onClear={() => setDiscardingPending(true)}
                   actions={[
                     { label: "Review", icon: "eye", onClick: () => setReviewOpen(true) },
                     {
@@ -2427,6 +2456,30 @@ export const OverviewPage = () => {
             }
             onCommit={(message) => commitChanges(pendingHere, message)}
           />
+          <AlertDialog open={discardingPending} onOpenChange={setDiscardingPending}>
+            <AlertDialogContent tone="danger">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard drafted changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingHere.length === 1
+                    ? "Discards the drafted change in this folder. It isn't committed, so it can't be recovered."
+                    : `Discards all ${pendingHere.length} drafted changes in this folder. They aren't committed, so they can't be recovered.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    const discarded = new Set(pendingHere.map((change) => change.id));
+                    setPending((current) => current.filter((change) => !discarded.has(change.id)));
+                  }}
+                >
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <AlertDialog
             open={Boolean(deletingEnvironment)}
             onOpenChange={(open) => {

@@ -7,7 +7,7 @@ import {
   useRef,
   useState
 } from "react";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
@@ -53,6 +53,7 @@ export type RowContext = {
   report: (message: string, tone: "ok" | "bad") => void;
   onAction: (action: RowAction) => void;
   pending?: Record<string, PendingType>;
+  inReview?: string[];
   selectionDisabled?: boolean;
   onSavePending?: (id: string) => void;
   onRevertPending?: (id: string) => void;
@@ -209,19 +210,45 @@ export function ActionButton({
   );
 }
 
-const pendingBadges = {
-  create: { tone: "ok", label: "New" },
-  update: { tone: "ok", label: "Modified" },
-  delete: { tone: "bad", label: "Deleted" }
-} as const;
+type RowState = PendingType | "review" | "new";
+const rowStateBadges: Record<RowState, { tone: BadgeTone; label: string; hint?: string }> = {
+  create: { tone: "info", label: "Draft", hint: "Not saved until you commit" },
+  update: { tone: "info", label: "Edited", hint: "Not saved until you commit" },
+  delete: { tone: "bad", label: "Deleted", hint: "Not deleted until you commit" },
+  review: { tone: "warn", label: "In review", hint: "Waiting for approval in a change request" },
+  new: { tone: "ok", label: "New" }
+};
 
-export function PendingBadge({ type }: { type?: PendingType }) {
-  if (!type) return null;
-  const { tone, label } = pendingBadges[type];
-  return (
+function StateBadge({ state }: { state: RowState }) {
+  const { tone, label, hint } = rowStateBadges[state];
+  const badge = (
     <Badge size="sm" tone={tone}>
       {label}
     </Badge>
+  );
+  return hint ? <Tooltip content={hint}>{badge}</Tooltip> : badge;
+}
+
+export function RowStateBadges({
+  rowKey,
+  resource,
+  ctx
+}: {
+  rowKey: string;
+  resource?: Resource;
+  ctx: RowContext;
+}) {
+  const pending = resource && ctx.pending?.[resource.id];
+  const inReview =
+    resource?.kind === "secret" && ctx.single && Boolean(ctx.inReview?.includes(resource.name));
+  const isNew = !pending && ctx.recent.includes(rowKey);
+  if (!pending && !inReview && !isNew) return null;
+  return (
+    <span className={styles.stateBadges}>
+      {pending && <StateBadge state={pending} />}
+      {inReview && <StateBadge state="review" />}
+      {isNew && <StateBadge state="new" />}
+    </span>
   );
 }
 

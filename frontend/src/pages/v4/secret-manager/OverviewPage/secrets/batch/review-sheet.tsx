@@ -115,6 +115,7 @@ export function ReviewSheet({
                         key={change.id}
                         item={diffItem(change)}
                         showViewed
+                        compact
                         onDiscard={() => onDiscard(change)}
                       />
                     ))}
