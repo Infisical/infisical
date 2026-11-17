@@ -303,7 +303,103 @@ func TestExpand_AbsoluteReference_ImportedRelativeResolves(t *testing.T) {
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
 
+	// prod has no HOST of its own, so the nested relative reference falls back to
+	// the value prod imports from shared.
 	assert.Equal(t, "https://shared-host/api", secrets[0].Value)
+}
+
+func TestExpand_AbsoluteReference_ImportedValueKeepsReferencedLocationContext(t *testing.T) {
+	// prod imports URL from shared, but the reference explicitly names prod. Node
+	// keeps the reference in prod, so ${HOST} must use prod's override rather than
+	// the HOST of the import's source folder.
+	secrets := []*ProcessedSecret{
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	var fetchedRefs []AbsoluteSecretRef
+	opts := ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			fetchedRefs = append(fetchedRefs, refs...)
+
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "URL":
+					imported := newTestSecret("URL", "https://${HOST}/api", "prod", "/")
+					imported.IsImported = true
+					imported.ImportEnvironment = "shared"
+					imported.ImportPath = "/"
+					fetched = append(fetched, imported)
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "HOST":
+					fetched = append(fetched, newTestSecret("HOST", "prod-host", "prod", "/"))
+				}
+			}
+			return fetched
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.Contains(t, fetchedRefs, AbsoluteSecretRef{Env: "prod", Path: "/", Key: "HOST"})
+	assert.NotContains(t, fetchedRefs, AbsoluteSecretRef{Env: "shared", Path: "/", Key: "HOST"})
+	assert.Equal(t, "https://prod-host/api", secrets[0].Value)
+}
+
+func TestExpand_AbsoluteReference_ImportedSecretRequiresSourceAccess(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("STAGING_COPY", "${dev.STAGING_SECRET}", "dev", "/"),
+	}
+
+	var checkedRefs []AbsoluteSecretRef
+	opts := ExpandOpts{
+		// The caller can read dev but has no access to staging, where the value
+		// actually comes from.
+		CanAccessAbsolute: func(ref AbsoluteSecretRef, _ []string) bool {
+			checkedRefs = append(checkedRefs, ref)
+			return ref.Env == "dev"
+		},
+		FetchAbsoluteSecrets: func(_ []AbsoluteSecretRef) []*ProcessedSecret {
+			imported := newTestSecret("STAGING_SECRET", "staging-value", "dev", "/")
+			imported.IsImported = true
+			imported.ImportEnvironment = "staging"
+			imported.ImportPath = "/"
+			return []*ProcessedSecret{imported}
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.Contains(t, checkedRefs, AbsoluteSecretRef{Env: "staging", Path: "/", Key: "STAGING_SECRET"})
+	assert.True(t, expander.HasDeniedRefs())
+	assert.Contains(t, expander.DeniedRefs(), "dev:/:STAGING_SECRET")
+	assert.Equal(t, "", secrets[0].Value)
+}
+
+func TestExpand_AbsoluteReference_ImportedSecretAllowedWithSourceAccess(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("STAGING_COPY", "${dev.STAGING_SECRET}", "dev", "/"),
+	}
+
+	opts := ExpandOpts{
+		CanAccessAbsolute: func(ref AbsoluteSecretRef, _ []string) bool {
+			return ref.Env == "staging" && ref.Path == "/" && ref.Key == "STAGING_SECRET"
+		},
+		FetchAbsoluteSecrets: func(_ []AbsoluteSecretRef) []*ProcessedSecret {
+			imported := newTestSecret("STAGING_SECRET", "staging-value", "dev", "/")
+			imported.IsImported = true
+			imported.ImportEnvironment = "staging"
+			imported.ImportPath = "/"
+			return []*ProcessedSecret{imported}
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.False(t, expander.HasDeniedRefs())
+	assert.Equal(t, "staging-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {

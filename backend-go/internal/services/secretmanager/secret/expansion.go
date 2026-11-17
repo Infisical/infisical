@@ -17,9 +17,10 @@ func (r AbsoluteSecretRef) CacheKey() string {
 	return r.Env + ":" + r.Path + ":" + r.Key
 }
 
-// expansionContext identifies the environment/path that a value belongs to when
-// that value was reached through an absolute reference. Relative references
-// inside such a value resolve against its own board, not the requesting one.
+// expansionContext identifies the environment/path that a value was explicitly
+// referenced from. Relative references inside such a value resolve against that
+// location, not the requesting one, even when the value is inherited through an
+// import of the referenced location.
 type expansionContext struct {
 	env  string
 	path string
@@ -28,7 +29,8 @@ type expansionContext struct {
 // ExpandOpts configures the expansion behavior.
 type ExpandOpts struct {
 	// CanAccessAbsolute checks if the actor can access an absolute reference.
-	// Called AFTER fetching, with actual tags from the database.
+	// Called AFTER fetching, with actual tags from the database and the location
+	// that owns the value: an imported value is checked against its source location.
 	// Return false to deny (ref becomes empty string and is tracked as denied).
 	// If nil, all fetched absolute refs are allowed.
 	CanAccessAbsolute func(ref AbsoluteSecretRef, tags []string) bool
@@ -103,17 +105,25 @@ func (e *SecretExpander) Expand() {
 		if len(toFetch) > 0 && e.opts.FetchAbsoluteSecrets != nil {
 			fetched := e.opts.FetchAbsoluteSecrets(toFetch)
 
-			// Post-fetch permission check with actual tags
+			// Post-fetch permission check with actual tags.
 			var allowed []*ProcessedSecret
 			for _, sec := range fetched {
+				// The value is exposed under the requested location, but an imported
+				// value still requires access to the source folder that owns it, the
+				// same as any other read through an import.
 				ref := AbsoluteSecretRef{Env: sec.Environment, Path: sec.SecretPath, Key: sec.Secret.Key}
+				accessRef := ref
+				if sec.IsImported && sec.ImportEnvironment != "" {
+					accessRef.Env = sec.ImportEnvironment
+					accessRef.Path = sec.ImportPath
+				}
 
 				if e.opts.CanAccessAbsolute != nil {
 					tagSlugs := make([]string, len(sec.Secret.Tags))
 					for i, tag := range sec.Secret.Tags {
 						tagSlugs[i] = tag.Slug
 					}
-					if !e.opts.CanAccessAbsolute(ref, tagSlugs) {
+					if !e.opts.CanAccessAbsolute(accessRef, tagSlugs) {
 						e.deniedRefs[ref.CacheKey()] = struct{}{}
 						continue
 					}
@@ -188,9 +198,10 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 // where the cycle was detected and replaced with empty string. This is intentional
 // behavior matching the Node.js implementation.
 //
-// ctx is nil for values owned by the requesting board. It is set to the referenced
-// environment/path when expanding a value reached through an absolute reference, so
-// nested relative references resolve in that board rather than the requesting one.
+// ctx is nil for values owned by the requesting board. It is set to the
+// environment/path a value was explicitly referenced from when expanding fetched
+// values, so nested relative references resolve in that location (its imports
+// included) rather than in the requesting board.
 func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int, ctx *expansionContext) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
 		return value, nil
@@ -215,7 +226,7 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		if len(parts) == 1 {
 			if ctx != nil {
 				// Relative reference inside a value reached through an absolute
-				// reference: it belongs to the referenced environment/path.
+				// reference: it belongs to the location that was referenced.
 				if sec, ok := e.absoluteLookup[ctx.env+":"+ctx.path][parts[0]]; ok {
 					found = true
 					secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
@@ -282,7 +293,11 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 
 					if _, cyclic := visited[secretID]; !cyclic {
 						visited[secretID] = struct{}{}
-						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1, expansionContextFor(sec))
+						// The referenced value expands in the environment/path it was
+						// explicitly referenced from, so a relative reference inside it
+						// resolves there (its imports included) instead of in the
+						// requesting board or the import's source folder.
+						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1, &expansionContext{env: sec.Environment, path: sec.SecretPath})
 						delete(visited, secretID)
 
 						if len(moreNeeded) > 0 {
@@ -402,21 +417,6 @@ func absoluteRefFromParts(parts []string) AbsoluteSecretRef {
 		ref.Path = "/" + strings.Join(parts[1:len(parts)-1], "/")
 	}
 	return ref
-}
-
-// expansionContextFor returns the board that a referenced value's own relative
-// references belong to. Imported values resolve in their source folder.
-func expansionContextFor(sec *ProcessedSecret) *expansionContext {
-	env, path := sec.Environment, sec.SecretPath
-	if sec.IsImported {
-		if sec.ImportEnvironment != "" {
-			env = sec.ImportEnvironment
-		}
-		if sec.ImportPath != "" {
-			path = sec.ImportPath
-		}
-	}
-	return &expansionContext{env: env, path: path}
 }
 
 // settledUnavailableRefs reports whether every ref has already been requested
