@@ -21,7 +21,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 
-import { UpdateSecretSyncFormSchema } from "@app/components/secret-syncs/forms/schemas";
+import { SecretSyncUnionSchema } from "@app/components/secret-syncs/forms/schemas";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
@@ -109,7 +109,7 @@ export const EditSyncSheet = ({
     enabled: section === "destination"
   }).data;
   const form = useForm<FieldValues>({
-    resolver: zodResolver(UpdateSecretSyncFormSchema),
+    resolver: zodResolver(SecretSyncUnionSchema),
     mode: "onChange",
     defaultValues: {
       ...sync,
