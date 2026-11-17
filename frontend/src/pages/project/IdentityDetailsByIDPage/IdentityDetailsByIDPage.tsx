@@ -423,6 +423,7 @@ const Page = () => {
               )}
               {isSecretManager &&
                 !hasFolderRbacPlan &&
+                !hasActiveProjectAdminRole(identityMembershipDetails.roles) &&
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}

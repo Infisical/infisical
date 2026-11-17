@@ -302,6 +302,7 @@ export const Page = () => {
               )}
               {isSecretManager &&
                 !hasFolderRbacPlan &&
+                !hasActiveProjectAdminRole(membershipDetails.roles) &&
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}
