@@ -368,7 +368,8 @@ describe("certificate revocation behind an approval policy", () => {
       }),
       transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
       findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined),
-      primaryNode: vi.fn().mockReturnValue(primaryDb)
+      primaryNode: vi.fn().mockReturnValue(primaryDb),
+      findByThumbprintInOrg: vi.fn().mockResolvedValue([])
     };
     const certificateAuthorityDAL = { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) };
     const certificateProfileDAL = {
@@ -472,6 +473,22 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it("refuses a thumbprint that matches more than one certificate in the organization", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findByThumbprintInOrg.mockResolvedValue([
+        { ...applicationCertificate, id: "cert-1" },
+        { ...applicationCertificate, id: "cert-2" }
+      ]);
+
+      await expect(
+        ctx.service.revokeCert({ thumbprint: "ab".repeat(32), revocationReason: CrlReason.KEY_COMPROMISE, ...actor })
+      ).rejects.toThrow(
+        "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+      );
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
     });
 
     it.each([
