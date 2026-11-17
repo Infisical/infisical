@@ -8,7 +8,7 @@ import {
   useFormContext
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useScheme } from "@infisical/cipher/scope";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,12 +30,10 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field, FieldDescription } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Media, Tile } from "@infisical/cipher/ui/item";
-import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -45,7 +43,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Heading, Meta, SmallText } from "@infisical/cipher/ui/text";
+import { Heading } from "@infisical/cipher/ui/text";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import {
@@ -54,6 +52,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { ProviderIcon } from "../../../../components/provider-icon";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock, useManagedBlock } from "../row-actions/permissions";
 import { useLastDefined } from "../use-last-defined";
@@ -80,33 +79,6 @@ export type DynamicSecretFlowProps = {
 
 const FORM_ID = "dynamic-secret-flow-form";
 const EDIT_FORM_ID = "dynamic-secret-edit-form";
-const ON_LIGHT_LOGOS: Record<string, string> = {
-  "Amazon Web Services.png": "Amazon Web Services.on-light.png",
-  "GitHub.png": "GitHub.on-light.png",
-  "Kafka.png": "Kafka.on-light.png",
-  "SSH.png": "SSH.on-light.png"
-};
-
-function ProviderLogo({ provider }: { provider: DynamicSecretProviders }) {
-  const theme = useScheme();
-  const { providerFamily, logoFileName } =
-    getDynamicSecretProviderRuntimeMetadata(provider).presentation;
-  return (
-    <Media>
-      {logoFileName ? (
-        <img
-          src={`/images/integrations/${theme === "light" ? (ON_LIGHT_LOGOS[logoFileName] ?? logoFileName) : logoFileName}`}
-          alt={`${providerFamily} logo`}
-          width={20}
-          height={20}
-        />
-      ) : (
-        <Icon name="key" />
-      )}
-    </Media>
-  );
-}
-
 const providerResolver = (
   current: () => { schema: DynamicSecretFlowProvider["schema"] } | undefined
 ): Resolver<FieldValues> =>
@@ -266,7 +238,6 @@ export function DynamicSecretFlow({
   onCreate
 }: DynamicSecretFlowProps) {
   const [provider, setProvider] = useState<DynamicSecretProviders>();
-  const [search, setSearch] = useState("");
   const [discardAction, setDiscardAction] = useState<"back" | "close" | null>(null);
   const [submitState, setSubmitState] = useState({ isDisabled: false, isPending: false });
   const [sshSetupOpen, setSshSetupOpen] = useState(false);
@@ -303,17 +274,19 @@ export function DynamicSecretFlow({
     "create dynamic secrets here"
   );
 
-  const providers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return dynamicSecretFlowProviders;
-    return dynamicSecretFlowProviders.filter((item) =>
-      [
-        item.label,
-        getDynamicSecretProviderRuntimeMetadata(item.provider).presentation.providerFamily,
-        item.provider
-      ].some((value) => value.toLowerCase().includes(query))
-    );
-  }, [search]);
+  const providerItems = dynamicSecretFlowProviders.map((item) => {
+    const { providerFamily, logoFileName } = getDynamicSecretProviderRuntimeMetadata(
+      item.provider
+    ).presentation;
+    return {
+      value: item.provider,
+      title: item.label,
+      eyebrow: providerFamily,
+      icon: logoFileName ? undefined : ("key" as const),
+      media: logoFileName && <ProviderIcon icon={logoFileName} alt="" size="md" />,
+      keywords: [item.provider]
+    };
+  });
 
   const scrollToTop = () => {
     sheetRef.current?.querySelector("[data-slot=sheet-scroll]")?.scrollTo({ top: 0 });
@@ -335,7 +308,6 @@ export function DynamicSecretFlow({
   };
   const close = () => {
     setProvider(undefined);
-    setSearch("");
     setSshSetupOpen(false);
     form.reset({});
     onOpenChange(false);
@@ -393,39 +365,13 @@ export function DynamicSecretFlow({
           )}
           {!definition && (
             <SheetBody>
-              <Stack gap={24}>
-                <Input
-                  icon="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search providers, such as SQL, AWS, MongoDB..."
-                  aria-label="Search dynamic secret providers"
-                />
-                <Stack gap={12}>
-                  <SmallText muted>All providers</SmallText>
-                  {providers.length ? (
-                    <Grid columns={2} gap={12}>
-                      {providers.map((item) => (
-                        <Tile
-                          key={item.provider}
-                          media={<ProviderLogo provider={item.provider} />}
-                          title={item.label}
-                          onClick={() => selectProvider(item.provider)}
-                        >
-                          <Meta mono={false} className="block">
-                            {
-                              getDynamicSecretProviderRuntimeMetadata(item.provider).presentation
-                                .providerFamily
-                            }
-                          </Meta>
-                        </Tile>
-                      ))}
-                    </Grid>
-                  ) : (
-                    <EmptyState icon="search" title="No matching providers" />
-                  )}
-                </Stack>
-              </Stack>
+              <TilePicker
+                items={providerItems}
+                onSelect={(next) => selectProvider(next as DynamicSecretProviders)}
+                searchLabel="Search dynamic secret providers"
+                searchPlaceholder="Search providers, such as SQL, AWS, MongoDB..."
+                noun="providers"
+              />
             </SheetBody>
           )}
           {definition && (

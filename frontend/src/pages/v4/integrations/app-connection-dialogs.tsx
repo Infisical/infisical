@@ -9,6 +9,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -32,11 +33,10 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
@@ -58,6 +58,7 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { APP_CONNECTION_MAP, POPULAR_APP_CONNECTIONS } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
@@ -75,6 +76,7 @@ import {
 
 import { useOrgId, useOrgPermission } from "../access/permissions";
 import { errorMessage, failed, saved } from "../access/toast";
+import { ProviderIcon } from "../components/provider-icon";
 import { useV4Adapter } from "../data/adapters";
 import { CONNECTION_GATEWAYS, CONNECTION_PRESETS } from "../data/integrations/connection-presets";
 import {
@@ -84,7 +86,6 @@ import {
 import { rotateAtLocal, rotateAtOptions } from "../data/integrations/presets/shared";
 import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
 import { notPorted } from "../not-ported";
-import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 import {
   DatabricksScopesField,
   FederatedCredentialDetails,
@@ -193,53 +194,30 @@ const AppPicker = ({
 }) => {
   const { data: options = [], isPending } =
     useV4Adapter("integrations").useConnectionOptions(projectType);
-  const [query, setQuery] = useState("");
-  const needle = query.trim().toLowerCase();
-  const apps = options
+  if (isPending) return <Loader label="Loading apps" />;
+  const items = options
     .map((option) => option.app)
-    .filter((app) => appName(app).toLowerCase().includes(needle))
-    .sort((a, b) => appName(a).localeCompare(appName(b)));
+    .sort((a, b) => appName(a).localeCompare(appName(b)))
+    .map((app) => {
+      const { name, image, category, aliases } = APP_CONNECTION_MAP[app];
+      return {
+        value: app,
+        title: name,
+        eyebrow: category,
+        media: <ProviderIcon icon={image} alt="" size="md" />,
+        popular: POPULAR_APP_CONNECTIONS.includes(app),
+        disabledReason: CONNECTION_PRESETS[app] ? undefined : notPorted(name),
+        keywords: [app, ...(aliases ?? [])]
+      };
+    });
   return (
-    <Stack gap={12}>
-      <Input
-        icon="search"
-        aria-label="Search apps"
-        placeholder="Search apps..."
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <List
-        label="Apps"
-        size="sm"
-        loading={isPending}
-        empty={
-          <EmptyState
-            size="sm"
-            media="bare"
-            icon="search"
-            title={`No apps match “${query}”`}
-            actions={
-              <Button variant="link" onClick={() => setQuery("")}>
-                Clear search
-              </Button>
-            }
-          />
-        }
-      >
-        {apps.map((app) => (
-          <ListRow
-            key={app}
-            value={app}
-            label={appName(app)}
-            title={appName(app)}
-            media={<AppLogo app={app} />}
-            disabled={!CONNECTION_PRESETS[app]}
-            description={CONNECTION_PRESETS[app] ? undefined : notPorted(appName(app))}
-            onClick={() => onPick(app)}
-          />
-        ))}
-      </List>
-    </Stack>
+    <TilePicker
+      items={items}
+      onSelect={(app) => onPick(app as AppConnection)}
+      searchLabel="Search apps"
+      searchPlaceholder="Search apps..."
+      noun="apps"
+    />
   );
 };
 
@@ -562,7 +540,7 @@ export const AddConnectionSheet = ({
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : request(close))}>
-        <SheetContent size="md" pending={pending}>
+        <SheetContent size={!created && !preset ? "lg" : "md"} pending={pending}>
           <SheetHeader>
             <SheetTitle>{addSheetTitle(created, preset)}</SheetTitle>
           </SheetHeader>

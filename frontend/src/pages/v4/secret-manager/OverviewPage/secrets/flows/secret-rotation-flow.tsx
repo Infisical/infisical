@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Controller, type FieldValues, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { useScheme } from "@infisical/cipher/scope";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
@@ -15,11 +16,10 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Media, Tile } from "@infisical/cipher/ui/item";
-import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Media } from "@infisical/cipher/ui/item";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
@@ -39,6 +39,7 @@ import {
 import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { useConnectionCreation } from "../../../../components/connection-creation";
+import { ProviderIcon } from "../../../../components/provider-icon";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
@@ -155,55 +156,28 @@ function DocsLink({ type }: { type: SecretRotation }) {
 }
 
 function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void }) {
-  const [search, setSearch] = useState("");
-  const options = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const all = Object.values(SecretRotation).sort((first, second) =>
+  const items = Object.values(SecretRotation)
+    .sort((first, second) =>
       SECRET_ROTATION_MAP[first].name.localeCompare(SECRET_ROTATION_MAP[second].name)
-    );
-    if (!query) return all;
-    return all.filter((type) =>
-      [
-        SECRET_ROTATION_MAP[type].name,
-        ...getSecretRotationConnectionApps(type).map(appConnectionName),
-        type
-      ].some((value) => value.toLowerCase().includes(query))
-    );
-  }, [search]);
+    )
+    .map((type) => {
+      const apps = getSecretRotationConnectionApps(type).map(appConnectionName);
+      return {
+        value: type,
+        title: SECRET_ROTATION_MAP[type].name,
+        eyebrow: apps.join(" or "),
+        media: <ProviderIcon icon={SECRET_ROTATION_MAP[type].image} alt="" size="md" />,
+        keywords: [type]
+      };
+    });
   return (
-    <Stack gap={24}>
-      <Input
-        icon="search"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search providers like PostgreSQL, AWS, Cloudflare..."
-        aria-label="Search secret rotation providers"
-      />
-      <Stack gap={12}>
-        <SmallText muted>All providers</SmallText>
-        {options.length ? (
-          <Grid columns={3} gap={12}>
-            {options.map((type) => (
-              <Tile
-                key={type}
-                media={<ProviderLogo type={type} />}
-                title={SECRET_ROTATION_MAP[type].name}
-                onClick={() => onSelect(type)}
-              >
-                <SmallText muted>
-                  {getSecretRotationConnectionApps(type).map(appConnectionName).join(" or ")}
-                </SmallText>
-              </Tile>
-            ))}
-          </Grid>
-        ) : (
-          <EmptyState
-            icon="search"
-            title={search.trim() ? "No matching providers" : "No providers available"}
-          />
-        )}
-      </Stack>
-    </Stack>
+    <TilePicker
+      items={items}
+      onSelect={(type) => onSelect(type as SecretRotation)}
+      searchLabel="Search secret rotation providers"
+      searchPlaceholder="Search providers like PostgreSQL, AWS, Cloudflare..."
+      noun="providers"
+    />
   );
 }
 

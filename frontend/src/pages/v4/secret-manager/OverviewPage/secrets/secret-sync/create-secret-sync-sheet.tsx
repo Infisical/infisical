@@ -8,6 +8,7 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -23,12 +24,10 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DataTable } from "@infisical/cipher/ui/data-table";
-import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Tile } from "@infisical/cipher/ui/item";
-import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
@@ -139,7 +138,6 @@ const canImport = (destination: SecretSync) => IMPORT_CAPABLE_SYNCS.includes(des
 const nameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;
 
 function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => void }) {
-  const [search, setSearch] = useState("");
   const { organization } = useV4Session();
   const adapter = useV4Adapter("secrets");
   const plan = adapter.useOverviewPlan(organization.id).data;
@@ -158,59 +156,32 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
     }
     onSelect(destination);
   };
-  const all = (Object.values(SecretSync) as SecretSync[])
+  const items = (Object.values(SecretSync) as SecretSync[])
     .filter((destination) => SECRET_SYNC_MAP[destination])
-    .sort((first, second) => nameOf(first).localeCompare(nameOf(second)));
-  const query = search.trim().toLowerCase();
-  const filtered = all.filter((destination) => {
-    const entry = SECRET_SYNC_MAP[destination];
-    return [entry.name, entry.category, destination, ...(entry.aliases ?? [])].some((value) =>
-      value.toLowerCase().includes(query)
-    );
-  });
-  const card = (destination: SecretSync) => {
-    const { name, image, category } = SECRET_SYNC_MAP[destination];
-    return (
-      <Tile
-        key={destination}
-        media={<ProviderLogo image={image} size={24} />}
-        title={name}
-        onClick={() => choose(destination)}
-      >
-        <span className={styles.category}>{category}</span>
-      </Tile>
-    );
-  };
-  const grid = (destinations: SecretSync[]) => (
-    <Grid columns={3} gap={12}>
-      {destinations.map(card)}
-    </Grid>
-  );
+    .sort((first, second) => nameOf(first).localeCompare(nameOf(second)))
+    .map((destination) => {
+      const { name, image, category, aliases } = SECRET_SYNC_MAP[destination];
+      return {
+        value: destination,
+        title: name,
+        eyebrow: category,
+        media: <ProviderLogo image={image} />,
+        popular: POPULAR_SECRET_SYNCS.includes(destination),
+        keywords: [destination, ...(aliases ?? [])]
+      };
+    });
   return (
-    <Stack gap={24}>
-      <Input
-        icon="search"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search providers like AWS, Vercel, GitHub Actions, Vault..."
-        aria-label="Search secret sync providers"
+    <>
+      <TilePicker
+        items={items}
+        onSelect={(destination) => choose(destination as SecretSync)}
+        searchLabel="Search secret sync providers"
+        searchPlaceholder="Search providers like AWS, Vercel, GitHub Actions, Vault..."
+        allLabel="All providers"
+        noun="providers"
       />
-      {query && filtered.length > 0 && grid(filtered)}
-      {query && !filtered.length && <EmptyState icon="search" title="No matching providers" />}
-      {!query && (
-        <>
-          <section className={styles.pickerSection}>
-            <span className={flowStyles.eyebrow}>Popular</span>
-            {grid(POPULAR_SECRET_SYNCS)}
-          </section>
-          <section className={styles.pickerSection}>
-            <span className={flowStyles.eyebrow}>All providers</span>
-            {grid(all)}
-          </section>
-        </>
-      )}
       {upgradeGate}
-    </Stack>
+    </>
   );
 }
 
