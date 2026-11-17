@@ -1,10 +1,11 @@
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
+  AUTO_APPROVAL_AI_CONSTRAINT,
+  AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   type TAutoApprovalCatalogConnection,
-  type TAutoApprovalCondition,
   type TAutoApprovalConfig,
   type TAutoApprovalConfigResponse
 } from "@app/hooks/api/approvalPolicies";
@@ -17,11 +18,17 @@ export type TDraftCondition = {
   values: string[];
 };
 
+export type TDraftAiCondition = {
+  key: string;
+  prompt: string;
+  contextConnectionIds: string[];
+};
+
 export type TDraftRule = {
   key: string;
   name: string;
   conditions: TDraftCondition[];
-  aiConditions?: TAutoApprovalCondition[];
+  aiConditions?: TDraftAiCondition[];
 };
 
 export type TAutoApprovalDraft = {
@@ -34,7 +41,9 @@ export const AUTO_APPROVAL_LIMITS = {
   rules: 20,
   conditions: 20,
   values: 50,
-  valueLength: 255
+  valueLength: 255,
+  aiPromptLength: 4000,
+  aiContextConnections: 5
 };
 
 export const ASSIGNED_TO_REQUESTER_CONSTRAINT = "assigned-to-requester";
@@ -68,12 +77,9 @@ export const toAutoApprovalDraft = (config?: TAutoApprovalConfigResponse): TAuto
     ),
     aiConditions: rule.conditions
       .filter((condition) => !condition.connectionId)
-      .map(({ connectionId, subject, constraint, values, prompt, contextConnectionIds }) => ({
-        connectionId,
-        subject,
-        constraint,
-        values,
-        prompt,
+      .map(({ id, prompt, contextConnectionIds }) => ({
+        key: id,
+        prompt: prompt ?? "",
         contextConnectionIds
       }))
   }))
@@ -90,7 +96,14 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
         constraint,
         values
       })),
-      ...(rule.aiConditions ?? [])
+      ...(rule.aiConditions ?? []).map(({ prompt, contextConnectionIds }) => ({
+        connectionId: null,
+        subject: AUTO_APPROVAL_AI_SUBJECT,
+        constraint: AUTO_APPROVAL_AI_CONSTRAINT,
+        values: [],
+        prompt: prompt.trim(),
+        contextConnectionIds
+      }))
     ]
   }))
 });
@@ -153,6 +166,15 @@ export const conditionError = (
   return null;
 };
 
+export const aiConditionError = (condition: TDraftAiCondition): string | null => {
+  if (!condition.prompt.trim()) return "Describe when the AI should approve";
+  if (condition.prompt.length > AUTO_APPROVAL_LIMITS.aiPromptLength)
+    return `Instructions can be at most ${AUTO_APPROVAL_LIMITS.aiPromptLength} characters`;
+  if (condition.contextConnectionIds.length > AUTO_APPROVAL_LIMITS.aiContextConnections)
+    return `Choose at most ${AUTO_APPROVAL_LIMITS.aiContextConnections} connections`;
+  return null;
+};
+
 export const ruleError = (rule: TDraftRule): string | null => {
   if (!rule.name.trim()) return "Name this rule";
   const count = rule.conditions.length + (rule.aiConditions?.length ?? 0);
@@ -165,7 +187,10 @@ export const ruleError = (rule: TDraftRule): string | null => {
 export const isRuleComplete = (
   rule: TDraftRule,
   catalog: TAutoApprovalCatalogConnection[] | undefined
-) => !ruleError(rule) && !rule.conditions.some((condition) => conditionError(condition, catalog));
+) =>
+  !ruleError(rule) &&
+  !rule.conditions.some((condition) => conditionError(condition, catalog)) &&
+  !rule.aiConditions?.some((condition) => aiConditionError(condition));
 
 export const subjectsMissingCheck = (
   rule: TDraftRule,
