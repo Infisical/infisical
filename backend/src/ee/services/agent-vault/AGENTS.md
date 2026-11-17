@@ -23,7 +23,7 @@ agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
-agent-vault-session/         mint, revoke, list, get, edit label
+agent-vault-session/         mint, revoke, list, get, edit label and metadata
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
@@ -192,9 +192,10 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
-  went, and the session log service retires the session from it. So nothing writes to such a row: label edits
-  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
-  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  went, and the session log service retires the session from it. So nothing writes to such a row: label and
+  metadata edits are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each
+  write's own SQL on the primary (`updateLabel`, `lockForEdit`, `revokeIfActive`), not in a check on the session
+  read beforehand, which
   can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
   reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
@@ -329,9 +330,11 @@ keyed by the service, so a member sets them once however many bundles give them 
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
-- **A session's inline service wins over a bundle service with the same name.** Resolve and `GET /session/services`
-  both drop the shadowed bundle service through `withoutShadowedBundleServices`, so the agent, the proxy and the
-  session logs see one service per name. Use that helper in any new path that lists a session's services. Admins can
+- **A session's inline service wins over a bundle service with the same name, except an override.** Resolve and
+  `GET /session/services` both pick one service per name through `withoutShadowedServices`, so the agent, the proxy
+  and the session logs see the same set. Use that helper in any new path that lists a session's services. An override
+  (`isOverride`) wins over an inline service of its name instead, because it only narrows a named service's hosts and
+  the session's sender must not be able to switch it off; a mint refuses that name (`assertNoOverrideConflicts`). Admins can
   add or rename bundle services while sessions are live; a mint still refuses an inline service that clashes with its
   bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
   Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
@@ -406,8 +409,8 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
 - **Resolve re-checks it on every poll.** `findResolvableServices` returns a named service only while a link to a bundle
   in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
   and deleting the service drops it by cascade. A named service resolves with `accessBundleId` and `accessBundleName`
-  null, like an inline one; catalog names are unique per project, so the proxy's inline-first rule never has two
-  candidates.
+  null, like an inline one, so a null bundle never means a service was sent with the session; catalog names are unique
+  per project, so the proxy's inline-first rule never has two candidates.
 - **A named service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
   re-credentials one host of a wildcard service with a second service for that host. Naming the wildcard service alone
   would drop that, so `findOverridesOfNamedServices` adds every service that a bundle in the owner's reach holding the
@@ -415,13 +418,13 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
   `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
   the session names exactly. Not when the reach is every bundle: that owner could name the wildcard service alone
   anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or naming becomes a way
-  round a bundle's override.
+  round a bundle's override. A mint checks inline names against them through `findNamedServiceOverrides`.
 - **Names are unique across the whole `services` array**, named and inline together, refused in the schema (422) like a
   duplicate inline name. Host patterns are checked like a bundle's services: named against the bundle's and each other at
   mint, and inline against both (`assertNoNamedServiceConflicts`). The named check runs off the replica to fail fast,
   then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
   service to the bundle or change a host right then.
-- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `isInline: false`); the
+- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
   service's settings belong to the services API, which a member reaches through their bundles.
 
 ## Skills a session names or sends
@@ -1113,7 +1116,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
     never `passthrough` or `brokered`, which a host's own answer gets. A proxy refusal with no URL (a session refused
     since the CONNECT) neither confirms nor contradicts the claim. Otherwise the agent gets no variable, the skills come
     from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
-    `HEAD` of the services list confirms the claim (logged as Listed Services).
+    `HEAD` of the services list confirms the claim (logged with decision `discovery`).
   - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
     base URL (an inherited value never passes through). A proxy
     that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
@@ -1157,8 +1160,9 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
   without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
 - **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
-  services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
-  forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
+  services list with decision `discovery` and the skills with `skills`. Each forwarded endpoint gets its own decision,
+  so a new one on the allowlist needs a value and an outcome hover in `SessionLogRow.tsx`; the frontend shows and filters
+  them all as Passthrough (`sessionLogOutcome`), so the outcome filter keeps four entries. The
   frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
   value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional

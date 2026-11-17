@@ -2057,12 +2057,18 @@ export const secretV2BridgeServiceFactory = ({
               : undefined
           ));
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath: path,
-      secretName,
-      secretTags: (secret?.tags || []).map((el) => el.slug)
-    });
+    // a version keeps the name and tags it was written with, so reading one must also pass the secret as it is now
+    const currentSecret = version !== undefined && secret ? await secretDAL.findOne({ id: secret.id }) : undefined;
+    const secretsToCheck = currentSecret ? [secret, currentSecret] : [secret];
+
+    secretsToCheck.forEach((el) =>
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment,
+        secretPath: path,
+        secretName: el?.key ?? secretName,
+        secretTags: (el?.tags || []).map((tag) => tag.slug)
+      })
+    );
 
     recordSecretReadMetric({
       environment,
@@ -2205,12 +2211,14 @@ export const secretV2BridgeServiceFactory = ({
 
     if (viewSecretValue) {
       if (
-        !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath: path,
-          secretName,
-          secretTags: (secret?.tags || []).map((el) => el.slug)
-        }) &&
+        !secretsToCheck.every((el) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath: path,
+            secretName: el?.key ?? secretName,
+            secretTags: (el?.tags || []).map((tag) => tag.slug)
+          })
+        ) &&
         secretType !== SecretType.Personal
       ) {
         throw new ForbiddenRequestError({
@@ -3214,7 +3222,7 @@ export const secretV2BridgeServiceFactory = ({
     secretId,
     secretVersions: secretVersionsFilter
   }: TGetSecretVersionsDTO) => {
-    const secret = await secretDAL.findById(secretId);
+    const secret = await secretDAL.findOne({ id: secretId });
 
     if (!secret) throw new NotFoundError({ message: `Secret with ID '${secretId}' not found` });
 
@@ -3265,17 +3273,17 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     return secretVersions.map((el) => {
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
-          secretName: el.key,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
+      // a version keeps the name and tags it was written with, so the secret as it is now must allow the read too
+      const secretValueHidden = [el, secret].some(
+        ({ key, tags }) =>
+          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: folder.environment.envSlug,
+            secretPath: folderWithPath.path,
+            secretName: key,
+            ...(tags?.length && {
+              secretTags: tags.map((tag) => tag.slug)
+            })
           })
-        }
       );
 
       return {
@@ -3855,20 +3863,22 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       secretVersions: secretVersionNumbers
     });
+    // a version keeps the name and tags it was written with, so the secret as it is now must allow the read too;
+    // commits keep the versions of deleted secrets, which only have their own
+    const secret = await secretDAL.findOne({ id: secretId });
     return secretVersions
       .filter((el) => !el.userId || el.userId === actorId)
       .map((el) => {
-        const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.ReadValue,
-          {
-            environment: environment.slug,
-            secretPath,
-            secretName: el.key,
-            ...(el.tags?.length && {
-              secretTags: el.tags.map((tag) => tag.slug)
+        const secretValueHidden = [el, secret ?? el].some(
+          ({ key, tags }) =>
+            !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment: environment.slug,
+              secretPath,
+              secretName: key,
+              ...(tags?.length && {
+                secretTags: tags.map((tag) => tag.slug)
+              })
             })
-          }
         );
 
         return {

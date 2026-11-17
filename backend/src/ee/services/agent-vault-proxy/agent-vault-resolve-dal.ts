@@ -112,7 +112,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
   const findOverridesOfNamedServices = async (
     conn: Knex,
     { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] },
-    named: TResolveServiceRow[],
+    named: Pick<TResolveServiceRow, "id" | "hostPattern" | "position">[],
     presentIds: Set<string>
   ): Promise<TResolveServiceRow[]> => {
     const roots = named.filter((row) => wildcardsOf(row).length);
@@ -283,6 +283,29 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The overrides resolve would send beside these named services for an owner who reaches accessBundleIds, so a mint can
+  // check what it is about to send against them.
+  const findNamedServiceOverrides = async (
+    {
+      projectId,
+      accessBundleIds,
+      services
+    }: { projectId: string; accessBundleIds: string[]; services: Pick<TResolveServiceRow, "id" | "hostPattern">[] },
+    tx?: Knex
+  ) => {
+    if (!accessBundleIds.length || !services.length) return [];
+    try {
+      return await findOverridesOfNamedServices(
+        tx || db.replicaNode(),
+        { projectId, accessBundleIds },
+        services.map((service, position) => ({ ...service, position })),
+        new Set(services.map(({ id }) => id))
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault named service overrides" });
+    }
+  };
+
   /**
    * The latest version of each skill the session reaches through its bundle or names, once. Like the services, both are
    * a ceiling fixed at mint and re-checked against live grants: a named skill stays only while a bundle the owner
@@ -393,5 +416,5 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findResolvableServices, findSessionSkills, findReachableBundles };
+  return { findResolvableServices, findNamedServiceOverrides, findSessionSkills, findReachableBundles };
 };

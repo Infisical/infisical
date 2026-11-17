@@ -50,7 +50,7 @@ import {
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultProxyDTO,
   TUpdateAgentVaultServiceDTO,
-  TUpdateAgentVaultSessionLabelDTO,
+  TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultSkillDTO,
   TUpdateAgentVaultVariableDTO
@@ -377,6 +377,8 @@ export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
+    // The form shows a refusal of its services under that field and toasts any other.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
@@ -392,14 +394,14 @@ export const useCreateAgentVaultSession = (projectId: string) => {
   });
 };
 
-export const useUpdateAgentVaultSessionLabel = (projectId: string) => {
+export const useUpdateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+    mutationFn: async ({ sessionId, label, metadata }: TUpdateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
         `/api/v1/agent-vault/sessions/${sessionId}`,
-        { label }
+        { label, metadata }
       );
       return data.session;
     },

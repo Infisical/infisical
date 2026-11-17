@@ -1053,7 +1053,8 @@ export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
       });
     }
     // The agent, the proxy and the session logs tell a session's services apart by name. One sent inline without a name
-    // goes by its first host, which can never read as a project service's name.
+    // goes by its first host, which this check skips: a one-word host such as `localhost` is also a valid service name,
+    // so the mint checks it against the services the session names (`assertNoNamedServiceConflicts`).
     const seen = new Set<string>();
     entries.forEach((entry, index) => {
       const name = typeof entry === "string" ? entry : entry.name;

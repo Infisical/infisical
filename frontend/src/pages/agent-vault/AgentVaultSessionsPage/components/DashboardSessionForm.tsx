@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { BookOpenTextIcon, TriangleAlertIcon } from "lucide-react";
@@ -43,6 +43,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { sessionLabelSchema } from "./sessionLabelSchema";
+import { SessionMetadataFields } from "./SessionMetadataFields";
+import { metadataRowsToRecord, sessionMetadataRowsSchema } from "./sessionMetadataSchema";
 
 const NEVER_TTL = "never";
 const CUSTOM_TTL = "custom";
@@ -86,6 +88,7 @@ const schema = z
     services: z.custom<TAgentVaultProjectService[]>(),
     skills: z.custom<TAgentVaultSkill[]>(),
     label: sessionLabelSchema,
+    metadata: sessionMetadataRowsSchema,
     ttlPreset: z.string(),
     customTtl: z.string()
   })
@@ -118,33 +121,50 @@ type FormData = z.infer<typeof schema>;
 
 export type TDashboardSessionInput = {
   label?: string;
+  metadata?: Record<string, string>;
   ttl: string;
   services: string[];
   skills: string[];
 };
 
+// The API's refusals of a service the session names: one that shares a host with another service in the session, or
+// one the caller can't use, which includes one deleted since it was picked.
+export const isSessionServicesError = (message: string) =>
+  message.includes("both cover") || message.includes("can't name a service");
+
+const PICK_SOMETHING_ERROR = "pickSomething";
+
 type Props = {
   formId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onSubmit: (input: TDashboardSessionInput) => Promise<void>;
+  onSubmit: (input: TDashboardSessionInput) => Promise<{ servicesError?: string } | undefined>;
 };
 
 export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
 
-  const { control, handleSubmit, watch, setError } = useForm<FormData>({
+  const formMethods = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       services: [],
       skills: [],
       label: "",
+      metadata: [],
       ttlPreset: DEFAULT_TTL_PRESET,
       customTtl: ""
     }
   });
+  const { control, handleSubmit, watch, setError, clearErrors, getFieldState } = formMethods;
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
+
+  // The bundle is picked outside this form, so nothing re-validates the services field when it changes.
+  useEffect(() => {
+    if (accessBundle && getFieldState("services").error?.type === PICK_SOMETHING_ERROR) {
+      clearErrors("services");
+    }
+  }, [accessBundle?.id]);
 
   // An admin can name any of the project's services, and a member only those in their bundles, which is what this
   // list returns to each.
@@ -200,21 +220,29 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit(({ services, skills, label, ttlPreset: preset, customTtl }) => {
-        // The bundle is picked outside this form, so this check can't live in the schema.
-        if (!accessBundle && !services.length && !skills.length) {
-          setError("services", {
-            message: "Pick an access bundle, or at least one service or skill."
+      onSubmit={handleSubmit(
+        async ({ services, skills, label, metadata, ttlPreset: preset, customTtl }) => {
+          // The bundle is picked outside this form, so this check can't live in the schema.
+          if (!accessBundle && !services.length && !skills.length) {
+            setError("services", {
+              type: PICK_SOMETHING_ERROR,
+              message: "Pick an access bundle, or at least one service or skill."
+            });
+            return;
+          }
+          const metadataRecord = metadataRowsToRecord(metadata);
+          const result = await onSubmit({
+            services: services.map((service) => service.name),
+            skills: skills.map((skill) => skill.name),
+            label: label || undefined,
+            metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
+            ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
           });
-          return undefined;
+          if (result?.servicesError) {
+            setError("services", { type: "server", message: result.servicesError });
+          }
         }
-        return onSubmit({
-          services: services.map((service) => service.name),
-          skills: skills.map((skill) => skill.name),
-          label: label || undefined,
-          ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
-        });
-      })}
+      )}
       className="flex flex-col gap-4"
     >
       <Controller
@@ -394,6 +422,10 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           </FieldContent>
         </Field>
       </div>
+
+      <FormProvider {...formMethods}>
+        <SessionMetadataFields idPrefix="agent-vault-session" />
+      </FormProvider>
 
       {/* A warning, not a block: the session works for every other service, and picks up values
           set up later on the proxy's next poll. */}

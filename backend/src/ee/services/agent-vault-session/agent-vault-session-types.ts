@@ -150,7 +150,10 @@ export type TMintSessionDTO = {
   ttl?: string;
   onBehalfOf?: TOnBehalfOfUser;
   label: string | null;
+  metadata?: Record<string, string>;
 };
+
+export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: string }>;
 
 export type TListSessionsDTO = {
   projectId: string;
@@ -160,6 +163,7 @@ export type TListSessionsDTO = {
   limit: number;
   offset: number;
   search?: string;
+  metadataFilter?: TAgentVaultSessionMetadataFilter;
 };
 
 export type TRevokeSessionDTO = {
@@ -170,8 +174,10 @@ export type TRevokeSessionDTO = {
 
 export type TGetSessionByIdDTO = TRevokeSessionDTO;
 
-export type TUpdateSessionLabelDTO = TRevokeSessionDTO & {
-  label: string | null;
+// A field left out keeps its value. Metadata replaces the whole set.
+export type TUpdateSessionDTO = TRevokeSessionDTO & {
+  label?: string | null;
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultSessionActor =

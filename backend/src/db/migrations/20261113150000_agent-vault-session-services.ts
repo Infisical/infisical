@@ -22,7 +22,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
 
       t.unique(["sessionId", "serviceId"]);
+      t.unique(["sessionId", "position"], { indexName: "agent_vault_session_services_session_position" });
     });
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultSessionService}" ADD CONSTRAINT "agent_vault_session_services_position_check" CHECK ("position" >= 0)`
+    );
   }
 }
 

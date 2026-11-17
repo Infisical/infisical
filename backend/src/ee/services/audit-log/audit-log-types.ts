@@ -7144,6 +7144,8 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
+    // The session's own key/value metadata. Set when the session was created with some.
+    metadata?: Record<string, string>;
     // Null for a session started without an access bundle.
     accessBundleId: string | null;
     accessBundleName: string | null;
@@ -7202,6 +7204,8 @@ interface AgentVaultSessionUpdateEvent {
     sessionId: string;
     label: string | null;
     previousLabel: string | null;
+    // The session's own key/value metadata after the update.
+    metadata?: Record<string, string>;
     sessionOwner: string;
     accessBundleName: string | null;
     // Set when the machine identity in sessionOwner started the session on this user's behalf.

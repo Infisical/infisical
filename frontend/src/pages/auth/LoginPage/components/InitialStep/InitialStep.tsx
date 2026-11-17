@@ -5,6 +5,7 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
+import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 
@@ -264,8 +265,8 @@ export const InitialStep = ({ isAdmin }: Props) => {
     });
   };
 
-  const handleLoginError = (err: any) => {
-    const errorType = err.response?.data?.error;
+  const handleLoginError = (err: unknown) => {
+    const errorType = axios.isAxiosError(err) ? err.response?.data?.error : undefined;
     if (errorType === "Captcha Required") {
       setShouldShowCaptcha(true);
       return;
@@ -297,7 +298,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
       } else {
         handleLoginFailure();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       handleLoginError(err);
     } finally {

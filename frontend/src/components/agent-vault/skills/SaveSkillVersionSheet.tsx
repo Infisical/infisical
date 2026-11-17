@@ -1,3 +1,6 @@
+import { SquareTerminalIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
+
 import {
   Accordion,
   AccordionContent,
@@ -32,12 +35,22 @@ const ChangeBody = ({ change }: { change: TSkillFileChange }) => {
   const isContentChanged = change.oldText !== change.newText;
   const isModeChanged =
     change.status === "modified" && change.oldMode !== undefined && change.newMode !== undefined;
+  const isAddedExecutable = change.status === "added" && change.newMode === "0755";
+  const hasBody = change.isBinary || isContentChanged;
   return (
     <div className="flex flex-col border-t border-border">
-      {isModeChanged && (
-        <p className="px-3 py-2 font-mono text-xs text-label">
-          {change.oldMode} → {change.newMode}
-        </p>
+      {(isModeChanged || isAddedExecutable) && (
+        <div
+          className={twMerge(
+            "flex items-center gap-2 px-3 py-2 text-xs text-label",
+            hasBody && "border-b border-border"
+          )}
+        >
+          <SquareTerminalIcon className="size-3.5 shrink-0 text-muted" />
+          {change.newMode === "0755"
+            ? "Marked as executable, so agents can run it as a script."
+            : "No longer marked as executable."}
+        </div>
       )}
       {change.isBinary && (
         <p className="px-3 py-2 text-xs text-muted">Binary file. Its contents are not shown.</p>
@@ -119,7 +132,10 @@ export const SaveSkillVersionSheet = ({
                   <span className="min-w-0 flex-1 truncate text-left text-sm" title={change.path}>
                     {change.path}
                   </span>
-                  {!(change.status === "modified" && change.isTooLarge) && (
+                  {!(
+                    change.status === "modified" &&
+                    (change.isTooLarge || change.oldText === change.newText)
+                  ) && (
                     <span className="shrink-0 text-xs tabular-nums">
                       <span className="text-success">+{change.additions}</span>{" "}
                       <span className="text-danger">-{change.deletions}</span>
