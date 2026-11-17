@@ -738,4 +738,12 @@ export const appConnections = [
       "Learn how to connect Jenkins to sync secrets from Infisical.",
     category: "CI/CD",
   },
+  {
+    name: "Coolify",
+    slug: "coolify",
+    path: "/integrations/app-connections/coolify",
+    description:
+      "Learn how to connect Coolify to sync secrets from Infisical.",
+    category: "Hosting",
+  },
 ];

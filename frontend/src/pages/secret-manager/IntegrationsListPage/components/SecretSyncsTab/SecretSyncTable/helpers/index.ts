@@ -1,4 +1,8 @@
-import { getGitHubSyncSecretTypeName, JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
+import {
+  COOLIFY_RESOURCE_TYPE_LABELS,
+  getGitHubSyncSecretTypeName,
+  JENKINS_SYNC_SCOPE_LABELS
+} from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
@@ -327,6 +331,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           ? destinationConfig.folderPath
           : JENKINS_SYNC_SCOPE_LABELS[JenkinsSyncScope.Global];
       secondaryText = "Credentials";
+      break;
+    case SecretSync.Coolify:
+      primaryText = destinationConfig.resourceName;
+      secondaryText = COOLIFY_RESOURCE_TYPE_LABELS[destinationConfig.resourceType];
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

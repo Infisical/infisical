@@ -3384,6 +3384,11 @@ export const AppConnections = {
       username: "The username of the Jenkins user that owns the API token.",
       apiToken: "The Jenkins API token used to authenticate."
     },
+    COOLIFY: {
+      instanceUrl:
+        "The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').",
+      apiToken: "The Coolify API token used to authenticate."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -3902,6 +3907,11 @@ export const SecretSyncs = {
       scope:
         "The Jenkins credential store to sync secrets to. Either 'global' for the system store or 'folder' for a folder's store.",
       folderPath: "The full name of the Jenkins folder to sync secrets to (e.g., 'team/app')."
+    },
+    COOLIFY: {
+      resourceType: "The type of Coolify resource to sync secrets to. Either 'application', 'service' or 'database'.",
+      resourceId: "The UUID of the Coolify resource to sync secrets to.",
+      resourceName: "The name of the Coolify resource to sync secrets to."
     }
   }
 };

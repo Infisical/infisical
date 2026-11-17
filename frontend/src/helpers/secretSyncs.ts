@@ -1,3 +1,4 @@
+import { CoolifyResourceType } from "@app/hooks/api/appConnections/coolify/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   SecretSync,
@@ -341,6 +342,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Jenkins.png",
     category: "CI/CD",
     description: "Secret text credentials in Jenkins global or folder stores."
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Environment variables for Coolify applications, services and databases."
   }
 };
 
@@ -404,7 +411,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Spacelift]: AppConnection.Spacelift,
   [SecretSync.Daytona]: AppConnection.Daytona,
   [SecretSync.Keeper]: AppConnection.Keeper,
-  [SecretSync.Jenkins]: AppConnection.Jenkins
+  [SecretSync.Jenkins]: AppConnection.Jenkins,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -537,4 +545,10 @@ export const CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS: Record<
 export const JENKINS_SYNC_SCOPE_LABELS: Record<JenkinsSyncScope, string> = {
   [JenkinsSyncScope.Global]: "Global",
   [JenkinsSyncScope.Folder]: "Folder"
+};
+
+export const COOLIFY_RESOURCE_TYPE_LABELS: Record<CoolifyResourceType, string> = {
+  [CoolifyResourceType.Application]: "Application",
+  [CoolifyResourceType.Service]: "Service",
+  [CoolifyResourceType.Database]: "Database"
 };

@@ -1,0 +1,273 @@
+import { AxiosRequestConfig, isAxiosError } from "axios";
+
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
+
+import { AppConnection } from "../app-connection-enums";
+import { CoolifyConnectionMethod, CoolifyResourceType } from "./coolify-connection-enums";
+import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyGatewayDeps,
+  TCoolifyRequestConfig,
+  TCoolifyResource
+} from "./coolify-connection-types";
+
+type TCoolifyRequest = {
+  method: "GET" | "PATCH" | "DELETE";
+  path: string;
+  data?: unknown;
+};
+
+type TCoolifyApiResource = { uuid: string; name: string; type: string; environment_id: number };
+
+type TCoolifyApiProject = { uuid: string; name: string };
+
+type TCoolifyApiEnvironment = { id: number; name: string };
+
+const COOLIFY_REQUEST_TIMEOUT_MS = 30_000;
+const COOLIFY_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
+export const getCoolifyConnectionListItem = () => {
+  return {
+    name: "Coolify" as const,
+    app: AppConnection.Coolify as const,
+    methods: Object.values(CoolifyConnectionMethod) as [CoolifyConnectionMethod.ApiToken]
+  };
+};
+
+const toLoggableError = (error: unknown) => {
+  if (isAxiosError(error)) {
+    return {
+      name: error.name,
+      code: error.code,
+      status: error.response?.status,
+      message: error.message,
+      url: error.config?.url ? sanitizeUrlForLog(error.config.url) : undefined,
+      stack: error.stack
+    };
+  }
+
+  if (error instanceof Error) return { name: error.name, message: error.message, stack: error.stack };
+
+  return { message: String(error) };
+};
+
+export const getCoolifyErrorMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: unknown }>(error)) {
+    const status = error.response?.status;
+
+    if (status === 401)
+      return "Coolify rejected the API token. Check that it hasn't expired, been paused or been revoked";
+    if (status && status >= 300 && status < 400) {
+      return "Coolify redirected the request. Use the exact instance URL, with https";
+    }
+
+    // Coolify explains most refusals in the body, such as a missing token permission or the API being disabled
+    const message = error.response?.data?.message;
+    if (typeof message === "string" && message) return message;
+
+    return error.message || fallback;
+  }
+
+  return error instanceof Error ? error.message : fallback;
+};
+
+// Resolved once so every request in an operation goes through the same pool member
+export const resolveCoolifyGateway = async (
+  connection: TCoolifyConnection,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+): Promise<TCoolifyConnection> => ({
+  ...connection,
+  gatewayId: await gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: connection.gatewayId,
+    gatewayPoolId: connection.gatewayPoolId
+  }),
+  gatewayPoolId: null
+});
+
+export const coolifyRequest = async <T>(
+  config: TCoolifyRequestConfig,
+  { method, path, data }: TCoolifyRequest,
+  { gatewayV2Service, gatewayPoolService }: TCoolifyGatewayDeps = {}
+): Promise<T> => {
+  const { credentials, gatewayId: directGatewayId, gatewayPoolId } = config;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "This Coolify connection uses a Gateway pool, which is not supported on this operation"
+    });
+  }
+
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
+
+  if (gatewayId && !gatewayV2Service) {
+    throw new BadRequestError({
+      message: "This Coolify connection uses a Gateway, which is not supported on this operation"
+    });
+  }
+
+  const url = new URL(`${removeTrailingSlash(credentials.instanceUrl)}/api/v1${path}`);
+  const headers = {
+    Authorization: `Bearer ${credentials.apiToken}`,
+    Accept: "application/json"
+  };
+
+  const baseRequestConfig: AxiosRequestConfig = {
+    method,
+    ...(data !== undefined && { data }),
+    timeout: COOLIFY_REQUEST_TIMEOUT_MS,
+    maxContentLength: COOLIFY_MAX_RESPONSE_BYTES,
+    maxBodyLength: COOLIFY_MAX_RESPONSE_BYTES
+  };
+
+  if (!gatewayId || !gatewayV2Service) {
+    // URL validation and private-IP blocking happen inside `safeRequest`, which also pins the
+    // connection to the validated IPs so DNS rebinding cannot redirect the request after the check
+    const { data: responseData } = await safeRequest.request<T>({
+      ...baseRequestConfig,
+      url: url.toString(),
+      headers
+    });
+
+    return responseData;
+  }
+
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+  const isHttps = url.protocol === "https:";
+  const targetPort = url.port ? Number(url.port) : (isHttps && 443) || 80;
+
+  const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort
+  });
+
+  if (!platformConnectionDetails) {
+    throw new BadRequestError({ message: "Unable to connect to the Gateway assigned to this Coolify connection" });
+  }
+
+  return withGatewayV2Proxy(
+    async (proxyPort) => {
+      const proxiedUrl = new URL(url.toString());
+      proxiedUrl.host = `localhost:${proxyPort}`;
+
+      const { data: responseData } = await request.request<T>({
+        ...baseRequestConfig,
+        url: proxiedUrl.toString(),
+        headers: { ...headers, Host: url.host },
+        maxRedirects: 0,
+        ...(isHttps && {
+          httpsAgent: getSharedHttpsAgent({ servername: targetHost, rejectUnauthorized: true })
+        })
+      });
+
+      return responseData;
+    },
+    {
+      protocol: GatewayProxyProtocol.Tcp,
+      ...platformConnectionDetails
+    }
+  );
+};
+
+export const validateCoolifyConnectionCredentials = async (
+  config: TCoolifyConnectionConfig,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+) => {
+  let projects: unknown;
+
+  try {
+    // Projects need only the read permission, and tokens limited to selected resources can still list them
+    projects = await coolifyRequest<unknown>(config, { method: "GET", path: "/projects" }, { gatewayV2Service });
+  } catch (error) {
+    if (error instanceof BadRequestError) throw error;
+
+    logger.error(toLoggableError(error), "Failed to validate Coolify connection credentials");
+    throw new BadRequestError({
+      message: `Unable to validate Coolify connection: ${
+        isAxiosError(error) && error.response?.status === 404
+          ? "the instance URL did not respond like a Coolify instance. Use the URL of the Coolify dashboard, without a path such as /api/v1"
+          : getCoolifyErrorMessage(error, "verify the instance URL and API token")
+      }`
+    });
+  }
+
+  if (!Array.isArray(projects)) {
+    throw new BadRequestError({
+      message: "Unable to validate Coolify connection: the instance URL did not respond like a Coolify instance"
+    });
+  }
+
+  return config.credentials;
+};
+
+const toCoolifyResourceType = (type: string) => {
+  if (type === "application") return CoolifyResourceType.Application;
+  if (type === "service") return CoolifyResourceType.Service;
+  // Databases are reported by engine, such as standalone-postgresql
+  if (type.startsWith("standalone-")) return CoolifyResourceType.Database;
+
+  return undefined;
+};
+
+export const listCoolifyResources = async (
+  appConnection: TCoolifyConnection,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+): Promise<TCoolifyResource[]> => {
+  try {
+    const connection = await resolveCoolifyGateway(appConnection, gatewayPoolService);
+    const deps = { gatewayV2Service };
+
+    // None of these endpoints are paginated; Coolify returns each list whole
+    const [resources, projects] = await Promise.all([
+      coolifyRequest<TCoolifyApiResource[]>(connection, { method: "GET", path: "/resources" }, deps),
+      coolifyRequest<TCoolifyApiProject[]>(connection, { method: "GET", path: "/projects" }, deps)
+    ]);
+
+    // A resource only names its environment's ID, so names come from each project's environments to tell
+    // apart resources that share a name across environments. Projects are read one at a time to stay
+    // within Coolify's rate limit.
+    const environments = new Map<number, { projectName: string; environmentName: string }>();
+    for (const project of projects) {
+      // eslint-disable-next-line no-await-in-loop
+      const projectEnvironments = await coolifyRequest<TCoolifyApiEnvironment[]>(
+        connection,
+        { method: "GET", path: `/projects/${encodeURIComponent(project.uuid)}/environments` },
+        deps
+      );
+
+      projectEnvironments.forEach((environment) =>
+        environments.set(environment.id, { projectName: project.name, environmentName: environment.name })
+      );
+    }
+
+    return resources
+      .flatMap((resource) => {
+        const type = toCoolifyResourceType(resource.type);
+        const environment = environments.get(resource.environment_id);
+
+        return type && environment ? [{ id: resource.uuid, name: resource.name, type, ...environment }] : [];
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    if (error instanceof BadRequestError) throw error;
+
+    logger.error(toLoggableError(error), `Failed to list Coolify resources [appConnectionId=${appConnection.id}]`);
+    throw new BadRequestError({
+      message: `Failed to list Coolify resources: ${getCoolifyErrorMessage(error, "verify the instance URL and API token")}`
+    });
+  }
+};

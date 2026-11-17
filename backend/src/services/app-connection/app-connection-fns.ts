@@ -125,6 +125,7 @@ import {
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
 import { ConvexConnectionMethod, getConvexConnectionListItem, validateConvexConnectionCredentials } from "./convex";
+import { CoolifyConnectionMethod, getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { decryptRotationMessage } from "./credential-rotation/app-connection-credential-rotation-fns";
 import { DatabricksConnectionMethod } from "./databricks";
@@ -521,6 +522,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRundeckConnectionListItem(),
     getPortainerConnectionListItem(),
     getJenkinsConnectionListItem(),
+    getCoolifyConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -774,6 +776,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jenkins]: validateJenkinsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -846,6 +849,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case JenkinsConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
       return "API Token";
@@ -1110,6 +1114,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
   [AppConnection.Jenkins]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,

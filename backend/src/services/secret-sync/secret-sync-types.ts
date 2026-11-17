@@ -126,6 +126,12 @@ import {
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
 import {
+  TCoolifySync,
+  TCoolifySyncInput,
+  TCoolifySyncListItem,
+  TCoolifySyncWithCredentials
+} from "./coolify/coolify-sync-types";
+import {
   TDaytonaSync,
   TDaytonaSyncInput,
   TDaytonaSyncListItem,
@@ -315,7 +321,8 @@ export type TSecretSync =
   | TSpaceliftSync
   | TDaytonaSync
   | TKeeperSync
-  | TJenkinsSync;
+  | TJenkinsSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -370,7 +377,8 @@ export type TSecretSyncWithCredentials =
   | TSpaceliftSyncWithCredentials
   | TDaytonaSyncWithCredentials
   | TKeeperSyncWithCredentials
-  | TJenkinsSyncWithCredentials;
+  | TJenkinsSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -425,7 +433,8 @@ export type TSecretSyncInput =
   | TSpaceliftSyncInput
   | TDaytonaSyncInput
   | TKeeperSyncInput
-  | TJenkinsSyncInput;
+  | TJenkinsSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -480,7 +489,8 @@ export type TSecretSyncListItem =
   | TSpaceliftSyncListItem
   | TDaytonaSyncListItem
   | TKeeperSyncListItem
-  | TJenkinsSyncListItem;
+  | TJenkinsSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
