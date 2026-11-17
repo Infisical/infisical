@@ -8,11 +8,12 @@ import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import {
   fakeHsm,
   ROOT_KEY_TEST_ENCRYPTION_KEY,
+  loadRootKeyWith,
   rootKeyTestEnv,
-  rootKeyWrappingsFor
+  rootKeyWrappingsFor,
+  TRootKeyLoaderDeps
 } from "../../testing/root-key-fixture";
 import { TRootKeyWrapper } from "../dependencies";
-import { loadRootKey, TLoadRootKeyDeps } from "./load-root-key";
 import { KmsRootKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -22,7 +23,7 @@ vi.mock("@app/lib/logger", () => ({
 const OTHER_KEY = "9f2c1e7a4b6d83051c2e4f6a8b0d1e3f";
 const now = () => new Date();
 
-type TBootOptions = Partial<Omit<TLoadRootKeyDeps, "rootKeyWrappings">> & {
+type TBootOptions = Partial<Omit<TRootKeyLoaderDeps, "rootKeyWrappings">> & {
   isFipsEnabled?: () => boolean;
   rootKeyWrapper?: TRootKeyWrapper;
 };
@@ -30,7 +31,7 @@ type TBootOptions = Partial<Omit<TLoadRootKeyDeps, "rootKeyWrappings">> & {
 const depsFor = (
   memory: InMemoryKmsCoreStores,
   { isFipsEnabled, rootKeyWrapper, env = rootKeyTestEnv(), ...overrides }: TBootOptions = {}
-): TLoadRootKeyDeps => ({
+): TRootKeyLoaderDeps => ({
   transactionRunner: memory.transactionRunner,
   stores: memory.stores,
   env,
@@ -59,7 +60,7 @@ const fipsServiceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey) =>
     rootKeyWrappingsFor(fipsEnv(), { isFipsEnabled: () => true })
   );
 
-describe("loadRootKey", () => {
+describe("RootKeyLoader", () => {
   afterEach(() => {
     resetLegacyKeyMaterial();
   });
@@ -67,14 +68,14 @@ describe("loadRootKey", () => {
   test("should read the stored root key state from the primary", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
     const findAll = vi.spyOn(memory.stores.rootKeyConfigStore, "findAll");
     const findById = vi.spyOn(memory.stores.rootKeyConfigStore, "findById");
     const legacy = vi.spyOn(memory.stores.legacyEncryptionKeyStore, "find");
     const current = vi.spyOn(memory.stores.kekHistoryStore, "findCurrent");
 
     // Action
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Assert
     expect(findAll).toHaveBeenCalledWith({ readFrom: ReadFrom.Primary });
@@ -88,7 +89,7 @@ describe("loadRootKey", () => {
     const memory = new InMemoryKmsCoreStores();
 
     // Action
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Assert
     const rows = await memory.stores.rootKeyConfigStore.findAll();
@@ -102,7 +103,7 @@ describe("loadRootKey", () => {
     const memory = new InMemoryKmsCoreStores();
 
     // Action
-    await loadRootKey(depsFor(memory, { skipRotationState: true }));
+    await loadRootKeyWith(depsFor(memory, { skipRotationState: true }));
 
     // Assert
     const [row] = await memory.stores.rootKeyConfigStore.findAll();
@@ -116,7 +117,7 @@ describe("loadRootKey", () => {
     const memory = new InMemoryKmsCoreStores();
 
     // Action
-    const result = loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: undefined }) }));
+    const result = loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: undefined }) }));
 
     // Assert
     await expect(result).rejects.toThrow("Please set the ENCRYPTION_KEY environment variable");
@@ -128,7 +129,7 @@ describe("loadRootKey", () => {
     const memory = new InMemoryKmsCoreStores();
 
     // Action
-    const result = loadRootKey(
+    const result = loadRootKeyWith(
       depsFor(memory, {
         env: rootKeyTestEnv({ ENCRYPTION_KEY: undefined, ROOT_ENCRYPTION_KEY: "not-base64!" }),
         isFipsEnabled: () => true
@@ -156,7 +157,7 @@ describe("loadRootKey", () => {
     );
 
     // Action
-    const result = loadRootKey(depsFor(memory, { rootKeyWrapper: hsm }));
+    const result = loadRootKeyWith(depsFor(memory, { rootKeyWrapper: hsm }));
 
     // Assert
     await expect(result).rejects.toThrow("Your license does not include HSM integration");
@@ -176,7 +177,7 @@ describe("loadRootKey", () => {
     );
 
     // Action
-    const result = loadRootKey(depsFor(memory));
+    const result = loadRootKeyWith(depsFor(memory));
 
     // Assert
     await expect(result).rejects.toThrow("requires the Infisical enterprise edition");
@@ -188,7 +189,7 @@ describe("loadRootKey", () => {
     const hsm = fakeHsm({ entitled: true });
 
     // Action
-    const rootKey = await loadRootKey(
+    const rootKey = await loadRootKeyWith(
       depsFor(memory, { rootKeyWrapper: hsm, env: rootKeyTestEnv({ ENCRYPTION_KEY: undefined }) })
     );
 
@@ -201,10 +202,10 @@ describe("loadRootKey", () => {
   test("should resolve the same root key on restart", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const first = await loadRootKey(depsFor(memory));
+    const first = await loadRootKeyWith(depsFor(memory));
 
     // Action
-    const second = await loadRootKey(depsFor(memory));
+    const second = await loadRootKeyWith(depsFor(memory));
 
     // Assert
     expect(second.equals(first)).toBe(true);
@@ -213,10 +214,10 @@ describe("loadRootKey", () => {
   test("should name the labels it knows when the configured key does not open the stored root key", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Action
-    const result = loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: OTHER_KEY }) }));
+    const result = loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: OTHER_KEY }) }));
 
     // Assert
     await expect(result).rejects.toThrow("does not decrypt this database's root key");
@@ -226,11 +227,11 @@ describe("loadRootKey", () => {
   test("should promote a staged rotation when a pod boots with the new key", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
     const { key, label } = await serviceFor(memory, rootKey).createRotation({});
 
     // Action
-    const rotated = await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
+    const rotated = await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
 
     // Assert
     const rows = await memory.stores.rootKeyConfigStore.findAll();
@@ -246,13 +247,13 @@ describe("loadRootKey", () => {
   test("should keep only the newest retained key after a second promotion", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
     const first = await serviceFor(memory, rootKey).createRotation({});
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: first.key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: first.key }) }));
     const second = await serviceFor(memory, rootKey, rootKeyTestEnv({ ENCRYPTION_KEY: first.key })).createRotation({});
 
     // Action
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: second.key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: second.key }) }));
 
     // Assert
     const rows = await memory.stores.rootKeyConfigStore.findAll();
@@ -262,12 +263,12 @@ describe("loadRootKey", () => {
   test("should still boot a straggler on the retained key and stamp that it did", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
     const { key } = await serviceFor(memory, rootKey).createRotation({});
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
 
     // Action
-    const straggler = await loadRootKey(depsFor(memory));
+    const straggler = await loadRootKeyWith(depsFor(memory));
 
     // Assert
     const retained = (await memory.stores.rootKeyConfigStore.findAll()).find((row) => row.isRetained);
@@ -278,10 +279,10 @@ describe("loadRootKey", () => {
   test("should label an active row written before labels existed", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    await loadRootKey(depsFor(memory, { skipRotationState: true }));
+    await loadRootKeyWith(depsFor(memory, { skipRotationState: true }));
 
     // Action
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Assert
     const active = await memory.stores.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID);
@@ -291,10 +292,10 @@ describe("loadRootKey", () => {
   test("should backfill one KEK history entry and not another on restart", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Action
-    await loadRootKey(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
 
     // Assert
     expect(await memory.stores.kekHistoryStore.count()).toBe(1);
@@ -305,7 +306,7 @@ describe("loadRootKey", () => {
     const memory = new InMemoryKmsCoreStores();
 
     // Action
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
 
     // Assert
     const stored = await memory.stores.legacyEncryptionKeyStore.find();
@@ -316,11 +317,11 @@ describe("loadRootKey", () => {
   test("should keep using the stored legacy snapshot after the env key changes", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
     const { key } = await serviceFor(memory, rootKey).createRotation({});
 
     // Action
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
 
     // Assert
     expect(getLegacyDecryptionCandidates()[0].ENCRYPTION_KEY).toBe(ROOT_KEY_TEST_ENCRYPTION_KEY);
@@ -329,11 +330,11 @@ describe("loadRootKey", () => {
   test("should mark the old KEK history entry superseded, not retired, on promotion", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
     const { key, label } = await serviceFor(memory, rootKey).createRotation({});
 
     // Action
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
 
     // Assert
     const entries = (await memory.stores.kekHistoryStore.findPage({ offset: 0, limit: 10 })).map((entry) =>
@@ -350,14 +351,14 @@ describe("loadRootKey", () => {
   test("should retire the KEK history entry of the key a second promotion drops", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(depsFor(memory));
-    await loadRootKey(depsFor(memory));
+    const rootKey = await loadRootKeyWith(depsFor(memory));
+    await loadRootKeyWith(depsFor(memory));
     const first = await serviceFor(memory, rootKey).createRotation({});
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: first.key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: first.key }) }));
     const second = await serviceFor(memory, rootKey, rootKeyTestEnv({ ENCRYPTION_KEY: first.key })).createRotation({});
 
     // Action
-    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: second.key }) }));
+    await loadRootKeyWith(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: second.key }) }));
 
     // Assert
     const entries = (await memory.stores.kekHistoryStore.findPage({ offset: 0, limit: 10 })).map((entry) =>
@@ -374,7 +375,7 @@ describe("loadRootKey", () => {
   });
 });
 
-describe("loadRootKey under FIPS", () => {
+describe("RootKeyLoader under FIPS", () => {
   afterEach(() => {
     resetLegacyKeyMaterial();
   });
@@ -382,11 +383,11 @@ describe("loadRootKey under FIPS", () => {
   test("should promote a staged rotation when a pod boots with the staged base64 key", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(fipsDepsFor(memory));
+    const rootKey = await loadRootKeyWith(fipsDepsFor(memory));
     const { key, label } = await fipsServiceFor(memory, rootKey).createRotation({});
 
     // Action
-    const rotated = await loadRootKey(fipsDepsFor(memory, key));
+    const rotated = await loadRootKeyWith(fipsDepsFor(memory, key));
 
     // Assert
     const rows = await memory.stores.rootKeyConfigStore.findAll();
@@ -400,12 +401,12 @@ describe("loadRootKey under FIPS", () => {
   test("should still boot a straggler on the old key inside the retention window", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const rootKey = await loadRootKey(fipsDepsFor(memory));
+    const rootKey = await loadRootKeyWith(fipsDepsFor(memory));
     const { key, label } = await fipsServiceFor(memory, rootKey).createRotation({});
-    await loadRootKey(fipsDepsFor(memory, key));
+    await loadRootKeyWith(fipsDepsFor(memory, key));
 
     // Action
-    const straggler = await loadRootKey(fipsDepsFor(memory));
+    const straggler = await loadRootKeyWith(fipsDepsFor(memory));
 
     // Assert
     const rows = await memory.stores.rootKeyConfigStore.findAll();
@@ -417,11 +418,11 @@ describe("loadRootKey under FIPS", () => {
   test("should refuse an unknown key and name the known labels", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    await loadRootKey(fipsDepsFor(memory));
+    await loadRootKeyWith(fipsDepsFor(memory));
     const knownLabel = (await memory.stores.kekHistoryStore.findCurrent())?.kekLabel as string;
 
     // Action
-    const result = loadRootKey(fipsDepsFor(memory, Buffer.alloc(32, 9).toString("base64")));
+    const result = loadRootKeyWith(fipsDepsFor(memory, Buffer.alloc(32, 9).toString("base64")));
 
     // Assert
     await expect(result).rejects.toBeInstanceOf(ExternalSystemError);

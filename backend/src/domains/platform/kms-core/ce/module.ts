@@ -13,7 +13,7 @@ import { RootKey } from "./models/root-key";
 import { KmsDataKeyService, TKmsDataKeyService } from "./services/data-key/service";
 import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
 import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
-import { loadRootKey } from "./services/root-key/load-root-key";
+import { RootKeyLoader } from "./services/root-key/root-key-loader";
 import { RootKeyWrappings } from "./services/root-key/root-key-wrappings";
 import { KmsRootKeyService, TKmsCoreEnv, TKmsRootKeyService } from "./services/root-key/service";
 
@@ -85,14 +85,14 @@ export class KmsCoreModule {
     const { rootKeyWrapper, externalKms } = deps.hooks;
     const rootKeyWrappings = new RootKeyWrappings(deps.env, isFipsEnabled, rootKeyWrapper);
 
-    const rootKey: RootKey = await loadRootKey({
+    const rootKey: RootKey = await new RootKeyLoader(
       transactionRunner,
       stores,
-      env: deps.env,
-      originalEnv: deps.originalEnv,
+      deps.env,
       rootKeyWrappings,
-      skipRotationState: deps.skipRotationState
-    });
+      deps.originalEnv,
+      deps.skipRotationState
+    ).load();
 
     const kmsRootKeyService = new KmsRootKeyService(
       transactionRunner,

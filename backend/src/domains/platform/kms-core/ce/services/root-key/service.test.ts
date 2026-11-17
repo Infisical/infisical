@@ -10,8 +10,13 @@ import {
   TRootKeyConfigRecord
 } from "../../models/root-key-config";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
-import { bootRootKeyService, fakeHsm, rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
-import { loadRootKey } from "./load-root-key";
+import {
+  bootRootKeyService,
+  fakeHsm,
+  loadRootKeyWith,
+  rootKeyTestEnv,
+  rootKeyWrappingsFor
+} from "../../testing/root-key-fixture";
 import { KmsRootKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -151,7 +156,7 @@ describe("KmsRootKeyService.updateEncryptionStrategy", () => {
 
     // Assert
     const active = await memory.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID);
-    const rebooted = await loadRootKey({
+    const rebooted = await loadRootKeyWith({
       transactionRunner: memory.transactionRunner,
       stores: memory.stores,
       env: rootKeyTestEnv(),

@@ -1,4 +1,9 @@
-import { EntityNotFoundError, RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
+import {
+  EntityNotFoundError,
+  ExternalSystemError,
+  RuleViolationError,
+  StateConflictError
+} from "@app/domains/lib/errors";
 
 import { RootKeyConfig, RootKeyEncryptionStrategy } from "./root-key-config";
 
@@ -60,6 +65,26 @@ export class RootKeyRing {
       ...others.filter((config) => !config.activatedAt),
       ...others.filter((config) => config.activatedAt)
     ];
+  }
+
+  /**
+   * The moment a rotation takes effect. Null when `stagedId` is no longer staged: another pod promoted it first.
+   * The active row takes the staged key, and the key it replaces is kept as the one retained copy, so pods that have
+   * not rolled over can still boot. Every older retained key is returned for removal: exactly one survives.
+   */
+  promote(
+    stagedId: string,
+    fallbackKekLabel: string | null,
+    now: Date
+  ): { active: RootKeyConfig; retained: RootKeyConfig; superseded: RootKeyConfig[] } | null {
+    const staged = this.configs.find((config) => config.id === stagedId);
+    if (!staged?.isStaged) return null;
+    const { active } = this;
+    if (!active) throw new ExternalSystemError({ message: "KMS root config is missing its active row" });
+
+    const superseded = this.retainedNewestFirst();
+    const retained = active.promote(staged, fallbackKekLabel, now);
+    return { active, retained, superseded };
   }
 
   // A strategy change is a fleet-wide cutover: a pod holding the retained software copy would otherwise boot without

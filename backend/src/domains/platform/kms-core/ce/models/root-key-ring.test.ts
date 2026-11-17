@@ -77,6 +77,51 @@ describe("RootKeyRing accessors", () => {
   });
 });
 
+describe("RootKeyRing.promote", () => {
+  test("should move the staged key into the active row and keep only the key it replaced", () => {
+    // Setup
+    const current = active({ kekLabel: "old" });
+    const previousWrapped = Buffer.from(current.encryptedRootKey);
+    const next = staged({ kekLabel: "new" });
+    const older = [retained(3), retained(8)];
+    const ring = RootKeyRing.of([current, next, ...older]);
+
+    // Action
+    const promotion = ring.promote(next.id, "fallback", NOW);
+
+    // Assert
+    expect(promotion?.active.id).toBe(KMS_ROOT_CONFIG_UUID);
+    expect(promotion?.active.kekLabel).toBe("new");
+    expect(promotion?.active.encryptedRootKey).toEqual(next.encryptedRootKey);
+    expect(promotion?.retained.encryptedRootKey).toEqual(previousWrapped);
+    expect(promotion?.retained.supersededAt).toEqual(NOW);
+    expect(promotion?.superseded.map((config) => config.id)).toEqual(older.map((config) => config.id));
+  });
+
+  test("should do nothing for a key that is no longer staged", () => {
+    // Setup
+    const ring = RootKeyRing.of([active()]);
+
+    // Action
+    const promotion = ring.promote(randomUUID(), null, NOW);
+
+    // Assert
+    expect(promotion).toBeNull();
+  });
+
+  test("should refuse a ring without an active row", () => {
+    // Setup
+    const next = staged();
+    const ring = RootKeyRing.of([next]);
+
+    // Action
+    const result = () => ring.promote(next.id, null, NOW);
+
+    // Assert
+    expect(result).toThrow("KMS root config is missing its active row");
+  });
+});
+
 describe("RootKeyRing.assertNoRotationInProgress", () => {
   test("should accept a ring with only the active row", () => {
     // Setup

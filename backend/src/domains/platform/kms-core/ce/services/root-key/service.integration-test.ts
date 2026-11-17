@@ -4,8 +4,7 @@ import { resetLegacyKeyMaterial } from "@app/lib/crypto/legacy-key";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { KMS_ROOT_CONFIG_UUID } from "../../models/root-key-config";
-import { rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
-import { loadRootKey } from "./load-root-key";
+import { loadRootKeyWith, rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
 import { KmsRootKeyService, TKmsCoreEnv } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -30,7 +29,7 @@ describe("KmsRootKeyService on Postgres", () => {
     const access = buildKmsCoreStoreAccess(h.db, () => h.db);
     const env = rootKeyTestEnv(overrides);
     const rootKeyWrappings = rootKeyWrappingsFor(env, { isFipsEnabled: () => isFips });
-    const rootKey = await loadRootKey({ ...access, env, rootKeyWrappings });
+    const rootKey = await loadRootKeyWith({ ...access, env, rootKeyWrappings });
     const service = new KmsRootKeyService(
       access.transactionRunner,
       access.stores,

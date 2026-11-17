@@ -1,7 +1,9 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 
-import { TRootKeyWrapper } from "../services/dependencies";
-import { loadRootKey, TLoadRootKeyDeps } from "../services/root-key/load-root-key";
+import { TKmsCoreStores, TRootKeyWrapper } from "../services/dependencies";
+import { RootKeyLoader } from "../services/root-key/root-key-loader";
 import { RootKeyWrappings } from "../services/root-key/root-key-wrappings";
 import { KmsRootKeyService, TKmsCoreEnv } from "../services/root-key/service";
 import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
@@ -47,6 +49,26 @@ export const rootKeyWrappingsFor = (
   }: { isFipsEnabled?: () => boolean; rootKeyWrapper?: TRootKeyWrapper } = {}
 ) => new RootKeyWrappings(env, isFipsEnabled, rootKeyWrapper);
 
+export type TRootKeyLoaderDeps = {
+  transactionRunner: TTransactionRunner<TKmsCoreStores>;
+  stores: TKmsCoreStores;
+  env: TKmsCoreEnv;
+  rootKeyWrappings: RootKeyWrappings;
+  originalEnv?: TLegacyKeySnapshot;
+  skipRotationState?: boolean;
+};
+
+// Builds the loader the way the module does and loads the root key, for tests that vary one dependency at a time.
+export const loadRootKeyWith = (deps: TRootKeyLoaderDeps) =>
+  new RootKeyLoader(
+    deps.transactionRunner,
+    deps.stores,
+    deps.env,
+    deps.rootKeyWrappings,
+    deps.originalEnv,
+    deps.skipRotationState
+  ).load();
+
 // Boots an in-memory instance the way the module does: load the root key once, then build the service around it.
 export const bootRootKeyService = async ({
   env: envOverrides,
@@ -56,13 +78,12 @@ export const bootRootKeyService = async ({
   const memory = new InMemoryKmsCoreStores();
   const env = rootKeyTestEnv(envOverrides);
   const rootKeyWrappings = rootKeyWrappingsFor(env, { isFipsEnabled, rootKeyWrapper });
-  const deps: TLoadRootKeyDeps = {
+  const rootKey = await loadRootKeyWith({
     transactionRunner: memory.transactionRunner,
     stores: memory.stores,
     env,
     rootKeyWrappings
-  };
-  const rootKey = await loadRootKey(deps);
+  });
   const service = new KmsRootKeyService(
     memory.transactionRunner,
     memory.stores,
