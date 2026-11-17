@@ -507,6 +507,7 @@ function CellEditor({
   useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
+  const attempt = useRef(0);
   const settling = useRef(false);
   const finish = async (blurred: boolean) => {
     if (settling.current) return;
@@ -516,8 +517,11 @@ function CellEditor({
       return;
     }
     settling.current = true;
+    attempt.current += 1;
+    const { current: started } = attempt;
     const problem = await validate?.(next);
     settling.current = false;
+    if (started !== attempt.current) return;
     if (problem && !blurred) {
       setError(problem);
       return;
@@ -535,10 +539,12 @@ function CellEditor({
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
+      attempt.current += 1;
       onDone();
     }
   };
   const change = (value: string) => {
+    attempt.current += 1;
     setDraft(transform ? transform(value) : value);
     setError("");
   };
@@ -1374,8 +1380,10 @@ function SingleSecretRowView({
               if (!next) return "Secret name is required";
               if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(next))
                 return "Use letters, numbers and underscores, starting with a letter or underscore";
+              if (handlers.secretNames.includes(next))
+                return "A secret with this name already exists";
               if (next === ctx.renamedFrom?.[first.id]) return undefined;
-              if (handlers.secretNames.includes(next) || (await handlers.secretNameTaken(next)))
+              if (await handlers.secretNameTaken(next))
                 return "A secret with this name already exists";
               return undefined;
             },
