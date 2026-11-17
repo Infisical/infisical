@@ -239,12 +239,12 @@ export class KmsKeyService implements TKmsKeyService {
   // Archives the current material and installs new material. Old ciphertext stays readable.
   rotateKmsKey(kmsId: string) {
     return this.transactionRunner.run(async ({ stores }) => {
-      const key = await stores.kmsKeyStore.findForRotation(kmsId);
+      const key = await stores.kmsKeyStore.findForUpdate(kmsId);
       if (!key) throw notFoundKey(kmsId);
-      const archived = key.rotate(this.rootKey);
+      const { archived, version } = key.rotate(this.rootKey);
       await stores.kmsKeyVersionStore.insert(archived);
       await stores.kmsKeyStore.save(key);
-      return { id: key.id, version: key.version as number };
+      return { id: key.id, version };
     });
   }
 

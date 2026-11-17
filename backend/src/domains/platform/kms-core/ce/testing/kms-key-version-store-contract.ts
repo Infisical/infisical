@@ -13,8 +13,8 @@ export const describeKmsKeyVersionStoreContract = (name: string, setup: () => Pr
     const archived: KmsKeyVersion[] = [];
     for (let rotation = 0; rotation < rotations; rotation += 1) {
       // eslint-disable-next-line no-await-in-loop -- each rotation builds on the one before
-      const loaded = (await fixture.keyStore.findForRotation(key.id)) as KmsKey;
-      const version = loaded.rotate(rootKeyForTests);
+      const loaded = (await fixture.keyStore.findForUpdate(key.id)) as KmsKey;
+      const version = loaded.rotate(rootKeyForTests).archived;
       archived.push(version);
       // eslint-disable-next-line no-await-in-loop
       await fixture.versionStore.insert(version);

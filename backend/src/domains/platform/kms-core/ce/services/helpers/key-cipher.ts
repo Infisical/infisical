@@ -31,18 +31,18 @@ export const requireExternalKms = (externalKms: TExternalKmsHook | undefined): T
   return externalKms;
 };
 
+const listArchived = async (stores: TKeyCipherStores, key: KmsKey, options?: TReadOptions) => {
+  const { materialId } = key;
+  return materialId ? stores.kmsKeyVersionStore.listByInternalKmsId(materialId, options) : [];
+};
+
 // Archived versions load only on the first ciphertext the current material cannot open.
 const internalDecryptor = (
   stores: TKeyCipherStores,
   rootKey: RootKey,
   key: KmsKey,
   options?: TReadOptions
-): TAsyncDecryptor => {
-  const internalKmsId = key.toJSON().internal?.id;
-  return key.decryptor(rootKey, () =>
-    internalKmsId ? stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId, options) : Promise.resolve([])
-  );
-};
+): TAsyncDecryptor => key.decryptor(rootKey, () => listArchived(stores, key, options));
 
 // The org's data key, which must already exist: an external key's inputs were encrypted with it when it was stored.
 export const existingOrgCipher = async (
@@ -92,8 +92,7 @@ export const keyDecryptor = async (
 ): Promise<TAsyncDecryptor> => {
   const ref = key.externalRef();
   if (!ref && loadArchivedNow) {
-    const internalKmsId = key.toJSON().internal?.id;
-    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId) : [];
+    const archived = await listArchived(stores, key);
     return key.decryptor(rootKey, () => Promise.resolve(archived));
   }
   if (!ref) return internalDecryptor(stores, rootKey, key);

@@ -40,6 +40,14 @@ export class KekHistoryEntry {
     );
   }
 
+  get supersededAt(): Date | null {
+    return this.supersededOn;
+  }
+
+  get retiredAt(): Date | null {
+    return this.retiredOn;
+  }
+
   // A newer key took over.
   supersede(at: Date): void {
     this.supersededOn = at;

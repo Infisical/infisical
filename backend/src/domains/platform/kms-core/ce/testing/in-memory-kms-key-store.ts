@@ -41,10 +41,6 @@ export class InMemoryKmsKeyStore implements TKmsKeyStore {
     return this.findById(id);
   }
 
-  findForRotation(id: string): Promise<KmsKey | null> {
-    return this.findById(id);
-  }
-
   async findPublishedById(id: string): Promise<KmsKey | null> {
     const record = this.keys.get(id);
     if (!record?.isPublicKeyPublished || !record.projectId) return null;

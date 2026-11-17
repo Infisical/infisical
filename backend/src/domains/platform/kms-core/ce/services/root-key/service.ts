@@ -138,15 +138,12 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     const options = { readFrom: ReadFrom.Primary };
     const rows = await this.stores.kekHistoryStore.findPage({ offset, limit }, options);
     const totalCount = await this.stores.kekHistoryStore.count(options);
-    const rotations: TRotationHistoryEntry[] = rows.map((row) => {
-      const record = row.toJSON();
-      return {
-        label: record.kekLabel,
-        activatedAt: record.activatedAt,
-        supersededAt: record.supersededAt ?? null,
-        retiredAt: record.retiredAt ?? null
-      };
-    });
+    const rotations: TRotationHistoryEntry[] = rows.map((row) => ({
+      label: row.kekLabel,
+      activatedAt: row.activatedAt,
+      supersededAt: row.supersededAt,
+      retiredAt: row.retiredAt
+    }));
     return { rotations, totalCount };
   }
 

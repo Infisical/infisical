@@ -146,9 +146,10 @@ describe("KmsKey.rotate", () => {
     const before = key.toJSON().internal;
 
     // Action
-    const archived = key.rotate(rootKey);
+    const { archived, version } = key.rotate(rootKey);
 
     // Assert
+    expect(version).toBe(2);
     expect(archived.toJSON()).toMatchObject({
       version: 1,
       encryptedKey: before?.encryptedKey,
@@ -192,7 +193,7 @@ describe("KmsKey.decryptor", () => {
     // Setup
     const key = internalKey();
     const before = key.encryptor(rootKey)({ plainText: Buffer.from("old") });
-    const archived = key.rotate(rootKey);
+    const { archived } = key.rotate(rootKey);
     const after = key.encryptor(rootKey)({ plainText: Buffer.from("new") });
     const decrypt = key.decryptor(rootKey, () => Promise.resolve([archived]));
 
@@ -221,7 +222,7 @@ describe("KmsKey.decryptor", () => {
     // Setup
     const key = internalKey();
     const olderBlobs = [Buffer.from("a"), Buffer.from("b")].map((plainText) => key.encryptor(rootKey)({ plainText }));
-    const archived = key.rotate(rootKey);
+    const { archived } = key.rotate(rootKey);
     const loadArchived = vi.fn(() => Promise.resolve([archived]));
     const decrypt = key.decryptor(rootKey, loadArchived);
 
@@ -314,7 +315,7 @@ describe("KmsKey.openDataKey and sealDataKey", () => {
     const key = internalKey();
     const dataKey = DataKey.generate();
     const sealed = key.sealDataKey(rootKey, dataKey);
-    const archived = key.rotate(rootKey);
+    const { archived } = key.rotate(rootKey);
 
     // Action
     const opened = key.openDataKey(rootKey, sealed, [archived]);
@@ -385,6 +386,17 @@ describe("KmsKey.assertInOrg", () => {
     expect(result).toThrow("KMS ID does not belong in the organization.");
   });
 
+  test("should refuse with the caller's message when it gives one", () => {
+    // Setup
+    const key = internalKey();
+
+    // Action
+    const result = () => key.assertInOrg("another-org", "KMS doesn't belong to organization");
+
+    // Assert
+    expect(result).toThrow("KMS doesn't belong to organization");
+  });
+
   test("should accept the key's own org", () => {
     // Setup
     const key = internalKey();
@@ -439,6 +451,17 @@ describe("KmsKey attribute changes", () => {
     });
   });
 
+  test("should store a rename as a slug", () => {
+    // Setup
+    const key = internalKey();
+
+    // Action
+    key.rename("My Key");
+
+    // Assert
+    expect(key.name).toBe("my-key");
+  });
+
   test("should reverse the changes that have an opposite", () => {
     // Setup
     const key = internalKey();
@@ -481,6 +504,26 @@ describe("KmsKey external keys", () => {
     });
   });
 
+  test("should store the name as a slug, generate one when none is given, and report the provider status", () => {
+    // Setup
+    const named = KmsKey.createExternal({
+      orgId: "org",
+      name: "AWS Prod",
+      provider: "aws",
+      encryptedProviderInputs: Buffer.alloc(1)
+    });
+    const unnamed = KmsKey.createExternal({ orgId: "org", provider: "gcp", encryptedProviderInputs: Buffer.alloc(1) });
+
+    // Action
+    const status = named.externalStatus();
+
+    // Assert
+    expect(named.name).toBe("aws-prod");
+    expect(unnamed.name).toMatch(/^[0-9a-z]{8}$/);
+    expect(status).toEqual({ id: named.toJSON().external?.id, provider: "aws", status: null, statusDetails: null });
+    expect(named.materialId).toBeNull();
+  });
+
   test("should refuse provider inputs on an internal key and have no external reference", () => {
     // Setup
     const key = internalKey();
@@ -491,6 +534,8 @@ describe("KmsKey external keys", () => {
     // Assert
     expect(result).toThrow(`KMS with ID '${key.id}' is not external`);
     expect(key.externalRef()).toBeNull();
+    expect(key.externalStatus()).toBeNull();
+    expect(key.materialId).toBe(key.toJSON().internal?.id);
   });
 });
 

@@ -101,12 +101,6 @@ export class KmsKeyStore implements TKmsKeyStore {
     return key ?? null;
   }
 
-  async findForRotation(id: string): Promise<KmsKey | null> {
-    await this.lockRows(id, "Find KMS key for rotation");
-    const [key] = await KmsKeyStore.findWith(this.connection.writer(), { id });
-    return key ?? null;
-  }
-
   // Reads projects, which no domain owns yet: a project pending deletion stops publishing, like a deleted one.
   async findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
     if (!UUID_PATTERN.test(id)) return null;

@@ -9,7 +9,12 @@ import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { SigningAlgorithm } from "@app/lib/crypto/sign";
 
 import { DataKey, TEncryptor } from "./data-key";
-import { ExternalKeyConfig, TExternalKeyConfigRecord, TExternalKeyRef } from "./external-key-config";
+import {
+  ExternalKeyConfig,
+  TExternalKeyConfigRecord,
+  TExternalKeyRef,
+  TExternalKeyStatus
+} from "./external-key-config";
 import { InternalKeyMaterial, TInternalKeyMaterialRecord } from "./internal-key-material";
 import { KeyMaterial, KmsKeyUsage, TKmsKeyAlgorithmName } from "./key-material";
 import { KeyMaterialVersions } from "./key-material-versions";
@@ -39,8 +44,11 @@ export type TKmsKeyRecord = {
   external: TExternalKeyConfigRecord | null;
 };
 
+// A key's kms_keys columns, without its material.
+export type TKmsKeyColumns = Omit<TKmsKeyRecord, "internal" | "external">;
+
 // What callers outside the domain see of a key: its kms_keys columns, never its material.
-export type TKmsKeyDetails = Omit<TKmsKeyRecord, "internal" | "external"> & {
+export type TKmsKeyDetails = TKmsKeyColumns & {
   isExternal: boolean;
   encryptionAlgorithm?: string;
   version?: number;
@@ -145,9 +153,10 @@ export class KmsKey {
     });
   }
 
+  // `name` defaults to a generated slug.
   static createExternal(input: {
     orgId: string;
-    name: string;
+    name?: string;
     description?: string | null;
     provider: string;
     encryptedProviderInputs: Buffer;
@@ -155,7 +164,7 @@ export class KmsKey {
     const now = new Date();
     return new KmsKey(
       randomUUID(),
-      input.name,
+      input.name ? slugify(input.name) : generatedName(),
       input.description ?? null,
       input.orgId,
       null,
@@ -212,13 +221,23 @@ export class KmsKey {
     return this.internal?.version ?? null;
   }
 
+  // The id archived versions of the material are stored under. Null for an external key, which has none.
+  get materialId(): string | null {
+    return this.internal?.id ?? null;
+  }
+
   // Null for an internal key: the caller then opens it with the key itself.
   externalRef(): TExternalKeyRef | null {
     return this.external?.refFor(this.id, this.orgId) ?? null;
   }
 
+  // Null for an internal key.
+  externalStatus(): TExternalKeyStatus | null {
+    return this.external?.summary() ?? null;
+  }
+
   rename(name: string) {
-    this.keyName = name;
+    this.keyName = slugify(name);
     this.touch();
   }
 
@@ -279,8 +298,8 @@ export class KmsKey {
   }
 
   // Archives the current material as a version and installs fresh material as the next one. Ciphertext written
-  // under the archived version stays readable once the caller stores the returned version.
-  rotate(rootKey: RootKey): KmsKeyVersion {
+  // under the archived version stays readable once the caller stores `archived`.
+  rotate(rootKey: RootKey): { archived: KmsKeyVersion; version: number } {
     this.assertRotatable();
     if (!this.internal)
       throw new RuleViolationError({ message: `Internal KMS not found for KMS with ID '${this.id}'` });
@@ -290,14 +309,12 @@ export class KmsKey {
       rootKey
     );
     this.touch();
-    return archived;
+    return { archived, version: this.internal.version };
   }
 
   // Another org's key answers like a missing one, so ids do not reveal which tenant owns them.
-  assertInOrg(orgId: string) {
-    if (this.orgId !== orgId) {
-      throw new EntityNotFoundError({ message: "KMS ID does not belong in the organization." });
-    }
+  assertInOrg(orgId: string, message = "KMS ID does not belong in the organization.") {
+    if (this.orgId !== orgId) throw new EntityNotFoundError({ message });
   }
 
   assertRotatable() {
@@ -413,13 +430,17 @@ export class KmsKey {
     };
   }
 
-  details(): TKmsKeyDetails {
+  columns(): TKmsKeyColumns {
     const { internal, external, ...columns } = this.toJSON();
+    return columns;
+  }
+
+  details(): TKmsKeyDetails {
     return {
-      ...columns,
-      isExternal: external !== null,
-      encryptionAlgorithm: internal?.encryptionAlgorithm,
-      version: internal?.version
+      ...this.columns(),
+      isExternal: this.isExternal,
+      encryptionAlgorithm: this.internal?.algorithm,
+      version: this.internal?.version
     };
   }
 

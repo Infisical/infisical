@@ -56,7 +56,6 @@ describe("KmsKeyStore on Postgres", () => {
       const count = await store.countProjectKeysInOrg(tn.org.id, ProjectType.SecretManager, primary);
       const published = await store.findPublishedById(key.id, primary);
       const forUpdate = await store.findForUpdate(key.id);
-      const forRotation = await store.findForRotation(key.id);
 
       expect(byId?.id).toBe(key.id);
       expect(filtered.map((found) => found.id)).toContain(key.id);
@@ -64,7 +63,6 @@ describe("KmsKeyStore on Postgres", () => {
       expect(count).toBeGreaterThanOrEqual(0);
       expect(published).toBeNull();
       expect(forUpdate?.id).toBe(key.id);
-      expect(forRotation?.id).toBe(key.id);
     });
 
     test("should read from the replica by default", async () => {
@@ -97,10 +95,10 @@ describe("KmsKeyStore on Postgres", () => {
     }
   };
 
-  // save writes the attributes and the material together, so each finder must hold both rows' locks: a writer that
+  // save writes the attributes and the material together, so findForUpdate must hold both rows' locks: a writer that
   // read before the other committed would write the other's change back.
   describe("save after a concurrent change", () => {
-    const race = async (first: "findForRotation" | "findForUpdate", second: "findForRotation" | "findForUpdate") => {
+    const race = async (first: "rotate" | "change", second: "rotate" | "change") => {
       const tn = await h.newTenant();
       const key = newInternalKey(tn.org.id, { projectId: tn.project.id });
       await new KmsKeyStore(poolStoreConnection(h.db)).insert(key);
@@ -115,18 +113,18 @@ describe("KmsKeyStore on Postgres", () => {
       });
 
       const firstWork = async (loaded: KmsKey, trx: Knex) => {
-        if (first === "findForRotation") await stores(trx).versions.insert(loaded.rotate(rootKeyForTests));
+        if (first === "rotate") await stores(trx).versions.insert(loaded.rotate(rootKeyForTests).archived);
         else loaded.rename("renamed");
         await stores(trx).keys.save(loaded);
       };
       const secondWork = async (loaded: KmsKey, trx: Knex) => {
-        if (second === "findForRotation") await stores(trx).versions.insert(loaded.rotate(rootKeyForTests));
+        if (second === "rotate") await stores(trx).versions.insert(loaded.rotate(rootKeyForTests).archived);
         else loaded.disable();
         await stores(trx).keys.save(loaded);
       };
 
-      const held = (await stores(holder).keys[first](key.id)) as KmsKey;
-      const blocked = stores(waiter).keys[second](key.id);
+      const held = (await stores(holder).keys.findForUpdate(key.id)) as KmsKey;
+      const blocked = stores(waiter).keys.findForUpdate(key.id);
       await waitForBlockedQuery();
       await firstWork(held, holder);
       await holder.commit();
@@ -137,7 +135,7 @@ describe("KmsKeyStore on Postgres", () => {
 
     test("should keep a disable that followed a rotation, and the rotated material", async () => {
       // Setup
-      const id = await race("findForRotation", "findForUpdate");
+      const id = await race("rotate", "change");
 
       // Action
       const stored = await new KmsKeyStore(poolStoreConnection(h.db)).findById(id);
@@ -148,7 +146,7 @@ describe("KmsKeyStore on Postgres", () => {
 
     test("should keep a rotation that followed a rename, and the new name", async () => {
       // Setup
-      const id = await race("findForUpdate", "findForRotation");
+      const id = await race("change", "rotate");
 
       // Action
       const stored = await new KmsKeyStore(poolStoreConnection(h.db)).findById(id);

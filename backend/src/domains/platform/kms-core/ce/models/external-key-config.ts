@@ -17,6 +17,14 @@ export type TExternalKeyRef = {
   encryptedProviderInputs: Buffer;
 };
 
+// An external key's provider and connection state, without its inputs.
+export type TExternalKeyStatus = {
+  id: string;
+  provider: string;
+  status: string | null;
+  statusDetails: string | null;
+};
+
 // How a KMS key reaches its provider (external_kms): which provider, and the credentials and key reference it needs.
 export class ExternalKeyConfig {
   private constructor(
@@ -43,6 +51,10 @@ export class ExternalKeyConfig {
 
   withInputs(encryptedProviderInputs: Buffer): ExternalKeyConfig {
     return new ExternalKeyConfig(this.id, this.provider, encryptedProviderInputs, this.status, this.statusDetails);
+  }
+
+  summary(): TExternalKeyStatus {
+    return { id: this.id, provider: this.provider, status: this.status, statusDetails: this.statusDetails };
   }
 
   refFor(kmsKeyId: string, orgId: string): TExternalKeyRef {

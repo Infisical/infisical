@@ -277,7 +277,7 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
       });
     });
 
-    describe("findForUpdate and findForRotation", () => {
+    describe("findForUpdate", () => {
       test("should return the key, and null for one that does not exist", async () => {
         // Setup
         const { keyStore, newOrg } = await setup();
@@ -285,15 +285,10 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         await keyStore.insert(key);
 
         // Action
-        const found = await Promise.all([
-          keyStore.findForUpdate(key.id),
-          keyStore.findForRotation(key.id),
-          keyStore.findForUpdate(randomUUID()),
-          keyStore.findForRotation(randomUUID())
-        ]);
+        const found = await Promise.all([keyStore.findForUpdate(key.id), keyStore.findForUpdate(randomUUID())]);
 
         // Assert
-        expect(found.map((result) => result?.id ?? null)).toEqual([key.id, key.id, null, null]);
+        expect(found.map((result) => result?.id ?? null)).toEqual([key.id, null]);
       });
     });
 
@@ -352,8 +347,8 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         const { keyStore, versionStore, newOrg } = await setup();
         const key = newInternalKey(await newOrg());
         await keyStore.insert(key);
-        const loaded = (await keyStore.findForRotation(key.id)) as KmsKey;
-        const archived = loaded.rotate(rootKeyForTests);
+        const loaded = (await keyStore.findForUpdate(key.id)) as KmsKey;
+        const { archived } = loaded.rotate(rootKeyForTests);
 
         // Action
         await versionStore.insert(archived);
@@ -389,8 +384,8 @@ export const describeKmsKeyStoreContract = (name: string, setup: () => Promise<T
         const { keyStore, versionStore, newOrg } = await setup();
         const key = newInternalKey(await newOrg());
         await keyStore.insert(key);
-        const loaded = (await keyStore.findForRotation(key.id)) as KmsKey;
-        await versionStore.insert(loaded.rotate(rootKeyForTests));
+        const loaded = (await keyStore.findForUpdate(key.id)) as KmsKey;
+        await versionStore.insert(loaded.rotate(rootKeyForTests).archived);
         await keyStore.save(loaded);
         const internalKmsId = loaded.toJSON().internal?.id as string;
 

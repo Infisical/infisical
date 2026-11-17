@@ -6,7 +6,7 @@ import { TCipherPair } from "../models/data-key";
 import { EncryptedDataKey } from "../models/encrypted-data-key";
 import { TExternalKeyRef } from "../models/external-key-config";
 import { KekHistoryEntry } from "../models/kek-history-entry";
-import { KmsKey, TKmsKeyRecord } from "../models/kms-key";
+import { KmsKey, TKmsKeyColumns } from "../models/kms-key";
 import { KmsKeyVersion } from "../models/kms-key-version";
 import { LegacyEncryptionKey } from "../models/legacy-encryption-key";
 import { OrganizationKey } from "../models/organization-key";
@@ -49,11 +49,10 @@ export type TKmsKeyStore = {
   findById(id: string, options?: TReadOptions): Promise<KmsKey | null>;
   // A filter applies whenever its field is set, including to an empty string.
   find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]>;
-  // Both take the kms_keys row lock and then the internal_kms one, in that order: save() writes both tables, so a
-  // rename racing a rotation would otherwise write back the material the rotation replaced. They read the primary
-  // and take no options.
+  // Takes the kms_keys row lock and then the internal_kms one, in that order: save() writes both tables, so a rename
+  // racing a rotation would otherwise write back the material the rotation replaced. Reads the primary and takes no
+  // options.
   findForUpdate(id: string): Promise<KmsKey | null>;
-  findForRotation(id: string): Promise<KmsKey | null>;
   // A published key whose project is not pending deletion.
   findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null>;
   // Customer keys of a project (not reserved, with internal material), one page and the total.
@@ -159,9 +158,6 @@ export type TRootKeyWrapper = {
   wrap(rootKey: Buffer): Promise<Buffer>;
   unwrap(wrapped: Buffer): Promise<Buffer>;
 };
-
-// A key's kms_keys columns, without its material.
-export type TKmsKeyColumns = Omit<TKmsKeyRecord, "internal" | "external">;
 
 export type TExternalKmsConfig = {
   id: string;

@@ -308,9 +308,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       await this.transactionRunner.run(async ({ stores }) => {
         const key = await stores.kmsKeyStore.findById(kmsKeyId);
         if (!key?.isInfisicalManaged) return;
-        if (key.orgId !== orgId) {
-          throw new EntityNotFoundError({ message: "KMS doesn't belong to organization" });
-        }
+        key.assertInOrg(orgId, "KMS doesn't belong to organization");
         const referenced =
           (await stores.projectKeyStore.referencesKey(kmsKeyId)) ||
           (await stores.organizationKeyStore.referencesKey(kmsKeyId));
