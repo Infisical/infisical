@@ -1539,11 +1539,11 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
-  const $assertCanReviewRequests = () => {
+  const $assertNotScopeNarrowed = () => {
     if (isScopeNarrowedRequest()) {
       throw new ForbiddenRequestError({
         message:
-          "Applications authorized through OAuth cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
       });
     }
   };
@@ -1557,7 +1557,7 @@ export const approvalPolicyServiceFactory = ({
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
-    $assertCanReviewRequests();
+    $assertNotScopeNarrowed();
 
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
@@ -1789,7 +1789,7 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     policyType: ApprovalPolicyType
   ) => {
-    $assertCanReviewRequests();
+    $assertNotScopeNarrowed();
 
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {

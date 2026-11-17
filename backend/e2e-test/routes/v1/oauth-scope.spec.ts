@@ -110,6 +110,24 @@ describe("OAuth delegated token scope enforcement", async () => {
     expect(res.statusCode).not.toBe(403);
   });
 
+  const getCustomMigrationEnabled = async (token: string) =>
+    testServer.inject({
+      method: "GET",
+      url: `/api/v3/external-migration/custom-migration-enabled/vault`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+  // This route is gated on the org admin role alone, with no CASL check a scope could narrow.
+  test("a secrets:read token from an org admin fails a role-only admin check", async () => {
+    const res = await getCustomMigrationEnabled(signOauthToken(["secrets:read"]));
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("the first-party session JWT passes the same role-only admin check", async () => {
+    const res = await getCustomMigrationEnabled(jwtAuthToken);
+    expect(res.statusCode).toBe(200);
+  });
+
   const validate = async (token: string) =>
     testServer.inject({
       method: "GET",
