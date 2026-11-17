@@ -47,6 +47,7 @@ import type { ScimTokenData } from "@app/hooks/api/scim/types";
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
 import { failed, saved, toast } from "../../../access/toast";
 import { Gate } from "../../../access/ui";
+import { NoExpiry } from "../../../components/no-expiry";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license";
 
@@ -152,11 +153,7 @@ const ScimTokenDialog = ({
       width: 190,
       render: (row) => {
         const expiresAt = tokenExpiry(row);
-        return expiresAt ? (
-          formatDateTime({ timestamp: expiresAt })
-        ) : (
-          <span className="text-muted-foreground">Never</span>
-        );
+        return expiresAt ? formatDateTime({ timestamp: expiresAt }) : <NoExpiry />;
       }
     },
     {

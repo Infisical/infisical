@@ -41,6 +41,7 @@ import {
 
 import { failed } from "../../access/toast";
 import { Muted, RESTRICTED } from "../../access/ui";
+import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { dateOnly, memberLabel, SIGNERS_PAGE_SIZE } from "../CodeSigningPage/signer-shared";
@@ -93,7 +94,7 @@ const expiryOf = (request: TSignerRequest) => {
       usage,
       tooltip: request.expiresAt ? fullTime(request.expiresAt) : "Grant no longer active"
     };
-  if (!request.expiresAt) return { label: "No expiry", usage, tooltip: "No time limit" };
+  if (!request.expiresAt) return { label: <NoExpiry />, usage };
   const diff = new Date(request.expiresAt).getTime() - Date.now();
   return {
     label:

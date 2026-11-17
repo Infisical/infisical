@@ -24,6 +24,7 @@ import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { useOrgId } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
+import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo } from "../../links";
@@ -339,7 +340,7 @@ const AssignAccessDialog = ({
 };
 
 const Expiry = ({ expiresAt }: { expiresAt?: string | null }) => {
-  if (!expiresAt) return <StatusText icon="infinity">No expiry</StatusText>;
+  if (!expiresAt) return <NoExpiry />;
   const remaining = new Date(expiresAt).getTime() - Date.now();
   let tone: "bad" | "warn" | "neutral" = "neutral";
   if (remaining <= 0) tone = "bad";
