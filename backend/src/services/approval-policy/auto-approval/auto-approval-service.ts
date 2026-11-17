@@ -9,7 +9,6 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { isUuidV4 } from "@app/lib/validator";
 import { TAiServiceFactory } from "@app/services/ai/ai-service";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
 import {
@@ -23,6 +22,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -42,13 +42,17 @@ import {
   AUTO_APPROVAL_REQUESTER_APPS,
   getAutoApprovalProvider
 } from "./auto-approval-providers";
-import { isRequesterCheck, REQUESTER_CHECKS, TRequesterCheckFacts } from "./auto-approval-requester-checks";
+import {
+  isRequesterCheck,
+  parseRequesterCheckValue,
+  REQUESTER_CHECKS,
+  toRequesterCheckValue,
+  TRequesterCheckFacts
+} from "./auto-approval-requester-checks";
 import {
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
-  AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
   AutoApprovalConstraintValue,
@@ -182,15 +186,16 @@ export const autoApprovalServiceFactory = ({
   }: {
     projectId: string;
     requesterId: string;
-    conditions: { constraint: string; values: string[] }[];
+    conditions: { values: string[] }[];
   }): Promise<{ facts: TRequesterCheckFacts | null; error: string | null }> => {
-    const valuesOf = (constraint: string) => [
-      ...new Set(
-        conditions.filter((condition) => condition.constraint === constraint).flatMap((condition) => condition.values)
-      )
+    const named = conditions.flatMap((condition) =>
+      condition.values.flatMap((value) => parseRequesterCheckValue(value) ?? [])
+    );
+    const idsOf = (type: ApproverType) => [
+      ...new Set(named.filter((value) => value.type === type).map(({ id }) => id))
     ];
-    const userIds = valuesOf(AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT);
-    const groupIds = valuesOf(AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT);
+    const userIds = idsOf(ApproverType.User);
+    const groupIds = idsOf(ApproverType.Group);
 
     try {
       const [users, groups, groupMemberships, groupIdsInProject] = await Promise.all([
@@ -207,10 +212,13 @@ export const autoApprovalServiceFactory = ({
           groupIds: groupMemberships.map(({ groupId }) => groupId).filter((groupId) => groupIdsInProject.has(groupId)),
           names: Object.fromEntries([
             ...users.map((user): [string, string] => [
-              user.id,
+              toRequesterCheckValue(ApproverType.User, user.id),
               [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || user.username
             ]),
-            ...groups.map((group): [string, string] => [group.id, group.name])
+            ...groups.map((group): [string, string] => [
+              toRequesterCheckValue(ApproverType.Group, group.id),
+              group.name
+            ])
           ])
         },
         error: null
@@ -375,14 +383,15 @@ export const autoApprovalServiceFactory = ({
             throw new BadRequestError({ message: `Rule '${name}': '${check}' needs at least one value` });
           }
 
-          const isUserCheck = condition.constraint === AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT;
-          const notAnId = values.find((value) => !isUuidV4(value));
-          if (notAnId) {
-            throw new BadRequestError({
-              message: `Rule '${name}': '${check}' takes ${isUserCheck ? "user" : "group"} IDs, and '${notAnId}' isn't one`
-            });
-          }
-          values.forEach((value) => (isUserCheck ? ruleByUserId : ruleByGroupId).set(value, name));
+          values.forEach((value) => {
+            const named = parseRequesterCheckValue(value);
+            if (!named) {
+              throw new BadRequestError({
+                message: `Rule '${name}': '${check}' takes users as 'user:<id>' and groups as 'group:<id>', and '${value}' is neither`
+              });
+            }
+            (named.type === ApproverType.User ? ruleByUserId : ruleByGroupId).set(named.id, name);
+          });
 
           return { ...condition, connectionId: null, values, prompt: null, contextConnectionIds: [] };
         }

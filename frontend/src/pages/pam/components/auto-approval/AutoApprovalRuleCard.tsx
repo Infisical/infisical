@@ -28,10 +28,10 @@ import { cn } from "@app/components/v3/utils";
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
+  ApproverType,
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT,
   AutoApprovalConstraintValue,
   TAutoApprovalCatalog,
   TAutoApprovalCatalogConnection
@@ -54,6 +54,7 @@ import {
   TAutoApprovalDraft,
   TDraftCondition,
   TDraftRule,
+  toRequesterCheckValue,
   TRequesterCheckOption,
   TRequesterCheckOptions,
   UNUSED_CONSTRAINT
@@ -118,12 +119,20 @@ const getSubjectChoices = (
   return [...fromInputs, ...fromRequester];
 };
 
-const renderRequesterOption = (option: TRequesterCheckOption) => (
-  <div className="min-w-0">
-    <p className="truncate">{option.label}</p>
-    {option.subtitle && <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>}
-  </div>
-);
+const renderRequesterOption = (option: TRequesterCheckOption) => {
+  const Icon = option.kind === ApproverType.Group ? UsersIcon : UserIcon;
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <div className="min-w-0">
+        <p className="truncate">{option.label}</p>
+        {option.subtitle && (
+          <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const ConditionRow = ({
   showConnector,
@@ -202,17 +211,14 @@ const ConditionRow = ({
   }
 
   if (isRequesterCheck(condition)) {
-    const isUserCheck = condition.constraint === AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT;
     const label =
       REQUESTER_CHECKS.find((candidate) => candidate.id === condition.constraint)?.label ??
       condition.constraint;
-    const options = isUserCheck ? requesterOptions.users : requesterOptions.groups;
-    const RequesterIcon = isUserCheck ? UserIcon : UsersIcon;
 
     return renderRow(
       <>
         <Badge variant="neutral">
-          <RequesterIcon className="size-3.5 text-muted" />
+          <UserIcon className="size-3.5 text-muted" />
           Requester
         </Badge>
         <span className="text-sm text-foreground">{label}</span>
@@ -224,9 +230,16 @@ const ConditionRow = ({
           singleLine
           isClearable={false}
           aria-label={`Requester ${label}`}
-          options={options}
+          options={requesterOptions}
           value={condition.values.map(
-            (value) => options.find((option) => option.value === value) ?? { value, label: value }
+            (value) =>
+              requesterOptions.find((option) => option.value === value) ?? {
+                value,
+                label: value,
+                kind: value.startsWith(toRequesterCheckValue(ApproverType.Group, ""))
+                  ? ApproverType.Group
+                  : ApproverType.User
+              }
           )}
           onValueChange={(next) =>
             onChange({ ...condition, values: next.map((option) => option.value) })
@@ -238,12 +251,8 @@ const ConditionRow = ({
           includeMissingSelectedOptions
           isError={Boolean(error)}
           size="sm"
-          placeholder={isUserCheck ? "Choose users..." : "Choose groups..."}
-          emptyMessage={
-            isUserCheck
-              ? "No users match."
-              : "No groups match. Add a group under Access Control first."
-          }
+          placeholder="Choose users or groups..."
+          emptyMessage="No users or groups match. Add them under Access Control first."
         />
       </div>
     );

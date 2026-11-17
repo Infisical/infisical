@@ -5513,9 +5513,9 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   conditionContextConnectionIds:
     "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
   constraint:
-    "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-user' or 'in-group'.",
+    "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.",
   values:
-    "The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-user' takes user IDs and 'in-group' takes group IDs.",
+    "The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-one-of' takes users as 'user:<id>' and groups as 'group:<id>'.",
   requestInputs:
     "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
   requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",

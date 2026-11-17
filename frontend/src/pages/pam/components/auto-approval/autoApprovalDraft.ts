@@ -1,8 +1,8 @@
 import {
+  ApproverType,
   AUTO_APPROVAL_AI_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT,
+  AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT,
   AutoApprovalConstraintValue,
   TAutoApprovalCatalogConnection,
   TAutoApprovalCatalogConstraint,
@@ -47,28 +47,27 @@ export const ASSIGNED_TO_REQUESTER_CONSTRAINT = "assigned-to-requester";
 // Mirrors the reuse check the engine adds to every record a requester links
 export const UNUSED_CONSTRAINT = "not-used-before";
 
-// Mirrors the engine's checks on the requester's own Infisical user and groups
+// Mirrors the engine's check on the requester's own Infisical user and groups
 export const REQUESTER_CHECKS: TAutoApprovalCatalogConstraint[] = [
   {
-    id: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT,
+    id: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
     label: "is",
-    value: AutoApprovalConstraintValue.Many,
-    hasOptions: false
-  },
-  {
-    id: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT,
-    label: "is a member of",
     value: AutoApprovalConstraintValue.Many,
     hasOptions: false
   }
 ];
 
-export type TRequesterCheckOption = { value: string; label: string; subtitle?: string };
+// The engine reads the check's values as `user:<id>` and `group:<id>`
+export const toRequesterCheckValue = (kind: ApproverType, id: string) => `${kind}:${id}`;
 
-export type TRequesterCheckOptions = {
-  users: TRequesterCheckOption[];
-  groups: TRequesterCheckOption[];
+export type TRequesterCheckOption = {
+  value: string;
+  label: string;
+  subtitle?: string;
+  kind: ApproverType;
 };
+
+export type TRequesterCheckOptions = TRequesterCheckOption[];
 
 export const newKey = () => crypto.randomUUID();
 

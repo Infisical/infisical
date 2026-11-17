@@ -108,10 +108,9 @@ Infisical only checks the schedule when the request is submitted, so the access 
 
 | Check | Passes when |
 | --- | --- |
-| **is** | The requester is one of the users |
-| **is a member of** | The requester is a member of at least one of the groups |
+| **is** | The requester is one of the users, or a member of at least one of the groups |
 
-These checks don't need an app connection. To let engineers access the folder's accounts without waiting for an approver, add a rule whose only condition is that the requester **is a member of** your Engineering group.
+This check doesn't need an app connection. To let engineers access the folder's accounts without waiting for an approver, add a rule with a single **Requester is** condition and select your Engineering group.
 
 ## AI checks
 

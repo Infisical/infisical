@@ -53,7 +53,8 @@ import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
@@ -82,6 +83,7 @@ import {
   TAutoApprovalDraft,
   toAutoApprovalConfig,
   toAutoApprovalDraft,
+  toRequesterCheckValue,
   TRequesterCheckOptions
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
@@ -308,10 +310,20 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
   // members: a requester can reach the folder through a group the rule doesn't name
   const requesterOptions = useMemo<TRequesterCheckOptions>(
-    () => ({
-      users: productUsers.map((u) => ({ value: u.id, label: u.name, subtitle: u.email })),
-      groups: (productGroups ?? []).map(({ group }) => ({ value: group.id, label: group.name }))
-    }),
+    () => [
+      ...(productGroups ?? []).map(({ group }) => ({
+        value: toRequesterCheckValue(ApproverType.Group, group.id),
+        label: group.name,
+        subtitle: "Group",
+        kind: ApproverType.Group
+      })),
+      ...productUsers.map((u) => ({
+        value: toRequesterCheckValue(ApproverType.User, u.id),
+        label: u.name,
+        subtitle: u.email,
+        kind: ApproverType.User
+      }))
+    ],
     [productUsers, productGroups]
   );
 

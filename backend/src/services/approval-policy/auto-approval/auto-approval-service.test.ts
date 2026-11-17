@@ -1,13 +1,13 @@
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { autoApprovalServiceFactory } from "./auto-approval-service";
 import {
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT,
+  AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
-  AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT,
   AutoApprovalConstraintValue,
   TStoredAutoApproval
 } from "./auto-approval-types";
@@ -181,13 +181,15 @@ describe("autoApprovalService requester checks", () => {
   const carol = "6f2f0c1e-6a0e-4c1e-9a43-3f1b6d1f2a03";
   const engineering = "0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e01";
   const operations = "0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e02";
+  const user = (id: string) => `${ApproverType.User}:${id}`;
+  const group = (id: string) => `${ApproverType.Group}:${id}`;
 
-  const requesterCheck = (id: string, constraint: string, values: string[]): TCondition => ({
+  const requesterCheck = (id: string, values: string[]): TCondition => ({
     id,
     inputId: null,
     connectionId: null,
     subject: AUTO_APPROVAL_REQUESTER_SUBJECT,
-    constraint,
+    constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
     values,
     prompt: null,
     contextConnectionIds: []
@@ -270,27 +272,29 @@ describe("autoApprovalService requester checks", () => {
     return { evaluate, validate };
   };
 
-  test("approves a user the rule names and describes them by name", async () => {
-    const { evaluate } = setupRequesterChecks();
-    const check = requesterCheck("c-1", AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, [alice, bob]);
+  test("approves a user the check names or a member of a group it names, and describes them by name", async () => {
+    const check = requesterCheck("c-1", [user(alice), group(engineering), user(bob)]);
 
-    const approved = await evaluate(alice, [check]);
-    expect(approved.approvedByRuleId).toBe("rule-1");
-    expect(conditionResult(approved, "c-1")).toMatchObject({
+    const asUser = await setupRequesterChecks().evaluate(alice, [check]);
+    expect(asUser.approvedByRuleId).toBe("rule-1");
+    expect(conditionResult(asUser, "c-1")).toMatchObject({
       passed: true,
-      description: "Requester is Alice Smith or bob@acme.com"
+      description: "Requester is Alice Smith or bob@acme.com or a member of Engineering"
     });
 
-    const refused = await evaluate(carol, [check]);
+    const asMember = await setupRequesterChecks({ requesterGroupIds: [engineering] }).evaluate(carol, [check]);
+    expect(asMember.approvedByRuleId).toBe("rule-1");
+
+    const refused = await setupRequesterChecks().evaluate(carol, [check]);
     expect(refused.approvedByRuleId).toBeNull();
     expect(conditionResult(refused, "c-1")).toMatchObject({
       passed: false,
-      reason: "The requester isn't Alice Smith or bob@acme.com"
+      reason: "The requester isn't Alice Smith or bob@acme.com or a member of Engineering"
     });
   });
 
   test("approves a member of a group the rule names while the group is a member of the project", async () => {
-    const check = requesterCheck("c-1", AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, [engineering, operations]);
+    const check = requesterCheck("c-1", [group(engineering), group(operations)]);
 
     const approved = await setupRequesterChecks({ requesterGroupIds: [operations] }).evaluate(carol, [check]);
     expect(approved.approvedByRuleId).toBe("rule-1");
@@ -313,26 +317,31 @@ describe("autoApprovalService requester checks", () => {
     const { validate } = setupRequesterChecks();
 
     const config = await validate([
-      { constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: [alice, ` ${alice}`, bob] },
-      { constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: [engineering] }
+      {
+        constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+        values: [user(alice), ` ${user(alice)}`, user(bob), group(engineering)]
+      }
     ]);
     expect(config.rules[0].conditions).toMatchObject([
-      { connectionId: null, constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: [alice, bob] },
-      { connectionId: null, constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: [engineering] }
+      {
+        connectionId: null,
+        constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT,
+        values: [user(alice), user(bob), group(engineering)]
+      }
     ]);
 
-    await expect(
-      validate([{ constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: ["alice"] }])
-    ).rejects.toThrow("'Requester is' takes user IDs, and 'alice' isn't one");
-    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_USER_CONSTRAINT, values: [carol] }])).rejects.toThrow(
+    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [alice] }])).rejects.toThrow(
+      `'Requester is' takes users as 'user:<id>' and groups as 'group:<id>', and '${alice}' is neither`
+    );
+    await expect(validate([{ constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [user(carol)] }])).rejects.toThrow(
       `checks for user '${carol}', who isn't a member of the policy's project`
     );
     await expect(
       validate([
-        { constraint: AUTO_APPROVAL_REQUESTER_GROUP_CONSTRAINT, values: ["0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e09"] }
+        { constraint: AUTO_APPROVAL_REQUESTER_CONSTRAINT, values: [group("0b7d3f6e-1c2a-4e5b-8d9f-1a2b3c4d5e09")] }
       ])
     ).rejects.toThrow("which isn't a member of the policy's project");
-    await expect(validate([{ constraint: "on-call", values: [alice] }])).rejects.toThrow(
+    await expect(validate([{ constraint: "on-call", values: [user(alice)] }])).rejects.toThrow(
       "which is not a check on the requester's Infisical user or groups"
     );
   });
