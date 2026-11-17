@@ -294,7 +294,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       body: z.object({
         approvalRequestIds: z.string().uuid().array().min(1).max(MAX_BATCH_REQUESTS),
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
-        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
+        comment: auditSafeText(z.string().max(1000), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({

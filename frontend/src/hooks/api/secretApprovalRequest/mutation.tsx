@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 
@@ -102,25 +103,39 @@ export const useBulkActOnSecretApprovalRequests = () => {
 
   return useMutation<TBulkChangeRequestResult[], object, TBulkActOnSecretApprovalRequestsDTO>({
     mutationFn: async ({ action, comment, requestIds }) => {
-      const isMerge = action === BulkChangeRequestAction.Merge;
-      const { data } = isMerge
-        ? await apiRequest.post<{ failures: TBatchFailure[] }>(
-            "/api/v1/secret-approval-requests/batch/merge",
-            { approvalRequestIds: requestIds }
-          )
-        : await apiRequest.post<{ failures: TBatchFailure[] }>(
-            "/api/v1/secret-approval-requests/batch/review",
-            {
-              approvalRequestIds: requestIds,
-              status:
-                action === BulkChangeRequestAction.Approve
-                  ? ApprovalStatus.APPROVED
-                  : ApprovalStatus.REJECTED,
-              comment
-            }
-          );
+      let failures: TBatchFailure[];
+      try {
+        const { data } =
+          action === BulkChangeRequestAction.Merge
+            ? await apiRequest.post<{ failures: TBatchFailure[] }>(
+                "/api/v1/secret-approval-requests/batch/merge",
+                { approvalRequestIds: requestIds }
+              )
+            : await apiRequest.post<{ failures: TBatchFailure[] }>(
+                "/api/v1/secret-approval-requests/batch/review",
+                {
+                  approvalRequestIds: requestIds,
+                  status:
+                    action === BulkChangeRequestAction.Approve
+                      ? ApprovalStatus.APPROVED
+                      : ApprovalStatus.REJECTED,
+                  comment
+                }
+              );
+        failures = data.failures;
+      } catch (error) {
+        const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+        return requestIds.map((id) => ({
+          id,
+          isSuccess: false,
+          errorMessage:
+            typeof message === "string"
+              ? message
+              : "Could not update this change request. Try again or open it for details."
+        }));
+      }
       const failureById = new Map(
-        data.failures.map(({ approvalRequestId, message }) => [approvalRequestId, message])
+        failures.map(({ approvalRequestId, message }) => [approvalRequestId, message])
       );
       return requestIds.map((id) =>
         failureById.has(id)
