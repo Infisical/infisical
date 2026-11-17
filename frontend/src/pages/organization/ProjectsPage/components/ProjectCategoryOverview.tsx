@@ -244,8 +244,8 @@ export const ProjectCategoryOverview = () => {
         ];
       case ProjectType.AgentVault:
         return [
-          { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
           { label: "services", value: productStats.agentVault.servicesCount },
+          { label: "skills", value: productStats.agentVault.skillsCount },
           { label: "projects", value: productStats.agentVault.projectsCount }
         ];
       default:
