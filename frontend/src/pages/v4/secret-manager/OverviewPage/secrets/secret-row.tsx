@@ -508,19 +508,15 @@ function CellEditor({
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
   const attempt = useRef(0);
-  const settling = useRef(false);
   const finish = async (blurred: boolean) => {
-    if (settling.current) return;
     const next = multiline ? draft : draft.trim();
     if (next === initial) {
       onDone();
       return;
     }
-    settling.current = true;
     attempt.current += 1;
     const { current: started } = attempt;
     const problem = await validate?.(next);
-    settling.current = false;
     if (started !== attempt.current) return;
     if (problem && !blurred) {
       setError(problem);
