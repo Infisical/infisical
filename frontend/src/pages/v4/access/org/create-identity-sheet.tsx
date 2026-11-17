@@ -28,7 +28,6 @@ import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { roleOptions } from "../roles";
 import { failed, readableFailure, saved } from "../toast";
-import { Muted } from "../ui";
 
 const RootCreateIdentitySheet = ({
   open,
@@ -222,7 +221,7 @@ const SubOrgAddIdentitySheet = ({
         variant="sheet"
         open={open}
         title="Add machine identity to sub-organization"
-        completeLabel={draft.mode === "assign" ? "Assign to sub-organization" : "Create"}
+        completeLabel={draft.mode === "assign" ? "Assign" : "Create"}
         onOpenChange={(next) => !next && requestDiscard()}
         onComplete={async () => {
           const identityId = draft.mode === "assign" ? await assign() : await createNew();
@@ -235,23 +234,16 @@ const SubOrgAddIdentitySheet = ({
             validate: () => validateSubOrgIdentity(draft),
             content: (
               <Stack gap={16}>
-                <Stack gap={8}>
-                  <Tabs
-                    variant="segmented"
-                    label="Machine identity assignment mode"
-                    value={draft.mode}
-                    onChange={(next) => update({ mode: next as SubOrgIdentityDraft["mode"] })}
-                    tabs={[
-                      { value: "create", label: "Create new" },
-                      { value: "assign", label: "Assign existing" }
-                    ]}
-                  />
-                  <Muted>
-                    {draft.mode === "assign"
-                      ? "Reuse an existing machine identity from your parent organization."
-                      : "Creates a machine identity managed by this sub-organization."}
-                  </Muted>
-                </Stack>
+                <Tabs
+                  variant="segmented"
+                  label="Machine identity assignment mode"
+                  value={draft.mode}
+                  onChange={(next) => update({ mode: next as SubOrgIdentityDraft["mode"] })}
+                  tabs={[
+                    { value: "create", label: "Create new" },
+                    { value: "assign", label: "Assign existing" }
+                  ]}
+                />
                 {draft.mode === "assign" ? (
                   <Field label="Machine identity" name="identity">
                     <Combobox

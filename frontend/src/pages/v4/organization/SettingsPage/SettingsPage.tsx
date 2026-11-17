@@ -365,9 +365,6 @@ const DeleteOrganization = ({
       <SettingsCard
         tone="danger"
         title="Delete organization"
-        description={`Permanently deletes this organization and all of its data${
-          cancelsSubscription ? ", and cancels its subscription" : ""
-        }.`}
         actions={
           <Button variant="destructive" size="sm" icon="trash" onClick={() => setOpen(true)}>
             Delete organization

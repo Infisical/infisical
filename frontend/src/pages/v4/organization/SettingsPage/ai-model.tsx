@@ -149,10 +149,7 @@ const ConnectionField = ({
     }
   });
   return (
-    <Field
-      label="Anthropic connection"
-      description="An organization-level connection. AI requests are sent with its API key."
-    >
+    <Field label="Anthropic connection">
       <Combobox
         label="Anthropic connection"
         placeholder="Select an Anthropic connection"
@@ -223,7 +220,7 @@ const AiModelCard = ({ config, canEdit }: { config: TOrgAiConfig | null; canEdit
     <>
       <SettingsCard
         title="AI features"
-        description="The model Infisical uses for AI features, such as AI checks in auto-approval rules."
+        description="Used by AI checks in auto-approval rules."
         saveStatus={autosave.status}
         actions={
           config && (
