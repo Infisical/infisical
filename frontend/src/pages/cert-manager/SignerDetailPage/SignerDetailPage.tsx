@@ -5,6 +5,7 @@ import {
   BanIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
+  ClockIcon,
   CopyIcon,
   DownloadIcon,
   MoreVerticalIcon,
@@ -12,6 +13,7 @@ import {
   PenTool,
   RefreshCwIcon,
   RotateCwIcon,
+  ShieldOffIcon,
   Trash2Icon
 } from "lucide-react";
 
@@ -42,11 +44,7 @@ import {
   Tabs,
   TabsContent,
   TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
+  TabsTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
@@ -55,29 +53,39 @@ import {
   SignerPermissionSub,
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
-import { useListCasByProjectId } from "@app/hooks/api/ca";
-import { CaType } from "@app/hooks/api/ca/enums";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
+  getNextDigicertOrderId,
   getSignerStatusBadgeVariant,
+  hasFailedRenewal,
   SignerStatus,
   signerStatusLabels,
+  getSignerRevocationNote,
   useCheckSignerIssuance,
   useDeleteSigner,
   useDisableSigner,
   useEnableSigner,
   useGetSigner,
-  useReissueSignerCertificate
+  useReissueSignerCertificate,
+  useRenewSignerCertificate,
+  getOpenCertificateRequest,
+  getPendingRevocationRequestId
 } from "@app/hooks/api/signers";
 
+import { BadgeWithTooltip, SignerRequestFailedBadge } from "../components/SignerBadges";
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { ExportSignerCertModal } from "./components/ExportSignerCertModal";
+import { RevokeSignerCertificateDialog } from "./components/RevokeSignerCertificateDialog";
 import { SignerApprovalsSection } from "./components/SignerApprovalsSection";
+import { SignerCertificateDetailsCard } from "./components/SignerCertificateDetailsCard";
 import { SignerMembersTab } from "./components/SignerMembersTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
-type Tab = "activity" | "approvals" | "members";
+type Tab = "overview" | "approvals" | "members";
 
 export const SignerDetailPage = () => {
   const { currentOrg } = useOrganization();
@@ -90,16 +98,18 @@ export const SignerDetailPage = () => {
     from: ROUTE_PATHS.CertManager.SignerDetailByIDPage.id
   });
 
-  const activeTab: Tab = selectedTab ?? "activity";
+  const activeTab: Tab = selectedTab ?? "overview";
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
+  const [isRenewOpen, setIsRenewOpen] = useState(false);
+  const [isReissueOpen, setIsReissueOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
-  const cas = useListCasByProjectId();
-  const isDigicertSigner =
-    (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type === CaType.DIGICERT;
+  const signerCaType = signer?.caType;
+  const isDigicertSigner = signerCaType === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
     permission.can(action, SignerPermissionSub.Signer);
@@ -107,6 +117,7 @@ export const SignerDetailPage = () => {
   const disableSigner = useDisableSigner();
   const deleteSigner = useDeleteSigner();
   const reissueSigner = useReissueSignerCertificate();
+  const renewSigner = useRenewSignerCertificate();
   const checkSignerIssuance = useCheckSignerIssuance();
 
   if (isLoading)
@@ -135,12 +146,50 @@ export const SignerDetailPage = () => {
 
   const onOpenExport = () => setIsExportOpen(true);
 
-  let statusTooltip: string | null = null;
-  if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
+  const hasLiveCertificate =
+    Boolean(signer.certificateId) && signer.certificateStatus !== CertStatus.REVOKED;
+  const openCertificateRequest = getOpenCertificateRequest(signer);
+  const pendingRevocationRequestId = getPendingRevocationRequestId(signer);
+  const hasPendingCertificateRequest =
+    signer.status === SignerStatus.Pending || Boolean(openCertificateRequest);
+  const canRenewCertificate =
+    hasLiveCertificate &&
+    Boolean(signer.caId) &&
+    !hasPendingCertificateRequest &&
+    signer.status !== SignerStatus.Disabled &&
+    signer.status !== SignerStatus.RevocationPending &&
+    signer.status !== SignerStatus.Revoked;
+  const canReissueRevokedCertificate =
+    signer.status === SignerStatus.Revoked && Boolean(signer.caId);
+  const canRevokeCertificate =
+    (hasLiveCertificate || signer.status === SignerStatus.RevocationPending) &&
+    !pendingRevocationRequestId &&
+    !!signerCaType &&
+    caSupportsCapability(signerCaType, CaCapability.REVOKE_CERTIFICATES);
+
+  const pendingExternalOrder = openCertificateRequest?.externalOrder;
+  let statusTooltip = getSignerRevocationNote(signer);
+  if (!statusTooltip && signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
-  } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
-    statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+  } else if (!statusTooltip && signer.status === SignerStatus.Pending && pendingExternalOrder) {
+    statusTooltip = `DigiCert order #${pendingExternalOrder.orderId} is waiting for approval. DigiCert emailed the order's approver a link, and the certificate is issued as soon as they approve it.`;
   }
+
+  const showsRenewalBadge =
+    signer.status !== SignerStatus.Pending &&
+    signer.status !== SignerStatus.RevocationPending &&
+    signer.status !== SignerStatus.Revoked;
+  const signsUntilRenewed = signer.status === SignerStatus.Active;
+  let renewalTooltip: string | null = null;
+  if (showsRenewalBadge && openCertificateRequest) {
+    const keepsSigning = signsUntilRenewed
+      ? " The signer keeps signing with its current certificate until then."
+      : "";
+    renewalTooltip = pendingExternalOrder
+      ? `DigiCert order #${pendingExternalOrder.orderId} is waiting for approval.${keepsSigning}`
+      : `A new certificate is being issued.${keepsSigning}`;
+  }
+  const nextDigicertOrderId = getNextDigicertOrderId(signer);
 
   return (
     <>
@@ -164,25 +213,21 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {statusTooltip ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help">
-                            <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                              {signerStatusLabels[signer.status] ?? signer.status}
-                            </Badge>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {statusTooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
+                  <BadgeWithTooltip tooltip={statusTooltip}>
                     <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                      {signerStatusLabels[signer.status] ?? signer.status}
+                      {signerStatusLabels[signer.status]}
                     </Badge>
+                  </BadgeWithTooltip>
+                  {renewalTooltip && (
+                    <BadgeWithTooltip tooltip={renewalTooltip}>
+                      <Badge variant="info">
+                        <ClockIcon />
+                        Renewal in Progress
+                      </Badge>
+                    </BadgeWithTooltip>
+                  )}
+                  {hasFailedRenewal(signer) && (
+                    <SignerRequestFailedBadge reason={signer.certificateFailureReason} />
                   )}
                 </span>
               }
@@ -207,14 +252,14 @@ export const SignerDetailPage = () => {
                     }
                   >
                     <DownloadIcon />
-                    Export certificate
+                    Export Certificate
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsEditOpen(true)}
                     isDisabled={!can(SignerPermissionActions.Edit)}
                   >
                     <PencilIcon />
-                    Edit settings
+                    Edit Settings
                   </DropdownMenuItem>
                   {/* eslint-disable-next-line no-nested-ternary */}
                   {signer.status === SignerStatus.Active ? (
@@ -223,7 +268,7 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <BanIcon />
-                      Disable signer
+                      Disable Signer
                     </DropdownMenuItem>
                   ) : signer.status === SignerStatus.Disabled ? (
                     <DropdownMenuItem
@@ -231,10 +276,10 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <CheckCircleIcon />
-                      Enable signer
+                      Enable Signer
                     </DropdownMenuItem>
                   ) : null}
-                  {signer.status === SignerStatus.Pending && (
+                  {hasPendingCertificateRequest && (
                     <DropdownMenuItem
                       onClick={() => checkSignerIssuance.mutate(signer.id)}
                       isDisabled={
@@ -243,7 +288,7 @@ export const SignerDetailPage = () => {
                       }
                     >
                       <RefreshCwIcon />
-                      Check issuance now
+                      Check Issuance Now
                     </DropdownMenuItem>
                   )}
                   {signer.status === SignerStatus.Failed && signer.caId && (
@@ -254,7 +299,39 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ReissueCertificate)}
                     >
                       <RotateCwIcon />
-                      Retry issuance
+                      Retry Issuance
+                    </DropdownMenuItem>
+                  )}
+                  {canReissueRevokedCertificate && (
+                    <DropdownMenuItem
+                      onClick={() => setIsReissueOpen(true)}
+                      isDisabled={
+                        reissueSigner.isPending || !can(SignerPermissionActions.ReissueCertificate)
+                      }
+                    >
+                      <RotateCwIcon />
+                      Reissue Certificate
+                    </DropdownMenuItem>
+                  )}
+                  {canRenewCertificate && (
+                    <DropdownMenuItem
+                      onClick={() => setIsRenewOpen(true)}
+                      isDisabled={
+                        renewSigner.isPending || !can(SignerPermissionActions.ReissueCertificate)
+                      }
+                    >
+                      <RefreshCwIcon />
+                      Renew Certificate
+                    </DropdownMenuItem>
+                  )}
+                  {canRevokeCertificate && (
+                    <DropdownMenuItem
+                      variant="danger"
+                      onClick={() => setIsRevokeOpen(true)}
+                      isDisabled={!can(SignerPermissionActions.RevokeCertificate)}
+                    >
+                      <ShieldOffIcon />
+                      Revoke Certificate
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
@@ -263,7 +340,7 @@ export const SignerDetailPage = () => {
                     isDisabled={!can(SignerPermissionActions.Delete)}
                   >
                     <Trash2Icon />
-                    Delete signer
+                    Delete Signer
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -273,7 +350,8 @@ export const SignerDetailPage = () => {
               {!signer.caId && (
                 <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                   This signer has no Certificate Authority attached, so its certificate cannot be
-                  auto-renewed. Once it expires, signing will stop until you create a new signer.
+                  auto-renewed. Once it expires, signing will stop until you choose one in Edit
+                  Settings.
                 </div>
               )}
 
@@ -288,13 +366,16 @@ export const SignerDetailPage = () => {
                 }
               >
                 <TabsList variant="project" aria-label="Signer sections">
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="approvals">Approvals</TabsTrigger>
                   <TabsTrigger value="members">Members</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="activity" className="pt-2">
-                  <SigningOperationsTable signer={signer} signerId={signerId} />
+                <TabsContent value="overview" className="pt-2">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">
+                    <SignerCertificateDetailsCard signer={signer} />
+                    <SigningOperationsTable signer={signer} signerId={signerId} />
+                  </div>
                 </TabsContent>
                 <TabsContent value="approvals" className="pt-2">
                   <SignerApprovalsSection
@@ -320,26 +401,108 @@ export const SignerDetailPage = () => {
       </div>
 
       <EditSignerModal isOpen={isEditOpen} onOpenChange={setIsEditOpen} signer={signer} />
+      <RevokeSignerCertificateDialog
+        signer={signer}
+        isOpen={isRevokeOpen}
+        onOpenChange={setIsRevokeOpen}
+      />
       <ExportSignerCertModal
         isOpen={isExportOpen}
         onOpenChange={setIsExportOpen}
         signerId={signer.id}
         signerName={signer.name}
       />
+      <AlertDialog
+        open={isReissueOpen}
+        onOpenChange={setIsReissueOpen}
+        isPending={reissueSigner.isPending}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <RotateCwIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Reissue Certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This issues a new certificate with a new key from the signer&apos;s certificate
+              authority, so the signer can sign again.
+              {isDigicertSigner && (
+                <span className="mt-2 block font-medium text-warning">
+                  This places a new DigiCert order.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={reissueSigner.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              isPending={reissueSigner.isPending}
+              onClick={async (event) => {
+                event.preventDefault();
+                await reissueSigner.mutateAsync({ signerId: signer.id, caId: signer.caId! });
+                setIsReissueOpen(false);
+              }}
+            >
+              Reissue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={isRenewOpen}
+        onOpenChange={setIsRenewOpen}
+        isPending={renewSigner.isPending}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <RefreshCwIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Renew Certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This requests a new certificate from the signer&apos;s certificate authority.
+              {signsUntilRenewed &&
+                " The signer keeps signing with its current certificate until the new one is issued."}
+              {isDigicertSigner && (
+                <span className="mt-2 block font-medium text-warning">
+                  This places a renewal order on DigiCert. If your account has no unused code
+                  signing subscription, the current order is reissued instead, and DigiCert revokes
+                  the current certificate within 72 hours.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={renewSigner.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              isPending={renewSigner.isPending}
+              onClick={async (event) => {
+                event.preventDefault();
+                await renewSigner.mutateAsync(signer.id);
+                setIsRenewOpen(false);
+              }}
+            >
+              Renew
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
               <AlertTriangleIcon className="text-danger" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete signer &apos;{signer.name}&apos;?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Signer &apos;{signer.name}&apos;?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the signer, its policy, members, requests, and signing
               history. The certificate is preserved for audit but signing will stop immediately.
               {isDigicertSigner && (
                 <span className="mt-2 block font-medium text-warning">
-                  This also revokes the certificate&apos;s DigiCert order, so the certificate can no
-                  longer be used to sign anywhere.
+                  This also revokes the certificate on DigiCert, so it can no longer be used to sign
+                  anywhere. Other certificates on the same order stay valid.
+                  {nextDigicertOrderId &&
+                    ` DigiCert order #${nextDigicertOrderId} is canceled too.`}
                 </span>
               )}
             </AlertDialogDescription>
@@ -360,7 +523,7 @@ export const SignerDetailPage = () => {
                 });
               }}
             >
-              Delete signer
+              Delete Signer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
