@@ -243,11 +243,17 @@ describe("certRevocationApprovalResourceFactory organization access of approvers
       orgAccess
     );
     const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
-    const undecidable = await resource.isRequestUndecidable?.({
-      request: { id: "request-1", projectId: "project", scopeId: applicationId, currentStep: 1 } as never,
-      steps: [{ stepNumber: 1, requiredApprovals: 1, approvers, approvals: [] }],
-      tx
-    });
+    const undecidable = (
+      await resource.findUndecidableRequestIds?.({
+        requests: [
+          {
+            request: { id: "request-1", projectId: "project", scopeId: applicationId, currentStep: 1 } as never,
+            steps: [{ stepNumber: 1, requiredApprovals: 1, approvers, approvals: [] }]
+          }
+        ],
+        tx
+      })
+    )?.has("request-1");
     const [step] = policy?.steps ?? [];
     return {
       approverCount: step && "approverCount" in step ? step.approverCount : undefined,
@@ -313,7 +319,7 @@ describe("certRevocationApprovalResourceFactory organization access of approvers
   });
 });
 
-describe("certRevocationApprovalResourceFactory.isRequestUndecidable", () => {
+describe("certRevocationApprovalResourceFactory.findUndecidableRequestIds", () => {
   const tx = { node: "tx" } as never;
   const operator = { actorUserId: "operator", actorGroupId: null, isActive: true };
   const other = { actorUserId: "other", actorGroupId: null, isActive: true };
@@ -339,7 +345,9 @@ describe("certRevocationApprovalResourceFactory.isRequestUndecidable", () => {
   ) => {
     const { deps, resource } = setup([], memberships, groupLinks);
     const request = { id: "request-1", projectId: "project", scopeId: applicationId, currentStep } as never;
-    const undecidable = await resource.isRequestUndecidable?.({ request, steps, tx });
+    const undecidable = (await resource.findUndecidableRequestIds?.({ requests: [{ request, steps }], tx }))?.has(
+      "request-1"
+    );
     return { undecidable, deps };
   };
 

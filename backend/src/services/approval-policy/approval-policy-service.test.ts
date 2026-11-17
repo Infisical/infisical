@@ -111,6 +111,8 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const approvalRequestDAL = {
       findById: vi.fn().mockResolvedValue(request),
       findStepsByRequestId: vi.fn().mockResolvedValue(steps),
+      find: vi.fn().mockResolvedValue([request]),
+      findStepsByRequestIds: vi.fn().mockResolvedValue({ [request.id]: steps }),
       transaction: vi.fn().mockRejectedValue(new Error("reached the decision"))
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
@@ -342,6 +344,8 @@ describe("approvalPolicyService rechecks a revocation approver under the request
     const approvalRequestDAL = {
       findById: vi.fn().mockResolvedValue(request),
       findStepsByRequestId: vi.fn().mockResolvedValue(steps),
+      find: vi.fn().mockResolvedValue([request]),
+      findStepsByRequestIds: vi.fn().mockResolvedValue({ [request.id]: steps }),
       findByIdForUpdate: vi.fn().mockResolvedValue({ ...request, currentStep: 2 }),
       transaction: vi.fn(async (fn: (t: unknown) => Promise<unknown>) => fn(tx))
     };
@@ -444,13 +448,15 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
     replicaRole,
     type = ApprovalPolicyType.CertRevocation,
     status = ApprovalRequestStatus.Pending,
-    expiresAt = null
+    expiresAt = null,
+    requestCount = 1
   }: {
     primaryRole: ResourceMembershipRole;
     replicaRole: ResourceMembershipRole;
     type?: ApprovalPolicyType;
     status?: ApprovalRequestStatus;
     expiresAt?: Date | null;
+    requestCount?: number;
   }) => {
     const primaryDb = { node: "primary" };
     const membership = { id: "membership-1", actorUserId: "approver-1", isActive: true, scopeOrgId: "org-1" };
@@ -480,10 +486,11 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
       findBypassersByPolicyIds: vi.fn().mockResolvedValue({}),
       primaryNode: vi.fn().mockReturnValue(primaryDb)
     };
+    const membershipDAL = { find: vi.fn().mockResolvedValue([membership]) };
     const revocationResource = certRevocationApprovalResourceFactory({
       approvalPolicyDAL,
       certificateService: { revokeApprovedCertificate: vi.fn() },
-      membershipDAL: { find: vi.fn().mockResolvedValue([membership]) },
+      membershipDAL,
       membershipRoleDAL: {
         find: vi.fn(async (_filter: unknown, opts?: { tx?: unknown }) => [
           { membershipId: membership.id, role: opts?.tx === primaryDb ? primaryRole : replicaRole }
@@ -498,12 +505,16 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
       },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
+    const requests = Array.from({ length: requestCount }, (_, i) => ({ ...request, id: `revocation-${i + 1}` }));
+    const approvalRequestDAL = {
+      findById: vi.fn().mockResolvedValue(request),
+      findStepsByRequestId: vi.fn().mockResolvedValue(steps),
+      find: vi.fn(async (filter: { $in: { id: string[] } }) => requests.filter((r) => filter.$in.id.includes(r.id))),
+      findStepsByRequestIds: vi.fn(async (ids: string[]) => Object.fromEntries(ids.map((id) => [id, steps]))),
+      findByProjectId: vi.fn().mockResolvedValue(requests.map((r) => ({ ...r, steps })))
+    };
     const service = approvalPolicyServiceFactory({
-      approvalRequestDAL: {
-        findById: vi.fn().mockResolvedValue(request),
-        findStepsByRequestId: vi.fn().mockResolvedValue(steps),
-        findByProjectId: vi.fn().mockResolvedValue([{ ...request, steps }])
-      },
+      approvalRequestDAL,
       approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]), findOne: vi.fn().mockResolvedValue(null) },
       approvalPolicyDAL,
       pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: "app-1", projectId: "project-1" }) },
@@ -517,10 +528,19 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
 
     const flags = async () => {
       const { request: fetched } = await service.getRequestById("revocation-1", viewer);
-      const { requests } = await service.listRequests(type, ApprovalPolicyScope.PkiApplication, "app-1", viewer);
-      return { fetched: fetched.approversCanNoLongerApprove, listed: requests[0].approversCanNoLongerApprove };
+      const { requests: listed } = await service.listRequests(
+        type,
+        ApprovalPolicyScope.PkiApplication,
+        "app-1",
+        viewer
+      );
+      return { fetched: fetched.approversCanNoLongerApprove, listed: listed[0].approversCanNoLongerApprove };
     };
-    return { flags };
+    const listFlags = async () =>
+      (await service.listRequests(type, ApprovalPolicyScope.PkiApplication, "app-1", viewer)).requests.map(
+        (r) => r.approversCanNoLongerApprove
+      );
+    return { flags, listFlags, membershipDAL, approvalRequestDAL, primaryDb };
   };
 
   it("flags it once its only approver is demoted to Auditor, even while a replica still shows them as Operator", async () => {
@@ -566,5 +586,24 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
     });
 
     expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+  });
+
+  it("checks every pending request in an Application with one read of its requests, steps and approvers", async () => {
+    const one = build({ primaryRole: ResourceMembershipRole.Auditor, replicaRole: ResourceMembershipRole.Operator });
+    await one.listFlags();
+    const many = build({
+      primaryRole: ResourceMembershipRole.Auditor,
+      replicaRole: ResourceMembershipRole.Operator,
+      requestCount: 3
+    });
+
+    expect(await many.listFlags()).toEqual([true, true, true]);
+    expect(many.membershipDAL.find).toHaveBeenCalledTimes(one.membershipDAL.find.mock.calls.length);
+    expect(many.approvalRequestDAL.find).toHaveBeenCalledTimes(1);
+    expect(many.approvalRequestDAL.findStepsByRequestIds).toHaveBeenCalledTimes(1);
+    expect(many.approvalRequestDAL.findStepsByRequestIds).toHaveBeenCalledWith(
+      ["revocation-1", "revocation-2", "revocation-3"],
+      many.primaryDb
+    );
   });
 });

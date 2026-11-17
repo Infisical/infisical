@@ -1533,14 +1533,37 @@ export const approvalPolicyServiceFactory = ({
 
   // Reads through the caller's transaction, which holds the lock that keeps a replacement request from racing this one.
   // Without a transaction, pass the primary: the flag on a listed or fetched request must agree with what revoking does.
-  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) => {
-    const request = await approvalRequestDAL.findById(requestId, tx);
-    if (!request || request.status !== ApprovalRequestStatus.Pending || isApprovalRequestExpired(request)) return false;
-    const isUndecidable = resources[request.type as ApprovalPolicyType]?.isRequestUndecidable;
-    if (!isUndecidable) return false;
-    const steps = await approvalRequestDAL.findStepsByRequestId(requestId, tx);
-    return isUndecidable({ request, steps, tx });
+  const findUndecidablePendingRequestIds = async (requestIds: string[], tx: Knex) => {
+    const undecidable = new Set<string>();
+    if (requestIds.length === 0) return undecidable;
+    const pending = (await approvalRequestDAL.find({ $in: { id: requestIds } }, { tx })).filter(
+      (request) =>
+        request.status === ApprovalRequestStatus.Pending &&
+        !isApprovalRequestExpired(request) &&
+        resources[request.type as ApprovalPolicyType]?.findUndecidableRequestIds
+    );
+    if (pending.length === 0) return undecidable;
+
+    const stepsByRequestId = await approvalRequestDAL.findStepsByRequestIds(
+      pending.map((request) => request.id),
+      tx
+    );
+    const types = [...new Set(pending.map((request) => request.type as ApprovalPolicyType))];
+    for (const type of types) {
+      // eslint-disable-next-line no-await-in-loop
+      const ids = await resources[type]!.findUndecidableRequestIds!({
+        requests: pending
+          .filter((request) => request.type === type)
+          .map((request) => ({ request, steps: stepsByRequestId[request.id] ?? [] })),
+        tx
+      });
+      ids.forEach((id) => undecidable.add(id));
+    }
+    return undecidable;
   };
+
+  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) =>
+    (await findUndecidablePendingRequestIds([requestId], tx)).has(requestId);
 
   const getRequestById = async (requestId: string, actor: TApprovalActor) => {
     const request = await approvalRequestDAL.findById(requestId);
@@ -2120,14 +2143,16 @@ export const approvalPolicyServiceFactory = ({
       ctx.bypassersByPolicyId = new Map(Object.entries(bypassersByPolicyId));
     }
 
-    const primaryDb = approvalPolicyDAL.primaryNode();
+    const undecidableIds = resources[policyType]?.findUndecidableRequestIds
+      ? await findUndecidablePendingRequestIds(
+          visibleRequests.filter((r) => r.status === ApprovalRequestStatus.Pending).map((r) => r.id),
+          approvalPolicyDAL.primaryNode()
+        )
+      : new Set<string>();
     const decorated = await Promise.all(
       visibleRequests.map(async (r) => ({
         ...(await $decorateRequest(r, actor, ctx)),
-        approversCanNoLongerApprove:
-          r.status === ApprovalRequestStatus.Pending &&
-          Boolean(resources[r.type as ApprovalPolicyType]?.isRequestUndecidable) &&
-          (await isPendingRequestUndecidable(r.id, primaryDb))
+        approversCanNoLongerApprove: undecidableIds.has(r.id)
       }))
     );
     return { requests: decorated, projectId };

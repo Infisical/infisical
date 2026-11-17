@@ -269,18 +269,21 @@ export type TApprovalResource<
     userGroupIds: Set<string>;
   }) => Promise<boolean>;
 
-  // Whether too few of the approvers a pending request was raised with can still approve for it ever to pass, for a
-  // type where that snapshot can outlive the membership behind it. Reads go through tx.
-  isRequestUndecidable?: (args: {
-    request: TApprovalRequests;
-    steps: {
-      stepNumber: number;
-      requiredApprovals: number;
-      approvers: { type: ApproverType; id: string }[];
-      approvals: { approverUserId: string }[];
+  // Which of these pending requests too few of their saved approvers can still approve for them ever to pass, for a
+  // type where that snapshot can outlive the membership behind it. Takes them as a batch so a list costs the same reads
+  // as one request per scope. Reads go through tx.
+  findUndecidableRequestIds?: (args: {
+    requests: {
+      request: TApprovalRequests;
+      steps: {
+        stepNumber: number;
+        requiredApprovals: number;
+        approvers: { type: ApproverType; id: string }[];
+        approvals: { approverUserId: string }[];
+      }[];
     }[];
     tx: Knex;
-  }) => Promise<boolean>;
+  }) => Promise<Set<string>>;
 
   // The audit event a lifecycle action owes. A type whose auditors filter on resource ids contributes
   // its own event here; returning nothing leaves the generic approval event in place.

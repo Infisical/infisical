@@ -243,16 +243,34 @@ export const certRevocationApprovalResourceFactory = ({
     },
 
     // A request keeps the approvers it was raised with, so once too few of them can still approve, nothing short of
-    // replacing it lets the certificate be revoked.
-    isRequestUndecidable: async ({ request, steps, tx }) => {
-      if (!request.scopeId) return false;
-      const people = await resolveApprovingPeople(
-        approvingPeopleDeps,
-        { projectId: request.projectId, applicationId: request.scopeId },
-        steps.flatMap((step) => step.approvers),
-        tx
-      );
-      return isRevocationRequestUndecidable({ currentStep: request.currentStep, steps }, people);
+    // replacing it lets the certificate be revoked. Applications are resolved one at a time, so a list spanning many
+    // doesn't take a burst of connections from the primary's small pool.
+    findUndecidableRequestIds: async ({ requests, tx }) => {
+      const byApplication = new Map<string, typeof requests>();
+      requests.forEach((entry) => {
+        if (!entry.request.scopeId) return;
+        byApplication.set(entry.request.scopeId, [...(byApplication.get(entry.request.scopeId) ?? []), entry]);
+      });
+
+      const undecidable = new Set<string>();
+      for (const [applicationId, entries] of byApplication) {
+        const approvers = new Map(
+          entries.flatMap(({ steps }) => steps.flatMap((step) => step.approvers.map((a) => [approverKey(a), a])))
+        );
+        // eslint-disable-next-line no-await-in-loop
+        const people = await resolveApprovingPeople(
+          approvingPeopleDeps,
+          { projectId: entries[0].request.projectId, applicationId },
+          [...approvers.values()],
+          tx
+        );
+        entries.forEach(({ request, steps }) => {
+          if (isRevocationRequestUndecidable({ currentStep: request.currentStep, steps }, people)) {
+            undecidable.add(request.id);
+          }
+        });
+      }
+      return undecidable;
     },
 
     // An approved revocation revokes the certificate rather than leaving a standing grant behind.
