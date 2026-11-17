@@ -51,6 +51,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
 import { projectBase } from "../../shell/navigation";
 import { accessLinks } from "../links";
@@ -120,11 +121,119 @@ const authIdentityOf = (row: Row): AuthIdentity => ({
   activeLockoutAuthMethods: row.identity.activeLockoutAuthMethods
 });
 
+const managedByLabel = (isSubOrg: boolean, owned: boolean) => {
+  if (!isSubOrg) return "Organization";
+  return owned ? "Sub-organization" : "Root organization";
+};
+
+const deleteLabel = (deleteProtected: boolean, owned: boolean) => {
+  if (deleteProtected) return "Delete is blocked by delete protection";
+  return owned ? "Delete machine identity" : "Remove from sub-organization";
+};
+
+export const DeleteIdentityLabel = ({
+  owned,
+  deleteProtected
+}: {
+  owned: boolean;
+  deleteProtected: boolean;
+}) => <>{deleteLabel(owned && deleteProtected, owned)}</>;
+
+const AuthMethodsSubmenu = ({
+  identity,
+  canEditAuth,
+  onView,
+  onAdd
+}: {
+  identity: Row["identity"];
+  canEditAuth: boolean;
+  onView: (method: IdentityAuthMethod) => void;
+  onAdd: () => void;
+}) => {
+  const locked = new Set(identity.activeLockoutAuthMethods);
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Icon name="key" />
+        Manage auth methods
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        {sortedMethods(identity.authMethods).map((method) => (
+          <DropdownMenuItem key={method} onSelect={() => onView(method)}>
+            {authMethodName(method)}
+            {locked.has(method) && <Icon name="lock" />}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem
+          disabled={!canEditAuth}
+          description={canEditAuth ? undefined : RESTRICTED}
+          onSelect={onAdd}
+        >
+          <Icon name="plus" />
+          Add auth method
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+};
+
+export const RemoveIdentityDialog = ({
+  identity,
+  owned,
+  onClose,
+  onRemoved
+}: {
+  identity: { id: string; name: string } | undefined;
+  owned: boolean;
+  onClose: () => void;
+  onRemoved?: () => void;
+}) => {
+  const orgId = useOrgId();
+  const deleteIdentity = useV4Adapter("access").useDeleteOrgIdentity();
+  const name = identity?.name ?? "machine identity";
+  return (
+    <AlertDialog open={Boolean(identity)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger" confirmText="confirm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {owned ? `Delete ${name}?` : `Remove ${name} from this sub-organization?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (!identity) return;
+              onClose();
+              try {
+                await deleteIdentity.mutateAsync({ identityId: identity.id, orgId });
+                saved(
+                  owned
+                    ? "Successfully deleted machine identity"
+                    : "Successfully removed machine identity from sub-organization"
+                );
+                onRemoved?.();
+              } catch (error) {
+                failed("Failed to delete machine identity", error);
+              }
+            }}
+          >
+            {owned ? "Delete" : "Remove"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 export const OrgIdentitiesTab = () => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
   const go = useGo();
   const { permission } = useOrgPermission();
+  const isSubOrg = useV4Session().organization.isSubOrganization;
   const can = (action: OrgPermissionIdentityActions) =>
     permission.can(action, OrgPermissionSubjects.Identity);
   const canCreate = can(OrgPermissionIdentityActions.Create);
@@ -150,7 +259,6 @@ export const OrgIdentitiesTab = () => {
     identity: AuthIdentity;
     method: IdentityAuthMethod;
   }>();
-  const deleteIdentity = access.useDeleteOrgIdentity();
   const debouncedSearch = useDebounced(search.trim());
   const searchPayload = debouncedSearch
     ? { $or: [{ name: { $contains: debouncedSearch } }, { role: { $contains: debouncedSearch } }] }
@@ -190,6 +298,7 @@ export const OrgIdentitiesTab = () => {
     );
   };
   const isProjectScoped = (row: Row) => row.scope === SearchIdentitiesScope.ProjectScope;
+  const isOwned = (row: Row) => row.identity.orgId === orgId;
   const openDetail = (row: Row) =>
     go(isProjectScoped(row) ? projectHref(row) : accessLinks.orgIdentity(orgId, row.identity.id));
 
@@ -241,7 +350,7 @@ export const OrgIdentitiesTab = () => {
         ) : (
           <Badge tone="outline">
             <Icon name="building" size={12} />
-            Organization
+            {managedByLabel(isSubOrg, isOwned(row))}
           </Badge>
         )
     },
@@ -303,44 +412,25 @@ export const OrgIdentitiesTab = () => {
             onSelect={() => openDetail(row)}
           >
             <Icon icon={PencilIcon} />
-            Edit machine identity
+            {isOwned(row) ? "Edit machine identity" : "Edit machine identity membership"}
           </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Icon name="key" />
-              Manage auth methods
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {sortedMethods(row.identity.authMethods).map((method) => (
-                <DropdownMenuItem
-                  key={method}
-                  onSelect={() => setAuthView({ identity: authIdentityOf(row), method })}
-                >
-                  {authMethodName(method)}
-                  {row.identity.activeLockoutAuthMethods.includes(method) && <Icon name="lock" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                disabled={!canEditAuth}
-                description={canEditAuth ? undefined : RESTRICTED}
-                onSelect={() => setAuthForm({ identity: authIdentityOf(row) })}
-              >
-                <Icon name="plus" />
-                Add auth method
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {isOwned(row) && (
+            <AuthMethodsSubmenu
+              identity={row.identity}
+              canEditAuth={canEditAuth}
+              onView={(method) => setAuthView({ identity: authIdentityOf(row), method })}
+              onAdd={() => setAuthForm({ identity: authIdentityOf(row) })}
+            />
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
-            disabled={!canDelete || row.identity.hasDeleteProtection}
+            disabled={!canDelete || (isOwned(row) && row.identity.hasDeleteProtection)}
             description={canDelete ? undefined : RESTRICTED}
             onSelect={() => setDeleting(row)}
           >
             <Icon name="trash" />
-            {row.identity.hasDeleteProtection
-              ? "Delete is blocked by delete protection"
-              : "Delete machine identity"}
+            {deleteLabel(isOwned(row) && row.identity.hasDeleteProtection, isOwned(row))}
           </DropdownMenuItem>
         </>
       )
@@ -402,7 +492,7 @@ export const OrgIdentitiesTab = () => {
                   disabled={!canCreate}
                   onClick={() => setCreating(true)}
                 >
-                  Create
+                  {isSubOrg ? "Add" : "Create"}
                 </Button>
               </Gate>
             </>
@@ -490,35 +580,11 @@ export const OrgIdentitiesTab = () => {
           onClose={() => setRemovingAuth(undefined)}
         />
       )}
-      <AlertDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => !open && setDeleting(undefined)}
-      >
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Delete ${deleting?.identity.name ?? "machine identity"}?`}</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                if (!deleting) return;
-                setDeleting(undefined);
-                try {
-                  await deleteIdentity.mutateAsync({ identityId: deleting.identity.id, orgId });
-                  saved("Successfully deleted machine identity");
-                } catch (error) {
-                  failed("Failed to delete machine identity", error);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveIdentityDialog
+        identity={deleting?.identity}
+        owned={Boolean(deleting && isOwned(deleting))}
+        onClose={() => setDeleting(undefined)}
+      />
     </Stack>
   );
 };

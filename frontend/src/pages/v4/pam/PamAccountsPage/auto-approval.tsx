@@ -68,7 +68,7 @@ type Scope = ReturnType<typeof folderAutoApprovalScope>;
 type TAi = TAutoApprovalCatalog["ai"];
 
 const NO_AI: TAi = { model: null, contextApps: [], contextConnections: [] };
-const NO_AI_MODEL = "Needs an AI model in Organization Settings";
+const NO_AI_MODEL = "Needs an AI model. Choose one under AI features in Settings > General.";
 
 const ConnectionIcon = ({ app }: { app: string }) => {
   const details = APP_CONNECTION_MAP[app as AppConnection];
@@ -290,7 +290,7 @@ const AiConditionRow = ({
             <Meta mono={false}>using {ai.model}</Meta>
           ) : (
             <StatusText tone="warn" icon="alert">
-              No AI model set up in Organization Settings
+              No AI model. Choose one under AI features in Settings &gt; General.
             </StatusText>
           )}
         </Inline>

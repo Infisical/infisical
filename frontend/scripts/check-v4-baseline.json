@@ -1,6 +1,5 @@
 {
   "not-ported": {
-    "src/pages/v4/integrations/app-connection-dialogs.tsx": 1,
     "src/pages/v4/integrations/app-connection-model.ts": 1
   },
   "page-css-frame": {

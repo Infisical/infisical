@@ -65,6 +65,7 @@ export type DemoGroup = {
   role: string;
   roleId: string;
   createdAt: string;
+  orgId?: string;
 };
 
 export type DemoGroupMember = { groupId: string; joinedGroupAt: string } & (
@@ -131,6 +132,9 @@ export type AccessState = {
   serviceTokens: ServiceToken[];
   userPrivileges: DemoUserPrivilege[];
   identityPrivileges: DemoIdentityPrivilege[];
+  subOrg?: boolean;
+  legacyPrivileges?: boolean;
+  oidcGroupMemberships?: boolean;
 };
 
 export const DEMO_SELF_USER_ID = "u-sarah";
@@ -166,7 +170,8 @@ const users: DemoUser[] = [
   user("u-lena", "Lena", "Novak", "lena@acme.dev"),
   user("u-omar", "", "", "omar@acme.dev"),
   user("u-julia", "", "", "julia@acme.dev"),
-  user("u-kenji", "Kenji", "Watanabe", "kenji.watanabe@contractors.acme-partners.example")
+  user("u-kenji", "Kenji", "Watanabe", "kenji.watanabe@contractors.acme-partners.example"),
+  user("u-noor", "Noor", "Haddad", "noor@acme.dev")
 ];
 
 const orgRole = (
@@ -327,7 +332,8 @@ const orgMemberships: DemoOrgMembership[] = [
   membership("m-tom", "u-tom", "release-manager", "2025-06-23"),
   membership("m-lena", "u-lena", "no-access", "2025-08-14", { isActive: false }),
   membership("m-omar", "u-omar", "member", "2026-10-29", { status: "invited" }),
-  membership("m-julia", "u-julia", "member", "2026-10-30", { status: "invited" })
+  membership("m-julia", "u-julia", "member", "2026-10-30", { status: "invited" }),
+  membership("m-noor", "u-noor", "member", "2026-11-16")
 ];
 
 const group = (id: string, name: string, roleSlug: string, createdAt: string): DemoGroup => ({
@@ -1840,6 +1846,143 @@ export const seedEmptyAccessState = (): AccessState => {
     serviceTokens: [],
     userPrivileges: [],
     identityPrivileges: []
+  };
+};
+
+export const DEMO_ROOT_ORG_ID = "demo-root";
+
+export const DEMO_ROOT_ORG_USERS = [
+  {
+    id: "u-ines",
+    username: "ines@acme.dev",
+    email: "ines@acme.dev",
+    firstName: "Ines",
+    lastName: "Moreau"
+  },
+  {
+    id: "u-felix",
+    username: "felix@acme.dev",
+    email: "felix@acme.dev",
+    firstName: "Felix",
+    lastName: "Hart"
+  },
+  {
+    id: "u-aurelia",
+    username: "aurelia.konstantinopoulou-vandermeer@platform-engineering.acme-holdings.example",
+    email: "aurelia.konstantinopoulou-vandermeer@platform-engineering.acme-holdings.example",
+    firstName: "Aurelia",
+    lastName: "Konstantinopoulou-Vandermeer"
+  }
+];
+
+export const DEMO_ROOT_ORG_IDENTITIES = [
+  { id: "8e1f0a3b-4c5d-4e6f-9a7b-1c2d3e4f5a60", name: "root-backup-runner" },
+  {
+    id: "0b9c8d7e-6f5a-4b3c-8d2e-1f0a9b8c7d61",
+    name: "shared-observability-exporter-for-every-regional-cluster"
+  }
+];
+
+export const DEMO_ROOT_ORG_GROUPS = [
+  { id: "g-root-sre", name: "sre-on-call", slug: "sre-on-call" },
+  { id: "g-root-finance", name: "finance-approvers", slug: "finance-approvers" }
+];
+
+export const seedSubOrgAccessState = (): AccessState => {
+  const seed = seedAccessState();
+  return {
+    ...seed,
+    subOrg: true,
+    groups: [
+      ...seed.groups,
+      {
+        ...group("g-root-security-review", "security-review-board", "member", "2025-03-11"),
+        orgId: DEMO_ROOT_ORG_ID
+      }
+    ],
+    identities: seed.identities.map((entry) =>
+      entry.id === TERRAFORM ? { ...entry, orgId: DEMO_ROOT_ORG_ID } : entry
+    )
+  };
+};
+
+const longWords = [
+  "platform",
+  "infrastructure",
+  "observability",
+  "settlement",
+  "reconciliation",
+  "compliance",
+  "regional",
+  "federation"
+];
+
+export const seedStressedAccessState = (): AccessState => {
+  const seed = seedAccessState();
+  const extraUsers = Array.from({ length: 48 }, (_, index) => {
+    const word = longWords[index % longWords.length];
+    return user(
+      `u-stress-${index}`,
+      index % 3 ? `Maximiliana-${word}` : "",
+      index % 3 ? "Featherstonehaugh-Montgomery" : "",
+      `${word}.engineering.team.member.${index}@very-long-subsidiary-name.acme-holdings.example`
+    );
+  });
+  const extraGroups = Array.from({ length: 36 }, (_, index) =>
+    group(
+      `g-stress-${index}`,
+      `${longWords[index % longWords.length]}-cross-functional-working-group-${index}`,
+      index % 2 ? "member" : "security-auditor",
+      "2026-01-15"
+    )
+  );
+  const extraIdentities = Array.from({ length: 36 }, (_, index) =>
+    identity(
+      `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      `${longWords[index % longWords.length]}-batch-reconciliation-worker-${index}`,
+      "2026-02-20",
+      index % 2
+        ? [
+            IdentityAuthMethod.UNIVERSAL_AUTH,
+            IdentityAuthMethod.KUBERNETES_AUTH,
+            IdentityAuthMethod.AWS_AUTH
+          ]
+        : [IdentityAuthMethod.UNIVERSAL_AUTH]
+    )
+  );
+  return {
+    ...seed,
+    users: [...seed.users, ...extraUsers],
+    orgMemberships: [
+      ...seed.orgMemberships,
+      ...extraUsers.map((entry, index) =>
+        membership(
+          `m-stress-${index}`,
+          entry.id,
+          index % 4 ? "member" : "release-manager",
+          "2026-03-01"
+        )
+      )
+    ],
+    groups: [...seed.groups, ...extraGroups],
+    groupMembers: [
+      ...seed.groupMembers,
+      ...extraUsers.slice(0, 30).map((entry) => ({
+        groupId: "g-platform",
+        userId: entry.id,
+        joinedGroupAt: day("2026-03-02")
+      }))
+    ],
+    identities: [...seed.identities, ...extraIdentities],
+    identityOrgMemberships: [
+      ...seed.identityOrgMemberships,
+      ...extraIdentities.map((entry) => ({
+        id: `iom-${entry.id.slice(-8)}`,
+        identityId: entry.id,
+        role: "member",
+        createdAt: entry.createdAt
+      }))
+    ]
   };
 };
 

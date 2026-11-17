@@ -38,6 +38,10 @@ import {
   type AccessState,
   DEMO_PAM_PROJECT_ID,
   DEMO_PROJECT_TAGS,
+  DEMO_ROOT_ORG_GROUPS,
+  DEMO_ROOT_ORG_ID,
+  DEMO_ROOT_ORG_IDENTITIES,
+  DEMO_ROOT_ORG_USERS,
   DEMO_SELF_USER_ID,
   DEMO_VAULT_CONNECTIONS,
   DEMO_VAULT_NAMESPACES,
@@ -59,6 +63,8 @@ import {
   type DemoUser,
   seedAccessState,
   seedEmptyAccessState,
+  seedStressedAccessState,
+  seedSubOrgAccessState,
   TEMPORARY_MODE
 } from "./fixtures";
 
@@ -69,7 +75,10 @@ const SCENARIOS = [
   "denied",
   "empty",
   "loading",
-  "sub-org"
+  "stressed",
+  "sub-org",
+  "legacy-privileges",
+  "oidc-groups"
 ] as const;
 export type AccessScenario = (typeof SCENARIOS)[number];
 
@@ -83,10 +92,20 @@ export const useAccessScenario = () =>
 
 const stores = {
   default: createFixtureStore(seedAccessState()),
-  empty: createFixtureStore(seedEmptyAccessState())
+  empty: createFixtureStore(seedEmptyAccessState()),
+  stressed: createFixtureStore(seedStressedAccessState()),
+  "sub-org": createFixtureStore(seedSubOrgAccessState()),
+  "legacy-privileges": createFixtureStore<AccessState>({
+    ...seedAccessState(),
+    legacyPrivileges: true
+  }),
+  "oidc-groups": createFixtureStore<AccessState>({
+    ...seedAccessState(),
+    oidcGroupMemberships: true
+  })
 };
 const storeFor = (scenario: AccessScenario) =>
-  scenario === "empty" ? stores.empty : stores.default;
+  scenario in stores ? stores[scenario as keyof typeof stores] : stores.default;
 
 export const useDemoAccessState = () => storeFor(useAccessScenario()).use();
 
@@ -299,7 +318,7 @@ const groupMembership = (
   const group = state.groups.find((entry) => entry.id === membership.groupId)!;
   return {
     id: membership.id,
-    group: { ...group, orgId: V4_DEMO_ORG_ID, updatedAt: group.createdAt },
+    group: { orgId: V4_DEMO_ORG_ID, ...group, updatedAt: group.createdAt },
     roles: membership.roles.map((grant) => workspaceRole(state, grant)),
     createdAt: membership.createdAt,
     updatedAt: membership.createdAt
@@ -686,11 +705,9 @@ const scenarioRules = (scenario: AccessScenario, blocked: string[]) => {
   return ALL_RULE;
 };
 
-const DEMO_ROOT_ORG_ID = "acme-root";
-
 const organization = (state: AccessState, subOrganization: boolean): Organization => ({
   id: V4_DEMO_ORG_ID,
-  name: "Acme Corp",
+  name: state.subOrg ? "acme-eu" : "Acme Corp",
   createAt: "2025-01-04T12:00:00.000Z",
   updatedAt: "2026-10-30T12:00:00.000Z",
   authEnforced: false,
@@ -702,7 +719,7 @@ const organization = (state: AccessState, subOrganization: boolean): Organizatio
   defaultMembershipRole: state.defaultMembershipRole,
   enforceMfa: false,
   ssoMfaTrust: SsoMfaTrust.None,
-  shouldUseNewPrivilegeSystem: true,
+  shouldUseNewPrivilegeSystem: !state.legacyPrivileges,
   userRole: "admin",
   userJoinedAt: "2025-01-04T12:00:00.000Z",
   secretsProductEnabled: true,
@@ -915,8 +932,10 @@ export const accessDemo: AccessAdapter = {
     const permission = createMongoAbility<OrgPermissionSet>(
       scenarioRules(scenario, ["groups", "role"]) as RawRuleOf<MongoAbility<OrgPermissionSet>>[]
     );
+    const memberships =
+      scenario === "read-only" || scenario === "denied" ? [] : [{ roles: [{ role: "admin" }] }];
     return {
-      data: { permission, memberships: [] },
+      data: { permission, memberships: memberships as never[] },
       isPending: scenario === "loading",
       error: null
     };
@@ -935,6 +954,9 @@ export const accessDemo: AccessAdapter = {
     };
   },
   useOrganization: () => useDemoOrganization(useAccessScenario() === "sub-org"),
+  useUpgradePrivilegeSystem: demoMutation((_dto: void, state) =>
+    done({ ...state, legacyPrivileges: false }, {} as never)
+  ),
   useUpdateOrganization: demoMutation((dto, state) =>
     done(
       {
@@ -1055,6 +1077,12 @@ export const accessDemo: AccessAdapter = {
         : undefined
     );
   }),
+
+  useAvailableOrgUsers: demoQuery("available-org-users", (state) =>
+    DEMO_ROOT_ORG_USERS.filter(
+      (candidate) => !state.users.some((entry) => entry.username === candidate.username)
+    )
+  ),
 
   useOrgRoles: demoQuery("org-roles", (state) => state.orgRoles),
   useOrgRole: demoQuery("org-role", (state, _orgId: string, roleId: string) =>
@@ -1180,6 +1208,44 @@ export const accessDemo: AccessAdapter = {
         )
       },
       next
+    );
+  }),
+  useAvailableOrgIdentities: demoQuery("available-org-identities", (state) =>
+    DEMO_ROOT_ORG_IDENTITIES.filter(
+      (candidate) => !state.identities.some((entry) => entry.id === candidate.id)
+    )
+  ),
+  useCreateOrgIdentityMembership: demoMutation(({ identityId, roles }, state) => {
+    const linked = DEMO_ROOT_ORG_IDENTITIES.find((entry) => entry.id === identityId)!;
+    const ref = orgRoleRef(state, roles[0]?.role ?? state.defaultMembershipRole);
+    const membership = {
+      id: newId(),
+      identityId,
+      role: ref.role,
+      roleId: ref.role === "custom" ? ref.roleId : undefined,
+      createdAt: stamp()
+    };
+    return done(
+      {
+        ...state,
+        identities: [
+          ...state.identities,
+          {
+            id: linked.id,
+            name: linked.name,
+            hasDeleteProtection: false,
+            authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH],
+            activeLockoutAuthMethods: [],
+            createdAt: stamp(),
+            updatedAt: stamp(),
+            orgId: DEMO_ROOT_ORG_ID,
+            projectId: null,
+            metadata: []
+          }
+        ],
+        identityOrgMemberships: [...state.identityOrgMemberships, membership]
+      },
+      { ...membership, orgId: V4_DEMO_ORG_ID, updatedAt: membership.createdAt }
     );
   }),
   useDeleteOrgIdentity: demoMutation(({ identityId }, state) => {
@@ -1542,8 +1608,8 @@ export const accessDemo: AccessAdapter = {
         })
         .sort((a, b) => a.name.localeCompare(b.name) * direction(orderDirection))
         .map((group) => ({
-          ...group,
           orgId: V4_DEMO_ORG_ID,
+          ...group,
           updatedAt: group.createdAt,
           customRole: group.role === "custom" ? orgRoleOf(state, "custom", group.roleId) : undefined
         }));
@@ -1552,7 +1618,7 @@ export const accessDemo: AccessAdapter = {
   ),
   useGroup: demoQuery("group", (state, groupId: string) => {
     const group = state.groups.find((entry) => entry.id === groupId);
-    return group && { group: { ...group, orgId: V4_DEMO_ORG_ID, updatedAt: group.createdAt } };
+    return group && { group: { orgId: V4_DEMO_ORG_ID, ...group, updatedAt: group.createdAt } };
   }),
   useGroupMembers: demoQuery(
     "group-members",
@@ -1626,7 +1692,7 @@ export const accessDemo: AccessAdapter = {
     };
     return done(
       { ...state, groups: [...state.groups, group] },
-      { ...group, orgId: V4_DEMO_ORG_ID, updatedAt: group.createdAt }
+      { orgId: V4_DEMO_ORG_ID, ...group, updatedAt: group.createdAt }
     );
   }),
   useUpdateGroup: demoMutation((dto, state) => {
@@ -1639,7 +1705,7 @@ export const accessDemo: AccessAdapter = {
     };
     return done(
       { ...state, groups: state.groups.map((entry) => (entry.id === next.id ? next : entry)) },
-      { ...next, orgId: V4_DEMO_ORG_ID, updatedAt: stamp() }
+      { orgId: V4_DEMO_ORG_ID, ...next, updatedAt: stamp() }
     );
   }),
   useDeleteGroup: demoMutation((dto, state) => {
@@ -1653,7 +1719,7 @@ export const accessDemo: AccessAdapter = {
           (entry) => entry.kind !== "group" || entry.groupId !== dto.id
         )
       },
-      { ...removed, orgId: V4_DEMO_ORG_ID, updatedAt: removed.createdAt }
+      { orgId: V4_DEMO_ORG_ID, ...removed, updatedAt: removed.createdAt }
     );
   }),
   useAddUserToGroup: demoMutation((dto, state) => {
@@ -1667,7 +1733,7 @@ export const accessDemo: AccessAdapter = {
           { groupId: dto.groupId, userId: person.id, joinedGroupAt: stamp() }
         ]
       },
-      { ...group, orgId: V4_DEMO_ORG_ID, updatedAt: group.createdAt }
+      { orgId: V4_DEMO_ORG_ID, ...group, updatedAt: group.createdAt }
     );
   }),
   useRemoveUserFromGroup: demoMutation((dto, state) => {
@@ -1680,7 +1746,7 @@ export const accessDemo: AccessAdapter = {
           (entry) => entry.groupId !== dto.groupId || entry.userId !== person?.id
         )
       },
-      { ...group, orgId: V4_DEMO_ORG_ID, updatedAt: group.createdAt }
+      { orgId: V4_DEMO_ORG_ID, ...group, updatedAt: group.createdAt }
     );
   }),
   useAddIdentityToGroup: demoMutation((dto, state) => {
@@ -1696,6 +1762,33 @@ export const accessDemo: AccessAdapter = {
       { id: identity.id, name: identity.name }
     );
   }),
+  useAvailableOrgGroups: demoQuery("available-org-groups", (state) =>
+    DEMO_ROOT_ORG_GROUPS.filter(
+      (candidate) => !state.groups.some((entry) => entry.id === candidate.id)
+    )
+  ),
+  useCreateOrgGroupMembership: demoMutation(({ groupId, roles }, state) => {
+    const linked = DEMO_ROOT_ORG_GROUPS.find((entry) => entry.id === groupId)!;
+    const group = {
+      ...linked,
+      ...orgRoleRef(state, roles[0]?.role ?? state.defaultMembershipRole),
+      createdAt: stamp(),
+      orgId: DEMO_ROOT_ORG_ID
+    };
+    return done(
+      { ...state, groups: [...state.groups, group] },
+      {
+        id: newId(),
+        orgId: V4_DEMO_ORG_ID,
+        groupId,
+        createdAt: group.createdAt,
+        updatedAt: group.createdAt
+      }
+    );
+  }),
+  useOidcManageGroupMemberships: demoQuery("oidc-group-memberships", (state) =>
+    Boolean(state.oidcGroupMemberships)
+  ),
   useRemoveIdentityFromGroup: demoMutation((dto, state) => {
     const identity = identityOf(state, dto.identityId)!;
     return done(

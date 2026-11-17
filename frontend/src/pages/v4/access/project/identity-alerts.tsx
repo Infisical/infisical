@@ -138,7 +138,7 @@ const AlertSheet = ({
   onOpenChange
 }: {
   identityId: string;
-  projectId: string;
+  projectId?: string;
   alert?: TAlert;
   used: AlertEventType[];
   onOpenChange: (open: boolean) => void;
@@ -153,20 +153,25 @@ const AlertSheet = ({
     OrgPermissionSubjects.Member
   );
   const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: canReadMembers });
-  const { permission: projectPermission } = useProjectPermission(projectId);
-  const canReadProjectMembers = projectPermission.can(
-    ProjectPermissionMemberActions.Read,
-    ProjectPermissionSub.Member
-  );
-  const projectUsers = useV4Adapter("access").useProjectUsers(projectId, true, undefined, {
-    enabled: canReadProjectMembers
+  const { permission: projectPermission } = useProjectPermission(projectId ?? "");
+  const canReadProjectMembers =
+    !projectId ||
+    projectPermission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+  const projectUsers = useV4Adapter("access").useProjectUsers(projectId ?? "", true, undefined, {
+    enabled: Boolean(projectId) && canReadProjectMembers
   });
   const projectUserIds = new Set(projectUsers.data?.map((membership) => membership.user.id));
+  const recipients = projectId
+    ? projectUsers.data &&
+      orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
+    : orgUsers.data;
   const recipientsUnavailable = (() => {
+    if (!projectId && !canReadMembers)
+      return "You need permission to read organization members to choose recipients.";
     if (!canReadMembers || !canReadProjectMembers)
       return "You need permission to read organization and project members to choose recipients.";
     if (orgUsers.error || projectUsers.error)
-      return "Couldn't load project members. Close the editor and try again.";
+      return `Couldn't load ${projectId ? "project" : "organization"} members. Close the editor and try again.`;
     return undefined;
   })();
   const firstFree = EVENT_TYPES.find((event) => !used.includes(event)) ?? EVENT_TYPES[0];
@@ -357,10 +362,7 @@ const AlertSheet = ({
                 projectId={projectId}
                 alertId={alert?.id}
                 members={{
-                  ...toMemberEmails(
-                    projectUsers.data &&
-                      orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
-                  ),
+                  ...toMemberEmails(recipients),
                   unavailableReason: recipientsUnavailable
                 }}
                 allowEmailAddresses={false}
@@ -484,7 +486,7 @@ const IdentityAlertMenu = ({
   const used = alerts.map(({ eventType }) => eventType as AlertEventType);
   const enabledCount = alerts.filter(({ enabled }) => enabled).length;
   const canAdd = EVENT_TYPES.some((event) => !used.includes(event));
-  const editable = !readOnly && Boolean(projectId);
+  const editable = !readOnly;
 
   const open = (alert?: TAlert) => {
     setListOpen(false);
@@ -552,7 +554,7 @@ const IdentityAlertMenu = ({
           </Button>
         </Gate>
       )}
-      {editable && editing && projectId && (
+      {editable && editing && (
         <AlertSheet
           identityId={identityId}
           projectId={projectId}

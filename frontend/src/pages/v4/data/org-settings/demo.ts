@@ -1,3 +1,7 @@
+import { useRouterState } from "@tanstack/react-router";
+
+import type { TAnthropicModel, TOrgAiConfig } from "@app/hooks/api/ai/types";
+import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import type { TCertManagerLegacyInstance } from "@app/hooks/api/certManagerInstance";
 import { ExternalKmsProvider, type Kms, type KmsListEntry } from "@app/hooks/api/kms/types";
 import type { TSubOrganization } from "@app/hooks/api/subOrganizations/types";
@@ -13,6 +17,73 @@ const demoGcpKeys = (gcpRegion: string) =>
     (ring) => `projects/acme-demo/locations/${gcpRegion}/keyRings/${ring}/cryptoKeys/org-data`
   );
 const at = (daysAgo: number) => new Date(Date.now() - daysAgo * day).toISOString();
+
+const AI_SCENARIOS = ["default", "empty", "stressed"] as const;
+type AiScenario = (typeof AI_SCENARIOS)[number];
+const useAiScenario = () =>
+  useRouterState({
+    select: (state) => {
+      const value = (state.location.search as { scenario?: unknown }).scenario;
+      return AI_SCENARIOS.find((scenario) => scenario === value) ?? "default";
+    }
+  });
+
+const REVOKED_ANTHROPIC_CONNECTION = "8d3f2a61-7c4e-4b19-a5d0-6e2b9c1f4a07";
+const ANTHROPIC_CONNECTIONS: TAvailableAppConnection[] = [
+  { id: "5b1e9c74-2a3d-4f86-b0c1-7d4e8a2f6c19", name: "anthropic-platform", projectId: null },
+  { id: REVOKED_ANTHROPIC_CONNECTION, name: "anthropic-revoked-key", projectId: null }
+];
+const STRESSED_ANTHROPIC_CONNECTIONS: TAvailableAppConnection[] = [
+  {
+    id: "e2c7a9b3-4d15-4f60-8b2e-1a9c3d7f5e48",
+    name: "anthropic-shared-platform-engineering-and-security-review-workloads-eu-central",
+    projectId: null
+  },
+  ...Array.from({ length: 24 }, (_, index) => ({
+    id: `0c4b8e2d-1f6a-4d39-9e7b-${String(index).padStart(12, "0")}`,
+    name: `anthropic-team-${index + 1}-production-approvals`,
+    projectId: null
+  }))
+];
+const ANTHROPIC_MODELS: TAnthropicModel[] = [
+  {
+    id: "claude-opus-4-5-20251101",
+    displayName: "Claude Opus 4.5",
+    family: "opus",
+    createdAt: "2025-11-01T00:00:00Z"
+  },
+  {
+    id: "claude-sonnet-4-5-20250929",
+    displayName: "Claude Sonnet 4.5",
+    family: "sonnet",
+    createdAt: "2025-09-29T00:00:00Z"
+  },
+  {
+    id: "claude-sonnet-4-20250514",
+    displayName: "Claude Sonnet 4",
+    family: "sonnet",
+    createdAt: "2025-05-14T00:00:00Z"
+  },
+  {
+    id: "claude-haiku-4-5-20251001",
+    displayName: "Claude Haiku 4.5",
+    family: "haiku",
+    createdAt: "2025-10-01T00:00:00Z"
+  }
+];
+const aiConfig = createFixtureStore<Record<AiScenario, TOrgAiConfig | null>>({
+  default: {
+    connectionId: ANTHROPIC_CONNECTIONS[0].id,
+    connectionName: ANTHROPIC_CONNECTIONS[0].name,
+    model: "claude-sonnet-4-5-20250929"
+  },
+  empty: null,
+  stressed: {
+    connectionId: STRESSED_ANTHROPIC_CONNECTIONS[0].id,
+    connectionName: STRESSED_ANTHROPIC_CONNECTIONS[0].name,
+    model: "claude-sonnet-4-20250514"
+  }
+});
 
 type StoredKms = KmsListEntry & { configuration: Record<string, unknown> };
 
@@ -239,5 +310,43 @@ export const orgSettingsDemo: OrgSettingsAdapter = {
     return {};
   }),
 
-  useCreateMicrosoftTeamsIntegration: fixtureMutation(() => ({}))
+  useCreateMicrosoftTeamsIntegration: fixtureMutation(() => ({})),
+
+  useAiConfig: () => {
+    const scenario = useAiScenario();
+    const stored = aiConfig.use();
+    return { ...ready(stored[scenario]), refetch: async () => undefined };
+  },
+  useAnthropicConnections: () => {
+    const scenario = useAiScenario();
+    if (scenario === "empty") return ready([]);
+    return ready(scenario === "stressed" ? STRESSED_ANTHROPIC_CONNECTIONS : ANTHROPIC_CONNECTIONS);
+  },
+  useAnthropicModels: (connectionId) => {
+    if (!connectionId) return { data: undefined, isPending: false, error: null };
+    if (connectionId === REVOKED_ANTHROPIC_CONNECTION)
+      return {
+        data: undefined,
+        isPending: false,
+        error: new Error("Couldn't list this connection's models. Check its API key.")
+      };
+    return ready(ANTHROPIC_MODELS);
+  },
+  useUpdateAiConfig: () => {
+    const scenario = useAiScenario();
+    return {
+      isPending: false,
+      mutateAsync: async ({ connectionId, model }) => {
+        const connection = [...ANTHROPIC_CONNECTIONS, ...STRESSED_ANTHROPIC_CONNECTIONS].find(
+          (entry) => entry.id === connectionId
+        );
+        const next =
+          connectionId && model
+            ? { connectionId, connectionName: connection?.name ?? "anthropic", model }
+            : null;
+        aiConfig.update((stored) => ({ ...stored, [scenario]: next }));
+        return next;
+      }
+    };
+  }
 };

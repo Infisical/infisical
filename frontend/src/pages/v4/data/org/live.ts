@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { apiRequest } from "@app/config/request";
 import { useGetRecentAnnouncements, useMarkAnnouncementSeen } from "@app/hooks/api/announcement";
@@ -10,13 +11,14 @@ import {
   useGetOrgIncidentContact
 } from "@app/hooks/api/incidentContacts/queries";
 import {
+  useDeleteOrgById,
   useGetOrganizationById,
   useGetOrgProductStats,
   useUpdateOrg
 } from "@app/hooks/api/organization/queries";
 import { getAuthToken, onRequestError } from "@app/hooks/api/reactQuery";
 import { useGetOrgRoles } from "@app/hooks/api/roles/queries";
-import { useLogoutUser } from "@app/hooks/api/users/queries";
+import { clearSession, useLogoutUser } from "@app/hooks/api/users/queries";
 
 import type { OrgAdapter } from "./contract";
 
@@ -28,6 +30,18 @@ export const orgLive: OrgAdapter = {
   useOrganization: useGetOrganizationById,
   useProductStats: useGetOrgProductStats,
   useUpdateOrganization: useUpdateOrg,
+  useDeleteOrganization: () => {
+    const deleteOrg = useDeleteOrgById();
+    const navigate = useNavigate();
+    return {
+      isPending: deleteOrg.isPending,
+      mutateAsync: async (variables) => {
+        await deleteOrg.mutateAsync(variables);
+        clearSession();
+        navigate({ to: "/login" });
+      }
+    };
+  },
   useRoles: useGetOrgRoles,
   useIncidentContacts: useGetOrgIncidentContact,
   useAddIncidentContact,

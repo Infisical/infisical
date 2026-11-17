@@ -107,16 +107,23 @@ import type {
   useGetVaultNamespaces,
   useGetVaultPolicies
 } from "@app/hooks/api/migration/queries";
+import type { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api/oidcConfig/queries";
 import type {
+  useGetAvailableOrgUsers,
   useGetOrganizationById,
   useSearchOrganizationGroups,
-  useUpdateOrg
+  useUpdateOrg,
+  useUpgradePrivilegeSystem
 } from "@app/hooks/api/organization/queries";
+import type { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership/mutation";
+import type { TAvailableOrganizationGroups } from "@app/hooks/api/orgGroupMembership/types";
 import type {
   useCreateOrgIdentity,
   useDeleteOrgIdentity,
   useUpdateOrgIdentity
 } from "@app/hooks/api/orgIdentity/mutations";
+import type { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership/mutation";
+import type { TAvailableOrganizationIdentities } from "@app/hooks/api/orgIdentityMembership/types";
 import type { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import type {
   useCreateProjectIdentity,
@@ -214,6 +221,7 @@ export type AccessAdapter = {
   useProjectPermission: QueryOf<typeof useGetUserProjectPermissions>;
   useOrganization: QueryOf<typeof useGetOrganizationById>;
   useUpdateOrganization: MutationOf<typeof useUpdateOrg>;
+  useUpgradePrivilegeSystem: MutationOf<typeof useUpgradePrivilegeSystem>;
   useProject: QueryOf<typeof useGetWorkspaceById>;
   usePamProjectId: (orgId: string) => V4QueryResult<string>;
 
@@ -226,6 +234,7 @@ export type AccessAdapter = {
   useDeleteOrgMembership: MutationOf<typeof useDeleteOrgMembership>;
   useDeleteOrgMemberships: MutationOf<typeof useDeleteOrgMembershipBatch>;
   useResendOrgInvite: MutationOf<typeof useResendOrgMemberInvitation>;
+  useAvailableOrgUsers: QueryOf<typeof useGetAvailableOrgUsers>;
 
   useOrgRoles: QueryOf<typeof useGetOrgRoles>;
   useOrgRole: QueryOf<typeof useGetOrgRole>;
@@ -239,6 +248,10 @@ export type AccessAdapter = {
   useCreateOrgIdentity: MutationOf<typeof useCreateOrgIdentity>;
   useUpdateOrgIdentity: MutationOf<typeof useUpdateOrgIdentity>;
   useDeleteOrgIdentity: MutationOf<typeof useDeleteOrgIdentity>;
+  useAvailableOrgIdentities: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TAvailableOrganizationIdentities>;
+  useCreateOrgIdentityMembership: MutationOf<typeof useCreateOrgIdentityMembership>;
   useIdentityUniversalAuth: QueryOf<typeof useGetIdentityUniversalAuth>;
   useIdentityUniversalAuthClientSecrets: QueryOf<typeof useGetIdentityUniversalAuthClientSecrets>;
   useAddIdentityUniversalAuth: MutationOf<typeof useAddIdentityUniversalAuth>;
@@ -327,6 +340,11 @@ export type AccessAdapter = {
   useRemoveUserFromGroup: MutationOf<typeof useRemoveUserFromGroup>;
   useAddIdentityToGroup: MutationOf<typeof useAddIdentityToGroup>;
   useRemoveIdentityFromGroup: MutationOf<typeof useRemoveIdentityFromGroup>;
+  useAvailableOrgGroups: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TAvailableOrganizationGroups>;
+  useCreateOrgGroupMembership: MutationOf<typeof useCreateOrgGroupMembership>;
+  useOidcManageGroupMemberships: QueryOf<typeof useOidcManageGroupMembershipsEnabled>;
 
   useProjectUsers: QueryOf<typeof useGetWorkspaceUsers>;
   useProjectUser: QueryOf<typeof useGetWorkspaceUserDetails>;

@@ -1,14 +1,4 @@
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -57,6 +47,7 @@ import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
+import { IdentityAlertAction } from "../project/identity-alerts";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
@@ -71,7 +62,7 @@ import {
   sortedMethods
 } from "./auth-methods";
 import { Dash, MetadataBadges } from "./detail-parts";
-import { lastUsedLabel } from "./identities";
+import { DeleteIdentityLabel, lastUsedLabel, RemoveIdentityDialog } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
 
@@ -198,6 +189,54 @@ const BackLink = ({ orgId }: { orgId: string }) => (
   </span>
 );
 
+const IdentityHeaderActions = ({
+  identity,
+  owned,
+  showAlerts,
+  canEdit,
+  canDelete,
+  onDelete
+}: {
+  identity: { id: string; hasDeleteProtection: boolean };
+  owned: boolean;
+  showAlerts: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onDelete: () => void;
+}) => (
+  <Inline gap={8} wrap={false}>
+    {showAlerts && <IdentityAlertAction identityId={identity.id} canEdit={canEdit} />}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" iconRight="more">
+          Options
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onSelect={() => {
+            navigator.clipboard?.writeText(identity.id);
+            toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
+          }}
+        >
+          <Icon name="copy" />
+          Copy machine identity ID
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!canDelete || (owned && identity.hasDeleteProtection)}
+          description={canDelete ? undefined : RESTRICTED}
+          onSelect={onDelete}
+        >
+          <Icon name="trash" />
+          <DeleteIdentityLabel owned={owned} deleteProtected={identity.hasDeleteProtection} />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </Inline>
+);
+
 export const OrgIdentityDetail = () => {
   const { identityId } = useParams({ from: "/v4/organizations/$orgId/identities/$identityId" });
   const access = useV4Adapter("access");
@@ -206,7 +245,6 @@ export const OrgIdentityDetail = () => {
   const { permission, isPending: permissionPending } = useOrgPermission();
   const { data: membership, isPending } = access.useOrgIdentity(identityId);
   const { data: roles } = access.useOrgRoles(orgId);
-  const deleteIdentity = access.useDeleteOrgIdentity();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [authForm, setAuthForm] = useState<{ method?: IdentityAuthMethod }>();
@@ -248,7 +286,6 @@ export const OrgIdentityDetail = () => {
   const isOwnIdentity = identity.orgId === orgId;
   const allConfigured = AUTH_METHOD_ORDER.every((method) => methods.includes(method));
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
-  const deleteBlocked = identity.hasDeleteProtection;
 
   const addAuthButton = (
     <Gate allowed={canEditAuth}>
@@ -320,36 +357,14 @@ export const OrgIdentityDetail = () => {
           <PageHeader
             title={identity.name}
             actions={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" iconRight="more">
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(identity.id);
-                      toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
-                    }}
-                  >
-                    <Icon name="copy" />
-                    Copy machine identity ID
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canDelete || deleteBlocked}
-                    description={canDelete ? undefined : RESTRICTED}
-                    onSelect={() => setDeleting(true)}
-                  >
-                    <Icon name="trash" />
-                    {deleteBlocked
-                      ? "Delete is blocked by delete protection"
-                      : "Delete machine identity"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <IdentityHeaderActions
+                identity={identity}
+                owned={isOwnIdentity}
+                showAlerts={isOwnIdentity && !identity.projectId}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                onDelete={() => setDeleting(true)}
+              />
             }
           />
         </Stack>
@@ -504,32 +519,12 @@ export const OrgIdentityDetail = () => {
         method={removingAuth}
         onClose={() => setRemovingAuth(undefined)}
       />
-      <AlertDialog open={deleting} onOpenChange={setDeleting}>
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Are you sure you want to delete ${identity.name}?`}</AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                setDeleting(false);
-                try {
-                  await deleteIdentity.mutateAsync({ identityId: identity.id, orgId });
-                  saved("Successfully deleted machine identity");
-                  go(backHref(orgId));
-                } catch (error) {
-                  failed("Failed to delete machine identity", error);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveIdentityDialog
+        identity={deleting ? identity : undefined}
+        owned={isOwnIdentity}
+        onClose={() => setDeleting(false)}
+        onRemoved={() => go(backHref(orgId))}
+      />
     </div>
   );
 };

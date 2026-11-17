@@ -1,3 +1,5 @@
+import type { TAnthropicModel, TOrgAiConfig, TUpdateOrgAiConfigDTO } from "@app/hooks/api/ai/types";
+import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import type {
   TCertManagerLegacyInstancesResponse,
   TExportCertManagerProjectResult
@@ -70,4 +72,9 @@ export type OrgSettingsAdapter = {
   useDeleteCertManagerProject: V4Mutation<{ projectId: string }>;
 
   useCreateMicrosoftTeamsIntegration: V4Mutation<TCreateMicrosoftTeamsIntegrationDTO>;
+
+  useAiConfig: () => V4QueryResult<TOrgAiConfig | null> & { refetch: () => Promise<unknown> };
+  useAnthropicConnections: () => V4QueryResult<TAvailableAppConnection[]>;
+  useAnthropicModels: (connectionId: string) => V4QueryResult<TAnthropicModel[]>;
+  useUpdateAiConfig: V4Mutation<TUpdateOrgAiConfigDTO, TOrgAiConfig | null>;
 };

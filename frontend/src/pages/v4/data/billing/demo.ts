@@ -19,7 +19,8 @@ const SCENARIOS = [
   "denied",
   "loading",
   "past-due",
-  "self-hosted"
+  "self-hosted",
+  "limits-reached"
 ] as const;
 export type BillingScenario = (typeof SCENARIOS)[number];
 
@@ -439,11 +440,12 @@ const refreshDemoSubscription = async () => undefined;
 export const billingDemo: BillingAdapter = {
   useSubscription: () => {
     const scenario = useBillingScenario();
-    const subscription =
-      scenario === "self-hosted"
-        ? plan({ slug: SubscriptionPlanTypes.Enterprise, subOrganization: true })
-        : plan(scenario === "empty" ? { productPlans: [], secretScanning: false } : {});
-    return query(subscription, scenario === "error" ? "default" : scenario);
+    const overrides: Record<string, Partial<SubscriptionPlan>> = {
+      "self-hosted": { slug: SubscriptionPlanTypes.Enterprise, subOrganization: true },
+      "limits-reached": { workspaceLimit: 3, workspacesUsed: 3, rbac: false },
+      empty: { productPlans: [], secretScanning: false }
+    };
+    return query(plan(overrides[scenario] ?? {}), scenario === "error" ? "default" : scenario);
   },
   useRefreshSubscription: () => refreshDemoSubscription,
   useOverview: () => {

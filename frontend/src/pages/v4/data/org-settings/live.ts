@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import {
+  useGetOrgAiConfig,
+  useListAnthropicModels,
+  useListOrgAnthropicConnections,
+  useUpdateOrgAiConfig
+} from "@app/hooks/api/ai";
+import {
   certManagerInstanceKeys,
   type TCertManagerLegacyInstancesResponse,
   useExportCertManagerProject,
@@ -95,5 +101,10 @@ export const orgSettingsLive: OrgSettingsAdapter = {
     });
   },
 
-  useCreateMicrosoftTeamsIntegration
+  useCreateMicrosoftTeamsIntegration,
+
+  useAiConfig: useGetOrgAiConfig,
+  useAnthropicConnections: useListOrgAnthropicConnections,
+  useAnthropicModels: useListAnthropicModels,
+  useUpdateAiConfig: useUpdateOrgAiConfig
 };

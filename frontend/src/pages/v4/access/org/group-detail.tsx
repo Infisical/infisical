@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,9 +86,11 @@ const memberEmail = (member: TGroupMember) =>
 
 const AddMembersDialog = ({
   group,
+  oidcManaged,
   onOpenChange
 }: {
   group: TGroup;
+  oidcManaged: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
   const access = useV4Adapter("access");
@@ -114,7 +117,7 @@ const AddMembersDialog = ({
   const [pending, setPending] = useState(false);
   const memberIdentityIds = new Set(identityMembers?.members.map((member) => member.id));
   const options = [
-    ...users
+    ...(oidcManaged ? [] : users)
       .filter(
         (member) => member.membership && !member.groups.some((entry) => entry.id === group.id)
       )
@@ -134,6 +137,7 @@ const AddMembersDialog = ({
   ];
   const count = selected.length;
   const plural = (n: number) => `${n} member${n === 1 ? "" : "s"}`;
+  const noun = oidcManaged ? "machine identities" : "members";
 
   const assign = async () => {
     setPending(true);
@@ -160,14 +164,20 @@ const AddMembersDialog = ({
         <DialogHeader>
           <DialogTitle>Add group members</DialogTitle>
         </DialogHeader>
-        <Field label="Members">
+        {oidcManaged && (
+          <Alert tone="info">
+            User membership for this group is managed through your OIDC provider. Assign users
+            there; only machine identities can be added here.
+          </Alert>
+        )}
+        <Field label={oidcManaged ? "Machine identities" : "Members"}>
           <MultiSelect
-            label="Members"
+            label={oidcManaged ? "Machine identities" : "Members"}
             searchable
             placeholder={
               options.length
-                ? "Search and select users or machine identities..."
-                : "All members are already in the group"
+                ? `Search and select ${oidcManaged ? "machine identities" : "users or machine identities"}...`
+                : `All ${noun} are already in the group`
             }
             disabled={!options.length}
             options={options}
@@ -188,10 +198,87 @@ const AddMembersDialog = ({
   );
 };
 
-const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boolean }) => {
+const OIDC_MANAGED =
+  "OIDC group membership mapping is on. Remove this user from the group in your OIDC provider.";
+
+const removeReason = (member: TGroupMember, canEdit: boolean, oidcManaged: boolean) => {
+  if (!canEdit) return RESTRICTED;
+  return member.type === GroupMemberType.USER && oidcManaged ? OIDC_MANAGED : undefined;
+};
+
+const RemoveMemberDialog = ({
+  group,
+  member,
+  onClose
+}: {
+  group: TGroup;
+  member: TGroupMember | undefined;
+  onClose: () => void;
+}) => {
   const access = useV4Adapter("access");
   const removeUser = access.useRemoveUserFromGroup();
   const removeIdentity = access.useRemoveIdentityFromGroup();
+  const remove = async (target: TGroupMember) => {
+    try {
+      if (target.type === GroupMemberType.USER) {
+        await removeUser.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          username: target.user.username
+        });
+        saved(`Successfully removed user ${target.user.username} from the group`);
+      } else {
+        await removeIdentity.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          identityId: target.machineIdentity.id
+        });
+        saved(`Successfully removed identity ${target.machineIdentity.name} from the group`);
+      }
+    } catch (error) {
+      failed("Failed to remove member from the group", error);
+    }
+  };
+  return (
+    <AlertDialog open={Boolean(member)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger" confirmText="confirm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {`Are you sure you want to remove ${member ? (memberEmail(member) ?? memberName(member)) : ""} from the group?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            They lose any access granted through this group.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (member) await remove(member);
+              onClose();
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const GroupMembersSection = ({
+  group,
+  canEdit,
+  isLinked
+}: {
+  group: TGroup;
+  canEdit: boolean;
+  isLinked: boolean;
+}) => {
+  const access = useV4Adapter("access");
+  const orgId = useOrgId();
+  const { data: oidcManaged = false } = access.useOidcManageGroupMemberships(orgId);
   const [search, setSearch] = useState("");
   const [kinds, setKinds] = useState<FilterMemberType[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
@@ -214,7 +301,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   const totalCount = data?.totalCount ?? 0;
   const filtered = Boolean(debouncedSearch || kinds.length);
   const hasRows = isPending || members.length > 0;
-  const addButton = (
+  const addButton = isLinked ? null : (
     <Gate allowed={canEdit}>
       <Button variant="accent" icon="plus" disabled={!canEdit} onClick={() => setAdding(true)}>
         Add member
@@ -252,8 +339,8 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
     renderMenu: (member) => (
       <DropdownMenuItem
         variant="destructive"
-        disabled={!canEdit}
-        description={canEdit ? undefined : RESTRICTED}
+        disabled={Boolean(removeReason(member, canEdit, oidcManaged))}
+        description={removeReason(member, canEdit, oidcManaged)}
         onSelect={() => setRemoving(member)}
       >
         <Icon name="trash" />
@@ -262,28 +349,6 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
           : "Remove identity from group"}
       </DropdownMenuItem>
     )
-  };
-
-  const remove = async (member: TGroupMember) => {
-    try {
-      if (member.type === GroupMemberType.USER) {
-        await removeUser.mutateAsync({
-          groupId: group.id,
-          slug: group.slug,
-          username: member.user.username
-        });
-        saved(`Successfully removed user ${member.user.username} from the group`);
-      } else {
-        await removeIdentity.mutateAsync({
-          groupId: group.id,
-          slug: group.slug,
-          identityId: member.machineIdentity.id
-        });
-        saved(`Successfully removed identity ${member.machineIdentity.name} from the group`);
-      }
-    } catch (error) {
-      failed("Failed to remove member from the group", error);
-    }
   };
 
   return (
@@ -327,7 +392,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
             label={`Members of ${group.name}`}
             rows={members}
             columns={columns}
-            rowActions={rowActions}
+            rowActions={isLinked ? undefined : rowActions}
             getRowId={(member) => `${member.type}:${member.id}`}
             rowLabel={memberName}
             loading={isPending}
@@ -361,34 +426,10 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
             <EmptyState size="sm" icon="user" title="This group does not have any members" />
           ))}
       </Card>
-      {adding && <AddMembersDialog group={group} onOpenChange={setAdding} />}
-      <AlertDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => !open && setRemoving(undefined)}
-      >
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {`Are you sure you want to remove ${removing ? (memberEmail(removing) ?? memberName(removing)) : ""} from the group?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              They lose any access granted through this group.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                if (removing) await remove(removing);
-                setRemoving(undefined);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {adding && (
+        <AddMembersDialog group={group} oidcManaged={oidcManaged} onOpenChange={setAdding} />
+      )}
+      <RemoveMemberDialog group={group} member={removing} onClose={() => setRemoving(undefined)} />
     </>
   );
 };
@@ -420,6 +461,7 @@ export const OrgGroupDetail = () => {
       />
     );
   const canEdit = permission.can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const isLinked = group.orgId !== orgId;
   return (
     <div className={css.detailPage}>
       <Stack gap={24}>
@@ -444,14 +486,16 @@ export const OrgGroupDetail = () => {
                     <Icon name="copy" />
                     Copy group ID
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!canEdit}
-                    description={canEdit ? undefined : RESTRICTED}
-                    onSelect={() => setEditing(true)}
-                  >
-                    <Icon icon={PencilIcon} />
-                    Edit group
-                  </DropdownMenuItem>
+                  {!isLinked && (
+                    <DropdownMenuItem
+                      disabled={!canEdit}
+                      description={canEdit ? undefined : RESTRICTED}
+                      onSelect={() => setEditing(true)}
+                    >
+                      <Icon icon={PencilIcon} />
+                      Edit group
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"
@@ -469,7 +513,7 @@ export const OrgGroupDetail = () => {
                     onSelect={() => setDeleting(true)}
                   >
                     <Icon name="trash" />
-                    Delete group
+                    {isLinked ? "Unlink group" : "Delete group"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -483,16 +527,18 @@ export const OrgGroupDetail = () => {
               variant="framed"
               title="Details"
               action={
-                <Gate allowed={canEdit}>
-                  <Button
-                    variant="outline"
-                    icon={PencilIcon}
-                    iconOnly
-                    aria-label="Edit group"
-                    disabled={!canEdit}
-                    onClick={() => setEditing(true)}
-                  />
-                </Gate>
+                !isLinked && (
+                  <Gate allowed={canEdit}>
+                    <Button
+                      variant="outline"
+                      icon={PencilIcon}
+                      iconOnly
+                      aria-label="Edit group"
+                      disabled={!canEdit}
+                      onClick={() => setEditing(true)}
+                    />
+                  </Gate>
+                )
               }
             >
               <DataList
@@ -523,12 +569,13 @@ export const OrgGroupDetail = () => {
           }
         >
           <div className={css.column}>
-            <GroupMembersSection group={group} canEdit={canEdit} />
+            <GroupMembersSection group={group} canEdit={canEdit} isLinked={isLinked} />
             <ProjectMembershipsSection
               subject="group"
               subjectId={group.id}
               subjectName={group.name}
               canEdit={canEdit}
+              canAdd={!isLinked}
             />
           </div>
         </DetailLayout>
@@ -549,7 +596,11 @@ export const OrgGroupDetail = () => {
       <AlertDialog open={deleting} onOpenChange={setDeleting}>
         <AlertDialogContent tone="danger" confirmText="confirm">
           <AlertDialogHeader>
-            <AlertDialogTitle>{`Are you sure you want to delete the group named ${group.name}?`}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isLinked
+                ? `Are you sure you want to unlink the group "${group.name}" from this sub-organization?`
+                : `Are you sure you want to delete the group named ${group.name}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -559,7 +610,11 @@ export const OrgGroupDetail = () => {
               onClick={async () => {
                 try {
                   await remove.mutateAsync({ id: group.id, organizationId: orgId });
-                  saved(`Successfully deleted the ${group.name} group`);
+                  saved(
+                    isLinked
+                      ? "Successfully unlinked group from sub-organization"
+                      : `Successfully deleted the ${group.name} group`
+                  );
                   back();
                 } catch (error) {
                   failed("Failed to delete group", error);
@@ -567,7 +622,7 @@ export const OrgGroupDetail = () => {
                 }
               }}
             >
-              Delete
+              {isLinked ? "Unlink" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -141,7 +141,7 @@ const EmailRecipientsField = ({
   onChange: (recipients: TAlertChannelRecipient[]) => void;
   error?: string;
   members: TMemberEmails;
-  projectId: string;
+  projectId?: string;
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
 }) => {
@@ -174,13 +174,17 @@ const EmailRecipientsField = ({
 
   const setEmails = (nextValues: string[]) =>
     onChange([
-      ...nextValues.map((entry) => {
+      ...nextValues.flatMap((entry) => {
         if (PROJECT_PRINCIPALS.includes(entry))
-          return { principalType: entry as AlertPrincipalType, principalId: projectId };
+          return projectId
+            ? [{ principalType: entry as AlertPrincipalType, principalId: projectId }]
+            : [];
         const userId = members.memberIdByEmail.get(entry);
-        return userId
-          ? { principalType: AlertPrincipalType.User, principalId: userId }
-          : { principalType: AlertPrincipalType.Email, principalId: entry };
+        return [
+          userId
+            ? { principalType: AlertPrincipalType.User, principalId: userId }
+            : { principalType: AlertPrincipalType.Email, principalId: entry }
+        ];
       }),
       ...unlistedUsers,
       ...groups
@@ -478,7 +482,7 @@ const ChannelCard = ({
   onInvalid,
   onRemove
 }: TChannelFieldProps & {
-  projectId: string;
+  projectId?: string;
   alertId?: string;
   members: TMemberEmails;
   resource: TChannelResource;
@@ -624,7 +628,7 @@ export const ChannelsStep = ({
   errors: TFieldErrors;
   onChange: (channels: TDraftChannel[]) => void;
   onErrorsChange: (errors: TFieldErrors) => void;
-  projectId: string;
+  projectId?: string;
   alertId?: string;
   members: TMemberEmails;
   hasEnterprise: boolean;

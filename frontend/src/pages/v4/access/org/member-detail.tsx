@@ -54,12 +54,14 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
+import { useCustomRoleGate } from "./custom-role-gate";
 import { BackButton, CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
@@ -89,8 +91,9 @@ const EditMembershipDialog = ({
   const orgId = useOrgId();
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const update = access.useUpdateOrgMembership();
-  const [role, setRole] = useState(orgRoleSlug(roles, membership));
-  const [metadata, setMetadata] = useState<MetadataEntry[]>(
+  const customRoleGate = useCustomRoleGate("organization.user-details-by-id");
+  const [role, setRole] = useState(() => orgRoleSlug(roles, membership));
+  const [metadata, setMetadata] = useState<MetadataEntry[]>(() =>
     membership.metadata.map(({ key, value }) => ({ key, value }))
   );
   const [errors, setErrors] = useState<{ key?: string; value?: string }[]>();
@@ -107,7 +110,7 @@ const EditMembershipDialog = ({
             event.preventDefault();
             const next = metadataErrors(metadata);
             setErrors(next);
-            if (next.some((e) => e.key || e.value)) return;
+            if (next.some((e) => e.key || e.value) || customRoleGate.blocked(role)) return;
             setPending(true);
             try {
               await update.mutateAsync({
@@ -132,7 +135,7 @@ const EditMembershipDialog = ({
                 placeholder="Select role..."
                 value={role}
                 options={roleOptions(roles)}
-                onChange={setRole}
+                onChange={(next) => !customRoleGate.blocked(next) && setRole(next)}
               />
             </Field>
             <MetadataEditor
@@ -152,6 +155,7 @@ const EditMembershipDialog = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {customRoleGate.upgradeGate}
     </Dialog>
   );
 };
@@ -272,6 +276,22 @@ const UserGroupsSection = ({ username }: { username: string }) => {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+};
+
+const MemberAuditLogs = ({ userId }: { userId: string }) => {
+  const orgId = useOrgId();
+  const { permission } = useOrgPermission();
+  const { data: plan } = useV4Adapter("auditLogs").usePlan(orgId);
+  if (
+    !plan?.auditLogs ||
+    !permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member)
+  )
+    return null;
+  return (
+    <Card variant="framed" title="Audit logs">
+      <AuditLogsTab actorId={userId} />
+    </Card>
   );
 };
 
@@ -507,6 +527,7 @@ export const OrgMemberDetail = () => {
               canAdd={!self}
             />
             <UserGroupsSection username={user.username} />
+            <MemberAuditLogs userId={user.id} />
           </div>
         </DetailLayout>
       </Stack>

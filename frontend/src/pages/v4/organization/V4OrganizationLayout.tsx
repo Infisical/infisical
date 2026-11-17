@@ -4,12 +4,13 @@ import { Outlet, useRouteContext } from "@tanstack/react-router";
 import { analytics } from "@app/lib/analytics";
 
 import { V4SessionContext } from "../data/session/contract";
-import { demoSession } from "../data/session/demo";
+import { useDemoSession } from "../data/session/demo";
 import { LiveSessionProvider } from "../data/session/live";
 import { V4Shell } from "../shell/V4Shell";
 
 const SessionProvider = ({ children }: { children: ReactNode }) => {
   const context = useRouteContext({ from: "/v4/organizations/$orgId" });
+  const demoSession = useDemoSession();
   if (context.v4Mode === "demo") {
     return <V4SessionContext value={demoSession}>{children}</V4SessionContext>;
   }

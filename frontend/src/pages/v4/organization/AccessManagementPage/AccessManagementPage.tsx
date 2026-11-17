@@ -20,6 +20,9 @@ import { OrgMembersTab } from "../../access/org/members";
 import { OrgRolesTab } from "../../access/org/roles";
 import { useOrgPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
+import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
+import { LegacyPrivilegeBanner } from "./upgrade-privilege-system";
 
 const tabs = [
   {
@@ -52,6 +55,9 @@ export const AccessManagementPage = () => {
   const navigate = useNavigate({ from: "/v4/organizations/$orgId/access-management" });
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/access-management" });
   const { permission, isPending } = useOrgPermission();
+  const session = useV4Session();
+  const { data: organization } = useV4Adapter("access").useOrganization(session.organization.id);
+  const isSubOrg = session.organization.isSubOrganization;
   const readable: Record<string, boolean> = {
     [OrgAccessControlTabSections.Member]: permission.can(
       OrgPermissionMemberActions.Read,
@@ -77,8 +83,8 @@ export const AccessManagementPage = () => {
     <AccessFrame>
       <Stack gap={24}>
         <PageHeader
-          title="Organization access control"
-          description="Control who can access this organization and what they can do."
+          title={isSubOrg ? "Sub-organization access control" : "Organization access control"}
+          description={`Control who can access this ${isSubOrg ? "sub-" : ""}organization and what they can do.`}
           tabs={
             allowed.length > 0 && (
               <Tabs
@@ -94,6 +100,7 @@ export const AccessManagementPage = () => {
             )
           }
         />
+        {organization && !organization.shouldUseNewPrivilegeSystem && <LegacyPrivilegeBanner />}
         {allowed.length && readable[active.value] ? (
           <active.Body />
         ) : (
