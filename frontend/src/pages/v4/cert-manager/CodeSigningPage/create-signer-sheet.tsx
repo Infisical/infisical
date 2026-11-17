@@ -191,7 +191,7 @@ const CreateSheet = ({
         variant="sheet"
         size="lg"
         title="Create signer"
-        description={<DocumentationLink href={CODE_SIGNING_DOCS.createSigner} subject="Signers" />}
+        badges={<DocumentationLink href={CODE_SIGNING_DOCS.createSigner} subject="Signers" />}
         open
         step={step}
         onStepChange={setStep}
