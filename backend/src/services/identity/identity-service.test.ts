@@ -2,6 +2,10 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
+import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
+
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
 
@@ -44,9 +48,8 @@ const createService = ({
   hasDeleteProtection = false,
   identityName = "ident"
 }: { identityOrgId?: string; hasDeleteProtection?: boolean; identityName?: string } = {}) => {
-  const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
-  const emit = vi.fn().mockResolvedValue(undefined);
+  const removeIdentityFromOrg = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -61,17 +64,17 @@ const createService = ({
       // The real query inner-joins MembershipRole, so a membership always carries at least one role.
       roles: [{ role: "member" }],
       identity: { id: IDENTITY_ID, orgId: identityOrgId, projectId: null, hasDeleteProtection }
-    }),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
-    find: vi.fn().mockResolvedValue([]),
-    delete: vi.fn().mockResolvedValue({ id: "membership-1" })
+    })
   };
+
+  const licenseService = new FakeLicenseService();
 
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
     identityMetadataDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     identityOrgMembershipDAL: {} as never,
     membershipIdentityDAL: membershipIdentityDAL as never,
+    membershipIdentityService: { removeIdentityFromOrg },
     membershipRoleDAL: {} as never,
     identityProjectDAL: { findByIdentityId: vi.fn() } as never,
     permissionService: {
@@ -80,31 +83,50 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
+    organizationsProjectsService: new FakeOrganizationsProjectsService(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
-    additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
-    usageMeteringService: { emit: vi.fn() } as never,
-    alertService: { deleteAlertsForResource, deleteAlertsForDeletedResource } as never,
+    alertService: { deleteAlertsForDeletedResource } as never,
     identityAccessTokenService: {
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),
-      insertOrgMembershipRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
-    } as never,
-    eventEmitter: { emit }
+    } as never
   });
 
-  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource, emit };
+  return { service, identityDAL, deleteAlertsForDeletedResource, removeIdentityFromOrg };
 };
+
+describe("deleteIdentity sub-org removal", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an identity that belongs to another org takes the same path as removing its membership", async () => {
+    const { service, identityDAL, removeIdentityFromOrg } = createService({ identityOrgId: ROOT_ORG_ID });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(removeIdentityFromOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: ORG_ID });
+    expect(identityDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("deleting the identity row leaves the membership service alone", async () => {
+    const { service, removeIdentityFromOrg } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(removeIdentityFromOrg).not.toHaveBeenCalled();
+  });
+});
 
 describe("deleteIdentity alert cleanup", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("deleting the identity row reaps its alerts in every org, in the same transaction", async () => {
-    const { service, identityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource } = createService();
+    const { service, identityDAL, deleteAlertsForDeletedResource } = createService();
 
     await service.deleteIdentity(buildDto());
 
@@ -115,72 +137,16 @@ describe("deleteIdentity alert cleanup", () => {
       { resourceType: RESOURCE_TYPE, resourceId: IDENTITY_ID },
       TX
     );
-    expect(deleteAlertsForResource).not.toHaveBeenCalled();
     // Same tx as the row delete: the alerts come back if the delete rolls back.
     expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
   });
 
-  test("removing an identity that belongs to another org reaps only this org's alerts", async () => {
-    const { service, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource } = createService({
-      identityOrgId: ROOT_ORG_ID
-    });
-
-    await service.deleteIdentity(buildDto());
-
-    // The identity survives in its own org, so its alerts elsewhere must survive with it.
-    expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
-    expect(deleteAlertsForResource).toHaveBeenCalledTimes(1);
-    expect(deleteAlertsForResource).toHaveBeenCalledWith(
-      { orgId: ORG_ID, resourceType: RESOURCE_TYPE, resourceId: IDENTITY_ID },
-      TX
-    );
-    expect(membershipIdentityDAL.delete).toHaveBeenCalledWith({ actorIdentityId: IDENTITY_ID, scopeOrgId: ORG_ID }, TX);
-    // Reaped at the end of the transaction: the write locks it takes on the org-wide alerts table
-    // must not be held across the membership work that precedes it.
-    expect(deleteAlertsForResource.mock.invocationCallOrder[0]).toBeGreaterThan(
-      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
-    );
-  });
-
   test("delete protection stops the delete before anything is reaped", async () => {
-    const { service, deleteAlertsForResource, deleteAlertsForDeletedResource } = createService({
-      hasDeleteProtection: true
-    });
+    const { service, deleteAlertsForDeletedResource } = createService({ hasDeleteProtection: true });
 
     await expect(service.deleteIdentity(buildDto())).rejects.toThrow("Identity has delete protection");
 
     expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
-    expect(deleteAlertsForResource).not.toHaveBeenCalled();
-  });
-});
-
-describe("deleteIdentity org access reconcile", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  test("removing an identity from an org it was invited into emits the removal in the same transaction", async () => {
-    const { service, emit } = createService({ identityOrgId: ROOT_ORG_ID });
-
-    await service.deleteIdentity(buildDto());
-
-    expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith(
-      [
-        {
-          id: expect.any(String) as string,
-          type: "com.infisical.organization.membership.removed.v1",
-          data: { orgId: ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
-        }
-      ],
-      TX
-    );
-  });
-
-  test("deleting the identity row emits nothing, every membership goes with it", async () => {
-    const { service, emit } = createService();
-
-    await service.deleteIdentity(buildDto());
-
-    expect(emit).not.toHaveBeenCalled();
   });
 });
 

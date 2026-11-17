@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -11,7 +10,7 @@ import {
   OrganizationActionScope,
   TIdentityJwtAuthsUpdate
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -31,7 +30,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -71,7 +70,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -142,26 +141,14 @@ export const identityJwtAuthServiceFactory = ({
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+        const decryptedJwksCaCert = orgDataKeyDecryptor({
+          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+        }).toString();
 
-        let client: JwksClient;
-        if (identityJwtAuth.jwksUrl.includes("https:")) {
-          const decryptedJwksCaCert = orgDataKeyDecryptor({
-            cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-          }).toString();
-
-          const requestAgent = decryptedJwksCaCert
-            ? new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: true })
-            : undefined;
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl,
-            requestAgent
-          });
-        } else {
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl
-          });
-        }
+        const client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl,
+          fetcher: await buildSsrfSafeJwksFetcher(identityJwtAuth.jwksUrl, { ca: decryptedJwksCaCert || undefined })
+        });
 
         const { kid } = decodedToken.header as { kid: string };
         let jwtSigningKey;
@@ -513,7 +500,7 @@ export const identityJwtAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -648,7 +635,7 @@ export const identityJwtAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

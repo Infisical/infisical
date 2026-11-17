@@ -5,6 +5,10 @@
       "description": "Frontend design system (v3): color tokens, typography, component inventory (Button, Card, Table, Sheet, Dialog, Badge, etc.), layout principles, voice/tone for UI copy. Reference for all frontend/UI changes."
     },
     {
+      "path": "frontend/AGENTS.md",
+      "description": "Frontend conventions that complement DESIGN.md: always use components/v3; navigable table rows, cards, and command items are real links (linked + RowLink), never onClick navigation; Dialog/Sheet/AlertDialog own dismissal, focus return, and pending state, with actions in DialogFooter/SheetFooter; mutation errors are toasted globally, so no second error createNotification; useDiscardChangesGuard instead of window.confirm; one PageTitle per screen; @deprecated lifecycle for shared components; react-hook-form with Zod. Reference for all frontend/ changes."
+    },
+    {
       "path": "docs/STYLE_GUIDE.md",
       "description": "Documentation style guide: writing for users (not implementers), cross-referencing, Mintlify components (Steps, Tabs, Cards, Accordions, callouts, diagrams), page structure by type (guides, concepts, overviews, references), FAQs, prerequisites, terminology consistency. Reference for all docs/ changes."
     },

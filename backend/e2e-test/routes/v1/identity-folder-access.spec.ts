@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -8,6 +9,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeIdentitiesFromGroup } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -190,10 +192,7 @@ describe("Identity folder access CRUD", () => {
     let directIdentityId: string;
     let firstGroup: { id: string; name: string; slug: string; orgId: string };
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
-    let removalDeps: Omit<
-      Parameters<typeof removeIdentitiesFromGroup>[0],
-      "group" | "identityIds" | "usageMeteringService"
-    >;
+    let removalDeps: Omit<Parameters<typeof removeIdentitiesFromGroup>[0], "group" | "identityIds">;
 
     const createProjectGroup = async () => {
       const slug = `identity-folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
@@ -221,10 +220,13 @@ describe("Identity folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
         eventEmitter: { emit: async () => {} },
         membershipRoleDAL: membershipRoleDALFactory(testDb),

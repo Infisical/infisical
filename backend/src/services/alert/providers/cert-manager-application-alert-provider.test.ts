@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -90,9 +91,9 @@ const buildProvider = (opts?: {
   const permissionService = {
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
-  const licenseService = {
-    getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
-  };
+  const licenseService = new FakeLicenseService().setPlan("org-1", {
+    pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
+  });
   const provider = certManagerApplicationAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
     permissionService,
@@ -209,6 +210,26 @@ describe("cert manager application alert provider", () => {
       applicationId: "app-1",
       applicationName: "payments-api"
     });
+  });
+
+  test("buildPayload links each certificate to its own page and keeps the application as the overview link", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(
+      alertContext(),
+      [sampleCertificate(), sampleCertificate({ id: "cert-2" })],
+      "https://app.infisical.com/view"
+    );
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
+    expect(payload.items.map((item) => item.url)).toEqual([
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1",
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-2"
+    ]);
+  });
+
+  test("buildPayload keeps the application as the overview link even for one certificate", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
   });
 
   test("buildPayload names a certificate without a common name by its first SAN, then its serial", async () => {

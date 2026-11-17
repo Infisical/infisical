@@ -226,13 +226,3 @@ func getIdentity(t *testing.T, tn *harness.Tenant, identityID uuid.UUID) *api.Ge
 	require.NotNilf(t, res.JSON200, "reading identity returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res
 }
-
-// linkIdentity gives a root identity a membership in a sub-organization, as the
-// sub-organization's admin.
-func linkIdentity(t *testing.T, subAdmin *harness.Principal, identityID uuid.UUID, role string) {
-	t.Helper()
-	res, err := subAdmin.API.CreateOrganizationIdentityMembershipWithBodyWithResponse(t.Context(),
-		identityID.String(), "application/json", jsonBody(t, permanentRoles(role)))
-	require.NoError(t, err)
-	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-}

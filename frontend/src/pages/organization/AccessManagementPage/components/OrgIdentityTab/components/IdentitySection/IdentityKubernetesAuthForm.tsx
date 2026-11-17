@@ -433,12 +433,14 @@ export const IdentityKubernetesAuthForm = ({
     };
 
     if (data) {
-      // a blank field can only mean "clear" when the stored JWT was readable and
-      // prefilled; template-sourced JWTs read back as "" so blank must keep them, and
-      // removing one takes the explicit checkbox
-      let tokenReviewerJwtUpdate: string | null | undefined =
-        tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined);
-      if (removeTemplateSourcedJwt) {
+      // the stored JWT reads back as "", so blank keeps it; removing it takes the checkbox.
+      // gateway mode never sends it, so it is dropped there instead of blocking the connection change
+      let tokenReviewerJwtUpdate: string | null | undefined = tokenReviewerJwt || undefined;
+      if (
+        removeTemplateSourcedJwt ||
+        (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+          data.hasTokenReviewerJwt)
+      ) {
         tokenReviewerJwtUpdate = null;
       }
       await updateMutateAsync(
@@ -477,14 +479,16 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const isGatewayMode = tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway;
   const isRemovingTemplateJwt = watch("removeTemplateSourcedJwt");
   const hasTemplateSourcedJwt = Boolean(data?.isTokenReviewerJwtTemplateSourced);
+  const hasStoredJwt = hasTemplateSourcedJwt || Boolean(data?.hasTokenReviewerJwt);
   const templateDisabledClass = scope === "template" ? "opacity-55" : "";
 
   let tokenReviewerJwtPlaceholder = "eyJhbGciOiJSUzI1NiIs...";
   if (scope === "template") {
     tokenReviewerJwtPlaceholder = "Defined in template";
-  } else if (hasTemplateSourcedJwt) {
+  } else if (hasStoredJwt) {
     tokenReviewerJwtPlaceholder = "Leave blank to keep the stored JWT";
   }
 
@@ -792,7 +796,12 @@ export const IdentityKubernetesAuthForm = ({
                 )}
               />
             )}
-            {scope === "custom" && hasTemplateSourcedJwt && (
+            {scope === "custom" && hasStoredJwt && isGatewayMode && (
+              <FieldDescription>
+                Gateway mode does not use the stored token reviewer JWT, so it is removed on save.
+              </FieldDescription>
+            )}
+            {scope === "custom" && hasStoredJwt && !isGatewayMode && (
               <Controller
                 control={control}
                 name="removeTemplateSourcedJwt"
@@ -810,15 +819,16 @@ export const IdentityKubernetesAuthForm = ({
                     />
                     <FieldContent>
                       <FieldLabel htmlFor="removeTemplateSourcedJwt" className="cursor-pointer">
-                        Remove template-sourced token reviewer JWT
+                        {hasTemplateSourcedJwt
+                          ? "Remove template-sourced token reviewer JWT"
+                          : "Remove stored token reviewer JWT"}
                       </FieldLabel>
                       <FieldDescription>
-                        This identity stores a write-only token reviewer JWT copied from its auth
-                        template. Its connection settings cannot be changed while the JWT is kept.
-                        Check to remove it on save
-                        {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-                          ? ", or enter a new JWT above to replace it."
-                          : "."}
+                        {hasTemplateSourcedJwt
+                          ? "This identity stores a write-only token reviewer JWT copied from its auth template."
+                          : "This identity stores a write-only token reviewer JWT."}{" "}
+                        Its connection settings cannot be changed while the JWT is kept. Check to
+                        remove it on save, or enter a new JWT above to replace it.
                       </FieldDescription>
                     </FieldContent>
                   </Field>

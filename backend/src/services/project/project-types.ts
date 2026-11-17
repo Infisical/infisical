@@ -118,6 +118,8 @@ export type TListDeletedProjectsDTO = {
 export type TListProjectsDTO = {
   includeRoles: boolean;
   type?: ProjectType;
+  limit?: number;
+  offset?: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {

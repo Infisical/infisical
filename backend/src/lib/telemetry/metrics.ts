@@ -435,7 +435,7 @@ export const secretCacheAccessCounter = infisicalCoreMeter.createCounter("infisi
 });
 
 export const secretCacheEntryBytesHistogram = infisicalCoreMeter.createHistogram("infisical.secret.cache.entry.bytes", {
-  description: "Encrypted secret cache entry size computed at write time",
+  description: "Compressed and encrypted secret cache entry size computed at write time",
   unit: "By"
 });
 

@@ -1,6 +1,7 @@
 import { linkOptions } from "@tanstack/react-router";
 
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { canSetUpAgentVault } from "@app/helpers/agentVaultPermissions";
 import { useLocalStorageState } from "@app/hooks";
 import {
   AgentVaultSessionScope,
@@ -8,14 +9,13 @@ import {
   useListAgentVaultProxies,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const DISMISSED_STORAGE_KEY = "agentVaultSetupChecklistDismissed";
 
 // Stable identity: useLocalStorageState re-runs its seeding effect whenever this changes.
 const NOTHING_DISMISSED: Record<string, boolean | undefined> = {};
 
-// The API allows at most 10 proxies per org (AGENT_VAULT_MAX_PROXIES_PER_ORG), so one page holds them all.
+// The API allows at most 10 proxies per project, so one page holds them all.
 const PROXY_PAGE_SIZE = 20;
 
 const POLL_INTERVAL_MS = 30_000;
@@ -27,35 +27,39 @@ export enum AgentVaultSetupStep {
   Session = "session"
 }
 
-// Only admins can set Agent Vault up, and listing every session is admin-only on the server, so none
-// of these queries runs for a member.
+// None of these queries runs for someone who can't set Agent Vault up: listing everyone's sessions takes Read Any on the
+// server, and the rest only feed the checklist.
 export const useAgentVaultSetupProgress = () => {
-  const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { projectId } = useProject();
+  const { permission } = useProjectPermission();
+  const canSetUp = canSetUpAgentVault(permission);
 
   // These two poll so a proxy coming online or a session created elsewhere ticks its step off, and stop
   // once that has happened: the sidebar mounts this hook on every Agent Vault page.
   const proxies = useListAgentVaultProxies(
+    projectId,
     { limit: PROXY_PAGE_SIZE },
     {
-      enabled: isAdmin,
+      enabled: canSetUp,
       refetchInterval: (query) =>
         query.state.data?.proxies.some((proxy) => proxy.heartbeat) ? false : POLL_INTERVAL_MS
     }
   );
   const newestBundles = useListAgentVaultAccessBundles(
+    projectId,
     { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const fullestBundles = useListAgentVaultAccessBundles(
+    projectId,
     { orderBy: "serviceCount", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const sessions = useListAgentVaultSessions(
+    projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
     {
-      enabled: isAdmin,
+      enabled: canSetUp,
       refetchInterval: (query) =>
         (query.state.data?.totalCount ?? 0) > 0 ? false : POLL_INTERVAL_MS
     }
@@ -63,7 +67,7 @@ export const useAgentVaultSetupProgress = () => {
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
   const [dismissed, setDismissed] = useLocalStorageState(DISMISSED_STORAGE_KEY, NOTHING_DISMISSED);
-  const isDismissed = Boolean(dismissed?.[currentOrg.id]);
+  const isDismissed = Boolean(dismissed?.[projectId]);
 
   const isLoaded = queries.every((query) => Boolean(query.data));
   // A query with no data left after its retries would otherwise hold every caller waiting forever.
@@ -72,7 +76,6 @@ export const useAgentVaultSetupProgress = () => {
   const hasConnectedProxy = Boolean(proxies.data?.proxies.some((proxy) => proxy.heartbeat));
   const newestBundle = newestBundles.data?.accessBundles[0];
   const hasService = (fullestBundles.data?.accessBundles[0]?.serviceCount ?? 0) > 0;
-  const isSessionCountLoaded = Boolean(sessions.data);
   const hasSession = (sessions.data?.totalCount ?? 0) > 0;
   const completedCount = [hasConnectedProxy, Boolean(newestBundle), hasService, hasSession].filter(
     Boolean
@@ -84,21 +87,20 @@ export const useAgentVaultSetupProgress = () => {
   else if (!hasService) nextStep = AgentVaultSetupStep.Service;
   else if (!hasSession) nextStep = AgentVaultSetupStep.Session;
 
-  const isIncomplete = isAdmin && isLoaded && completedCount < 4;
+  const isIncomplete = canSetUp && isLoaded && completedCount < 4;
 
   return {
-    isAdmin,
+    canSetUp,
     isLoaded,
     isFailed,
     isVisible: isIncomplete && !isDismissed,
     canRestore: isIncomplete && isDismissed,
-    dismiss: () => setDismissed((current) => ({ ...current, [currentOrg.id]: true })),
-    restore: () => setDismissed((current) => ({ ...current, [currentOrg.id]: undefined })),
+    dismiss: () => setDismissed((current) => ({ ...current, [projectId]: true })),
+    restore: () => setDismissed((current) => ({ ...current, [projectId]: undefined })),
     hasProxy,
     hasConnectedProxy,
     newestBundle,
     hasService,
-    isSessionCountLoaded,
     hasSession,
     completedCount,
     nextStep: isLoaded ? nextStep : null
@@ -112,18 +114,28 @@ export type TAgentVaultSetupProgress = ReturnType<typeof useAgentVaultSetupProgr
 export const getAgentVaultSetupStepLink = (
   step: AgentVaultSetupStep,
   orgId: string,
+  projectId: string,
   newestBundleId?: string
 ) => {
   if (step === AgentVaultSetupStep.Proxy)
-    return linkOptions({ to: "/organizations/$orgId/agent-vault/proxies", params: { orgId } });
+    return linkOptions({
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/proxies",
+      params: { orgId, projectId }
+    });
   if (step === AgentVaultSetupStep.Service && newestBundleId)
     return linkOptions({
-      to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-      params: { orgId, accessBundleId: newestBundleId }
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+      params: { orgId, projectId, accessBundleId: newestBundleId }
     });
   if (step === AgentVaultSetupStep.Session)
-    return linkOptions({ to: "/organizations/$orgId/agent-vault/sessions", params: { orgId } });
-  return linkOptions({ to: "/organizations/$orgId/agent-vault/access-bundles", params: { orgId } });
+    return linkOptions({
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/sessions",
+      params: { orgId, projectId }
+    });
+  return linkOptions({
+    to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles",
+    params: { orgId, projectId }
+  });
 };
 
 // A created-but-unconnected proxy has nothing left to create, so its step only opens the page.

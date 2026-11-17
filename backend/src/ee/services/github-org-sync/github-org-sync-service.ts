@@ -4,8 +4,14 @@ import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
 import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
+import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -19,8 +25,6 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -32,8 +36,8 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
@@ -380,11 +384,13 @@ type TGithubOrgSyncServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find" | "findGroupOrgIds">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
@@ -405,11 +411,11 @@ export const githubOrgSyncServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
+  usageMeteringService,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
   membershipGroupDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   auditLogService,
   orgDAL,
@@ -418,9 +424,32 @@ export const githubOrgSyncServiceFactory = ({
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+
+  // Run after the users' group rows are deleted in `tx`, so the clear keeps only the values of users who still hold
+  // the bundle another way.
+  const clearPersonalValuesForGroupExit = async (
+    { groupIds, userIds }: { groupIds: string[]; userIds: string[] },
+    tx: Knex
+  ) => {
+    if (!groupIds.length || !userIds.length) return;
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      { scope: AccessScope.Project, $in: { actorGroupId: groupIds } },
+      { tx }
+    );
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      {
+        projectIds: [...new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId as string))],
+        userIds
+      },
+      tx
+    );
+  };
 
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -439,7 +468,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to create github organization team sync due to plan restriction. Upgrade plan to create github organization sync."
@@ -498,7 +527,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to update github organization team sync due to plan restriction. Upgrade plan to update github organization sync."
@@ -564,7 +593,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to delete github organization team sync due to plan restriction. Upgrade plan to delete github organization sync."
@@ -785,6 +814,10 @@ export const githubOrgSyncServiceFactory = ({
             { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
             tx
           );
+          await clearPersonalValuesForGroupExit(
+            { groupIds: removeFromTeams.map((el) => el.groupId), userIds: [userId] },
+            tx
+          );
 
           await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [userId] }, tx);
 
@@ -821,9 +854,8 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     }
   };
 
@@ -840,7 +872,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to validate GitHub token due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -930,7 +962,7 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to sync all GitHub teams due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -1197,6 +1229,7 @@ export const githubOrgSyncServiceFactory = ({
             const removedUserIds = membershipsToRemove
               .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
               .filter(Boolean) as string[];
+            await clearPersonalValuesForGroupExit({ groupIds: [team.id], userIds: removedUserIds }, tx);
             await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
             await emitGroupMembershipRemoved(
               eventEmitter,
@@ -1279,9 +1312,8 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
-      usageMeteringService.emit(orgPermission.orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgPermission.orgId, Meter.PamIdentities);
     }
 
     if (unmatchedGithubUsers.size) {

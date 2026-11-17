@@ -95,6 +95,7 @@ import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import { BlockedActionTooltip } from "./BlockedActionTooltip";
 import {
+  canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
@@ -957,7 +958,7 @@ export const CertificatesTable = ({
                     !isInventoryView &&
                     !isDeleted &&
                     certificate.profileId &&
-                    certificate.hasPrivateKey !== false &&
+                    canRenewOnExistingKeyPair(certificate) &&
                     !certificate.renewedByCertificateId &&
                     !isRevoked &&
                     !isExpired &&
@@ -1197,7 +1198,7 @@ export const CertificatesTable = ({
                                   !isInventoryView &&
                                   !isDeleted &&
                                   certificate.profileId &&
-                                  certificate.hasPrivateKey !== false &&
+                                  canRenewOnExistingKeyPair(certificate) &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired &&
@@ -1255,7 +1256,7 @@ export const CertificatesTable = ({
                                   !isInventoryView &&
                                   !isDeleted &&
                                   certificate.profileId &&
-                                  certificate.hasPrivateKey !== false &&
+                                  canRenewOnExistingKeyPair(certificate) &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired &&

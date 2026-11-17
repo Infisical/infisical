@@ -10,7 +10,7 @@ If you have a custom agent harness that you start from code rather than a CLI, y
 
 ## Prerequisites
 
-- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key your agent uses (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - The [Infisical CLI](/cli/install) installed on the machine that will run the proxy
 
@@ -20,11 +20,11 @@ If you have a custom agent harness that you start from code rather than a CLI, y
 
 ### Create a proxy
 
-First, create a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API or MCP server.
+First, create a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API or MCP server. An agent can only use a proxy in the same project as its session.
 
 <Steps>
   <Step>
-    Go to **Proxies** and select **Create Proxy**.
+    In the Agent Vault project that holds your access bundle, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
     Give the proxy a **Name**, then select **Create**.
@@ -45,7 +45,7 @@ Finally, create a session. The session token is the only credential your agent h
 
 <Steps>
   <Step>
-    Go to **Sessions** and select **Create Session**.
+    In the same project, go to **Sessions** and select **Create Session**.
   </Step>
   <Step>
     Pick your access bundle, set a duration under **Expires**, then select **Create Session**.
@@ -73,7 +73,7 @@ The certificate travels over plain HTTP, so check that it came from your proxy b
 openssl x509 -in ca.pem -noout -fingerprint -sha256
 ```
 
-Compare the colon-separated value with the proxy's fingerprint on the **Proxies** page in Agent Vault. The **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, don't use the file.
+Compare the colon-separated value with the proxy's fingerprint on the **Proxies** page in your Agent Vault project. The **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, don't use the file.
 
 Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token), download the certificate again.
 

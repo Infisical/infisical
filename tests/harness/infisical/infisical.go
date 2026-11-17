@@ -52,6 +52,7 @@ var OAuthClients = map[string]string{
 type module struct {
 	image    Image
 	env      map[string]string
+	files    []infra.File
 	runModes string
 }
 
@@ -62,6 +63,10 @@ func WithImage(img Image) Option { return func(m *module) { m.image = img } }
 
 // WithEnv overrides or adds an environment variable.
 func WithEnv(k, v string) Option { return func(m *module) { m.env[k] = v } }
+
+func WithFile(src, dst string) Option {
+	return func(m *module) { m.files = append(m.files, infra.File{Src: src, Dst: dst}) }
+}
 
 // WithRunModes sets INFISICAL_RUN_MODES. A pod that does not include "api" serves
 // /api/status and no product routes, which is a thing worth asserting.
@@ -111,6 +116,24 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// https although the server listens on plain http: nothing dials SITE_URL, and a
 		// delegated approval system refuses a callback URL that is not https.
 		"SITE_URL": fmt.Sprintf("https://%s:%d", self, port),
+		// The backend signs with ML-DSA, the post-quantum algorithm KMS keys offer, by running
+		// an `openssl` binary: PQC_OPENSSL_BIN_PATH, else /opt/openssl-pqc/bin/openssl. The
+		// release images (Dockerfile.standalone-infisical, the FIPS image) build an OpenSSL
+		// 3.5 into that path; backend/Dockerfile, which the harness builds, does not, so every
+		// ML-DSA call would fail with a 500. The image's own Debian OpenSSL is also 3.5 and
+		// supports ML-DSA, so the suites run the same backend code against that build instead
+		// of the release's.
+		"PQC_OPENSSL_BIN_PATH": "/usr/bin/openssl",
+		// bcrypt cost for passwords, email and invite codes, and client secrets. Every
+		// tenant and user the harness creates pays several hashes and compares, and at
+		// the default cost they saturate the server's CPU and the libuv pool its other
+		// crypto shares. 4 is bcrypt's minimum; nothing a test asserts depends on it.
+		"SALT_ROUNDS": "4",
+		// At info the instance logs several lines per request, mostly plan lookups. Under
+		// a full run that was hundreds of lines a second, serialized by the server and
+		// again by Docker's log driver, for nothing a failing test reads. Warnings and
+		// errors still reach the container log.
+		"PINO_LOG_LEVEL": "warn",
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes
@@ -163,7 +186,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Image: m.image.Ref,
 		Env:   env,
 		Ports: []int{port},
-		Files: []infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}},
+		Files: append([]infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}}, m.files...),
 		DNS:   []string{fn.Resolver()},
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and

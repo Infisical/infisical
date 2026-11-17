@@ -10,6 +10,7 @@ import {
   OrgPermissionProjectActions
 } from "@app/context/OrgPermissionContext/types";
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
+import { isAgentVaultProjectPath } from "@app/helpers/project";
 import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { usePopUp } from "@app/hooks";
 import { useGetUserProjects, useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
@@ -18,7 +19,9 @@ import {
   fetchCertManagerInstanceState
 } from "@app/hooks/api/certManagerInstance";
 import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
+import { NotFoundPage } from "@app/pages/public/NotFoundPage/NotFoundPage";
 
 import { ErrorPageFrame, useErrorPageTimestamp } from "./ErrorPageFrame";
 
@@ -31,9 +34,6 @@ type ProjectAccessErrorProps = {
 const getPamOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
 
-const getAgentVaultOrgIdFromPath = () =>
-  window.location.pathname.match(/\/organizations\/([^/]+)\/agent-vault(\/|$)/)?.[1];
-
 const getCertManagerOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/cert-manager(\/|$)/)?.[1];
 
@@ -44,7 +44,6 @@ const getSecretScanningOrgIdFromPath = () =>
 // (ProjectSelect hides itself for them), so the copy names the product instead of "this project".
 const PRODUCTS = [
   { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
-  { pattern: /\/organizations\/[^/]+\/agent-vault(\/|$)/, name: "Agent Vault" },
   { pattern: /\/organizations\/[^/]+\/cert-manager(\/|$)/, name: "Certificate Manager" },
   { pattern: /\/organizations\/[^/]+\/secret-scanning(\/|$)/, name: "Secret Scanning" }
 ];
@@ -70,14 +69,9 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const productName = getProductNameFromPath();
   const needsPamFallback = !projectIdProp && !routeProjectId;
   const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
-  const agentVaultOrgId = needsPamFallback && !pamOrgId ? getAgentVaultOrgIdFromPath() : undefined;
-  const orgScopedOrgId = pamOrgId ?? agentVaultOrgId;
-  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(
-    orgScopedOrgId ?? "",
-    {
-      enabled: Boolean(orgScopedOrgId)
-    }
-  );
+  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(pamOrgId ?? "", {
+    enabled: Boolean(pamOrgId)
+  });
 
   // Certificate Manager resolves its project the same way its layout does, which is what failed.
   const certManagerOrgId = needsPamFallback ? getCertManagerOrgIdFromPath() : undefined;
@@ -112,11 +106,10 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
         })
       : null;
 
-  const orgScopedProjectId = agentVaultOrgId ? pamOrg?.agentVaultProjectId : pamOrg?.pamProjectId;
   const projectId =
     projectIdProp ??
     routeProjectId ??
-    orgScopedProjectId ??
+    pamOrg?.pamProjectId ??
     certManagerProjectId ??
     secretScanningProjectId ??
     undefined;
@@ -132,7 +125,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
 
   // A disabled query reports isPending forever, so only an enabled query counts as in-flight
   const isResolvingProjectId =
-    (Boolean(orgScopedOrgId) && isPamOrgPending) ||
+    (Boolean(pamOrgId) && isPamOrgPending) ||
     (Boolean(certManagerOrgId) && (isCertManagerInstancePending || isMemberProjectsPending)) ||
     (Boolean(secretScanningOrgId) && (isSecretScanningInstancePending || isMemberProjectsPending));
   const isProjectResolving = isResolvingProjectId || (Boolean(projectId) && isProjectSearchPending);
@@ -197,6 +190,15 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     .filter(Boolean)
     .join("\n");
 
+  // An Agent Vault URL holding another product's project id: there is nothing to join here.
+  if (
+    project &&
+    project.type !== ProjectType.AgentVault &&
+    isAgentVaultProjectPath(window.location.pathname)
+  ) {
+    return <NotFoundPage />;
+  }
+
   return (
     <ErrorPageFrame
       pageTitle="Access Restricted"
@@ -230,7 +232,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
           {canJoinAsAdmin && (
             <Button
               variant="project"
-              isPending={isResolvingProjectId || orgAdminAccessProject.isPending}
+              isPending={isProjectResolving || orgAdminAccessProject.isPending}
               isDisabled={isJoinUnavailable}
               onClick={() => handleAccessProject()}
             >

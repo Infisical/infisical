@@ -43,6 +43,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useGetSecretVersion, useRedactSecretValue, useUpdateSecretV3 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchSecretVersionValue } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretVersions } from "@app/hooks/api/types";
 
@@ -175,7 +176,8 @@ function VersionItem({
 
   const handleRestore = async () => {
     // For redacted versions, restore with empty string
-    const value = version.isRedacted ? "" : await handleFetchSecretValue();
+    const value = version.isRedacted ? "" : await handleFetchSecretValue().catch(() => null);
+    if (value === null) return;
 
     const result = await updateSecret({
       projectId: currentProject.id,
@@ -184,7 +186,11 @@ function VersionItem({
       secretKey,
       secretValue: value,
       type: SecretType.Shared
+    }).catch((error: unknown) => {
+      showSecretWriteErrors([{ error }]);
+      return undefined;
     });
+    if (!result) return;
 
     if ("approval" in result) {
       createNotification({

@@ -35,9 +35,13 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        actorContext(req),
+        req.params.sessionId
+      );
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.listSessionLogs({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
         cursor: req.query.cursor,
@@ -63,9 +67,13 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        actorContext(req),
+        req.params.sessionId
+      );
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.tailSessionLogs({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
         cursor: req.query.cursor

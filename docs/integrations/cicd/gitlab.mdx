@@ -38,7 +38,7 @@ description: "Fetch secrets from Infisical in GitLab CI/CD pipelines."
                 - apt update && apt install -y curl
                 - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
                 - apt-get update && apt-get install -y infisical
-                - infisical sm run -- npm run build
+                - infisical secrets-manager run -- npm run build
             ```
           </Step>
         </Steps>

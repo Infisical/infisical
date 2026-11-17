@@ -1,25 +1,7 @@
-import { useEffect, useState } from "react";
-import { CheckIcon, LoaderCircleIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import { CheckIcon, LoaderCircleIcon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Alert,
-  AlertDescription,
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  AlertTitle,
-  Button,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input
-} from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle, ConfirmationAlertDialog } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   useDeleteAccessApprovalPolicy,
@@ -47,8 +29,6 @@ export const RemoveApprovalPolicyModal = ({
 
   const { currentProject } = useProject();
 
-  const [inputData, setInputData] = useState("");
-  const isConfirmed = inputData === "remove";
   const isDeleting = deleteSecretApprovalPolicy.isPending || deleteAccessApprovalPolicy.isPending;
 
   const deleteSecretApprovalData = useGetSecretApprovalRequestCount({
@@ -79,12 +59,8 @@ export const RemoveApprovalPolicyModal = ({
 
   const hasOpenRequests = (openCount ?? 0) > 0;
 
-  useEffect(() => {
-    setInputData("");
-  }, [isOpen]);
-
   const handleDeletePolicy = async () => {
-    if (!isConfirmed || isDeleting || isCheckingRequests) return;
+    if (isCheckingRequests) return;
 
     if (policyType === PolicyType.ChangePolicy) {
       await deleteSecretApprovalPolicy.mutateAsync({
@@ -105,67 +81,39 @@ export const RemoveApprovalPolicyModal = ({
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <Trash2Icon />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Do you want to remove this policy?</AlertDialogTitle>
-          <AlertDialogDescription>Removing this policy cannot be undone.</AlertDialogDescription>
-        </AlertDialogHeader>
-        {isCheckingRequests ? (
-          <div className="flex w-full items-center gap-2 p-2">
-            <LoaderCircleIcon className="size-4 animate-spin text-muted" />
-            <span className="text-sm text-muted">Checking for open requests...</span>
-          </div>
-        ) : (
-          <Alert variant={hasOpenRequests ? "warning" : "success"}>
-            {hasOpenRequests ? <TriangleAlertIcon /> : <CheckIcon />}
-            <AlertTitle>
-              {hasOpenRequests
-                ? `This policy has ${openCount} open request${(openCount ?? 0) > 1 ? "s" : ""}`
-                : "This policy has no open requests"}
-            </AlertTitle>
-            <AlertDescription>
-              {hasOpenRequests
-                ? "Removing this policy will close all open requests."
-                : "This policy is safe to remove."}
-            </AlertDescription>
-          </Alert>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleDeletePolicy();
-          }}
-        >
-          <Field>
-            <FieldLabel>
-              Type <span className="font-bold">remove</span> to confirm
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                placeholder="Type remove here"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-        </form>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button
-            variant="danger"
-            onClick={handleDeletePolicy}
-            isPending={isDeleting}
-            isDisabled={!isConfirmed || isDeleting || isCheckingRequests}
-          >
-            Remove
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmationAlertDialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title="Remove this policy?"
+      description={
+        <div className="flex flex-col gap-3">
+          <p>Removing this policy cannot be undone.</p>
+          {isCheckingRequests ? (
+            <div className="flex w-full items-center gap-2">
+              <LoaderCircleIcon className="size-4 animate-spin text-muted" />
+              <span className="text-sm text-muted">Checking for open requests...</span>
+            </div>
+          ) : (
+            <Alert variant={hasOpenRequests ? "warning" : "success"}>
+              {hasOpenRequests ? <TriangleAlertIcon /> : <CheckIcon />}
+              <AlertTitle>
+                {hasOpenRequests
+                  ? `This policy has ${openCount} open request${(openCount ?? 0) > 1 ? "s" : ""}`
+                  : "This policy has no open requests"}
+              </AlertTitle>
+              <AlertDescription>
+                {hasOpenRequests
+                  ? "Removing this policy will close all open requests."
+                  : "This policy is safe to remove."}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      }
+      confirmKey="remove"
+      confirmLabel="Remove"
+      isPending={isDeleting}
+      onConfirm={handleDeletePolicy}
+    />
   );
 };

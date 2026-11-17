@@ -13,6 +13,7 @@ import { AwsElasticLoadBalancerSyncOptions } from "./AwsElasticLoadBalancerSyncO
 import { AwsSecretsManagerSyncOptions } from "./AwsSecretsManagerSyncOptions";
 import { AzureKeyVaultSyncOptions } from "./AzureKeyVaultSyncOptions";
 import { ChefSyncOptions } from "./ChefSyncOptions";
+import { CloudflareCustomCertificateSyncOptions } from "./CloudflareCustomCertificateSyncOptions";
 import { F5BigIpSyncOptions } from "./F5BigIpSyncOptions";
 import { GcpCertificateManagerSyncOptions } from "./GcpCertificateManagerSyncOptions";
 import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
@@ -40,6 +41,8 @@ const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolea
       return <AwsSecretsManagerSyncOptions />;
     case PkiSync.Chef:
       return <ChefSyncOptions />;
+    case PkiSync.CloudflareCustomCertificate:
+      return <CloudflareCustomCertificateSyncOptions />;
     case PkiSync.GcpCertificateManager:
       return <GcpCertificateManagerSyncOptions />;
     case PkiSync.NetScaler:

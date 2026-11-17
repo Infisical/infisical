@@ -1,7 +1,7 @@
 import { AccessScope } from "@app/db/schemas";
+import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { auditRevokedProjectAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -21,10 +21,10 @@ type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find" | "countActiveAdmins">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  usageMeteringService: TUsageMeteringService;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -39,7 +39,7 @@ export const deleteOrgMembershipsFn = async ({
   orgId,
   orgDAL,
   userAliasDAL,
-  licenseService,
+  usageMeteringService,
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
@@ -78,7 +78,6 @@ export const deleteOrgMembershipsFn = async ({
     }
 
     if (!membershipUserIds.length) {
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return orgMemberships;
     }
 
@@ -108,27 +107,9 @@ export const deleteOrgMembershipsFn = async ({
       );
     }
 
-    const orgGroups = await membershipUserDAL.find(
-      {
-        $in: {
-          scopeOrgId: orgIds
-        },
-        $notNull: ["actorGroupId"]
-      },
-      { tx }
-    );
-
-    const groupIds = orgGroups.filter((el) => el.actorGroupId).map((el) => el.actorGroupId as string);
-
-    await userGroupMembershipDAL.delete(
-      {
-        $in: {
-          userId: membershipUserIds,
-          groupId: groupIds
-        }
-      },
-      tx
-    );
+    // Only groups these orgs own: a root group linked into a sub-org belongs to the root org, so
+    // removal from the sub-org must not take the user out of it.
+    await userGroupMembershipDAL.deleteByUserIdsInGroupsOwnedByOrgs({ userIds: membershipUserIds, orgIds }, tx);
 
     ({ revoked, sendPamCancellations } = await projectAccessRevokeService.revokeActorsInOrgs(
       { orgIds, userIds: membershipUserIds },
@@ -141,10 +122,11 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return orgMemberships;
   });
 
+  // After the commit: seat sync calls the License Server.
+  await usageMeteringService.syncSeats(orgId);
   sendPamCancellations();
   await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 

@@ -16,6 +16,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultMcpTransport } from "@app/hooks/api/agentVault";
 
+import { DescriptionField } from "./DescriptionField";
 import { TRANSPORT_LABELS, TServiceForm } from "./serviceSchema";
 
 const TRANSPORTS = Object.values(AgentVaultMcpTransport);
@@ -47,6 +48,8 @@ export const McpDetailsFields = () => {
           </Field>
         )}
       />
+
+      <DescriptionField placeholder="Create and triage issues for the platform team" />
 
       <Controller
         control={control}

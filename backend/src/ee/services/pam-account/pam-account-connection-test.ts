@@ -129,6 +129,7 @@ export type TestConnectionRequest =
 
 const SQL_DIALECTS = {
   [PamAccountType.Postgres]: "postgres",
+  [PamAccountType.CockroachDB]: "postgres",
   [PamAccountType.MySQL]: "mysql",
   [PamAccountType.MsSQL]: "mssql",
   [PamAccountType.OracleDB]: "oracle"
@@ -175,6 +176,7 @@ export const buildGatewayConnectionTest = async (
 
   switch (accountType) {
     case PamAccountType.Postgres:
+    case PamAccountType.CockroachDB:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB: {

@@ -65,7 +65,7 @@ export const ValidateDatabricksConnectionCredentialsSchema = z.discriminatedUnio
 ]);
 
 export const CreateDatabricksConnectionSchema = ValidateDatabricksConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.Databricks)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.Databricks, { supportsGateways: true })
 );
 
 export const UpdateDatabricksConnectionSchema = z
@@ -74,7 +74,7 @@ export const UpdateDatabricksConnectionSchema = z
       AppConnections.UPDATE(AppConnection.Databricks).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Databricks));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Databricks, { supportsGateways: true }));
 
 export const DatabricksConnectionListItemSchema = z
   .object({

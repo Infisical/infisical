@@ -48,7 +48,8 @@ import {
   getProjectDescription,
   getProjectHomePage,
   getProjectLucideIcon,
-  getProjectTitle
+  getProjectTitle,
+  hasProjectTemplates
 } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserProjects } from "@app/hooks/api";
@@ -161,7 +162,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
       projectName: name,
       projectDescription: description,
       kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-      template,
+      template: hasProjectTemplates(type) ? template : undefined,
       type
     });
     await refetchWorkspaces();
@@ -227,60 +228,62 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
             <AccordionTrigger>Advanced Settings</AccordionTrigger>
             <AccordionContent>
               <div className="flex flex-col gap-4">
-                <Controller
-                  control={control}
-                  name="template"
-                  render={({ field: { value, onChange } }) => (
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Read}
-                      a={OrgPermissionSubjects.ProjectTemplates}
-                    >
-                      {(isAllowed) => (
-                        <Field>
-                          <FieldLabel htmlFor="new-project-template">
-                            Project Template
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>
-                                  Create this project from a template to provision it with custom
-                                  environments and roles.
-                                </p>
-                                {subscription && !subscription.projectTemplates && (
-                                  <p className="pt-2">Project templates are a paid feature.</p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </FieldLabel>
-                          <Select
-                            value={value}
-                            onValueChange={onChange}
-                            disabled={!isAllowed || !subscription?.projectTemplates}
-                          >
-                            <SelectTrigger id="new-project-template" className="w-full">
-                              <SelectValue placeholder={InfisicalProjectTemplate.Default} />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {projectTemplates.length
-                                ? projectTemplates.map((template) => (
-                                    <SelectItem key={template.id} value={template.name}>
-                                      {template.name}
-                                    </SelectItem>
-                                  ))
-                                : Object.values(InfisicalProjectTemplate).map((template) => (
-                                    <SelectItem key={template} value={template}>
-                                      {template}
-                                    </SelectItem>
-                                  ))}
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                      )}
-                    </OrgPermissionCan>
-                  )}
-                />
+                {hasProjectTemplates(selectedProjectType) && (
+                  <Controller
+                    control={control}
+                    name="template"
+                    render={({ field: { value, onChange } }) => (
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Read}
+                        a={OrgPermissionSubjects.ProjectTemplates}
+                      >
+                        {(isAllowed) => (
+                          <Field>
+                            <FieldLabel htmlFor="new-project-template">
+                              Project Template
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon className="text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>
+                                    Create this project from a template to provision it with custom
+                                    environments and roles.
+                                  </p>
+                                  {subscription && !subscription.projectTemplates && (
+                                    <p className="pt-2">Project templates are a paid feature.</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </FieldLabel>
+                            <Select
+                              value={value}
+                              onValueChange={onChange}
+                              disabled={!isAllowed || !subscription?.projectTemplates}
+                            >
+                              <SelectTrigger id="new-project-template" className="w-full">
+                                <SelectValue placeholder={InfisicalProjectTemplate.Default} />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {projectTemplates.length
+                                  ? projectTemplates.map((template) => (
+                                      <SelectItem key={template.id} value={template.name}>
+                                        {template.name}
+                                      </SelectItem>
+                                    ))
+                                  : Object.values(InfisicalProjectTemplate).map((template) => (
+                                      <SelectItem key={template} value={template}>
+                                        {template}
+                                      </SelectItem>
+                                    ))}
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                        )}
+                      </OrgPermissionCan>
+                    )}
+                  />
+                )}
                 <Controller
                   control={control}
                   name="kmsKeyId"
@@ -359,7 +362,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
         <Button
           type="submit"
           form="new-project-form"
-          variant="project"
+          variant={selectedProjectType === ProjectType.AgentVault ? "av" : "project"}
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >

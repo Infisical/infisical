@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -8,6 +9,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -255,7 +257,7 @@ describe("User folder access CRUD", () => {
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
       Parameters<typeof removeUsersFromGroupByUserIds>[0],
-      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "usageMeteringService"
+      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers"
     >;
 
     const createProjectGroup = async () => {
@@ -284,8 +286,11 @@ describe("User folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),

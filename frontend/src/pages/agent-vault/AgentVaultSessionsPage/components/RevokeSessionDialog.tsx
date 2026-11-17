@@ -1,6 +1,7 @@
 import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { createNotification } from "@app/components/notifications";
 import { ConfirmationAlertDialog } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useRevokeAgentVaultSession } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
@@ -16,7 +17,8 @@ type Props = {
 };
 
 export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
-  const revokeSession = useRevokeAgentVaultSession();
+  const { projectId } = useProject();
+  const revokeSession = useRevokeAgentVaultSession(projectId);
 
   const handleRevoke = async () => {
     if (!session) return;

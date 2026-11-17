@@ -19,7 +19,7 @@ type Props = {
 };
 
 const DefaultSecretSyncSourceSection = ({ secretSync }: Props) => {
-  const { folder, environment } = secretSync;
+  const { folder, environment, includeAllSubFolders } = secretSync;
 
   return (
     <>
@@ -51,6 +51,14 @@ const DefaultSecretSyncSourceSection = ({ secretSync }: Props) => {
       <Detail>
         <DetailLabel>Path</DetailLabel>
         <DetailValue>{folder?.path}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Include All Subfolders</DetailLabel>
+        <DetailValue>
+          <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
+            {includeAllSubFolders ? "Enabled" : "Disabled"}
+          </Badge>
+        </DetailValue>
       </Detail>
     </>
   );

@@ -1,0 +1,16 @@
+# sandbox_image.py
+from daytona import CreateSnapshotParams, Daytona, DaytonaNotFoundError, Image
+
+SNAPSHOT = "agent-vault-agent"
+
+IMAGE = Image.base("node:24-bookworm-slim").run_commands(
+    "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
+    "npm install -g @infisical/cli @anthropic-ai/claude-code",
+)
+
+
+def ensure_snapshot(daytona: Daytona) -> None:
+    try:
+        daytona.snapshot.get(SNAPSHOT)
+    except DaytonaNotFoundError:
+        daytona.snapshot.create(CreateSnapshotParams(name=SNAPSHOT, image=IMAGE), on_logs=print)

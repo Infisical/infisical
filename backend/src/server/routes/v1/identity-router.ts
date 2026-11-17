@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  IdentityOrgMembershipsSchema,
+  OrgMembershipRole,
+  OrgRolesSchema,
+  ProjectType
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { logger } from "@app/lib/logger";
@@ -478,10 +484,24 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string().describe(IDENTITIES.GET_BY_ID.identityId)
+        identityId: z.string().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.identityId)
+      }),
+      querystring: z.object({
+        limit: z.coerce.number().int().min(1).max(100).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.offset),
+        search: z.string().trim().max(255).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.search),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.orderDirection),
+        excludeProjectType: z
+          .nativeEnum(ProjectType)
+          .optional()
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.excludeProjectType)
       }),
       response: {
         200: z.object({
+          totalCount: z.number().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.totalCount),
           identityMemberships: z.array(
             z.object({
               id: z.string(),
@@ -512,15 +532,14 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityMemberships = await server.services.identityV1.listProjectIdentitiesByIdentityId({
+      return server.services.identityV1.listProjectIdentitiesByIdentityId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        ...req.query
       });
-
-      return { identityMemberships };
     }
   });
 

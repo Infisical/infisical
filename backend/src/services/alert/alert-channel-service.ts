@@ -25,7 +25,7 @@ import {
 } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
-import { AlertPrincipalType, TAlertRecipientScope } from "./alert-types";
+import { AlertPrincipalType, PROJECT_WIDE_PRINCIPAL_TYPES, TAlertRecipientScope } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 export type TAlertChannelServiceFactoryDep = {
@@ -79,17 +79,17 @@ export const alertChannelServiceFactory = ({
     ...new Set(recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId))
   ];
 
-  const $assertProjectMembersRecipients = (
-    projectId: string | null | undefined,
-    recipients: TChannelRecipientInput[]
-  ) => {
-    const projectMembers = recipients.filter((r) => r.principalType === AlertPrincipalType.PROJECT_MEMBERS);
-    if (projectMembers.length === 0) return;
+  const $assertProjectWideRecipients = (projectId: string | null | undefined, recipients: TChannelRecipientInput[]) => {
+    const projectWide = recipients.filter((r) => PROJECT_WIDE_PRINCIPAL_TYPES.includes(r.principalType));
+    if (projectWide.length === 0) return;
+    const label = (recipient: TChannelRecipientInput) =>
+      recipient.principalType === AlertPrincipalType.PROJECT_ADMINS ? "Project admins" : "All project members";
     if (!projectId) {
-      throw new BadRequestError({ message: "All project members can only be notified by a project alert" });
+      throw new BadRequestError({ message: `${label(projectWide[0])} can only be notified by a project alert` });
     }
-    if (projectMembers.some((r) => r.principalId !== projectId)) {
-      throw new BadRequestError({ message: "All project members must refer to the alert's own project" });
+    const foreign = projectWide.find((r) => r.principalId !== projectId);
+    if (foreign) {
+      throw new BadRequestError({ message: `${label(foreign)} must refer to the alert's own project` });
     }
   };
 
@@ -131,6 +131,9 @@ export const alertChannelServiceFactory = ({
     if (!scope.allowEmailAddresses && recipients.some((r) => r.principalType === AlertPrincipalType.EMAIL)) {
       throw new BadRequestError({ message: "This alert type doesn't accept email address recipients" });
     }
+    if (!scope.allowProjectAdmins && recipients.some((r) => r.principalType === AlertPrincipalType.PROJECT_ADMINS)) {
+      throw new BadRequestError({ message: "This alert type doesn't accept project admins as recipients" });
+    }
   };
 
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an
@@ -144,7 +147,7 @@ export const alertChannelServiceFactory = ({
     const { projectId } = scope;
     assertRecipientTypesAllowed(scope, recipients);
     $assertNoDuplicateRecipients(recipients);
-    $assertProjectMembersRecipients(projectId, recipients);
+    $assertProjectWideRecipients(projectId, recipients);
 
     const userIds = $idsOfType(recipients, AlertPrincipalType.USER);
     const groupIds = $idsOfType(recipients, AlertPrincipalType.GROUP);
@@ -320,7 +323,7 @@ export const alertChannelServiceFactory = ({
     return recipients.filter((r) => {
       if (r.principalType === AlertPrincipalType.USER) return inScope.userIds.has(r.principalId);
       if (r.principalType === AlertPrincipalType.GROUP) return inScope.groupIds.has(r.principalId);
-      if (r.principalType === AlertPrincipalType.PROJECT_MEMBERS) {
+      if (PROJECT_WIDE_PRINCIPAL_TYPES.includes(r.principalType)) {
         return Boolean(scope.projectId) && r.principalId === scope.projectId;
       }
       return false;

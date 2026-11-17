@@ -105,9 +105,6 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 	if cfg.disableSecretDeletion {
 		options["disableSecretDeletion"] = true
 	}
-	if cfg.includeSubFolders {
-		options["includeAllSubFolders"] = true
-	}
 	if len(cfg.tags) > 0 {
 		tags := []map[string]string{}
 		for k, v := range cfg.tags {
@@ -116,14 +113,15 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 		options["tags"] = tags
 	}
 	raw, err := json.Marshal(map[string]any{
-		"name":              cfg.name,
-		"projectId":         p.ID,
-		"connectionId":      conn.ID,
-		"environment":       cfg.environment,
-		"secretPath":        cfg.secretPath,
-		"isAutoSyncEnabled": cfg.autoSync,
-		"destinationConfig": dest.config,
-		"syncOptions":       options,
+		"name":                 cfg.name,
+		"projectId":            p.ID,
+		"connectionId":         conn.ID,
+		"environment":          cfg.environment,
+		"secretPath":           cfg.secretPath,
+		"includeAllSubFolders": cfg.includeSubFolders,
+		"isAutoSyncEnabled":    cfg.autoSync,
+		"destinationConfig":    dest.config,
+		"syncOptions":          options,
 	})
 	require.NoError(tt, err)
 

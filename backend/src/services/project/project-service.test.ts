@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -31,7 +32,7 @@ const setup = () => {
   const permissionService = {
     getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
   };
-  const licenseService = { getPlan: vi.fn().mockResolvedValue({ workspaceLimit: null }) };
+  const licenseService = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
@@ -179,7 +180,7 @@ describe("secret scanning project uniqueness", () => {
 });
 
 describe("org-scoped product projects", () => {
-  test.each([ProjectType.PAM, ProjectType.AgentVault])("rejects creating %s projects directly", async (type) => {
+  test("rejects creating PAM projects directly", async () => {
     const { service, projectDAL } = setup();
 
     await expect(
@@ -189,9 +190,27 @@ describe("org-scoped product projects", () => {
         actorOrgId: "root",
         actorAuthMethod: null,
         projectName: "Managed",
-        type
+        type: ProjectType.PAM
       })
     ).rejects.toThrow(BadRequestError);
+
+    expect(projectDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("rejects a project template on an Agent Vault project", async () => {
+    const { service, projectDAL } = setup();
+
+    await expect(
+      service.createProject({
+        actor: ActorType.USER,
+        actorId: "user",
+        actorOrgId: "root",
+        actorAuthMethod: null,
+        projectName: "Apollo",
+        type: ProjectType.AgentVault,
+        template: "my-template"
+      })
+    ).rejects.toThrow("Agent Vault projects don't use project templates");
 
     expect(projectDAL.transaction).not.toHaveBeenCalled();
   });

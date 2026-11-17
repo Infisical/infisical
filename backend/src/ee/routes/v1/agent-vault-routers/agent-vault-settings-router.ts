@@ -1,3 +1,6 @@
+import { z } from "zod";
+
+import { AgentVaultAccessState } from "@app/domains/agent-vault/agent-vault/ce/module";
 import {
   AgentVaultSessionLogCorsProbeResponseSchema,
   AgentVaultSessionLogHealthResponseSchema,
@@ -6,6 +9,7 @@ import {
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
@@ -14,9 +18,44 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
+  // Org-wide: the plan and the free monthly count belong to the root organization, not a project.
+  server.route({
+    method: "GET",
+    url: "/access",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getAgentVaultAccess",
+      description: "Whether the organization can broker credentials, and its free usage this month",
+      tags: [ApiDocsTags.AgentVaultSettings],
+      response: {
+        200: z.object({
+          access: z.object({
+            state: z.nativeEnum(AgentVaultAccessState).describe(AGENT_VAULT.ACCESS.state),
+            allowed: z.boolean().describe(AGENT_VAULT.ACCESS.allowed),
+            freeUsage: z
+              .object({
+                used: z.number().int().describe(AGENT_VAULT.ACCESS.used),
+                limit: z.number().int().describe(AGENT_VAULT.ACCESS.limit),
+                resetsAt: z.date().describe(AGENT_VAULT.ACCESS.resetsAt)
+              })
+              .nullable()
+              .describe(AGENT_VAULT.ACCESS.freeUsage),
+            warn: z.boolean().describe(AGENT_VAULT.ACCESS.warn)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => ({
+      access: (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+    })
+  });
+
   server.route({
     method: "GET",
     url: "/session-logs",
@@ -26,12 +65,13 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       operationId: "getAgentVaultSessionLogSettings",
       description: "Gets the session log settings",
       tags: [ApiDocsTags.AgentVaultSettings],
+      querystring: z.object({ projectId: AgentVaultProjectIdSchema }),
       response: { 200: AgentVaultSessionLogSettingsResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
       server.services.agentVaultSessionLog.getSessionLogSettings({
-        projectId: req.internalAgentVaultProjectId,
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       })
   });
@@ -45,14 +85,16 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       operationId: "updateAgentVaultSessionLogSettings",
       description: "Updates the session log settings",
       tags: [ApiDocsTags.AgentVaultSettings],
+      querystring: z.object({ projectId: AgentVaultProjectIdSchema }),
       body: AgentVaultSessionLogSettingsUpdateSchema,
       response: { 200: AgentVaultSessionLogSettingsResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { settings, defaultStorage, appConnectionName, previous } =
         await server.services.agentVaultSessionLog.updateSessionLogSettings({
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           ctx: actorContext(req),
           actor: {
             type: req.permission.type,
@@ -69,7 +111,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: { type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE, metadata }
       });
 
@@ -91,13 +133,14 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       operationId: "getAgentVaultSessionLogHealth",
       description: "Gets whether Infisical can use the AWS connection for session logs",
       tags: [ApiDocsTags.AgentVaultSettings],
+      querystring: z.object({ projectId: AgentVaultProjectIdSchema }),
       response: { 200: AgentVaultSessionLogHealthResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogHealth({
-        projectId: req.internalAgentVaultProjectId,
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       });
     }
@@ -112,13 +155,14 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       operationId: "getAgentVaultSessionLogCorsProbe",
       description: "Gets a presigned URL for checking the bucket's CORS rule",
       tags: [ApiDocsTags.AgentVaultSettings],
+      querystring: z.object({ projectId: AgentVaultProjectIdSchema }),
       response: { 200: AgentVaultSessionLogCorsProbeResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogCorsProbe({
-        projectId: req.internalAgentVaultProjectId,
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       });
     }

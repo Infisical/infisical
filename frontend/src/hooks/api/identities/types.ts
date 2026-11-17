@@ -510,8 +510,9 @@ export type IdentityKubernetesAuth = {
   templateId?: string | null;
   kubernetesHost: string;
   tokenReviewerJwt: string;
-  // template-sourced JWTs read back as ""; this flag marks that a hidden JWT is stored
+  // the JWT is write-only and reads back as ""
   isTokenReviewerJwtTemplateSourced?: boolean;
+  hasTokenReviewerJwt?: boolean;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;

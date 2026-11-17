@@ -6,6 +6,7 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -280,7 +281,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.GenerateMac,
       ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate,
-      ProjectPermissionCmekActions.ExportPrivateKey
+      ProjectPermissionCmekActions.ExportPrivateKey,
+      ProjectPermissionCmekActions.PublishPublicKey
     ],
     ProjectPermissionSub.Cmek
   );
@@ -817,7 +819,11 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionAgentVaultSessionActions.Revoke
+      ProjectPermissionAgentVaultSessionActions.Revoke,
+      ProjectPermissionAgentVaultSessionActions.ReadAny,
+      ProjectPermissionAgentVaultSessionActions.EditAny,
+      ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -842,6 +848,17 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSkillActions.Delete
     ],
     ProjectPermissionSub.AgentVaultSkills
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultVariableActions.Read,
+      ProjectPermissionAgentVaultVariableActions.Create,
+      ProjectPermissionAgentVaultVariableActions.Edit,
+      ProjectPermissionAgentVaultVariableActions.Delete,
+      ProjectPermissionAgentVaultVariableActions.ReadValue
+    ],
+    ProjectPermissionSub.AgentVaultVariables
   );
 
   can(
@@ -1208,6 +1225,7 @@ const buildSignerAdminPermissionRules = () => {
       ResourcePermissionSignerActions.PreApprove,
       ResourcePermissionSignerActions.RevokeRequest,
       ResourcePermissionSignerActions.ReissueCertificate,
+      ResourcePermissionSignerActions.RevokeCertificate,
       ResourcePermissionSignerActions.ExportCertificate
     ],
     ResourcePermissionSub.Signer

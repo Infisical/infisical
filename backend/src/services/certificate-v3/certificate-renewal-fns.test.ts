@@ -22,6 +22,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  keepCertificateFactsInCsrRenewal,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -736,5 +737,44 @@ describe("buildRenewalPreview", () => {
     );
 
     expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
+  });
+});
+
+describe("keepCertificateFactsInCsrRenewal", () => {
+  const certificate = {
+    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256,
+    keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+    extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+    basicConstraints: { isCA: true, pathLength: 0 }
+  };
+
+  it("fills what the CSR leaves out from the certificate", () => {
+    expect(
+      keepCertificateFactsInCsrRenewal(
+        { commonName: "web.example.com", signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA256, keyUsages: [] },
+        certificate
+      )
+    ).toEqual({ commonName: "web.example.com", ...certificate });
+  });
+
+  it("keeps the usages and basic constraints a CSR carries", () => {
+    const csrRequest: TCertificateRequest = {
+      keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH],
+      basicConstraints: { isCA: false }
+    };
+
+    expect(keepCertificateFactsInCsrRenewal(csrRequest, certificate)).toMatchObject(csrRequest);
+  });
+
+  it("always signs with the certificate's algorithm, and with the CSR's only when the certificate has none", () => {
+    const csrRequest = { signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA256 };
+
+    expect(keepCertificateFactsInCsrRenewal(csrRequest, certificate).signatureAlgorithm).toBe(
+      CertSignatureAlgorithm.RSA_SHA256
+    );
+    expect(keepCertificateFactsInCsrRenewal(csrRequest, { keyUsages: [] }).signatureAlgorithm).toBe(
+      CertSignatureAlgorithm.ECDSA_SHA256
+    );
   });
 });

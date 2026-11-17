@@ -74,6 +74,7 @@ export const PAM_ROTATION_APP_MAP: Record<
   AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql | AppConnection.OracleDB
 > = {
   [PamAccountType.Postgres]: AppConnection.Postgres,
+  [PamAccountType.CockroachDB]: AppConnection.Postgres,
   [PamAccountType.MySQL]: AppConnection.MySql,
   [PamAccountType.MsSQL]: AppConnection.MsSql,
   [PamAccountType.OracleDB]: AppConnection.OracleDB

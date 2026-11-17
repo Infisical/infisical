@@ -43,6 +43,13 @@ export type TJiraIssue = {
     issuetype?: { id: string; name: string } | null;
     labels?: string[] | null;
     assignee?: TJiraUser | null;
+    reporter?: TJiraUser | null;
+    summary?: string | null;
+    priority?: { id: string; name: string } | null;
+    created?: string | null;
+    updated?: string | null;
+    // Jira Cloud returns Atlassian Document Format, Data Center returns plain text
+    description?: unknown;
   };
 };
 

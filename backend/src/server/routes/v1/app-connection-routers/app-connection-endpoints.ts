@@ -70,7 +70,8 @@ export const buildAppConnectionRouteContext = ({
     [AppConnection.OracleDB]: "OracleDb",
     [AppConnection.MongoDB]: "MongoDb",
     [AppConnection.TravisCI]: "TravisCI",
-    [AppConnection.ServiceNow]: "ServiceNow"
+    [AppConnection.ServiceNow]: "ServiceNow",
+    [AppConnection.ClickHouse]: "ClickHouse"
   };
   const appNameForOpId =
     operationIdPrefix +

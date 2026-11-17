@@ -32,6 +32,7 @@ Deploy custom SSL certificates to your Cloudflare zones. Certificates synced to 
 
         4. Configure the **Sync Options**:
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Bundle method**: The [bundle method](#bundle-method) Cloudflare uses to build the chain it serves.
             - **Certificate Name Schema**: Customize certificate names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
@@ -74,7 +75,8 @@ Deploy custom SSL certificates to your Cloudflare zones. Certificates synced to 
             },
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "certificateNameSchema": "myapp-{{certificateId}}"
+                "certificateNameSchema": "myapp-{{certificateId}}",
+                "bundleMethod": "force"
             },
             "destinationConfig": {
                 "zoneId": "023e105f4ecef8ad9ca31a8372d0c353"
@@ -97,7 +99,8 @@ Deploy custom SSL certificates to your Cloudflare zones. Certificates synced to 
                 },
                 "syncOptions": {
                     "canRemoveCertificates": true,
-                    "certificateNameSchema": "myapp-{{certificateId}}"
+                    "certificateNameSchema": "myapp-{{certificateId}}",
+                    "bundleMethod": "force"
                 },
                 "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "550e8400-e29b-41d4-a716-446655440000",
@@ -117,13 +120,26 @@ The Cloudflare Custom Certificate Sync provides:
 - **Automatic Deployment**: Deploy certificates in Infisical to Cloudflare as Custom certificates.
 - **Certificate Updates**: Update certificates in Cloudflare when renewals occur.
 - **Expiration Handling**: Optionally remove expired certificates from Cloudflare (if enabled).
-- **Chain Management**: Properly bundle certificate chains for optimal browser compatibility.
+- **Chain Management**: Choose the [bundle method](#bundle-method) Cloudflare uses to build the certificate chain.
 
 <Note>
   Cloudflare Custom Certificate Syncs support both automatic and manual
   synchronization modes. When auto-sync is enabled, certificates are
   automatically deployed as they're issued or renewed.
 </Note>
+
+## Bundle method
+
+The **Bundle method** sync option (`bundleMethod` in the API) sets Cloudflare's [bundle method](https://developers.cloudflare.com/ssl/edge-certificates/custom-certificates/bundling-methodologies/) for every certificate the sync uploads:
+
+| Option | API value | Behavior |
+| --- | --- | --- |
+| Automatic | _(unset)_ | User-defined for certificates issued by an Infisical CA, Compatible for all others. |
+| Compatible | `ubiquitous` | Cloudflare completes the chain with widely distributed intermediates. |
+| Modern | `optimal` | Cloudflare completes the chain with newer or fewer intermediates. |
+| User-defined | `force` | Cloudflare serves the uploaded chain exactly as provided. For certificates issued by an Infisical CA, the CA's root is appended to the chain. |
+
+With Compatible and Modern, Cloudflare may drop intermediates you upload. If a certificate comes from a CA outside Infisical that isn't publicly trusted, such as AD CS, or is an imported certificate with a private chain, choose **User-defined**. For these certificates, the sync uploads only the stored chain and doesn't add a root certificate.
 
 ## Manual certificate sync
 

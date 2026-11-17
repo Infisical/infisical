@@ -43,7 +43,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
@@ -92,6 +91,8 @@ type Props = {
   isVisible?: boolean;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const SecretImportTableRow = ({
@@ -109,9 +110,10 @@ export const SecretImportTableRow = ({
   secretImport,
   isVisible,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
   const { currentProject } = useProject();
   const resyncSecretReplication = useResyncSecretReplication();
@@ -251,9 +253,9 @@ export const SecretImportTableRow = ({
   useEffect(() => {
     if (searchFilter) {
       if (filteredImportedSecrets.length > 0) {
-        setIsExpanded.on();
+        onExpandedChange(true);
       } else {
-        setIsExpanded.off();
+        onExpandedChange(false);
       }
     }
   }, [searchFilter, filteredImportedSecrets.length]);
@@ -294,7 +296,7 @@ export const SecretImportTableRow = ({
   };
 
   const handleRowClick = () => {
-    setIsExpanded.toggle();
+    onExpandedChange(!isExpanded);
   };
 
   const renderLeadingIcon = () => {

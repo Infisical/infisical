@@ -121,7 +121,7 @@ func TestEnvironment_Delete(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Environment is in use by a secret approval policy", res.JSON400.Message)
+		require.Equal(t, "Environment is in use by an approval policy", res.JSON400.Message)
 		require.Equal(t, []string{"dev", "staging", "prod"}, readEnvs(t, proj).active)
 	})
 

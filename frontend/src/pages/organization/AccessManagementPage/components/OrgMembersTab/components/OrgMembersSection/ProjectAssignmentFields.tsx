@@ -39,7 +39,7 @@ type ProductDefinition = {
 };
 
 // Names come from the shared getProjectTitle util so the select matches the Projects pages.
-const PRODUCT_DEFINITIONS: ProductDefinition[] = [
+export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   {
     type: ProjectType.SecretManager,
     name: getProjectTitle(ProjectType.SecretManager),
@@ -66,7 +66,7 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   {
     type: ProjectType.AgentVault,
     name: getProjectTitle(ProjectType.AgentVault),
-    isSingleton: true,
+    isSingleton: false,
     roles: AGENT_VAULT_ROLES
   }
 ];

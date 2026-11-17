@@ -31,7 +31,8 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.CloudflareApiToken]: "Cloudflare API Token",
   [SecretRotation.CloudflareR2AccessKey]: "Cloudflare R2 Access Key",
   [SecretRotation.StripeApiKey]: "Stripe API Key",
-  [SecretRotation.GcpServiceAccountKey]: "GCP Service Account Key"
+  [SecretRotation.GcpServiceAccountKey]: "GCP Service Account Key",
+  [SecretRotation.ClickHouseCredentials]: "ClickHouse Credentials"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -64,7 +65,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare,
   [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare,
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
-  [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP
+  [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP,
+  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse
 };
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> = {

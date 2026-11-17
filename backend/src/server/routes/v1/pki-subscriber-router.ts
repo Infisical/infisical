@@ -11,6 +11,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { validateAltNameField } from "@app/services/certificate-authority/certificate-authority-validators";
+import { csrSchema } from "@app/services/certificate-common/certificate-constants";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
@@ -617,7 +618,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       body: z.object({
         projectId: z.string().trim().describe(PKI_SUBSCRIBERS.SIGN_CERT.projectId),
-        csr: z.string().trim().min(1).max(3000).describe(PKI_SUBSCRIBERS.SIGN_CERT.csr)
+        csr: csrSchema.describe(PKI_SUBSCRIBERS.SIGN_CERT.csr)
       }),
       response: {
         200: z.object({

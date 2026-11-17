@@ -15,6 +15,7 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
+import { ServicesCard } from "@app/components/agent-vault/ServicesCard";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -34,10 +35,12 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   AgentVaultSessionScope,
@@ -46,18 +49,17 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
-import { ServicesCard } from "./components/ServicesCard";
+import { AddBundleServiceDialog } from "./components/AddBundleServiceDialog";
 import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole, permission } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
     ProjectPermissionSub.AgentVaultSkills
@@ -66,22 +68,35 @@ export const AgentVaultAccessBundleDetailPage = () => {
     ProjectPermissionAgentVaultAccessBundleActions.Edit,
     ProjectPermissionSub.AgentVaultAccessBundles
   );
+  const canDeleteBundle = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Delete,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canManageBundleMembers = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canReadAnySession = permission.can(
+    ProjectPermissionAgentVaultSessionActions.ReadAny,
+    ProjectPermissionSub.AgentVaultSessions
+  );
 
   const accessBundleId = useParams({
     strict: false,
     select: (params) => params.accessBundleId as string
   });
 
-  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(accessBundleId);
+  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(projectId, accessBundleId);
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
-  // Listing every session is admin-only, and only admins see the note that reads this.
+  // Listing every session takes Read Any on sessions, and so does the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
+    projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
     {
-      enabled: isAdmin,
+      enabled: canReadAnySession,
       refetchInterval: (query) => ((query.state.data?.totalCount ?? 0) > 0 ? false : 30_000)
     }
   );
@@ -90,13 +105,14 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
   useAgentVaultCreateIntent(
     () => {
       setServiceToEdit(null);
       setIsServiceSheetOpen(true);
     },
-    isAdmin && Boolean(accessBundle)
+    canEditBundle && Boolean(accessBundle)
   );
 
   if (isPending)
@@ -118,8 +134,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             </EmptyHeader>
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/access-bundles"
-                params={{ orgId: currentOrg.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+                params={{ orgId: currentOrg.id, projectId }}
               >
                 Back to Access Bundles
               </Link>
@@ -141,15 +157,15 @@ export const AgentVaultAccessBundleDetailPage = () => {
         description={accessBundle.description || "No description"}
         backLink={
           <Link
-            to="/organizations/$orgId/agent-vault/access-bundles"
-            params={{ orgId: currentOrg.id }}
+            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+            params={{ orgId: currentOrg.id, projectId }}
           >
             <ChevronLeftIcon aria-hidden className="size-4" />
             Access Bundles
           </Link>
         }
       >
-        {isAdmin && (
+        {(canManageBundleMembers || canEditBundle || canDeleteBundle) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -158,18 +174,24 @@ export const AgentVaultAccessBundleDetailPage = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
-                <UsersIcon />
-                Manage Access
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-                <PencilIcon />
-                Edit Access Bundle
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
-                <TrashIcon />
-                Delete Access Bundle
-              </DropdownMenuItem>
+              {canManageBundleMembers && (
+                <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
+                  <UsersIcon />
+                  Manage Access
+                </DropdownMenuItem>
+              )}
+              {canEditBundle && (
+                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                  <PencilIcon />
+                  Edit Access Bundle
+                </DropdownMenuItem>
+              )}
+              {canDeleteBundle && (
+                <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                  <TrashIcon />
+                  Delete Access Bundle
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -195,7 +217,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
         </Alert>
       )}
 
-      {isAdmin && accessBundle.services.length > 0 && sessions?.totalCount === 0 && (
+      {canReadAnySession && accessBundle.services.length > 0 && sessions?.totalCount === 0 && (
         <Alert variant="info" className="mb-6">
           <IdCardIcon />
           <AlertDescription>
@@ -203,8 +225,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             <AlertAction>
               <Button variant="outline" size="sm" asChild>
                 <Link
-                  to="/organizations/$orgId/agent-vault/sessions"
-                  params={{ orgId: currentOrg.id }}
+                  to="/organizations/$orgId/projects/agent-vault/$projectId/sessions"
+                  params={{ orgId: currentOrg.id, projectId }}
                 >
                   Go to Sessions
                 </Link>
@@ -219,11 +241,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
           accessBundleId={accessBundle.id}
           onSetUp={setServiceToSetUp}
           services={accessBundle.services}
-          canManage={isAdmin}
-          onAdd={() => {
-            setServiceToEdit(null);
-            setIsServiceSheetOpen(true);
-          }}
+          canManage={canEditBundle}
+          onAdd={() => setIsAddServiceOpen(true)}
           onEdit={(service) => {
             setServiceToEdit(service);
             setIsServiceSheetOpen(true);
@@ -239,9 +258,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
       </div>
 
       <PersonalValuesDialog
-        target={
-          serviceToSetUp ? { service: serviceToSetUp, accessBundleName: accessBundle.name } : null
-        }
+        target={serviceToSetUp ? { service: serviceToSetUp } : null}
         onOpenChange={(isOpen) => {
           if (!isOpen) setServiceToSetUp(null);
         }}
@@ -250,6 +267,17 @@ export const AgentVaultAccessBundleDetailPage = () => {
       <ManageAccessSheet
         accessBundle={isManageAccessOpen ? accessBundle : null}
         onOpenChange={setIsManageAccessOpen}
+      />
+
+      <AddBundleServiceDialog
+        accessBundleId={accessBundle.id}
+        bundleServiceIds={accessBundle.services.map((service) => service.id)}
+        isOpen={isAddServiceOpen}
+        onOpenChange={setIsAddServiceOpen}
+        onCreateNew={() => {
+          setServiceToEdit(null);
+          setIsServiceSheetOpen(true);
+        }}
       />
 
       <ServiceSheet
@@ -270,8 +298,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsDeleteOpen}
         onDeleted={() =>
           navigate({
-            to: "/organizations/$orgId/agent-vault/access-bundles",
-            params: { orgId: currentOrg.id }
+            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles",
+            params: { orgId: currentOrg.id, projectId }
           })
         }
       />

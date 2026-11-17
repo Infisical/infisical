@@ -1,68 +1,73 @@
 ---
-title: "OVH Cloud connection"
-sidebarTitle: "OVH Cloud"
-description: "Learn how to configure an OVH Cloud Connection for Infisical."
+title: "OVHcloud connection"
+sidebarTitle: "OVHcloud"
+description: "Learn how to configure an OVHcloud connection for Infisical."
 ---
 
-Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.ovhcloud.com/en/identity-security-operations/secret-manager/) using mutual TLS (mTLS) with a PEM-encoded client certificate pair issued by OVH for your OKMS instance.
+Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.ovhcloud.com/en/identity-security-operations/secret-manager/) using one of two methods:
 
-## Generate an OVH OKMS access certificate
+- **Certificate (mTLS):** a PEM-encoded client certificate and private key that OVHcloud issues for your KMS domain
+- **Token:** an OVHcloud KMS access token
+
+If you use a token, skip to [Create an OVHcloud connection in Infisical](#create-an-ovhcloud-connection-in-infisical). To create the token, see the [OVHcloud KMS authentication guide](https://docs.ovhcloud.com/en/guides/manage-and-operate/kms/okms-authentication-methods).
+
+## Generate an OVHcloud KMS access certificate
 
 <Steps>
-  <Step title="Open the OKMS dashboard">
+  <Step title="Open the OVHcloud KMS dashboard">
     Log in to the [OVHcloud Control Panel](https://www.ovh.com/manager/) and navigate to **Identity, Security & Operations** > **Key Management Service**.
 
-    ![OKMS Dashboard](/images/app-connections/ovh/okms-dashboard.png)
+    ![OVHcloud KMS Dashboard](/images/app-connections/ovh/okms-dashboard.png)
   </Step>
 
-  <Step title="Create a OKMS Domain">
-    Select **Order an OKMS Domain** 
+  <Step title="Create an OVHcloud KMS domain">
+    Select **Order an OKMS Domain**.
 
-    ![OKMS Dashboard](/images/app-connections/ovh/okms-order-domain.png)
+    ![OVHcloud KMS Dashboard](/images/app-connections/ovh/okms-order-domain.png)
   </Step>
-  <Step title="Select your OKMS region">
-    Select the OKMS region that you want to use. You'll also need to confirm by accepting the terms  
+  <Step title="Select your OVHcloud KMS region">
+    Select the OVHcloud KMS region that you want to use, then accept the terms to confirm.
 
-    ![OKMS Region](/images/app-connections/ovh/okms-select-region.png)
+    ![OVHcloud KMS Region](/images/app-connections/ovh/okms-select-region.png)
 
-    ![OKMS Activate Region](/images/app-connections/ovh/okms-activate-region.png)
+    ![OVHcloud KMS Activate Region](/images/app-connections/ovh/okms-activate-region.png)
   </Step>
 
   <Step title="Check your summary">
-    On your summary, the desired domain by selecting it. 
+    On the summary page, select your domain.
 
-    ![OKMS Summary](/images/app-connections/ovh/okms-summary.png)
+    ![OVHcloud KMS Summary](/images/app-connections/ovh/okms-summary.png)
 
-    You will need to get the following values to create a connection. 
+    You'll need the following values to create the connection:
 
-    - **OKMS ID** — the UUID-style identifier shown on the OKMS summary page.
-    - **REST API endpoint** — the base URL of the OKMS instance (e.g. `https://ca-east-bhs.okms.ovh.net`). This is the **OKMS Domain** value in Infisical.
+    - **OKMS ID**: the UUID-style identifier on the summary page (the **KMS ID** field in Infisical)
+    - **REST API endpoint**: the base URL of your KMS domain, such as `https://eu-west-rbx.okms.ovh.net` (the **REST API Endpoint** field in Infisical)
 
-    ![OKMS Details](/images/app-connections/ovh/okms-details.png)
+    ![OVHcloud KMS Details](/images/app-connections/ovh/okms-details.png)
   </Step>
   <Step title="Generate an access certificate">
-    Open the **Access certificate** tab 
+    Open the **Access certificate** tab.
 
     ![Access Certificate Tab](/images/app-connections/ovh/okms-certificate-tab.png)
 
-    Click on Generate an access certificate. 
+    Select **Generate an access certificate**.
 
     ![Generate Access Certificate](/images/app-connections/ovh/generate-access-certificate.png)
 
     Define the validity of the certificate and download the two PEM files offered:
 
-    - `*_privatekey.pem` — the private key.
-    - `*_certificate.pem` — the public certificate.
+    - `*_privatekey.pem`: the private key
+    - `*_certificate.pem`: the public certificate
 
     ![Create Access Certificate](/images/app-connections/ovh/okms-create-certificate.png)
 
     <Warning>
-      Infisical does **not** support the PKCS12 (`.p12`) format. If OVH offers a PKCS12 download or asks you to convert the PEM files with `openssl pkcs12`, ignore those options and keep the PEM files as-is. Node.js's TLS layer (used by Infisical's HTTP client) cannot parse PKCS12 bundles and returns `Unsupported PKCS12 PFX data.` when one is provided.
+      Infisical doesn't support the PKCS12 (`.p12`) format. If OVHcloud offers a PKCS12 download or asks you to convert the PEM files with `openssl pkcs12`, ignore those options and keep the PEM files as they are. If you provide a PKCS12 bundle, the connection fails with `Unsupported PKCS12 PFX data.`
     </Warning>
   </Step>
 </Steps>
 
-## Create an OVH Cloud connection in Infisical
+## Create an OVHcloud connection in Infisical
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -72,41 +77,53 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
 
         ![App Connections Tab](/images/app-connections/general/add-connection.png)
       </Step>
-      <Step title="Select OVH Cloud Connection">
-        Click **+ Add Connection** and choose **OVH Cloud Connection** from the list of integrations.
+      <Step title="Select OVHcloud Connection">
+        Select **+ Add Connection**, then select **OVHcloud Connection** from the list of integrations.
 
-        ![Select OVH Cloud Connection](/images/app-connections/ovh/app-connection-option.png)
+        ![Select OVHcloud Connection](/images/app-connections/ovh/app-connection-option.png)
       </Step>
-      <Step title="Fill out the OVH Cloud Connection form">
+      <Step title="Fill out the OVHcloud connection form">
         Complete the form by providing:
 
-        - A descriptive **Name** for the connection.
-        - An optional **Description**.
-        - **Private Key (PEM)** — paste the full contents of `*_privatekey.pem`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers.
-        - **Certificate (PEM)** — paste the full contents of `*_certificate.pem`, including the `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` markers.
-        - **OKMS Domain** — the OKMS base URL (e.g. `https://ca-east-bhs.okms.ovh.net`). Do not include the `/api` suffix; Infisical appends it automatically.
-        - **OKMS ID** — the OKMS instance identifier from the OVHcloud Control Panel.
+        - **Name**: a descriptive name for the connection
+        - **Description** (optional)
+        - **Method**: **Certificate** or **Token**
 
-        ![OVH Cloud Connection Form](/images/app-connections/ovh/app-connection-form.png)
+        If you selected **Certificate**:
 
-        Infisical validates the credentials by calling `GET {OKMS Domain}/api/{OKMS ID}/v1/servicekey` with mTLS. A successful `200` response means the PEM pair is trusted by your OKMS instance.
+        - **Private Key (PEM)**: paste the full contents of `*_privatekey.pem`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines
+        - **Certificate (PEM)**: paste the full contents of `*_certificate.pem`, including the `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` lines
+
+        If you selected **Token**:
+
+        - **Token**: paste your OVHcloud KMS access token
+
+        For both methods:
+
+        - **REST API Endpoint**: the base URL of your KMS domain, such as `https://eu-west-rbx.okms.ovh.net` (don't include `/api`, because Infisical adds it)
+        - **KMS ID**: the KMS ID from the OVHcloud Control Panel
+
+        ![OVHcloud Connection Form](/images/app-connections/ovh/app-connection-form.png)
+
+        Infisical checks the credentials when you create the connection, so the OVHcloud IAM policy for your certificate or token must include `okms:apikms:serviceKey/get` in addition to the secret permissions that the sync uses.
       </Step>
       <Step title="Connection created">
-        After submitting the form, your **OVH Cloud Connection** is created and ready to use with Secret Syncs.
+        After you submit the form, your OVHcloud connection is created and ready to use with Secret Syncs.
 
-        ![OVH Cloud Connection Created](/images/app-connections/ovh/app-connection-created.png)
+        ![OVHcloud Connection Created](/images/app-connections/ovh/app-connection-created.png)
       </Step>
     </Steps>
   </Tab>
 
   <Tab title="API">
-    To create an OVH Cloud Connection via API, send a request to the [Create OVH Cloud Connection](/api-reference/endpoints/app-connections/ovh/create) endpoint.
+    To create an OVHcloud connection through the API, send a request to the [Create OVHcloud Connection](/api-reference/endpoints/app-connections/ovh/create) endpoint.
 
-    ### Sample request
+    ### Sample request with a certificate
 
     ```bash Request
     curl    --request POST \
             --url https://app.infisical.com/api/v1/app-connections/ovh \
+            --header 'Authorization: Bearer <your-infisical-access-token>' \
             --header 'Content-Type: application/json' \
             --data '{
                 "name": "my-ovh-connection",
@@ -115,7 +132,26 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
                 "credentials": {
                     "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
                     "certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
-                    "okmsDomain": "https://ca-east-bhs.okms.ovh.net",
+                    "okmsDomain": "https://eu-west-rbx.okms.ovh.net",
+                    "okmsId": "00000000-0000-0000-0000-000000000000"
+                }
+            }'
+    ```
+
+    ### Sample request with a token
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/ovh \
+            --header 'Authorization: Bearer <your-infisical-access-token>' \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-ovh-connection",
+                "method": "bearer-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "token": "<your-ovhcloud-kms-token>",
+                    "okmsDomain": "https://eu-west-rbx.okms.ovh.net",
                     "okmsId": "00000000-0000-0000-0000-000000000000"
                 }
             }'

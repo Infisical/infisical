@@ -282,11 +282,11 @@ describe("Org access reconcile", () => {
     );
   });
 
-  // PAM and Agent Vault have one implicit project per org and their own member routes.
+  // PAM has one implicit project per org; PAM and Agent Vault both have their own member routes.
   const asSubOrg = (method: "GET" | "POST", url: string, body?: Record<string, unknown>) =>
     testServer.inject({ method, url, headers: { authorization: `Bearer ${subOrgToken}` }, ...(body ? { body } : {}) });
 
-  const implicitProjectId = async (product: "pam" | "agent-vault") => {
+  const implicitProjectId = async (product: "pam") => {
     const res = await asSubOrg("GET", `/api/v1/${product}/project`);
     expect(res.statusCode).toBe(200);
     return res.json().projectId as string;
@@ -352,25 +352,32 @@ describe("Org access reconcile", () => {
     expect((listRes.json().members as { groupId?: string }[]).map((m) => m.groupId)).not.toContain(groupId);
   });
 
-  // A lazily created Agent Vault project starts empty, so an org admin has to join it first.
+  // The sub-org admin creates the Agent Vault project, which makes them its admin.
   test("Agent Vault offers and takes a user who reaches the sub-org only through a group", async () => {
     const groupId = await createLinkedGroup("av-grp");
     const { userId } = await createUser("av-user");
     createdUserIds.push(userId);
     await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
     await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
-    const agentVaultProjectId = await implicitProjectId("agent-vault");
-    const join = await asSubOrg(
-      "POST",
-      `/api/v1/organization-admin/projects/${agentVaultProjectId}/grant-admin-access`
-    );
-    expect(join.statusCode, join.payload).toBe(200);
+    const createRes = await asSubOrg("POST", "/api/v1/projects", {
+      projectName: `av-${randomUUID().slice(0, 8)}`,
+      type: ProjectType.AgentVault
+    });
+    expect(createRes.statusCode, createRes.payload).toBe(200);
+    const agentVaultProjectId = createRes.json().project.id as string;
 
-    const availableRes = await asSubOrg("GET", "/api/v1/agent-vault/members/available?actorType=user&limit=100");
+    const availableRes = await asSubOrg(
+      "GET",
+      `/api/v1/agent-vault/members/available?projectId=${agentVaultProjectId}&actorType=user&limit=100`
+    );
     expect(availableRes.statusCode, availableRes.payload).toBe(200);
     expect((availableRes.json().actors as { id: string }[]).map((actor) => actor.id)).toContain(userId);
 
-    const addRes = await asSubOrg("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" });
+    const addRes = await asSubOrg("POST", "/api/v1/agent-vault/members", {
+      projectId: agentVaultProjectId,
+      userIds: [userId],
+      role: "member"
+    });
     expect(addRes.statusCode, addRes.payload).toBe(200);
     expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);
   });

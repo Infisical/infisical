@@ -1,4 +1,11 @@
-import { forwardRef, TextareaHTMLAttributes, useCallback, useRef, useState } from "react";
+import {
+  forwardRef,
+  ReactNode,
+  TextareaHTMLAttributes,
+  useCallback,
+  useRef,
+  useState
+} from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -42,6 +49,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   containerClassName?: string;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
+  renderReferenceTooltip?: (reference: string) => ReactNode;
 };
 
 export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(

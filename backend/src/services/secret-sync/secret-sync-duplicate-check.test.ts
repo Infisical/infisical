@@ -103,4 +103,16 @@ describe("secret sync destination comparison", () => {
     ).toBe(false);
     expect(legacy).not.toHaveProperty("secretType");
   });
+
+  test("treats Jenkins folders that differ only in case as the same destination", () => {
+    const folder = { scope: "folder", folderPath: "Team/App" };
+
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.Jenkins, folder, { scope: "folder", folderPath: "team/app" }, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.Jenkins, folder, { scope: "folder", folderPath: "team/api" }, [])
+    ).toBe(false);
+    expect(folder.folderPath).toBe("Team/App");
+  });
 });

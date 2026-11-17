@@ -47,7 +47,6 @@ export type Organization = {
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
   pamProjectId: string | null;
-  agentVaultProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -133,5 +132,6 @@ export type TOrgProductStats = {
     accessBundlesCount: number;
     servicesCount: number;
     proxiesCount: number;
+    projectsCount: number;
   };
 };

@@ -309,9 +309,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         secretId: z.string()
       }),
+      querystring: z.object({
+        viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue)
+      }),
       response: {
         200: z.object({
           secret: secretRawSchema.extend({
+            secretValueHidden: z.boolean(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
@@ -327,16 +331,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        secretId
+        secretId,
+        viewSecretValue: req.query.viewSecretValue
       });
 
-      void server.services.secretReadActivity.recordRead({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        projectId: secret.workspace,
-        secretIds: [secret.id],
-        referencesExpanded: false
-      });
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId: secret.workspace,
+          secretIds: [secret.id],
+          referencesExpanded: false
+        });
+      }
 
       return { secret };
     }

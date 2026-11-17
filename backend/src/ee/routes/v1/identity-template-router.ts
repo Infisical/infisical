@@ -19,6 +19,7 @@ import {
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const templateNameSchema = z
   .string()
@@ -155,7 +156,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        auditLogInfo: req.auditLogInfo
+        auditLogInfo: req.auditLogInfo,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

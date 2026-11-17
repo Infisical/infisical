@@ -160,16 +160,14 @@ func TestSecretSync_Create(t *testing.T) {
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
 		raw, err := json.Marshal(map[string]any{
-			"name":              "recursive-import",
-			"projectId":         proj.ID,
-			"connectionId":      conn.ID,
-			"environment":       "dev",
-			"secretPath":        "/",
-			"destinationConfig": map[string]any{"region": "us-east-1", "path": "/app/"},
-			"syncOptions": map[string]any{
-				"initialSyncBehavior":  "import-prioritize-source",
-				"includeAllSubFolders": true,
-			},
+			"name":                 "recursive-import",
+			"projectId":            proj.ID,
+			"connectionId":         conn.ID,
+			"environment":          "dev",
+			"secretPath":           "/",
+			"includeAllSubFolders": true,
+			"destinationConfig":    map[string]any{"region": "us-east-1", "path": "/app/"},
+			"syncOptions":          map[string]any{"initialSyncBehavior": "import-prioritize-source"},
 		})
 		require.NoError(t, err)
 
@@ -179,7 +177,7 @@ func TestSecretSync_Create(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.Equal(t, http.StatusUnprocessableEntity, res.StatusCode())
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, message(res.Body), "A sync that includes subfolders cannot also import existing secrets from the destination")
 		list, err := tn.Admin.API.ListAwsParameterStoreSecretSyncsWithResponse(t.Context(),
 			&api.ListAwsParameterStoreSecretSyncsParams{ProjectId: proj.ID})

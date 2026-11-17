@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { ConflictError } from "@app/lib/errors";
 
@@ -83,9 +84,11 @@ const createService = ({ identityAuthMethods = [] as string[] }: { identityAuthM
         identity: { id: IDENTITY_ID, orgId: ORG_ID, projectId: null, authMethods: identityAuthMethods }
       })
     },
-    licenseService: {
-      getPlan: vi.fn().mockResolvedValue({ ldap: true, machineIdentityAuthTemplates: true, ipAllowlisting: true })
-    },
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+      ldap: true,
+      machineIdentityAuthTemplates: true,
+      ipAllowlisting: true
+    }),
     permissionService: {
       getOrgPermission: vi
         .fn()

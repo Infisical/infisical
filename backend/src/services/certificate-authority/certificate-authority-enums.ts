@@ -38,3 +38,13 @@ export enum CaCapability {
   REISSUE_CERTIFICATES = "reissue-certificates",
   CUSTOM_EXTENSIONS = "custom-extensions"
 }
+
+export enum CaCrlRegenerationTrigger {
+  Manual = "manual",
+  Revocation = "revocation",
+  CaRenewal = "ca-renewal",
+  CaCertificateGeneration = "ca-certificate-generation",
+  CaCertificateImport = "ca-certificate-import",
+  ValidityChange = "validity-change",
+  Scheduled = "scheduled"
+}

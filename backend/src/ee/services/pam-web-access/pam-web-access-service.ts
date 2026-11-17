@@ -8,7 +8,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
-import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
+import { outputMaskingGatewayOptions, resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -544,7 +544,8 @@ export const pamWebAccessServiceFactory = ({
       });
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,
-        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+        ...outputMaskingGatewayOptions(account)
       });
       if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this account" });
@@ -609,7 +610,8 @@ export const pamWebAccessServiceFactory = ({
       const attempt = await gatewayPoolService.runWithPoolFailover(
         {
           gatewayId: account.gatewayId ?? account.templateGatewayId,
-          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+          ...outputMaskingGatewayOptions(account)
         },
         async (gatewayId) => {
           const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({

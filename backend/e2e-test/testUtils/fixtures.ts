@@ -80,3 +80,24 @@ export const createSubOrgAndProject = async (dto: { rootOrgId: string; namePrefi
 
   return { subOrgId, projectId, authToken };
 };
+
+// An org with no members and no project, for specs about who is in an org. Written directly because the
+// API makes its caller an admin of the org it creates. `rootOrgId` makes it a sub-org.
+export const createEmptyOrg = async (dto: { namePrefix: string; rootOrgId?: string }) => {
+  const name = `${dto.namePrefix}-${randomUUID().slice(0, 8)}`;
+  const [org] = await testDb(TableName.Organization)
+    .insert({
+      name,
+      slug: name,
+      ...(dto.rootOrgId ? { parentOrgId: dto.rootOrgId, rootOrgId: dto.rootOrgId } : {})
+    })
+    .returning("id");
+
+  return { orgId: (org as { id: string }).id, name };
+};
+
+// Deleting a root org cascades to its sub-orgs, memberships and groups.
+export const deleteOrgs = async (orgIds: string[]) => {
+  if (orgIds.length === 0) return;
+  await testDb(TableName.Organization).whereIn("id", orgIds).delete();
+};

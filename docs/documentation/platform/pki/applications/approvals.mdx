@@ -36,6 +36,17 @@ An approval policy defines the workflow that must be completed before certificat
 3. Each approval step must be completed in sequence
 4. Once all steps are approved, the certificate is issued
 
+### Renewals
+
+If an approval policy covers the certificate's profile, a [renewal](/documentation/platform/pki/applications/certificate-renewal) waits for approval in these cases:
+
+- The certificate was imported or discovered, including when it renews automatically
+- The renewal changes the certificate, such as its common name, SANs, validity, or custom extensions, or uses a CSR
+
+If you renew a certificate that Infisical issued and don't change it, the renewal doesn't need approval. The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
+
+While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate. If an approver rejects the renewal of an imported or discovered certificate, automatic renewal stops for that certificate. Renew it manually to request approval again. Automatic renewal continues on the new certificate once that renewal is approved.
+
 ## Create an approval policy
 
 In your Application, go to the **Settings** tab and find the **Approval Policies** section. Select **Create Policy**.

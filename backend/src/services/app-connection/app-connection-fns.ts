@@ -1,4 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
   getChefConnectionListItem,
@@ -11,7 +12,6 @@ import {
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { getSecretRotationConnectionApps } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -23,6 +23,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { TVenafiTppConnectionConfig } from "@app/services/app-connection/venafi-tpp";
 import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-approval/delegated-approval-maps";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -108,6 +109,11 @@ import {
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
+import {
+  ClickHouseConnectionMethod,
+  getClickHouseConnectionListItem,
+  validateClickHouseConnectionCredentials
+} from "./clickhouse";
 import {
   Cloud66ConnectionMethod,
   getCloud66ConnectionListItem,
@@ -197,6 +203,12 @@ import {
   validateHumanitecConnectionCredentials
 } from "./humanitec";
 import { getImpervaConnectionListItem, ImpervaConnectionMethod, validateImpervaConnectionCredentials } from "./imperva";
+import {
+  getIncidentIoConnectionListItem,
+  IncidentIoConnectionMethod,
+  validateIncidentIoConnectionCredentials
+} from "./incident-io";
+import { getJenkinsConnectionListItem, JenkinsConnectionMethod, validateJenkinsConnectionCredentials } from "./jenkins";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
@@ -337,7 +349,6 @@ import {
   validateVenafiTppConnectionCredentials,
   VenafiTppConnectionMethod
 } from "./venafi-tpp";
-import { TVenafiTppConnectionConfig } from "./venafi-tpp/venafi-tpp-connection-types";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -395,7 +406,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -509,6 +520,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
     getPortainerConnectionListItem(),
+    getJenkinsConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -521,7 +533,9 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getHpeIloConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
-    getJiraConnectionListItem()
+    getJiraConnectionListItem(),
+    getClickHouseConnectionListItem(),
+    getIncidentIoConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -759,6 +773,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Jenkins]: validateJenkinsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -772,7 +787,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -828,6 +845,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
       return "API Token";
@@ -850,6 +868,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WinRMConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case SnowflakeConnectionMethod.UsernameAndToken:
       return "Username & Token";
@@ -892,6 +911,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DaytonaConnectionMethod.ApiKey:
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
+    case IncidentIoConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -914,6 +934,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Certificate";
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
       return "Managed Identity";
+    case OVHConnectionMethod.Token:
+      return "Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -1087,6 +1109,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
+  [AppConnection.Jenkins]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
@@ -1099,18 +1122,20 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
-  [AppConnection.Jira]: platformManagedCredentialsNotSupported
+  [AppConnection.Jira]: platformManagedCredentialsNotSupported,
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
+  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   appConnection: AppConnection,
   orgId: string,
   errorMessage: string
 ) => {
   if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseAppConnections)
+    if (!plan.has(PlanFeature.EnterpriseAppConnections))
       throw new BadRequestError({
         message: errorMessage
       });

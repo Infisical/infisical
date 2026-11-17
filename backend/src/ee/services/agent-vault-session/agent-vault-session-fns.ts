@@ -6,7 +6,11 @@ import { z } from "zod";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
+import {
+  TAgentVaultSessionActor,
+  TAgentVaultSessionMetadataFilter,
+  TAgentVaultSessionOnBehalfOf
+} from "./agent-vault-session-types";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
 
@@ -38,10 +42,144 @@ export const agentVaultSessionLabelSchema = agentVaultSessionLabelStringSchema
   .nullish()
   .transform((label) => label || null);
 
-// Required on update: the label is the only field, so leaving it out must not read as clearing it.
+// Left out on update keeps the label, so undefined must survive the transform rather than read as clearing it.
 export const agentVaultSessionLabelUpdateSchema = agentVaultSessionLabelStringSchema
   .nullable()
-  .transform((label) => label || null);
+  .optional()
+  .transform((label) => (label === undefined ? undefined : label || null));
+
+export const AGENT_VAULT_SESSION_METADATA_MAX_KEYS = 20;
+export const AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH = 255;
+export const AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH = 1020;
+
+const metadataKeySchema = z
+  .string()
+  .trim()
+  .min(1, "A metadata key can't be empty")
+  .max(
+    AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH,
+    `A metadata key can be at most ${AGENT_VAULT_SESSION_METADATA_KEY_MAX_LENGTH} characters`
+  )
+  .refine(
+    isValidAgentVaultSessionLabel,
+    "A metadata key can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks."
+  )
+  // The list filter takes key=value and splits on the first =, so a key holding one could never be filtered on.
+  .refine((key) => !key.includes("="), "A metadata key can't contain =");
+
+const metadataValueSchema = (key: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `Enter a value for metadata key '${key}'`)
+    .max(
+      AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH,
+      `The value of metadata key '${key}' can be at most ${AGENT_VAULT_SESSION_METADATA_VALUE_MAX_LENGTH} characters`
+    )
+    .refine(
+      isValidAgentVaultSessionLabel,
+      `The value of metadata key '${key}' can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks.`
+    );
+
+// Keys are checked one by one rather than as a z.record key schema, which trims them and lets a later key that
+// trims to the same text overwrite an earlier one without a word.
+export const agentVaultSessionMetadataSchema = z
+  .record(z.string(), z.string())
+  .superRefine((metadata, ctx) => {
+    const entries = Object.entries(metadata);
+    if (entries.length > AGENT_VAULT_SESSION_METADATA_MAX_KEYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can have at most ${AGENT_VAULT_SESSION_METADATA_MAX_KEYS} metadata entries`
+      });
+      return;
+    }
+    const seen = new Set<string>();
+    entries.forEach(([rawKey, rawValue]) => {
+      const key = metadataKeySchema.safeParse(rawKey);
+      if (!key.success) {
+        key.error.issues.forEach(({ message }) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [rawKey], message })
+        );
+        return;
+      }
+      if (seen.has(key.data)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [rawKey],
+          message: `The metadata key '${key.data}' appears more than once. Each key can be used once per session.`
+        });
+        return;
+      }
+      seen.add(key.data);
+      const value = metadataValueSchema(key.data).safeParse(rawValue);
+      if (!value.success) {
+        value.error.issues.forEach(({ message }) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [rawKey], message })
+        );
+      }
+    });
+  })
+  .transform((metadata) =>
+    Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key.trim(), value.trim()]))
+  );
+
+export type TAgentVaultSessionMetadata = Record<string, string>;
+
+export const AGENT_VAULT_SESSION_METADATA_FILTER_FORMAT_MESSAGE =
+  "Filter metadata as key=value, such as metadata=runId=8812";
+
+// A repeated query param arrives as an array and a single one as a string. Values may contain "=", so only the
+// first one separates the key.
+export const agentVaultSessionMetadataFilterSchema = z
+  .union([z.string(), z.string().array()])
+  .transform((raw, ctx): TAgentVaultSessionMetadataFilter => {
+    const pairs = typeof raw === "string" ? [raw] : raw;
+    if (pairs.length > AGENT_VAULT_SESSION_METADATA_MAX_KEYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `You can filter by at most ${AGENT_VAULT_SESSION_METADATA_MAX_KEYS} metadata entries`
+      });
+      return z.NEVER;
+    }
+    const seen = new Set<string>();
+    const filter: TAgentVaultSessionMetadataFilter = [];
+    pairs.forEach((pair) => {
+      const separator = pair.indexOf("=");
+      if (separator === -1 || !pair.slice(0, separator).trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: AGENT_VAULT_SESSION_METADATA_FILTER_FORMAT_MESSAGE });
+        return;
+      }
+      const key = metadataKeySchema.safeParse(pair.slice(0, separator));
+      if (!key.success) {
+        key.error.issues.forEach(({ message }) => ctx.addIssue({ code: z.ZodIssueCode.custom, message }));
+        return;
+      }
+      if (seen.has(key.data)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `The metadata key '${key.data}' appears more than once. Filter by each key once.`
+        });
+        return;
+      }
+      seen.add(key.data);
+      const value = metadataValueSchema(key.data).safeParse(pair.slice(separator + 1));
+      if (!value.success) {
+        value.error.issues.forEach(({ message }) => ctx.addIssue({ code: z.ZodIssueCode.custom, message }));
+        return;
+      }
+      filter.push({ key: key.data, value: value.data });
+    });
+    return filter;
+  });
+
+export const isSameSessionMetadata = (a: TAgentVaultSessionMetadata, b: TAgentVaultSessionMetadata) => {
+  const entries = Object.entries(a);
+  return (
+    entries.length === Object.keys(b).length &&
+    entries.every(([key, value]) => Object.prototype.hasOwnProperty.call(b, key) && b[key] === value)
+  );
+};
 
 export const hashSessionToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 
@@ -82,13 +220,13 @@ export const deriveSessionStatus = (
 export const describeSessionForAudit = (session: {
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
-  accessBundles: { name: string }[];
+  accessBundle: { name: string } | null;
 }) => ({
   sessionOwner:
     session.actor.type === AgentVaultMemberType.MachineIdentity
       ? session.actor.name
       : (session.actor.email ?? session.actor.username),
-  accessBundleName: session.accessBundles[0]?.name ?? null,
+  accessBundleName: session.accessBundle?.name ?? null,
   ...(session.onBehalfOf && {
     ...(session.onBehalfOf.id && { onBehalfOfUserId: session.onBehalfOf.id }),
     onBehalfOfUserName: session.onBehalfOf.username,

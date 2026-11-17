@@ -11,14 +11,14 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
-import { BillingV2CatalogProduct, BillingV2Plan } from "@app/hooks/api";
-import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
+import { BillingCatalogProduct, BillingCatalogPlan } from "@app/hooks/api";
+import { ProductIcon } from "@app/pages/organization/BillingPage/components/shared";
 
 import { focusUpgradeContinuation } from "./UpgradeDialogLayout";
 
 type Props = {
-  product: BillingV2CatalogProduct;
-  plan: BillingV2Plan;
+  product: BillingCatalogProduct;
+  plan: BillingCatalogPlan;
   isTrialing: boolean;
   trialEndsAt?: string | null;
   onOpenChange: (isOpen: boolean) => void;

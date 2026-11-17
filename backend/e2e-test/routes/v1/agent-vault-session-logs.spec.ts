@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
+import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
@@ -11,7 +12,8 @@ import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/s
 import { seedData1 } from "@app/db/seed-data";
 import {
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
-  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
+  AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import {
   encodeHistoryCursor,
@@ -29,13 +31,10 @@ import {
 
 initLogger();
 
-const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
+// The spec's own Agent Vault project, created in beforeAll. Project-level requests name it.
+let projectId: string;
 
-const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-  testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
-
-const getProjectId = async () =>
-  (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+const inject = agentVaultRequester(jwtAuthToken, () => projectId);
 
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
@@ -44,7 +43,7 @@ const createAccessBundle = async (name: string) => {
 };
 
 const mintSession = async (bundleName: string, ttl = "1h") => {
-  const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundleName], ttl });
+  const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundleName, ttl });
   expect(res.statusCode).toBe(200);
   return (JSON.parse(res.payload) as { session: { id: string; token: string } }).session;
 };
@@ -88,8 +87,7 @@ const createMemberIdentity = async (name: string) => {
 
   return {
     id: identity.id,
-    as: (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
-      testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
+    as: agentVaultRequester(token, () => projectId),
     cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
   };
 };
@@ -164,7 +162,6 @@ const sessionFolder = (sessionId: string, prefix: string | null = "logs") =>
 describe("Agent Vault session logs", async () => {
   let connectionId: string;
   let connectionName: string;
-  let projectId: string;
 
   const externalStorage = (fields: Record<string, unknown> = {}) => ({
     type: "external",
@@ -179,21 +176,15 @@ describe("Agent Vault session logs", async () => {
     saveConfig({ enabled: true, storage: externalStorage(fields) });
 
   beforeAll(async () => {
-    projectId = await getProjectId();
-    expect(
-      (await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)).statusCode
-    ).toBe(200);
+    projectId = await createAgentVaultProject({ authToken: jwtAuthToken, name: `session-logs-${Date.now()}` });
     connectionName = `session-logs-aws-${Date.now()}`;
     connectionId = await createAwsAppConnection({ name: connectionName, authToken: jwtAuthToken });
   });
 
-  // This file sorts before agent-vault.spec.ts, which asserts the Agent Vault project bootstraps with no members.
+  // The saved settings reference the connection, so they go before it does.
   afterAll(async () => {
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
-    await testDb("agent_vault_sessions").where({ projectId }).del();
-    await testDb("agent_vault_proxies").where({ projectId }).del();
-    await testDb("agent_vault_access_bundles").where({ projectId }).del();
-    await testDb("memberships").where({ scopeProjectId: projectId }).del();
+    await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId });
     await deleteAwsAppConnection({ connectionId, authToken: jwtAuthToken });
   });
 
@@ -202,7 +193,7 @@ describe("Agent Vault session logs", async () => {
     fakeAwsConnection.reset();
     fakeDefaultStorage.reset();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
-    // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
+    // Tests create their own proxies, and a project can hold only AGENT_VAULT_MAX_PROXIES_PER_PROJECT.
     await testDb("agent_vault_proxies").where({ projectId }).del();
   });
 
@@ -444,6 +435,23 @@ describe("Agent Vault session logs", async () => {
       expect(refused.map((res) => res.statusCode)).toEqual([422, 422, 422]);
     });
 
+    // The probe takes a user's login, so a user member asks for it.
+    test("a non-admin member cannot get the CORS probe", async () => {
+      const user = await createUser("session-logs-probe-member");
+      try {
+        const orgId = seedData1.organization.id;
+        await addUserMembership({ userId: user.userId, orgId, role: OrgMembershipRole.Member });
+        await addUserMembership({ userId: user.userId, orgId, projectId, role: ProjectMembershipRole.Member });
+        const asUser = agentVaultRequester(await createUserAccessToken({ userId: user.userId, orgId }), () => projectId);
+
+        const probe = await asUser("GET", `${SETTINGS_URL}/cors-probe`);
+        expect(probe.statusCode).toBe(403);
+        expect(probe.json().message).toBe("You are not allowed to read on settings");
+      } finally {
+        await deleteUsers([user.userId]);
+      }
+    });
+
     test("a non-admin member cannot read or change the settings", async () => {
       const member = await createMemberIdentity(`session-logs-member-${Date.now()}`);
       try {
@@ -629,6 +637,74 @@ describe("Agent Vault session logs", async () => {
     });
   });
 
+  describe("request counts", () => {
+    // The count write isn't awaited by the upload link, so reads poll until it lands.
+    const sessionStats = async (sessionId: string) =>
+      (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}`)).json().session.stats as {
+        requests: number;
+        brokered: number | null;
+      } | null;
+
+    const counted = (recordCount: number, brokered?: number) =>
+      chunkBody({
+        recordCount,
+        ...(brokered !== undefined && {
+          decisionCounts: { brokered, passthrough: recordCount - brokered, blocked: 0, error: 0 }
+        })
+      });
+
+    const setUp = async (name: string) => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-${name}-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-${name}-${Date.now()}`);
+      return { session, proxy };
+    };
+
+    test("a session no chunk has reached has no counts", async () => {
+      const { session } = await setUp("no-counts");
+      expect(await sessionStats(session.id)).toBeNull();
+    });
+
+    test("each chunk's counts add up on the session, in the list too", async () => {
+      const { session, proxy } = await setUp("add-up");
+      await requestUploadUrl(proxy, session.id, counted(10, 7));
+      await requestUploadUrl(proxy, session.id, counted(5, 2));
+
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 15, brokered: 9 });
+      const listed = (await inject("GET", "/api/v1/agent-vault/sessions?scope=all")).json().sessions as {
+        id: string;
+        stats: unknown;
+      }[];
+      expect(listed.find((row) => row.id === session.id)?.stats).toEqual({ requests: 15, brokered: 9 });
+    });
+
+    test("a chunk without the split leaves brokered unknown for good, whichever comes first", async () => {
+      const splitFirst = await setUp("split-first");
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(10, 7));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(3));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(2, 2));
+      await expect.poll(() => sessionStats(splitFirst.session.id)).toEqual({ requests: 15, brokered: null });
+
+      const unknownFirst = await setUp("unknown-first");
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(3));
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(10, 7));
+      await expect.poll(() => sessionStats(unknownFirst.session.id)).toEqual({ requests: 13, brokered: null });
+    });
+
+    test("chunks that arrive at once are all counted", async () => {
+      const { session, proxy } = await setUp("concurrent");
+      await Promise.all(Array.from({ length: 8 }, () => requestUploadUrl(proxy, session.id, counted(4, 3))));
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 32, brokered: 24 });
+    });
+
+    test("a chunk without a total counts nothing", async () => {
+      const { session, proxy } = await setUp("no-total");
+      await requestUploadUrl(proxy, session.id, chunkBody());
+      expect(await sessionStats(session.id)).toBeNull();
+    });
+  });
+
   describe("what resolve tells the proxy", () => {
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`session-logs-resolve-${label}-${Date.now()}`);
@@ -688,7 +764,8 @@ describe("Agent Vault session logs", async () => {
     test("a session log key that can't be opened turns logs off for the session, and its services still resolve", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+      const created = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [bundle.id],
         type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
@@ -770,7 +847,7 @@ describe("Agent Vault session logs", async () => {
       });
       expect(granted.statusCode).toBe(200);
       const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(minted.statusCode, minted.payload).toBe(200);
@@ -783,8 +860,12 @@ describe("Agent Vault session logs", async () => {
       const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, { label: "afterwards" });
       expect(relabelled.statusCode).toBe(400);
       expect(relabelled.json().message).toBe(
-        "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label can't be changed."
+        "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label and metadata can't be changed."
       );
+      const remetadata = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, {
+        metadata: { runId: "8812" }
+      });
+      expect(remetadata.statusCode).toBe(400);
 
       const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${sessionId}/revoke`);
       expect(revoked.statusCode).toBe(200);
@@ -1191,7 +1272,7 @@ describe("Agent Vault session logs", async () => {
         });
         expect(granted.statusCode).toBe(200);
         const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "1h"
         });
         expect(minted.statusCode, minted.payload).toBe(200);
@@ -1210,9 +1291,42 @@ describe("Agent Vault session logs", async () => {
       }
     });
 
+    test("an external storage failure tells a member to ask an admin, and tells an admin the cause", async () => {
+      await configure();
+      const member = await createMemberIdentity(`session-logs-cause-${Date.now()}`);
+      try {
+        const bundle = await createAccessBundle(`session-logs-cause-${Date.now()}`);
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          machineIdentityIds: [member.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const ownSession = minted.json().session as { id: string };
+        fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
+
+        const asMember = await member.as("GET", `/api/v1/agent-vault/sessions/${ownSession.id}/logs`);
+        expect(asMember.statusCode).toBe(400);
+        expect(asMember.json()).toMatchObject({
+          error: "AgentVaultSessionLogStorageUnavailable",
+          message: AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE
+        });
+
+        const asAdmin = await readFails(ownSession.id);
+        expect(asAdmin.statusCode).toBe(400);
+        expect(asAdmin.body.message).toBe(
+          `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`
+        );
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("a session on a user's behalf is the identity's: its logs go to the identity and admins, never the user", async () => {
       await configure();
-      const projectId = await getProjectId();
       const bundle = await createAccessBundle(`session-logs-obo-${Date.now()}`);
       const bot = await createMemberIdentity(`session-logs-obo-bot-${Date.now()}`);
       const alice = await createUser("session-logs-obo-alice");
@@ -1225,16 +1339,14 @@ describe("Agent Vault session logs", async () => {
           machineIdentityIds: [bot.id]
         });
         expect(granted.statusCode).toBe(200);
-        const delegated = await testServer.inject({
-          method: "PUT",
-          url: `/api/v1/agent-vault/delegations/${bot.id}`,
-          headers: authHeader,
-          body: { scope: "selected", userIds: [alice.userId] }
+        const delegated = await inject("PUT", `/api/v1/agent-vault/delegations/${bot.id}`, {
+          scope: "selected",
+          userIds: [alice.userId]
         });
         expect(delegated.statusCode).toBe(200);
 
         const minted = await bot.as("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           onBehalfOf: { userId: alice.userId }
         });
         expect(minted.statusCode, minted.payload).toBe(200);

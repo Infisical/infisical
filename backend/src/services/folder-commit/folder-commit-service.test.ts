@@ -129,7 +129,7 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockSecretVersionV2BridgeDAL = {
-    findLatestVersionByFolderId: vi.fn().mockResolvedValue([]),
+    findLatestSharedVersionsByFolderId: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue({}),
     deleteById: vi.fn().mockResolvedValue({}),
     create: vi.fn().mockResolvedValue({}),
@@ -234,7 +234,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       const data = {
         actor: {
@@ -294,7 +294,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       // Mock folderVersionDAL.find to return an object with folder version data
       mockFolderVersionDAL.find.mockResolvedValue({
@@ -385,7 +385,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockFolderVersionDAL.find.mockResolvedValue({});
 
       // Act
@@ -413,7 +413,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockFolderVersionDAL.find.mockResolvedValue({});
 
       // Act
@@ -553,7 +553,7 @@ describe("folderCommitServiceFactory", () => {
 
       mockFolderDAL.findByParentId.mockResolvedValue([{ id: "subfolder-id" }]);
       mockFolderVersionDAL.findLatestFolderVersions.mockResolvedValue({ "subfolder-id": { id: "folder-version-1" } });
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([{ id: "secret-version-1" }]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([{ id: "secret-version-1" }]);
       mockFolderCheckpointDAL.create.mockResolvedValue(checkpointData);
 
       // Act
@@ -701,7 +701,7 @@ describe("folderCommitServiceFactory", () => {
 
       // Make sure other required functions return appropriate values
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       // These mocks need to return objects with an id field
       mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue(Object.values(secretVersions));
@@ -778,7 +778,7 @@ describe("folderCommitServiceFactory", () => {
         "secret-1": { secretId: "secret-1", type: "shared" }
       });
       mockSecretVersionV2BridgeDAL.findLatestVersionMany.mockResolvedValue({});
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockSecretV2BridgeDAL.deleteById.mockResolvedValue({});
       mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue({
         "folder-1": { folderId: "folder-1", name: "renamed", envId: "env-1", version: 1 }

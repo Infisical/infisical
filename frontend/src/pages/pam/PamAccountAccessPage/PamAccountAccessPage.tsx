@@ -132,6 +132,7 @@ const PageContent = () => {
       {({ reason, mfaSessionId }) => {
         if (
           account.accountType === PamAccountType.Postgres ||
+          account.accountType === PamAccountType.CockroachDB ||
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.Snowflake ||
           account.accountType === PamAccountType.ClickHouse

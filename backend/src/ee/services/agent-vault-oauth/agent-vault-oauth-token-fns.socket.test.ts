@@ -40,6 +40,24 @@ vi.mock("@app/lib/validator", async (importOriginal) => {
   return { ...actual, safeRequest: { ...actual.safeRequest, post, get } };
 });
 
+const GOOGLE_CLIENT = { clientId: "123-abc.apps.googleusercontent.com", clientSecret: "GOCSPX-a_b.c" };
+const RESERVED_CLIENT = { clientId: "id: one", clientSecret: "secret &two" };
+const REGISTERED_CLIENTS = [GOOGLE_CLIENT, RESERVED_CLIENT];
+
+// `/basic-decoded` form-decodes both halves of the Basic credentials as RFC 6749 section 2.3.1 asks;
+// `/basic-literal` compares them as sent, the way Google does.
+const isRegisteredBasicClient = (authorization: string | undefined, decode: boolean) => {
+  const credentials = Buffer.from((authorization ?? "").replace(/^Basic /, ""), "base64").toString();
+  const separator = credentials.indexOf(":");
+  const read = (value: string) => (decode ? new URLSearchParams(`v=${value}`).get("v") : value);
+  const clientId = read(credentials.slice(0, separator));
+  const clientSecret = read(credentials.slice(separator + 1));
+  return (
+    separator !== -1 &&
+    REGISTERED_CLIENTS.some((client) => client.clientId === clientId && client.clientSecret === clientSecret)
+  );
+};
+
 describe("OAuth token requests over HTTPS", () => {
   let server: https.Server;
   let issuer: string;
@@ -94,6 +112,16 @@ describe("OAuth token requests over HTTPS", () => {
             response.write("{");
             const timer = setInterval(() => response.write(" "), 10);
             response.once("close", () => clearInterval(timer));
+          } else if (request.url === "/basic-decoded" || request.url === "/basic-literal") {
+            if (isRegisteredBasicClient(request.headers.authorization, request.url === "/basic-decoded")) {
+              response.writeHead(200, { "Content-Type": "application/json" });
+              response.end(JSON.stringify({ access_token: "at-basic", token_type: "Bearer" }));
+            } else {
+              response.writeHead(401, { "Content-Type": "application/json" });
+              response.end(
+                JSON.stringify({ error: "invalid_client", error_description: "The OAuth client was not found." })
+              );
+            }
           } else if (form.get("grant_type") === "authorization_code") {
             response.writeHead(200, { "Content-Type": "application/x-www-form-urlencoded" });
             response.end("access_token=at-code&token_type=bearer&refresh_token=rt-one&scope=repo%2Cgist");
@@ -175,6 +203,31 @@ describe("OAuth token requests over HTTPS", () => {
     expect(requests[1].form.has("resource")).toBe(false);
     expect(requests[1].form.get("refresh_token")).toBe("rt-one");
     expect(requests[1].form.get("client_id")).toBe("id: one");
+  });
+
+  test.each([
+    { path: "/basic-decoded", client: GOOGLE_CLIENT },
+    { path: "/basic-decoded", client: RESERVED_CLIENT },
+    { path: "/basic-literal", client: GOOGLE_CLIENT }
+  ])("client_secret_basic works for $client.clientId at $path", async ({ path, client }) => {
+    const basicArgs = {
+      ...args(),
+      ...client,
+      tokenEndpoint: `${issuer}${path}`,
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
+    };
+    const exchanged = await exchangeAuthorizationCode({
+      ...basicArgs,
+      code: "code-one",
+      codeVerifier: "verifier-one",
+      redirectUri: "https://infisical.test/agent-vault/oauth/callback"
+    });
+    const refreshed = await refreshAccessToken({ ...basicArgs, refreshToken: "rt-one" });
+    expect(exchanged).toMatchObject({ ok: true, tokens: { accessToken: "at-basic" } });
+    expect(refreshed).toMatchObject({ ok: true, tokens: { accessToken: "at-basic" } });
+    requests.forEach(({ authorization }) =>
+      expect(Buffer.from(authorization!.replace(/^Basic /, ""), "base64").toString()).not.toMatch(/%2[DE]/i)
+    );
   });
 
   test("never follows a redirect carrying a refresh token", async () => {

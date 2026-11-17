@@ -9,7 +9,12 @@ import {
   TableName,
   TAgentVaultAccessBundles
 } from "@app/db/schemas";
-import { AGENT_VAULT_ACTOR_COLUMN, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  AgentVaultServiceType
+} from "@app/ee/services/agent-vault/agent-vault-enums";
+import { isNativeServiceType } from "@app/ee/services/agent-vault/agent-vault-native-config-schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -24,6 +29,8 @@ export type TAgentVaultAccessBundleListRow = {
   updatedAt: Date;
   serviceCount: number;
   hostPatterns: string[];
+  // A database or SSH service covers no host pattern, so a list shows these by name.
+  nativeServices: { name: string; type: AgentVaultServiceType }[];
   memberCount: number;
 };
 
@@ -114,7 +121,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .first()) as { count: string } | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const serviceCounts = conn(TableName.AgentVaultService)
+      const serviceCounts = conn(TableName.AgentVaultAccessBundleService)
         .select("accessBundleId")
         .count("* as count")
         .groupBy("accessBundleId")
@@ -148,9 +155,14 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const rows = (await conn(TableName.AgentVaultAccessBundle)
         .whereIn(`${TableName.AgentVaultAccessBundle}.id`, pageIds)
         .leftJoin(
-          TableName.AgentVaultService,
-          `${TableName.AgentVaultService}.accessBundleId`,
+          TableName.AgentVaultAccessBundleService,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .leftJoin(
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.id`,
+          `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
         .leftJoin(memberCounts, function joinMemberCount() {
           this.on(db.raw(`mc."scopeResourceId" = ??.id::text`, [TableName.AgentVaultAccessBundle]));
@@ -162,7 +174,9 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("createdAt").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("updatedAt").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
+          db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
+          db.ref("type").withSchema(TableName.AgentVaultService).as("serviceType"),
           db.raw('COALESCE(mc.count, 0)::int as "memberCount"')
         )
         .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")) as {
@@ -172,7 +186,9 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         createdAt: Date;
         updatedAt: Date;
         serviceId: string | null;
+        serviceName: string | null;
         hostPattern: string | null;
+        serviceType: AgentVaultServiceType | null;
         memberCount: number;
       }[];
 
@@ -188,6 +204,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             updatedAt: row.updatedAt,
             serviceCount: 0,
             hostPatterns: [],
+            nativeServices: [],
             memberCount: row.memberCount
           };
           byBundle.set(row.id, bundle);
@@ -195,7 +212,10 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         if (!row.serviceId) return;
         bundle.serviceCount += 1;
         if (row.hostPattern) bundle.hostPatterns.push(...row.hostPattern.split(","));
+        if (row.serviceName && row.serviceType && isNativeServiceType(row.serviceType))
+          bundle.nativeServices.push({ name: row.serviceName, type: row.serviceType });
       });
+      byBundle.forEach((bundle) => bundle.nativeServices.sort((a, b) => a.name.localeCompare(b.name)));
 
       // The fan-out query returns page rows in its own order, so the page order is reapplied here.
       const orderOfId = new Map(pageIds.map((id, index) => [id, index]));

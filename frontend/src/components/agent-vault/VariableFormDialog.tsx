@@ -25,6 +25,7 @@ import {
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
 import {
   normalizeVariableKey,
@@ -107,9 +108,10 @@ const VariableForm = ({
   onCreated,
   scope = AgentVaultVariableScope.Global
 }: Omit<Props, "onCloseAutoFocus">) => {
+  const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
-  const createVariable = useCreateAgentVaultVariable();
-  const updateVariable = useUpdateAgentVaultVariable();
+  const createVariable = useCreateAgentVaultVariable(projectId);
+  const updateVariable = useUpdateAgentVaultVariable(projectId);
   const isUpdate = Boolean(variable);
   const usedByCount = variable?.usedByServices.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
@@ -147,7 +149,7 @@ const VariableForm = ({
     key !== variable?.key
       ? key
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], {
+  const { existing } = useAgentVaultVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
     isCached: false,
     scope
   });
@@ -223,7 +225,7 @@ const VariableForm = ({
         <DialogDescription>
           {isPersonal
             ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
-            : "Store a value once and use it from any service in any access bundle. Only admins can manage it and see its value."}
+            : "Store a value once and use it from any service in any access bundle. Managing it and seeing its value each take their own permission."}
         </DialogDescription>
       </DialogHeader>
 

@@ -1,8 +1,16 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
+
+// Reaching every bundle without a grant comes with the role, not with a permission: a personal value save locks the
+// role rows that confer it, the cleanup after a revoke keeps the values of anyone holding one, and a delegation reads a
+// group's reach from its role rows. Those queries filter by this list, so it is the one definition.
+export const AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE: readonly string[] = [ProjectMembershipRole.Admin];
+
 export enum AgentVaultCredentialType {
   Bearer = "bearer",
   Basic = "basic",
   Passthrough = "passthrough",
-  OAuth = "oauth"
+  OAuth = "oauth",
+  SshKey = "ssh-key"
 }
 
 export enum AgentVaultOauthStatus {
@@ -19,7 +27,10 @@ export enum AgentVaultOauthAuthorizationStatus {
 
 export enum AgentVaultServiceType {
   Http = "http",
-  Mcp = "mcp"
+  Mcp = "mcp",
+  Postgres = "postgres",
+  Mysql = "mysql",
+  Ssh = "ssh"
 }
 
 export enum AgentVaultMcpTransport {

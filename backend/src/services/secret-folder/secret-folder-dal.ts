@@ -556,6 +556,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await tx(TableName.SecretFolder)
         .whereIn("id", folderIds)
+        .orderBy("id")
         .forUpdate()
         .select(selectAllTableCols(TableName.SecretFolder));
       return folders;

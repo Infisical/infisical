@@ -17,7 +17,7 @@ import {
   FieldDescription,
   FieldLabel
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultMembers,
@@ -37,8 +37,9 @@ type Props = {
 };
 
 export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const addMembers = useAddAgentVaultMembers();
+  const addMembers = useAddAgentVaultMembers(projectId);
 
   const [group, setGroup] = useState<TOption | null>(null);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
@@ -46,12 +47,14 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const [debouncedSearch] = useDebounce(search);
 
   const { data, isFetching } = useListAvailableAgentVaultMembers(
+    projectId,
     { actorType: AgentVaultMemberType.Group, search: debouncedSearch.trim() || undefined },
     isOpen
   );
   // Only for the empty state: with nothing available, this is what tells an organization that has no
   // groups at all apart from one whose groups are all already members.
   const { data: memberData } = useListAgentVaultMembers(
+    projectId,
     { actorType: AgentVaultMemberType.Group, limit: 1 },
     isOpen
   );
@@ -81,7 +84,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
       const { skipped } = await addMembers.mutateAsync({ groupIds: [group.value], role });
       createNotification({
         text: skipped.length
-          ? `"${group.label}" already has access to Agent Vault`
+          ? `"${group.label}" already has access to this project`
           : `"${group.label}" added`,
         type: skipped.length ? "info" : "success"
       });
@@ -114,7 +117,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
           <div className="flex flex-col gap-4">
             <p className="text-sm">
               {orgHasNoGroups
-                ? "Your organization has no groups yet. Create one at the organization level to add it to Agent Vault."
+                ? "Your organization has no groups yet. Create one at the organization level to add it to this project."
                 : "Every group in your organization is already added. To add another, create one at the organization level first."}
             </p>
             <DialogFooter>

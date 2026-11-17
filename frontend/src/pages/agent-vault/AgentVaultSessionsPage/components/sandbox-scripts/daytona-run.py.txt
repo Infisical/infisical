@@ -1,0 +1,118 @@
+# run_agent.py
+import os
+
+from daytona import CreateSandboxFromSnapshotParams, Daytona
+from infisical_sdk import InfisicalSDKClient
+
+from sandbox_image import SNAPSHOT
+
+INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
+ACCESS_BUNDLE = "<access-bundle-name>"
+
+# Prints the proxy's address on the network it shares with the agent's sandbox.
+# The address appears shortly after the agent's sandbox is linked.
+GET_LINK_ADDRESS = (
+    "for i in $(seq 60); do "
+    "ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; "
+    "sleep 0.5; done; exit 1"
+)
+
+STOP_PROXY = (
+    "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; "
+    "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1"
+)
+
+AGENT_ENV = {
+    # Claude Code won't start without a key; the proxy replaces this one.
+    "ANTHROPIC_API_KEY": "agent-vault",
+    # Makes the fetch built into Node.js send requests through the proxy.
+    "NODE_USE_ENV_PROXY": "1",
+    # Skips Claude Code's update checks and telemetry, which fail without internet access.
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_AUTOUPDATER": "1",
+}
+
+
+def run_agent(daytona: Daytona, prompt: str) -> str:
+    # The machine identity's credentials stay here and never enter a sandbox.
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
+    )
+
+    # One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
+    # agent can't lose access mid-run.
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
+    )
+
+    proxy_sandbox = None
+    try:
+        # Deleting this sandbox also deletes the agent's sandbox linked to it.
+        proxy_sandbox = daytona.create(
+            CreateSandboxFromSnapshotParams(
+                snapshot=SNAPSHOT,
+                ephemeral=True,
+                ttl_minutes=15,
+                env_vars={
+                    "INFISICAL_AGENT_VAULT_PROXY_TOKEN": os.environ["INFISICAL_AGENT_VAULT_PROXY_TOKEN"],
+                    "INFISICAL_DOMAIN": INFISICAL_URL,
+                },
+            )
+        )
+        proxy_sandbox.process.exec("nohup infisical agent-vault proxy > /tmp/proxy.log 2>&1 & echo $! > /tmp/proxy.pid")
+
+        agent_sandbox = daytona.create(
+            CreateSandboxFromSnapshotParams(
+                snapshot=SNAPSHOT,
+                linked_sandbox=proxy_sandbox.id,
+                ephemeral=True,
+                network_block_all=True,
+            )
+        )
+        link = proxy_sandbox.process.exec(GET_LINK_ADDRESS)
+        if link.exit_code != 0:
+            raise RuntimeError("The proxy's sandbox didn't get an address on the linked network.")
+        proxy_ip = link.result.strip()
+        # Blocking all traffic also blocks the proxy, so allow only the proxy's address.
+        agent_sandbox.update_network_settings(network_allow_list=f"{proxy_ip}/32")
+        proxy_address = f"{proxy_ip}:17323"
+
+        # The proxy serves only after it has loaded its settings from Infisical.
+        wait = agent_sandbox.process.exec(
+            "for i in $(seq 60); do "
+            f"curl -fs http://{proxy_address}/_agent-vault/ca > /dev/null && exit 0; "
+            "sleep 0.5; done; exit 1"
+        )
+        if wait.exit_code != 0:
+            log = proxy_sandbox.process.exec("cat /tmp/proxy.log").result
+            raise RuntimeError(f"The Agent Vault proxy didn't start:\n{log}")
+
+        agent_sandbox.fs.upload_file(prompt.encode(), "/tmp/prompt.txt")
+        # Claude Code won't skip its permission prompts as root, so the agent
+        # runs as the image's node user.
+        agent = agent_sandbox.process.exec(
+            "runuser -u node -- sh -c '"
+            f"infisical agent-vault run --telemetry=false --proxy {proxy_address} "
+            "-- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
+            cwd="/home/node",
+            env={**AGENT_ENV, "INFISICAL_AGENT_VAULT_SESSION_TOKEN": session.token},
+            timeout=14 * 60,
+        )
+        if agent.exit_code != 0:
+            raise RuntimeError(f"The agent failed:\n{agent.result}")
+        return agent.result
+    finally:
+        try:
+            if proxy_sandbox:
+                proxy_sandbox.process.exec(STOP_PROXY)
+        except Exception:
+            pass
+        # Revoke first, so the session ends even if deleting fails.
+        try:
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
+        finally:
+            if proxy_sandbox:
+                proxy_sandbox.delete()

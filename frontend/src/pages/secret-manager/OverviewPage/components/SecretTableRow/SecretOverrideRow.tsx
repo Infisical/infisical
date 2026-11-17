@@ -25,6 +25,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
@@ -150,20 +151,25 @@ export const SecretOverrideRow = ({
 
   const handleFormSubmit = async ({ value }: { value?: string | null }) => {
     if ((value || value === "") && secretName) {
-      if (isCreatingOverride) {
-        await onSecretCreate(environment, secretName, value, SecretType.Personal);
-        // Don't clear isCreatingOverride here — the parent will clean it up
-        // once the query refetch confirms the override exists (hasOverride becomes true).
-        // This prevents the override row from flickering on create.
-      } else {
-        await onSecretUpdate({
-          env: environment,
-          key: secretName,
-          value,
-          secretValueHidden: false,
-          type: SecretType.Personal,
-          secretId: idOverride
-        });
+      try {
+        if (isCreatingOverride) {
+          await onSecretCreate(environment, secretName, value, SecretType.Personal);
+          // Don't clear isCreatingOverride here: the parent will clean it up
+          // once the query refetch confirms the override exists (hasOverride becomes true).
+          // This prevents the override row from flickering on create.
+        } else {
+          await onSecretUpdate({
+            env: environment,
+            key: secretName,
+            value,
+            secretValueHidden: false,
+            type: SecretType.Personal,
+            secretId: idOverride
+          });
+        }
+      } catch (error) {
+        showSecretWriteErrors([{ error }]);
+        return;
       }
     }
     reset({ value });
@@ -246,7 +252,7 @@ export const SecretOverrideRow = ({
       <div className="flex h-7 shrink-0 items-center gap-1">
         {isDirty ? (
           <SecretInputActions
-            className={isSingleEnvView ? "mr-1" : "-mr-1.5"}
+            className="-mr-1.5"
             isSaveDisabled={isSubmitting || !canSaveOverride}
             isUndoDisabled={isSubmitting}
             saveLabel={isCreatingOverride ? "Create override" : "Save override"}

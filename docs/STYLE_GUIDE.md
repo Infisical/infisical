@@ -119,13 +119,17 @@ If you tell the reader they can do something, link to the instructions for doing
 
 **Write:** A super admin can change these limits in the [Server Console](/documentation/platform/admin-panel/server-admin).
 
-### Refer to endpoints by what they do, and link them
+### Refer to endpoints by name, and link them
 
-In a sentence, describe what an endpoint does and link to the endpoint's reference page. Use the method and path only in code blocks. Link every endpoint you mention, even an endpoint you mention only in passing.
+In a sentence, refer to an endpoint by its name followed by the word "endpoint", as in "the Create session endpoint". Copy the name exactly from the title of the endpoint's reference page, which is in sentence case, and link the name to that page. Use the method and path only in code blocks. Link every endpoint you mention, even an endpoint you mention only in passing.
 
-**Instead of:** Call `POST /api/v1/auth/universal-auth/login` with the client ID and client secret.
+**Instead of:** Call `POST /api/v1/agent-vault/sessions` with the access bundle's name.
 
-**Write:** Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret.
+**Or:** Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the access bundle's name.
+
+**Write:** Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the access bundle's name.
+
+If the name alone could refer to more than one endpoint, add the product or auth method the endpoint belongs to. For example, write "the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint", not "the Login endpoint".
 
 ---
 
@@ -367,6 +371,30 @@ If a sentence applies only in some cases, state the case in an "if" clause. Don'
 
 A clause like "that already exists" is fine when it says which thing you mean instead of stating a condition, as in "Select the role that owns the secrets."
 
+### Name the thing instead of describing it with a wh-clause
+
+Don't make a clause that starts with "what", "where", "who", "how", "whether", "whatever", or "whoever" the whole subject or object of a sentence. The reader has to finish the clause before they know what it refers to, and the sentence rarely sounds like something a person would say. Name the thing with a noun instead. If the noun needs more detail, add the clause after the noun, as in "the path where you saved the certificate."
+
+The same applies to field and parameter descriptions. If a clause stands in for the value, name the value instead.
+
+**Instead of:** Replace `/etc/agent-vault/ca.pem` with where you put the certificate in the image.
+
+**Write:** Replace `/etc/agent-vault/ca.pem` with the path to the certificate in the image.
+
+**Instead of:** What the tab shows depends on the account type.
+
+**Write:** The tab shows different details for each account type.
+
+**Instead of:** `OTEL_EXPORT_OTLP_ENDPOINT`: Where telemetry data is pushed for collection
+
+**Write:** `OTEL_EXPORT_OTLP_ENDPOINT`: The URL of the collector that Infisical sends telemetry data to
+
+Common phrases that people say out loud are fine. The rule is about a clause that stands in for a noun the sentence should have named. For example, these sentences are fine:
+
+- When you pick an order, the **Use existing key** toggle decides what happens to its certificate.
+- Each machine identity has a role that controls what the identity can access.
+- Change where the CLI stores your login credentials.
+
 ### Split mid-sentence detours
 
 A clause in the middle of a sentence interrupts the sentence, and the reader has to go back to find where the main clause left off. Split the sentence into two sentences, or move the clause to the start of the sentence.
@@ -374,6 +402,16 @@ A clause in the middle of a sentence interrupts the sentence, and the reader has
 **Instead of:** The menu adds temporary access and once a grant exists removes folder access.
 
 **Write:** The same menu lets you add temporary access or remove access.
+
+### Write one idea per sentence
+
+If a sentence strings several ideas together with "because" and "and", the reader can't tell which idea explains which. Split the sentence into one sentence per idea. Then make each sentence follow from the one before it, so the reader can see why each sentence comes next.
+
+**Instead of:** The image installs Cursor's agent CLI and git, which the worker needs. It also combines the proxy's certificate with the image's own certificates in `/etc/agent-vault/ca.pem`, because `SSL_CERT_FILE` replaces the certificates the worker trusts, and the worker still connects to Cursor without the proxy.
+
+**Write:** The image installs Cursor’s agent CLI and git, which the worker needs. It also builds `/etc/agent-vault/ca.pem`, which combines both the proxy's certificate and the image's own certificates. This is because the worker needs the proxy's certificate for requests through the proxy, and the image's certificates for its direct connection to Cursor (which doesn't go through the proxy).
+
+The first sentence says what the image installs. The second names the file the image builds, then says what goes in it. The third starts with "This is because", so the reader knows it explains the second sentence, and it gives the reason for each set of certificates.
 
 ### Name what actually happens
 

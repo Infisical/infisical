@@ -16,10 +16,10 @@ import {
   lineNumbers as lineNumbersGutter,
   placeholder as placeholderText
 } from "@codemirror/view";
-import { tags } from "@lezer/highlight";
 
 import { cn } from "../../utils";
 import { codeEditorEditing, lineEndingsFor } from "./codeEditorExtensions";
+import { CODE_HIGHLIGHT_RULES } from "./codeHighlightRules";
 import { getValueSync } from "./getChangedRange";
 
 type CodeEditorLanguage = "markdown" | "plain";
@@ -77,28 +77,9 @@ const editorTheme = EditorView.theme({
   ".cm-placeholder": { color: "var(--color-muted)" }
 });
 
-const highlightStyle = HighlightStyle.define(
-  [
-    { tag: tags.heading, color: "var(--color-foreground)", fontWeight: "600" },
-    { tag: tags.strong, fontWeight: "600" },
-    { tag: tags.emphasis, fontStyle: "italic" },
-    { tag: tags.strikethrough, textDecoration: "line-through" },
-    { tag: [tags.link, tags.url], color: "var(--color-info)" },
-    { tag: tags.monospace, color: "var(--color-success)" },
-    { tag: tags.quote, color: "var(--color-label)", fontStyle: "italic" },
-    {
-      tag: [tags.processingInstruction, tags.contentSeparator, tags.meta],
-      color: "var(--color-muted)"
-    },
-    { tag: tags.list, color: "var(--color-label)" },
-    { tag: tags.keyword, color: "var(--color-info)" },
-    { tag: tags.string, color: "var(--color-success)" },
-    { tag: tags.number, color: "var(--color-warning)" },
-    { tag: tags.comment, color: "var(--color-muted)", fontStyle: "italic" },
-    { tag: tags.invalid, color: "var(--color-danger)" }
-  ],
-  { all: { color: "var(--color-foreground)" } }
-);
+const highlightStyle = HighlightStyle.define(CODE_HIGHLIGHT_RULES, {
+  all: { color: "var(--color-foreground)" }
+});
 
 // Marks the dispatch that copies a new `value` prop in, so it is not reported back through `onChange` or undone.
 const externalSync = Annotation.define<boolean>();

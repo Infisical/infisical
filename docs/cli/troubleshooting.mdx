@@ -24,7 +24,7 @@ To keep the error, redirect stderr to a file with `2>`. For example, this comman
 ```bash
 export INFISICAL_TOKEN=<access-token>
 
-infisical sm secrets folders get --projectId=<project-id> --env=prod --path=/ --silent 2>infisical.err
+infisical secrets-manager folders get --projectId=<project-id> --env=prod --path=/ --silent 2>infisical.err
 ```
 
 - The CLI reads the machine identity's access token from `INFISICAL_TOKEN`, so the token doesn't appear in the command
@@ -62,6 +62,6 @@ The request ID identifies the request in the Infisical server logs. Who can sear
 - If you self-host Infisical, search your server's logs for the request ID (it's visible in every line for that request, and together those lines show the route, the response status, and the error)
 - If you use Infisical Cloud, only Infisical can search the server logs, so include the request ID when you ask for help in the [Infisical community](https://community.infisical.com/)
 
-## Unknown command "sm"
+## Unknown command "secrets-manager" or "sm"
 
-If a command fails with `unknown command "sm"`, your CLI is version 0.43.145 or earlier, and those versions don't have the `infisical sm` commands. [Upgrade the CLI](/cli/upgrade), then run `infisical --version` to confirm that it prints a later version.
+If a command fails with `unknown command "secrets-manager"`, your CLI is older than the `infisical secrets-manager` commands. If it fails with `unknown command "sm"`, your CLI is version 0.43.145 or earlier, which has neither. [Upgrade the CLI](/cli/upgrade), then run `infisical secrets-manager --help` to confirm that it lists the commands.

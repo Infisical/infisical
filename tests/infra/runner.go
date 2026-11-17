@@ -196,6 +196,10 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		return Container{}, startFailure(spec.Name, spec.Image, sink, err)
 	}
 
+	// A published port does not move while the container runs, and resolving one is a
+	// container inspect. Every API client a test builds asks for the External endpoint,
+	// so without the cache a full run keeps dockerd busy answering the same question.
+	var external sync.Map
 	c := Container{
 		ID:      dc.GetContainerID(),
 		Name:    spec.Name,
@@ -208,6 +212,9 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 				}
 				return Endpoint{Host: alias, Port: port}
 			}
+			if e, ok := external.Load(port); ok {
+				return e.(Endpoint)
+			}
 			host, err := dc.Host(ctx)
 			if err != nil {
 				host = "127.0.0.1"
@@ -216,7 +223,9 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 			if err != nil {
 				return Endpoint{Host: host, Port: 0}
 			}
-			return Endpoint{Host: host, Port: int(mapped.Num())}
+			e := Endpoint{Host: host, Port: int(mapped.Num())}
+			external.Store(port, e)
+			return e
 		},
 		stop: func(ctx context.Context) error {
 			sink.Close()

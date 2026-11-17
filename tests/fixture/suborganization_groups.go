@@ -46,6 +46,27 @@ func (s *SubOrg) LinkGroup(tt *testing.T, g *Group, roles ...string) {
 	require.Equalf(tt, http.StatusOK, res.StatusCode(), "linking group %s into %s: %s", g.Name, s.Slug, apierr.Body(res.Body))
 }
 
+// LinkIdentity gives a root organization machine identity a direct membership in this
+// sub-organization with permanent organization roles.
+func (s *SubOrg) LinkIdentity(tt *testing.T, identityID uuid.UUID, roles ...string) {
+	tt.Helper()
+
+	if len(roles) == 0 {
+		roles = []string{"member"}
+	}
+	items := make([]map[string]any, 0, len(roles))
+	for _, slug := range roles {
+		items = append(items, map[string]any{"role": slug, "isTemporary": false})
+	}
+	raw, err := json.Marshal(map[string]any{"roles": items})
+	require.NoError(tt, err)
+
+	res, err := s.Admin.API.CreateOrganizationIdentityMembershipWithBodyWithResponse(tt.Context(), identityID.String(),
+		"application/json", bytes.NewReader(raw))
+	require.NoErrorf(tt, err, "linking identity %s into %s", identityID, s.Slug)
+	require.Equalf(tt, http.StatusOK, res.StatusCode(), "linking identity %s into %s: %s", identityID, s.Slug, apierr.Body(res.Body))
+}
+
 // NewProject creates a secret-manager project in this sub-organization, with its
 // admin as the project admin, and returns the project id.
 func (s *SubOrg) NewProject(tt *testing.T) string {

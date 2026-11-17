@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildSessionLogObjectName,
   chunkIdTimeMs,
+  getChunkDecisionProperties,
   parseSessionLogObjectKey,
   toRev
 } from "./agent-vault-session-log-fns";
@@ -51,5 +52,21 @@ describe("session log object names", () => {
     { why: "a file someone else put there", key: `${folder}notes.txt` }
   ])("skips $why", ({ key }) => {
     expect(parseSessionLogObjectKey(folder, key)).toBeNull();
+  });
+});
+
+describe("the decision counts sent to telemetry", () => {
+  const decisionCounts = { brokered: 3, passthrough: 2, blocked: 1, error: 1 };
+
+  test("are the proxy's counts when they add up to recordCount", () => {
+    expect(getChunkDecisionProperties({ recordCount: 7, decisionCounts })).toEqual(decisionCounts);
+  });
+
+  test.each([
+    { why: "they don't add up to recordCount", recordCount: 6, decisionCounts },
+    { why: "recordCount is missing", recordCount: undefined, decisionCounts },
+    { why: "the CLI didn't send them", recordCount: 7, decisionCounts: undefined }
+  ])("are left out when $why", (chunk) => {
+    expect(getChunkDecisionProperties(chunk)).toEqual({});
   });
 });

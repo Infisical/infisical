@@ -1,11 +1,15 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -14,7 +18,11 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
-import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
+  AgentVaultDelegationScope,
+  AgentVaultMemberType
+} from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import {
   TAgentVaultDelegationDALFactory,
@@ -111,7 +119,7 @@ export const agentVaultDelegationServiceFactory = ({
   // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
   const notInAgentVault = (machineIdentityId: string) =>
     new NotFoundError({
-      message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
+      message: `Machine identity with ID '${machineIdentityId}' is not a member of this Agent Vault project. Add it under Access Control first.`
     });
   const requireIdentityMembership = (memberships: TLockedMembership[], machineIdentityId: string) => {
     const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
@@ -155,7 +163,7 @@ export const agentVaultDelegationServiceFactory = ({
     const missingGroups = groupIds.filter((id) => !memberGroups.has(id));
     if (missingGroups.length) {
       throw new BadRequestError({
-        message: `Group(s) ${quoted(missingGroups)} are not members of Agent Vault. Add them under Access Control first.`
+        message: `Group(s) ${quoted(missingGroups)} are not members of this Agent Vault project. Add them under Access Control first.`
       });
     }
 
@@ -185,11 +193,13 @@ export const agentVaultDelegationServiceFactory = ({
     const reasons: string[] = [];
     if (viaGroup.length) {
       reasons.push(
-        `User(s) ${quoted(viaGroup)} are in Agent Vault through a group. Name the group instead, or add them directly under Access Control first.`
+        `User(s) ${quoted(viaGroup)} are in this project through a group. Name the group instead, or add them directly under Access Control first.`
       );
     }
     if (strangers.length) {
-      reasons.push(`User(s) ${quoted(strangers)} are not members of Agent Vault. Add them under Access Control first.`);
+      reasons.push(
+        `User(s) ${quoted(strangers)} are not members of this Agent Vault project. Add them under Access Control first.`
+      );
     }
     throw new BadRequestError({ message: reasons.join(" ") });
   };
@@ -242,7 +252,7 @@ export const agentVaultDelegationServiceFactory = ({
       const liveRoles = roles.filter((role) => membershipIds.has(role.membershipId) && isActiveRole(role));
       if (!liveRoles.length) {
         reaches.set(groupId, []);
-      } else if (liveRoles.some((role) => role.role === ProjectMembershipRole.Admin)) {
+      } else if (liveRoles.some((role) => AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role.role))) {
         reaches.set(groupId, null);
       } else {
         reaches.set(
@@ -328,7 +338,7 @@ export const agentVaultDelegationServiceFactory = ({
 
   // An identity may read its own, so an orchestrator can check what it was allowed before it acts.
   const getDelegation = async ({ projectId, ctx, machineIdentityId }: TGetDelegationDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     const isSelf = ctx.actor === ActorType.IDENTITY && ctx.actorId === machineIdentityId;
     if (!isSelf) {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -341,8 +351,16 @@ export const agentVaultDelegationServiceFactory = ({
       delegations: [delegation]
     } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] });
     if (!delegation) throw notFound(machineIdentityId);
-    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them.
-    if (!isAdmin) return { delegation: withNoMissingAccessBundles(delegation) };
+    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them. Only
+    // someone who can see every bundle's grants gets them.
+    if (
+      permission.cannot(
+        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ) {
+      return { delegation: withNoMissingAccessBundles(delegation) };
+    }
     return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
   };
 
@@ -413,7 +431,7 @@ export const agentVaultDelegationServiceFactory = ({
     const refuseAllMembers = (scope?: string) => {
       if (scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
+          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every project member. To name users and groups instead, set its scope to selected.`
         });
       }
     };
@@ -476,7 +494,7 @@ export const agentVaultDelegationServiceFactory = ({
       if (!current || !before) return undefined;
       if (current.scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every Agent Vault member, so it names no users or groups to remove.`
+          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every project member, so it names no users or groups to remove.`
         });
       }
 

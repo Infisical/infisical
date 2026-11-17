@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 
@@ -19,6 +20,7 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TRevokeCertResponse,
   TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
@@ -60,17 +62,15 @@ export const useDeleteCert = () => {
 
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, TRevokeCertDTO>({
+  return useMutation<TRevokeCertResponse, object, TRevokeCertDTO>({
     mutationFn: async ({ id, revocationReason }) => {
-      const {
-        data: { certificate }
-      } = await apiRequest.post<{ certificate: TCertificate }>(
+      const { data } = await apiRequest.post<TRevokeCertResponse>(
         `/api/v1/cert-manager/certificates/${id}/revoke`,
         {
           revocationReason
         }
       );
-      return certificate;
+      return data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({
@@ -255,8 +255,8 @@ export const useDownloadCertPkcs12 = () => {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-      } catch (error: any) {
-        if (error.response?.data instanceof ArrayBuffer) {
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.data instanceof ArrayBuffer) {
           const decoder = new TextDecoder();
           const errorText = decoder.decode(error.response.data);
           const errorData = JSON.parse(errorText);

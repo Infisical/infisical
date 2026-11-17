@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { formatSkillBytes } from "@app/helpers/agentVaultSkills";
 import {
   useListAgentVaultSkillVersions,
@@ -47,8 +48,12 @@ export const SkillVersionHistoryDialog = ({
   onView,
   onRolledBack
 }: Props) => {
-  const { data: versions = [], isPending } = useListAgentVaultSkillVersions(isOpen ? skill.id : "");
-  const restoreVersion = useRestoreAgentVaultSkillVersion();
+  const { projectId } = useProject();
+  const { data: versions = [], isPending } = useListAgentVaultSkillVersions(
+    projectId,
+    isOpen ? skill.id : ""
+  );
+  const restoreVersion = useRestoreAgentVaultSkillVersion(projectId);
   const [rollingBack, setRollingBack] = useState<number | null>(null);
   const [confirmVersion, setConfirmVersion] = useState<number | null>(null);
 
