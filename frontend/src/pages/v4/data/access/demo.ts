@@ -12,6 +12,7 @@ import {
   type IdentityProjectMembershipV1,
   SearchIdentitiesScope
 } from "@app/hooks/api/identities/types";
+import { MachineIdentityAuthMethod } from "@app/hooks/api/identityAuthTemplates/types";
 import {
   OrgIdentityOrderBy,
   type Organization,
@@ -32,9 +33,17 @@ import {
   DEMO_SELF_USER_ID,
   DEMO_VAULT_CONNECTIONS,
   DEMO_VAULT_NAMESPACES,
+  defaultAliCloudAuth,
   defaultAwsAuth,
+  defaultAzureAuth,
+  defaultGcpAuth,
+  defaultJwtAuth,
   defaultKubernetesAuth,
+  defaultLdapAuth,
+  defaultOciAuth,
   defaultOidcAuth,
+  defaultSpiffeAuth,
+  defaultTlsCertAuth,
   defaultTokenAuth,
   defaultUniversalAuth,
   type DemoProjectMembership,
@@ -459,38 +468,179 @@ const identitySearchMatches = (
     : contains(row.identity.name, name) && contains(roleLabel(row), role);
 };
 
+const toTrustedIps = (list: { ipAddress: string }[]) =>
+  list.map((entry) => ({
+    id: newId(),
+    ipAddress: entry.ipAddress.split("/")[0],
+    type: entry.ipAddress.includes(":") ? ("ipv6" as const) : ("ipv4" as const),
+    prefix: Number(entry.ipAddress.split("/")[1] ?? 0)
+  }));
+
+const storedAuth = <T>(
+  state: AccessState,
+  method: IdentityAuthMethod,
+  identityId: string,
+  fallback: (identityId: string) => T
+) => (state.authConfigs[method]?.[identityId] as T | undefined) ?? fallback(identityId);
+
+const withoutMethod = (
+  state: AccessState,
+  method: IdentityAuthMethod,
+  identityId: string
+): AccessState => {
+  const { [identityId]: _removed, ...rest } = state.authConfigs[method] ?? {};
+  return {
+    ...state,
+    authConfigs: { ...state.authConfigs, [method]: rest },
+    identities: state.identities.map((entry) =>
+      entry.id === identityId
+        ? {
+            ...entry,
+            authMethods: entry.authMethods.filter((item) => item !== method),
+            activeLockoutAuthMethods: entry.activeLockoutAuthMethods.filter(
+              (item) => item !== method
+            )
+          }
+        : entry
+    )
+  };
+};
+
 const identityAuthConfig = <T>(
   name: string,
   method: IdentityAuthMethod,
   build: (identityId: string) => T
 ) =>
   demoQuery(name, (state, identityId: string) =>
-    identityOf(state, identityId)?.authMethods.includes(method) ? build(identityId) : undefined
+    identityOf(state, identityId)?.authMethods.includes(method)
+      ? storedAuth(state, method, identityId, build)
+      : undefined
   );
+
+const WRITE_ONLY_FIELDS = new Set(["organizationId", "projectId", "bindPass", "tokenReviewerJwt"]);
+
+const saveIdentityAuth = <TDto extends { identityId: string }, T>(
+  method: IdentityAuthMethod,
+  fallback: (identityId: string) => T,
+  mode: "add" | "update"
+) =>
+  demoMutation((dto: TDto, state: AccessState) => {
+    const fields = Object.fromEntries(
+      Object.entries(dto).filter(
+        ([key, value]) => value !== undefined && !WRITE_ONLY_FIELDS.has(key)
+      )
+    );
+    const trustedIps = (dto as { accessTokenTrustedIps?: { ipAddress: string }[] })
+      .accessTokenTrustedIps;
+    const next = {
+      ...storedAuth(state, method, dto.identityId, fallback),
+      ...fields,
+      ...(trustedIps ? { accessTokenTrustedIps: toTrustedIps(trustedIps) } : {})
+    } as T;
+    return done(
+      {
+        ...state,
+        authConfigs: {
+          ...state.authConfigs,
+          [method]: { ...state.authConfigs[method], [dto.identityId]: next }
+        },
+        identities:
+          mode === "add"
+            ? state.identities.map((entry) =>
+                entry.id === dto.identityId && !entry.authMethods.includes(method)
+                  ? { ...entry, authMethods: [...entry.authMethods, method] }
+                  : entry
+              )
+            : state.identities
+      },
+      next
+    );
+  });
 
 const removeIdentityAuthMethod = <T>(
   method: IdentityAuthMethod,
-  result: (identityId: string) => T
+  fallback: (identityId: string) => T
 ) =>
   demoMutation(({ identityId }: { identityId: string }, state: AccessState) =>
-    done(
-      {
-        ...state,
-        identities: state.identities.map((entry) =>
-          entry.id === identityId
-            ? {
-                ...entry,
-                authMethods: entry.authMethods.filter((item) => item !== method),
-                activeLockoutAuthMethods: entry.activeLockoutAuthMethods.filter(
-                  (item) => item !== method
-                )
-              }
-            : entry
-        )
-      },
-      result(identityId)
-    )
+    done(withoutMethod(state, method, identityId), storedAuth(state, method, identityId, fallback))
   );
+
+const authMethodAdapter = <
+  TAdd extends { identityId: string },
+  TUpdate extends { identityId: string },
+  T
+>(
+  method: IdentityAuthMethod,
+  fallback: (identityId: string) => T
+) => ({
+  query: identityAuthConfig(method, method, fallback),
+  add: saveIdentityAuth<TAdd, T>(method, fallback, "add"),
+  update: saveIdentityAuth<TUpdate, T>(method, fallback, "update"),
+  remove: removeIdentityAuthMethod(method, fallback)
+});
+
+const authMethods = {
+  Token: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityTokenAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityTokenAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultTokenAuth>
+  >(IdentityAuthMethod.TOKEN_AUTH, defaultTokenAuth),
+  Kubernetes: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityKubernetesAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityKubernetesAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultKubernetesAuth>
+  >(IdentityAuthMethod.KUBERNETES_AUTH, defaultKubernetesAuth),
+  Aws: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityAwsAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityAwsAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultAwsAuth>
+  >(IdentityAuthMethod.AWS_AUTH, defaultAwsAuth),
+  Oidc: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityOidcAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityOidcAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultOidcAuth>
+  >(IdentityAuthMethod.OIDC_AUTH, defaultOidcAuth),
+  Gcp: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityGcpAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityGcpAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultGcpAuth>
+  >(IdentityAuthMethod.GCP_AUTH, defaultGcpAuth),
+  Azure: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityAzureAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityAzureAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultAzureAuth>
+  >(IdentityAuthMethod.AZURE_AUTH, defaultAzureAuth),
+  AliCloud: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityAliCloudAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityAliCloudAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultAliCloudAuth>
+  >(IdentityAuthMethod.ALICLOUD_AUTH, defaultAliCloudAuth),
+  Oci: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityOciAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityOciAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultOciAuth>
+  >(IdentityAuthMethod.OCI_AUTH, defaultOciAuth),
+  Ldap: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityLdapAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityLdapAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultLdapAuth>
+  >(IdentityAuthMethod.LDAP_AUTH, defaultLdapAuth),
+  Jwt: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityJwtAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityJwtAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultJwtAuth>
+  >(IdentityAuthMethod.JWT_AUTH, defaultJwtAuth),
+  TlsCert: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentityTlsCertAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentityTlsCertAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultTlsCertAuth>
+  >(IdentityAuthMethod.TLS_CERT_AUTH, defaultTlsCertAuth),
+  Spiffe: authMethodAdapter<
+    Parameters<ReturnType<AccessAdapter["useAddIdentitySpiffeAuth"]>["mutateAsync"]>[0],
+    Parameters<ReturnType<AccessAdapter["useUpdateIdentitySpiffeAuth"]>["mutateAsync"]>[0],
+    ReturnType<typeof defaultSpiffeAuth>
+  >(IdentityAuthMethod.SPIFFE_AUTH, defaultSpiffeAuth)
+};
 
 const page = <T>(rows: T[], offset = 0, limit = 100) => rows.slice(offset, offset + limit);
 
@@ -907,13 +1057,7 @@ export const accessDemo: AccessAdapter = {
     (state, identityId: string) => state.clientSecrets[identityId] ?? []
   ),
   useAddIdentityUniversalAuth: demoMutation((dto, state) => {
-    const ips = (list: { ipAddress: string }[]) =>
-      list.map((entry) => ({
-        id: newId(),
-        ipAddress: entry.ipAddress.split("/")[0],
-        type: entry.ipAddress.includes(":") ? ("ipv6" as const) : ("ipv4" as const),
-        prefix: Number(entry.ipAddress.split("/")[1] ?? 0)
-      }));
+    const ips = toTrustedIps;
     const config = {
       ...defaultUniversalAuth(dto.identityId),
       ...dto,
@@ -935,13 +1079,7 @@ export const accessDemo: AccessAdapter = {
   }),
   useUpdateIdentityUniversalAuth: demoMutation((dto, state) => {
     const current = state.universalAuth[dto.identityId] ?? defaultUniversalAuth(dto.identityId);
-    const ips = (list?: { ipAddress: string }[]) =>
-      list?.map((entry) => ({
-        id: newId(),
-        ipAddress: entry.ipAddress.split("/")[0],
-        type: entry.ipAddress.includes(":") ? ("ipv6" as const) : ("ipv4" as const),
-        prefix: Number(entry.ipAddress.split("/")[1] ?? 0)
-      }));
+    const ips = (list?: { ipAddress: string }[]) => (list ? toTrustedIps(list) : undefined);
     const next = {
       ...current,
       accessTokenTTL: dto.accessTokenTTL ?? current.accessTokenTTL,
@@ -1104,11 +1242,54 @@ export const accessDemo: AccessAdapter = {
       project: matches.filter((row) => row.scope === SearchIdentitiesScope.ProjectScope).length
     };
   }),
-  useIdentityTokenAuth: identityAuthConfig(
-    "token-auth",
-    IdentityAuthMethod.TOKEN_AUTH,
-    defaultTokenAuth
-  ),
+  useIdentityTokenAuth: authMethods.Token.query,
+  useAddIdentityTokenAuth: authMethods.Token.add,
+  useUpdateIdentityTokenAuth: authMethods.Token.update,
+  useDeleteIdentityTokenAuth: authMethods.Token.remove,
+  useIdentityKubernetesAuth: authMethods.Kubernetes.query,
+  useAddIdentityKubernetesAuth: authMethods.Kubernetes.add,
+  useUpdateIdentityKubernetesAuth: authMethods.Kubernetes.update,
+  useDeleteIdentityKubernetesAuth: authMethods.Kubernetes.remove,
+  useIdentityAwsAuth: authMethods.Aws.query,
+  useAddIdentityAwsAuth: authMethods.Aws.add,
+  useUpdateIdentityAwsAuth: authMethods.Aws.update,
+  useDeleteIdentityAwsAuth: authMethods.Aws.remove,
+  useIdentityOidcAuth: authMethods.Oidc.query,
+  useAddIdentityOidcAuth: authMethods.Oidc.add,
+  useUpdateIdentityOidcAuth: authMethods.Oidc.update,
+  useDeleteIdentityOidcAuth: authMethods.Oidc.remove,
+  useIdentityGcpAuth: authMethods.Gcp.query,
+  useAddIdentityGcpAuth: authMethods.Gcp.add,
+  useUpdateIdentityGcpAuth: authMethods.Gcp.update,
+  useDeleteIdentityGcpAuth: authMethods.Gcp.remove,
+  useIdentityAzureAuth: authMethods.Azure.query,
+  useAddIdentityAzureAuth: authMethods.Azure.add,
+  useUpdateIdentityAzureAuth: authMethods.Azure.update,
+  useDeleteIdentityAzureAuth: authMethods.Azure.remove,
+  useIdentityAliCloudAuth: authMethods.AliCloud.query,
+  useAddIdentityAliCloudAuth: authMethods.AliCloud.add,
+  useUpdateIdentityAliCloudAuth: authMethods.AliCloud.update,
+  useDeleteIdentityAliCloudAuth: authMethods.AliCloud.remove,
+  useIdentityOciAuth: authMethods.Oci.query,
+  useAddIdentityOciAuth: authMethods.Oci.add,
+  useUpdateIdentityOciAuth: authMethods.Oci.update,
+  useDeleteIdentityOciAuth: authMethods.Oci.remove,
+  useIdentityLdapAuth: authMethods.Ldap.query,
+  useAddIdentityLdapAuth: authMethods.Ldap.add,
+  useUpdateIdentityLdapAuth: authMethods.Ldap.update,
+  useDeleteIdentityLdapAuth: authMethods.Ldap.remove,
+  useIdentityJwtAuth: authMethods.Jwt.query,
+  useAddIdentityJwtAuth: authMethods.Jwt.add,
+  useUpdateIdentityJwtAuth: authMethods.Jwt.update,
+  useDeleteIdentityJwtAuth: authMethods.Jwt.remove,
+  useIdentityTlsCertAuth: authMethods.TlsCert.query,
+  useAddIdentityTlsCertAuth: authMethods.TlsCert.add,
+  useUpdateIdentityTlsCertAuth: authMethods.TlsCert.update,
+  useDeleteIdentityTlsCertAuth: authMethods.TlsCert.remove,
+  useIdentitySpiffeAuth: authMethods.Spiffe.query,
+  useAddIdentitySpiffeAuth: authMethods.Spiffe.add,
+  useUpdateIdentitySpiffeAuth: authMethods.Spiffe.update,
+  useDeleteIdentitySpiffeAuth: authMethods.Spiffe.remove,
   useIdentityTokenAuthTokens: demoQuery(
     "token-auth-tokens",
     (state, identityId: string) => state.tokenAuthTokens[identityId] ?? []
@@ -1157,29 +1338,43 @@ export const accessDemo: AccessAdapter = {
       { message: "Successfully revoked access token" }
     )
   ),
-  useDeleteIdentityTokenAuth: removeIdentityAuthMethod(
-    IdentityAuthMethod.TOKEN_AUTH,
-    defaultTokenAuth
+  useUpdateIdentityTokenAuthToken: demoMutation((dto, state) => {
+    const list = state.tokenAuthTokens[dto.identityId] ?? [];
+    const current = list.find((entry) => entry.id === dto.tokenId)!;
+    const next = { ...current, name: dto.name ?? current.name, updatedAt: stamp() };
+    return done(
+      {
+        ...state,
+        tokenAuthTokens: {
+          ...state.tokenAuthTokens,
+          [dto.identityId]: list.map((entry) => (entry.id === next.id ? next : entry))
+        }
+      },
+      next
+    );
+  }),
+  useClearIdentityLdapAuthLockouts: demoMutation((dto, state) =>
+    done(
+      {
+        ...state,
+        identities: state.identities.map((entry) =>
+          entry.id === dto.identityId
+            ? {
+                ...entry,
+                activeLockoutAuthMethods: entry.activeLockoutAuthMethods.filter(
+                  (method) => method !== IdentityAuthMethod.LDAP_AUTH
+                )
+              }
+            : entry
+        )
+      },
+      1
+    )
   ),
-  useIdentityKubernetesAuth: identityAuthConfig(
-    "kubernetes-auth",
-    IdentityAuthMethod.KUBERNETES_AUTH,
-    defaultKubernetesAuth
-  ),
-  useDeleteIdentityKubernetesAuth: removeIdentityAuthMethod(
-    IdentityAuthMethod.KUBERNETES_AUTH,
-    defaultTokenAuth
-  ),
-  useIdentityAwsAuth: identityAuthConfig("aws-auth", IdentityAuthMethod.AWS_AUTH, defaultAwsAuth),
-  useDeleteIdentityAwsAuth: removeIdentityAuthMethod(IdentityAuthMethod.AWS_AUTH, defaultAwsAuth),
-  useIdentityOidcAuth: identityAuthConfig(
-    "oidc-auth",
-    IdentityAuthMethod.OIDC_AUTH,
-    defaultOidcAuth
-  ),
-  useDeleteIdentityOidcAuth: removeIdentityAuthMethod(
-    IdentityAuthMethod.OIDC_AUTH,
-    defaultTokenAuth
+  useAvailableIdentityAuthTemplates: demoQuery(
+    "available-auth-templates",
+    (state, authMethod: MachineIdentityAuthMethod) =>
+      state.authTemplates.filter((template) => template.authMethod === authMethod)
   ),
 
   useOrgGroups: demoQuery(

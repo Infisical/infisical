@@ -12,25 +12,67 @@ import type {
 import type { useGetGroupById, useListGroupMembers } from "@app/hooks/api/groups/queries";
 import type { TGroupProject } from "@app/hooks/api/groups/types";
 import type {
+  useAddIdentityAliCloudAuth,
+  useAddIdentityAwsAuth,
+  useAddIdentityAzureAuth,
+  useAddIdentityGcpAuth,
+  useAddIdentityJwtAuth,
+  useAddIdentityKubernetesAuth,
+  useAddIdentityLdapAuth,
+  useAddIdentityOciAuth,
+  useAddIdentityOidcAuth,
+  useAddIdentitySpiffeAuth,
+  useAddIdentityTlsCertAuth,
+  useAddIdentityTokenAuth,
   useAddIdentityUniversalAuth,
+  useClearIdentityLdapAuthLockouts,
   useClearIdentityUniversalAuthLockouts,
   useCreateIdentityUniversalAuthClientSecret,
   useCreateTokenIdentityTokenAuth,
+  useDeleteIdentityAliCloudAuth,
   useDeleteIdentityAwsAuth,
+  useDeleteIdentityAzureAuth,
+  useDeleteIdentityGcpAuth,
+  useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
+  useDeleteIdentitySpiffeAuth,
+  useDeleteIdentityTlsCertAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
   useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
+  useUpdateIdentityAliCloudAuth,
+  useUpdateIdentityAwsAuth,
+  useUpdateIdentityAzureAuth,
+  useUpdateIdentityGcpAuth,
+  useUpdateIdentityJwtAuth,
+  useUpdateIdentityKubernetesAuth,
+  useUpdateIdentityLdapAuth,
+  useUpdateIdentityOciAuth,
+  useUpdateIdentityOidcAuth,
+  useUpdateIdentitySpiffeAuth,
+  useUpdateIdentityTlsCertAuth,
+  useUpdateIdentityTokenAuth,
+  useUpdateIdentityTokenAuthToken,
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api/identities/mutations";
 import type {
   useCountOrgIdentityMemberships,
+  useGetIdentityAliCloudAuth,
   useGetIdentityAwsAuth,
+  useGetIdentityAzureAuth,
+  useGetIdentityGcpAuth,
+  useGetIdentityJwtAuth,
   useGetIdentityKubernetesAuth,
+  useGetIdentityLdapAuth,
+  useGetIdentityOciAuth,
   useGetIdentityOidcAuth,
   useGetIdentityProjectMemberships,
+  useGetIdentitySpiffeAuth,
+  useGetIdentityTlsCertAuth,
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
@@ -47,6 +89,10 @@ import type {
   useGetIdentityAuthTemplates,
   useGetTemplateUsages
 } from "@app/hooks/api/identityAuthTemplates/queries";
+import type {
+  IdentityAuthTemplate,
+  MachineIdentityAuthMethod
+} from "@app/hooks/api/identityAuthTemplates/types";
 import type {
   useGetVaultMounts,
   useGetVaultNamespaces,
@@ -201,6 +247,52 @@ export type AccessAdapter = {
   useDeleteIdentityAwsAuth: MutationOf<typeof useDeleteIdentityAwsAuth>;
   useIdentityOidcAuth: QueryOf<typeof useGetIdentityOidcAuth>;
   useDeleteIdentityOidcAuth: MutationOf<typeof useDeleteIdentityOidcAuth>;
+  useAddIdentityTokenAuth: MutationOf<typeof useAddIdentityTokenAuth>;
+  useUpdateIdentityTokenAuth: MutationOf<typeof useUpdateIdentityTokenAuth>;
+  useAddIdentityKubernetesAuth: MutationOf<typeof useAddIdentityKubernetesAuth>;
+  useUpdateIdentityKubernetesAuth: MutationOf<typeof useUpdateIdentityKubernetesAuth>;
+  useAddIdentityAwsAuth: MutationOf<typeof useAddIdentityAwsAuth>;
+  useUpdateIdentityAwsAuth: MutationOf<typeof useUpdateIdentityAwsAuth>;
+  useAddIdentityOidcAuth: MutationOf<typeof useAddIdentityOidcAuth>;
+  useUpdateIdentityOidcAuth: MutationOf<typeof useUpdateIdentityOidcAuth>;
+  useIdentityGcpAuth: QueryOf<typeof useGetIdentityGcpAuth>;
+  useAddIdentityGcpAuth: MutationOf<typeof useAddIdentityGcpAuth>;
+  useUpdateIdentityGcpAuth: MutationOf<typeof useUpdateIdentityGcpAuth>;
+  useDeleteIdentityGcpAuth: MutationOf<typeof useDeleteIdentityGcpAuth>;
+  useIdentityAzureAuth: QueryOf<typeof useGetIdentityAzureAuth>;
+  useAddIdentityAzureAuth: MutationOf<typeof useAddIdentityAzureAuth>;
+  useUpdateIdentityAzureAuth: MutationOf<typeof useUpdateIdentityAzureAuth>;
+  useDeleteIdentityAzureAuth: MutationOf<typeof useDeleteIdentityAzureAuth>;
+  useIdentityAliCloudAuth: QueryOf<typeof useGetIdentityAliCloudAuth>;
+  useAddIdentityAliCloudAuth: MutationOf<typeof useAddIdentityAliCloudAuth>;
+  useUpdateIdentityAliCloudAuth: MutationOf<typeof useUpdateIdentityAliCloudAuth>;
+  useDeleteIdentityAliCloudAuth: MutationOf<typeof useDeleteIdentityAliCloudAuth>;
+  useIdentityOciAuth: QueryOf<typeof useGetIdentityOciAuth>;
+  useAddIdentityOciAuth: MutationOf<typeof useAddIdentityOciAuth>;
+  useUpdateIdentityOciAuth: MutationOf<typeof useUpdateIdentityOciAuth>;
+  useDeleteIdentityOciAuth: MutationOf<typeof useDeleteIdentityOciAuth>;
+  useIdentityLdapAuth: QueryOf<typeof useGetIdentityLdapAuth>;
+  useAddIdentityLdapAuth: MutationOf<typeof useAddIdentityLdapAuth>;
+  useUpdateIdentityLdapAuth: MutationOf<typeof useUpdateIdentityLdapAuth>;
+  useDeleteIdentityLdapAuth: MutationOf<typeof useDeleteIdentityLdapAuth>;
+  useIdentityJwtAuth: QueryOf<typeof useGetIdentityJwtAuth>;
+  useAddIdentityJwtAuth: MutationOf<typeof useAddIdentityJwtAuth>;
+  useUpdateIdentityJwtAuth: MutationOf<typeof useUpdateIdentityJwtAuth>;
+  useDeleteIdentityJwtAuth: MutationOf<typeof useDeleteIdentityJwtAuth>;
+  useIdentityTlsCertAuth: QueryOf<typeof useGetIdentityTlsCertAuth>;
+  useAddIdentityTlsCertAuth: MutationOf<typeof useAddIdentityTlsCertAuth>;
+  useUpdateIdentityTlsCertAuth: MutationOf<typeof useUpdateIdentityTlsCertAuth>;
+  useDeleteIdentityTlsCertAuth: MutationOf<typeof useDeleteIdentityTlsCertAuth>;
+  useIdentitySpiffeAuth: QueryOf<typeof useGetIdentitySpiffeAuth>;
+  useAddIdentitySpiffeAuth: MutationOf<typeof useAddIdentitySpiffeAuth>;
+  useUpdateIdentitySpiffeAuth: MutationOf<typeof useUpdateIdentitySpiffeAuth>;
+  useDeleteIdentitySpiffeAuth: MutationOf<typeof useDeleteIdentitySpiffeAuth>;
+  useUpdateIdentityTokenAuthToken: MutationOf<typeof useUpdateIdentityTokenAuthToken>;
+  useClearIdentityLdapAuthLockouts: MutationOf<typeof useClearIdentityLdapAuthLockouts>;
+  useAvailableIdentityAuthTemplates: (
+    authMethod: MachineIdentityAuthMethod,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<IdentityAuthTemplate[]>;
 
   useOrgGroups: QueryOf<typeof useSearchOrganizationGroups>;
   useGroup: QueryOf<typeof useGetGroupById>;

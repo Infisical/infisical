@@ -16,30 +16,72 @@ import {
 import { groupByIdQuery, groupKeys, useListGroupMembers } from "@app/hooks/api/groups/queries";
 import { FilterReturnedProjects, type TGroupProject } from "@app/hooks/api/groups/types";
 import {
+  useAddIdentityAliCloudAuth,
+  useAddIdentityAwsAuth,
+  useAddIdentityAzureAuth,
+  useAddIdentityGcpAuth,
+  useAddIdentityJwtAuth,
+  useAddIdentityKubernetesAuth,
+  useAddIdentityLdapAuth,
+  useAddIdentityOciAuth,
+  useAddIdentityOidcAuth,
+  useAddIdentitySpiffeAuth,
+  useAddIdentityTlsCertAuth,
+  useAddIdentityTokenAuth,
   useAddIdentityUniversalAuth,
+  useClearIdentityLdapAuthLockouts,
   useClearIdentityUniversalAuthLockouts,
   useCreateIdentityUniversalAuthClientSecret,
   useCreateTokenIdentityTokenAuth,
+  useDeleteIdentityAliCloudAuth,
   useDeleteIdentityAwsAuth,
+  useDeleteIdentityAzureAuth,
+  useDeleteIdentityGcpAuth,
+  useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
+  useDeleteIdentitySpiffeAuth,
+  useDeleteIdentityTlsCertAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
   useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
+  useUpdateIdentityAliCloudAuth,
+  useUpdateIdentityAwsAuth,
+  useUpdateIdentityAzureAuth,
+  useUpdateIdentityGcpAuth,
+  useUpdateIdentityJwtAuth,
+  useUpdateIdentityKubernetesAuth,
+  useUpdateIdentityLdapAuth,
+  useUpdateIdentityOciAuth,
+  useUpdateIdentityOidcAuth,
+  useUpdateIdentitySpiffeAuth,
+  useUpdateIdentityTlsCertAuth,
+  useUpdateIdentityTokenAuth,
+  useUpdateIdentityTokenAuthToken,
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api/identities/mutations";
 import {
+  identityProjectMembershipsQuery,
   useCountOrgIdentityMemberships,
+  useGetIdentityAliCloudAuth,
   useGetIdentityAwsAuth,
+  useGetIdentityAzureAuth,
+  useGetIdentityGcpAuth,
+  useGetIdentityJwtAuth,
   useGetIdentityKubernetesAuth,
+  useGetIdentityLdapAuth,
+  useGetIdentityOciAuth,
   useGetIdentityOidcAuth,
+  useGetIdentitySpiffeAuth,
+  useGetIdentityTlsCertAuth,
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets,
   useGetOrgIdentityMembershipById,
-  identityProjectMembershipsQuery,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api/identities/queries";
 import {
@@ -48,9 +90,11 @@ import {
   useUpdateIdentityAuthTemplate
 } from "@app/hooks/api/identityAuthTemplates/mutations";
 import {
+  useGetAvailableTemplates,
   useGetIdentityAuthTemplates,
   useGetTemplateUsages
 } from "@app/hooks/api/identityAuthTemplates/queries";
+import type { IdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates/types";
 import {
   useGetVaultMounts,
   useGetVaultNamespaces,
@@ -129,6 +173,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api/users/queries";
 
+import type { V4QueryResult } from "../contract";
 import { useProjectById } from "../projectQuery";
 import type { AccessAdapter } from "./contract";
 
@@ -197,6 +242,50 @@ export const accessLive: AccessAdapter = {
   useDeleteIdentityAwsAuth,
   useIdentityOidcAuth: useGetIdentityOidcAuth,
   useDeleteIdentityOidcAuth,
+  useAddIdentityTokenAuth,
+  useUpdateIdentityTokenAuth,
+  useAddIdentityKubernetesAuth,
+  useUpdateIdentityKubernetesAuth,
+  useAddIdentityAwsAuth,
+  useUpdateIdentityAwsAuth,
+  useAddIdentityOidcAuth,
+  useUpdateIdentityOidcAuth,
+  useIdentityGcpAuth: useGetIdentityGcpAuth,
+  useAddIdentityGcpAuth,
+  useUpdateIdentityGcpAuth,
+  useDeleteIdentityGcpAuth,
+  useIdentityAzureAuth: useGetIdentityAzureAuth,
+  useAddIdentityAzureAuth,
+  useUpdateIdentityAzureAuth,
+  useDeleteIdentityAzureAuth,
+  useIdentityAliCloudAuth: useGetIdentityAliCloudAuth,
+  useAddIdentityAliCloudAuth,
+  useUpdateIdentityAliCloudAuth,
+  useDeleteIdentityAliCloudAuth,
+  useIdentityOciAuth: useGetIdentityOciAuth,
+  useAddIdentityOciAuth,
+  useUpdateIdentityOciAuth,
+  useDeleteIdentityOciAuth,
+  useIdentityLdapAuth: useGetIdentityLdapAuth,
+  useAddIdentityLdapAuth,
+  useUpdateIdentityLdapAuth,
+  useDeleteIdentityLdapAuth,
+  useIdentityJwtAuth: useGetIdentityJwtAuth,
+  useAddIdentityJwtAuth,
+  useUpdateIdentityJwtAuth,
+  useDeleteIdentityJwtAuth,
+  useIdentityTlsCertAuth: useGetIdentityTlsCertAuth,
+  useAddIdentityTlsCertAuth,
+  useUpdateIdentityTlsCertAuth,
+  useDeleteIdentityTlsCertAuth,
+  useIdentitySpiffeAuth: useGetIdentitySpiffeAuth,
+  useAddIdentitySpiffeAuth,
+  useUpdateIdentitySpiffeAuth,
+  useDeleteIdentitySpiffeAuth,
+  useUpdateIdentityTokenAuthToken,
+  useClearIdentityLdapAuthLockouts,
+  useAvailableIdentityAuthTemplates: (authMethod, options) =>
+    useGetAvailableTemplates(authMethod, options) as V4QueryResult<IdentityAuthTemplate[]>,
 
   useOrgGroups: useSearchOrganizationGroups,
   useGroup: (groupId) => useQuery(groupByIdQuery(useOrgId(), groupId)),
