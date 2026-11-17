@@ -425,7 +425,7 @@ export const AccountSheet = ({
       </SheetBody>
     );
   if (!isPending && account && metadata) {
-    body = <SheetBody {...panel}>{lead}</SheetBody>;
+    body = <SheetBody {...(activeTab ? panel : {})}>{lead}</SheetBody>;
     if (activeTab === PamSheetTab.Configuration)
       body = (
         <AccountForm
