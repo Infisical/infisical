@@ -71,39 +71,67 @@ describe("approvalPolicyService.notifyApprovedActionFailed", () => {
 describe("approvalPolicyService review of a revocation by an approver removed from its Application", () => {
   const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
 
+  type TApplicationMembership = { actorUserId?: string; actorGroupId?: string; isActive: boolean; role?: string };
+
   const buildReviewingService = (
-    applicationMemberships: { actorUserId: string; isActive: boolean; role?: string }[]
+    applicationMemberships: TApplicationMembership[],
+    {
+      type = ApprovalPolicyType.CertRevocation,
+      status = ApprovalRequestStatus.Pending,
+      steps = [{ stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }],
+      replicaMemberships = applicationMemberships,
+      groupIds = [],
+      replicaGroupIds = groupIds
+    }: {
+      type?: ApprovalPolicyType;
+      status?: ApprovalRequestStatus;
+      steps?: { stepNumber: number; approvers: { type: ApproverType; id: string }[]; approvals: unknown[] }[];
+      replicaMemberships?: TApplicationMembership[];
+      groupIds?: string[];
+      replicaGroupIds?: string[];
+    } = {}
   ) => {
+    const primaryDb = { node: "primary" };
+    const fromNode = <T>(db: unknown, primary: T, replica: T) => (db === primaryDb ? primary : replica);
     const memberships = applicationMemberships.map((m, i) => ({ ...m, id: `membership-${i}` }));
+    const replicaMembershipRows = replicaMemberships.map((m, i) => ({ ...m, id: `membership-${i}` }));
     const request = {
       id: "revocation-1",
-      type: ApprovalPolicyType.CertRevocation,
+      type,
       projectId: "project-1",
       organizationId: "org-1",
-      status: ApprovalRequestStatus.Pending,
+      status,
       currentStep: 1,
       scopeType: ApprovalPolicyScope.PkiApplication,
       scopeId: "app-1"
     };
     const approvalRequestDAL = {
       findById: vi.fn().mockResolvedValue(request),
-      findStepsByRequestId: vi
-        .fn()
-        .mockResolvedValue([
-          { stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }
-        ]),
+      findStepsByRequestId: vi.fn().mockResolvedValue(steps),
       transaction: vi.fn().mockRejectedValue(new Error("reached the decision"))
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
-    const primaryDb = { node: "primary" };
     const approvalPolicyDAL = { findByProjectId: vi.fn(), primaryNode: vi.fn().mockReturnValue(primaryDb) };
-    const userGroupMembershipDAL = { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) };
+    const userGroupMembershipDAL = {
+      findGroupMembershipsByUserIdInOrg: vi.fn(async (_userId: string, _orgId: string, db?: unknown) =>
+        fromNode(db, groupIds, replicaGroupIds).map((groupId) => ({ groupId }))
+      )
+    };
     const revocationResource = certRevocationApprovalResourceFactory({
       approvalPolicyDAL,
       certificateService,
-      membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
+      membershipDAL: {
+        find: vi.fn(async (_filter: unknown, opts?: { tx?: unknown }) =>
+          fromNode(opts?.tx, memberships, replicaMembershipRows)
+        )
+      },
       membershipRoleDAL: {
-        find: vi.fn().mockResolvedValue(memberships.map((m) => ({ membershipId: m.id, role: m.role ?? "operator" })))
+        find: vi.fn(async (_filter: unknown, opts?: { tx?: unknown }) =>
+          fromNode(opts?.tx, memberships, replicaMembershipRows).map((m) => ({
+            membershipId: m.id,
+            role: m.role ?? "operator"
+          }))
+        )
       },
       userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
@@ -171,13 +199,92 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
   });
 
   it.each([
-    ["still holds an approving role", "operator", true],
-    ["was demoted to Auditor", "auditor", false]
-  ] as const)("tells a saved approver who %s whether they can review it", async (_label, role, canReview) => {
-    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true, role }]);
+    ["still holds an approving role", [{ actorUserId: "approver-1", isActive: true, role: "operator" }], true],
+    ["was demoted to Auditor", [{ actorUserId: "approver-1", isActive: true, role: "auditor" }], false],
+    ["was removed from the Application", [{ actorUserId: "someone-else", isActive: true }], false],
+    ["has a deactivated membership", [{ actorUserId: "approver-1", isActive: false }], false]
+  ] as const)("tells a saved approver who %s whether they can review it", async (_label, memberships, expected) => {
+    const ctx = buildReviewingService([...memberships]);
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(canReview);
+    expect(result.canReview).toBe(expected);
+  });
+
+  it.each([
+    ["holds an approving role through a group", "operator", true],
+    ["holds only Auditor through a group", "auditor", false]
+  ] as const)("tells a saved group approver who %s whether they can review it", async (_label, role, expected) => {
+    const ctx = buildReviewingService([{ actorGroupId: "group-1", isActive: true, role }], {
+      steps: [{ stepNumber: 1, approvers: [{ type: ApproverType.Group, id: "group-1" }], approvals: [] }],
+      groupIds: ["group-1"]
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(expected);
+  });
+
+  it("lets an approver whose regained role a lagging replica hasn't seen review, as approving would", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true, role: "operator" }], {
+      replicaMemberships: [{ actorUserId: "approver-1", isActive: true, role: "auditor" }]
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(true);
+  });
+
+  it("lets a group approver whose group link a lagging replica hasn't seen review, as approving would", async () => {
+    const ctx = buildReviewingService([{ actorGroupId: "group-1", isActive: true }], {
+      steps: [{ stepNumber: 1, approvers: [{ type: ApproverType.Group, id: "group-1" }], approvals: [] }],
+      groupIds: ["group-1"],
+      replicaGroupIds: []
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(true);
+  });
+
+  it("doesn't let an approver named only on a later step review while an earlier step is in progress", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], {
+      steps: [
+        { stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-2" }], approvals: [] },
+        { stepNumber: 2, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }
+      ]
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(false);
+  });
+
+  it("doesn't let a caller named on no step review", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], {
+      steps: [{ stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-2" }], approvals: [] }]
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(false);
+  });
+
+  it("doesn't let an approver review a request that's no longer pending", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], {
+      status: ApprovalRequestStatus.Approved
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(false);
+  });
+
+  it("lets a saved approver review a request type with no current access check", async () => {
+    const ctx = buildReviewingService([], { type: ApprovalPolicyType.CertRequest });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(true);
   });
 });
