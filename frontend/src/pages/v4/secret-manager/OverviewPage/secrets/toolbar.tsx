@@ -325,6 +325,21 @@ export function FolderBreadcrumbBar({
   report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
+  const copyPath = (
+    <DropdownMenuItem
+      onSelect={async () => {
+        try {
+          await navigator.clipboard.writeText(path);
+          report("Folder path copied to clipboard.", "ok");
+        } catch {
+          report("Failed to copy folder path to clipboard.", "bad");
+        }
+      }}
+    >
+      <Icon name="copy" />
+      Copy path
+    </DropdownMenuItem>
+  );
   return (
     <div className={styles.pathBar}>
       <Breadcrumb
@@ -334,7 +349,8 @@ export function FolderBreadcrumbBar({
         items={[
           {
             label: <Icon name="home" label="Root folder" />,
-            onNavigate: segments.length ? () => onNavigate("/") : undefined
+            onNavigate: segments.length ? () => onNavigate("/") : undefined,
+            menu: segments.length ? undefined : copyPath
           },
           ...segments.map((segment, index) => {
             const current = index === segments.length - 1;
@@ -343,21 +359,7 @@ export function FolderBreadcrumbBar({
               onNavigate: current
                 ? undefined
                 : () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`),
-              menu: current ? (
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    try {
-                      await navigator.clipboard.writeText(path);
-                      report("Folder path copied to clipboard.", "ok");
-                    } catch {
-                      report("Failed to copy folder path to clipboard.", "bad");
-                    }
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy path
-                </DropdownMenuItem>
-              ) : undefined
+              menu: current ? copyPath : undefined
             };
           })
         ]}
