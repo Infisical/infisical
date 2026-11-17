@@ -9,6 +9,7 @@ import { AxiosError } from "axios";
 
 import { ProjectType } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { getInfisicalAwsCredentials } from "@app/lib/aws/instance-credentials";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -76,8 +77,6 @@ export const getAwsConnectionConfig = async (
   region = AWSRegion.US_EAST_1,
   { stsRequestHandler }: { stsRequestHandler?: STSClientConfig["requestHandler"] } = {}
 ) => {
-  const appCfg = getConfig();
-
   let accessKeyId: string;
   let secretAccessKey: string;
   let sessionToken: undefined | string;
@@ -98,13 +97,7 @@ export const getAwsConnectionConfig = async (
           : {
               useFipsEndpoint: crypto.isFipsModeEnabled()
             }),
-        credentials:
-          appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
-            ? {
-                accessKeyId: appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
-                secretAccessKey: appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
-              }
-            : undefined, // if hosting on AWS
+        credentials: getInfisicalAwsCredentials(),
         ...(stsRequestHandler ? { requestHandler: stsRequestHandler } : {})
       });
 

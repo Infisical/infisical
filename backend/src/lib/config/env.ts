@@ -1274,6 +1274,13 @@ export const validateOverrides = (config: Record<string, string>) => {
   }
 };
 
+const envConfigOverrideListeners: (() => void)[] = [];
+
+// Lets code that depends on Server Console overrides react when they are applied, without this module importing it.
+export const onEnvConfigOverride = (listener: () => void) => {
+  envConfigOverrideListeners.push(listener);
+};
+
 export const overrideEnvConfig = (config: Record<string, string>) => {
   const allowedOverrides = Object.fromEntries(
     Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
@@ -1288,6 +1295,7 @@ export const overrideEnvConfig = (config: Record<string, string>) => {
       ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY,
       ROOT_ENCRYPTION_KEY: envCfg.ROOT_ENCRYPTION_KEY
     });
+    envConfigOverrideListeners.forEach((listener) => listener());
   }
 };
 
