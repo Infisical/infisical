@@ -839,7 +839,6 @@ export const projectServiceFactory = ({
     // New projects seed members, so re-meter seats. The counters filter by project type.
     usageMeteringService.emit(results.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(results.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities);
     return results;
   };
 
@@ -955,7 +954,6 @@ export const projectServiceFactory = ({
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(project.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1107,7 +1105,6 @@ export const projectServiceFactory = ({
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(project.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
       return restoredProject;
     } finally {
       await lock.release();

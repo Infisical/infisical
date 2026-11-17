@@ -1225,6 +1225,7 @@ const buildSignerAdminPermissionRules = () => {
       ResourcePermissionSignerActions.PreApprove,
       ResourcePermissionSignerActions.RevokeRequest,
       ResourcePermissionSignerActions.ReissueCertificate,
+      ResourcePermissionSignerActions.RevokeCertificate,
       ResourcePermissionSignerActions.ExportCertificate
     ],
     ResourcePermissionSub.Signer

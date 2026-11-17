@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
+import { AgentVaultFreeUsageMeter } from "@app/components/agent-vault/FreeUsage";
 import {
   SetupChecklist,
   useAgentVaultSetupProgress
@@ -138,6 +139,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       </SidebarCollapsibleGroup>
       <div className="mt-auto" />
       <SetupChecklist progress={setupProgress} />
+      <AgentVaultFreeUsageMeter />
       <SidebarMenu>
         {setupProgress.canRestore && (
           <SidebarMenuItem>

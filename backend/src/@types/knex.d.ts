@@ -110,6 +110,9 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditionContexts,
+  TApprovalPolicyAutoApprovalConditionContextsInsert,
+  TApprovalPolicyAutoApprovalConditionContextsUpdate,
   TApprovalPolicyAutoApprovalConditions,
   TApprovalPolicyAutoApprovalConditionsInsert,
   TApprovalPolicyAutoApprovalConditionsUpdate,
@@ -524,6 +527,9 @@ import {
   TPkiSignerCertificateIssuanceJobs,
   TPkiSignerCertificateIssuanceJobsInsert,
   TPkiSignerCertificateIssuanceJobsUpdate,
+  TPkiSignerCertificateRevocations,
+  TPkiSignerCertificateRevocationsInsert,
+  TPkiSignerCertificateRevocationsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1124,6 +1130,11 @@ declare module "knex/types/tables" {
       TPkiSignerCertificateIssuanceJobs,
       TPkiSignerCertificateIssuanceJobsInsert,
       TPkiSignerCertificateIssuanceJobsUpdate
+    >;
+    [TableName.PkiSignerCertificateRevocations]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateRevocations,
+      TPkiSignerCertificateRevocationsInsert,
+      TPkiSignerCertificateRevocationsUpdate
     >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
@@ -2072,6 +2083,11 @@ declare module "knex/types/tables" {
       TApprovalPolicyAutoApprovalConditions,
       TApprovalPolicyAutoApprovalConditionsInsert,
       TApprovalPolicyAutoApprovalConditionsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditionContexts]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditionContexts,
+      TApprovalPolicyAutoApprovalConditionContextsInsert,
+      TApprovalPolicyAutoApprovalConditionContextsUpdate
     >;
     [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
       TApprovalPolicySecretEnvironments,
