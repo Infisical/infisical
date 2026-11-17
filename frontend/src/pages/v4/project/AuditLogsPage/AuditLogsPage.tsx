@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -6,7 +7,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tabs } from "@infisical/cipher/ui/tabs";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -27,6 +28,7 @@ import {
 } from "../../cert-manager/components/certificate";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref, useGo } from "../../links";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { EventClassesCard } from "../../organization/AuditLogsPage/event-classes";
 import { PageLoader } from "../../shell/project-gate";
@@ -150,6 +152,8 @@ const SettingsTab = (scope: Scope) => {
 
 const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
   const navigate = useNavigate();
+  const go = useGo();
+  const { organization } = useV4Session();
   const { selectedTab } = useSearch({ strict: false });
   const { permission, isPending } = useProjectPermission(projectId);
   const activeTab = tabs.some((tab) => tab.value === selectedTab) ? selectedTab : "audit-logs";
@@ -180,6 +184,13 @@ const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
             href="https://infisical.com/docs/documentation/platform/audit-logs"
             subject="audit logs"
           />
+        }
+        actions={
+          <Button variant="ghost" iconRight="chev-right" asChild>
+            <Link {...go.link(orgHref(organization.id, "/audit-logs"))}>
+              {organization.isSubOrganization ? "Sub-org audit logs" : "Org audit logs"}
+            </Link>
+          </Button>
         }
         tabs={
           <Tabs

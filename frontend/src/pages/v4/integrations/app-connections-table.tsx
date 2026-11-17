@@ -39,7 +39,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useOrgId, useOrgPermission, useProjectPermission } from "../access/permissions";
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
-import { GhostEmpty } from "../components/ghost-empty";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
@@ -386,7 +385,7 @@ const EmptyConnections = ({
         }
       />
     );
-  if (!isProject) return <GhostEmpty layout="rows" icon="apps" title="No app connections yet" />;
+  if (!isProject) return <EmptyState size="sm" icon="apps" title="No app connections yet" />;
   return (
     <EmptyState
       size="sm"

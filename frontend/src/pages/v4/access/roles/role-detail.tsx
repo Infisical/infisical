@@ -34,6 +34,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { isCustomOrgRole, isCustomProjectRole } from "@app/helpers/roles";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TOrgRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { sanitizeDuplicateRolePermissions } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal.utils";
 import { OrgAccessControlTabSections } from "@app/types/org";
@@ -81,6 +82,7 @@ export type RoleEditorProps = {
   subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
   references: { environments?: readonly string[]; tags?: readonly string[] };
+  visualizeProjectId?: string;
   vaultConnections: readonly { id: string; name: string }[];
   savePermissions: (permissions: RolePermissions) => Promise<void>;
   update: (draft: RoleDraft) => Promise<boolean>;
@@ -100,6 +102,7 @@ export const RoleEditor = ({
   subjects,
   can,
   references,
+  visualizeProjectId,
   vaultConnections,
   savePermissions,
   update,
@@ -275,6 +278,7 @@ export const RoleEditor = ({
         reason={reason}
         errors={errors}
         references={references}
+        visualizeProjectId={visualizeProjectId}
         onChange={change}
       />
       {overlay === "edit" &&
@@ -507,6 +511,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         environments: project?.environments.map((environment) => environment.slug),
         tags: tags?.map((tag) => tag.slug)
       }}
+      visualizeProjectId={scope.projectType === ProjectType.SecretManager ? projectId : undefined}
       vaultConnections={canEdit ? (vaultConnections ?? []) : []}
       savePermissions={async (permissions) => {
         await updateRole.mutateAsync({

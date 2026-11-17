@@ -81,7 +81,6 @@ import { AccessFrame } from "../../../access/AccessFrame";
 import { useDebounced } from "../../../access/org/use-debounced";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
-import { GhostEmpty } from "../../../components/ghost-empty";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
 import { v4Path } from "../../../links";
@@ -331,18 +330,22 @@ const NoProjects = ({
   layout: "cards" | "rows";
   canCreate: boolean;
   onCreate: () => void;
-}) => (
-  <GhostEmpty
-    layout={layout}
-    icon={productOf(projectType).icon}
-    title={`No ${getProjectTitle(projectType)} projects yet`}
-    action={
-      <Button variant="outline" icon="plus" disabled={!canCreate} onClick={onCreate}>
-        Create project
-      </Button>
-    }
-  />
-);
+}) => {
+  const empty = (
+    <EmptyState
+      size="sm"
+      ghost={layout === "rows" ? "rows" : undefined}
+      icon={productOf(projectType).icon}
+      title={`No ${getProjectTitle(projectType)} projects yet`}
+      actions={
+        <Button variant="outline" icon="plus" disabled={!canCreate} onClick={onCreate}>
+          Create project
+        </Button>
+      }
+    />
+  );
+  return layout === "cards" ? <Grid columns={3} gap={16} empty={empty} /> : empty;
+};
 
 const NoMatch = () => <EmptyState size="sm" icon="search" title="No projects match your search" />;
 

@@ -1,6 +1,8 @@
 import {
   AlertChannelType,
+  AlertEventType,
   AlertPrincipalType,
+  AlertResourceType,
   AlertRunStatus,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
@@ -168,6 +170,89 @@ const alert = (
   ...fields
 });
 
+const IDENTITY_PROJECT_ID = "payments-api";
+const MESH_WORKLOAD = "2c7e9a14-6d3b-4f8a-91c5-b0e7d3a6f412";
+const SETTLEMENT_BROKER = "f04b7d19-3e6a-4c82-b1d5-9a7e2c6f8d30";
+
+const identityAlerts = () => [
+  alert({
+    id: "1d9e4b27-8c31-4f5a-a6d2-0e7b3c9f1a11",
+    name: "Client secret expiring",
+    eventType: AlertEventType.IdentityAuthenticationExpiry,
+    resourceType: AlertResourceType.IdentityAuthentication,
+    resourceId: MESH_WORKLOAD,
+    projectId: IDENTITY_PROJECT_ID,
+    condition: { alertBefore: "14d", dailyReminder: true },
+    channels: [
+      {
+        id: "c1a2b3c4-0101-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.User, principalId: "u-sarah" }]
+      }
+    ]
+  }),
+  alert({
+    id: "2e0f5c38-9d42-4a6b-b7e3-1f8c4d0a2b22",
+    name: "Settlement broker credentials expiring across every cross-account reconciliation region",
+    eventType: AlertEventType.IdentityAuthenticationExpiry,
+    resourceType: AlertResourceType.IdentityAuthentication,
+    resourceId: SETTLEMENT_BROKER,
+    projectId: IDENTITY_PROJECT_ID,
+    condition: { alertBefore: "30d", dailyReminder: false },
+    channels: [
+      {
+        id: "c1a2b3c4-0102-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [
+          { principalType: AlertPrincipalType.Email, principalId: "payments-oncall@acme.dev" }
+        ]
+      },
+      {
+        id: "c1a2b3c4-0102-4000-8000-000000000002",
+        name: "Slack",
+        channelType: AlertChannelType.Slack,
+        enabled: true,
+        config: { hasWebhookUrl: true },
+        recipients: []
+      },
+      {
+        id: "c1a2b3c4-0102-4000-8000-000000000003",
+        name: "PagerDuty",
+        channelType: AlertChannelType.PagerDuty,
+        enabled: true,
+        config: { hasIntegrationKey: true },
+        recipients: []
+      }
+    ]
+  }),
+  alert({
+    id: "3f1a6d49-ae53-4b7c-88f4-2a9d5e1b3c33",
+    name: "Auth method changed on the settlement broker",
+    eventType: AlertEventType.IdentityAuthMethodChanged,
+    resourceType: AlertResourceType.IdentityAuthentication,
+    resourceId: SETTLEMENT_BROKER,
+    projectId: IDENTITY_PROJECT_ID,
+    enabled: false,
+    condition: null,
+    channels: [
+      {
+        id: "c1a2b3c4-0103-4000-8000-000000000001",
+        name: "Webhook",
+        channelType: AlertChannelType.Webhook,
+        enabled: true,
+        config: { hasSigningSecret: true },
+        recipients: []
+      }
+    ]
+  })
+];
+
 const alerts = createFixtureStore<TAlert[]>([
   alert({
     id: "a1f3c5e7-2b4d-4f6a-8c0e-1d3f5a7c9e01",
@@ -308,7 +393,8 @@ const alerts = createFixtureStore<TAlert[]>([
         recipients: []
       }
     ]
-  })
+  }),
+  ...identityAlerts()
 ]);
 
 const byId = (alertId: string) => alerts.get().find((entry) => entry.id === alertId) as TAlert;

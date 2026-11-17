@@ -14,19 +14,44 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
 import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole, type TProjectPermission } from "@app/hooks/api/roles/types";
+import { RoleTemplates } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
+import { useProjectPermission } from "../permissions";
 import { failed, saved, toast } from "../toast";
 import { Muted } from "../ui";
 import { accessNoun, accessThis } from "./product";
 import { useProjectScope } from "./scope";
 
 export type AddIdentityMode = "create" | "assign";
+
+const templatePermissions = (projectType: ProjectType, templateIds: readonly string[]) => {
+  const merged = new Map<string, Set<string>>();
+  const selected = new Set(templateIds);
+  (RoleTemplates[projectType] ?? [])
+    .filter((template) => selected.has(template.id))
+    .forEach((template) =>
+      template.permissions.forEach(({ subject, actions }) => {
+        const current = merged.get(subject) ?? new Set<string>();
+        actions.forEach((action) => current.add(action));
+        merged.set(subject, current);
+      })
+    );
+  return [...merged].map(([subject, actions]) => ({
+    subject,
+    action: [...actions]
+  })) as TProjectPermission[];
+};
 
 const AddIdentityForm = ({
   orgId,
@@ -62,6 +87,19 @@ const AddIdentityForm = ({
   const updateRoles = access.useUpdateProjectIdentityRoles();
   const addMembership = access.useAddProjectIdentity();
   const addUniversalAuth = access.useAddIdentityUniversalAuth();
+  const createPrivilege = access.useCreateIdentityProjectPrivilege();
+  const project = access.useProject(projectId).data;
+  const { permission } = useProjectPermission(projectId);
+  const canGrantPrivileges =
+    scope.projectType === ProjectType.SecretManager &&
+    Boolean(project?.isLegacyAdditionalPrivilegesEnabled) &&
+    permission.can(ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity) &&
+    permission.can(
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Identity
+    );
+  const templates = RoleTemplates[scope.projectType] ?? [];
+  const [templateIds, setTemplateIds] = useState<string[]>([]);
 
   const assignable = useMemo(() => {
     const existing = new Set(members?.identityMemberships.map((entry) => entry.identity.id));
@@ -85,6 +123,26 @@ const AddIdentityForm = ({
       return;
     }
     setPending(true);
+    const grantTemplates = async (targetId: string) => {
+      if (!templateIds.length || !canGrantPrivileges) return true;
+      try {
+        await createPrivilege.mutateAsync({
+          identityId: targetId,
+          projectId,
+          permissions: templatePermissions(scope.projectType, templateIds),
+          type: { isTemporary: false }
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const grantFailed = (verb: string) =>
+      toast({
+        tone: "bad",
+        title: `Machine identity ${verb}, but applying the policy grant failed`,
+        description: "You can add it from the identity page."
+      });
     try {
       if (currentMode === "assign") {
         await addMembership.mutateAsync({
@@ -93,7 +151,8 @@ const AddIdentityForm = ({
           identityId,
           role: role || undefined
         });
-        saved("Successfully added machine identity");
+        if (await grantTemplates(identityId)) saved("Successfully added machine identity");
+        else grantFailed("added");
         onClose();
         return;
       }
@@ -115,7 +174,6 @@ const AddIdentityForm = ({
           identityId: created.id,
           ...UNIVERSAL_AUTH_DEFAULTS
         });
-        saved("Successfully created machine identity");
       } catch {
         toast({
           tone: "bad",
@@ -123,6 +181,8 @@ const AddIdentityForm = ({
           description: "Add an auth method from the identity page."
         });
       }
+      if (await grantTemplates(created.id)) saved("Successfully created machine identity");
+      else grantFailed("created");
       onClose();
       go(accessLinks.projectIdentity(scope, created.id));
     } catch (error) {
@@ -217,6 +277,22 @@ const AddIdentityForm = ({
                 onChange={(value) => value && setRole(value)}
               />
             </Field>
+            {canGrantPrivileges && templates.length > 0 && (
+              <Field label="Additional privileges" optional>
+                <Combobox
+                  multiple
+                  label="Additional privileges"
+                  placeholder="Select additional privileges..."
+                  options={templates.map((template) => ({
+                    value: template.id,
+                    label: template.name,
+                    description: template.description
+                  }))}
+                  value={templateIds}
+                  onChange={setTemplateIds}
+                />
+              </Field>
+            )}
           </Stack>
         </form>
       </SheetBody>

@@ -13,6 +13,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
+import { useSearch } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
 
 import {
@@ -51,7 +52,11 @@ export const ProjectMembersTab = () => {
     [filters]
   );
 
-  const [adding, setAdding] = useState(false);
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (search) => (search as { requesterEmail?: string }).requesterEmail
+  });
+  const [adding, setAdding] = useState(() => Boolean(requesterEmail));
   const [removing, setRemoving] = useState<TWorkspaceUser>();
   const [assuming, setAssuming] = useState<AssumeTarget>();
   const members = access.useProjectUsers(
