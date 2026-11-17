@@ -37,7 +37,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { EnterpriseSecretSyncsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   getSecretSyncDestinationConfig,
-  SecretSyncFormSchema
+  SecretSyncUnionSchema
 } from "@app/components/secret-syncs/forms/schemas";
 import {
   ProjectPermissionSecretSyncActions,
@@ -942,7 +942,7 @@ export function CreateSecretSyncSheet({
     ...addedConnections
   ];
   const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretSyncFormSchema),
+    resolver: zodResolver(SecretSyncUnionSchema),
     mode: "onChange",
     reValidateMode: "onChange"
   });
