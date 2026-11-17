@@ -391,7 +391,13 @@ describe("certificate revocation behind an approval policy", () => {
       }),
       notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined)
     };
-    const approvalRequestDAL = { update: vi.fn().mockResolvedValue([{ id: "approval-request-0" }]) };
+    const approvalRequestDAL = {
+      update: vi.fn().mockResolvedValue([{ id: "approval-request-0" }]),
+      findByIdForUpdate: vi.fn().mockImplementation(async () => ({
+        status: ApprovalRequestStatus.Pending,
+        ...((await certificateDAL.findPendingRevocationApprovalRequest.mock.results.at(-1)?.value) as object)
+      }))
+    };
     const pkiApplicationDAL = { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) };
 
     const deps = {
@@ -479,6 +485,40 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it("locks the pending request before reading whether its approvers can still approve it", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
+        id: "approval-request-0",
+        expiresAt: new Date(Date.now() + 60_000)
+      });
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toBeInstanceOf(BadRequestError);
+      expect(ctx.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("approval-request-0", tx);
+      expect(ctx.approvalRequestDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+        ctx.approvalPolicyService.isPendingRequestUndecidable.mock.invocationCallOrder[0]
+      );
+    });
+
+    it("refuses without replacing anything when the pending request was decided while waiting for its lock", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
+        id: "approval-request-0",
+        expiresAt: null
+      });
+      ctx.approvalRequestDAL.findByIdForUpdate.mockResolvedValue({
+        id: "approval-request-0",
+        status: ApprovalRequestStatus.Approved,
+        expiresAt: null
+      });
+      ctx.approvalPolicyService.isPendingRequestUndecidable.mockResolvedValue(true);
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+        "An earlier revocation request for certificate 'web' was decided while you were making this one. Check the certificate's status and try again."
+      );
+      expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
     });
 
     describe("when the pending request's approvers can no longer approve it", () => {

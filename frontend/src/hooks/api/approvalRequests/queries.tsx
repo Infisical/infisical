@@ -66,5 +66,5 @@ export const usePendingCertificateRevocations = (applicationId?: string | null) 
     return () => clearTimeout(timer);
   }, [nextExpiresAt, expiryTick]);
 
-  return { data: data?.requestIdByCertificateId };
+  return { data: data?.requestByCertificateId };
 };

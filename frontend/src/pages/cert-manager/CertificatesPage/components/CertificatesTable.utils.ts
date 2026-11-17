@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import ms from "ms";
 
+import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
@@ -105,24 +106,30 @@ export const getApplicationCertificateAccess = ({
 export const PENDING_REVOCATION_REASON =
   "A revocation of this certificate is already waiting for approval.";
 
+export const REPLACEABLE_REVOCATION_REASON =
+  "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.";
+
 // With no revocation policy covering the certificate, revoking skips approval, so a pending request
 // is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
-// sync can revoke one while its request is pending), so it is not shown at all.
+// sync can revoke one while its request is pending), so it is not shown at all. A request its
+// approvers can no longer approve is replaced when the certificate is revoked again.
 export const getPendingRevocationState = ({
-  hasPendingRequest,
+  pendingRequest,
   isRevoked,
   isRevocationApprovalRequired
 }: {
-  hasPendingRequest: boolean;
+  pendingRequest?: Pick<TApprovalRequest, "approversCanNoLongerApprove">;
   isRevoked: boolean;
   isRevocationApprovalRequired: boolean;
 }) => {
-  const isPending = hasPendingRequest && !isRevoked;
+  const isPending = Boolean(pendingRequest) && !isRevoked;
+  const blocksRevoke = isPending && isRevocationApprovalRequired;
+  const isReplaceable = blocksRevoke && Boolean(pendingRequest?.approversCanNoLongerApprove);
 
   return {
     isPending,
-    revokeBlockedReason:
-      isPending && isRevocationApprovalRequired ? PENDING_REVOCATION_REASON : undefined
+    revokeBlockedReason: blocksRevoke && !isReplaceable ? PENDING_REVOCATION_REASON : undefined,
+    revokeReplacesRequestReason: isReplaceable ? REPLACEABLE_REVOCATION_REASON : undefined
   };
 };
 

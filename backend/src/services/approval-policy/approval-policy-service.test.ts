@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TApprovalRequests } from "@app/db/schemas";
+import { OrgMembershipStatus, ResourceMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -434,4 +434,137 @@ describe("approvalPolicyService rechecks a revocation approver under the request
       expect(ctx.membershipDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: ctx.tx });
     }
   );
+});
+
+describe("approvalPolicyService flags a pending request its saved approvers can no longer approve", () => {
+  const viewer = { type: ActorType.USER, id: "viewer-1", orgId: "org-1", authMethod: null } as never;
+
+  const build = ({
+    primaryRole,
+    replicaRole,
+    type = ApprovalPolicyType.CertRevocation,
+    status = ApprovalRequestStatus.Pending,
+    expiresAt = null
+  }: {
+    primaryRole: ResourceMembershipRole;
+    replicaRole: ResourceMembershipRole;
+    type?: ApprovalPolicyType;
+    status?: ApprovalRequestStatus;
+    expiresAt?: Date | null;
+  }) => {
+    const primaryDb = { node: "primary" };
+    const membership = { id: "membership-1", actorUserId: "approver-1", isActive: true, scopeOrgId: "org-1" };
+    const steps = [
+      {
+        stepNumber: 1,
+        requiredApprovals: 1,
+        approvers: [{ type: ApproverType.User, id: "approver-1" }],
+        approvals: []
+      }
+    ];
+    const request = {
+      id: "revocation-1",
+      type,
+      projectId: "project-1",
+      organizationId: "org-1",
+      policyId: "policy-1",
+      requesterId: "requester-1",
+      status,
+      expiresAt,
+      currentStep: 1,
+      scopeType: ApprovalPolicyScope.PkiApplication,
+      scopeId: "app-1"
+    };
+    const approvalPolicyDAL = {
+      find: vi.fn().mockResolvedValue([]),
+      findBypassersByPolicyIds: vi.fn().mockResolvedValue({}),
+      primaryNode: vi.fn().mockReturnValue(primaryDb)
+    };
+    const revocationResource = certRevocationApprovalResourceFactory({
+      approvalPolicyDAL,
+      certificateService: { revokeApprovedCertificate: vi.fn() },
+      membershipDAL: { find: vi.fn().mockResolvedValue([membership]) },
+      membershipRoleDAL: {
+        find: vi.fn(async (_filter: unknown, opts?: { tx?: unknown }) => [
+          { membershipId: membership.id, role: opts?.tx === primaryDb ? primaryRole : replicaRole }
+        ])
+      },
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+      orgDAL: {
+        findMembership: vi
+          .fn()
+          .mockResolvedValue([{ actorUserId: "approver-1", isActive: true, status: OrgMembershipStatus.Accepted }]),
+        findActorsWithActiveOrgAccess: vi.fn()
+      },
+      userDAL: { find: vi.fn().mockResolvedValue([]) }
+    } as never);
+    const service = approvalPolicyServiceFactory({
+      approvalRequestDAL: {
+        findById: vi.fn().mockResolvedValue(request),
+        findStepsByRequestId: vi.fn().mockResolvedValue(steps),
+        findByProjectId: vi.fn().mockResolvedValue([{ ...request, steps }])
+      },
+      approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]), findOne: vi.fn().mockResolvedValue(null) },
+      approvalPolicyDAL,
+      pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: "app-1", projectId: "project-1" }) },
+      permissionService: {
+        getOrgPermission: vi.fn().mockResolvedValue({}),
+        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      },
+      userGroupMembershipDAL: { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) },
+      resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
+    } as unknown as TDeps);
+
+    const flags = async () => {
+      const { request: fetched } = await service.getRequestById("revocation-1", viewer);
+      const { requests } = await service.listRequests(type, ApprovalPolicyScope.PkiApplication, "app-1", viewer);
+      return { fetched: fetched.approversCanNoLongerApprove, listed: requests[0].approversCanNoLongerApprove };
+    };
+    return { flags };
+  };
+
+  it("flags it once its only approver is demoted to Auditor, even while a replica still shows them as Operator", async () => {
+    const ctx = build({ primaryRole: ResourceMembershipRole.Auditor, replicaRole: ResourceMembershipRole.Operator });
+
+    expect(await ctx.flags()).toEqual({ fetched: true, listed: true });
+  });
+
+  it("doesn't flag it while its approver can still approve, even while a replica shows them demoted", async () => {
+    const ctx = build({ primaryRole: ResourceMembershipRole.Operator, replicaRole: ResourceMembershipRole.Auditor });
+
+    expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+  });
+
+  it("doesn't flag a pending request that has expired before the sweep closes it", async () => {
+    const ctx = build({
+      primaryRole: ResourceMembershipRole.Auditor,
+      replicaRole: ResourceMembershipRole.Auditor,
+      expiresAt: new Date(Date.now() - 60_000)
+    });
+
+    expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+  });
+
+  it.each([ApprovalRequestStatus.Approved, ApprovalRequestStatus.Rejected, ApprovalRequestStatus.Cancelled])(
+    "doesn't flag a request that is %s",
+    async (status) => {
+      const ctx = build({
+        primaryRole: ResourceMembershipRole.Auditor,
+        replicaRole: ResourceMembershipRole.Auditor,
+        status
+      });
+
+      expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+    }
+  );
+
+  it("doesn't flag a request type whose saved approvers can't go stale", async () => {
+    const ctx = build({
+      primaryRole: ResourceMembershipRole.Auditor,
+      replicaRole: ResourceMembershipRole.Auditor,
+      type: ApprovalPolicyType.CertRequest
+    });
+
+    expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+  });
 });

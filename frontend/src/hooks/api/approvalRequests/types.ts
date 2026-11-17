@@ -129,6 +129,7 @@ export type TApprovalRequest = {
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;
   canReview: boolean;
+  approversCanNoLongerApprove: boolean;
   isBreakGlass: boolean;
   bypassReason?: string | null;
   createdAt: string;

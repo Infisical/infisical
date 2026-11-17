@@ -955,7 +955,7 @@ export const CertificatesTable = ({
                     certificateCaType
                   );
                   const pendingRevocation = getPendingRevocationState({
-                    hasPendingRequest: Boolean(pendingRevocations?.has(certificate.id)),
+                    pendingRequest: pendingRevocations?.get(certificate.id),
                     isRevoked,
                     isRevocationApprovalRequired
                   });
@@ -1023,9 +1023,19 @@ export const CertificatesTable = ({
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                            {pendingRevocation.isPending && (
-                              <Badge variant="warning">Revocation Pending</Badge>
-                            )}
+                            {pendingRevocation.isPending &&
+                              (pendingRevocation.revokeReplacesRequestReason ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="warning">Revocation Pending</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-72">
+                                    {pendingRevocation.revokeReplacesRequestReason}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Badge variant="warning">Revocation Pending</Badge>
+                              ))}
                           </div>
                         </TableCell>
                       )}
@@ -1394,7 +1404,12 @@ export const CertificatesTable = ({
                                   rowApplicationAccess?.revokeBlockedReason;
 
                                 return (
-                                  <BlockedActionTooltip reason={revokeBlockedReason}>
+                                  <BlockedActionTooltip
+                                    reason={
+                                      revokeBlockedReason ??
+                                      pendingRevocation.revokeReplacesRequestReason
+                                    }
+                                  >
                                     <DropdownMenuItem
                                       variant="danger"
                                       isDisabled={

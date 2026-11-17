@@ -1531,6 +1531,17 @@ export const approvalPolicyServiceFactory = ({
       actorAuthMethod: actor.authMethod
     });
 
+  // Reads through the caller's transaction, which holds the lock that keeps a replacement request from racing this one.
+  // Without a transaction, pass the primary: the flag on a listed or fetched request must agree with what revoking does.
+  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) => {
+    const request = await approvalRequestDAL.findById(requestId, tx);
+    if (!request || request.status !== ApprovalRequestStatus.Pending || isApprovalRequestExpired(request)) return false;
+    const isUndecidable = resources[request.type as ApprovalPolicyType]?.isRequestUndecidable;
+    if (!isUndecidable) return false;
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId, tx);
+    return isUndecidable({ request, steps, tx });
+  };
+
   const getRequestById = async (requestId: string, actor: TApprovalActor) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
@@ -1620,7 +1631,8 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const decorated = await $decorateRequest({ ...request, steps }, actor);
-    return { request: { ...decorated, canReview } };
+    const approversCanNoLongerApprove = await isPendingRequestUndecidable(request.id, primaryDb);
+    return { request: { ...decorated, canReview, approversCanNoLongerApprove } };
   };
 
   const approveRequest = async (
@@ -2108,7 +2120,16 @@ export const approvalPolicyServiceFactory = ({
       ctx.bypassersByPolicyId = new Map(Object.entries(bypassersByPolicyId));
     }
 
-    const decorated = await Promise.all(visibleRequests.map((r) => $decorateRequest(r, actor, ctx)));
+    const primaryDb = approvalPolicyDAL.primaryNode();
+    const decorated = await Promise.all(
+      visibleRequests.map(async (r) => ({
+        ...(await $decorateRequest(r, actor, ctx)),
+        approversCanNoLongerApprove:
+          r.status === ApprovalRequestStatus.Pending &&
+          Boolean(resources[r.type as ApprovalPolicyType]?.isRequestUndecidable) &&
+          (await isPendingRequestUndecidable(r.id, primaryDb))
+      }))
+    );
     return { requests: decorated, projectId };
   };
 
@@ -2146,15 +2167,6 @@ export const approvalPolicyServiceFactory = ({
 
     const decorated = await $decorateRequest({ ...updatedRequest, steps }, actor);
     return { request: decorated };
-  };
-
-  // Reads through the caller's transaction, which holds the lock that keeps a replacement request from racing this one.
-  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) => {
-    const request = await approvalRequestDAL.findById(requestId, tx);
-    const isUndecidable = request && resources[request.type as ApprovalPolicyType]?.isRequestUndecidable;
-    if (!isUndecidable) return false;
-    const steps = await approvalRequestDAL.findStepsByRequestId(requestId, tx);
-    return isUndecidable({ request, steps, tx });
   };
 
   const listGrants = async (

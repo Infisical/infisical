@@ -220,7 +220,7 @@ type TCertificateServiceFactoryDep = {
     TApprovalPolicyServiceFactory,
     "matchPolicy" | "isPendingRequestUndecidable" | "createRequestFromPolicy" | "notifyApprovedActionFailed"
   >;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update" | "findByIdForUpdate">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -1093,10 +1093,18 @@ export const certificateServiceFactory = ({
         );
         let replacedRequest: TApprovalRequests | null = null;
         if (pending) {
-          const expired = isApprovalRequestExpired(pending);
+          const decidedMeanwhile = new BadRequestError({
+            message: `An earlier revocation request for certificate '${getCertificateDisplayName(cert)}' was decided while you were making this one. Check the certificate's status and try again.`
+          });
+          // Approve and reject hold this lock while they record a vote or move the request to its next step, so the
+          // step and votes read below can't change before the request is closed.
+          const locked = await approvalRequestDAL.findByIdForUpdate(pending.id, tx);
+          if (locked?.status !== ApprovalRequestStatus.Pending) throw decidedMeanwhile;
+
+          const expired = isApprovalRequestExpired(locked);
           // A request keeps the approvers it was raised with. Once too few of them can approve, it would block every
           // revocation of this certificate until it expires, which a policy with no maximum TTL never does.
-          const undecidable = !expired && (await approvalPolicyService.isPendingRequestUndecidable(pending.id, tx));
+          const undecidable = !expired && (await approvalPolicyService.isPendingRequestUndecidable(locked.id, tx));
           if (!expired && !undecidable) {
             throw new BadRequestError({
               message: `A revocation of certificate '${getCertificateDisplayName(cert)}' is already waiting for approval.`
@@ -1104,15 +1112,11 @@ export const certificateServiceFactory = ({
           }
           // Expiry is applied lazily, so a lapsed request still reads as pending until something marks it.
           const [closed] = await approvalRequestDAL.update(
-            { id: pending.id, status: ApprovalRequestStatus.Pending },
+            { id: locked.id, status: ApprovalRequestStatus.Pending },
             { status: expired ? ApprovalRequestStatus.Expired : ApprovalRequestStatus.Cancelled },
             tx
           );
-          if (!closed) {
-            throw new BadRequestError({
-              message: `An earlier revocation request for certificate '${getCertificateDisplayName(cert)}' was decided while you were making this one. Check the certificate's status and try again.`
-            });
-          }
+          if (!closed) throw decidedMeanwhile;
           if (undecidable) replacedRequest = closed;
         }
 

@@ -345,7 +345,7 @@ export const listApplicationRevocationRequests = (dto: { applicationId: string; 
       headers: auth(dto.authToken),
       query: { scope: ApprovalPolicyScope.PkiApplication, id: dto.applicationId }
     },
-    (res) => ok<{ requests: { id: string }[] }>(res).requests
+    (res) => ok<{ requests: { id: string; approversCanNoLongerApprove: boolean }[] }>(res).requests
   );
 
 export const cancelRevocationRequest = (dto: { requestId: string; authToken: string }) =>
@@ -371,6 +371,7 @@ export const getRevocationRequest = (dto: { requestId: string; authToken: string
           id: string;
           status: string;
           canReview: boolean;
+          approversCanNoLongerApprove: boolean;
           steps: { stepNumber: number; approvers: { type: ApproverType; id: string }[] }[];
         };
       }>(res).request

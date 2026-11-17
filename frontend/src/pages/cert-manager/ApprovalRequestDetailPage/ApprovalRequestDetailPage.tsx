@@ -407,6 +407,11 @@ const PageContent = () => {
             by {request.requesterName || "Unknown"}
             {applicationLink}
           </p>
+          {request.approversCanNoLongerApprove && (
+            <p className="mt-1 text-sm text-warning">
+              Not enough of this request&apos;s approvers can still approve it.
+            </p>
+          )}
         </>
       );
     }

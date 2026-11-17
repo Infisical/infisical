@@ -11,7 +11,8 @@ import {
   getCertificateDisplayStatus,
   getPendingRevocationState,
   isRemovedFromSyncDestination,
-  PENDING_REVOCATION_REASON
+  PENDING_REVOCATION_REASON,
+  REPLACEABLE_REVOCATION_REASON
 } from "./CertificatesTable.utils";
 
 // Each rule is "<action>" on certificates, or "<action>:<subject>".
@@ -164,46 +165,82 @@ describe("getApplicationCertificateAccess", () => {
 });
 
 describe("getPendingRevocationState", () => {
+  const decidable = { approversCanNoLongerApprove: false };
+  const undecidable = { approversCanNoLongerApprove: true };
+
   it("blocks Revoke while a revocation policy covers the certificate", () => {
     expect(
       getPendingRevocationState({
-        hasPendingRequest: true,
+        pendingRequest: decidable,
         isRevoked: false,
         isRevocationApprovalRequired: true
       })
-    ).toEqual({ isPending: true, revokeBlockedReason: PENDING_REVOCATION_REASON });
+    ).toEqual({
+      isPending: true,
+      revokeBlockedReason: PENDING_REVOCATION_REASON,
+      revokeReplacesRequestReason: undefined
+    });
+  });
+
+  it("lets Revoke through and says it replaces a request its approvers can no longer approve", () => {
+    expect(
+      getPendingRevocationState({
+        pendingRequest: undecidable,
+        isRevoked: false,
+        isRevocationApprovalRequired: true
+      })
+    ).toEqual({
+      isPending: true,
+      revokeBlockedReason: undefined,
+      revokeReplacesRequestReason: REPLACEABLE_REVOCATION_REASON
+    });
   });
 
   it("shows the request but lets Revoke through once no policy covers the certificate", () => {
-    expect(
-      getPendingRevocationState({
-        hasPendingRequest: true,
-        isRevoked: false,
-        isRevocationApprovalRequired: false
-      })
-    ).toEqual({ isPending: true, revokeBlockedReason: undefined });
+    [decidable, undecidable].forEach((pendingRequest) => {
+      expect(
+        getPendingRevocationState({
+          pendingRequest,
+          isRevoked: false,
+          isRevocationApprovalRequired: false
+        })
+      ).toEqual({
+        isPending: true,
+        revokeBlockedReason: undefined,
+        revokeReplacesRequestReason: undefined
+      });
+    });
   });
 
   it("ignores a request left on a certificate that is already revoked", () => {
-    [true, false].forEach((isRevocationApprovalRequired) => {
-      expect(
-        getPendingRevocationState({
-          hasPendingRequest: true,
-          isRevoked: true,
-          isRevocationApprovalRequired
-        })
-      ).toEqual({ isPending: false, revokeBlockedReason: undefined });
+    [decidable, undecidable].forEach((pendingRequest) => {
+      [true, false].forEach((isRevocationApprovalRequired) => {
+        expect(
+          getPendingRevocationState({
+            pendingRequest,
+            isRevoked: true,
+            isRevocationApprovalRequired
+          })
+        ).toEqual({
+          isPending: false,
+          revokeBlockedReason: undefined,
+          revokeReplacesRequestReason: undefined
+        });
+      });
     });
   });
 
   it("does nothing without a pending request", () => {
     expect(
       getPendingRevocationState({
-        hasPendingRequest: false,
         isRevoked: false,
         isRevocationApprovalRequired: true
       })
-    ).toEqual({ isPending: false, revokeBlockedReason: undefined });
+    ).toEqual({
+      isPending: false,
+      revokeBlockedReason: undefined,
+      revokeReplacesRequestReason: undefined
+    });
   });
 });
 

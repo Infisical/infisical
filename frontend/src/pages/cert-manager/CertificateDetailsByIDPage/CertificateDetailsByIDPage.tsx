@@ -122,7 +122,7 @@ const Page = () => {
     certificate?.applicationId ?? ""
   );
   const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
-  const pendingRevocationRequestId = certificate
+  const pendingRevocationRequest = certificate
     ? pendingRevocations?.get(certificate.id)
     : undefined;
   const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(
@@ -262,7 +262,7 @@ const Page = () => {
     certificate?.profileName && revocationPolicyProfileNames?.has(certificate.profileName)
   );
   const pendingRevocation = getPendingRevocationState({
-    hasPendingRequest: Boolean(pendingRevocationRequestId),
+    pendingRequest: pendingRevocationRequest,
     isRevoked,
     isRevocationApprovalRequired
   });
@@ -291,8 +291,8 @@ const Page = () => {
   const revokeBlockedReason =
     pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
   const pendingRevocationLink =
-    pendingRevocation.isPending && pendingRevocationRequestId
-      ? getCertManagerLink(currentProject, `approvals/${pendingRevocationRequestId}`, {
+    pendingRevocation.isPending && pendingRevocationRequest
+      ? getCertManagerLink(currentProject, `approvals/${pendingRevocationRequest.id}`, {
           policyType: ApprovalPolicyType.CertRevocation
         })
       : undefined;
@@ -378,6 +378,8 @@ const Page = () => {
                   revocation request
                 </Link>{" "}
                 is approved.
+                {pendingRevocation.revokeReplacesRequestReason &&
+                  ` ${pendingRevocation.revokeReplacesRequestReason}`}
               </>
             ) : (
               "View certificate details"
@@ -554,7 +556,9 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip reason={revokeBlockedReason}>
+                  <BlockedActionTooltip
+                    reason={revokeBlockedReason ?? pendingRevocation.revokeReplacesRequestReason}
+                  >
                     <DropdownMenuItem
                       isDisabled={
                         !canRevokeCertificate || Boolean(pendingRevocation.revokeBlockedReason)

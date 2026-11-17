@@ -7,7 +7,11 @@
 // approved revocation fail and send that notice.
 import { ProjectMembershipRole, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
-import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalRequestApprovalDecision,
+  ApprovalRequestStepStatus,
+  ApproverType
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 
@@ -26,6 +30,7 @@ import {
   getRevocationApprovalPolicy,
   getRevocationRequest,
   issueApplicationCertificate,
+  listApplicationRevocationRequests,
   listProjectRevocationRequests,
   removeApplicationMember,
   revokeCertificate,
@@ -37,7 +42,7 @@ import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createProjectGroup, deleteGroups, removeUserFromGroup } from "../../testUtils/groups";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { listUserNotifications } from "../../testUtils/notifications";
-import { pollUntil } from "../../testUtils/poll";
+import { pollUntil, waitUntilBlockedBy } from "../../testUtils/poll";
 import {
   addUserMembership,
   createUser,
@@ -662,15 +667,33 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     expect(await certificateStatus(certificateId)).toBe(CertStatus.ACTIVE);
   };
 
+  // The Application list is what the certificate pages read to decide whether Revoke can replace the request.
+  const replaceableFlags = async (applicationId: string, requestId: string) => {
+    const listed = await listApplicationRevocationRequests({ applicationId, authToken: adminToken });
+    const fetched = await getRevocationRequest({ requestId, authToken: adminToken });
+    return {
+      listed: listed.find(({ id }) => id === requestId)?.approversCanNoLongerApprove,
+      fetched: fetched.approversCanNoLongerApprove
+    };
+  };
+
   test("a revocation request whose only approver was demoted to Auditor is replaced by the next revocation", async () => {
     const fixture = await setUp({
       approverVia: "user",
       steps: ({ approver }) => [{ requiredApprovals: 1, approvers: [approver] }]
     });
     const pending = await fixture.raiseRequest();
+    expect(await replaceableFlags(fixture.application.id, pending.requestId)).toEqual({
+      listed: false,
+      fetched: false
+    });
 
     await demote(fixture.application.id, fixture.approver.userId);
 
+    expect(await replaceableFlags(fixture.application.id, pending.requestId)).toEqual({
+      listed: true,
+      fetched: true
+    });
     await expectReplaced(fixture, pending);
   });
 
@@ -715,10 +738,73 @@ describe("Revocation approval when a saved approver's access changes", { timeout
 
     await demote(fixture.application.id, fixture.approver.userId);
 
+    expect(await replaceableFlags(fixture.application.id, requestId)).toEqual({ listed: false, fetched: false });
+
     await revokeCertificate({ certificateId, authToken: adminToken }).expect((res) => {
       expect(res.statusCode, res.payload).toBe(400);
       expect(res.json().message).toBe(`A revocation of certificate '${COMMON_NAME}' is already waiting for approval.`);
     });
+    expect((await getRevocationRequest({ requestId, authToken: adminToken })).status).toBe("pending");
+    expect(await revocationRequestCount(certificateId)).toBe(1);
+  });
+
+  // The transaction stands in for an approval in flight: it holds the request lock while it records step 1's vote and
+  // moves the request to step 2, as approve does. Step 1's approver loses access before it commits, so a revocation
+  // that read the request without that lock would see step 1 with nobody left to approve it and cancel a request
+  // step 2 can still pass.
+  test("a revocation waits for an approval in flight and doesn't replace the request it moved to a step that can still pass", async () => {
+    const fixture = await setUp({
+      approverVia: "user",
+      steps: ({ approver, otherId }) => [
+        { requiredApprovals: 1, approvers: [approver] },
+        { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: otherId }] }
+      ]
+    });
+    const { certificateId, requestId } = await fixture.raiseRequest();
+    const [stepOne, stepTwo] = await testDb(TableName.ApprovalRequestSteps)
+      .where({ requestId })
+      .orderBy("stepNumber", "asc")
+      .select("id");
+
+    const approval = await testDb.transaction();
+    let revocation: ReturnType<ReturnType<typeof revokeCertificate>["raw"]> | undefined;
+    try {
+      const { rows } = await approval.raw("select pg_backend_pid() as pid");
+      await approval(TableName.ApprovalRequests).forUpdate().where({ id: requestId }).first();
+      await approval(TableName.ApprovalRequestApprovals).insert({
+        stepId: stepOne.id,
+        approverUserId: fixture.approver.userId,
+        decision: ApprovalRequestApprovalDecision.Approved
+      });
+      await approval(TableName.ApprovalRequestSteps)
+        .where({ id: stepOne.id })
+        .update({ status: ApprovalRequestStepStatus.Completed, completedAt: new Date() });
+      await approval(TableName.ApprovalRequests).where({ id: requestId }).update({ currentStep: 2 });
+      await approval(TableName.ApprovalRequestSteps)
+        .where({ id: stepTwo.id })
+        .update({ status: ApprovalRequestStepStatus.InProgress, startedAt: new Date() });
+
+      // The policy is repaired first, so the revocation gets past the policy check and reaches the pending request.
+      await updateRevocationApprovalPolicy({
+        policyId: fixture.policy.id,
+        steps: [
+          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: fixture.other.userId }] },
+          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: fixture.other.userId }] }
+        ],
+        authToken: adminToken
+      });
+      await demote(fixture.application.id, fixture.approver.userId);
+
+      revocation = revokeCertificate({ certificateId, authToken: adminToken }).raw();
+      await waitUntilBlockedBy(rows[0].pid as number);
+      await approval.commit();
+    } finally {
+      if (!approval.isCompleted()) await approval.rollback();
+    }
+
+    const res = await revocation;
+    expect(res?.statusCode, res?.payload).toBe(400);
+    expect(res?.json().message).toBe(`A revocation of certificate '${COMMON_NAME}' is already waiting for approval.`);
     expect((await getRevocationRequest({ requestId, authToken: adminToken })).status).toBe("pending");
     expect(await revocationRequestCount(certificateId)).toBe(1);
   });

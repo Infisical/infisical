@@ -4,8 +4,10 @@ import {
   type TApprovalRequest
 } from "./types";
 
+export type TPendingRevocation = Pick<TApprovalRequest, "id" | "approversCanNoLongerApprove">;
+
 export type TPendingRevocations = {
-  requestIdByCertificateId: Map<string, string>;
+  requestByCertificateId: Map<string, TPendingRevocation>;
   nextExpiresAt: number | null;
 };
 
@@ -24,10 +26,10 @@ export const getPendingRevocations = (
     request.expiresAt ? [new Date(request.expiresAt).getTime()] : []
   );
   return {
-    requestIdByCertificateId: new Map(
+    requestByCertificateId: new Map(
       pending.map((request) => [
         (request.requestData.requestData as CertRevocationRequestData).certificateId,
-        request.id
+        { id: request.id, approversCanNoLongerApprove: request.approversCanNoLongerApprove }
       ])
     ),
     nextExpiresAt: expiries.length ? Math.min(...expiries) : null

@@ -103,6 +103,12 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoAppro
     .describe(
       "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. Set when one request is fetched by ID; it doesn't say whether they've already acted on this step."
     ),
+  approversCanNoLongerApprove: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Whether too few of the approvers this pending request was raised with can still approve it for it ever to pass. Set when requests are listed or one is fetched by ID. Once the policy has approvers who can approve, revoking the certificate again replaces such a certificate revocation request."
+    ),
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional(),
   autoApproval: AutoApprovalOutcomeSchema.optional()
