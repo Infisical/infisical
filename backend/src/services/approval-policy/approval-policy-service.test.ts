@@ -261,6 +261,12 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
     expect(result.canReview).toBe(false);
+    for (const decide of [ctx.service.approveRequest, ctx.service.rejectRequest]) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(decide("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)).rejects.toThrow(
+        "You are not an eligible approver for this step"
+      );
+    }
   });
 
   it("doesn't let a caller named on no step review", async () => {
