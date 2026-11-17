@@ -3,6 +3,7 @@ import { createFileRoute, linkOptions, useParams } from "@tanstack/react-router"
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ProjectTemplatePage } from "./ProjectTemplatePage";
 
@@ -29,6 +30,7 @@ export const Route = createFileRoute(
     </>
   ),
   context: ({ params }) => ({
+    productType: ProjectType.SecretManager,
     breadcrumbs: [
       {
         label: "Product Settings",
