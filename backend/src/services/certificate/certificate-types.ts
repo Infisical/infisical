@@ -133,6 +133,18 @@ export enum CertificateRevocationStatus {
   PendingApproval = "pending_approval"
 }
 
+export enum ApprovedRevocationOutcomeKind {
+  Revoked = "revoked",
+  AlreadyRevoked = "already-revoked",
+  Failed = "failed"
+}
+
+export enum ApprovedRevocationFailureStage {
+  Infisical = "infisical",
+  Ca = "ca",
+  AfterCa = "after-ca"
+}
+
 export type TRevokeCertDTO = {
   id?: string;
   serialNumber?: string;

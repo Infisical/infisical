@@ -495,7 +495,7 @@ describe("certificate revocation behind an approval policy", () => {
       [
         "a step has no approvers",
         [{ requiredApprovals: 1, approvers: [] }],
-        "Revocation approval policy 'prod-revocations' has no approvers on step 1, so nobody could approve this request. Ask an Application Admin to add approvers to the policy."
+        "Revocation approval policy 'prod-revocations' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy."
       ],
       [
         "a step requires more approvals than it has user approvers",
@@ -503,7 +503,7 @@ describe("certificate revocation behind an approval policy", () => {
           { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }] },
           { requiredApprovals: 2, approvers: [{ type: ApproverType.User, id: "user-3" }] }
         ],
-        "Revocation approval policy 'prod-revocations' requires 2 approvals on step 2 but has only 1 approver, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
+        "Revocation approval policy 'prod-revocations' requires 2 approvals on step 2 but has only 1 approver who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
       ],
       [
         "a step lists the same user twice to reach its required approvals",
@@ -517,7 +517,7 @@ describe("certificate revocation behind an approval policy", () => {
             ]
           }
         ],
-        "Revocation approval policy 'prod-revocations' requires 3 approvals on step 1 but has only 2 approvers, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
+        "Revocation approval policy 'prod-revocations' requires 3 approvals on step 1 but has only 2 approvers who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
       ]
     ])("refuses to open a request nobody could approve when %s", async (_label, steps, message) => {
       const ctx = buildRevocationService();
@@ -828,14 +828,14 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
-        "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again to record it."
+        "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again with the same reason to record it."
       );
       expect(ctx.auditEvents()).toEqual([
         expect.objectContaining({
           type: EventType.CERT_REVOCATION_FAILED,
           metadata: expect.objectContaining({
             error:
-              "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again to record it."
+              "CA 'corp-adcs' (Microsoft ADCS) accepted the revocation, but Infisical couldn't record it. Request the revocation again with the same reason to record it."
           }) as unknown
         })
       ]);

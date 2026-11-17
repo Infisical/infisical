@@ -443,7 +443,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     });
     expect(res.statusCode, res.payload).toBe(400);
     expect(res.json().message).toBe(
-      `Revocation approval policy '${fixture.policy.name}' has no approvers on step 1, so nobody could approve this request. Ask an Application Admin to add approvers to the policy.`
+      `Revocation approval policy '${fixture.policy.name}' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy.`
     );
 
     // No route lists approval requests by certificate, so the table is read to prove none was created.
@@ -552,7 +552,9 @@ describe("Revocation approval when a saved approver's access changes", { timeout
 
     await revokeCertificate({ certificateId, authToken: adminToken }).expect((res) => {
       expect(res.statusCode, res.payload).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("requires 2 approvals on step 1 but has only 1 approver,");
+      expect(JSON.parse(res.payload).message).toContain(
+        "requires 2 approvals on step 1 but has only 1 approver who can approve,"
+      );
     });
     expect(await revocationRequestCount(certificateId)).toBe(0);
     expect(await certificateStatus(certificateId)).toBe(CertStatus.ACTIVE);

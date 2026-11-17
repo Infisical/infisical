@@ -93,7 +93,7 @@ const RevocationDetailsSection = ({
                 {...getCertManagerLink(requestProject, `certificates/${requestData.certificateId}`)}
                 className="font-mono underline hover:text-foreground-secondary"
               >
-                {requestData.commonName || requestData.serialNumber}
+                {requestData.commonName || requestData.serialNumber.toUpperCase()}
               </Link>
             </p>
           </div>
@@ -106,7 +106,7 @@ const RevocationDetailsSection = ({
           <div>
             <span className="text-xs text-muted">Serial Number</span>
             <p className="font-mono text-xs break-all text-foreground">
-              {requestData.serialNumber}
+              {requestData.serialNumber.toUpperCase()}
             </p>
           </div>
           <div>
@@ -403,7 +403,7 @@ const PageContent = () => {
           <p className="mt-1 text-sm text-muted">
             Revocation request for{" "}
             <span className="font-medium text-foreground-secondary">
-              {revocationData.commonName || revocationData.serialNumber}
+              {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
             </span>{" "}
             by {request.requesterName || "Unknown"}
             {applicationLink}
