@@ -67,6 +67,11 @@ func (c *CipherPair) Decrypt(ciphertext []byte) ([]byte, error) {
 	return c.decrypt(ciphertext)
 }
 
+// NewCipherPair builds a CipherPair from the encrypt/decrypt functions of a data key.
+func NewCipherPair(encrypt Encryptor, decrypt Decryptor) *CipherPair {
+	return &CipherPair{encrypt: encrypt, decrypt: decrypt}
+}
+
 // HsmService defines the HSM operations needed by the KMS service.
 // Pass nil when HSM is not configured.
 type HsmService interface {

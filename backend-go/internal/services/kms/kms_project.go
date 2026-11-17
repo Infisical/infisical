@@ -47,14 +47,10 @@ func (s *Service) CreateCipherPairWithProjectDataKey(ctx context.Context, projec
 		return nil, err
 	}
 
-	return &CipherPair{
-		encrypt: func(plainText []byte) ([]byte, error) {
-			return encryptWithVersion(plainText, dataKey)
-		},
-		decrypt: func(cipherTextBlob []byte) ([]byte, error) {
-			return decryptWithVersion(cipherTextBlob, dataKey)
-		},
-	}, nil
+	return NewCipherPair(
+		func(plainText []byte) ([]byte, error) { return encryptWithVersion(plainText, dataKey) },
+		func(cipherTextBlob []byte) ([]byte, error) { return decryptWithVersion(cipherTextBlob, dataKey) },
+	), nil
 }
 
 func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]byte, error) {
