@@ -62,7 +62,9 @@ const STATUS_TONES: Record<SignerStatus, "ok" | "warn" | "bad" | "outline"> = {
   [SignerStatus.Pending]: "warn",
   [SignerStatus.Failed]: "bad",
   [SignerStatus.Expired]: "bad",
-  [SignerStatus.Disabled]: "outline"
+  [SignerStatus.Disabled]: "outline",
+  [SignerStatus.RevocationPending]: "warn",
+  [SignerStatus.Revoked]: "bad"
 };
 
 export const signerStatusNote = (signer: TSigner) => {
