@@ -1,5 +1,4 @@
 import { PageTitle } from "@app/components/PageTitle";
-
 import { PageHeader } from "@app/components/v3";
 import { ProjectType } from "@app/hooks/api/projects/types";
 

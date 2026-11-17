@@ -30,11 +30,14 @@ export const sessionNamedServices = (session: Pick<TAgentVaultSession, "services
 export const inlineSkillsLabel = (count: number) =>
   count === 1 ? "1 inline skill" : `${count} inline skills`;
 
-export const sessionNamedSkills = (session: Pick<TAgentVaultSession, "skills">) =>
-  session.skills.filter((skill) => !skill.isInline);
+// Optional because an API pod from before session skills, during a rolling upgrade, sends sessions without them.
+type TSessionWithSkills = Partial<Pick<TAgentVaultSession, "skills">>;
 
-export const sessionInlineSkills = (session: Pick<TAgentVaultSession, "skills">) =>
-  session.skills.filter((skill) => skill.isInline);
+export const sessionNamedSkills = (session: TSessionWithSkills) =>
+  (session.skills ?? []).filter((skill) => !skill.isInline);
+
+export const sessionInlineSkills = (session: TSessionWithSkills) =>
+  (session.skills ?? []).filter((skill) => skill.isInline);
 
 export type TSessionAccessItem =
   | { kind: "bundle"; bundle: TAgentVaultSessionAccessBundle }

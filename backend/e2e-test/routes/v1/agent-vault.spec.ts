@@ -10706,6 +10706,30 @@ describe("Agent Vault V1 Router", async () => {
         ]);
       });
 
+      test("only an inline skill's first version is listed or delivered, so an older API pod can't add one", async () => {
+        const res = await inject("POST", sessionsUrl, { skills: [inlineSkill("ss-pinned")], ttl: "1h" });
+        expect(res.statusCode, res.payload).toBe(200);
+        const { id, token } = res.json().session as { id: string; token: string };
+        const [first] = (await testDb("agent_vault_skill_versions")
+          .join("agent_vault_skills", "agent_vault_skills.id", "agent_vault_skill_versions.skillId")
+          .where("agent_vault_skills.sessionId", id)
+          .select("agent_vault_skill_versions.*")) as Record<string, unknown>[];
+        // What an API pod from before inline skills writes when an admin publishes the row as a project skill.
+        await testDb("agent_vault_skill_versions").insert({
+          ...first,
+          id: crypto.randomUUID(),
+          version: 2,
+          sha256: "f".repeat(64),
+          createdAt: new Date()
+        });
+
+        expect(await deliveredNames(token)).toEqual(["ss-pinned"]);
+        expect((await inject("GET", `${sessionsUrl}/${id}`)).json().session.skills).toEqual([
+          expect.objectContaining({ name: "ss-pinned", isInline: true, sha256: first.sha256 })
+        ]);
+        expect((await inject("POST", `${sessionsUrl}/${id}/revoke`)).statusCode).toBe(200);
+      });
+
       test("an inline skill's files are deleted when the session is revoked, by either route, and once it ends on its own", async () => {
         const mintWithInline = async () => {
           const res = await inject("POST", sessionsUrl, { skills: [inlineSkill("ss-ephemeral")], ttl: "1h" });

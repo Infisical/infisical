@@ -53,7 +53,12 @@ export const agentVaultSessionInlineSkillDALFactory = (db: TDbClient) => {
     ...VERSION_COLUMNS.map((column) => db.ref(column).withSchema(VERSION))
   ];
 
-  const inlineSkills = (conn: Knex) => conn(SKILL).join(VERSION, `${VERSION}.skillId`, `${SKILL}.id`);
+  // Only version 1, the one mint writes. An API pod from before inline skills reads these rows as project skills and could
+  // publish another version of one; that version is never listed or delivered.
+  const inlineSkills = (conn: Knex) =>
+    conn(SKILL).join(VERSION, (join) => {
+      void join.on(`${VERSION}.skillId`, `${SKILL}.id`).andOnVal(`${VERSION}.version`, 1);
+    });
 
   // Never selects the files, so a read that lists sessions holds none.
   const findSummariesBySessionIds = async (sessionIds: string[], tx?: Knex): Promise<TAgentVaultInlineSkillRow[]> => {
