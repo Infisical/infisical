@@ -5,8 +5,8 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
 ---
 
 <Note>
-  Before creating honey tokens, an organization admin must complete the
-  [one-time setup](/documentation/platform/honey-tokens/aws/setup).
+  To create honey tokens in your organization's own AWS account, an organization admin must first complete the
+  [one-time setup](/documentation/platform/honey-tokens/aws/setup). On Infisical Cloud, you can skip the setup and use the **Infisical Managed** AWS account instead.
 </Note>
 
 <Note>
@@ -29,10 +29,16 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
 
     ![Select Honey Token Type](/images/platform/honey-tokens/honey-token-type.png)
   </Step>
-  <Step title="Environment Configuration">
-    Configure where the honey token and its credentials will be planted within your project:
+  <Step title="Configure the AWS account and environment">
+    Choose where the decoy credentials live and where Infisical stores them in your project:
 
-    - **Environment** — choose the target environment.
+    - **AWS account**: the AWS account that holds the decoy IAM user
+    - **Environment**: the target environment
+
+    For **AWS account**, choose one of these options:
+
+    - **Infisical Managed**: an AWS account that Infisical manages, available on Infisical Cloud with no setup
+    - **Self hosted**: the AWS account your organization connected in the [one-time setup](/documentation/platform/honey-tokens/aws/setup)
 
     <Note>
       The secret path is automatically determined based on which secret path you are currently in while creating the honey token.
@@ -54,7 +60,7 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
     - **Name** — a slug-friendly identifier (must be unique within the selected folder).
     - **Description** (optional) — context for this honey token.
 
-    Click **Create**. Infisical provisions the decoy credentials in your AWS account and stores them as secrets in the selected environment and path.
+    Click **Create**. Infisical provisions the decoy credentials in the selected AWS account and stores them as secrets in the selected environment and path.
 
     ![Honey Token Details Step](/images/platform/honey-tokens/honey-token-create.png)
   </Step>
