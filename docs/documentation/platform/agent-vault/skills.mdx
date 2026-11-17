@@ -253,7 +253,7 @@ To add skills through the API, call the [Add skills to access bundle](/api-refer
 
 ### Remove a skill from an access bundle
 
-In the access bundle's **Skills** section, open the skill's actions menu and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
+In the access bundle's **Skills** section, open the skill's actions menu and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, delete the installed copies.
 
 ## Skill installation
 
@@ -272,9 +272,11 @@ If you publish a new version or add a skill to the access bundle, restart the ag
 
 The CLI installs the skills in these folders:
 
-- **Codex, OpenCode, and OpenClaw:** `~/.agents/skills`.
-- **Claude Code:** `$CLAUDE_CONFIG_DIR/skills`, or `~/.claude/skills` if `CLAUDE_CONFIG_DIR` isn't set. If the Claude Code folder doesn't exist, the CLI skips it, unless the agent's command is `claude`.
-- **Hermes:** `$HERMES_HOME/skills`, or `~/.hermes/skills` if `HERMES_HOME` isn't set. If the Hermes folder doesn't exist, the CLI skips it.
+| Agent | Folder | If the agent's folder doesn't exist |
+| --- | --- | --- |
+| Codex, OpenCode, and OpenClaw | `~/.agents/skills` | The CLI creates `~/.agents/skills` |
+| Claude Code | `$CLAUDE_CONFIG_DIR/skills`, or `~/.claude/skills` if `CLAUDE_CONFIG_DIR` isn't set | The CLI skips Claude Code, unless the agent's command is `claude` |
+| Hermes | `$HERMES_HOME/skills`, or `~/.hermes/skills` if `HERMES_HOME` isn't set | The CLI skips Hermes |
 
 In the Claude Code and Hermes folders, the CLI links each skill to its copy in `~/.agents/skills`. If the CLI can't create links, it copies the skill's folder instead. This can happen on Windows, where creating links requires extra permissions.
 
@@ -296,6 +298,6 @@ To review these events, open **Audit Logs** in your Agent Vault project, or scop
 
 ## Limitations
 
-- **Installed skills stay on the host:** The CLI doesn't delete the skills it installs, so agents on the host can keep using a skill after the agent exits, or after you remove the skill from the access bundle, delete it, or rename it (see [Remove installed skills](#remove-installed-skills))
+- **Installed skills stay on the host:** The CLI doesn't delete the skills it installs, so agents on the host can keep using a skill after the agent exits, or after you remove the skill from the access bundle, delete it, or rename it
 - **Folders the CLI didn't install:** If a folder with the same name as a skill already exists and the CLI didn't install it, the CLI leaves the folder alone and warns you
 - **Proxies on an older Infisical CLI:** If the proxy can't pass skills on, the CLI downloads them from Infisical directly, so the agent's host needs to reach your Infisical instance until you update the CLI that runs the proxy (if you use EU Cloud or self-host Infisical, also pass your instance's URL with [`--domain`](/cli/reference#global-flags--flag-domain) when you start the agent with a session token)

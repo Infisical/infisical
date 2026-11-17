@@ -98,11 +98,11 @@ These people and machine identities can revoke a session:
 ## Revoked sessions
 
 - The **Sessions** page shows the session as **Revoked**, and keeps the session so you can still see the access bundle and services the agent had
-- You can still [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) and [change its label](/documentation/platform/agent-vault/sessions#label-a-session)
+- You can still [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) and [change its label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata)
 - Infisical deletes the credentials of the session's [inline services](/documentation/platform/agent-vault/inline-services) right away
 - Infisical writes an [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for the revocation
 
-Revoking a session doesn't remove the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
+Revoking a session doesn't remove the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, delete the installed copies.
 
 ## Sessions left active
 

@@ -107,7 +107,7 @@ You choose the access bundle and any inline services when you create the session
 - If you remove someone from the project, the proxy refuses every request on their sessions
 - If the user or machine identity that created a session loses the **Admin** role in the project, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
 
-None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
+None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, delete the installed copies.
 
 <Note>
 If a session stops getting credentials because of a lost grant, a deleted bundle, or a lost **Admin** role, the proxy still forwards the agent's requests, without credentials. The proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) sets which hosts those requests can still reach.

@@ -85,7 +85,7 @@ Infisical provides the built-in skill, so you can't edit it or delete it. To lea
 ### Built-in skill installation
 
 - `infisical agent-vault run` installs the built-in skill along with the session's [other skills](/documentation/platform/agent-vault/skills#skill-installation)
-- If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and [set `INFISICAL_AGENT_VAULT_URL`](#get-the-list)
+- If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and set `INFISICAL_AGENT_VAULT_URL` to the URL of the Infisical instance that the proxy connects to
 
 ### Turn off the built-in skill
 
