@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { FilterIcon, SearchIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
+import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
   Card,
@@ -109,7 +110,7 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
     const data = request.requestData.requestData as CertRevocationRequestData;
     return {
       typeLabel: "Revocation",
-      commonName: data.commonName || data.serialNumber,
+      commonName: data.commonName || truncateSerialNumber(data.serialNumber),
       profileName: data.profileName
     };
   }
