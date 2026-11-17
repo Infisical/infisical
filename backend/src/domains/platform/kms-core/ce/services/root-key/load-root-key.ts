@@ -4,14 +4,14 @@ import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { setLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { logger } from "@app/lib/logger";
 
-import { InstanceEncryptionKey } from "../../models/instance-encryption-key";
 import { KekHistoryEntry } from "../../models/kek-history-entry";
 import { LegacyEncryptionKey } from "../../models/legacy-encryption-key";
 import { RootKey } from "../../models/root-key";
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig, RootKeyEncryptionStrategy } from "../../models/root-key-config";
 import { RootKeyRing } from "../../models/root-key-ring";
-import { TKmsCoreStores, TRootKeyWrapper } from "../dependencies";
-import { currentKekLabel, removeRootKeyConfig, requireWrapper, unwrapRootKey, wrapRootKey } from "./root-key-helpers";
+import { TKmsCoreStores } from "../dependencies";
+import { removeRootKeyConfig } from "./root-key-helpers";
+import { RootKeyWrappings } from "./root-key-wrappings";
 import type { TKmsCoreEnv } from "./service";
 
 export type TLoadRootKeyDeps = {
@@ -20,8 +20,7 @@ export type TLoadRootKeyDeps = {
   env: TKmsCoreEnv;
   // The env as first parsed, before the FIPS relabel replaced ROOT_ENCRYPTION_KEY.
   originalEnv?: TLegacyKeySnapshot;
-  isFipsEnabled: () => boolean;
-  rootKeyWrapper: TRootKeyWrapper | undefined;
+  rootKeyWrappings: RootKeyWrappings;
   /**
    * For callers inside a database migration. Historical migrations start KMS Core to re-encrypt data long before
    * the migration that adds the rotation columns and tables, so they only load the root key: no promotion, no
@@ -87,16 +86,14 @@ const promoteRotation = (deps: TLoadRootKeyDeps, stagedId: string, label: string
 
 // Rotation bookkeeping for the row that opened: promote it if staged, label it, stamp a retained copy.
 const recordResolution = async (deps: TLoadRootKeyDeps, row: RootKeyConfig) => {
-  const { env } = deps;
+  const label = deps.rootKeyWrappings.currentKekLabel;
   if (row.isStaged) {
-    const label = currentKekLabel(env);
     if (await promoteRotation(deps, row.id, label)) {
       logger.info(`KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`);
     }
   }
 
   if (!row.kekLabel) {
-    const label = currentKekLabel(env);
     if (label) {
       await updateRow(deps, row.id, (current) => current.labelWith(label)).catch((err: unknown) =>
         logger.warn({ err }, "KMS: Failed to label a root key row")
@@ -110,23 +107,23 @@ const recordResolution = async (deps: TLoadRootKeyDeps, row: RootKeyConfig) => {
     );
     logger.warn(
       `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [label=${
-        currentKekLabel(env) ?? "hsm"
+        label ?? "hsm"
       }]. Roll it onto the current key before the previous one is removed.`
     );
   }
 };
 
 const bootstrapRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean): Promise<RootKeyConfig> => {
-  const { transactionRunner, env, rootKeyWrapper, skipRotationState = false } = deps;
+  const { transactionRunner, rootKeyWrappings, skipRotationState = false } = deps;
   logger.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
-  const hsm = isHsmConfigured ? rootKeyWrapper : undefined;
-  const rootKey = hsm ? RootKey.fromBytes(await hsm.randomBytes(32)) : RootKey.generate();
-  const strategy = hsm ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+  const strategy = isHsmConfigured ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+  const wrapping = rootKeyWrappings.for(strategy);
+  const rootKey = await wrapping.generate();
 
   // Wrapped before the transaction opens: this can be an HSM round trip. A pod that loses the race below
   // discards its key unused.
-  const encryptedRootKey = await wrapRootKey(rootKey, strategy, env, rootKeyWrapper).catch((err) => {
-    logger.error({ hsmEnabled: Boolean(hsm), encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
+  const encryptedRootKey = await wrapping.wrap(rootKey).catch((err) => {
+    logger.error({ hsmEnabled: isHsmConfigured, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
     throw err;
   });
 
@@ -141,17 +138,17 @@ const bootstrapRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean
 };
 
 const resolveRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean): Promise<RootKey> => {
-  const { env, rootKeyWrapper, skipRotationState = false } = deps;
+  const { rootKeyWrappings, skipRotationState = false } = deps;
   const ring = await readRing(deps);
   if (ring.isEmpty) {
     const bootstrapped = await bootstrapRootKey(deps, isHsmConfigured);
-    return unwrapRootKey(bootstrapped, env, rootKeyWrapper);
+    return rootKeyWrappings.unwrap(bootstrapped);
   }
 
   const errors: unknown[] = [];
   for (const row of ring.resolutionOrder()) {
     // eslint-disable-next-line no-await-in-loop -- at most three rows, and the first hit returns
-    const rootKey = await unwrapRootKey(row, env, rootKeyWrapper).then(
+    const rootKey = await rootKeyWrappings.unwrap(row).then(
       (key) => key,
       (err: unknown) => {
         if (row.strategy === RootKeyEncryptionStrategy.HSM) throw err;
@@ -166,7 +163,7 @@ const resolveRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean):
     }
   }
 
-  const label = currentKekLabel(env);
+  const label = rootKeyWrappings.currentKekLabel;
   const history = await deps.stores.kekHistoryStore.findPage({ offset: 0, limit: 5 }).catch(() => []);
   const known = history.map((entry) => entry.kekLabel).join(", ");
   logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
@@ -209,8 +206,8 @@ const ensureLegacyKeyMaterial = async (deps: TLoadRootKeyDeps, rootKey: RootKey)
 
 // Backfills the key an instance already runs with, so a pre-rotation dump has a label to match an archived key.
 const ensureKekHistory = async (deps: TLoadRootKeyDeps) => {
-  const { transactionRunner, env } = deps;
-  const label = currentKekLabel(env);
+  const { transactionRunner } = deps;
+  const label = deps.rootKeyWrappings.currentKekLabel;
   if (!label) return;
 
   const current = await deps.stores.kekHistoryStore.findCurrent({ readFrom: ReadFrom.Primary });
@@ -237,18 +234,17 @@ const ensureKekHistory = async (deps: TLoadRootKeyDeps) => {
 // The one place a pod learns the root key: resolved from the stored configs (or bootstrapped on an empty
 // instance), with the rotation bookkeeping a boot owns.
 export const loadRootKey = async (deps: TLoadRootKeyDeps): Promise<RootKey> => {
-  const { env, isFipsEnabled, rootKeyWrapper, skipRotationState = false } = deps;
+  const { rootKeyWrappings, skipRotationState = false } = deps;
 
   const active = await deps.stores.rootKeyConfigStore
     .findById(KMS_ROOT_CONFIG_UUID, { readFrom: ReadFrom.Primary })
     .catch(() => null);
   const strategy = active?.strategy ?? null;
-  const isHsmConfigured = rootKeyWrapper ? await rootKeyWrapper.isConfigured() : false;
+  const isHsmConfigured = await rootKeyWrappings.isHsmConfigured();
 
-  if (strategy === RootKeyEncryptionStrategy.HSM) requireWrapper(rootKeyWrapper).assertEntitled();
-
-  const needsEncryptionKey = strategy === RootKeyEncryptionStrategy.Software || (strategy === null && !isHsmConfigured);
-  if (needsEncryptionKey) InstanceEncryptionKey.assertConfigured(env, isFipsEnabled());
+  // A new instance bootstraps on the HSM when one is plugged in, and on the env key otherwise.
+  if (strategy) rootKeyWrappings.for(strategy).assertCanBoot();
+  else if (!isHsmConfigured) rootKeyWrappings.for(RootKeyEncryptionStrategy.Software).assertCanBoot();
 
   const rootKey = await resolveRootKey(deps, isHsmConfigured);
   logger.info("KMS: Loading ROOT Key into Memory.");

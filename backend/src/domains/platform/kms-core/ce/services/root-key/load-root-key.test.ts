@@ -5,7 +5,13 @@ import { getLegacyDecryptionCandidates, resetLegacyKeyMaterial } from "@app/lib/
 import { RootKey } from "../../models/root-key";
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig, RootKeyEncryptionStrategy } from "../../models/root-key-config";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
-import { fakeHsm, ROOT_KEY_TEST_ENCRYPTION_KEY, rootKeyTestEnv } from "../../testing/root-key-fixture";
+import {
+  fakeHsm,
+  ROOT_KEY_TEST_ENCRYPTION_KEY,
+  rootKeyTestEnv,
+  rootKeyWrappingsFor
+} from "../../testing/root-key-fixture";
+import { TRootKeyWrapper } from "../dependencies";
 import { loadRootKey, TLoadRootKeyDeps } from "./load-root-key";
 import { KmsRootKeyService } from "./service";
 
@@ -16,17 +22,24 @@ vi.mock("@app/lib/logger", () => ({
 const OTHER_KEY = "9f2c1e7a4b6d83051c2e4f6a8b0d1e3f";
 const now = () => new Date();
 
-const depsFor = (memory: InMemoryKmsCoreStores, overrides: Partial<TLoadRootKeyDeps> = {}): TLoadRootKeyDeps => ({
+type TBootOptions = Partial<Omit<TLoadRootKeyDeps, "rootKeyWrappings">> & {
+  isFipsEnabled?: () => boolean;
+  rootKeyWrapper?: TRootKeyWrapper;
+};
+
+const depsFor = (
+  memory: InMemoryKmsCoreStores,
+  { isFipsEnabled, rootKeyWrapper, env = rootKeyTestEnv(), ...overrides }: TBootOptions = {}
+): TLoadRootKeyDeps => ({
   transactionRunner: memory.transactionRunner,
   stores: memory.stores,
-  env: rootKeyTestEnv(),
-  isFipsEnabled: () => false,
-  rootKeyWrapper: undefined,
+  env,
+  rootKeyWrappings: rootKeyWrappingsFor(env, { isFipsEnabled, rootKeyWrapper }),
   ...overrides
 });
 
 const serviceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey, env = rootKeyTestEnv()) =>
-  new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, env, () => false, undefined);
+  new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, env, () => false, rootKeyWrappingsFor(env));
 
 const FIPS_KEY = Buffer.alloc(32, 5).toString("base64");
 
@@ -37,7 +50,14 @@ const fipsDepsFor = (memory: InMemoryKmsCoreStores, rootEncryptionKey = FIPS_KEY
   depsFor(memory, { env: fipsEnv(rootEncryptionKey), isFipsEnabled: () => true });
 
 const fipsServiceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey) =>
-  new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, fipsEnv(), () => true, undefined);
+  new KmsRootKeyService(
+    memory.transactionRunner,
+    memory.stores,
+    rootKey,
+    fipsEnv(),
+    () => true,
+    rootKeyWrappingsFor(fipsEnv(), { isFipsEnabled: () => true })
+  );
 
 describe("loadRootKey", () => {
   afterEach(() => {

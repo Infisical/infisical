@@ -8,8 +8,9 @@ import { InstanceEncryptionKey } from "../../models/instance-encryption-key";
 import { RootKey } from "../../models/root-key";
 import { RootKeyConfig, RootKeyEncryptionStrategy } from "../../models/root-key-config";
 import { RootKeyRing } from "../../models/root-key-ring";
-import { TKmsCoreStores, TRootKeyWrapper } from "../dependencies";
-import { currentKekLabel, removeRootKeyConfig, requireWrapper, unwrapRootKey, wrapRootKey } from "./root-key-helpers";
+import { TKmsCoreStores } from "../dependencies";
+import { removeRootKeyConfig } from "./root-key-helpers";
+import { RootKeyWrappings } from "./root-key-wrappings";
 
 export type TKmsCoreEnv = {
   ENCRYPTION_KEY?: string;
@@ -67,7 +68,7 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     private readonly rootKey: RootKey,
     private readonly env: TKmsCoreEnv,
     private readonly isFipsEnabled: () => boolean,
-    private readonly rootKeyWrapper: TRootKeyWrapper | undefined
+    private readonly rootKeyWrappings: RootKeyWrappings
   ) {}
 
   encryptWithRootKey() {
@@ -87,19 +88,9 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     const { active } = ring;
     if (!active) throw new EntityNotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
 
-    const strategies: TEncryptionStrategyOption[] = [];
-    if (this.env.ROOT_ENCRYPTION_KEY || this.env.ENCRYPTION_KEY) {
-      strategies.push({
-        enabled: active.strategy === RootKeyEncryptionStrategy.Software,
-        strategy: RootKeyEncryptionStrategy.Software
-      });
-    }
-    if (this.env.isHsmConfigured) {
-      strategies.push({
-        enabled: active.strategy === RootKeyEncryptionStrategy.HSM,
-        strategy: RootKeyEncryptionStrategy.HSM
-      });
-    }
+    const strategies: TEncryptionStrategyOption[] = this.rootKeyWrappings
+      .offered()
+      .map((strategy) => ({ enabled: active.strategy === strategy, strategy }));
     return { strategies };
   }
 
@@ -110,13 +101,14 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     const active = ring.requireActive();
     if (active.strategy === strategy) return;
 
-    if (strategy === RootKeyEncryptionStrategy.HSM) requireWrapper(this.rootKeyWrapper).assertEntitled();
-    if (strategy === RootKeyEncryptionStrategy.Software) InstanceEncryptionKey.assertConfiguredForSwitch(this.env);
-    active.assertWrittenWith(currentKekLabel(this.env));
+    const target = this.rootKeyWrappings.for(strategy);
+    target.assertSwitchTarget();
+    const { currentKekLabel } = this.rootKeyWrappings;
+    active.assertWrittenWith(currentKekLabel);
 
     // Both can be HSM round trips, so they run before the transaction.
-    const rootKey = await unwrapRootKey(active, this.env, this.rootKeyWrapper);
-    const encryptedRootKey = await wrapRootKey(rootKey, strategy, this.env, this.rootKeyWrapper);
+    const rootKey = await this.rootKeyWrappings.unwrap(active);
+    const encryptedRootKey = await target.wrap(rootKey);
 
     await this.transactionRunner.run(async ({ stores }) => {
       await stores.locks.rootKey();
@@ -124,14 +116,14 @@ export class KmsRootKeyService implements TKmsRootKeyService {
       ringNow.assertNoRotationInProgress();
       const activeNow = ringNow.requireActive();
       activeNow.assertWrappedAs(active.encryptedRootKey);
-      activeNow.rewrap(encryptedRootKey, strategy, currentKekLabel(this.env));
+      activeNow.rewrap(encryptedRootKey, strategy, currentKekLabel);
       await stores.rootKeyConfigStore.save(activeNow);
     });
   }
 
   async getRootKey(): Promise<TRootKeyStatus> {
     const ring = await this.readRing();
-    return ring.status(this.env.KMS_ROOT_KEY_RETENTION_DAYS, currentKekLabel(this.env));
+    return ring.status(this.env.KMS_ROOT_KEY_RETENTION_DAYS, this.rootKeyWrappings.currentKekLabel);
   }
 
   async listRotations({ offset, limit }: { offset: number; limit: number }) {

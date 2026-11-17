@@ -10,7 +10,7 @@ import {
   TRootKeyConfigRecord
 } from "../../models/root-key-config";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
-import { bootRootKeyService, fakeHsm, rootKeyTestEnv } from "../../testing/root-key-fixture";
+import { bootRootKeyService, fakeHsm, rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
 import { loadRootKey } from "./load-root-key";
 import { KmsRootKeyService } from "./service";
 
@@ -55,7 +55,7 @@ const buildCleanup = async ({
     RootKey.generate(),
     rootKeyTestEnv({ KMS_ROOT_KEY_RETENTION_DAYS: RETENTION_DAYS }),
     () => false,
-    undefined
+    rootKeyWrappingsFor(rootKeyTestEnv())
   );
   return { service, isRetained: async () => Boolean(await memory.rootKeyConfigStore.findById(RETAINED_ID)) };
 };
@@ -155,8 +155,7 @@ describe("KmsRootKeyService.updateEncryptionStrategy", () => {
       transactionRunner: memory.transactionRunner,
       stores: memory.stores,
       env: rootKeyTestEnv(),
-      isFipsEnabled: () => false,
-      rootKeyWrapper: undefined
+      rootKeyWrappings: rootKeyWrappingsFor(rootKeyTestEnv())
     });
     expect(before?.strategy).toBe(RootKeyEncryptionStrategy.HSM);
     expect(active?.strategy).toBe(RootKeyEncryptionStrategy.Software);
@@ -245,7 +244,7 @@ describe("KmsRootKeyService.listEncryptionStrategies", () => {
       RootKey.generate(),
       rootKeyTestEnv(),
       () => false,
-      undefined
+      rootKeyWrappingsFor(rootKeyTestEnv())
     );
 
     // Action

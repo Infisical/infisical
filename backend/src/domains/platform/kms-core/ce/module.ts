@@ -14,6 +14,7 @@ import { KmsDataKeyService, TKmsDataKeyService } from "./services/data-key/servi
 import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
 import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
 import { loadRootKey } from "./services/root-key/load-root-key";
+import { RootKeyWrappings } from "./services/root-key/root-key-wrappings";
 import { KmsRootKeyService, TKmsCoreEnv, TKmsRootKeyService } from "./services/root-key/service";
 
 export type { TCipherPair } from "./models/data-key";
@@ -82,14 +83,14 @@ export class KmsCoreModule {
     const { transactionRunner, stores } = "db" in deps ? buildKmsCoreStoreAccess(deps.db, deps.readKnex) : deps;
     const isFipsEnabled = deps.isFipsEnabled ?? (() => crypto.isFipsModeEnabled());
     const { rootKeyWrapper, externalKms } = deps.hooks;
+    const rootKeyWrappings = new RootKeyWrappings(deps.env, isFipsEnabled, rootKeyWrapper);
 
     const rootKey: RootKey = await loadRootKey({
       transactionRunner,
       stores,
       env: deps.env,
       originalEnv: deps.originalEnv,
-      isFipsEnabled,
-      rootKeyWrapper,
+      rootKeyWrappings,
       skipRotationState: deps.skipRotationState
     });
 
@@ -99,7 +100,7 @@ export class KmsCoreModule {
       rootKey,
       deps.env,
       isFipsEnabled,
-      rootKeyWrapper
+      rootKeyWrappings
     );
     const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
     const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, externalKms, cache);

@@ -2,6 +2,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { TRootKeyWrapper } from "../services/dependencies";
 import { loadRootKey, TLoadRootKeyDeps } from "../services/root-key/load-root-key";
+import { RootKeyWrappings } from "../services/root-key/root-key-wrappings";
 import { KmsRootKeyService, TKmsCoreEnv } from "../services/root-key/service";
 import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
 
@@ -37,6 +38,15 @@ export const fakeHsm = ({
   unwrap: async (wrapped) => Buffer.from(wrapped).reverse()
 });
 
+// The wrappings the module builds, for tests that construct the loader or the service themselves.
+export const rootKeyWrappingsFor = (
+  env: TKmsCoreEnv,
+  {
+    isFipsEnabled = () => false,
+    rootKeyWrapper
+  }: { isFipsEnabled?: () => boolean; rootKeyWrapper?: TRootKeyWrapper } = {}
+) => new RootKeyWrappings(env, isFipsEnabled, rootKeyWrapper);
+
 // Boots an in-memory instance the way the module does: load the root key once, then build the service around it.
 export const bootRootKeyService = async ({
   env: envOverrides,
@@ -45,12 +55,12 @@ export const bootRootKeyService = async ({
 }: { env?: Partial<TKmsCoreEnv>; rootKeyWrapper?: TRootKeyWrapper; isFipsEnabled?: () => boolean } = {}) => {
   const memory = new InMemoryKmsCoreStores();
   const env = rootKeyTestEnv(envOverrides);
+  const rootKeyWrappings = rootKeyWrappingsFor(env, { isFipsEnabled, rootKeyWrapper });
   const deps: TLoadRootKeyDeps = {
     transactionRunner: memory.transactionRunner,
     stores: memory.stores,
     env,
-    isFipsEnabled,
-    rootKeyWrapper
+    rootKeyWrappings
   };
   const rootKey = await loadRootKey(deps);
   const service = new KmsRootKeyService(
@@ -59,7 +69,7 @@ export const bootRootKeyService = async ({
     rootKey,
     env,
     isFipsEnabled,
-    rootKeyWrapper
+    rootKeyWrappings
   );
   return { memory, service, rootKey };
 };

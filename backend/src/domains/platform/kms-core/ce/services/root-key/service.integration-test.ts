@@ -4,7 +4,7 @@ import { resetLegacyKeyMaterial } from "@app/lib/crypto/legacy-key";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { KMS_ROOT_CONFIG_UUID } from "../../models/root-key-config";
-import { rootKeyTestEnv } from "../../testing/root-key-fixture";
+import { rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
 import { loadRootKey } from "./load-root-key";
 import { KmsRootKeyService, TKmsCoreEnv } from "./service";
 
@@ -29,15 +29,15 @@ describe("KmsRootKeyService on Postgres", () => {
   const boot = async (overrides: Partial<TKmsCoreEnv> = {}, isFips = false) => {
     const access = buildKmsCoreStoreAccess(h.db, () => h.db);
     const env = rootKeyTestEnv(overrides);
-    const deps = { ...access, env, isFipsEnabled: () => isFips, rootKeyWrapper: undefined };
-    const rootKey = await loadRootKey(deps);
+    const rootKeyWrappings = rootKeyWrappingsFor(env, { isFipsEnabled: () => isFips });
+    const rootKey = await loadRootKey({ ...access, env, rootKeyWrappings });
     const service = new KmsRootKeyService(
       access.transactionRunner,
       access.stores,
       rootKey,
       env,
       () => isFips,
-      undefined
+      rootKeyWrappings
     );
     return { service, rootKey };
   };
