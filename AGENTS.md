@@ -159,8 +159,10 @@ A new approval type's `postApprovalRoutine` must never throw, because it runs af
 can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
 requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
 action fails there, record the failure in the audit log and call
-`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and every approver why
-(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording. Certificate
+`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
+(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
+`filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
+outlives their removal. Certificate
 revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
 (`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
 run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
