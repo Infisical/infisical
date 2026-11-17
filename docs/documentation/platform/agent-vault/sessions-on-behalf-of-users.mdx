@@ -189,6 +189,17 @@ When the machine identity creates the session, Infisical writes an audit event w
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to '...'&quot;">
     The access bundle isn't granted to the user. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the user, or name a bundle the user already has.
   </Accordion>
+  <Accordion title="Creating the session fails with &quot;This machine identity can't name a service called ...&quot;">
+    No access bundle granted to the machine identity holds the service, or no service has that name. [Grant the machine identity a bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service, or name a service in a bundle the machine identity already has.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;'...' can't use a service called ...&quot;">
+    No access bundle granted to the user holds the service. [Grant the user a bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service, or name a service in a bundle the user already has.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;The service ... isn't in an access bundle granted to both this machine identity and '...'&quot;">
+    The user and the machine identity can each use the service, but through different access bundles. A session on the user's behalf can name a service only if one bundle holds the service and is granted to both of them.
+
+    To see which services the session can name, [list the services on the user's behalf](#find-the-services-a-session-can-name). To name this service, [grant one bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds it to both the user and the machine identity.
+  </Accordion>
 </AccordionGroup>
 
 ## Next steps

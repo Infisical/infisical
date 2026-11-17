@@ -325,9 +325,11 @@ keyed by the service, so a member sets them once however many bundles give them 
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
-- **A session's inline service wins over a bundle service with the same name.** Resolve and `GET /session/services`
-  both drop the shadowed bundle service through `withoutShadowedBundleServices`, so the agent, the proxy and the
-  session logs see one service per name. Use that helper in any new path that lists a session's services. Admins can
+- **A session's inline service wins over a bundle service with the same name, except an override.** Resolve and
+  `GET /session/services` both pick one service per name through `withoutShadowedServices`, so the agent, the proxy
+  and the session logs see the same set. Use that helper in any new path that lists a session's services. An override
+  (`isOverride`) wins over an inline service of its name instead, because it only narrows a named service's hosts and
+  the session's sender must not be able to switch it off; a mint refuses that name (`assertNoOverrideConflicts`). Admins can
   add or rename bundle services while sessions are live; a mint still refuses an inline service that clashes with its
   bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
   Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
@@ -402,8 +404,8 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
 - **Resolve re-checks it on every poll.** `findResolvableServices` returns a named service only while a link to a bundle
   in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
   and deleting the service drops it by cascade. A named service resolves with `accessBundleId` and `accessBundleName`
-  null, like an inline one; catalog names are unique per project, so the proxy's inline-first rule never has two
-  candidates.
+  null, like an inline one, so a null bundle never means a service was sent with the session; catalog names are unique
+  per project, so the proxy's inline-first rule never has two candidates.
 - **A named service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
   re-credentials one host of a wildcard service with a second service for that host. Naming the wildcard service alone
   would drop that, so `findOverridesOfNamedServices` adds every service that a bundle in the owner's reach holding the
@@ -411,13 +413,13 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
   `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
   the session names exactly. Not when the reach is every bundle: that owner could name the wildcard service alone
   anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or naming becomes a way
-  round a bundle's override.
+  round a bundle's override. A mint checks inline names against them through `findNamedServiceOverrides`.
 - **Names are unique across the whole `services` array**, named and inline together, refused in the schema (422) like a
   duplicate inline name. Host patterns are checked like a bundle's services: named against the bundle's and each other at
   mint, and inline against both (`assertNoNamedServiceConflicts`). The named check runs off the replica to fail fast,
   then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
   service to the bundle or change a host right then.
-- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `isInline: false`); the
+- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
   service's settings belong to the services API, which a member reaches through their bundles.
 
 ## Database and SSH services

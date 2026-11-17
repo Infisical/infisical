@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -112,10 +112,17 @@ export type TDashboardSessionInput = {
   services: string[];
 };
 
+// The API's refusals of a service the session names: one that shares a host with another service in the session, or
+// one the caller can't use, which includes one deleted since it was picked.
+export const isSessionServicesError = (message: string) =>
+  message.includes("both cover") || message.includes("can't name a service");
+
+const PICK_SOMETHING_ERROR = "pickSomething";
+
 type Props = {
   formId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onSubmit: (input: TDashboardSessionInput) => Promise<void>;
+  onSubmit: (input: TDashboardSessionInput) => Promise<{ servicesError?: string } | undefined>;
 };
 
 export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) => {
@@ -132,9 +139,16 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       customTtl: ""
     }
   });
-  const { control, handleSubmit, watch, setError } = formMethods;
+  const { control, handleSubmit, watch, setError, clearErrors, getFieldState } = formMethods;
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
+
+  // The bundle is picked outside this form, so nothing re-validates the services field when it changes.
+  useEffect(() => {
+    if (accessBundle && getFieldState("services").error?.type === PICK_SOMETHING_ERROR) {
+      clearErrors("services");
+    }
+  }, [accessBundle?.id]);
 
   // An admin can name any of the project's services, and a member only those in their bundles, which is what this
   // list returns to each.
@@ -179,20 +193,28 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit(({ services, label, metadata, ttlPreset: preset, customTtl }) => {
-        // The bundle is picked outside this form, so this check can't live in the schema.
-        if (!accessBundle && !services.length) {
-          setError("services", { message: "Pick an access bundle or at least one service." });
-          return undefined;
+      onSubmit={handleSubmit(
+        async ({ services, label, metadata, ttlPreset: preset, customTtl }) => {
+          // The bundle is picked outside this form, so this check can't live in the schema.
+          if (!accessBundle && !services.length) {
+            setError("services", {
+              type: PICK_SOMETHING_ERROR,
+              message: "Pick an access bundle or at least one service."
+            });
+            return;
+          }
+          const metadataRecord = metadataRowsToRecord(metadata);
+          const result = await onSubmit({
+            services: services.map((service) => service.name),
+            label: label || undefined,
+            metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
+            ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
+          });
+          if (result?.servicesError) {
+            setError("services", { type: "server", message: result.servicesError });
+          }
         }
-        const metadataRecord = metadataRowsToRecord(metadata);
-        return onSubmit({
-          services: services.map((service) => service.name),
-          label: label || undefined,
-          metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
-          ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
-        });
-      })}
+      )}
       className="flex flex-col gap-4"
     >
       <Controller

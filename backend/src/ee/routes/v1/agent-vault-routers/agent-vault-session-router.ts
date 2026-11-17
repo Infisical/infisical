@@ -114,6 +114,26 @@ const EXAMPLE_SESSION = {
   stats: { requests: 1284, brokered: 1102 }
 };
 
+// What a session that names project services reads back, matching the create example's request.
+const EXAMPLE_NAMED_SERVICES = [
+  {
+    id: "8a6d2f4e-3b1c-4d5e-9f7a-0b2c4d6e8f1a",
+    name: "github",
+    type: "http",
+    description: "GitHub REST API",
+    hostPattern: "api.github.com",
+    isInline: false
+  },
+  {
+    id: "4e2b7c9d-1a3f-4b6e-8d0c-5f7a9b1c3e2d",
+    name: "linear",
+    type: "mcp",
+    description: "Linear MCP server",
+    hostPattern: "mcp.linear.app",
+    isInline: false
+  }
+];
+
 const docsExample = (example: unknown) => JSON.stringify({ example });
 
 export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider) => {
@@ -311,8 +331,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 token: "agv_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
-                accessBundle: EXAMPLE_ACCESS_BUNDLE,
-                services: []
+                accessBundle: null,
+                services: EXAMPLE_NAMED_SERVICES
               }
             })
           )

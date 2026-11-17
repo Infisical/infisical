@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
 import {
   BoxIcon,
   ExternalLinkIcon,
@@ -54,8 +55,13 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
-import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
+import {
+  DashboardSessionForm,
+  isSessionServicesError,
+  TDashboardSessionInput
+} from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
 import {
   CopyPromptButton,
@@ -227,8 +233,18 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      return undefined;
+    } catch (error) {
+      // The global request handler toasts every failure but a 400, which this dialog reports itself.
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as TApiErrors | undefined)
+        : undefined;
+      if (serverResponse?.error !== ApiErrorTypes.BadRequestError) return undefined;
+      if (services.length && isSessionServicesError(serverResponse.message)) {
+        return { servicesError: serverResponse.message };
+      }
+      createNotification({ title: "Bad Request", text: serverResponse.message, type: "error" });
+      return undefined;
     }
   };
 

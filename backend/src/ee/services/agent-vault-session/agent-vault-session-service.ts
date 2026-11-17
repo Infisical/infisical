@@ -23,6 +23,7 @@ import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
@@ -48,6 +49,7 @@ import {
 import {
   assertNoAccessBundleConflicts,
   assertNoNamedServiceConflicts,
+  assertNoOverrideConflicts,
   prepareInlineServices,
   toInlineServiceSummary
 } from "./agent-vault-session-inline-service-fns";
@@ -85,6 +87,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
+  agentVaultResolveDAL: Pick<TAgentVaultResolveDALFactory, "findNamedServiceOverrides">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -107,6 +110,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultServiceDAL,
   agentVaultDelegationDAL,
   resourceMetadataDAL,
+  agentVaultResolveDAL,
   membershipDAL,
   userDAL,
   orgDAL,
@@ -312,6 +316,8 @@ export const agentVaultSessionServiceFactory = ({
     };
 
     let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
+    // The bundles resolve will reach for this session's owner: the caller's, or on a user's behalf the ones both reach.
+    let ownerReach: string[] | null;
     if (onBehalfOf) {
       // A session on a user's behalf can use only the bundles both the user and the identity reach. The delegation is
       // checked first and the identity's own bundles next, so an identity learns nothing about who is in the org until
@@ -360,9 +366,8 @@ export const agentVaultSessionServiceFactory = ({
       }
       // Resolve reaches only the bundles both of them are granted, so a service each reaches through a different bundle
       // would never arrive.
-      const serviceOutOfSharedReach = await firstUnreachableService(
-        intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds)
-      );
+      ownerReach = intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds);
+      const serviceOutOfSharedReach = await firstUnreachableService(ownerReach);
       if (serviceOutOfSharedReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
@@ -374,6 +379,7 @@ export const agentVaultSessionServiceFactory = ({
         { permissionService, membershipDAL },
         { projectId, ctx }
       );
+      ownerReach = accessBundleIds;
       const notGranted = firstUnreachable(accessBundleIds);
       if (notGranted) {
         throw new BadRequestError({
@@ -401,14 +407,23 @@ export const agentVaultSessionServiceFactory = ({
         ? await agentVaultServiceDAL.find({ $in: { id: orderedNamed.map(({ service }) => service.id) } }, { tx })
         : [];
       const named = orderedNamed.map(({ service }) => {
+        if (!tx) return service;
         const fresh = current.find((currentService) => currentService.id === service.id);
-        return fresh ? { ...service, hostPattern: fresh.hostPattern ?? null } : service;
+        // Deleted since the catalog read, so it reads like any name the caller can't use.
+        if (!fresh) {
+          throw new BadRequestError({
+            name: "ServiceNotGranted",
+            message: `You can't name a service called '${service.name}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+          });
+        }
+        return { ...service, hostPattern: fresh.hostPattern ?? null };
       });
       const sessionServices = (
         await Promise.all(
           accessBundles.map((name) => agentVaultServiceDAL.findByAccessBundleId(bundlesByName.get(name)!.id, tx))
         )
       ).flat();
+      const throughBundleIds = new Set(sessionServices.map(({ id }) => id));
       named.forEach((service) => {
         const [conflict] = findHostPatternConflicts(
           service.hostPattern ?? null,
@@ -422,6 +437,22 @@ export const agentVaultSessionServiceFactory = ({
         sessionServices.push(service);
       });
       assertNoNamedServiceConflicts(preparedInlineServices, named);
+      // Resolve lets an override win over an inline service of its name, so one that takes the name is refused here
+      // rather than left out of the session without a word. A named service the session's bundle also holds is sent as
+      // the bundle's, whose services the bundle check below covers.
+      if (preparedInlineServices.length && ownerReach !== null) {
+        const overrides = await agentVaultResolveDAL.findNamedServiceOverrides(
+          {
+            projectId,
+            accessBundleIds: ownerReach,
+            services: named
+              .filter(({ id }) => !throughBundleIds.has(id))
+              .map(({ id, hostPattern }) => ({ id, hostPattern: hostPattern ?? null }))
+          },
+          tx
+        );
+        assertNoOverrideConflicts(preparedInlineServices, overrides);
+      }
     };
     await assertNoNamedServiceHostConflicts();
 

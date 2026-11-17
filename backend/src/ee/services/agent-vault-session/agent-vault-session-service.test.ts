@@ -139,16 +139,24 @@ const LINEAR: TCatalogEntry = { id: "svc-linear", name: "linear", hostPattern: "
 // A user who either reaches every bundle (an Admin) or holds grants to `grantedBundleIds`, in a project whose services
 // are `catalog`, each in the bundles `bundlesOf` lists. `bundleServices` is what each bundle holds as the replica
 // sees it, and `bundleServicesOnPrimary` as a transaction does, when a write the replica hasn't caught up with matters.
+// `deletedOnPrimary` names catalog services a transaction no longer finds, and `overrides` what resolve would send beside
+// the named services. A Member who `canSendInline` may also send inline services.
 const buildNamingService = ({
   isAdmin,
+  canSendInline = false,
   grantedBundleIds = [],
   catalog = [GITHUB, LINEAR],
   bundlesOf = {},
   bundles = [],
   bundleServices = {},
-  bundleServicesOnPrimary = bundleServices
+  bundleServicesOnPrimary = bundleServices,
+  deletedOnPrimary = [],
+  overrides = []
 }: {
   isAdmin: boolean;
+  canSendInline?: boolean;
+  deletedOnPrimary?: string[];
+  overrides?: { name: string }[];
   grantedBundleIds?: string[];
   catalog?: TCatalogEntry[];
   bundlesOf?: Record<string, string[]>;
@@ -162,7 +170,13 @@ const buildNamingService = ({
   );
   const permission = isAdmin
     ? createMongoAbility([{ action: "manage", subject: "all" }])
-    : createMongoAbility([{ action: ["read", "create", "edit", "revoke"], subject: "agent-vault-sessions" }]);
+    : createMongoAbility([
+        {
+          action: ["read", "create", "edit", "revoke", ...(canSendInline ? ["create-with-inline-services"] : [])],
+          subject: "agent-vault-sessions"
+        }
+      ]);
+  const findNamedServiceOverrides = vi.fn().mockResolvedValue(overrides);
   const service = agentVaultSessionServiceFactory({
     agentVaultSessionDAL: {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() })),
@@ -176,7 +190,7 @@ const buildNamingService = ({
     agentVaultServiceDAL: {
       find: vi.fn(async ({ $in }: { $in: { id: string[] } }) =>
         catalog
-          .filter((entry) => $in.id.includes(entry.id))
+          .filter((entry) => $in.id.includes(entry.id) && !deletedOnPrimary.includes(entry.id))
           .map((entry) => ({ type: AgentVaultServiceType.Http, description: null, ...entry }))
       ),
       findByAccessBundleId: vi.fn(
@@ -193,6 +207,7 @@ const buildNamingService = ({
           .map((entry) => entry.id)
       )
     },
+    agentVaultResolveDAL: { findNamedServiceOverrides },
     membershipDAL: {
       findResourceMembershipsForActor: vi
         .fn()
@@ -206,7 +221,7 @@ const buildNamingService = ({
     kmsService: { wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")) },
     licenseService: { getPlan: vi.fn() }
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
-  return { service, insertNamed };
+  return { service, insertNamed, findNamedServiceOverrides };
 };
 
 const mintWith = (service: ReturnType<typeof buildNamingService>["service"], services: TMintSessionDTO["services"]) =>
@@ -305,6 +320,44 @@ describe("mintSession, project services named in services", () => {
       "The services 'github' and 'gh-proxy' both cover api.github.com:443, so one session can't carry both."
     );
     expect(insertNamed).not.toHaveBeenCalled();
+  });
+
+  test("refuses a service deleted since the catalog read with the same 400 as an unknown name", async () => {
+    const { service, insertNamed } = buildNamingService({ isAdmin: true, deletedOnPrimary: [GITHUB.id] });
+
+    await expect(mintWith(service, ["github"])).rejects.toThrow(
+      "You can't name a service called 'github'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+    );
+    expect(insertNamed).not.toHaveBeenCalled();
+  });
+
+  test("refuses an inline service named like an override a named service brings", async () => {
+    const { service, insertNamed, findNamedServiceOverrides } = buildNamingService({
+      isAdmin: false,
+      canSendInline: true,
+      grantedBundleIds: ["bundle-1"],
+      bundlesOf: { [GITHUB.id]: ["bundle-1"] },
+      overrides: [{ name: "gh-readonly" }]
+    });
+
+    await expect(mintWith(service, ["github", inline("unrelated.example.com", "gh-readonly")])).rejects.toThrow(
+      "The service 'gh-readonly' has the same name as 'gh-readonly', a service this session gets from an access bundle alongside a service it names. Give it a different name."
+    );
+    expect(findNamedServiceOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessBundleIds: ["bundle-1"],
+        services: [expect.objectContaining({ id: GITHUB.id })]
+      }),
+      undefined
+    );
+    expect(insertNamed).not.toHaveBeenCalled();
+  });
+
+  test("an Admin's named services bring no overrides, so their inline services aren't checked against any", async () => {
+    const { service, findNamedServiceOverrides } = buildNamingService({ isAdmin: true });
+
+    await expect(mintWith(service, ["github", inline("scratch.example.com", "gh-readonly")])).resolves.toBeDefined();
+    expect(findNamedServiceOverrides).not.toHaveBeenCalled();
   });
 });
 

@@ -6779,6 +6779,82 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a service sent with the session can't switch off an override that a named service brings", async () => {
+      const projectId = await getProjectId();
+      const stamp = Date.now();
+      const bundle = await createAccessBundle(`obo-ov-${stamp}`);
+      const service = async (name: string, hostPattern: string, extra: Record<string, unknown> = {}) => {
+        const res = await inject("POST", "/api/v1/agent-vault/services", {
+          type: "http",
+          name,
+          hostPattern,
+          credential: { type: "bearer", value: `sk-${name}` },
+          accessBundleIds: [bundle.id],
+          ...extra
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return res.json().service as { id: string };
+      };
+      const wildcard = `obo-ov-wild-${stamp}`;
+      const readOnly = `obo-ov-ro-${stamp}`;
+      await service(wildcard, `*.obo-ov-${stamp}.example.com`);
+      const override = await service(readOnly, `api.obo-ov-${stamp}.example.com`, { allowedMethods: ["GET"] });
+      // An admin identity can send services with a session, and acting for a member it reaches only the member's bundles.
+      const bot = await createMemberIdentity(`obo-ov-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-ov-alice", projectId);
+      try {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [bot.id], role: "admin" }))
+            .statusCode
+        ).toBe(200);
+        await grantBundle(bundle.id, { userIds: [alice.userId] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const sent = (name: string) => ({
+          type: "http",
+          name,
+          hostPattern: `${name}.unrelated.example.com`,
+          credential: { type: "bearer", value: "sk-sent" }
+        });
+        const mint = (services: unknown[]) =>
+          bot.as("POST", sessionsUrl, { services, onBehalfOf: { userId: alice.userId } });
+
+        const taken = await mint([wildcard, sent(readOnly)]);
+        expect(taken.statusCode, taken.payload).toBe(400);
+        expect(taken.json().message).toContain(
+          `has the same name as '${readOnly}', a service this session gets from an access bundle alongside a service it names`
+        );
+
+        // A rename after the mint can still give the two one name, and then the override is the one resolve keeps.
+        const later = `obo-ov-later-${stamp}`;
+        const minted = await mint([wildcard, sent(later)]);
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-ov-${stamp}` });
+        expect(proxy.statusCode, proxy.payload).toBe(200);
+        const resolved = async () => {
+          const res = await testServer.inject({
+            method: "POST",
+            url: "/api/v1/agent-vault/proxy/resolve",
+            headers: {
+              authorization: `Bearer ${proxy.json().proxyToken as string}`,
+              "x-infisical-agent-session": minted.json().session.token as string
+            }
+          });
+          expect(res.statusCode, res.payload).toBe(200);
+          return (res.json().services as { name: string; allowedMethods: string[] | null }[]).map(
+            ({ name, allowedMethods }) => `${name}:${allowedMethods?.join(",") ?? "any"}`
+          );
+        };
+        expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:any`, `${readOnly}:GET`]);
+
+        const renamed = await inject("PATCH", `/api/v1/agent-vault/services/${override.id}`, { type: "http", name: later });
+        expect(renamed.statusCode, renamed.payload).toBe(200);
+        expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:GET`]);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
     test("a group in the delegation covers its members while they stay in the group", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-group-${Date.now()}`);

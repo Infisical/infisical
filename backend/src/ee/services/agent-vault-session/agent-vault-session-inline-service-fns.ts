@@ -98,14 +98,25 @@ export const inlineServiceDisplayName = ({
  * A session's own service wins over a bundle service of the same name: the bundle's is left out of that session, so
  * the agent, the proxy and its logs each see one service per name. Admins can add or rename bundle services freely
  * while sessions are live, and only the sessions that sent a service by that name keep their own.
+ *
+ * An override is the exception, and wins over a session's own service of its name instead: it only ever narrows what a
+ * named service allows on its hosts, so a service sent with the session must never switch it off by taking its name.
  */
-export const withoutShadowedBundleServices = <T extends { name: string }>(
+export const withoutShadowedServices = <
+  T extends { name: string; isOverride?: boolean },
+  I extends { name?: string | null; hostPattern?: string | null }
+>(
   bundleServices: T[],
-  inlineServices: { name?: string | null; hostPattern?: string | null }[]
+  inlineServices: I[]
 ) => {
-  if (!inlineServices.length) return bundleServices;
-  const inlineNames = new Set(inlineServices.map(inlineServiceDisplayName));
-  return bundleServices.filter((service) => !inlineNames.has(service.name));
+  if (!inlineServices.length) return { bundleServices, inlineServices };
+  const overrideNames = new Set(bundleServices.filter((service) => service.isOverride).map(({ name }) => name));
+  const keptInline = inlineServices.filter((service) => !overrideNames.has(inlineServiceDisplayName(service)));
+  const inlineNames = new Set(keptInline.map(inlineServiceDisplayName));
+  return {
+    bundleServices: bundleServices.filter((service) => service.isOverride || !inlineNames.has(service.name)),
+    inlineServices: keptInline
+  };
 };
 
 const toInlineCredential = (
@@ -341,6 +352,23 @@ export const assertNoNamedServiceConflicts = (prepared: TPreparedInlineService[]
     if (named.some((candidate) => candidate.name === displayName)) {
       throw new BadRequestError({
         message: `The service ${label} goes by its first host, '${displayName}', which is the name of a service this session names. Give it a name.`
+      });
+    }
+  });
+};
+
+// Resolve lets an override win over an inline service of its name, so a mint refuses the name rather than send a
+// service the session would never carry.
+export const assertNoOverrideConflicts = (prepared: TPreparedInlineService[], overrides: { name: string }[]) => {
+  if (!overrides.length) return;
+  const overrideNames = new Set(overrides.map(({ name }) => name));
+  prepared.forEach((service) => {
+    const displayName = inlineServiceDisplayName(service);
+    if (overrideNames.has(displayName)) {
+      throw new BadRequestError({
+        message: service.name
+          ? `The service ${inlineServiceLabel(service)} has the same name as '${displayName}', a service this session gets from an access bundle alongside a service it names. Give it a different name.`
+          : `The service ${inlineServiceLabel(service)} goes by its first host, '${displayName}', which is the name of a service this session gets from an access bundle alongside a service it names. Give it a name.`
       });
     }
   });

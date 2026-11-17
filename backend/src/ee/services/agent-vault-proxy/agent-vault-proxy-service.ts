@@ -52,7 +52,7 @@ import {
   openInlineServiceSecrets,
   toInlineServiceFacts,
   toResolvedInlineService,
-  withoutShadowedBundleServices
+  withoutShadowedServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
@@ -123,7 +123,10 @@ const RESOLVE_REFRESH_BUDGET_MS = 4_000;
 
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
-  agentVaultResolveDAL: TAgentVaultResolveDALFactory;
+  agentVaultResolveDAL: Pick<
+    TAgentVaultResolveDALFactory,
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles"
+  >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
@@ -1009,17 +1012,16 @@ export const agentVaultProxyServiceFactory = ({
 
     // Sending inline services takes its own permission, and like a grant it is re-checked on every resolve: an owner who
     // loses it keeps the session's bundle, if it has one, and loses its inline services until they hold it again.
-    const inlineServiceRows = ownerCanUseInlineServices
-      ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
-      : [];
-    const rows = withoutShadowedBundleServices(
+    const { bundleServices: rows, inlineServices: inlineServiceRows } = withoutShadowedServices(
       await agentVaultResolveDAL.findResolvableServices({
         sessionId: session.id,
         projectId: session.projectId,
         accessBundleIds,
         onPrimary
       }),
-      inlineServiceRows
+      ownerCanUseInlineServices
+        ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
+        : []
     );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
@@ -1432,13 +1434,16 @@ export const agentVaultProxyServiceFactory = ({
     const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId);
 
     const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
-    const [bundleRows, bundles, inlineRows] = await Promise.all([
+    const [resolvableRows, bundles, sessionInlineRows] = await Promise.all([
       agentVaultResolveDAL.findResolvableServices(scope),
       agentVaultResolveDAL.findReachableBundles(scope),
       ownerCanUseInlineServices ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
     ]);
-    // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
-    const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
+    // The same services resolve sends, one per name.
+    const { bundleServices: rows, inlineServices: inlineRows } = withoutShadowedServices(
+      resolvableRows,
+      sessionInlineRows
+    );
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
