@@ -60,7 +60,7 @@ export const TextAreaField = ({
       mono
       rows={rows}
       readOnly={readOnly}
-      className={css.capped}
+      maxRows={16}
       placeholder={placeholder}
       value={value}
       onChange={(event) => onChange(event.target.value)}
