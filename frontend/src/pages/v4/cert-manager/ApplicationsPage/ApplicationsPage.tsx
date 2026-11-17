@@ -172,6 +172,7 @@ const Page = () => {
           }}
         />
         <DataTable
+          filtered={searching}
           label="Applications"
           rows={rows}
           columns={columns}

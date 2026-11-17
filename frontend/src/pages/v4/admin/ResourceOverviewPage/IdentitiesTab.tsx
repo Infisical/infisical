@@ -77,6 +77,7 @@ export const IdentitiesTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Machine identities"
         rows={identities}
         columns={columns}

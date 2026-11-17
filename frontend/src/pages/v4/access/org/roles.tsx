@@ -342,6 +342,7 @@ export const OrgRolesTab = () => {
         }
       />
       <DataTable
+        filtered={roles.length > 0}
         label="Organization roles"
         rows={list.pageRows}
         columns={columns}

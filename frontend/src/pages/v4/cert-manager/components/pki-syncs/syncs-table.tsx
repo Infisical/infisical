@@ -306,6 +306,7 @@ export const PkiSyncsTable = ({
         actions={actions}
       />
       <DataTable
+        filtered={isFiltered && syncs.length > 0}
         label={label}
         rows={filtered.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

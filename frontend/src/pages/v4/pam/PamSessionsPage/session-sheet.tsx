@@ -170,6 +170,7 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
         onChange={(event) => setSearch(event.target.value)}
       />
       <DataTable
+        ghost={false}
         label="Session logs"
         rows={visible}
         loading={isPending && rows.length === 0}

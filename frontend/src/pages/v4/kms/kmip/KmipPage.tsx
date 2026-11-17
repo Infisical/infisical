@@ -202,6 +202,7 @@ export const KmipPage = () => {
               }}
             />
             <DataTable
+              filtered={Boolean(debouncedSearch)}
               label="KMIP clients"
               rows={clients}
               columns={columns}

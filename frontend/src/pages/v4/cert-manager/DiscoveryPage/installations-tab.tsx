@@ -171,6 +171,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
         }}
       />
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Installations"
         rows={rows}
         columns={columns}

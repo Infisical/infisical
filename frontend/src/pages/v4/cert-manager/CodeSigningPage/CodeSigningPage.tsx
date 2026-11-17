@@ -173,6 +173,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         </Button>
       </Inline>
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Signers"
         rows={rows}
         columns={columns}

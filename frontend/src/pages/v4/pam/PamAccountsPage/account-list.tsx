@@ -110,6 +110,7 @@ export const AccountList = ({
         }
       />
       <DataTable
+        filtered={filters.active}
         label={label}
         rows={accounts}
         columns={columns}

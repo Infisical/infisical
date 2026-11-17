@@ -245,6 +245,7 @@ const ScimTokenDialog = ({
                       SCIM tokens
                     </Heading>
                     <DataTable
+                      ghost={false}
                       label="SCIM tokens"
                       rows={tokens}
                       columns={columns}

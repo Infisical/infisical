@@ -218,6 +218,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
         </Button>
       </Inline>
       <DataTable
+        filtered={Boolean(debouncedSearch)}
         label="Discovery jobs"
         rows={rows}
         columns={columns}

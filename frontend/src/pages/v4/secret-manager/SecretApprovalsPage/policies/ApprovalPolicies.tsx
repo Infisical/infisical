@@ -415,6 +415,7 @@ export const ApprovalPolicies = ({
         </Alert>
       )}
       <DataTable
+        filtered={searching && policies.length > 0}
         label="Approval policies"
         rows={list.pageRows}
         columns={columns}

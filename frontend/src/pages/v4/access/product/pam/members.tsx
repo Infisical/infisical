@@ -326,6 +326,7 @@ export const PamMembersTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label="Members"
         rows={list.pageRows}
         columns={columns}

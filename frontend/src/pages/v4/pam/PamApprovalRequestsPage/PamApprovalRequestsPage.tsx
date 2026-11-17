@@ -186,6 +186,7 @@ export const PamApprovalRequestsPage = () => {
           }
         />
         <DataTable
+          filtered={filtering}
           label="Approval requests"
           rows={pageRows}
           columns={columns}

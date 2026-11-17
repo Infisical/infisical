@@ -198,6 +198,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             setPage(1);
           }}
           empty={empty}
+          filtered={isFiltered}
           pagination={
             totalCount > 0 ? (
               <Pagination

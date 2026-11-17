@@ -640,6 +640,7 @@ export const FindingsTable = ({
         }
       />
       <DataTable
+        filtered={filtered}
         label={`${statusLabel}findings`}
         rows={findings}
         columns={columns}

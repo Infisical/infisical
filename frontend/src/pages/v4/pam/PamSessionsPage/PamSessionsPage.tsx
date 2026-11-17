@@ -316,6 +316,7 @@ export const PamSessionsPage = () => {
           }
         />
         <DataTable
+          filtered={isFiltered}
           label="Sessions"
           rows={sessions}
           columns={columns}

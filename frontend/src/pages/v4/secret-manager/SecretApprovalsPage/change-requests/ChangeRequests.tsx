@@ -379,6 +379,7 @@ export const ChangeRequests = ({
         }
       />
       <DataTable
+        filtered={isFiltered}
         label={isOpen ? "Open change requests" : "Closed change requests"}
         rows={requests}
         columns={columns}

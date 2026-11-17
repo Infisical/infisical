@@ -195,6 +195,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
         }
       />
       <DataTable
+        filtered={scans.length > 0}
         label="Scan history"
         rows={filtered.slice((page - 1) * pageSize, page * pageSize)}
         columns={columns}

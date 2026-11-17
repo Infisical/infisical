@@ -149,6 +149,7 @@ export const KmipServersPage = () => {
           onChange={(event) => setSearch(event.target.value)}
         />
         <DataTable
+          filtered={servers.length > 0}
           label="KMIP servers"
           rows={rows}
           columns={columns}

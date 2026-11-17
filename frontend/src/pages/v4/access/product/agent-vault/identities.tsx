@@ -155,6 +155,7 @@ export const AgentVaultIdentitiesTab = () => {
         }
       />
       <DataTable
+        filtered={list.searching}
         label="Machine identities"
         rows={list.rows}
         columns={columns}

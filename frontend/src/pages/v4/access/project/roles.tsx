@@ -196,6 +196,7 @@ export const ProjectRolesTab = () => {
         }
       />
       <DataTable
+        filtered={roles.length > 0}
         label={`${accessLabel(scope.projectType, "roles")}`}
         rows={list.pageRows}
         columns={columns}

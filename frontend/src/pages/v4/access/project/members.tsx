@@ -214,6 +214,7 @@ export const ProjectMembersTab = () => {
         }
       />
       <DataTable
+        filtered={searching}
         label={`${accessLabel(scope.projectType, "users")}`}
         rows={list.pageRows}
         columns={columns}

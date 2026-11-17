@@ -137,6 +137,7 @@ export const AgentVaultMembersTab = () => {
         }
       />
       <DataTable
+        filtered={list.searching}
         label="Users"
         rows={list.rows}
         columns={columns}

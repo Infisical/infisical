@@ -99,6 +99,7 @@ export const AgentVaultGroupsTab = () => {
         }
       />
       <DataTable
+        filtered={list.searching}
         label="Groups"
         rows={list.rows}
         columns={columns}

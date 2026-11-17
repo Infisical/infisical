@@ -418,6 +418,7 @@ export const PamIdentitiesTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label="Machine identities"
         rows={list.pageRows}
         columns={columns}

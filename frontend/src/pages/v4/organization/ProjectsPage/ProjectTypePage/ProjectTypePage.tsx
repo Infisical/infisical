@@ -457,6 +457,7 @@ const MyProjects = ({
   } else if (viewMode === ProjectsViewMode.LIST) {
     body = (
       <DataTable
+        filtered
         label={`${getProjectTitle(projectType)} projects`}
         rows={rows}
         columns={columns}
@@ -784,6 +785,7 @@ const AllProjects = ({
         />
       ) : (
         <DataTable
+          filtered
           label={`All ${getProjectTitle(projectType)} projects`}
           rows={data?.projects ?? []}
           columns={columns}

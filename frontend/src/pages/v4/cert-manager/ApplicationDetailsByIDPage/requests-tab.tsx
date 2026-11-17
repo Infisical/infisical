@@ -291,6 +291,7 @@ export const RequestsTab = ({
         />
       )}
       <DataTable
+        filtered={filtered}
         label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
         rows={rows}
         loading={isPending}

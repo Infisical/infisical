@@ -276,6 +276,7 @@ export const ProjectIdentitiesTab = () => {
         }
       />
       <DataTable
+        filtered={searching}
         label={`${accessLabel(scope.projectType, "machine identities")}`}
         rows={rows}
         columns={columns}

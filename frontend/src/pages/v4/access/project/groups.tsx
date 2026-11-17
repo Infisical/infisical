@@ -131,6 +131,7 @@ export const ProjectGroupsTab = () => {
         }
       />
       <DataTable
+        filtered={Boolean(list.search.trim())}
         label={`${accessLabel(scope.projectType, "groups")}`}
         rows={list.pageRows}
         columns={columns}
