@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -38,7 +39,7 @@ const buildService = ({
         generateSecretBlindIndex: async () => "digest"
       }))
     },
-    licenseService: { getPlan: vi.fn(async () => ({ secretAccessInsights: hasInsightsPlan })) },
+    licenseService: new FakeLicenseService().setPlan("org", { secretAccessInsights: hasInsightsPlan }),
     permissionService: {
       getOrgPermission: vi.fn(async () => ({
         permission: createMongoAbility<OrgPermissionSet>(

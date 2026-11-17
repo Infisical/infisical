@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -11,8 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
@@ -25,7 +25,7 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -39,7 +39,7 @@ export const auditLogStreamServiceFactory = ({
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.has(PlanFeature.AuditLogStreams)) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
@@ -54,10 +54,13 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
+    if (plan.exceeds(PlanLimit.AuditLogStreams, totalStreams.length)) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
@@ -91,7 +94,7 @@ export const auditLogStreamServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.has(PlanFeature.AuditLogStreams)) {
       throw new BadRequestError({
         message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
@@ -109,7 +112,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -225,7 +231,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Edit,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -251,7 +260,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -272,7 +284,10 @@ export const auditLogStreamServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogStreams
+    );
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 

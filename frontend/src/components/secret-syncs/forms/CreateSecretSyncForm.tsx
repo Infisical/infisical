@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldErrors, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -28,8 +28,15 @@ import {
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import {
+  AlertEventType,
+  AlertResourceType,
+  TChannelForm,
+  toChannelInput,
+  useCreateAlert
+} from "@app/hooks/api/alerts";
 import {
   SecretSync,
   SecretSyncInitialSyncBehavior,
@@ -40,8 +47,14 @@ import {
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
 import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  SecretSyncAlertsFields
+} from "./SecretSyncAlertsFields";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import {
@@ -193,6 +206,18 @@ const getFormTabs = (
       fields: ["name", "description"]
     },
     {
+      name: "Alerts",
+      key: "alerts",
+      shortDescription: "Failure notifications",
+      title: "Set up failure alerts",
+      subtitle:
+        "Choose where Infisical sends a notice when this sync fails. You can skip this step.",
+      rightLabel: "ALERTS",
+      rightDescription:
+        "Infisical sends a notice to every enabled channel when a sync, import or remove fails after all of its retries. You can change these channels later from the sync's edit form.",
+      fields: ["isFailureAlertEnabled", "channels"]
+    },
+    {
       name: "Review",
       key: "review",
       shortDescription: "Confirm",
@@ -216,7 +241,9 @@ export const CreateSecretSyncForm = ({
   startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
+  const createAlert = useCreateAlert();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { currentOrg } = useOrganization();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
   const { syncOption } = useSecretSyncOption(destination);
@@ -227,10 +254,12 @@ export const CreateSecretSyncForm = ({
   const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
   const formMethods = useForm<TSecretSyncForm>({
-    resolver: zodResolver(SecretSyncFormSchema),
+    resolver: zodResolver(SecretSyncFormSchema()),
     defaultValues: {
       destination,
       isAutoSyncEnabled: true,
+      isFailureAlertEnabled: true,
+      channels: [buildProjectAdminsChannel(currentProject.id)],
       syncOptions: {
         initialSyncBehavior: syncOption?.canImportSecrets
           ? SecretSyncInitialSyncBehavior.ImportPrioritizeSource
@@ -266,7 +295,32 @@ export const CreateSecretSyncForm = ({
     return () => onDirtyChange(false);
   }, [hasUnsavedChanges, onDirtyChange]);
 
-  const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
+  const saveFailureAlert = async (
+    secretSync: TSecretSync,
+    isFailureAlertEnabled: boolean,
+    channels: TChannelForm[],
+    canManage: boolean
+  ) => {
+    if (!isFailureAlertEnabled || !canManage) return;
+    await createAlert.mutateAsync({
+      name: DEFAULT_ALERT_NAMES[AlertEventType.SecretSyncFailed],
+      resourceType: AlertResourceType.SecretSync,
+      resourceId: secretSync.id,
+      eventType: AlertEventType.SecretSyncFailed,
+      projectId: secretSync.projectId,
+      enabled: true,
+      condition: null,
+      channels: channels.map(toChannelInput)
+    });
+  };
+
+  const onSubmit = async ({
+    environment,
+    connection,
+    isFailureAlertEnabled,
+    channels,
+    ...formData
+  }: TSecretSyncForm) => {
     try {
       const secretSync = await createSecretSync.mutateAsync({
         ...formData,
@@ -274,6 +328,21 @@ export const CreateSecretSyncForm = ({
         environment: environment.slug,
         projectId: currentProject.id
       });
+
+      try {
+        await saveFailureAlert(
+          secretSync,
+          isFailureAlertEnabled,
+          channels,
+          canManageFailureAlert(permission, {
+            environment: environment.slug,
+            secretPath: formData.secretPath,
+            connectionId: connection.id
+          })
+        );
+      } catch {
+        // MutationCache reports why the alert request failed. The sync itself is created either way.
+      }
 
       createNotification({
         text: `Successfully added ${destinationName} Sync`,
@@ -329,6 +398,15 @@ export const CreateSecretSyncForm = ({
   const isSourceBlocked = !supportsFolderStructure && recursiveConflicts.length > 0;
   const isDestinationBlocked =
     supportsFolderStructure && !preservesFolderStructure && recursiveConflicts.length > 0;
+
+  const goToFirstErrorStep = (errors: FieldErrors<TSecretSyncForm>) => {
+    setShowConfirmation(false);
+    const erroredFields = Object.keys(errors);
+    const errorStepIndex = formTabs.findIndex((tab) =>
+      tab.fields.some((field) => erroredFields.includes(field))
+    );
+    if (errorStepIndex >= 0) setSelectedTabIndex(errorStepIndex);
+  };
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
   const isSourceStep = selectedTabIndex === 0;
@@ -459,7 +537,10 @@ export const CreateSecretSyncForm = ({
               </SecretSyncOptionsFields>
             )}
             {selectedTabIndex === 4 && <SecretSyncDetailsFields />}
-            {selectedTabIndex === 5 && <SecretSyncReviewFields />}
+            {selectedTabIndex === 5 && (
+              <SecretSyncAlertsFields projectId={currentProject.id} isAlertUnavailable={false} />
+            )}
+            {selectedTabIndex === 6 && <SecretSyncReviewFields />}
           </div>
 
           <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -557,7 +638,7 @@ export const CreateSecretSyncForm = ({
             <AlertDialogAction
               variant="project"
               isDisabled={createSecretSync.isPending}
-              onClick={handleSubmit(onSubmit)}
+              onClick={handleSubmit(onSubmit, goToFirstErrorStep)}
             >
               I Understand
             </AlertDialogAction>

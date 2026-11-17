@@ -10,9 +10,9 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -273,7 +273,7 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
   ): Promise<R & TBypassAffordances & TAutoApprovalAffordance> => {
-    const autoApproval = toAutoApprovalOutcome(request);
+    const autoApproval = toAutoApprovalOutcome(request, { hideAi: request.requesterId === actor.id });
 
     if (!resources[request.type as ApprovalPolicyType]?.isBreakGlassEligible) {
       return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null, autoApproval };
@@ -673,7 +673,7 @@ export const approvalPolicyServiceFactory = ({
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.pkiApprovals) {
+      if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate approval policy due to plan restriction. Upgrade plan to use certificate approvals."
@@ -1378,7 +1378,17 @@ export const approvalPolicyServiceFactory = ({
             approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
-          ctx: { requester: { email: requesterEmail || null } }
+          ctx: {
+            requester: { email: requesterEmail || null },
+            request: {
+              policyType,
+              policyName: policy.name,
+              requester: { name: requesterName || null, email: requesterEmail || null },
+              justification: justification ?? null,
+              duration: requestDuration ?? null,
+              details: requestData
+            }
+          }
         });
 
         const current = await checkAgainstPolicy();
@@ -1415,7 +1425,7 @@ export const approvalPolicyServiceFactory = ({
         const closest = autoApprovalEvidence ? getClosestFailedRule(autoApprovalEvidence) : null;
         throw new BadRequestError({
           message: closest
-            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it. Closest rule "${closest.ruleName}": ${closest.reason}`
+            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it.${closest.reason ? ` Closest rule "${closest.ruleName}": ${closest.reason}` : ""}`
             : "Request rejected. There are no approvers to review it. Auto-approval doesn't apply to this request either."
         });
       }
@@ -1751,7 +1761,8 @@ export const approvalPolicyServiceFactory = ({
 
     const newRequest = { ...finalRequest, steps: finalSteps };
 
-    if (finalRequest.status === ApprovalRequestStatus.Approved) {
+    // A concurrent approver can complete the request after this commit, so only the call that approved it runs this
+    if (updatedRequest.status === ApprovalRequestStatus.Approved) {
       await resource.postApprovalRoutine?.(newRequest as TApprovalRequest, actor);
       await $notify({ event: ApprovalNotificationEvent.Approved, request: finalRequest, comment });
     }
@@ -2304,7 +2315,8 @@ export const approvalPolicyServiceFactory = ({
       subject,
       constraint,
       search,
-      siblings
+      siblings,
+      selected
     }: {
       scope: ApprovalPolicyScope;
       scopeId: string;
@@ -2313,6 +2325,7 @@ export const approvalPolicyServiceFactory = ({
       constraint: string;
       search?: string;
       siblings: Record<string, string[]>;
+      selected: string[];
     },
     actor: TApprovalActor
   ) => {
@@ -2326,7 +2339,16 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    return autoApprovalService.listOptions({ projectId, actor, connectionId, subject, constraint, search, siblings });
+    return autoApprovalService.listOptions({
+      projectId,
+      actor,
+      connectionId,
+      subject,
+      constraint,
+      search,
+      siblings,
+      selected
+    });
   };
 
   const $actorGrantFilter = (actor: TApprovalSubjectActor) =>
@@ -2587,10 +2609,13 @@ export const approvalPolicyServiceFactory = ({
     });
     if (!isApprover) return null;
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
+      status: ApprovalRequestStatus.Pending
+    });
     const candidates = requests.filter((request) => {
-      if (request.status !== ApprovalRequestStatus.Pending) return false;
       if (scopeId && request.scopeId !== scopeId) return false;
+      if ($isRequester(request, actor)) return false;
+      if (isApprovalRequestExpired(request)) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
       return Boolean(currentStep && $namesActor(currentStep.approvers, actor.id, userGroupIds));

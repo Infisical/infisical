@@ -356,6 +356,68 @@ export const serverUrlError = (value: string): string | null => {
   return null;
 };
 
+// Mirrors agent-vault-hook-fns.ts on the backend, so a value the API would refuse is marked on its field.
+const MAX_HOOK_URL_LENGTH = 2048;
+const MIN_HOOK_SECRET_LENGTH = 32;
+const MAX_HOOK_SECRET_LENGTH = 512;
+
+export const HOOK_SIGNING_SECRET_REQUIRED_MESSAGE = "Enter a signing secret for the hook.";
+
+export const isPlainHttpUrl = (value: string) => /^http:\/\//i.test(value.trim());
+
+export const hookUrlError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the hook URL.";
+  if (trimmed.length > MAX_HOOK_URL_LENGTH) {
+    return `The hook URL can be at most ${MAX_HOOK_URL_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(trimmed)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
+  if (/\s/.test(trimmed)) return "The hook URL can't contain spaces.";
+  if (trimmed.includes("{{")) {
+    return "Variables aren't supported in the hook URL. Enter the URL itself.";
+  }
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault.";
+  }
+  const strayCharactersMessage =
+    "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
+  const invalidUrlMessage =
+    "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault.";
+  if (trimmed.includes("\\") || trimmed.replace(/%[0-9a-f]{2}/gi, "").includes("%")) {
+    return strayCharactersMessage;
+  }
+  const afterScheme = trimmed.slice(trimmed.indexOf("//") + 2);
+  const authorityEnd = afterScheme.search(/[/?#]/);
+  const authority = authorityEnd === -1 ? afterScheme : afterScheme.slice(0, authorityEnd);
+  if (!authority) return invalidUrlMessage;
+  if (authority.slice(authority.lastIndexOf("@") + 1).includes("%")) return strayCharactersMessage;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return invalidUrlMessage;
+  }
+  if (url.username || url.password) return "The hook URL can't contain a username or password.";
+  if (trimmed.includes("#")) return "The hook URL can't contain a fragment (the part after #).";
+  if (trimmed.includes("?")) return "Hook URLs can't include a query string.";
+  return null;
+};
+
+export const hookSigningSecretError = (value: string, hasStoredSecret: boolean): string | null => {
+  if (value === UNCHANGED_SECRET) return null;
+  if (!value) return hasStoredSecret ? null : HOOK_SIGNING_SECRET_REQUIRED_MESSAGE;
+  if (!/^[\x21-\x7e]+$/.test(value)) {
+    return "The signing secret can only use letters, numbers and symbols, with no spaces.";
+  }
+  if (value.length < MIN_HOOK_SECRET_LENGTH) {
+    return `The signing secret must be at least ${MIN_HOOK_SECRET_LENGTH} characters.`;
+  }
+  if (value.length > MAX_HOOK_SECRET_LENGTH) {
+    return `The signing secret can be at most ${MAX_HOOK_SECRET_LENGTH} characters.`;
+  }
+  return null;
+};
+
 export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Path]: "URL Path",
   [AgentVaultSubstitutionSurface.Query]: "Query String",
@@ -410,6 +472,7 @@ export enum ServiceStep {
   Details = "details",
   Credential = "credential",
   Tools = "tools",
+  Hook = "hook",
   Review = "review"
 }
 
@@ -435,6 +498,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
   [ServiceStep.Review]: []
 };
 
@@ -459,6 +523,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "sshCertificate"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
   [ServiceStep.Review]: []
 };
 
@@ -477,6 +542,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
   [ServiceStep.Review]: []
 };
 
@@ -620,7 +686,11 @@ export const buildServiceSchema = (
             surfaces: z.array(z.nativeEnum(AgentVaultSubstitutionSurface))
           })
         )
-        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
+        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`),
+      // Kept while the toggle is off, so turning it back on restores what was typed. Only On sends them.
+      hookEnabled: z.boolean(),
+      hookUrl: z.string(),
+      hookSigningSecret: z.string()
     })
     .superRefine((data, ctx) => {
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
@@ -943,6 +1013,16 @@ export const buildServiceSchema = (
       data.substitutions.forEach((substitution, index) =>
         addReferenceIssue(substitution.value, ["substitutions", index, "value"])
       );
+
+      if (data.hookEnabled) {
+        const hookUrlIssue = hookUrlError(data.hookUrl);
+        if (hookUrlIssue) issue("hookUrl", hookUrlIssue);
+        const hookSecretIssue = hookSigningSecretError(
+          data.hookSigningSecret,
+          Boolean(service?.hook)
+        );
+        if (hookSecretIssue) issue("hookSigningSecret", hookSecretIssue);
+      }
 
       if (
         data.credentialType === AgentVaultCredentialType.Passthrough ||

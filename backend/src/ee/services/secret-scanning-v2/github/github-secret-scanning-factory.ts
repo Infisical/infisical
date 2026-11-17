@@ -165,7 +165,7 @@ export const GitHubSecretScanningFactory = () => {
 
     const { commits, repository } = payload;
 
-    const findings = await scanGitHubCommitsAndGetFindings({
+    const { findings } = await scanGitHubCommitsAndGetFindings({
       octokit: getGitHubRadarInstallationOctokit(dataSource.connection.credentials.installationId),
       repositoryFullName: repository.full_name,
       resourceName,

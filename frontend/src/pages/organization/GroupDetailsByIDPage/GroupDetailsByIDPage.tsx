@@ -178,11 +178,7 @@ const Page = () => {
                 groupSlug={data.group.slug}
                 isLinkedGroup={isLinkedGroup}
               />
-              <GroupProjectsSection
-                groupId={groupId}
-                groupSlug={data.group.slug}
-                hideAddToProject={isLinkedGroup}
-              />
+              <GroupProjectsSection groupId={groupId} hideAddToProject={isLinkedGroup} />
             </div>
           </div>
         </>

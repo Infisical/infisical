@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -11,7 +12,6 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
@@ -54,6 +54,7 @@ import { onePassConnectionService } from "./1password/1password-connection-servi
 import { ValidateADCSConnectionCredentialsSchema } from "./adcs/adcs-connection-schemas";
 import { adcsConnectionService } from "./adcs/adcs-connection-service";
 import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
+import { anthropicConnectionService } from "./anthropic/anthropic-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -142,6 +143,9 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateImpervaConnectionCredentialsSchema } from "./imperva";
 import { impervaConnectionService } from "./imperva/imperva-connection-service";
+import { ValidateIncidentIoConnectionCredentialsSchema } from "./incident-io";
+import { ValidateJenkinsConnectionCredentialsSchema } from "./jenkins";
+import { jenkinsConnectionService } from "./jenkins/jenkins-connection-service";
 import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
@@ -232,7 +236,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -336,6 +340,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
   [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
+  [AppConnection.Jenkins]: ValidateJenkinsConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -349,7 +354,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
-  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema
+  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
+  [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -615,7 +621,7 @@ export const appConnectionServiceFactory = ({
 
     if (gatewayId) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -858,7 +864,7 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const plan = await licenseService.getPlan(actor.orgId);
-        if (!plan.gateway) {
+        if (!plan.has(PlanFeature.Gateway)) {
           throw new BadRequestError({
             message:
               "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1236,11 +1242,18 @@ export const appConnectionServiceFactory = ({
         const { constraint } = err.error as { constraint?: string };
         if (
           constraint === "approval_policy_auto_approval_inputs_connectionid_foreign" ||
-          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign"
+          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign" ||
+          constraint === "auto_approval_condition_contexts_connectionid_foreign"
         ) {
           throw new BadRequestError({
             message:
               "Cannot delete this App Connection because one or more approval policies use it in their auto-approval rules. Remove it from those rules first."
+          });
+        }
+        if (constraint === "organizations_aiconnectionid_foreign") {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because the organization's AI features use it. Change the connection under Organization Settings > General > AI Features first."
           });
         }
         if (constraint === "certificate_authority_secret_appconnectionid_foreign") {
@@ -1539,12 +1552,14 @@ export const appConnectionServiceFactory = ({
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    jenkins: jenkinsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
+    anthropic: anthropicConnectionService(connectAppConnectionById),
     openai: openaiConnectionService(connectAppConnectionById),
     openRouter: openRouterConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),

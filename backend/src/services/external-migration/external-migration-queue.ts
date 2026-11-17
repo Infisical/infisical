@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -37,6 +38,7 @@ import {
 const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
 
 export type TExternalMigrationQueueFactoryDep = {
+  licenseService: TLicenseService;
   smtpService: TSmtpService;
   queueService: TQueueServiceFactory;
 
@@ -66,6 +68,7 @@ export type TExternalMigrationQueueFactoryDep = {
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
 
 export const externalMigrationQueueFactory = ({
+  licenseService,
   queueService,
   projectService,
   smtpService,
@@ -163,6 +166,8 @@ export const externalMigrationQueueFactory = ({
         folderVersionDAL,
         resourceMetadataDAL
       });
+      // The import committed its projects in one transaction, so the plan's cached project count is stale.
+      await licenseService.invalidatePlan(decryptedJson.actorOrgId);
 
       if (projectsNotImported.length) {
         logger.info(

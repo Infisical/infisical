@@ -5,6 +5,7 @@ export const AgentVaultDocsUrls = {
   quickstart: `${AGENT_VAULT_DOCS_BASE_URL}/quickstart`,
   accessBundles: `${AGENT_VAULT_DOCS_BASE_URL}/access-bundles`,
   services: `${AGENT_VAULT_DOCS_BASE_URL}/services`,
+  hooks: `${AGENT_VAULT_DOCS_BASE_URL}/hooks`,
   memberProvidedValues: `${AGENT_VAULT_DOCS_BASE_URL}/http-apis#member-provided-values`,
   mcpMemberProvidedCredential: `${AGENT_VAULT_DOCS_BASE_URL}/mcp-servers#leave-the-credential-to-each-member`,
   variables: `${AGENT_VAULT_DOCS_BASE_URL}/variables`,

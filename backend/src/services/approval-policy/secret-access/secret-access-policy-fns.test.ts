@@ -3,6 +3,7 @@ import {
   getSecretAccessGrantWindow,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
+  resolveSecretAccessPolicyForPath,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { TSecretAccessRequestData } from "./secret-access-policy-types";
@@ -203,5 +204,56 @@ describe("isSecretAccessBreakGlassEligible", () => {
         actorGroupIds
       })
     ).toBe(false);
+  });
+});
+
+describe("resolveSecretAccessPolicyForPath", () => {
+  const policy = (id: string, secretPath: string, createdAt = "2026-01-01") => ({
+    id,
+    secretPath,
+    createdAt: new Date(createdAt)
+  });
+
+  test("accepts a folder inside a glob policy", () => {
+    expect(resolveSecretAccessPolicyForPath([policy("all", "/**")], "/aws/rds")?.id).toBe("all");
+  });
+
+  test("refuses a path no policy covers", () => {
+    expect(resolveSecretAccessPolicyForPath([policy("apps", "/apps/**")], "/legacy")).toBeNull();
+  });
+
+  test("a wildcard segment in the middle of a policy path covers one folder at that level", () => {
+    const policies = [policy("nested", "/backend/*/folder")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/api/folder")?.id).toBe("nested");
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/*/folder")?.id).toBe("nested");
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/api/other")).toBeNull();
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/**")).toBeNull();
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/x|/folder")).toBeNull();
+  });
+
+  test("an exact policy path wins over a glob that also covers it", () => {
+    const policies = [policy("apps-glob", "/apps/**", "2025-01-01"), policy("apps", "/apps", "2026-01-01")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps")?.id).toBe("apps");
+  });
+
+  test("the most specific covering policy wins", () => {
+    const policies = [policy("all", "/**", "2025-01-01"), policy("apps", "/apps/**", "2026-01-01")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api")?.id).toBe("apps");
+    expect(resolveSecretAccessPolicyForPath(policies, "/web")?.id).toBe("all");
+  });
+
+  test("a narrower policy wins over an older broader one with the same prefix", () => {
+    const policies = [policy("broad", "/apps/**", "2025-01-01"), policy("narrow", "/apps/*", "2026-01-01")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api")?.id).toBe("narrow");
+  });
+
+  test("policies that neither contain each other resolve to the oldest", () => {
+    const policies = [policy("newer", "/apps/*/db/**", "2026-01-01"), policy("older", "/apps/*/*/cache", "2025-01-01")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api/db/cache")?.id).toBe("older");
   });
 });

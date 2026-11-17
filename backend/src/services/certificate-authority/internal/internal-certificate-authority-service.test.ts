@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
@@ -60,10 +61,12 @@ const buildService = ({
     },
     internalCertificateAuthorityDAL,
     projectDAL: { findById: vi.fn(async () => ({ id: PROJECT_ID, orgId: "org-1" })) },
-    licenseService: {
-      getPlan: vi.fn(async () => ({ caCrl, pkiOcsp: false, maxCas: null, maxInternalCas: null })),
-      getInstanceType: vi.fn()
-    }
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      caCrl,
+      pkiOcsp: false,
+      maxCas: null,
+      maxInternalCas: null
+    })
   } as never);
 
   return { service, calls, internalCertificateAuthorityDAL };

@@ -186,7 +186,8 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
                 ? undefined
                 : service.credential.memberProvidedFields,
             ...transformationNames,
-            variableKeys: variableKeysOf(service)
+            variableKeys: variableKeysOf(service),
+            hookUrl: service.hook?.url
           }
         }
       });
@@ -269,6 +270,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             tlsEnabled: update.tlsEnabled,
             tlsVerify: update.tlsVerify,
             tlsCaChanged: update.tlsCaChanged,
+            hookChanged: update.hookChanged,
+            hookUrl: update.hookUrl,
+            hookSecretReplaced: update.hookSecretReplaced,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
             hostPattern: update.hostPattern ?? (update.serverUrl ? serviceTypeFields.hostPattern : undefined),
             credentialType: req.body.credential?.type,

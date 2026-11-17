@@ -1113,34 +1113,6 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
-    try {
-      const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
-
-      const doc = await (tx || db.replicaNode())(TableName.Project)
-        .whereNotIn("type", [ProjectType.CertificateManager])
-        .whereNull("deleteAfter")
-        .whereNotIn("type", [
-          ProjectType.CertificateManager,
-          ProjectType.SecretScanning,
-          ProjectType.PAM,
-          ProjectType.AgentVault
-        ])
-        // Project rows of the removed SSH / Agent Sentinel products are left in
-        // place (see migration 20260729150000) but must not consume workspace quota.
-        .whereNotIn("type", ["ssh", "ai"])
-        .andWhere((bd) => {
-          if (orgId) {
-            void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);
-          }
-        })
-        .count();
-      return Number(doc?.[0]?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Projects" });
-    }
-  };
-
   return {
     ...projectOrm,
     findById,
@@ -1178,7 +1150,6 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectByEnvId,
     findProjectDeletedEnvironments,
     findDeletedProjects,
-    findProjectsSharedWith,
-    countOfBillableOrgProjects
+    findProjectsSharedWith
   };
 };

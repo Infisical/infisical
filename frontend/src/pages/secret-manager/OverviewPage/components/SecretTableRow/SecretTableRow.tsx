@@ -405,6 +405,7 @@ export const SecretTableRow = ({
       },
       environment: slug,
       environmentName: name,
+      initialActionEntryPoint: "name-cell-icon",
       isRotatedSecret: secret?.isRotatedSecret,
       isHoneyTokenSecret: secret?.isHoneyTokenSecret,
       importedBy,
@@ -511,6 +512,7 @@ export const SecretTableRow = ({
             isSingleEnvView
             isBatchMode
             initialAction={initialAction}
+            initialActionEntryPoint="quick-add"
             onInitialActionHandled={onInitialActionHandled}
             onBatchRevert={onBatchRevert}
             onPendingSave={onPendingSave}

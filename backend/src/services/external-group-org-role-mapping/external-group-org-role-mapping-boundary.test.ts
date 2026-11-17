@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
@@ -70,7 +71,7 @@ const createService = ({
       getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
       getOrgPermissionByRoles
     } as never,
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ rbac: true }) } as never,
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { rbac: true }),
     roleDAL: {
       find: vi
         .fn()

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
+import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
 import { ArrowRight, ChevronRight, Search } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -38,6 +39,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { getApiErrorMessage } from "@app/helpers/errors";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -256,13 +258,13 @@ export const SelectOrgPage = () => {
       token = result.token;
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
-    } catch (error: any) {
-      if (error?.response?.data?.error === "SmtpError") {
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error === "SmtpError") {
         // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
         await handleLogout();
         return;
       }
-      const message = error?.response?.data?.message || "Failed to select organization.";
+      const message = getApiErrorMessage(error) || "Failed to select organization.";
       createNotification({ text: message, type: "error" });
       return;
     }

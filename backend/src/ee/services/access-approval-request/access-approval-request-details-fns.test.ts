@@ -486,7 +486,7 @@ describe("toSecretAccessRequestListItem", () => {
     expect(item?.policy.id).toBe("policy-1");
     expect(item?.policy.deletedAt).toBeNull();
     expect(item?.environment).toBe("dev");
-    expect(item?.environmentName).toBe("Development");
+    expect(item?.environmentName).toBe("dev");
     expect(item?.status).toBe(ApprovalStatus.PENDING);
     expect(item?.approvers).toEqual(item?.policy.approvers);
   });
@@ -553,6 +553,20 @@ describe("toSecretAccessRequestListItem", () => {
     expect(item?.isApproved).toBe(true);
     expect(item?.privilegeId).toBe("privilege-1");
     expect(item?.privilege?.temporaryAccessEndTime).toEqual(temporaryAccessEndTime);
+  });
+
+  test("environmentName is the environment the request targets, not the policy's first one", () => {
+    const permissions = [["read", "secrets", { environment: "prod", secretPath: { $glob: "/app" } }]];
+    const item = toItem({
+      requests: [
+        request({
+          requestData: { ...storedRequestData(), requestData: { ...storedRequestData().requestData, permissions } }
+        })
+      ]
+    });
+
+    expect(item?.environment).toBe("dev");
+    expect(item?.environmentName).toBe("prod");
   });
 
   test("a request is hidden when its policy and environment are both gone", () => {

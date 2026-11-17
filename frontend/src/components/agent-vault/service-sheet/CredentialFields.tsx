@@ -62,7 +62,8 @@ type SecretName =
   | "secret"
   | "username"
   | `customHeaders.${number}.value`
-  | `substitutions.${number}.value`;
+  | `substitutions.${number}.value`
+  | "hookSigningSecret";
 
 // Keys the input handles itself while suggestions are open, so they must not re-read the caret after.
 const SUGGESTION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"]);
@@ -110,7 +111,7 @@ export const SecretInput = <TName extends SecretName>({
   const caretRef = useRef<number | null>(null);
 
   const value = field.value ?? "";
-  const isReferenceOnly = !isUntouched && isVariableReferenceOnly(value);
+  const isReferenceOnly = allowsVariables && !isUntouched && isVariableReferenceOnly(value);
   // The sentinel must never render as text, and a lone reference holds no secret.
   const isShown = (isVisible && !isUntouched) || isReferenceOnly;
   const isHighlighted = isShown && value.includes("{{");

@@ -166,6 +166,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TJenkinsSync,
+  TJenkinsSyncInput,
+  TJenkinsSyncListItem,
+  TJenkinsSyncWithCredentials
+} from "./jenkins/jenkins-sync-types";
+import {
   TKeeperSync,
   TKeeperSyncInput,
   TKeeperSyncListItem,
@@ -308,7 +314,8 @@ export type TSecretSync =
   | TCloud66Sync
   | TSpaceliftSync
   | TDaytonaSync
-  | TKeeperSync;
+  | TKeeperSync
+  | TJenkinsSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -362,7 +369,8 @@ export type TSecretSyncWithCredentials =
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
   | TDaytonaSyncWithCredentials
-  | TKeeperSyncWithCredentials;
+  | TKeeperSyncWithCredentials
+  | TJenkinsSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -416,7 +424,8 @@ export type TSecretSyncInput =
   | TCloud66SyncInput
   | TSpaceliftSyncInput
   | TDaytonaSyncInput
-  | TKeeperSyncInput;
+  | TKeeperSyncInput
+  | TJenkinsSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -470,7 +479,8 @@ export type TSecretSyncListItem =
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
   | TDaytonaSyncListItem
-  | TKeeperSyncListItem;
+  | TKeeperSyncListItem
+  | TJenkinsSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -13,6 +13,7 @@ import {
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
@@ -25,7 +26,8 @@ import {
   agentVaultCredentialRefreshLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
-  agentVaultSessionLogChunkLimit
+  agentVaultSessionLogChunkLimit,
+  agentVaultUsageLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -125,6 +127,32 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "POST",
+    url: "/usage",
+    config: { rateLimit: agentVaultUsageLimit },
+    schema: {
+      hide: true,
+      operationId: "reportAgentVaultProxyUsage",
+      description: "Report how many requests a proxy brokered since its last report",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      body: z.object({
+        reportId: z.string().uuid().describe(AGENT_VAULT.USAGE.reportId),
+        endedAt: z.coerce.date().describe(AGENT_VAULT.USAGE.endedAt),
+        brokered: z.number().int().min(0).max(1_000_000).describe(AGENT_VAULT.USAGE.brokered)
+      }),
+      response: { 204: z.string().length(0) }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      await server.services.agentVaultUsageService.recordProxyUsage({ orgId: req.permission.orgId, ...req.body });
+      return res.status(204).send("");
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/heartbeat",
     config: { rateLimit: agentVaultHeartbeatLimit },
     schema: {
@@ -214,12 +242,26 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .array(),
               personalValuesMissing: z.boolean(),
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
-              memberProvided: z.boolean()
+              memberProvided: z.boolean(),
+              // The bundle the service came from. Null for a service sent with the session.
+              accessBundleId: z.string().uuid().nullable(),
+              // Proxies from before hooks ignore it and send the request without asking.
+              hook: z.object({ url: z.string(), secret: z.string() }).nullable()
             })
             .array(),
           sessionLogs: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
             sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.proxySessionKey)
+          }),
+          session: z.object({
+            label: z.string().nullable(),
+            actor: z.object({
+              type: z.enum([AgentVaultMemberType.User, AgentVaultMemberType.MachineIdentity]),
+              id: z.string().uuid(),
+              name: z.string(),
+              email: z.string().nullable()
+            }),
+            onBehalfOf: z.object({ id: z.string().uuid(), name: z.string(), email: z.string().nullable() }).nullable()
           })
         })
       }

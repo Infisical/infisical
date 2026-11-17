@@ -10,6 +10,9 @@ const IdentifierSchema = slugSchema({ field: "Identifier" });
 
 const ConditionValueSchema = z.string().trim().min(1, "Values cannot be empty").max(255);
 
+export const AUTO_APPROVAL_AI_PROMPT_MAX_LENGTH = 4000;
+export const AUTO_APPROVAL_AI_MAX_CONTEXT_CONNECTIONS = 5;
+
 export const AutoApprovalConfigSchema = z
   .object({
     inputs: z
@@ -25,10 +28,18 @@ export const AutoApprovalConfigSchema = z
         name: z.string().trim().min(1, "Rule name is required").max(128).describe(DOCS.ruleName),
         conditions: z
           .object({
-            connectionId: z.string().uuid().describe(DOCS.conditionConnectionId),
+            connectionId: z.string().uuid().nullish().describe(DOCS.conditionConnectionId),
             subject: IdentifierSchema.describe(DOCS.conditionSubject),
             constraint: IdentifierSchema.describe(DOCS.constraint),
-            values: ConditionValueSchema.array().max(50).describe(DOCS.values)
+            values: ConditionValueSchema.array().max(50).describe(DOCS.values),
+            prompt: z.string().trim().max(AUTO_APPROVAL_AI_PROMPT_MAX_LENGTH).nullish().describe(DOCS.conditionPrompt),
+            contextConnectionIds: z
+              .string()
+              .uuid()
+              .array()
+              .max(AUTO_APPROVAL_AI_MAX_CONTEXT_CONNECTIONS)
+              .optional()
+              .describe(DOCS.conditionContextConnectionIds)
           })
           .array()
           .min(1, "A rule needs at least one condition, or it would approve every request")
@@ -56,10 +67,12 @@ export const AutoApprovalConfigResponseSchema = z.object({
       conditions: z
         .object({
           id: z.string().uuid(),
-          connectionId: z.string().uuid(),
+          connectionId: z.string().uuid().nullable(),
           subject: z.string(),
           constraint: z.string(),
-          values: z.string().array()
+          values: z.string().array(),
+          prompt: z.string().nullable(),
+          contextConnectionIds: z.string().uuid().array()
         })
         .array()
     })
@@ -91,7 +104,24 @@ export const AutoApprovalOutcomeSchema = z
             id: z.string(),
             description: z.string(),
             passed: z.boolean(),
-            reason: z.string().nullable()
+            reason: z.string().nullable(),
+            ai: z
+              .object({
+                model: z.string(),
+                approve: z.boolean(),
+                reason: z.string(),
+                error: z.string().nullable(),
+                toolCalls: z
+                  .object({
+                    tool: z.string(),
+                    connectionName: z.string().nullable(),
+                    input: z.unknown(),
+                    summary: z.string().nullable(),
+                    error: z.string().nullable()
+                  })
+                  .array()
+              })
+              .nullable()
           })
           .array()
       })
@@ -110,6 +140,20 @@ export const AutoApprovalInputDetailsSchema = z.object({
 
 export const AutoApprovalCatalogSchema = z.object({
   apps: z.nativeEnum(AppConnection).array(),
+  fieldApps: z.nativeEnum(AppConnection).array(),
+  requesterApps: z.nativeEnum(AppConnection).array(),
+  ai: z.object({
+    model: z.string().nullable(),
+    contextApps: z.nativeEnum(AppConnection).array(),
+    contextConnections: z
+      .object({
+        id: z.string().uuid(),
+        name: z.string(),
+        app: z.string(),
+        tools: z.object({ name: z.string(), description: z.string() }).array()
+      })
+      .array()
+  }),
   connections: z
     .object({
       id: z.string().uuid(),
@@ -136,29 +180,42 @@ export const AutoApprovalCatalogSchema = z.object({
 
 const MAX_SIBLINGS_LENGTH = 4096;
 
-export const AutoApprovalSiblingsSchema = z
-  .string()
-  .max(MAX_SIBLINGS_LENGTH)
-  .optional()
-  .transform((raw, ctx) => {
-    if (!raw) return {} as Record<string, string[]>;
+// A query param holding JSON, read into the given shape
+const jsonQueryParam = <T extends z.ZodTypeAny>(
+  schema: T,
+  getEmpty: () => z.infer<T>,
+  messages: { notJson: string; invalid: string }
+) =>
+  z
+    .string()
+    .max(MAX_SIBLINGS_LENGTH)
+    .optional()
+    .transform((raw, ctx): z.infer<T> => {
+      if (!raw) return getEmpty();
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "siblings must be a JSON object" });
-      return z.NEVER;
-    }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: messages.notJson });
+        return z.NEVER;
+      }
 
-    const result = z.record(IdentifierSchema, ConditionValueSchema.array().max(50)).safeParse(parsed);
-    if (!result.success) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "siblings must map each constraint to a list of values"
-      });
-      return z.NEVER;
-    }
-    return result.data;
-  })
-  .describe(DOCS.optionsSiblings);
+      const result = schema.safeParse(parsed);
+      if (!result.success) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: messages.invalid });
+        return z.NEVER;
+      }
+      return result.data as z.infer<T>;
+    });
+
+export const AutoApprovalSiblingsSchema = jsonQueryParam(
+  z.record(IdentifierSchema, ConditionValueSchema.array().max(50)),
+  () => ({}),
+  { notJson: "siblings must be a JSON object", invalid: "siblings must map each constraint to a list of values" }
+).describe(DOCS.optionsSiblings);
+
+export const AutoApprovalSelectedSchema = jsonQueryParam(ConditionValueSchema.array().max(50), () => [], {
+  notJson: "selected must be a JSON array",
+  invalid: "selected must be a list of at most 50 values"
+}).describe(DOCS.optionsSelected);

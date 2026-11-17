@@ -601,7 +601,10 @@ export const buildSsrfSafeJwksFetcher = async (jwksUri: string, options: { ca?: 
       ca: options.ca,
       // jwks-rsa's own request never used a proxy, and a proxy resolves the host itself, which would undo the pin
       forceDirectEgress: true,
-      timeout: options.timeoutMs ?? DEFAULT_JWKS_FETCH_TIMEOUT_MS
+      timeout: options.timeoutMs ?? DEFAULT_JWKS_FETCH_TIMEOUT_MS,
+      // jwks-rsa's own request sent no User-Agent, and some issuers' WAFs (Replit's, behind Cloudflare) refuse
+      // axios's default one with a 403; false stops axios adding it
+      headers: { "User-Agent": false }
     });
     return data;
   };

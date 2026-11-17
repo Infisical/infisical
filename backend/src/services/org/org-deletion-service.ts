@@ -41,15 +41,24 @@ export const orgDeletionServiceFactory = ({
   eventEmitter
 }: TOrgDeletionServiceFactoryDep) => {
   // inDeleteTx runs in the delete's tx, so if it throws the org isn't deleted either.
-  function deleteOrganization(orgId: string): Promise<TOrganizations>;
+  // assertDeletable runs twice: before the cleanup, which can't be undone, and again in the delete's tx,
+  // where it can take locks that hold until the delete commits.
+  function deleteOrganization(
+    orgId: string,
+    inDeleteTx?: undefined,
+    assertDeletable?: (tx?: Knex) => Promise<void>
+  ): Promise<TOrganizations>;
   function deleteOrganization<T>(
     orgId: string,
     inDeleteTx: (deletedOrg: TOrganizations, tx: Knex) => Promise<T>
   ): Promise<T>;
   async function deleteOrganization<T>(
     orgId: string,
-    inDeleteTx?: (deletedOrg: TOrganizations, tx: Knex) => Promise<T>
+    inDeleteTx?: (deletedOrg: TOrganizations, tx: Knex) => Promise<T>,
+    assertDeletable?: (tx?: Knex) => Promise<void>
   ): Promise<TOrganizations | T> {
+    await assertDeletable?.();
+
     // Outside the tx on purpose: the cleanup grabs its own connections, so inside it we'd hold one
     // pool conn while waiting on another.
     const projects = await projectDAL.find({ orgId });
@@ -64,6 +73,8 @@ export const orgDeletionServiceFactory = ({
     await honeyTokenCleanupService.revokeOrgHoneyTokens(orgId);
 
     return orgDAL.transaction(async (tx) => {
+      await assertDeletable?.(tx);
+
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
       if (!deletedOrg) {
         throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

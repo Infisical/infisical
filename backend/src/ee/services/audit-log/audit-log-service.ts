@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -17,7 +18,6 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -51,7 +51,7 @@ type TAuditLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -137,7 +137,7 @@ export const auditLogServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.auditLogs) {
+    if (!plan.has(PlanFeature.AuditLogs)) {
       throw new BadRequestError({
         message: "Failed to list audit logs due to plan restriction. Upgrade your plan to view audit logs."
       });

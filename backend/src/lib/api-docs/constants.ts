@@ -895,6 +895,27 @@ export const SPIFFE_AUTH = {
   }
 } as const;
 
+export const USERS = {
+  GET_DELETION_ELIGIBILITY: {
+    canDelete:
+      "Whether your account can be deleted now. False while you are the only server admin or the only admin of an organization that has other members.",
+    isOnlyServerAdmin:
+      "Whether you are the only server admin on this instance. Promote another user to server admin before deleting your account.",
+    lastMemberOrganizations:
+      "Organizations where you are the last member who can sign in. Deleting your account deletes them, which cancels their subscriptions, and requires their IDs in lastMemberOrganizationIds.",
+    lastAdminOrganizations:
+      "Organizations that have other members but where you are the only admin. Promote another member to admin in each before deleting your account.",
+    organization: {
+      id: "The ID of the organization.",
+      name: "The name of the organization."
+    }
+  },
+  DELETE: {
+    lastMemberOrganizationIds:
+      "Comma-separated IDs of the organizations where you are the last member who can sign in, as listed in lastMemberOrganizations by GET /api/v2/users/me/deletion-eligibility. They are deleted with your account, which cancels their subscriptions. The request is refused unless this matches that list exactly, and refused without it while any such organization exists."
+  }
+};
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -3357,6 +3378,12 @@ export const AppConnections = {
       instanceUrl: "The Portainer instance URL to connect to.",
       apiToken: "The API token used to authenticate with Portainer."
     },
+    JENKINS: {
+      instanceUrl:
+        "The Jenkins instance URL to connect to, including any context path (e.g., 'https://ci.example.com/jenkins').",
+      username: "The username of the Jenkins user that owns the API token.",
+      apiToken: "The Jenkins API token used to authenticate."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -3385,6 +3412,9 @@ export const AppConnections = {
       sslRejectUnauthorized:
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
+    },
+    INCIDENT_IO: {
+      apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
     },
     JIRA: {
       instanceUrl:
@@ -3875,6 +3905,11 @@ export const SecretSyncs = {
     PORTAINER: {
       environmentId: "The ID of the Portainer environment (endpoint) that hosts the stack.",
       stackId: "The ID of the Portainer stack to sync secrets to."
+    },
+    JENKINS: {
+      scope:
+        "The Jenkins credential store to sync secrets to. Either 'global' for the system store or 'folder' for a folder's store.",
+      folderPath: "The full name of the Jenkins folder to sync secrets to (e.g., 'team/app')."
     }
   }
 };
@@ -4831,6 +4866,18 @@ export const AGENT_VAULT = {
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
+    hook: "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. The proxy sends the request on only if your server allows it. `url` is where the proxy sends each check, and `signingSecret` is the key it signs them with.",
+    updateHook:
+      "The hook to set or change. Send `url` alone to change only the URL and keep the saved signing secret, or `url` and `signingSecret` to replace both. Send null to remove the hook and its signing secret.",
+    hookUrl:
+      "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
+    hookSigningSecret:
+      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
+    updateHookSigningSecret:
+      "The key the proxy signs each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one; required when the service has no hook yet. Never returned once saved.",
+    hookRead:
+      "The service's hook, or null when it has none. Its signing secret is never returned. Left out for members.",
+    hookUrlRead: "Where the proxy sends each check.",
     databaseCredential: "The account the proxy logs in to the database as, a username and password.",
     sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
     nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -5288,11 +5335,19 @@ export const AGENT_VAULT = {
     inlineServiceId: "The ID of the service sent with this session.",
     inlineServiceNameRead:
       "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
+    inlineHook:
+      "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. Its signing secret is deleted when the session ends.",
+    inlineHookRead: "The service's hook, or null when it was sent without one. Its signing secret is never returned.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
     updateLabel:
-      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. Leave it out to keep the current label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+    metadata:
+      "Key/value pairs that describe the session, such as a run ID, a ticket or the end user an agent works for, so whoever reads the session later can tell what it was for. Up to 20 entries. Each key is 1 to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters. A key can't contain `=`. Keys and values are trimmed, and each key can be used once.",
+    metadataRead: "The session's metadata, as key/value pairs. Empty when it has none.",
+    updateMetadata:
+      "The session's new metadata. It replaces every existing entry, so send the full set you want to keep, or an empty object to remove them all. Leave it out to keep the current metadata. Up to 20 entries, with the same rules as at creation, so a value can't be empty and a key can't contain `=`. You can't change the metadata once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:
       "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
@@ -5304,6 +5359,8 @@ export const AGENT_VAULT = {
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search:
       "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
+    metadataFilter:
+      "Filter by metadata, as `key=value`, such as `metadata=runId=8812`. Repeat the parameter to filter by several entries; a session must match all of them. Keys and values match exactly, after trimming, and a value can't be empty. Up to 20 entries.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -5408,6 +5465,23 @@ export const AGENT_VAULT = {
     limit: "The maximum number of users and groups to return.",
     offset: "How many users and groups to skip.",
     totalCount: "How many users and groups match, across every page."
+  },
+  ACCESS: {
+    state:
+      "Why the organization can or can't use Agent Vault: `self-hosted` and `plan` are never limited, `open` means the plan doesn't say yet and nothing is limited, `free` means it uses the free monthly requests, and `limit-reached` means it used them all this month.",
+    allowed: "Whether agents can use Agent Vault right now. False only once the free requests for this month are used.",
+    freeUsage:
+      "The organization's free requests this month, or `null` when it isn't on the free tier or the count couldn't be read.",
+    used: "How many free requests the organization used this month.",
+    limit: "How many free requests the organization gets each month.",
+    resetsAt: "When the free requests start again, at the start of next month (UTC).",
+    warn: "Whether the organization used most of its free requests this month, so the UI can warn before they run out."
+  },
+  USAGE: {
+    reportId:
+      "A random ID the proxy picks for this report. Send the same ID when you resend a report, so it is counted once.",
+    endedAt: "When the period this report covers ended. Send the same time when you resend a report.",
+    brokered: "How many requests the proxy brokered in this period, from 0 to 1,000,000."
   }
 };
 
@@ -5463,9 +5537,13 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+  conditionPrompt:
+    "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
+  conditionContextConnectionIds:
+    "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
   constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
   values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
   requestInputs:
@@ -5479,6 +5557,8 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSubject: "The subject the condition checks.",
   optionsConstraint: "The check to list values for.",
   optionsSearch: "Filters the values by this text.",
+  optionsSelected:
+    "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
@@ -5500,4 +5580,11 @@ export const AWS_HONEY_TOKENS = {
     unavailableReason:
       "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
   }
+};
+
+export const ORG_AI_CONFIG = {
+  connectionId:
+    "The ID of the organization-level Anthropic App Connection the organization's AI features use. Null turns AI features off.",
+  model: "The ID of the Anthropic model to use, such as 'claude-sonnet-4-5'. Required when connectionId is set.",
+  connectionName: "The name of the App Connection."
 };

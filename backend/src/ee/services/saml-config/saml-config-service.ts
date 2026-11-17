@@ -14,8 +14,13 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -34,7 +39,6 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -68,7 +72,6 @@ import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -110,7 +113,8 @@ type TSamlConfigServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -128,7 +132,6 @@ type TSamlConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
@@ -153,6 +156,7 @@ export const samlConfigServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
   identityMetadataDAL,
@@ -163,7 +167,6 @@ export const samlConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   keyStore,
   pamAccountDAL,
   pamSessionDAL,
@@ -366,7 +369,7 @@ export const samlConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
@@ -391,7 +394,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -444,7 +447,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -469,7 +472,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -699,8 +702,7 @@ export const samlConfigServiceFactory = ({
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
     const plan = await licenseService.getPlan(orgId);
-    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
-    const identityLimit = getEnforcedIdentityLimit(plan);
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && plan.has(PlanFeature.Groups);
 
     let user: TUsers;
     let sendPamCancellations = () => {};
@@ -787,6 +789,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -833,13 +836,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
-            orgId,
-            identityLimit,
-            tx,
-            aliasType: UserAliasType.SAML
-          });
+          seatUsage?.assertAvailable(plan, UserAliasType.SAML);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -908,7 +905,7 @@ export const samlConfigServiceFactory = ({
     }
     sendPamCancellations();
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

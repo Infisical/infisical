@@ -824,6 +824,8 @@ tables:
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
       - requireGatewayPools
+      - aiConnectionId
+      - aiModel
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -1340,6 +1342,15 @@ tables:
       - createdBy
       - projectId
       - expiryNotificationSent
+
+  - name: totp_configs
+    source: public.totp_configs
+    columns:
+      - id
+      - userId
+      - isVerified
+      - createdAt
+      - updatedAt
 
   - name: user_group_membership
     source: public.user_group_membership

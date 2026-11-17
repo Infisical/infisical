@@ -2,7 +2,13 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -273,7 +279,7 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev", name: "Development" }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) }
+    licenseService: { getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), secretApproval: true })) }
   } as never);
 
   return { service, findByIdForShare, create, createRequest };
@@ -330,5 +336,65 @@ describe("secretAccessApprovalRequestService.createAccessApprovalRequest", () =>
     );
     expect(create).not.toHaveBeenCalled();
     expect(createRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("secretAccessApprovalRequestService.listApprovalRequests", () => {
+  const canReadAllRequests = createMongoAbility([
+    { action: ProjectPermissionApprovalRequestActions.Read, subject: ProjectPermissionSub.ApprovalRequests }
+  ]);
+
+  const createListService = (permission = cannotEditPolicies) => {
+    const findSecretAccessRequests = vi.fn().mockResolvedValue([]);
+    const service = secretAccessApprovalRequestServiceFactory({
+      projectDAL: { findProjectBySlug: vi.fn().mockResolvedValue({ id: "project-1" }) },
+      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+      secretAccessApprovalRequestDAL: { findSecretAccessRequests }
+    } as never);
+    return { service, findSecretAccessRequests };
+  };
+
+  const listAs = (
+    service: ReturnType<typeof createListService>["service"],
+    filters: { authorUserId?: string; envSlug?: string } = {}
+  ) =>
+    service.listApprovalRequests({
+      projectSlug: "project",
+      ...filters,
+      actor: ActorType.USER,
+      actorId: "requester",
+      actorOrgId: "org-1",
+      actorAuthMethod: AuthMethod.EMAIL
+    });
+
+  test("filters by requester and environment in the query for a reader of all requests", async () => {
+    const { service, findSecretAccessRequests } = createListService(canReadAllRequests);
+
+    await listAs(service, { authorUserId: "someone", envSlug: "prod" });
+
+    expect(findSecretAccessRequests).toHaveBeenCalledWith({
+      projectId: "project-1",
+      requesterId: "someone",
+      envSlug: "prod"
+    });
+  });
+
+  test("limits a member who cannot read all requests to their own", async () => {
+    const { service, findSecretAccessRequests } = createListService();
+
+    await listAs(service, { envSlug: "dev" });
+
+    expect(findSecretAccessRequests).toHaveBeenCalledWith({
+      projectId: "project-1",
+      requesterId: "requester",
+      envSlug: "dev"
+    });
+  });
+
+  test("returns nothing when such a member asks for someone else's requests", async () => {
+    const { service, findSecretAccessRequests } = createListService();
+
+    await expect(listAs(service, { authorUserId: "someone" })).resolves.toEqual({ requests: [] });
+    expect(findSecretAccessRequests).not.toHaveBeenCalled();
   });
 });

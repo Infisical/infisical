@@ -201,6 +201,7 @@ type TListPamAccountsParams = {
   templateId?: string;
   accountType?: string;
   search?: string;
+  filterByAction?: PamResourcePermissionActions;
 };
 
 export type TPamAccountListItem = {

@@ -37,8 +37,24 @@ const fillDefaultedFields = (destination: SecretSync, config: unknown) => {
   return filled;
 };
 
+// The provider resolves these names regardless of case, so `team` and `TEAM` are the same destination.
+const CASE_INSENSITIVE_FIELDS: Partial<Record<SecretSync, string>> = {
+  [SecretSync.Jenkins]: "folderPath"
+};
+
+const lowercaseCaseInsensitiveField = (destination: SecretSync, config: unknown) => {
+  const field = CASE_INSENSITIVE_FIELDS[destination];
+  if (!field || !config || typeof config !== "object" || Array.isArray(config)) return config;
+
+  const value = (config as Record<string, unknown>)[field];
+  return typeof value === "string" ? { ...config, [field]: value.toLowerCase() } : config;
+};
+
 const normalizeDestinationConfig = (destination: SecretSync, config: unknown) =>
-  normalizeOptionalScope(destination, fillDefaultedFields(destination, config));
+  lowercaseCaseInsensitiveField(
+    destination,
+    normalizeOptionalScope(destination, fillDefaultedFields(destination, config))
+  );
 
 export const areSecretSyncDestinationConfigsEqual = (
   destination: SecretSync,

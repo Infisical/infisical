@@ -93,3 +93,6 @@ backend/src/ee/services/dynamic-secret/providers/sap-ase.test.ts:generic-passwor
 backend/src/services/app-connection/servicenow/servicenow-connection-fns.test.ts:generic-password:29
 tests/fakes/oauth/google_signon.go:private-key:18
 backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-password:44
+backend/src/ee/services/agent-vault/agent-vault-service-type-fns.test.ts:private-key:351
+frontend/src/components/agent-vault/service-sheet/serviceRequest.test.ts:private-key:691
+frontend/src/components/agent-vault/service-sheet/serviceSchema.test.ts:private-key:576

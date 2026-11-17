@@ -1,8 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -41,7 +41,7 @@ type TDynamicSecretServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "pruneDynamicSecret" | "unsetLeaseRevocation"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findById" | "findSecretPathByFolderIds"
@@ -132,7 +132,7 @@ export const dynamicSecretServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to create dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."
       });
@@ -289,7 +289,7 @@ export const dynamicSecretServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to update dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."
       });
