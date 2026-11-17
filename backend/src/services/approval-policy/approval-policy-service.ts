@@ -246,21 +246,51 @@ export const approvalPolicyServiceFactory = ({
     step,
     actor,
     userGroupIds,
-    decision
+    decision,
+    tx
   }: {
     request: TApprovalRequests;
     step: { approvers: { type: ApproverType; id: string }[] };
     actor: TApprovalActor;
     userGroupIds: Set<string>;
     decision: ApprovalRequestApprovalDecision;
+    tx?: Knex;
   }) => {
     if (!$namesApprover(step.approvers, actor.id, userGroupIds)) {
       throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
     }
     const assertDomainCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
     if (assertDomainCanReview) {
-      await assertDomainCanReview({ request, decision, actor, userGroupIds, stepApprovers: step.approvers });
+      await assertDomainCanReview({ request, decision, actor, userGroupIds, stepApprovers: step.approvers, tx });
     }
+  };
+
+  // The check before the transaction only refuses early. A concurrent approval can advance the step, and a group
+  // removal or demotion can land, between it and the lock, so the check runs again on the locked request's step with
+  // group memberships read through the transaction. A type whose own check doesn't read through tx gets only the
+  // named-approver check here, since its reads would take a second connection while this transaction holds one.
+  const $assertCanReviewLockedStep = async ({
+    locked,
+    lockedStep,
+    actor,
+    decision,
+    tx
+  }: {
+    locked: TApprovalRequests;
+    lockedStep: { approvers: { type: ApproverType; id: string }[] };
+    actor: TApprovalActor;
+    decision: ApprovalRequestApprovalDecision;
+    tx: Knex;
+  }) => {
+    const lockedGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId, tx);
+    const userGroupIds = new Set(lockedGroups.map((g) => g.groupId));
+    if (!resources[locked.type as ApprovalPolicyType]?.assertCanReviewReadsThroughTx) {
+      if (!$namesApprover(lockedStep.approvers, actor.id, userGroupIds)) {
+        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+      }
+      return;
+    }
+    await $assertCanReviewStep({ request: locked, step: lockedStep, actor, userGroupIds, decision, tx });
   };
 
   const $isBreakGlassEligible = async ({
@@ -1720,11 +1750,13 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Current step not found" });
       }
 
-      // The step may have advanced since the pre-transaction check.
-      const isEligibleForLockedStep = $namesApprover(lockedStep.approvers, actor.id, userGroupIds);
-      if (!isEligibleForLockedStep) {
-        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-      }
+      await $assertCanReviewLockedStep({
+        locked,
+        lockedStep,
+        actor,
+        decision: ApprovalRequestApprovalDecision.Approved,
+        tx
+      });
 
       const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: lockedStep.id }, { tx });
       if (stepApprovals.some((approval) => approval.approverUserId === actor.id)) {
@@ -1879,10 +1911,13 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Current step not found" });
       }
 
-      const isEligibleForLockedStep = $namesApprover(lockedStep.approvers, actor.id, userGroupIds);
-      if (!isEligibleForLockedStep) {
-        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-      }
+      await $assertCanReviewLockedStep({
+        locked,
+        lockedStep,
+        actor,
+        decision: ApprovalRequestApprovalDecision.Rejected,
+        tx
+      });
 
       await approvalRequestApprovalsDAL.create(
         {

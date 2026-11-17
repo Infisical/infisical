@@ -334,14 +334,18 @@ export type TApprovalResource<
     hasAutoApprovalRules: boolean;
     skipsAutoApproval: boolean;
   }) => Promise<void>;
-  // stepApprovers are the saved approver entries of the step being decided.
+  // stepApprovers are the saved approver entries of the step being decided. tx is set when the check runs under the
+  // request's lock, which happens only for a type that sets assertCanReviewReadsThroughTx: its reads must all go
+  // through tx, since a read on the pool there takes a second connection while the transaction holds one.
   assertCanReview?: (args: {
     request: TApprovalRequests;
     decision: ApprovalRequestApprovalDecision;
     actor: TApprovalActor;
     userGroupIds: Set<string>;
     stepApprovers: { type: ApproverType; id: string }[];
+    tx?: Knex;
   }) => Promise<void>;
+  assertCanReviewReadsThroughTx?: boolean;
   // The default treats an empty bypasser list as everybody; a type reading it the other way says so here.
   isBreakGlassEligible?: (args: {
     request: TApprovalRequests;

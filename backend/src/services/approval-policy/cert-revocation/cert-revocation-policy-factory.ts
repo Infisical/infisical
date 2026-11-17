@@ -186,16 +186,18 @@ export const certRevocationApprovalResourceFactory = ({
         approvalPolicyDAL.primaryNode()
       ),
 
+    assertCanReviewReadsThroughTx: true,
+
     // A replica that hasn't seen a member's removal or demotion would still let them decide, so the decision reads the
-    // primary.
-    assertCanReview: async ({ request, actor, userGroupIds, stepApprovers }) => {
+    // primary, or the transaction holding the request's lock when there is one.
+    assertCanReview: async ({ request, actor, userGroupIds, stepApprovers, tx }) => {
       const { projectId, scopeId } = request;
       if (!scopeId) {
         throw new ForbiddenRequestError({
           message: "You can't review this request because it isn't attached to an Application."
         });
       }
-      const primaryDb = approvalPolicyDAL.primaryNode();
+      const primaryDb = tx ?? approvalPolicyDAL.primaryNode();
       const liveEntries = await findLiveApproverEntries(
         membershipDeps,
         { projectId, applicationId: scopeId },

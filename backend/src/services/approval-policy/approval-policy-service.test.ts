@@ -307,3 +307,127 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     expect(result.request.canReview).toBe(true);
   });
 });
+
+describe("approvalPolicyService rechecks a revocation approver under the request's lock", () => {
+  const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
+  const groupMessage =
+    "You can't review this request because the group that names you as an approver no longer has a role in its Application that can approve requests.";
+
+  type TMembership = { actorUserId?: string; actorGroupId?: string; role?: string };
+
+  // Step 1 names the actor directly and step 2 only through group-1. The check before the transaction sees step 1;
+  // under the lock a concurrent approval has moved the request to step 2, and what the transaction reads is `inTx`.
+  const build = ({ inTx, groupIdsInTx }: { inTx: TMembership[]; groupIdsInTx: string[] }) => {
+    const primaryDb = { node: "primary" };
+    const tx = { node: "tx" };
+    const before: TMembership[] = [{ actorUserId: "approver-1" }, { actorGroupId: "group-1" }];
+    const rows = (db: unknown) => (db === tx ? inTx : before).map((m, i) => ({ ...m, isActive: true, id: `m-${i}` }));
+    const steps = [
+      { id: "step-1", stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] },
+      { id: "step-2", stepNumber: 2, approvers: [{ type: ApproverType.Group, id: "group-1" }], approvals: [] }
+    ];
+    const request = {
+      id: "revocation-1",
+      type: ApprovalPolicyType.CertRevocation,
+      projectId: "project-1",
+      organizationId: "org-1",
+      status: ApprovalRequestStatus.Pending,
+      expiresAt: null,
+      currentStep: 1,
+      scopeType: ApprovalPolicyScope.PkiApplication,
+      scopeId: "app-1"
+    };
+    const approvalRequestDAL = {
+      findById: vi.fn().mockResolvedValue(request),
+      findStepsByRequestId: vi.fn().mockResolvedValue(steps),
+      findByIdForUpdate: vi.fn().mockResolvedValue({ ...request, currentStep: 2 }),
+      transaction: vi.fn(async (fn: (t: unknown) => Promise<unknown>) => fn(tx))
+    };
+    const approvalRequestApprovalsDAL = {
+      find: vi.fn().mockRejectedValue(new Error("reached the vote")),
+      create: vi.fn().mockRejectedValue(new Error("reached the vote"))
+    };
+    const approvalPolicyDAL = { findByProjectId: vi.fn(), primaryNode: vi.fn().mockReturnValue(primaryDb) };
+    const userGroupMembershipDAL = {
+      findGroupMembershipsByUserIdInOrg: vi.fn(async (_u: string, _o: string, db?: unknown) =>
+        (db === tx ? groupIdsInTx : ["group-1"]).map((groupId) => ({ groupId }))
+      )
+    };
+    const membershipDAL = { find: vi.fn(async (_f: unknown, opts?: { tx?: unknown }) => rows(opts?.tx)) };
+    const revocationResource = certRevocationApprovalResourceFactory({
+      approvalPolicyDAL,
+      certificateService: { revokeApprovedCertificate: vi.fn() },
+      membershipDAL,
+      membershipRoleDAL: {
+        find: vi.fn(async (_f: unknown, opts?: { tx?: unknown }) =>
+          rows(opts?.tx).map((m) => ({ membershipId: m.id, role: m.role ?? "operator" }))
+        )
+      },
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
+    } as never);
+    const service = approvalPolicyServiceFactory({
+      approvalRequestDAL,
+      approvalRequestApprovalsDAL,
+      approvalPolicyDAL,
+      permissionService: {
+        getOrgPermission: vi.fn().mockResolvedValue({}),
+        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      },
+      userGroupMembershipDAL,
+      resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
+    } as unknown as TDeps);
+    return { service, tx, approvalRequestApprovalsDAL, membershipDAL, userGroupMembershipDAL };
+  };
+
+  const decisions = [
+    ["approval", "approveRequest"],
+    ["rejection", "rejectRequest"]
+  ] as const;
+
+  it.each(decisions)(
+    "refuses the %s once the step names them only through a group demoted to Auditor in the meantime",
+    async (_label, method) => {
+      const ctx = build({
+        inTx: [{ actorUserId: "approver-1" }, { actorGroupId: "group-1", role: "auditor" }],
+        groupIdsInTx: ["group-1"]
+      });
+
+      await expect(
+        ctx.service[method]("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)
+      ).rejects.toThrow(groupMessage);
+      expect(ctx.approvalRequestApprovalsDAL.create).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(decisions)(
+    "refuses the %s once they left the group the step names in the meantime",
+    async (_label, method) => {
+      const ctx = build({ inTx: [{ actorUserId: "approver-1" }, { actorGroupId: "group-1" }], groupIdsInTx: [] });
+
+      await expect(
+        ctx.service[method]("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)
+      ).rejects.toThrow("You are not an eligible approver for this step");
+      expect(ctx.approvalRequestApprovalsDAL.create).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(decisions)(
+    "lets the %s through when the group still approves, reading memberships through the transaction",
+    async (_label, method) => {
+      const ctx = build({
+        inTx: [{ actorUserId: "approver-1" }, { actorGroupId: "group-1" }],
+        groupIdsInTx: ["group-1"]
+      });
+
+      await expect(
+        ctx.service[method]("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)
+      ).rejects.toThrow("reached the vote");
+      expect(ctx.userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg).toHaveBeenCalledWith(
+        "approver-1",
+        "org-1",
+        ctx.tx
+      );
+      expect(ctx.membershipDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: ctx.tx });
+    }
+  );
+});
