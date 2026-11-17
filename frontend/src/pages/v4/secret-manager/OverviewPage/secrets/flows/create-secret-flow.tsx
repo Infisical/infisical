@@ -65,6 +65,7 @@ export function SecretEntryFields({
   tagOptions,
   keyRef,
   editing,
+  nameLocked,
   scope,
   onPatch,
   onClearError,
@@ -79,6 +80,7 @@ export function SecretEntryFields({
   tagOptions: { value: string; label: string }[];
   keyRef?: (element: HTMLInputElement | null) => void;
   editing?: { valueCleared: boolean };
+  nameLocked?: boolean;
   scope?: Scope;
   onPatch: (value: Partial<Entry>) => void;
   onClearError: (key: string) => void;
@@ -88,6 +90,7 @@ export function SecretEntryFields({
 }) {
   const keyError = errors[`${entry.id}.key`];
   const spaced = entry.key.trim().includes(" ");
+  const locked = nameLocked || Boolean(editing);
   return (
     <div className={styles.entry} data-framed={framed || undefined}>
       <div className={styles.entryHead}>
@@ -95,7 +98,7 @@ export function SecretEntryFields({
           <Input
             ref={keyRef}
             value={entry.key}
-            readOnly={Boolean(editing)}
+            readOnly={locked}
             placeholder="Type your secret name"
             autoComplete="off"
             spellCheck={false}
@@ -175,7 +178,7 @@ export function SecretEntryFields({
               placeholder="Enter secret value..."
               autoComplete="off"
               spellCheck={false}
-              autoFocus={Boolean(editing)}
+              autoFocus={locked}
             />
           )}
         </ReferenceEditor>
@@ -338,6 +341,7 @@ export function CreateSecretFlow({
   onUploadSecrets
 }: AddFlowProps) {
   const { project, path } = scope;
+  const lockedName = Boolean(initial?.name);
   const [selected, setSelected] = useState(
     () => initial?.environments ?? scope.visibleEnvironments.map((environment) => environment.value)
   );
@@ -510,11 +514,11 @@ export function CreateSecretFlow({
           size="md"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            keyInputs.current[entries[0].id]?.focus();
+            if (!lockedName) keyInputs.current[entries[0].id]?.focus();
           }}
         >
           <SheetHeader>
-            <SheetTitle>Create secret</SheetTitle>
+            <SheetTitle>{lockedName ? "Add value" : "Create secret"}</SheetTitle>
           </SheetHeader>
           <SheetBody>
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
@@ -560,12 +564,13 @@ export function CreateSecretFlow({
                     environment: selected[0] ?? "",
                     path: scope.path
                   }}
+                  nameLocked={lockedName}
                   keyRef={(element) => {
                     keyInputs.current[entry.id] = element;
                   }}
                   onPatch={(value) => patch(entry.id, value)}
                   onClearError={clearError}
-                  onPaste={(event) => handlePaste(event, entry)}
+                  onPaste={lockedName ? undefined : (event) => handlePaste(event, entry)}
                   onRemove={
                     entries.length > 1
                       ? () =>
@@ -580,33 +585,37 @@ export function CreateSecretFlow({
                   }}
                 />
               ))}
-              <Button
-                type="button"
-                variant="outline"
-                icon="plus"
-                onClick={() => {
-                  const next = blankEntry();
-                  setEntries((current) => [...current, next]);
-                  setTimeout(() => keyInputs.current[next.id]?.focus(), 0);
-                }}
-              >
-                Add more
-              </Button>
+              {!lockedName && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  icon="plus"
+                  onClick={() => {
+                    const next = blankEntry();
+                    setEntries((current) => [...current, next]);
+                    setTimeout(() => keyInputs.current[next.id]?.focus(), 0);
+                  }}
+                >
+                  Add more
+                </Button>
+              )}
             </form>
           </SheetBody>
           <SheetFooter>
-            <Inline justify="between">
-              <Button
-                type="button"
-                variant="outline"
-                icon="upload"
-                onClick={() => {
-                  onOpenChange(false);
-                  onUploadSecrets();
-                }}
-              >
-                Upload
-              </Button>
+            <Inline justify={lockedName ? "end" : "between"}>
+              {!lockedName && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  icon="upload"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onUploadSecrets();
+                  }}
+                >
+                  Upload
+                </Button>
+              )}
               <Inline gap={8}>
                 <Button type="button" variant="ghost" onClick={close}>
                   Cancel

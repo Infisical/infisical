@@ -54,12 +54,16 @@ export function EditSecretSheet({
   secret,
   environmentLabel,
   tagOptions,
+  title = "Edit secret",
+  saveLabel = "Save changes",
   onClose,
   onSave
 }: {
   secret: Secret;
   environmentLabel: string;
   tagOptions: string[];
+  title?: string;
+  saveLabel?: string;
   onClose: () => void;
   onSave: (patch: SecretPatch) => void;
 }) {
@@ -116,7 +120,7 @@ export function EditSecretSheet({
       >
         <SheetContent className={flowStyles.secretSheet}>
           <SheetHeader>
-            <SheetTitle>Edit secret</SheetTitle>
+            <SheetTitle>{title}</SheetTitle>
             <SheetDescription>{`Changes apply to ${environmentLabel} only.`}</SheetDescription>
           </SheetHeader>
           <SheetBody>
@@ -174,7 +178,7 @@ export function EditSecretSheet({
                 Cancel
               </Button>
               <Button type="submit" form="edit-secret-sheet" disabled={!dirty}>
-                Save changes
+                {saveLabel}
               </Button>
             </Inline>
           </SheetFooter>

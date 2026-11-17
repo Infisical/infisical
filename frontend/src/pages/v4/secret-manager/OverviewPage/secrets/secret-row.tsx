@@ -366,7 +366,6 @@ function SecretActionsRow({
   secret,
   ctx,
   handlers,
-  onInlineEdit,
   onAddOverride,
   open,
   setOpen,
@@ -376,7 +375,6 @@ function SecretActionsRow({
   secret: Secret;
   ctx: RowContext;
   handlers: SecretRowHandlers;
-  onInlineEdit: () => void;
   onAddOverride: () => void;
   open: Overlay | undefined;
   setOpen: (overlay: Overlay | undefined) => void;
@@ -490,7 +488,7 @@ function SecretActionsRow({
         label: "Edit value",
         icon: EditIcon,
         disabledReason: editBlock,
-        onSelect: () => withValue(() => (ctx.single ? setOpen("edit") : onInlineEdit()))
+        onSelect: () => withValue(() => setOpen("edit"))
       }
     ],
     menu: (
@@ -715,8 +713,18 @@ function SecretActionsRow({
               secret={secret}
               environmentLabel={label}
               tagOptions={handlers.tagOptions}
+              title={ctx.single ? undefined : "Edit value"}
+              saveLabel={ctx.single ? undefined : "Save"}
               onClose={() => setOpen(undefined)}
-              onSave={(patch) => update(secret, patch, saved(`Updated ${secret.name}`))}
+              onSave={(patch) =>
+                update(
+                  secret,
+                  patch,
+                  saved(
+                    ctx.single ? `Updated ${secret.name}` : `Updated ${secret.name} in ${label}`
+                  )
+                )
+              }
             />
           )}
           {open === "reminder" && (
@@ -1006,7 +1014,6 @@ function SecretRowView({
   const [overlays, setOverlays] = useState<Record<string, Overlay | undefined>>({});
   const overlayFor = (environment: string) => (next: Overlay | undefined) =>
     setOverlays((current) => ({ ...current, [environment]: next }));
-  const [editing, setEditing] = useState<string>();
   const [renaming, setRenaming] = useState(false);
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
@@ -1015,18 +1022,6 @@ function SecretRowView({
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
     setCreatingOverride((current) => [...current, environment]);
-  const saveInline = (secret: Secret, value: string, onFieldError: (message: string) => void) =>
-    handlers
-      .onUpdate(
-        secret,
-        { value },
-        { title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}` },
-        onFieldError
-      )
-      .then((ok) => {
-        if (ok) setEditing(undefined);
-        return ok;
-      });
   if (ctx.single) {
     const showOverride =
       first.override !== undefined || creatingOverride.includes(first.environment);
@@ -1036,7 +1031,6 @@ function SecretRowView({
           secret={first}
           ctx={ctx}
           handlers={handlers}
-          onInlineEdit={() => setEditing(first.environment)}
           onAddOverride={() => startCreating(first.environment)}
           open={overlay}
           setOpen={setOverlay}
@@ -1277,24 +1271,10 @@ function SecretRowView({
                         </span>
                       </TableCell>
                       <TableCell colSpan={2} className={styles.valueCell}>
-                        {secret && editing === environment.value ? (
-                          <InlineEditor
-                            label={`Value of ${name} in ${environment.label}`}
-                            scope={secret}
-                            initial={readableValue(secret) ?? ""}
-                            saveLabel="Save"
-                            undoLabel="Undo"
-                            onCancel={() => setEditing(undefined)}
-                            onSave={(value, onFieldError) =>
-                              saveInline(secret, value, onFieldError)
-                            }
-                          />
-                        ) : (
-                          <div className={styles.nameLine}>
-                            <SecretValue secret={secret} visible={rowVisible} />
-                            {secret && <Indicators secret={secret} />}
-                          </div>
-                        )}
+                        <div className={styles.nameLine}>
+                          <SecretValue secret={secret} visible={rowVisible} />
+                          {secret && <Indicators secret={secret} />}
+                        </div>
                       </TableCell>
                     </>
                   );
@@ -1330,7 +1310,6 @@ function SecretRowView({
                         secret={secret}
                         ctx={ctx}
                         handlers={handlers}
-                        onInlineEdit={() => setEditing(environment.value)}
                         onAddOverride={() => startCreating(environment.value)}
                         open={overlays[environment.value]}
                         setOpen={overlayFor(environment.value)}
