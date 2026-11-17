@@ -572,7 +572,7 @@ describe("certificate revocation behind an approval policy", () => {
       expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
     });
 
-    it("refuses to open a request when the lapsed one was decided while it was being expired", async () => {
+    it("tells the requester the earlier request was decided meanwhile when expiring it finds it no longer pending", async () => {
       const ctx = buildRevocationService();
       ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
         id: "approval-request-0",
@@ -580,12 +580,23 @@ describe("certificate revocation behind an approval policy", () => {
       });
       ctx.approvalRequestDAL.update.mockResolvedValue([]);
 
-      const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
-
-      expect(error).toBeInstanceOf(BadRequestError);
-      expect((error as Error).message).toContain(`'${applicationCertificate.friendlyName}'`);
-      expect((error as Error).message).toContain("Check the certificate's status and try again");
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+        new BadRequestError({
+          message: `An earlier revocation request for certificate '${applicationCertificate.friendlyName}' was decided while you were making this one. Check the certificate's status and try again.`
+        })
+      );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+    });
+
+    it("refuses a revocation request from an actor that is neither a user nor a machine identity", async () => {
+      const ctx = buildRevocationService();
+
+      await expect(ctx.service.revokeCert({ ...revokeRequest, actor: ActorType.PLATFORM })).rejects.toThrow(
+        new BadRequestError({ message: "Only users and machine identities can request a certificate revocation" })
+      );
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
     });
 
     it("revokes immediately when no policy matches", async () => {
@@ -643,11 +654,16 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
     });
 
-    it("refuses an actor who can only request a revocation when no policy covers the certificate", async () => {
+    it("tells an actor who can only request a revocation that no policy covers the certificate and to ask an Application Admin", async () => {
       const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });
       ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
 
-      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toSatisfy(isForbidden);
+      const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ForbiddenRequestError);
+      expect((error as Error).message).toBe(
+        `Certificate '${applicationCertificate.friendlyName}' isn't covered by a revocation approval policy, so you need permission to revoke it directly. Ask an Application Admin to revoke it.`
+      );
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
       expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
@@ -858,6 +874,32 @@ describe("certificate revocation behind an approval policy", () => {
         approvedRevocation,
         "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error."
       );
+    });
+
+    it("says Infisical couldn't confirm whether the certificate was revoked when its status can't be read after the CA fails", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
+      ctx.certificateDAL.findById
+        .mockResolvedValueOnce(applicationCertificate)
+        .mockRejectedValueOnce(new Error("Connection terminated unexpectedly"));
+      const reason =
+        "Infisical couldn't confirm whether the certificate was revoked. Check its status, and request the revocation again if it is still active.";
+
+      await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.auditEvents()).toEqual([
+        expect.objectContaining({
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: expect.objectContaining({
+            certId: "cert-1",
+            applicationId: "app-1",
+            approvalRequestId: "approval-request-1",
+            error: reason
+          }) as unknown
+        })
+      ]);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledTimes(1);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(approvedRevocation, reason);
     });
 
     it("tells the requester and approvers once why the revocation failed", async () => {
