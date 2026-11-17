@@ -214,29 +214,29 @@ export const InviteUsersSheet = ({
                       }}
                     />
                   ) : (
-                  <Combobox
-                    multiple
-                    label="Emails"
-                    placeholder="email@example.com, email2@example.com..."
-                    emptyText="Type an email address and press Enter"
-                    options={emails.map((email) => ({ value: email, label: email }))}
-                    value={emails}
-                    invalid={Boolean(error)}
-                    onChange={(next) => {
-                      setEmails(next);
-                      setError(undefined);
-                    }}
-                    onCreate={(query) => {
-                      const values = parseEmailList([query]);
-                      const invalid = values.find((value) => !isValidEmail(value));
-                      if (invalid) {
-                        setError(`${invalid} is not a valid email`);
-                        return;
-                      }
-                      setEmails((current) => [...new Set([...current, ...values])]);
-                      setError(undefined);
-                    }}
-                  />
+                    <Combobox
+                      multiple
+                      label="Emails"
+                      placeholder="email@example.com, email2@example.com..."
+                      emptyText="Type an email address and press Enter"
+                      options={emails.map((email) => ({ value: email, label: email }))}
+                      value={emails}
+                      invalid={Boolean(error)}
+                      onChange={(next) => {
+                        setEmails(next);
+                        setError(undefined);
+                      }}
+                      onCreate={(query) => {
+                        const values = parseEmailList([query]);
+                        const invalid = values.find((value) => !isValidEmail(value));
+                        if (invalid) {
+                          setError(`${invalid} is not a valid email`);
+                          return;
+                        }
+                        setEmails((current) => [...new Set([...current, ...values])]);
+                        setError(undefined);
+                      }}
+                    />
                   )}
                 </Field>
                 <Field label="Assign organization role">

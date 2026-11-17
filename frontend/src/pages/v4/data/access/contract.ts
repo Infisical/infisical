@@ -340,7 +340,9 @@ export type AccessAdapter = {
   useRemoveUserFromGroup: MutationOf<typeof useRemoveUserFromGroup>;
   useAddIdentityToGroup: MutationOf<typeof useAddIdentityToGroup>;
   useRemoveIdentityFromGroup: MutationOf<typeof useRemoveIdentityFromGroup>;
-  useAvailableOrgGroups: (options?: { enabled?: boolean }) => V4QueryResult<TAvailableOrganizationGroups>;
+  useAvailableOrgGroups: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TAvailableOrganizationGroups>;
   useCreateOrgGroupMembership: MutationOf<typeof useCreateOrgGroupMembership>;
   useOidcManageGroupMemberships: QueryOf<typeof useOidcManageGroupMembershipsEnabled>;
 

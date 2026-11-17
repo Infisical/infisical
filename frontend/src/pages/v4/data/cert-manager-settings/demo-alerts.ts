@@ -174,7 +174,28 @@ const IDENTITY_PROJECT_ID = "payments-api";
 const MESH_WORKLOAD = "2c7e9a14-6d3b-4f8a-91c5-b0e7d3a6f412";
 const SETTLEMENT_BROKER = "f04b7d19-3e6a-4c82-b1d5-9a7e2c6f8d30";
 
+const VERCEL_PREVIEW_SYNC = "c83b5d07-2e91-4f6a-9c4d-8b0f1e7a5d22";
+
 const identityAlerts = () => [
+  alert({
+    id: "4a2b7e5c-bf64-4c8d-99a5-3b0e6f2c4d44",
+    name: "Vercel preview sync credentials expiring",
+    eventType: AlertEventType.IdentityAuthenticationExpiry,
+    resourceType: AlertResourceType.IdentityAuthentication,
+    resourceId: VERCEL_PREVIEW_SYNC,
+    projectId: null,
+    condition: { alertBefore: "7d", dailyReminder: true },
+    channels: [
+      {
+        id: "c1a2b3c4-0104-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.User, principalId: "u-sarah" }]
+      }
+    ]
+  }),
   alert({
     id: "1d9e4b27-8c31-4f5a-a6d2-0e7b3c9f1a11",
     name: "Client secret expiring",
@@ -406,7 +427,7 @@ export const alertsDemo: CertManagerAlertsAdapter = {
       .filter(
         (entry) =>
           entry.resourceType === resourceType &&
-          entry.projectId === projectId &&
+          (entry.projectId ?? undefined) === projectId &&
           (!resourceId || entry.resourceId === resourceId)
       ),
     isPending: false,
@@ -423,7 +444,10 @@ export const alertsDemo: CertManagerAlertsAdapter = {
       resourceType: dto.resourceType,
       resourceId: dto.resourceId ?? null,
       enabled: dto.enabled ?? true,
-      projectId: dto.projectId ?? PROJECT_ID,
+      projectId:
+        dto.resourceType === AlertResourceType.IdentityAuthentication
+          ? (dto.projectId ?? null)
+          : (dto.projectId ?? PROJECT_ID),
       condition,
       channels: dto.channels.map((channel) => toStoredChannel(channel)),
       createdAt: now,

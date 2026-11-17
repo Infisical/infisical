@@ -34,11 +34,15 @@ const DocLink = ({ path, children }: { path: string; children: string }) => (
   </a>
 );
 
-const UpgradePrivilegeSystemDialog = ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => {
+const UpgradePrivilegeSystemDialog = ({
+  onOpenChange
+}: {
+  onOpenChange: (open: boolean) => void;
+}) => {
   const upgrade = useV4Adapter("access").useUpgradePrivilegeSystem();
   const { hasOrgRole } = useOrgPermission();
   const [step, setStep] = useState<"info" | "upgrade">("info");
-  const [checked, setChecked] = useState<boolean[]>(CHECKS.map(() => false));
+  const [checked, setChecked] = useState<boolean[]>(() => CHECKS.map(() => false));
   const [pending, setPending] = useState(false);
   const isAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const allChecked = checked.every(Boolean);
@@ -66,13 +70,13 @@ const UpgradePrivilegeSystemDialog = ({ onOpenChange }: { onOpenChange: (open: b
           {step === "info" ? (
             <Stack gap={12}>
               <Text>
-                <strong>Current system:</strong> users with higher privilege levels can modify access
-                for anyone below them, so specialized roles like team leads can&apos;t manage their
-                team&apos;s access without broader administrative powers.
+                <strong>Current system:</strong> users with higher privilege levels can modify
+                access for anyone below them, so specialized roles like team leads can&apos;t manage
+                their team&apos;s access without broader administrative powers.
               </Text>
               <Text>
-                <strong>New system:</strong> users need explicit permission to modify specific access
-                levels. After upgrading, grant the new Grant Privileges permission. At the
+                <strong>New system:</strong> users need explicit permission to modify specific
+                access levels. After upgrading, grant the new Grant Privileges permission. At the
                 organization level it&apos;s on the{" "}
                 <DocLink path="organization-permissions#subject%3A-groups">Group</DocLink> and{" "}
                 <DocLink path="organization-permissions#subject%3A-identity">Identity</DocLink>{" "}

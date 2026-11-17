@@ -78,14 +78,13 @@ import { useOrgId, useOrgPermission } from "../access/permissions";
 import { errorMessage, failed, saved } from "../access/toast";
 import { ProviderIcon } from "../components/provider-icon";
 import { useV4Adapter } from "../data/adapters";
-import { CONNECTION_GATEWAYS, CONNECTION_PRESETS } from "../data/integrations/connection-presets";
+import { CONNECTION_GATEWAYS } from "../data/integrations/connection-presets";
 import {
   connectionRedirect,
   startConnectionRedirect
 } from "../data/integrations/connection-redirect";
 import { rotateAtLocal, rotateAtOptions } from "../data/integrations/presets/shared";
 import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
-import { notPorted } from "../not-ported";
 import {
   DatabricksScopesField,
   FederatedCredentialDetails,
@@ -206,7 +205,6 @@ const AppPicker = ({
         eyebrow: category,
         media: <ProviderIcon icon={image} alt="" size="md" />,
         popular: POPULAR_APP_CONNECTIONS.includes(app),
-        disabledReason: CONNECTION_PRESETS[app] ? undefined : notPorted(name),
         keywords: [app, ...(aliases ?? [])]
       };
     });

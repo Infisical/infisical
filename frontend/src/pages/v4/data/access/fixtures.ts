@@ -1633,8 +1633,20 @@ export const seedEmptyAccessState = (): AccessState => {
 export const DEMO_ROOT_ORG_ID = "demo-root";
 
 export const DEMO_ROOT_ORG_USERS = [
-  { id: "u-ines", username: "ines@acme.dev", email: "ines@acme.dev", firstName: "Ines", lastName: "Moreau" },
-  { id: "u-felix", username: "felix@acme.dev", email: "felix@acme.dev", firstName: "Felix", lastName: "Hart" },
+  {
+    id: "u-ines",
+    username: "ines@acme.dev",
+    email: "ines@acme.dev",
+    firstName: "Ines",
+    lastName: "Moreau"
+  },
+  {
+    id: "u-felix",
+    username: "felix@acme.dev",
+    email: "felix@acme.dev",
+    firstName: "Felix",
+    lastName: "Hart"
+  },
   {
     id: "u-aurelia",
     username: "aurelia.konstantinopoulou-vandermeer@platform-engineering.acme-holdings.example",
@@ -1711,7 +1723,11 @@ export const seedStressedAccessState = (): AccessState => {
       `${longWords[index % longWords.length]}-batch-reconciliation-worker-${index}`,
       "2026-02-20",
       index % 2
-        ? [IdentityAuthMethod.UNIVERSAL_AUTH, IdentityAuthMethod.KUBERNETES_AUTH, IdentityAuthMethod.AWS_AUTH]
+        ? [
+            IdentityAuthMethod.UNIVERSAL_AUTH,
+            IdentityAuthMethod.KUBERNETES_AUTH,
+            IdentityAuthMethod.AWS_AUTH
+          ]
         : [IdentityAuthMethod.UNIVERSAL_AUTH]
     )
   );
@@ -1721,7 +1737,12 @@ export const seedStressedAccessState = (): AccessState => {
     orgMemberships: [
       ...seed.orgMemberships,
       ...extraUsers.map((entry, index) =>
-        membership(`m-stress-${index}`, entry.id, index % 4 ? "member" : "release-manager", "2026-03-01")
+        membership(
+          `m-stress-${index}`,
+          entry.id,
+          index % 4 ? "member" : "release-manager",
+          "2026-03-01"
+        )
       )
     ],
     groups: [...seed.groups, ...extraGroups],

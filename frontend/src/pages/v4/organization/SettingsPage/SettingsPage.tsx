@@ -34,17 +34,19 @@ import { useParams, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { isCustomOrgRole, OrgMembershipRole } from "@app/helpers/roles";
 import type { IncidentContact } from "@app/hooks/api/incidentContacts/types";
 import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { useOrgPermission } from "../../access/permissions";
 import { failed, saved as savedToast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
+import { OrgAiModel } from "./ai-model";
 import { EncryptionTab } from "./encryption";
 import { ProductSettingsTab } from "./product-settings-tab";
 import { SecurityTab } from "./security";
@@ -341,11 +343,82 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
   );
 };
 
+const CONFIRM_KEYWORD = "confirm";
+
+const DeleteOrganization = ({
+  orgId,
+  orgName,
+  isSubOrganization
+}: {
+  orgId: string;
+  orgName: string;
+  isSubOrganization: boolean;
+}) => {
+  const billing = useV4Adapter("billing");
+  const deleteOrganization = useV4Adapter("org").useDeleteOrganization();
+  const [open, setOpen] = useState(false);
+  const overview = billing.useOverview(orgId, { enabled: !isSubOrganization });
+  const isCloud = billing.useIsCloud();
+  const cancelsSubscription = !isSubOrganization && (overview.data?.isCloud ?? isCloud);
+  return (
+    <>
+      <SettingsCard
+        tone="danger"
+        title="Delete organization"
+        description={`Permanently deletes this organization and all of its data${
+          cancelsSubscription ? ", and cancels its subscription" : ""
+        }.`}
+        actions={
+          <Button variant="destructive" size="sm" icon="trash" onClick={() => setOpen(true)}>
+            Delete organization
+          </Button>
+        }
+      />
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent
+          tone="danger"
+          confirmText={CONFIRM_KEYWORD}
+          pending={deleteOrganization.isPending}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {orgName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All of its data is deleted and can&apos;t be recovered.
+              {cancelsSubscription &&
+                " Its subscription is canceled immediately, and any remaining prepaid commitment is forfeited without a refund."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async (event) => {
+                event.preventDefault();
+                try {
+                  await deleteOrganization.mutateAsync({ organizationId: orgId });
+                } catch (error) {
+                  failed("Failed to delete organization", error);
+                  return;
+                }
+                setOpen(false);
+                savedToast("Organization deleted");
+              }}
+            >
+              Delete organization
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
 const GeneralTab = () => {
   const { organization: current } = useV4Session();
   const org = useV4Adapter("org");
   const { data: organization } = org.useOrganization(current.id);
   const { data: roles } = org.useRoles(current.id);
+  const { hasOrgRole } = useOrgPermission();
   return (
     <Stack gap={24}>
       <PageHeader
@@ -369,6 +442,14 @@ const GeneralTab = () => {
         <SettingsCard title="Organization details" loading onSave={noop} />
       )}
       {!current.isSubOrganization && <IncidentContacts orgId={current.id} />}
+      <OrgAiModel />
+      {hasOrgRole(OrgMembershipRole.Admin) && (
+        <DeleteOrganization
+          orgId={current.id}
+          orgName={current.name}
+          isSubOrganization={current.isSubOrganization}
+        />
+      )}
     </Stack>
   );
 };

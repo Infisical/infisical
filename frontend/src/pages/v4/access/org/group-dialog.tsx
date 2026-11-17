@@ -183,29 +183,29 @@ export const GroupDialog = ({
               </Field>
             ) : (
               <>
-            <Field label="Name" error={errors.name}>
-              <Input
-                autoComplete="off"
-                placeholder="Engineering"
-                value={name}
-                invalid={Boolean(errors.name)}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  if (isCreate && !slugDirty) setSlug(slugify(event.target.value));
-                }}
-              />
-            </Field>
-            <Field label="Slug" error={errors.slug}>
-              <Input
-                placeholder="engineering"
-                value={slug}
-                invalid={Boolean(errors.slug)}
-                onChange={(event) => {
-                  setSlug(event.target.value);
-                  setSlugDirty(true);
-                }}
-              />
-            </Field>
+                <Field label="Name" error={errors.name}>
+                  <Input
+                    autoComplete="off"
+                    placeholder="Engineering"
+                    value={name}
+                    invalid={Boolean(errors.name)}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      if (isCreate && !slugDirty) setSlug(slugify(event.target.value));
+                    }}
+                  />
+                </Field>
+                <Field label="Slug" error={errors.slug}>
+                  <Input
+                    placeholder="engineering"
+                    value={slug}
+                    invalid={Boolean(errors.slug)}
+                    onChange={(event) => {
+                      setSlug(event.target.value);
+                      setSlugDirty(true);
+                    }}
+                  />
+                </Field>
               </>
             )}
             <Field label={label}>

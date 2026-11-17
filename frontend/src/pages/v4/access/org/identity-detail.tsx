@@ -57,6 +57,7 @@ import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
+import { IdentityAlertAction } from "../project/identity-alerts";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
@@ -320,36 +321,44 @@ export const OrgIdentityDetail = () => {
           <PageHeader
             title={identity.name}
             actions={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" iconRight="more">
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(identity.id);
-                      toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
-                    }}
-                  >
-                    <Icon name="copy" />
-                    Copy machine identity ID
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canDelete || deleteBlocked}
-                    description={canDelete ? undefined : RESTRICTED}
-                    onSelect={() => setDeleting(true)}
-                  >
-                    <Icon name="trash" />
-                    {deleteBlocked
-                      ? "Delete is blocked by delete protection"
-                      : "Delete machine identity"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Inline gap={8} wrap={false}>
+                {isOwnIdentity && !identity.projectId && (
+                  <IdentityAlertAction identityId={identity.id} canEdit={canEdit} />
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" iconRight="more">
+                      Options
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        navigator.clipboard?.writeText(identity.id);
+                        toast({
+                          tone: "neutral",
+                          title: "Machine identity ID copied to clipboard"
+                        });
+                      }}
+                    >
+                      <Icon name="copy" />
+                      Copy machine identity ID
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!canDelete || deleteBlocked}
+                      description={canDelete ? undefined : RESTRICTED}
+                      onSelect={() => setDeleting(true)}
+                    >
+                      <Icon name="trash" />
+                      {deleteBlocked
+                        ? "Delete is blocked by delete protection"
+                        : "Delete machine identity"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Inline>
             }
           />
         </Stack>

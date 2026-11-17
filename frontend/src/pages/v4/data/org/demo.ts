@@ -147,12 +147,10 @@ const contacts = createFixtureStore<IncidentContact[]>([
 const total = 2316;
 const window30d = 30 * 24 * 3600 * 1000;
 const now = Date.now();
-const people = ["sarah", "marcus", "priya", "diego", "hana", "tom", "lena"].map(
-  (name): Actor => ({
-    type: ActorType.USER,
-    metadata: { userId: `u-${name}`, email: `${name}@acme.dev` }
-  })
-);
+const people = ["sarah", "marcus", "priya", "diego", "hana", "tom", "lena"].map((name): Actor => ({
+  type: ActorType.USER,
+  metadata: { userId: `u-${name}`, email: `${name}@acme.dev` }
+}));
 const machines = [
   "payments-api-k8s-operator",
   "web-dashboard-github-actions-deploy",
@@ -305,6 +303,7 @@ const environmentOf = (log: AuditLog) =>
 
 export const orgDemo: OrgAdapter = {
   useLogout: fixtureMutation(() => undefined),
+  useDeleteOrganization: fixtureMutation(() => undefined),
   getSessionToken: () => "demo-session-token",
   useAnnouncements: () => ({ data: announcements.use(), isPending: false, error: null }),
   useMarkAnnouncementSeen: fixtureMutation((id: string) => {

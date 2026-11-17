@@ -95,8 +95,14 @@ const stores = {
   empty: createFixtureStore(seedEmptyAccessState()),
   stressed: createFixtureStore(seedStressedAccessState()),
   "sub-org": createFixtureStore(seedSubOrgAccessState()),
-  "legacy-privileges": createFixtureStore({ ...seedAccessState(), legacyPrivileges: true }),
-  "oidc-groups": createFixtureStore({ ...seedAccessState(), oidcGroupMemberships: true })
+  "legacy-privileges": createFixtureStore<AccessState>({
+    ...seedAccessState(),
+    legacyPrivileges: true
+  }),
+  "oidc-groups": createFixtureStore<AccessState>({
+    ...seedAccessState(),
+    oidcGroupMemberships: true
+  })
 };
 const storeFor = (scenario: AccessScenario) =>
   scenario in stores ? stores[scenario as keyof typeof stores] : stores.default;

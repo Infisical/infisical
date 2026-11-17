@@ -310,31 +310,31 @@ export const OrgIdentitiesTab = () => {
             {isOwned(row) ? "Edit machine identity" : "Edit machine identity membership"}
           </DropdownMenuItem>
           {isOwned(row) && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Icon name="key" />
-              Manage auth methods
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {sortedMethods(row.identity.authMethods).map((method) => (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Icon name="key" />
+                Manage auth methods
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {sortedMethods(row.identity.authMethods).map((method) => (
+                  <DropdownMenuItem
+                    key={method}
+                    onSelect={() => setAuthView({ identity: authIdentityOf(row), method })}
+                  >
+                    {authMethodName(method)}
+                    {row.identity.activeLockoutAuthMethods.includes(method) && <Icon name="lock" />}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuItem
-                  key={method}
-                  onSelect={() => setAuthView({ identity: authIdentityOf(row), method })}
+                  disabled={!canEditAuth}
+                  description={canEditAuth ? undefined : RESTRICTED}
+                  onSelect={() => setAuthForm({ identity: authIdentityOf(row) })}
                 >
-                  {authMethodName(method)}
-                  {row.identity.activeLockoutAuthMethods.includes(method) && <Icon name="lock" />}
+                  <Icon name="plus" />
+                  Add auth method
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                disabled={!canEditAuth}
-                description={canEditAuth ? undefined : RESTRICTED}
-                onSelect={() => setAuthForm({ identity: authIdentityOf(row) })}
-              >
-                <Icon name="plus" />
-                Add auth method
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem

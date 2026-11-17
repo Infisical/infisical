@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DataTable,
@@ -23,7 +24,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Badge } from "@infisical/cipher/ui/badge";
 import { Select } from "@infisical/cipher/ui/select";
 import { PencilIcon } from "lucide-react";
 
@@ -53,6 +53,17 @@ const draftOf = (group: TGroupOrgMembership): GroupDraft => ({
   name: group.name,
   slug: group.slug,
   roleSlug: groupRoleSlug(group)
+});
+
+const managedByColumn = (orgId: string): DataTableColumn<TGroupOrgMembership> => ({
+  id: "managedBy",
+  header: "Managed by",
+  render: (group) => (
+    <Badge tone="outline">
+      <Icon name="building" size={12} />
+      {group.orgId !== orgId ? "Root organization" : "Sub-organization"}
+    </Badge>
+  )
 });
 
 export const OrgGroupsTab = () => {
@@ -143,20 +154,7 @@ export const OrgGroupsTab = () => {
         </span>
       )
     },
-    ...(isSubOrg
-      ? [
-          {
-            id: "managedBy",
-            header: "Managed by",
-            render: (group: TGroupOrgMembership) => (
-              <Badge tone="outline">
-                <Icon name="building" size={12} />
-                {isLinked(group) ? "Root organization" : "Sub-organization"}
-              </Badge>
-            )
-          }
-        ]
-      : [])
+    ...(isSubOrg ? [managedByColumn(orgId)] : [])
   ];
 
   const rowActions: DataTableRowActions<TGroupOrgMembership> = {

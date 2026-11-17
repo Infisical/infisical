@@ -9,6 +9,7 @@ import { DaytonaConnectionMethod } from "@app/hooks/api/appConnections/types/day
 import { DbtConnectionMethod } from "@app/hooks/api/appConnections/types/dbt-connection";
 import { DevinConnectionMethod } from "@app/hooks/api/appConnections/types/devin-connection";
 import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/fireworks-connection";
+import { IncidentIoConnectionMethod } from "@app/hooks/api/appConnections/types/incident-io-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
@@ -117,6 +118,19 @@ export const anthropicConnectionFormSchema = z.discriminatedUnion("method", [
     method: z.literal(AnthropicConnectionMethod.ApiKey),
     credentials: z.object({
       apiKey: z.string().trim().min(1, "API Key required")
+    })
+  })
+]);
+
+const incidentIoRootSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.IncidentIo)
+});
+
+export const incidentIoConnectionFormSchema = z.discriminatedUnion("method", [
+  incidentIoRootSchema.extend({
+    method: z.literal(IncidentIoConnectionMethod.ApiKey),
+    credentials: z.object({
+      apiKey: z.string().trim().min(1, "API key required").max(1024)
     })
   })
 ]);

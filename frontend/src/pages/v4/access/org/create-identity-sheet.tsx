@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,

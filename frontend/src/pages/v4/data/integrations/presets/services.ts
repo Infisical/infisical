@@ -8,6 +8,7 @@ import { DaytonaConnectionMethod } from "@app/hooks/api/appConnections/types/day
 import { DbtConnectionMethod } from "@app/hooks/api/appConnections/types/dbt-connection";
 import { DevinConnectionMethod } from "@app/hooks/api/appConnections/types/devin-connection";
 import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/fireworks-connection";
+import { IncidentIoConnectionMethod } from "@app/hooks/api/appConnections/types/incident-io-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
@@ -17,6 +18,7 @@ import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { WindmillConnectionMethod } from "@app/hooks/api/appConnections/types/windmill-connection";
 import {
   anthropicConnectionFormSchema,
+  incidentIoConnectionFormSchema,
   camundaConnectionFormSchema,
   checklyConnectionFormSchema,
   datadogConnectionFormSchema,
@@ -157,6 +159,27 @@ export const SERVICE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>
         label: methodLabel(AnthropicConnectionMethod.ApiKey),
         credentials: { apiKey: "" },
         fields: [{ name: "credentials.apiKey", label: "API key", kind: "secret" }]
+      }
+    ]
+  },
+  [AppConnection.IncidentIo]: {
+    app: AppConnection.IncidentIo,
+    name: APP_CONNECTION_MAP[AppConnection.IncidentIo].name,
+    schema: incidentIoConnectionFormSchema,
+    methods: [
+      {
+        value: IncidentIoConnectionMethod.ApiKey,
+        label: methodLabel(IncidentIoConnectionMethod.ApiKey),
+        credentials: { apiKey: "" },
+        fields: [
+          {
+            name: "credentials.apiKey",
+            label: "API key",
+            kind: "secret",
+            description:
+              "Create one in incident.io under Settings > API keys, with the View on-call resources permission."
+          }
+        ]
       }
     ]
   },

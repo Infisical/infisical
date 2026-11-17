@@ -53,16 +53,16 @@ import type { OrgUser } from "@app/hooks/api/users/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
-import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
-import { BackButton, CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { useCustomRoleGate } from "./custom-role-gate";
+import { BackButton, CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -92,8 +92,8 @@ const EditMembershipDialog = ({
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const update = access.useUpdateOrgMembership();
   const customRoleGate = useCustomRoleGate("organization.user-details-by-id");
-  const [role, setRole] = useState(orgRoleSlug(roles, membership));
-  const [metadata, setMetadata] = useState<MetadataEntry[]>(
+  const [role, setRole] = useState(() => orgRoleSlug(roles, membership));
+  const [metadata, setMetadata] = useState<MetadataEntry[]>(() =>
     membership.metadata.map(({ key, value }) => ({ key, value }))
   );
   const [errors, setErrors] = useState<{ key?: string; value?: string }[]>();

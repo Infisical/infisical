@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
-import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import {
@@ -201,6 +201,11 @@ const AddMembersDialog = ({
 const OIDC_MANAGED =
   "OIDC group membership mapping is on. Remove this user from the group in your OIDC provider.";
 
+const removeReason = (member: TGroupMember, canEdit: boolean, oidcManaged: boolean) => {
+  if (!canEdit) return RESTRICTED;
+  return member.type === GroupMemberType.USER && oidcManaged ? OIDC_MANAGED : undefined;
+};
+
 const GroupMembersSection = ({
   group,
   canEdit,
@@ -271,16 +276,12 @@ const GroupMembersSection = ({
     { id: "added", header: "Added on", render: (member) => formatDate(member.joinedGroupAt) }
   ];
 
-  const removeReason = (member: TGroupMember) => {
-    if (!canEdit) return RESTRICTED;
-    return member.type === GroupMemberType.USER && oidcManaged ? OIDC_MANAGED : undefined;
-  };
   const rowActions: DataTableRowActions<TGroupMember> = {
     renderMenu: (member) => (
       <DropdownMenuItem
         variant="destructive"
-        disabled={Boolean(removeReason(member))}
-        description={removeReason(member)}
+        disabled={Boolean(removeReason(member, canEdit, oidcManaged))}
+        description={removeReason(member, canEdit, oidcManaged)}
         onSelect={() => setRemoving(member)}
       >
         <Icon name="trash" />
