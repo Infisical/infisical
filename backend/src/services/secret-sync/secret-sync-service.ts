@@ -29,6 +29,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
+  assertKeySchemaProducesValidNames,
   enterpriseSyncCheck,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
@@ -664,6 +665,12 @@ export const secretSyncServiceFactory = ({
     const requestedSyncOptions = params.syncOptions;
     const includeAllSubFolders = Boolean(params.includeAllSubFolders ?? requestedSyncOptions?.includeAllSubFolders);
 
+    assertKeySchemaProducesValidNames({
+      destination: params.destination,
+      keySchema: requestedSyncOptions?.keySchema,
+      environment
+    });
+
     if (
       includeAllSubFolders &&
       requestedSyncOptions?.initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination
@@ -924,6 +931,16 @@ export const secretSyncServiceFactory = ({
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
     const { keySchema, initialSyncBehavior } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+
+    // Checked only when the key schema or source environment changes, so a sync saved before a destination gained a
+    // name rule can still be edited
+    if (
+      keySchema !== (secretSync.syncOptions as TSecretSync["syncOptions"] | undefined)?.keySchema ||
+      updatedEnvironment !== secretSync.environment?.slug
+    ) {
+      assertKeySchemaProducesValidNames({ destination, keySchema, environment: updatedEnvironment ?? "" });
+    }
+
     // The deprecated value comes from the request rather than updatedSyncOptions: a destination
     // that merges options (Azure Entra ID SCIM) would otherwise hand back the stored mirror as if
     // the caller had sent it.

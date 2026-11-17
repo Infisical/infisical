@@ -12,7 +12,6 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
-import { CONVEX_KEY_SCHEMA_ERROR, hasConvexCompatibleKeySchema } from "./convex-sync-constants";
 
 const ConvexSyncDestinationConfigSchema = z.object({
   deploymentName: z
@@ -33,17 +32,19 @@ export const ConvexSyncSchema = BaseSecretSyncSchema(SecretSync.Convex, ConvexSy
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Convex] }));
 
-export const CreateConvexSyncSchema = GenericCreateSecretSyncFieldsSchema(SecretSync.Convex, ConvexSyncOptionsConfig)
-  .extend({
-    destinationConfig: ConvexSyncDestinationConfigSchema
-  })
-  .refine(hasConvexCompatibleKeySchema, CONVEX_KEY_SCHEMA_ERROR);
+export const CreateConvexSyncSchema = GenericCreateSecretSyncFieldsSchema(
+  SecretSync.Convex,
+  ConvexSyncOptionsConfig
+).extend({
+  destinationConfig: ConvexSyncDestinationConfigSchema
+});
 
-export const UpdateConvexSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSync.Convex, ConvexSyncOptionsConfig)
-  .extend({
-    destinationConfig: ConvexSyncDestinationConfigSchema.optional()
-  })
-  .refine(hasConvexCompatibleKeySchema, CONVEX_KEY_SCHEMA_ERROR);
+export const UpdateConvexSyncSchema = GenericUpdateSecretSyncFieldsSchema(
+  SecretSync.Convex,
+  ConvexSyncOptionsConfig
+).extend({
+  destinationConfig: ConvexSyncDestinationConfigSchema.optional()
+});
 
 export const ConvexSyncListItemSchema = z
   .object({

@@ -62,7 +62,7 @@ import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
-import { CONVEX_SYNC_LIST_OPTION, ConvexSyncFns } from "./convex";
+import { CONVEX_ENV_VAR_NAME_RULE, CONVEX_SYNC_LIST_OPTION, ConvexSyncFns, isValidConvexEnvVarName } from "./convex";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -94,8 +94,8 @@ import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
-import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { TSecretSyncPayload } from "./secret-sync-payload";
+import { SECRET_SYNC_NAME_MAP, SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { getKeyWithSchema, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -177,6 +177,35 @@ const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPre
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
   [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
   [SecretSync.GitHub]: gitHubPreSaveTransformDestinationConfig
+};
+
+// Destinations that refuse some names. A key schema renders the same way for every secret, so one rendered with the
+// sync's own environment shows whether the destination can ever accept it.
+const SECRET_SYNC_KEY_NAME_RULES: Partial<
+  Record<SecretSync, { isValidName: (name: string) => boolean; rule: string }>
+> = {
+  [SecretSync.Convex]: { isValidName: isValidConvexEnvVarName, rule: CONVEX_ENV_VAR_NAME_RULE }
+};
+
+export const assertKeySchemaProducesValidNames = ({
+  destination,
+  keySchema,
+  environment
+}: {
+  destination: SecretSync;
+  keySchema?: string;
+  environment: string;
+}) => {
+  const nameRule = SECRET_SYNC_KEY_NAME_RULES[destination];
+  if (!nameRule || !keySchema) return;
+
+  const exampleName = getKeyWithSchema({ key: "EXAMPLE", environment, schema: keySchema });
+
+  if (!nameRule.isValidName(exampleName)) {
+    throw new BadRequestError({
+      message: `Key schema '${keySchema}' produces names ${SECRET_SYNC_NAME_MAP[destination]} rejects in environment '${environment}', such as '${exampleName}'. ${nameRule.rule}`
+    });
+  }
 };
 
 export const preSaveTransformSyncOptions = async (

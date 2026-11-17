@@ -20,15 +20,3 @@ export const CONVEX_ENV_VAR_NAME_RULE = `Convex environment variable names must 
 
 export const isValidConvexEnvVarName = (name: string) =>
   CONVEX_ENV_VAR_NAME_PATTERN.test(name) && !CONVEX_BUILT_IN_ENV_VARS.includes(name);
-
-// A key schema is applied to every synced key, so literal characters Convex rejects would produce a sync that
-// saves cleanly and then fails on every run. Placeholders are substituted with a valid token so only the schema's
-// literals are under test; the resolved names are checked again at sync time.
-export const hasConvexCompatibleKeySchema = ({ syncOptions }: { syncOptions?: { keySchema?: string } }) =>
-  !syncOptions?.keySchema ||
-  CONVEX_ENV_VAR_NAME_PATTERN.test(syncOptions.keySchema.replace(/\{\{secretKey\}\}|\{\{environment\}\}/g, "A"));
-
-export const CONVEX_KEY_SCHEMA_ERROR = {
-  message: `Key schema produces names Convex rejects. ${CONVEX_ENV_VAR_NAME_RULE}`,
-  path: ["syncOptions", "keySchema"]
-};

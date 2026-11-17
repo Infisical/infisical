@@ -19,13 +19,6 @@ describe("CreateConvexSyncSchema", () => {
     ).toBe(true);
   });
 
-  it("rejects a key schema whose literal characters Convex refuses", () => {
-    const result = CreateConvexSyncSchema.safeParse(createInput({ keySchema: "INF-{{secretKey}}" }));
-
-    expect(result.success).toBe(false);
-    expect(result.error?.issues[0].path).toEqual(["syncOptions", "keySchema"]);
-  });
-
   it("rejects a deployment name that is not a Convex deployment name", () => {
     expect(CreateConvexSyncSchema.safeParse(createInput({ deploymentName: "../teams" })).success).toBe(false);
     expect(CreateConvexSyncSchema.safeParse(createInput({ deploymentName: "https://x.convex.cloud" })).success).toBe(
