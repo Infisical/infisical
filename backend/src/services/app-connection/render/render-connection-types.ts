@@ -46,3 +46,22 @@ export type TRawRenderEnvironmentGroup = {
     name: string;
   };
 };
+
+export type TRenderWorkflow = {
+  name: string;
+  id: string;
+};
+
+export type TRawRenderWorkflow = {
+  cursor: string;
+  workflow: {
+    id: string;
+    name: string;
+  };
+};
+
+export type TRenderWorkflowDetail = {
+  id: string;
+  name: string;
+  envVars: { key: string; value: string }[];
+};
