@@ -3,7 +3,13 @@ import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/plat
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { TAgentVaultUsageService, TRecordProxyUsageInput } from "../../../ce/services/dependencies";
+import {
+  TAgentVaultFreeUsageCrossing,
+  TAgentVaultUsageService,
+  TRecordProxyUsageInput
+} from "../../../ce/services/dependencies";
+import { AgentVaultAccess } from "../../models/agent-vault-access";
+import { UsageMonth } from "../../models/usage-month";
 import { TAgentVaultFreeUsageCache } from "../dependencies";
 
 // A report the proxy dates further out than this means its clock is wrong, and the License Server would bill it to
@@ -15,14 +21,19 @@ const MAX_REPORT_AGE_MS = 7 * 24 * 60 * 60_000;
 // License Server, which refuses or stores unbilled what an org's plan doesn't price. Self-hosted is never counted.
 export class AgentVaultUsageService implements TAgentVaultUsageService {
   constructor(
-    private readonly licenseService: Pick<TLicenseService, "getInstanceEntitlements">,
+    private readonly licenseService: Pick<TLicenseService, "getInstanceEntitlements" | "getPlan">,
     private readonly usageMeteringService: Pick<TUsageMeteringService, "recordMeteringEvents">,
     private readonly organizationsProjectsService: Pick<TOrganizationsProjectsService, "resolveRootOrgId">,
-    private readonly freeUsageCache: Pick<TAgentVaultFreeUsageCache, "claimReport" | "add">
+    private readonly freeUsageCache: Pick<TAgentVaultFreeUsageCache, "claimReport" | "add" | "claimNotice">
   ) {}
 
-  async recordProxyUsage({ orgId, reportId, endedAt, brokered }: TRecordProxyUsageInput): Promise<void> {
-    if (brokered <= 0 || !this.licenseService.getInstanceEntitlements().isCloud()) return;
+  async recordProxyUsage({
+    orgId,
+    reportId,
+    endedAt,
+    brokered
+  }: TRecordProxyUsageInput): Promise<TAgentVaultFreeUsageCrossing[]> {
+    if (brokered <= 0 || !this.licenseService.getInstanceEntitlements().isCloud()) return [];
 
     const offsetMs = endedAt.getTime() - Date.now();
     if (-offsetMs > MAX_REPORT_AGE_MS) {
@@ -33,13 +44,20 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
       });
     }
 
-    if (!(await this.freeUsageCache.claimReport(reportId))) return;
+    if (!(await this.freeUsageCache.claimReport(reportId))) return [];
 
     // The month is when Infisical received the report, not the proxy's endedAt, so a proxy's clock can't move usage
     // into another month.
+    let crossings: TAgentVaultFreeUsageCrossing[] = [];
     try {
       const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
-      await this.freeUsageCache.add(rootOrgId, new Date(), brokered);
+      const receivedAt = new Date();
+      const used = await this.freeUsageCache.add(rootOrgId, receivedAt, brokered);
+      crossings = await this.claimCrossings(rootOrgId, receivedAt, used - brokered, used).catch((error) => {
+        // A missed notice never blocks counting or billing.
+        logger.error(error, `Failed to check Agent Vault free usage notices [rootOrgId=${rootOrgId}]`);
+        return [];
+      });
     } catch (error) {
       // The report is claimed, so a resend would be ignored: still send it to metering rather than lose the bill.
       logger.error(error, `Failed to count Agent Vault free usage [orgId=${orgId}] [reportId=${reportId}]`);
@@ -51,5 +69,37 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     this.usageMeteringService.recordMeteringEvents(orgId, [
       { eventId: reportId, meter: Meter.AgentVaultBrokeredRequests, quantity: brokered, occurredAt }
     ]);
+    return crossings;
+  }
+
+  // Every request is counted whatever the plan, so only an org the free tier limits gets a crossing. The plan is read
+  // only when a threshold is passed, which is at most twice a month per org.
+  private async claimCrossings(
+    rootOrgId: string,
+    at: Date,
+    before: number,
+    after: number
+  ): Promise<TAgentVaultFreeUsageCrossing[]> {
+    const thresholds = AgentVaultAccess.thresholdsCrossed(before, after);
+    if (!thresholds.length) return [];
+
+    const plan = await this.licenseService.getPlan(rootOrgId);
+    if (!AgentVaultAccess.isLimited({ isCloud: true, plan })) return [];
+
+    const month = UsageMonth.of(at);
+    const claimed = await Promise.all(
+      thresholds.map(async (threshold) =>
+        (await this.freeUsageCache.claimNotice(rootOrgId, at, threshold)) ? threshold : null
+      )
+    );
+    return claimed
+      .filter((threshold) => threshold !== null)
+      .map((threshold) => ({
+        rootOrgId,
+        threshold,
+        month: month.key,
+        limit: AgentVaultAccess.freeMonthlyLimit,
+        resetsAt: month.resetsAt
+      }));
   }
 }

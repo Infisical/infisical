@@ -21,6 +21,11 @@ License in `domains.ts`. The rest of Agent Vault still lives in `src/ee/services
   bootstrap and heartbeat stay open so the proxy keeps running and resumes by itself. Everything else, reads,
   deletes and revokes included, never checks the plan. This is the one written exception to the license rule in
   `backend/CODE_QUALITY.md`.
+- **Notices**: when a report pushes a free-tier root org past `WARN_AT_SHARE_OF_LIMIT` (75%) or the limit,
+  `recordProxyUsage` returns that crossing once per root org, month and threshold (`claimNotice`). The usage route
+  hands it to `agentVaultFreeUsageNoticeService` (`src/ee/services/agent-vault-free-usage-notice/`), which emails the
+  root org's admins and sends the PostHog events, because a domain can't take the SMTP or telemetry service. Never
+  send a notice from anywhere else, or it goes out twice.
 - **Two entry points.** `assertCanBroker` is `getAccess(orgId)` followed by `assertAllowed()`, and reads the count
   only when the plan says no. `getAccess` is for the UI and only reads.
 - **Usage**: count every cloud brokered request, whatever the plan, then report it (`recordMeteringEvents`, meter

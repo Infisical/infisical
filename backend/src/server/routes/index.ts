@@ -30,6 +30,7 @@ import {
   agentVaultDelegationSubjectDALFactory
 } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-dal";
 import { agentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
+import { agentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
@@ -3458,6 +3459,12 @@ export const registerRoutes = async (
       .catch((error) => logger.error(error, "objectStorage: could not check default storage"));
   }
 
+  const agentVaultFreeUsageNoticeService = agentVaultFreeUsageNoticeServiceFactory({
+    orgDAL,
+    smtpService,
+    telemetryService
+  });
+
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
@@ -4991,6 +4998,7 @@ export const registerRoutes = async (
     agentVaultProxy: agentVaultProxyService,
     agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     agentVaultUsageService: domains.agentVault.agentVaultUsageService,
+    agentVaultFreeUsageNotice: agentVaultFreeUsageNoticeService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,

@@ -1,5 +1,6 @@
 import {
   AgentVaultAccessState,
+  AgentVaultFreeUsageThreshold,
   TAgentVaultAccessJSON,
   TAgentVaultFreeUsageJSON
 } from "../models/agent-vault-access-state";
@@ -29,6 +30,17 @@ export type TRecordProxyUsageInput = {
   brokered: number;
 };
 
+// A free-tier root org's count passing a notice threshold this month. Each is returned once per org, month and
+// threshold, so whoever sends the notice never has to dedupe.
+export type TAgentVaultFreeUsageCrossing = {
+  rootOrgId: string;
+  threshold: AgentVaultFreeUsageThreshold;
+  // YYYY-MM, UTC.
+  month: string;
+  limit: number;
+  resetsAt: Date;
+};
+
 export type TAgentVaultUsageService = {
-  recordProxyUsage(input: TRecordProxyUsageInput): Promise<void>;
+  recordProxyUsage(input: TRecordProxyUsageInput): Promise<TAgentVaultFreeUsageCrossing[]>;
 };

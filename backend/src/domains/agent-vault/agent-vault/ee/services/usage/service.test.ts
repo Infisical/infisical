@@ -1,7 +1,9 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
-import { Meter } from "@app/domains/platform/license/ce/module";
+import { Meter, Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 
+import { AgentVaultFreeUsageThreshold } from "../../../ce/models/agent-vault-access-state";
 import { FreeUsageCache } from "../../data-access/free-usage-cache";
 import { AgentVaultUsageService } from "./service";
 
@@ -11,11 +13,14 @@ vi.mock("@app/lib/logger", () => ({
 
 const ROOT_ORG_ID = "org-root";
 
-const build = (isCloud = true) => {
+const build = (isCloud = true, agentVault: boolean | null = false) => {
   const usageMeteringService = { recordMeteringEvents: vi.fn() };
   const freeUsageCache = new FreeUsageCache(new InMemoryKeyStore());
   const service = new AgentVaultUsageService(
-    { getInstanceEntitlements: () => ({ isCloud: () => isCloud }) as never },
+    {
+      getInstanceEntitlements: () => ({ isCloud: () => isCloud }) as never,
+      getPlan: async () => Plan.restore({ ...testFeatures(), agentVault })
+    },
     usageMeteringService,
     { resolveRootOrgId: async () => ROOT_ORG_ID },
     freeUsageCache
@@ -115,7 +120,7 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const ahead = new Date(Date.now() + 10 * 60_000);
 
     // Action, Assert
-    await expect(service.recordProxyUsage({ ...report, endedAt: ahead })).resolves.toBeUndefined();
+    await expect(service.recordProxyUsage({ ...report, endedAt: ahead })).resolves.toEqual([]);
     expect(usageMeteringService.recordMeteringEvents).not.toHaveBeenCalled();
   });
 
@@ -144,5 +149,83 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     expect(usageMeteringService.recordMeteringEvents).toHaveBeenCalledWith("org-sub", [
       { eventId: "report-1", meter: Meter.AgentVaultBrokeredRequests, quantity: 100, occurredAt: now }
     ]);
+  });
+
+  test("should return a warning once when the count passes 75%, and nothing for later reports", async () => {
+    // Setup
+    const { service } = build();
+    await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_700 });
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 100 });
+    const after = await service.recordProxyUsage({ ...report, reportId: "r-3", brokered: 100 });
+
+    // Assert
+    expect(crossing).toEqual([
+      expect.objectContaining({ rootOrgId: ROOT_ORG_ID, threshold: AgentVaultFreeUsageThreshold.Warning, limit: 5_000 })
+    ]);
+    expect(after).toEqual([]);
+  });
+
+  test("should return nothing below 75%", async () => {
+    // Setup
+    const { service } = build();
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, brokered: 3_749 });
+
+    // Assert
+    expect(crossing).toEqual([]);
+  });
+
+  test("should return both thresholds when one report passes both", async () => {
+    // Setup
+    const { service } = build();
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+
+    // Assert
+    expect(crossing.map((c) => c.threshold)).toEqual([
+      AgentVaultFreeUsageThreshold.Warning,
+      AgentVaultFreeUsageThreshold.Limit
+    ]);
+  });
+
+  test("should return a threshold once even when two reports cross it at the same time", async () => {
+    // Setup
+    const { service, freeUsageCache } = build();
+    await freeUsageCache.claimNotice(ROOT_ORG_ID, new Date(), AgentVaultFreeUsageThreshold.Limit);
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_000 });
+
+    // Assert
+    expect(crossing.map((c) => c.threshold)).toEqual([AgentVaultFreeUsageThreshold.Warning]);
+  });
+
+  test.each([
+    ["a plan that includes Agent Vault", true],
+    ["a plan that says nothing", null]
+  ] as const)("should return nothing for %s", async (_, agentVault) => {
+    // Setup
+    const { service } = build(true, agentVault);
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+
+    // Assert
+    expect(crossing).toEqual([]);
+  });
+
+  test("should return nothing on self-hosted", async () => {
+    // Setup
+    const { service } = build(false);
+
+    // Action
+    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+
+    // Assert
+    expect(crossing).toEqual([]);
   });
 });

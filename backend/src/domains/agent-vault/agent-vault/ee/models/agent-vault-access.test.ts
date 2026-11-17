@@ -2,7 +2,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 
-import { AgentVaultAccessState } from "../../ce/models/agent-vault-access-state";
+import { AgentVaultAccessState, AgentVaultFreeUsageThreshold } from "../../ce/models/agent-vault-access-state";
 import { AgentVaultAccess } from "./agent-vault-access";
 
 const plan = (agentVault: boolean | null) => Plan.restore({ ...testFeatures(), agentVault });
@@ -16,8 +16,8 @@ describe("AgentVaultAccess.decide", () => {
     [true, true, 9_000, AgentVaultAccessState.Plan, true, false],
     [true, null, 9_000, AgentVaultAccessState.Open, true, false],
     [true, false, 0, AgentVaultAccessState.Free, true, false],
-    [true, false, 3_999, AgentVaultAccessState.Free, true, false],
-    [true, false, 4_000, AgentVaultAccessState.Free, true, true],
+    [true, false, 3_749, AgentVaultAccessState.Free, true, false],
+    [true, false, 3_750, AgentVaultAccessState.Free, true, true],
     [true, false, 4_999, AgentVaultAccessState.Free, true, true],
     [true, false, 5_000, AgentVaultAccessState.LimitReached, false, true],
     [true, false, 7_200, AgentVaultAccessState.LimitReached, false, true]
@@ -102,5 +102,20 @@ describe("AgentVaultAccess.isLimited", () => {
 
     // Assert
     expect(limited).toEqual([true, false, false, false]);
+  });
+});
+
+describe("AgentVaultAccess.thresholdsCrossed", () => {
+  test.each([
+    // before, after, crossed
+    [0, 3_749, []],
+    [3_700, 3_750, [AgentVaultFreeUsageThreshold.Warning]],
+    [3_750, 4_000, []],
+    [4_900, 5_000, [AgentVaultFreeUsageThreshold.Limit]],
+    [5_000, 6_000, []],
+    [3_000, 5_200, [AgentVaultFreeUsageThreshold.Warning, AgentVaultFreeUsageThreshold.Limit]]
+  ] as const)("from %s to %s crosses %j", (before, after, crossed) => {
+    // Action, Assert
+    expect(AgentVaultAccess.thresholdsCrossed(before, after)).toEqual(crossed);
   });
 });
