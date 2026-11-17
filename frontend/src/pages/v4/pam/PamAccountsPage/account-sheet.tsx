@@ -8,6 +8,7 @@ import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
@@ -93,7 +94,7 @@ const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b
 const fieldValue = (field: TPamFieldDescriptor, value: unknown) => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
   if (field.widget === PamFieldWidget.Textarea) return <Badge tone="ok">Configured</Badge>;
-  return String(value);
+  return <MiddleTruncate text={String(value)} mono />;
 };
 
 const AccountSummary = ({
@@ -129,7 +130,12 @@ const AccountSummary = ({
         fieldValue(field, account.connectionDetails[field.key])
       ]),
     ...(account.credentials.username
-      ? [["Username", String(account.credentials.username)] as DataListItem]
+      ? [
+          [
+            "Username",
+            <MiddleTruncate key="username" text={String(account.credentials.username)} mono />
+          ] as DataListItem
+        ]
       : []),
     ["Created", format(new Date(account.createdAt), "MMMM do, yyyy")]
   ];
