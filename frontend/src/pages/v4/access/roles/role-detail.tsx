@@ -67,6 +67,7 @@ import { RuleTable } from "./rule-table";
 import { VaultImportSheet } from "./vault-import-sheet";
 
 const BUILT_IN = "Built-in roles are read only";
+const ADMIN_OR_MEMBER_PRODUCTS = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
@@ -80,6 +81,7 @@ export type RoleEditorProps = {
   backHref: string;
   backLabel?: string;
   describable?: boolean;
+  readOnlyReason?: string;
   projectType?: ProjectType;
   subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
@@ -101,6 +103,7 @@ export const RoleEditor = ({
   backHref,
   backLabel,
   describable = true,
+  readOnlyReason,
   projectType,
   subjects,
   can,
@@ -121,8 +124,8 @@ export const RoleEditor = ({
   const [overlay, setOverlay] = useState<Overlay>();
   const [saving, setSaving] = useState(false);
   const current = draft ?? stored;
-  const editable = isCustom && can.edit;
-  const reason = isCustom ? RESTRICTED : BUILT_IN;
+  const editable = isCustom && can.edit && !readOnlyReason;
+  const reason = readOnlyReason ?? (isCustom ? RESTRICTED : BUILT_IN);
   const dirty =
     draft !== undefined &&
     JSON.stringify(permissionsToApi(scope, draft)) !==
@@ -493,6 +496,8 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const createRole = access.useCreateProjectRole();
   const deleteRole = access.useDeleteProjectRole();
   const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
+  const writeType =
+    scope.projectType === ProjectType.CertificateManager ? undefined : scope.projectType;
 
   const canRead = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   if (permissionPending || (canRead && isPending)) return <PageLoader label="Loading role" />;
@@ -509,6 +514,11 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       taken={(roles ?? []).map((item) => item.slug)}
       backHref={backHref}
       projectType={scope.projectType}
+      readOnlyReason={
+        ADMIN_OR_MEMBER_PRODUCTS.has(scope.projectType)
+          ? "This product only applies the Admin and Member roles, so rules on other roles have no effect"
+          : undefined
+      }
       can={{
         edit: canEdit,
         create: permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role),
@@ -523,7 +533,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       savePermissions={async (permissions) => {
         await updateRole.mutateAsync({
           projectId,
-          projectType: scope.projectType,
+          projectType: writeType,
           id: role.id,
           permissions: projectToApi(permissions)
         });
@@ -532,7 +542,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         try {
           const next = await updateRole.mutateAsync({
             projectId,
-            projectType: scope.projectType,
+            projectType: writeType,
             id: role.id,
             ...draft
           });
@@ -548,7 +558,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         try {
           const created = await createRole.mutateAsync({
             projectId,
-            projectType: scope.projectType,
+            projectType: writeType,
             ...draft,
             permissions: sanitizeDuplicateRolePermissions(role.permissions)
           });
@@ -562,7 +572,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       }}
       remove={async () => {
         try {
-          await deleteRole.mutateAsync({ projectId, projectType: scope.projectType, id: role.id });
+          await deleteRole.mutateAsync({ projectId, projectType: writeType, id: role.id });
           saved("Successfully deleted project role");
           go(backHref);
         } catch (error) {

@@ -1234,7 +1234,7 @@ const projectRoles: TProjectRole[] = [
       { subject: "secret-scanning-configs", action: ["read-configs", "update-configs"] },
       { subject: "approval-requests", action: ["read", "create"] },
       { subject: "approval-request-grants", action: ["read", "revoke"] },
-      { subject: "app-connections", action: ["read", "connect"] },
+      { subject: "app-connections", action: ["read-app-connections", "connect-app-connections"] },
       { subject: "audit-logs", action: ["read"] },
       { subject: "member", action: ["read", "create", "edit"] },
       { subject: "groups", action: ["read"] },
