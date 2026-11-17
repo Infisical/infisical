@@ -1007,6 +1007,18 @@ describe("signerService pending DigiCert revocation that DigiCert won't report o
     expect(revocation().failureReason).toContain("Request 41 not found.");
   });
 
+  it("stops tracking the request when the KMS refuses to decrypt the DigiCert credentials", async () => {
+    const { service, deps, revocation } = awaiting();
+    deps.digicertFns.getRevocationRequestStatus.mockRejectedValue(
+      new RuleViolationError({ message: "The KMS key is disabled" })
+    );
+
+    await service.syncPendingRevocations();
+
+    expect(revocation().status).toBe(SignerRevocationStatus.Failed);
+    expect(revocation().failureReason).toContain("DigiCert refused the status check (The KMS key is disabled)");
+  });
+
   it("keeps waiting after a transient error", async () => {
     const { service, deps, revocation } = awaiting();
     deps.digicertFns.getRevocationRequestStatus.mockRejectedValue(new Error("socket hang up"));

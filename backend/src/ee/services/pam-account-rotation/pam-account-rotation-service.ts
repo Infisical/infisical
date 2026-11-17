@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import pLimit from "p-limit";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -1024,7 +1025,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       await performRotation(account);
       return { rotationStatus: ROTATION_STATUS.Success };
     } catch (err) {
-      const message = err instanceof BadRequestError ? err.message : `Rotation failed: ${(err as Error).message}`;
+      const message =
+        err instanceof BadRequestError || err instanceof RuleViolationError
+          ? err.message
+          : `Rotation failed: ${(err as Error).message}`;
       return { rotationStatus: ROTATION_STATUS.Failed, message };
     }
   };

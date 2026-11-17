@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -798,7 +799,8 @@ export const secretRotationV2ServiceFactory = ({
         throw err;
       }
 
-      if (err instanceof BadRequestError) throw err;
+      if (err instanceof BadRequestError || err instanceof RuleViolationError || err instanceof StateConflictError)
+        throw err;
 
       throw new BadRequestError({
         message: parseRotationErrorMessage(err)

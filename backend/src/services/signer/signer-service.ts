@@ -2180,7 +2180,7 @@ export const signerServiceFactory = ({
     try {
       requestStatus = await digicertFns.getRevocationRequestStatus({ caId: ca.id, requestId });
     } catch (err) {
-      if (!(err instanceof BadRequestError)) throw err;
+      if (!(err instanceof BadRequestError || err instanceof RuleViolationError)) throw err;
       await $stopTrackingRevocation(revocation, `DigiCert refused the status check (${err.message})`);
       return;
     }
@@ -2243,7 +2243,7 @@ export const signerServiceFactory = ({
       await $settleRevocation(revocation, {
         status: SignerRevocationStatus.Failed,
         failureReason:
-          err instanceof BadRequestError
+          err instanceof BadRequestError || err instanceof RuleViolationError
             ? `DigiCert refused the status check for revocation request #${requestId} (${err.message.replace(/\.$/, "")}). Fix the DigiCert connection or certificate authority, then revoke the certificate again.`
             : UNFINISHED_REVOKE_REASON
       });

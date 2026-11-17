@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -926,7 +927,12 @@ export const VenafiTppCertificateAuthorityFns = ({
         ca: venafiCa
       };
     } catch (error: unknown) {
-      if (error instanceof BadRequestError || error instanceof NotFoundError) {
+      if (
+        error instanceof BadRequestError ||
+        error instanceof NotFoundError ||
+        error instanceof RuleViolationError ||
+        error instanceof EntityNotFoundError
+      ) {
         throw error;
       }
       if (error instanceof AxiosError) {

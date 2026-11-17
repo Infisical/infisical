@@ -1,5 +1,6 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AWS_REQUEST_TIMEOUTS, createS3Bucket, TS3Bucket } from "@app/lib/aws/s3";
@@ -116,7 +117,7 @@ export const objectStorageServiceFactory = ({
       throw fail(ObjectStorageErrorReason.ConnectionInvalid, {
         connectionName: raw.name,
         cause:
-          err instanceof STSServiceException || err instanceof BadRequestError
+          err instanceof STSServiceException || err instanceof BadRequestError || err instanceof RuleViolationError
             ? err.message
             : "Infisical could not load its credentials"
       });

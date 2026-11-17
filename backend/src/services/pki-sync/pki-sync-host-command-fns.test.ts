@@ -1,7 +1,14 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
+
 import { PkiSyncStatus } from "./pki-sync-enums";
-import { HOST_COMMAND_TIMEOUT_MS, HostCommandKind, runHostCommand } from "./pki-sync-host-command-fns";
+import {
+  HOST_COMMAND_TIMEOUT_MS,
+  HostCommandFailure,
+  HostCommandKind,
+  runHostCommand
+} from "./pki-sync-host-command-fns";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -40,6 +47,15 @@ describe("runHostCommand distinguishes a timeout from an unreachable host", () =
     );
 
     expect(result.status).toBe(PkiSyncStatus.Failed);
+    expect(result.timedOut).toBe(false);
+  });
+});
+
+describe("runHostCommand classifies refusals", () => {
+  test("a domain rule violation is a rejection, not an unreachable host", async () => {
+    const result = await run(() => Promise.reject(new RuleViolationError({ message: "The KMS key is disabled" })));
+
+    expect(result.failure).toBe(HostCommandFailure.Rejected);
     expect(result.timedOut).toBe(false);
   });
 });

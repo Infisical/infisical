@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
-import { DomainError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -104,7 +104,8 @@ export const toResultMessage = (err: unknown, fallback: string, logMessage: stri
     err instanceof NotFoundError ||
     err instanceof ForbiddenRequestError ||
     err instanceof ForbiddenError ||
-    err instanceof DomainError
+    err instanceof RuleViolationError ||
+    err instanceof EntityNotFoundError
   ) {
     return err.message;
   }
