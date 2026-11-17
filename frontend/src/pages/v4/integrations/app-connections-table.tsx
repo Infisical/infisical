@@ -364,6 +364,7 @@ const EmptyConnections = ({
   if (error)
     return (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"
