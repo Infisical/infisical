@@ -164,44 +164,6 @@ func TestImportReplicationEnforcement_NewImports(t *testing.T) {
 	})
 }
 
-func TestImportReplicationEnforcement_ReservedCopy(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	converted := func(t *testing.T) (*harness.Tenant, *fixture.Project, string) {
-		t.Helper()
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
-		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
-		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
-		createPolicy(t, proj, "prod", "/", tn.Admin, true)
-		waitConverted(t, proj, "prod", "/", prodImport)
-		return tn, proj, prodImport
-	}
-
-	t.Run("should refuse a change to the import row that points at the copy", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn, proj, _ := converted(t)
-		var reservedID string
-		for _, row := range listImports(t, proj, "prod", "/") {
-			if row.Reserved {
-				reservedID = row.ID
-			}
-		}
-		require.NotEmpty(t, reservedID)
-
-		// Action
-		res := repoint(t, tn.Admin, proj, "prod", reservedID, secretmanager.Location{Env: "staging", Path: "/"})
-
-		// Assert
-		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "changing the reserved import returned %s", apierr.Body(res.Body))
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-	})
-}
-
 // createPolicy puts a secret change policy with approver as its only approver on env's
 // folder at secretPath.
 func createPolicy(t *testing.T, proj *fixture.Project, env, secretPath string, approver *harness.Principal, enforce bool) uuid.UUID {

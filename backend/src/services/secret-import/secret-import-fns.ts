@@ -69,8 +69,10 @@ type TSecretImportSecretsV2 = {
   })[];
 };
 
-// Readers pair a replication import with the reserved row that points at its copy, so the row goes right after
-// the import. The caller holds the folder's import position lock.
+// A replication import's values are read through a reserved row that points at its copy, and that row must sit
+// right after the import: reordering moves the pair together and deleting shifts by 2. createImport can append
+// both rows at the end, but an existing import being converted may sit mid-list. The caller holds the folder's
+// import position lock.
 export const insertReservedImportRow = async (
   secretImportDAL: Pick<TSecretImportDALFactory, "shiftPositionsAfter" | "create">,
   {
@@ -82,6 +84,7 @@ export const insertReservedImportRow = async (
   }: { folderId: string; envId: string; folderPath: string; importId: string; position: number },
   tx: Knex
 ) => {
+  // Frees the slot after the import. Appending instead would move the copy's precedence to the end of the list.
   await secretImportDAL.shiftPositionsAfter(folderId, position, 1, tx);
   return secretImportDAL.create(
     {

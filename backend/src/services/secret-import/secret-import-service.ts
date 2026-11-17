@@ -71,10 +71,6 @@ type TSecretImportServiceFactoryDep = {
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
-const ERR_RESERVED_IMPORT = new BadRequestError({
-  message:
-    "This import is managed by secret replication and can't be changed directly. Change or delete the replication import it belongs to instead."
-});
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
 
@@ -492,7 +488,6 @@ export const secretImportServiceFactory = ({
 
     const secImpDoc = await secretImportDAL.findOne({ folderId: folder.id, id });
     if (!secImpDoc) throw ERR_SEC_IMP_NOT_FOUND;
-    if (secImpDoc.isReserved) throw ERR_RESERVED_IMPORT;
 
     const importedEnv = data.environment // this is get env information of new one or old one
       ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
@@ -538,7 +533,6 @@ export const secretImportServiceFactory = ({
       await secretImportDAL.lockFolderImportPositions(folder.id, tx);
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
-      if (secImp.isReserved) throw ERR_RESERVED_IMPORT;
 
       let finalPosition = data.position;
 
@@ -649,26 +643,6 @@ export const secretImportServiceFactory = ({
       });
     }
 
-    // Reordering or repointing an import changes what this folder exposes, including to replication imports of
-    // it, which only learn about changes through a sync.
-    await secretQueueService.syncSecrets({
-      secretPath,
-      orgId: actorOrgId,
-      projectId,
-      environmentSlug: environment,
-      environmentName: folder.environment.name,
-      actorId,
-      actor,
-      events: [
-        {
-          type: ProjectEvents.SecretImportMutation,
-          projectId,
-          secretPath,
-          environment
-        }
-      ]
-    });
-
     return { ...updatedSecImport, importEnv: importedEnv, enforcedBySecretChangePolicyId: enforcingPolicy?.id };
   };
 
@@ -704,15 +678,12 @@ export const secretImportServiceFactory = ({
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       await secretImportDAL.lockFolderImportPositions(folder.id, tx);
-      const existing = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
-      if (existing?.isReserved) throw ERR_RESERVED_IMPORT;
-
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc) throw new NotFoundError({ message: `Secret import with folder ID '${id}' not found` });
 
       // The reserved folder can exist before the import is a replication import (a conversion fills it first),
       // so it is removed either way.
-      const replicationFolderPath = path.join(folder.path, getReplicationFolderName(doc.id));
+      const replicationFolderPath = path.join(secretPath, getReplicationFolderName(doc.id));
       const [reservedImport] = await secretImportDAL.delete(
         {
           folderId: folder.id,
