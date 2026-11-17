@@ -136,6 +136,14 @@ const InboxPanel = ({
       align="end"
       side="bottom"
       className={styles.inbox}
+      onAuxClick={(event) => {
+        if (event.button !== 1) return;
+        const id = (event.target as HTMLElement)
+          .closest("[data-list-row]")
+          ?.getAttribute("data-list-row");
+        const notification = notifications.find((entry) => entry.id === id);
+        if (notification) read(notification);
+      }}
       onInteractOutside={(event) => {
         if (confirmClear) event.preventDefault();
       }}
@@ -201,7 +209,7 @@ const InboxPanel = ({
         })}
       </List>
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
-        <AlertDialogContent tone="danger">
+        <AlertDialogContent tone="danger" pending={clearAll.isPending}>
           <AlertDialogHeader>
             <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
             <AlertDialogDescription>
