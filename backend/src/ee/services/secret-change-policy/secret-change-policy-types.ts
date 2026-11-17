@@ -35,7 +35,7 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
-  enforceImportReplication?: boolean;
+  enforceImportReplication: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;

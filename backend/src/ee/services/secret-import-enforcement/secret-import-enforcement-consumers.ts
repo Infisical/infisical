@@ -7,7 +7,6 @@ import {
 import {
   EventResultStatus,
   IEventConsumer,
-  MAX_OUTBOX_ATTEMPTS,
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
@@ -63,10 +62,7 @@ export const secretImportEnforcementPolicyConsumerFactory = ({
 export const secretImportReplicationConversionConsumerFactory = ({
   secretImportEnforcementService
 }: {
-  secretImportEnforcementService: Pick<
-    TSecretImportEnforcementServiceFactory,
-    "convertImport" | "auditConversionFailure"
-  >;
+  secretImportEnforcementService: Pick<TSecretImportEnforcementServiceFactory, "convertImport">;
 }): IEventConsumer<TSecretImportReplicationConversionRequestedEventData> => {
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
     const { data, failure } = parseEventPayload(
@@ -77,16 +73,12 @@ export const secretImportReplicationConversionConsumerFactory = ({
     if (failure) return failure;
 
     try {
-      await secretImportEnforcementService.convertImport(data);
+      await secretImportEnforcementService.convertImport(data, event.isFinalAttempt);
       return { id: event.id, status: EventResultStatus.Delivered };
     } catch (error) {
       const message = toErrorMessage(error);
       if (event.isFinalAttempt) {
         logger.error(error, `Gave up converting a secret import [secretImportId=${data.secretImportId}]`);
-        await secretImportEnforcementService.auditConversionFailure(
-          data,
-          `Infisical could not convert this import to a replication import after ${MAX_OUTBOX_ATTEMPTS} attempts (${message}). It still reads the source directly. Save the secret change policy again to retry.`
-        );
         return { id: event.id, status: EventResultStatus.Failed, error: message };
       }
       logger.warn(error, `Failed to convert a secret import, will retry [secretImportId=${data.secretImportId}]`);

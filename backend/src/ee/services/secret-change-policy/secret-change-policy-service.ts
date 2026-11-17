@@ -90,7 +90,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
-    enforceImportReplication = false,
+    enforceImportReplication,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {

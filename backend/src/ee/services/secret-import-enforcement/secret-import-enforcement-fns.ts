@@ -3,12 +3,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 // Same precedence as the replication job (`$getReplicatedSecretsV2` in secret-replication-service.ts): the
 // source's own secrets first, then its imports from last to first. The copy a conversion writes has to equal
 // the one the job would write, or the job's next run would report the difference as a change.
-export const mergeReplicatedSecrets = <T extends { key: string }>(
-  localSecrets: T[],
-  importedSecrets: { secrets: T[] }[]
-): T[] => {
+export const mergeReplicatedSecrets = <TLocal extends { key: string }, TImported extends { key: string }>(
+  localSecrets: TLocal[],
+  importedSecrets: { secrets: TImported[] }[]
+): (TLocal | TImported)[] => {
   const seen = new Set<string>(localSecrets.map(({ key }) => key));
-  const secrets = [...localSecrets];
+  const secrets: (TLocal | TImported)[] = [...localSecrets];
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
     importedSecrets[i].secrets.forEach((secret) => {

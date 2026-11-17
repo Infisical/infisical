@@ -199,6 +199,7 @@ const create = (service: TService, overrides: Partial<TCreateInput> = {}) =>
     environment: "dev",
     enforcementLevel: EnforcementLevel.Hard,
     allowedSelfApprovals: true,
+    enforceImportReplication: false,
     bypassForMachineIdentities: false,
     ...overrides
   });

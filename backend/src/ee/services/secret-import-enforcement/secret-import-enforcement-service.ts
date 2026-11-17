@@ -13,7 +13,7 @@ import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { MAX_OUTBOX_ATTEMPTS, TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -44,19 +44,6 @@ import { fingerprintReplicatedSecrets, mergeReplicatedSecrets } from "./secret-i
 
 const CONVERSION_EVENT_BATCH_SIZE = 500;
 const COPY_BATCH_SIZE = 500;
-
-type TSeedSecret = {
-  id: string;
-  key: string;
-  type: string;
-  folderId: string;
-  metadata?: unknown;
-  encryptedValue?: Buffer | null;
-  encryptedComment?: Buffer | null;
-  skipMultilineEncoding?: boolean | null;
-  secretValue?: string;
-  rawSecretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[] | null;
-};
 
 export const SOURCE_CHANGED_DURING_CONVERSION_STATUS =
   "The source changed while this import was being converted to a replication import. Resync it to review the changes as a change request.";
@@ -227,31 +214,14 @@ export const secretImportEnforcementServiceFactory = ({
       kmsService
     });
 
-    const toSeedSecret = (
-      secret: (typeof sourceLocalSecrets)[number] | (typeof sourceImportedSecrets)[number]["secrets"][number],
-      secretValue: string | undefined,
-      rawSecretMetadata: TSeedSecret["rawSecretMetadata"]
-    ): TSeedSecret => ({
-      id: secret.id,
-      key: secret.key,
-      type: secret.type,
-      folderId: secret.folderId,
-      metadata: secret.metadata,
-      encryptedValue: secret.encryptedValue,
-      encryptedComment: secret.encryptedComment,
-      skipMultilineEncoding: secret.skipMultilineEncoding,
-      secretValue,
-      rawSecretMetadata
-    });
-
     // Like the job, only the source's own secrets carry their metadata into the copy.
     return mergeReplicatedSecrets(
-      sourceLocalSecrets.map((secret) =>
-        toSeedSecret(secret, secret.encryptedValue ? decrypt(secret.encryptedValue) : undefined, secret.secretMetadata)
-      ),
-      sourceImportedSecrets.map(({ secrets }) => ({
-        secrets: secrets.map((secret) => toSeedSecret(secret, secret.secretValue, undefined))
-      }))
+      sourceLocalSecrets.map((secret) => ({
+        ...secret,
+        secretValue: secret.encryptedValue ? decrypt(secret.encryptedValue) : undefined,
+        rawSecretMetadata: secret.secretMetadata
+      })),
+      sourceImportedSecrets
     );
   };
 
@@ -291,7 +261,7 @@ export const secretImportEnforcementServiceFactory = ({
     }
   };
 
-  const convertImport = async (
+  const $convertImport = async (
     data: TSecretImportReplicationConversionRequestedEventData
   ): Promise<SecretImportConversionOutcome> => {
     const { secretImportId, projectId } = data;
@@ -334,7 +304,7 @@ export const secretImportEnforcementServiceFactory = ({
         encryptedValue: secret.encryptedValue,
         encryptedComment: secret.encryptedComment,
         skipMultilineEncoding: secret.skipMultilineEncoding,
-        secretMetadata: secret.rawSecretMetadata ?? undefined,
+        secretMetadata: "rawSecretMetadata" in secret ? (secret.rawSecretMetadata ?? undefined) : undefined,
         references: secret.secretValue ? getAllSecretReferences(secret.secretValue).nestedReferences : [],
         blindIndexes: secret.secretValue
           ? await blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue))
@@ -477,16 +447,23 @@ export const secretImportEnforcementServiceFactory = ({
     return SecretImportConversionOutcome.Converted;
   };
 
-  const auditConversionFailure = async (data: TSecretImportReplicationConversionRequestedEventData, reason: string) => {
-    const secretImport = await secretImportDAL.findById(data.secretImportId, secretImportDAL.primaryNode());
-    await $auditOutcome({
-      data,
-      sourceEnvironment: secretImport?.importEnv.slug ?? "",
-      sourcePath: secretImport?.importPath ?? "",
-      outcome: "failed",
-      reason
-    });
+  const convertImport = async (data: TSecretImportReplicationConversionRequestedEventData, isFinalAttempt: boolean) => {
+    try {
+      return await $convertImport(data);
+    } catch (error) {
+      if (isFinalAttempt) {
+        const secretImport = await secretImportDAL.findById(data.secretImportId, secretImportDAL.primaryNode());
+        await $auditOutcome({
+          data,
+          sourceEnvironment: secretImport?.importEnv.slug ?? "",
+          sourcePath: secretImport?.importPath ?? "",
+          outcome: "failed",
+          reason: `Infisical could not convert this import to a replication import after ${MAX_OUTBOX_ATTEMPTS} attempts (${error instanceof Error ? error.message : "Unknown error"}). It still reads the source directly. Save the secret change policy again to retry.`
+        });
+      }
+      throw error;
+    }
   };
 
-  return { requestConversions, convertImport, auditConversionFailure };
+  return { requestConversions, convertImport };
 };
