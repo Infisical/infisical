@@ -38,7 +38,7 @@ export type TDirectoryMachine = {
 
 type TDirectoryComputer = {
   dnsHostName: string | null;
-  isDisabled: boolean;
+  isDisabled: boolean | null;
   samAccountName: string;
 };
 
@@ -329,6 +329,13 @@ const toDirectoryGroup = (entry: ldap.SearchEntry): TDirectoryGroup[] => {
   return sid ? [{ sid: sidBufferToString(sid), name: getLdapAttribute(entry, "cn") }] : [];
 };
 
+export const readAccountDisabledFlag = (userAccountControl: string) => {
+  const flags = Number(userAccountControl);
+  if (!userAccountControl.trim() || !Number.isSafeInteger(flags)) return null;
+  // eslint-disable-next-line no-bitwise
+  return (flags & USER_ACCOUNT_CONTROL_ACCOUNT_DISABLED) !== 0;
+};
+
 export const findDirectoryComputerBySid = async (
   { config, sid }: { config: TLdapConnectionConfig; sid: string },
   gatewayServices: TLdapDirectoryGatewayServices
@@ -347,8 +354,7 @@ export const findDirectoryComputerBySid = async (
 
   return {
     dnsHostName: getLdapAttribute(entry, "dNSHostName") || null,
-    // eslint-disable-next-line no-bitwise
-    isDisabled: (Number(getLdapAttribute(entry, "userAccountControl")) & USER_ACCOUNT_CONTROL_ACCOUNT_DISABLED) !== 0,
+    isDisabled: readAccountDisabledFlag(getLdapAttribute(entry, "userAccountControl")),
     samAccountName: getLdapAttribute(entry, "sAMAccountName")
   };
 };
@@ -356,17 +362,20 @@ export const findDirectoryComputerBySid = async (
 export const searchDirectoryGroups = async (
   { config, search }: { config: TLdapConnectionConfig; search?: string },
   gatewayServices: TLdapDirectoryGatewayServices
-): Promise<TDirectoryGroup[]> => {
+): Promise<{ groups: TDirectoryGroup[]; isTruncated: boolean }> => {
   const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
   const entries = await searchDomain(config, gatewayServices, {
     filter: escapedSearch
       ? `(&(objectCategory=group)(|(cn=*${escapedSearch}*)(sAMAccountName=*${escapedSearch}*)))`
       : "(objectCategory=group)",
     attributes: ["cn", "objectSid"],
-    sizeLimit: DIRECTORY_GROUP_LIST_LIMIT
+    sizeLimit: DIRECTORY_GROUP_LIST_LIMIT + 1
   });
 
-  return entries.flatMap(toDirectoryGroup);
+  return {
+    groups: entries.slice(0, DIRECTORY_GROUP_LIST_LIMIT).flatMap(toDirectoryGroup),
+    isTruncated: entries.length > DIRECTORY_GROUP_LIST_LIMIT
+  };
 };
 
 export const resolveDirectorySidNames = async (

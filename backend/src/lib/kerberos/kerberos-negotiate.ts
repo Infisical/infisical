@@ -19,6 +19,10 @@ const KERBEROS_AP_REPLY_MESSAGE_TYPE = 15;
 const SPNEGO_ACCEPT_COMPLETED = 0;
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const COMPUTER_ACCOUNT_SUFFIX = "$";
+const GSS_CHECKSUM_TYPE = 0x8003;
+const GSS_CHECKSUM_BINDINGS_LENGTH = 16;
+const GSS_CHECKSUM_BINDINGS_OFFSET = 4;
+const GSS_CHECKSUM_MIN_LENGTH = 24;
 
 enum MechanismOid {
   Spnego = "1.3.6.1.5.5.2",
@@ -75,6 +79,7 @@ type TAuthenticator = {
   microseconds: number;
   time: Date;
   sequenceNumber: number | null;
+  checksum: { type: number; value: Buffer } | null;
 };
 
 const parseDer = (data: Buffer) => {
@@ -309,6 +314,12 @@ const parseEncTicketPart = (plain: Buffer): TTicket => {
   };
 };
 
+const readChecksum = (fields: TAsn1Fields, tagNumber: number) => {
+  if (!fields.has(tagNumber)) return null;
+  const checksum = readFields(fields.get(tagNumber));
+  return { type: readInteger(checksum, 0), value: readOctets(checksum, 1) };
+};
+
 const parseAuthenticator = (plain: Buffer): TAuthenticator => {
   const fields = readFields(
     unwrapTag(parseDer(plain).block, Asn1TagClass.Application, KerberosApplicationTag.Authenticator)
@@ -316,10 +327,36 @@ const parseAuthenticator = (plain: Buffer): TAuthenticator => {
   return {
     clientRealm: readString(fields, 1),
     clientName: readPrincipalName(fields, 2),
+    checksum: readChecksum(fields, 3),
     microseconds: readInteger(fields, 4),
     time: readTime(fields, 5),
     sequenceNumber: readOptionalInteger(fields, 7)
   };
+};
+
+const hasChannelBinding = (checksum: TAuthenticator["checksum"]) => {
+  if (
+    !checksum ||
+    checksum.type !== GSS_CHECKSUM_TYPE ||
+    checksum.value.length < GSS_CHECKSUM_MIN_LENGTH ||
+    checksum.value.readUInt32LE(0) !== GSS_CHECKSUM_BINDINGS_LENGTH
+  ) {
+    return false;
+  }
+  return checksum.value
+    .subarray(GSS_CHECKSUM_BINDINGS_OFFSET, GSS_CHECKSUM_BINDINGS_OFFSET + GSS_CHECKSUM_BINDINGS_LENGTH)
+    .some((byte) => byte !== 0);
+};
+
+const verifyChannelBinding = (authenticator: TAuthenticator, context: TErrorContext) => {
+  if (!hasChannelBinding(authenticator.checksum)) {
+    throw new KerberosError({
+      reason: KerberosFailureReason.MissingChannelBinding,
+      message:
+        "The request was refused because its Kerberos authenticator carries no channel binding, so it did not come over HTTPS with channel binding. Make sure computers reach the enrollment URL over HTTPS.",
+      ...context
+    });
+  }
 };
 
 const verifyTicketClaims = async ({
@@ -554,6 +591,7 @@ export const verifyNegotiateToken = async ({
     context
   );
 
+  verifyChannelBinding(authenticator, context);
   await verifyTicketClaims({ ticket, authenticator, checkReplay, context });
   const logonInfo = readPacLogonInfo(ticket, keytabEntry.key, context);
   if (!ticket.clientName.endsWith(COMPUTER_ACCOUNT_SUFFIX)) {

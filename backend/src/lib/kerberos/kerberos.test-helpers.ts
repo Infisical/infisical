@@ -16,6 +16,8 @@ const MICROSOFT_KERBEROS_OID = "1.2.840.48018.1.2.2";
 const SPNEGO_OID = "1.3.6.1.5.5.2";
 const AP_REQUEST_TOKEN_ID = Buffer.from([0x01, 0x00]);
 const MUTUAL_REQUIRED_FLAG = 0x20;
+const GSS_CHECKSUM_TYPE = 0x8003;
+const GSS_MUTUAL_AND_INTEGRITY_FLAGS = 0x22;
 
 const uint16BE = (value: number) => {
   const bytes = Buffer.alloc(2);
@@ -38,6 +40,14 @@ const uint32BE = (value: number) => {
 const countedString = (value: string) => {
   const bytes = Buffer.from(value, "utf8");
   return Buffer.concat([uint16BE(bytes.length), bytes]);
+};
+
+export const buildTestGssChecksumValue = (channelBindings: Buffer = crypto.randomBytes(16)) => {
+  const value = Buffer.alloc(24);
+  value.writeUInt32LE(channelBindings.length, 0);
+  channelBindings.copy(value, 4);
+  value.writeUInt32LE(GSS_MUTUAL_AND_INTEGRITY_FLAGS, 20);
+  return value;
 };
 
 export const buildTestKeytab = (entries: TKeytabEntry[], extraEntries: Buffer[] = []) => {
@@ -271,6 +281,7 @@ export type TTestNegotiateOptions = {
   isSpnego?: boolean;
   pac?: Buffer | null;
   authenticatorKey?: Buffer;
+  checksum?: { type: number; value: Buffer } | null;
 };
 
 export const wholeSecondsNow = () => new Date(Math.floor(Date.now() / 1000) * 1000);
@@ -289,7 +300,8 @@ export const buildTestNegotiateHeader = ({
   isMutualRequired = true,
   isSpnego = true,
   pac = buildTestPac({ serviceKey }),
-  authenticatorKey
+  authenticatorKey,
+  checksum = { type: GSS_CHECKSUM_TYPE, value: buildTestGssChecksumValue() }
 }: TTestNegotiateOptions) => {
   const sessionKey = crypto.randomBytes(32);
   const authorizationData =
@@ -363,6 +375,19 @@ export const buildTestNegotiateHeader = ({
         contextTag(0, integer(5)),
         contextTag(1, new asn1js.GeneralString({ value: TEST_REALM })),
         contextTag(2, principalName(authenticatorClientName)),
+        ...(checksum === null
+          ? []
+          : [
+              contextTag(
+                3,
+                new asn1js.Sequence({
+                  value: [
+                    contextTag(0, integer(checksum.type)),
+                    contextTag(1, new asn1js.OctetString({ valueHex: checksum.value }))
+                  ]
+                })
+              )
+            ]),
         contextTag(4, integer(microseconds)),
         contextTag(5, new asn1js.GeneralizedTime({ valueDate: time })),
         ...(sequenceNumber === null ? [] : [contextTag(7, integer(sequenceNumber))])

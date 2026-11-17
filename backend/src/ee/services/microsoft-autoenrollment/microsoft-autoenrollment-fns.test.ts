@@ -1,8 +1,13 @@
 import dns from "node:dns/promises";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+
 import {
+  getMicrosoftAutoenrollmentUnsupportedReason,
   isComputerInAllowedGroups,
+  mergeAllowedGroups,
   normalizeHttpServicePrincipalName,
   resolveCanonicalHostname
 } from "./microsoft-autoenrollment-fns";
@@ -12,12 +17,65 @@ const SERVERS_SID = "S-1-5-21-1111111111-2222222222-3333333333-1200";
 
 describe("isComputerInAllowedGroups", () => {
   test.each([
-    ["no allowed groups", null, true],
     ["an empty allowed group list", [], true],
     ["a group the computer is in", [SERVERS_SID, DOMAIN_COMPUTERS_SID], true],
     ["only groups the computer is not in", [SERVERS_SID], false]
   ])("%s", (_name, allowedGroupSids, expected) => {
-    expect(isComputerInAllowedGroups(allowedGroupSids, [DOMAIN_COMPUTERS_SID])).toBe(expected);
+    const allowedGroups = allowedGroupSids.map((sid) => ({ sid, name: null }));
+    expect(isComputerInAllowedGroups(allowedGroups, [DOMAIN_COMPUTERS_SID])).toBe(expected);
+  });
+});
+
+describe("mergeAllowedGroups", () => {
+  test("names each group from the directory, then from the stored list, in the order sent", () => {
+    expect(
+      mergeAllowedGroups([SERVERS_SID, DOMAIN_COMPUTERS_SID], { [DOMAIN_COMPUTERS_SID]: "Domain Computers" }, [
+        { sid: SERVERS_SID, name: "Servers" }
+      ])
+    ).toEqual([
+      { sid: SERVERS_SID, name: "Servers" },
+      { sid: DOMAIN_COMPUTERS_SID, name: "Domain Computers" }
+    ]);
+  });
+
+  test("leaves a group the directory and the stored list cannot name without a name", () => {
+    expect(mergeAllowedGroups([SERVERS_SID], null, [])).toEqual([{ sid: SERVERS_SID, name: null }]);
+  });
+});
+
+describe("getMicrosoftAutoenrollmentUnsupportedReason", () => {
+  const withCa = (ca: unknown) => ({ findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) });
+  const internalCa = (keyAlgorithm: string) => ({ id: "ca-id", externalCa: null, internalCa: { keyAlgorithm } });
+
+  test.each([
+    ["an RSA profile on an RSA certificate authority", undefined, internalCa("RSA_2048")],
+    [
+      "an elliptic curve profile on an elliptic curve certificate authority",
+      CertKeyAlgorithm.ECDSA_P384,
+      internalCa("EC_prime256v1")
+    ]
+  ])("is null for %s", async (_name, keyAlgorithm, ca) => {
+    await expect(
+      getMicrosoftAutoenrollmentUnsupportedReason({ profileSlug: "web", caId: "ca-id", keyAlgorithm }, withCa(ca))
+    ).resolves.toBeNull();
+  });
+
+  test("names an external certificate authority", async () => {
+    await expect(
+      getMicrosoftAutoenrollmentUnsupportedReason(
+        { profileSlug: "web", caId: "ca-id" },
+        withCa({ id: "ca-id", externalCa: { type: CaType.ACME } })
+      )
+    ).resolves.toMatch(/internal certificate authority/);
+  });
+
+  test("names a profile with no default key on an elliptic curve certificate authority, since it asks for RSA", async () => {
+    await expect(
+      getMicrosoftAutoenrollmentUnsupportedReason(
+        { profileSlug: "web", caId: "ca-id" },
+        withCa(internalCa("EC_prime256v1"))
+      )
+    ).resolves.toMatch(/asks Windows for an RSA key, but its certificate authority's key is EC_prime256v1/);
   });
 });
 

@@ -7,6 +7,7 @@ import { KerberosError } from "./kerberos-error";
 import { verifyNegotiateToken } from "./kerberos-negotiate";
 import { KerberosEncryptionType, KerberosFailureReason, KerberosKeyUsage } from "./kerberos-types";
 import {
+  buildTestGssChecksumValue,
   buildTestKeytabEntry,
   buildTestNegotiateHeader,
   buildTestPac,
@@ -19,6 +20,12 @@ import {
 } from "./kerberos.test-helpers";
 
 const MICROSOFT_KERBEROS_OID = "1.2.840.48018.1.2.2";
+
+const checksumWithBindingLength = (length: number) => {
+  const value = buildTestGssChecksumValue();
+  value.writeUInt32LE(length, 0);
+  return value;
+};
 
 const firstChild = (block: asn1js.BaseBlock) => {
   if (!(block instanceof asn1js.Constructed)) throw new Error("Expected a constructed ASN.1 value");
@@ -258,6 +265,33 @@ describe("verifyNegotiateToken", () => {
       }),
       KerberosFailureReason.InvalidPacSignature
     );
+  });
+
+  test("accepts an authenticator bound to a TLS channel", async () => {
+    const result = await verifyToken({
+      checksum: { type: 0x8003, value: buildTestGssChecksumValue(Buffer.alloc(16, 0xab)) }
+    });
+
+    expect(result.clientName).toBe(TEST_COMPUTER_NAME);
+  });
+
+  test.each<[string, TTestNegotiateOptions["checksum"]]>([
+    ["has no checksum", null],
+    ["has a checksum that is not a GSS checksum", { type: 16, value: buildTestGssChecksumValue() }],
+    ["has an all-zero channel binding", { type: 0x8003, value: buildTestGssChecksumValue(Buffer.alloc(16)) }],
+    [
+      "has a GSS checksum too short to hold flags",
+      { type: 0x8003, value: buildTestGssChecksumValue().subarray(0, 20) }
+    ],
+    ["has a GSS checksum with the wrong binding length", { type: 0x8003, value: checksumWithBindingLength(32) }]
+  ])("refuses an authenticator that %s", async (_, checksum) => {
+    const checkReplay = vi.fn().mockResolvedValue(true);
+    const { authorizationHeader } = buildTestNegotiateHeader({ serviceKey: keytabEntry.key, checksum });
+
+    await expectFailure(verify(authorizationHeader, checkReplay), KerberosFailureReason.MissingChannelBinding, {
+      clientName: TEST_COMPUTER_NAME
+    });
+    expect(checkReplay).not.toHaveBeenCalled();
   });
 
   test("refuses a user account", async () => {

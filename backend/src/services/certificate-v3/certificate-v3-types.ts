@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -70,6 +72,7 @@ export type TSignCertificateFromProfileDTO = {
   originalCertificateId?: string;
   issuerNameOverride?: TIssuerNameOverride;
   additionalExtensions?: TIssuerAddedExtension[];
+  onCertificateRequestPersisted?: (certificateRequestId: string, tx: Knex) => Promise<void>;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

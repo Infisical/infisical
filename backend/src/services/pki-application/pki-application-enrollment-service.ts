@@ -1,21 +1,22 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ResourceType, TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
+import { ResourceType } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
+  buildMicrosoftAutoenrollmentState,
+  MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS,
+  resolveMicrosoftAutoenrollmentAllowedGroups,
+  resolveMicrosoftAutoenrollmentConnection,
+  resolveMicrosoftAutoenrollmentKeytab,
+  searchMicrosoftAutoenrollmentGroups
+} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-enrollment-fns";
+import {
   assertProfileCaSupportsMicrosoftAutoenrollment,
-  buildPolicyUrl,
-  mergeAllowedGroupNames,
-  readUploadedKeytab,
-  resolveAllowedGroupNames,
+  getMicrosoftAutoenrollmentUnsupportedReason,
   resolveInstanceServicePrincipalName
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
-import {
-  buildPolicyId,
-  buildTemplateOid
-} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { MicrosoftAutoenrollmentKeytabSource } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -32,17 +33,10 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { TProjectPermission } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TLdapConnectionConfig } from "@app/services/app-connection/ldap/ldap-connection-types";
-import {
-  assertLdapProviderIsSupported,
-  resolveDirectorySidNames,
-  searchDirectoryGroups
-} from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
@@ -133,7 +127,7 @@ type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
     allowedGroupSids?: string[] | null;
     renewBeforeDays?: number;
     keytab?: string;
-    reuseKeytab?: { servicePrincipalName: string; keyVersion: number };
+    reuseKeytab?: { profileId: string };
   };
   actorRootOrgId: string;
   actorParentOrgId: string;
@@ -153,9 +147,7 @@ type TGetMicrosoftAutoenrollmentServicePrincipalDTO = {
   profileId: string;
 } & TProjectPermission;
 
-const MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS = 42;
-
-const sortedSids = (sids: string[] | null | undefined) => [...(sids ?? [])].sort().join(",");
+const sortedSids = (sids: string[]) => [...sids].sort().join(",");
 
 type TPkiApplicationEnrollmentServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -291,41 +283,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     return { junction, application };
   };
 
-  const $buildMicrosoftAutoenrollmentState = ({
-    applicationId,
-    profileId,
-    applicationProfileId,
-    profileName,
-    config
-  }: {
-    applicationId: string;
-    profileId: string;
-    applicationProfileId: string;
-    profileName: string;
-    config: TPkiMicrosoftAutoenrollmentConfigs;
-  }) => ({
-    policyUrl: buildPolicyUrl(applicationId, profileId),
-    policyId: buildPolicyId(applicationProfileId),
-    templateName: profileName,
-    templateOid: buildTemplateOid(applicationProfileId),
-    allowedGroups: (config.allowedGroupSids ?? []).map((sid) => ({
-      sid,
-      name: (config.allowedGroupNames as Record<string, string | null> | null)?.[sid] ?? null
-    })),
-    renewBeforeDays: config.renewBeforeDays,
-    servicePrincipalName: config.servicePrincipalName,
-    keyVersion: config.keyVersion,
-    connectionId: config.appConnectionId,
-    keytabMismatch:
-      config.mismatchedServicePrincipalName && config.mismatchFirstSeenAt
-        ? {
-            servicePrincipalName: config.mismatchedServicePrincipalName,
-            firstSeenAt: config.mismatchFirstSeenAt,
-            requestCount: config.mismatchRequestCount
-          }
-        : null
-  });
-
   const getEnrollment = async ({
     applicationId,
     profileId,
@@ -352,6 +309,16 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     const profile = await certificateProfileDAL.findById(profileId);
     const caType = await resolveCaType(profile?.caId, certificateAuthorityDAL);
+    const microsoftAutoenrollmentUnsupportedReason = profile
+      ? await getMicrosoftAutoenrollmentUnsupportedReason(
+          {
+            profileSlug: profile.slug,
+            caId: profile.caId,
+            keyAlgorithm: (profile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm
+          },
+          certificateAuthorityDAL
+        )
+      : null;
 
     const microsoftAutoenrollmentConfigs =
       await microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId(applicationId);
@@ -408,7 +375,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           }
         : null,
       microsoftAutoenrollment: microsoftAutoenrollmentConfig
-        ? $buildMicrosoftAutoenrollmentState({
+        ? buildMicrosoftAutoenrollmentState({
             applicationId,
             profileId,
             applicationProfileId: junction.id,
@@ -426,6 +393,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           connectionId: config.appConnectionId
         })),
       caType,
+      microsoftAutoenrollmentUnsupportedReason,
       estConfigured: Boolean(junction.estConfigId),
       acmeConfigured: Boolean(junction.acmeConfigId),
       scepConfigured: Boolean(junction.scepConfigId),
@@ -1049,133 +1017,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     return { applicationId, applicationName: application.name, profileId };
   };
 
-  const $withActiveDirectoryErrors =
-    (connection: { id: string; name: string }) =>
-    (err: unknown): never => {
-      if (err instanceof BadRequestError) throw err;
-      logger.warn({ err }, `Unable to search Active Directory [connectionId=${connection.id}]`);
-      throw new BadRequestError({
-        message: `Could not search Active Directory with the LDAP connection '${connection.name}'. Check that the directory is reachable and the connection's credentials are valid.`
-      });
-    };
-
-  const $searchMicrosoftAutoenrollmentGroups = (connection: { id: string; name: string }, search?: string) =>
-    searchDirectoryGroups(
-      { config: connection as unknown as TLdapConnectionConfig, search },
-      { gatewayV2Service, gatewayPoolService }
-    ).catch($withActiveDirectoryErrors(connection));
-
-  const $resolveNewConnectionGroupNames = async (
-    connection: { id: string; name: string },
-    allowedGroupSids: string[]
-  ): Promise<Record<string, string | null>> => {
-    if (!allowedGroupSids.length) {
-      await $searchMicrosoftAutoenrollmentGroups(connection);
-      return {};
-    }
-    return resolveDirectorySidNames(
-      { config: connection as unknown as TLdapConnectionConfig, sids: allowedGroupSids },
-      { gatewayV2Service, gatewayPoolService }
-    ).catch($withActiveDirectoryErrors(connection));
-  };
-
-  const $resolveMicrosoftAutoenrollmentConnection = async ({
-    connectionId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    actorRootOrgId,
-    actorParentOrgId
-  }: Omit<TListMicrosoftAutoenrollmentGroupsDTO, "applicationId" | "profileId" | "search">) => {
-    const connection = await appConnectionService.validateAppConnectionUsageById(
-      AppConnection.LDAP,
-      { connectionId, projectId },
-      {
-        id: actorId,
-        type: actor,
-        orgId: actorOrgId,
-        authMethod: actorAuthMethod,
-        rootOrgId: actorRootOrgId,
-        parentOrgId: actorParentOrgId
-      }
-    );
-    assertLdapProviderIsSupported(
-      (connection.credentials as { provider?: string } | undefined)?.provider,
-      connection.name,
-      "Microsoft Autoenrollment looks computers up by their security identifier in Active Directory, so it requires an Active Directory connection."
-    );
-    return connection;
-  };
-
-  const $encryptKeytab = async (certificateManagerKmsId: string, keytabFile: Buffer) => {
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-    return kmsEncryptor({ plainText: keytabFile });
-  };
-
-  const $resolveMicrosoftAutoenrollmentKeytab = async ({
-    applicationId,
-    applicationName,
-    profileId,
-    projectId,
-    keytab,
-    reuseKeytab
-  }: {
-    applicationId: string;
-    applicationName: string;
-    profileId: string;
-    projectId: string;
-    keytab?: string;
-    reuseKeytab?: { servicePrincipalName: string; keyVersion: number };
-  }) => {
-    if (keytab) {
-      const keytabFile = Buffer.from(keytab, "base64");
-      const { servicePrincipalName, keyVersion } = readUploadedKeytab(keytabFile);
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const { cipherTextBlob } = await $encryptKeytab(certificateManagerKmsId, keytabFile);
-      return {
-        source: MicrosoftAutoenrollmentKeytabSource.Uploaded,
-        encryptedKeytab: cipherTextBlob,
-        servicePrincipalName,
-        keyVersion,
-        reusedFromProfileId: undefined,
-        reusedFromProfileName: undefined
-      };
-    }
-
-    if (reuseKeytab) {
-      const configs = await microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId(applicationId);
-      const source = configs.find(
-        (config) =>
-          config.profileId !== profileId &&
-          config.servicePrincipalName === reuseKeytab.servicePrincipalName &&
-          config.keyVersion === reuseKeytab.keyVersion
-      );
-      if (!source) {
-        throw new BadRequestError({
-          message: `No other profile in application '${applicationName}' has a keytab for '${reuseKeytab.servicePrincipalName}' with key version ${reuseKeytab.keyVersion}. Upload the keytab file instead.`
-        });
-      }
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
-      const { cipherTextBlob } = await $encryptKeytab(
-        certificateManagerKmsId,
-        await kmsDecryptor({ cipherTextBlob: source.encryptedKeytab })
-      );
-      return {
-        source: MicrosoftAutoenrollmentKeytabSource.Reused,
-        encryptedKeytab: cipherTextBlob,
-        servicePrincipalName: source.servicePrincipalName,
-        keyVersion: source.keyVersion,
-        reusedFromProfileId: source.profileId,
-        reusedFromProfileName: source.profileName
-      };
-    }
-
-    return null;
-  };
-
   const setMicrosoftAutoenrollmentEnrollment = async ({
     applicationId,
     profileId,
@@ -1227,40 +1068,61 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       certificateAuthorityDAL
     );
 
-    const connection = config.connectionId
-      ? await $resolveMicrosoftAutoenrollmentConnection({
-          connectionId: config.connectionId,
-          projectId,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
-          actorRootOrgId,
-          actorParentOrgId
-        })
-      : existingConfig && (await appConnectionDAL.findById(existingConfig.appConnectionId));
-    if (!connection) {
+    const storedGroups = existingConfig?.allowedGroups ?? [];
+    const allowedGroupSids =
+      config.allowedGroupSids === undefined ? storedGroups.map((group) => group.sid) : (config.allowedGroupSids ?? []);
+    const isAllowedGroupSidsChanged =
+      sortedSids(allowedGroupSids) !== sortedSids(storedGroups.map((group) => group.sid));
+
+    const connectionId = config.connectionId ?? existingConfig?.appConnectionId;
+    if (!connectionId) {
       throw new BadRequestError({
         message:
           "Select the LDAP connection used to look up computers in Active Directory to turn on Microsoft Autoenrollment."
       });
     }
+    const isConnectionChanged = connectionId !== existingConfig?.appConnectionId;
+    const isAllowedGroupsChanged = isConnectionChanged || isAllowedGroupSidsChanged;
 
-    const allowedGroupSids =
-      config.allowedGroupSids === undefined ? (existingConfig?.allowedGroupSids ?? null) : config.allowedGroupSids;
-    const isConnectionChanged = connection.id !== existingConfig?.appConnectionId;
-    const newConnectionGroupNames = isConnectionChanged
-      ? await $resolveNewConnectionGroupNames(connection, allowedGroupSids ?? [])
-      : undefined;
+    const isDirectoryLookupNeeded = isAllowedGroupsChanged && allowedGroupSids.length > 0;
+    const connection =
+      config.connectionId || isDirectoryLookupNeeded
+        ? await resolveMicrosoftAutoenrollmentConnection(
+            {
+              connectionId,
+              projectId,
+              actor,
+              actorId,
+              actorAuthMethod,
+              actorOrgId,
+              actorRootOrgId,
+              actorParentOrgId
+            },
+            { appConnectionService }
+          )
+        : await appConnectionDAL.findById(connectionId);
+    if (!connection) {
+      throw new NotFoundError({ message: `LDAP connection with ID '${connectionId}' not found.` });
+    }
 
-    const newKeytab = await $resolveMicrosoftAutoenrollmentKeytab({
-      applicationId,
-      applicationName: application.name,
-      profileId,
-      projectId,
-      keytab: config.keytab,
-      reuseKeytab: config.reuseKeytab
-    });
+    const allowedGroups = isAllowedGroupsChanged
+      ? await resolveMicrosoftAutoenrollmentAllowedGroups(
+          { connection, isConnectionChanged, allowedGroupSids, storedGroups },
+          { gatewayV2Service, gatewayPoolService }
+        )
+      : storedGroups;
+
+    const newKeytab = await resolveMicrosoftAutoenrollmentKeytab(
+      {
+        applicationId,
+        applicationName: application.name,
+        profileId,
+        projectId,
+        keytab: config.keytab,
+        reuseKeytab: config.reuseKeytab
+      },
+      { microsoftAutoenrollmentEnrollmentConfigDAL, kmsService, projectDAL }
+    );
     const keytab = newKeytab ?? existingConfig;
     if (!keytab) {
       throw new BadRequestError({
@@ -1274,43 +1136,27 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       servicePrincipalName: keytab.servicePrincipalName,
       keyVersion: keytab.keyVersion,
       appConnectionId: connection.id,
-      allowedGroupSids,
       renewBeforeDays:
         config.renewBeforeDays ?? existingConfig?.renewBeforeDays ?? MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS,
       ...(newKeytab && { mismatchedServicePrincipalName: null, mismatchFirstSeenAt: null, mismatchRequestCount: 0 })
     };
-    const isAllowedGroupsChanged =
-      isConnectionChanged || sortedSids(allowedGroupSids) !== sortedSids(existingConfig?.allowedGroupSids);
+    const storedAllowedGroups = allowedGroups.length ? JSON.stringify(allowedGroups) : null;
     const isConfigChanged =
       Boolean(newKeytab) || isAllowedGroupsChanged || configFields.renewBeforeDays !== existingConfig?.renewBeforeDays;
-    const storedGroupNames = (existingConfig?.allowedGroupNames ?? {}) as Record<string, string | null>;
-    let allowedGroupNames: Record<string, string | null> | undefined;
-    if (newConnectionGroupNames) {
-      allowedGroupNames = mergeAllowedGroupNames(allowedGroupSids ?? [], newConnectionGroupNames, storedGroupNames);
-    } else if (isAllowedGroupsChanged) {
-      allowedGroupNames = await resolveAllowedGroupNames(
-        {
-          allowedGroupSids: allowedGroupSids ?? [],
-          appConnectionId: connection.id,
-          storedNames: storedGroupNames
-        },
-        { appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService }
-      );
-    }
 
     const savedConfig = await pkiApplicationProfileDAL.transaction(async (tx) => {
       if (existingConfig) {
         return isConfigChanged
           ? microsoftAutoenrollmentEnrollmentConfigDAL.updateById(
               existingConfig.id,
-              { ...configFields, ...(allowedGroupNames && { allowedGroupNames }), $incr: { templateMinorRevision: 1 } },
+              { ...configFields, allowedGroups: storedAllowedGroups, $incr: { templateMinorRevision: 1 } },
               tx
             )
           : existingConfig;
       }
 
       const created = await microsoftAutoenrollmentEnrollmentConfigDAL.create(
-        { ...configFields, allowedGroupNames, applicationProfileId: junction.id },
+        { ...configFields, allowedGroups: storedAllowedGroups, applicationProfileId: junction.id },
         tx
       );
       await pkiApplicationProfileDAL.update(
@@ -1325,12 +1171,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       applicationId,
       applicationName: application.name,
       profileId,
-      microsoftAutoenrollment: $buildMicrosoftAutoenrollmentState({
+      microsoftAutoenrollment: buildMicrosoftAutoenrollmentState({
         applicationId,
         profileId,
         applicationProfileId: junction.id,
         profileName: profile.slug,
-        config: savedConfig
+        config: { ...savedConfig, allowedGroups }
       }),
       isChanged: !existingConfig || isConfigChanged,
       connectionName: connection.name,
@@ -1424,19 +1270,20 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorParentOrgId
   }: TListMicrosoftAutoenrollmentGroupsDTO) => {
     await $assertEditEnrollment(applicationId, profileId, projectId, actor, actorId, actorAuthMethod, actorOrgId);
-    const connection = await $resolveMicrosoftAutoenrollmentConnection({
-      connectionId,
-      projectId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      actorRootOrgId,
-      actorParentOrgId
-    });
-
-    const groups = await $searchMicrosoftAutoenrollmentGroups(connection, search);
-    return { groups };
+    const connection = await resolveMicrosoftAutoenrollmentConnection(
+      {
+        connectionId,
+        projectId,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
+        actorRootOrgId,
+        actorParentOrgId
+      },
+      { appConnectionService }
+    );
+    return searchMicrosoftAutoenrollmentGroups(connection, search, { gatewayV2Service, gatewayPoolService });
   };
 
   const getMicrosoftAutoenrollmentServicePrincipal = async ({

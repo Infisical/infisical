@@ -1756,6 +1756,109 @@ describe("CertificateV3Service", () => {
       expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
     });
 
+    it("records the request number hook inside the issuance transaction", async () => {
+      const issuanceTx = { isTransaction: true };
+      const onCertificateRequestPersisted = vi.fn().mockResolvedValue(undefined);
+      mockCertificateRequestService.createCertificateRequest.mockResolvedValue({
+        id: "sign-req-1",
+        createdAt: new Date()
+      });
+      vi.mocked(mockInternalCaService.signCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, issuanceTx);
+        return {
+          certificate: "cert",
+          certificateChain: "chain",
+          issuingCaCertificate: "ca",
+          certificateId: "cert-new"
+        };
+      }) as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.API,
+          onCertificateRequestPersisted,
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      expect(onCertificateRequestPersisted).toHaveBeenCalledWith("sign-req-1", issuanceTx);
+    });
+
+    describe("a renewal held for approval", () => {
+      const holdTx = { isTransaction: true };
+
+      const signHeldRenewal = (enrollmentType: EnrollmentType, onCertificateRequestPersisted = vi.fn()) =>
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          onCertificateRequestPersisted,
+          ...mockActor
+        });
+
+      beforeEach(() => {
+        mockApprovalPolicyService.matchPolicy.mockResolvedValue({
+          id: "approval-policy-1",
+          isActive: true,
+          bypassForMachineIdentities: false,
+          maxRequestTtl: null
+        });
+        mockCertificateRequestDAL.transaction.mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(holdTx)
+        );
+      });
+
+      it("stores the certificate a Microsoft Autoenrollment renewal replaces on the held request", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+          id: "profile-123",
+          projectId: "project-123",
+          caId: "ca-123",
+          certificatePolicyId: "policy-123",
+          slug: "web-servers",
+          enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+          apiConfigId: "api-config-123"
+        } as any);
+
+        const result = await signHeldRenewal(EnrollmentType.MICROSOFT_AUTOENROLLMENT);
+
+        expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [storedRequest] = mockCertificateRequestDAL.create.mock.calls[0];
+        expect(storedRequest.renewedFromCertificateId).toBe("cert-old");
+      });
+
+      it("does not store a renewal link for a method that leaves renewals unlinked", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+          id: "profile-123",
+          projectId: "project-123",
+          caId: "ca-123",
+          certificatePolicyId: "policy-123",
+          slug: "web-servers",
+          enrollmentType: EnrollmentType.EST,
+          apiConfigId: "api-config-123"
+        } as any);
+
+        const result = await signHeldRenewal(EnrollmentType.EST);
+
+        expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [storedRequest] = mockCertificateRequestDAL.create.mock.calls[0];
+        expect(storedRequest.renewedFromCertificateId).toBeNull();
+      });
+
+      it("runs the request number hook in the transaction that holds the request", async () => {
+        const onCertificateRequestPersisted = vi.fn().mockResolvedValue(undefined);
+
+        await signHeldRenewal(EnrollmentType.API, onCertificateRequestPersisted);
+
+        expect(onCertificateRequestPersisted).toHaveBeenCalledWith("cert-req-123", holdTx);
+      });
+    });
+
     it("keeps the additional extension on a request held for approval", async () => {
       mockApprovalPolicyService.matchPolicy.mockResolvedValue({
         id: "approval-policy-1",

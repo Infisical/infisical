@@ -24,7 +24,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType, PROTOCOL_ENROLLMENT_ACTORS } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -47,7 +47,8 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import {
   ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
-  IssuerType
+  IssuerType,
+  RENEWAL_LINKED_ENROLLMENT_TYPES
 } from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
@@ -498,9 +499,7 @@ export const certificateV3ServiceFactory = ({
         actorContext?.actor &&
         actorContext.actor !== ActorType.ACME_ACCOUNT &&
         actorContext.actor !== ActorType.ACME_PROFILE &&
-        actorContext.actor !== ActorType.EST_ACCOUNT &&
-        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
-        actorContext.actor !== ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT &&
+        !PROTOCOL_ENROLLMENT_ACTORS.has(actorContext.actor) &&
         actorContext.actorId &&
         actorContext.actorOrgId
       ) {
@@ -655,10 +654,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal:
-        actor === ActorType.EST_ACCOUNT ||
-        actor === ActorType.SCEP_ACCOUNT ||
-        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
 
@@ -1379,7 +1375,8 @@ export const certificateV3ServiceFactory = ({
     acmeOrderId,
     issuerNameOverride,
     additionalExtensions,
-    originalCertificateId
+    originalCertificateId,
+    onCertificateRequestPersisted
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1391,10 +1388,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal:
-        actor === ActorType.EST_ACCOUNT ||
-        actor === ActorType.SCEP_ACCOUNT ||
-        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
@@ -1534,6 +1528,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const renewedFromCertificateId = RENEWAL_LINKED_ENROLLMENT_TYPES.has(enrollmentType)
+      ? originalCertificateId
+      : undefined;
+
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
@@ -1587,6 +1585,7 @@ export const certificateV3ServiceFactory = ({
                   status: CertificateRequestStatus.PENDING_APPROVAL,
                   basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
                   customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
+                  renewedFromCertificateId: renewedFromCertificateId ?? null,
                   createdAt: certRequestCreatedAt
                 } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
                 tx
@@ -1601,6 +1600,8 @@ export const certificateV3ServiceFactory = ({
                   tx
                 });
               }
+
+              await onCertificateRequestPersisted?.(certRequest.id, tx);
 
               return certRequest;
             },
@@ -1768,14 +1769,12 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
-          const linkedOriginalCertificateId =
-            enrollmentType === EnrollmentType.MICROSOFT_AUTOENROLLMENT ? originalCertificateId : undefined;
-          if (linkedOriginalCertificateId) {
-            updateData.renewedFromCertificateId = linkedOriginalCertificateId;
+          if (renewedFromCertificateId) {
+            updateData.renewedFromCertificateId = renewedFromCertificateId;
           }
           await certificateDAL.updateById(newCert.id, updateData, tx);
-          if (linkedOriginalCertificateId) {
-            await linkRenewedCertificate(certificateDAL, linkedOriginalCertificateId, newCert.id, tx);
+          if (renewedFromCertificateId) {
+            await linkRenewedCertificate(certificateDAL, renewedFromCertificateId, newCert.id, tx);
           }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
@@ -1795,6 +1794,7 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
+          await onCertificateRequestPersisted?.(pendingRequest.id, tx);
 
           await $emitIssuanceAlert(
             {
@@ -1905,10 +1905,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal:
-        actor === ActorType.EST_ACCOUNT ||
-        actor === ActorType.SCEP_ACCOUNT ||
-        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
+      isInternal: PROTOCOL_ENROLLMENT_ACTORS.has(actor),
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(

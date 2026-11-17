@@ -196,6 +196,66 @@ describe("certificateApprovalService issuing an approved request", () => {
     expect(deps.internalCaService.signCertFromCa).not.toHaveBeenCalled();
   });
 
+  describe("persisting the issued certificate", () => {
+    const issuanceTx = { isTransaction: true };
+
+    const persistApproved = async (request: Record<string, unknown>) => {
+      deps.certificateDAL = {
+        updateById: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ id: "cert-old", orderId: null })
+      };
+      deps.resourceMetadataDAL = { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() };
+      deps.certificateAlertEventEmitter = { emit: vi.fn() };
+      deps.internalCaService.signCertFromCa.mockImplementation(
+        async ({ onPersisted }: { onPersisted: (cert: unknown, tx: unknown) => Promise<void> }) => {
+          await onPersisted({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, issuanceTx);
+          throw SIGNING_STOPPED;
+        }
+      );
+      await issue(request);
+    };
+
+    test("links an approved Microsoft Autoenrollment renewal to the certificate it replaces", async () => {
+      await persistApproved(
+        storedRequest({
+          enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+          csr: await buildCsrPem(),
+          commonName: AD_NAME,
+          altNames: [{ type: "dns_name", value: AD_NAME }],
+          renewedFromCertificateId: "cert-old"
+        })
+      );
+
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-new",
+        expect.objectContaining({ renewedFromCertificateId: "cert-old" }),
+        issuanceTx
+      );
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-old",
+        { renewedByCertificateId: "cert-new" },
+        issuanceTx
+      );
+    });
+
+    test("leaves an approved request that is not a linked renewal unlinked", async () => {
+      await persistApproved(
+        storedRequest({
+          enrollmentType: EnrollmentType.API,
+          csr: await buildCsrPem("service.example.com"),
+          renewedFromCertificateId: null
+        })
+      );
+
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-new",
+        expect.not.objectContaining({ renewedFromCertificateId: expect.any(String) as string }),
+        issuanceTx
+      );
+      expect(deps.certificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
+    });
+  });
+
   test("keeps the request's own subject for an approved request from another enrollment method", async () => {
     await issue(
       storedRequest({

@@ -61,8 +61,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
           .describe(MICROSOFT_AUTOENROLLMENT.SET.keytab),
         reuseKeytab: z
           .object({
-            servicePrincipalName: z.string().trim().min(1).max(255),
-            keyVersion: z.number().int().min(0)
+            profileId: z.string().uuid()
           })
           .optional()
           .describe(MICROSOFT_AUTOENROLLMENT.SET.reuseKeytab)
@@ -249,7 +248,10 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
         search: z.string().trim().max(64).optional().describe(MICROSOFT_AUTOENROLLMENT.LIST_GROUPS.search)
       }),
       response: {
-        200: z.object({ groups: z.array(z.object({ sid: z.string(), name: z.string() })) })
+        200: z.object({
+          groups: z.array(z.object({ sid: z.string(), name: z.string() })),
+          isTruncated: z.boolean()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

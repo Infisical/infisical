@@ -14,7 +14,7 @@ import {
   TPkiApplicationEnrollmentState,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
-  TMicrosoftAutoenrollmentGroup,
+  TMicrosoftAutoenrollmentGroupSearch,
   TMicrosoftAutoenrollmentServicePrincipal,
   TPkiApplicationProfile
 } from "./types";
@@ -185,11 +185,11 @@ export const useListMicrosoftAutoenrollmentGroups = ({
       search
     }),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ groups: TMicrosoftAutoenrollmentGroup[] }>(
+      const { data } = await apiRequest.get<TMicrosoftAutoenrollmentGroupSearch>(
         `${BASE_URL}/${applicationId}/profiles/${profileId}/enrollment/microsoft-autoenrollment/groups`,
         { params: { connectionId, search } }
       );
-      return data.groups;
+      return data;
     },
     enabled: Boolean(applicationId && profileId && connectionId)
   });

@@ -10,7 +10,8 @@ export enum KerberosFailureReason {
   Replay = "replay",
   MissingPac = "missing-pac",
   InvalidPacSignature = "invalid-pac-signature",
-  NotComputerAccount = "not-computer-account"
+  NotComputerAccount = "not-computer-account",
+  MissingChannelBinding = "missing-channel-binding"
 }
 
 export enum KerberosEncryptionType {

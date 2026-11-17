@@ -14,10 +14,12 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 
 ## Prerequisites
 
-- A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported)
+- A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported), with a CA key type that matches the profile's default key algorithm (RSA 2048 when it has none)
 - An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for the domain your computers belong to
 - A domain account to map the Kerberos service principal to, and permission to run `ktpass` on a domain controller
 - Windows computers that can reach your Infisical instance over HTTPS, with a TLS certificate they trust
+
+RSA keys need a CA with an RSA key, and ECDSA keys need a CA with an EC key. Requests that don't carry HTTPS channel binding are refused. Windows sends it by default when it connects over HTTPS, unless the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`.
 
 <Note>
   On a self-hosted instance, set `SITE_URL` to the HTTPS address computers use, because the enrollment URLs and the Kerberos service principal are built from it.
@@ -72,7 +74,9 @@ Certificates are valid for the profile's default TTL. If the profile has no defa
 
 Certificates get the key usages and extended key usages set on the profile, whatever the computer asks for. Set them on the profile (such as **Digital Signature** and **Key Encipherment**, with **Client Authentication** and **Server Authentication**). If the profile has none, the certificate gets the usages Windows asks for, which is only **Key Encipherment** and no extended key usages.
 
-Computers generate the key type set as the profile's default key algorithm: RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521). If the profile has no default key algorithm, they generate an RSA 2048-bit key. The CA's key type must match: RSA keys need a CA with an RSA key, and ECDSA keys need a CA with an EC key. While the method is on, a change to the profile's certificate authority or default key algorithm that breaks this, or moves the profile off an internal CA, is refused.
+Each certificate also carries the computer's security identifier (SID) in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16). If the certificate policy has a rule for that OID, the computer's SID must meet it.
+
+Computers generate the key type set as the profile's default key algorithm: RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521). If the profile has no default key algorithm, they generate an RSA 2048-bit key. While the method is on, a change to the profile's certificate authority or default key algorithm that leaves the CA's key type mismatched, or moves the profile off an internal CA, is refused.
 
 Once the method is on, the **Endpoint** section shows the **Enrollment policy URL** for the profile. Each profile has its own URL, so add one URL to Group Policy for each profile you want computers to enroll in.
 
@@ -194,7 +198,7 @@ To install an approved certificate without waiting, run `certutil -pulse` on the
     A computer's group memberships come from its Kerberos ticket, so a group change only takes effect when the computer gets a new ticket, after a restart or when its ticket expires. To get a new ticket right away, run `klist -li 0x3e7 purge` on the computer from an elevated prompt, then run autoenrollment again.
   </Accordion>
   <Accordion title="A computer doesn't get a certificate">
-    Windows records an error in the computer's Application event log, under the source `CertificateServicesClient-CertEnroll`, but it never shows the reason the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), then match the Windows error. A refused sign-in, a computer outside the allowed groups, an Active Directory problem or a refused renewal is logged as **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`). A request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, is logged as `certificate-issuance-failed`.
+    Windows records an error in the computer's Application event log, under the source `CertificateServicesClient-CertEnroll`, but it never shows the reason the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), then match the Windows error. A refused sign-in, a request sent without HTTPS channel binding, a computer outside the allowed groups, an Active Directory problem or a refused renewal is logged as **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`). A request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow, is logged as `certificate-issuance-failed`.
 
     | Windows error | Cause |
     | --- | --- |

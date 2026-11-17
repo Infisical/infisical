@@ -7,7 +7,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { isSignerCertIssuedByCa } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
 import { asNonSharedBuffer } from "@app/lib/fn";
 import {
@@ -396,6 +396,12 @@ export const microsoftAutoenrollmentServiceFactory = ({
         `Computer ${identity.clientName} was not found in Active Directory.`
       );
     }
+    if (computer.isDisabled === null) {
+      return refuse(
+        MicrosoftAutoenrollmentFailureReason.DirectoryLookupFailed,
+        `The LDAP connection's account cannot read userAccountControl for computer ${computer.samAccountName}, so it is unknown whether the computer is disabled. Allow that account to read userAccountControl on computer objects.`
+      );
+    }
     if (computer.isDisabled) {
       return refuse(
         MicrosoftAutoenrollmentFailureReason.ComputerDisabled,
@@ -545,6 +551,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
     clientIp,
     dnsHostName,
     result,
+    requestNumber,
     isPending,
     isRenewal
   }: {
@@ -555,17 +562,10 @@ export const microsoftAutoenrollmentServiceFactory = ({
     result: Awaited<
       ReturnType<TMicrosoftAutoenrollmentServiceFactoryDep["certificateV3Service"]["signCertificateFromProfile"]>
     >;
+    requestNumber: string;
     isPending: boolean;
     isRenewal: boolean;
   }) => {
-    let requestNumber: string | undefined;
-    let requestNumberError: unknown;
-    try {
-      requestNumber = String(await microsoftAutoenrollmentRequestDAL.createRequestNumber(result.certificateRequestId));
-    } catch (error) {
-      requestNumberError = error;
-    }
-
     await auditLogService.createAuditLog({
       projectId: context.profile.projectId,
       ipAddress: clientIp,
@@ -590,9 +590,6 @@ export const microsoftAutoenrollmentServiceFactory = ({
         }
       }
     });
-
-    if (requestNumber === undefined) throw requestNumberError;
-    return requestNumber;
   };
 
   const $issueCertificate = async (
@@ -608,7 +605,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
       return $fault(messageId, "The request does not contain a certificate request.");
     }
 
-    if (!isComputerInAllowedGroups(config.allowedGroupSids, identity.groupSids)) {
+    if (!isComputerInAllowedGroups(config.allowedGroups, identity.groupSids)) {
       await $recordRefusal(context, clientIp, {
         reason: MicrosoftAutoenrollmentFailureReason.NotInAllowedGroup,
         computerName: identity.clientName
@@ -636,6 +633,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
       originalCertificateId = renewal.originalCertificateId;
     }
 
+    const persisted: { requestNumber?: string } = {};
     const result = await certificateV3Service.signCertificateFromProfile({
       actor: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
       actorId: profile.id,
@@ -662,16 +660,26 @@ export const microsoftAutoenrollmentServiceFactory = ({
       auditLogInfo: {
         ipAddress: clientIp,
         actor: { type: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT, metadata: { profileId: profile.id } }
+      },
+      onCertificateRequestPersisted: async (certificateRequestId, tx) => {
+        persisted.requestNumber = String(
+          await microsoftAutoenrollmentRequestDAL.createRequestNumber(certificateRequestId, tx)
+        );
       }
     });
+    const { requestNumber } = persisted;
+    if (requestNumber === undefined) {
+      throw new InternalServerError({ message: "The certificate request was saved without a request number." });
+    }
 
     const isPending = result.status === CertificateRequestStatus.PENDING_APPROVAL;
-    const requestNumber = await $recordIssuance({
+    await $recordIssuance({
       context,
       identity,
       clientIp,
       dnsHostName,
       result,
+      requestNumber,
       isPending,
       isRenewal: Boolean(originalCertificateId)
     });
@@ -741,7 +749,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
         return $fault(envelope.messageId, "This enrollment policy URL only answers GetPolicies requests.");
       }
 
-      const isAllowed = isComputerInAllowedGroups(context.config.allowedGroupSids, identity.groupSids);
+      const isAllowed = isComputerInAllowedGroups(context.config.allowedGroups, identity.groupSids);
       if (!isAllowed) {
         await $recordRefusal(context, dto.clientIp, {
           reason: MicrosoftAutoenrollmentFailureReason.NotInAllowedGroup,

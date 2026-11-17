@@ -4,17 +4,13 @@ import RE2 from "re2";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { parseKeytab } from "@app/lib/kerberos";
-import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
 import { TLdapConnectionConfig } from "@app/services/app-connection/ldap/ldap-connection-types";
-import {
-  resolveDirectorySidNames,
-  TLdapDirectoryGatewayServices
-} from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { TMicrosoftAutoenrollmentAllowedGroup } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 
 import { resolveTemplatePrivateKey } from "./microsoft-autoenrollment-template-fns";
 
@@ -37,8 +33,10 @@ export const normalizeHttpServicePrincipalName = (serviceName: string | undefine
   return `${HTTP_SERVICE_PRINCIPAL_PREFIX}${lowerCaseName.slice(HTTP_SERVICE_PRINCIPAL_PREFIX.length)}`;
 };
 
-export const isComputerInAllowedGroups = (allowedGroupSids: string[] | null | undefined, computerSids: string[]) =>
-  !allowedGroupSids?.length || allowedGroupSids.some((sid) => computerSids.includes(sid));
+export const isComputerInAllowedGroups = (
+  allowedGroups: TMicrosoftAutoenrollmentAllowedGroup[],
+  computerSids: string[]
+) => !allowedGroups.length || allowedGroups.some(({ sid }) => computerSids.includes(sid));
 
 const resolveCnameTarget = async (hostname: string) => {
   const [target] = await dns.resolveCname(hostname).catch((error: NodeJS.ErrnoException): string[] => {
@@ -106,54 +104,24 @@ export const readUploadedKeytab = (keytabFile: Buffer) => {
   return { servicePrincipalName: `${newestEntry.principal}@${newestEntry.realm}`, keyVersion: newestEntry.keyVersion };
 };
 
-export const mergeAllowedGroupNames = (
+export const mergeAllowedGroups = (
   allowedGroupSids: string[],
   resolvedNames: Record<string, string | null> | null,
-  storedNames: Record<string, string | null>
-): Record<string, string | null> =>
-  Object.fromEntries(allowedGroupSids.map((sid) => [sid, resolvedNames?.[sid] ?? storedNames[sid] ?? null]));
+  storedGroups: TMicrosoftAutoenrollmentAllowedGroup[]
+): TMicrosoftAutoenrollmentAllowedGroup[] =>
+  allowedGroupSids.map((sid) => ({
+    sid,
+    name: resolvedNames?.[sid] ?? storedGroups.find((group) => group.sid === sid)?.name ?? null
+  }));
 
-export const resolveAllowedGroupNames = async (
-  {
-    allowedGroupSids,
-    appConnectionId,
-    storedNames
-  }: { allowedGroupSids: string[]; appConnectionId: string; storedNames: Record<string, string | null> },
-  {
-    appConnectionDAL,
-    kmsService,
-    ...gatewayServices
-  }: {
-    appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-    kmsService: TAppConnectionServiceFactoryDep["kmsService"];
-  } & TLdapDirectoryGatewayServices
-): Promise<Record<string, string | null>> => {
-  const resolvedNames = allowedGroupSids.length
-    ? await loadLdapConnectionConfig(appConnectionId, { appConnectionDAL, kmsService })
-        .then((config) => resolveDirectorySidNames({ config, sids: allowedGroupSids }, gatewayServices))
-        .catch((err: unknown) => {
-          logger.warn(
-            { err },
-            `Unable to resolve Microsoft Autoenrollment group names from Active Directory [connectionId=${appConnectionId}]`
-          );
-          return null;
-        })
-    : null;
-  return mergeAllowedGroupNames(allowedGroupSids, resolvedNames, storedNames);
+type TProfileCaCompatibilityInput = {
+  profileSlug: string;
+  caId?: string | null;
+  keyAlgorithm?: CertKeyAlgorithm;
 };
 
-export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
-  {
-    profileSlug,
-    caId,
-    keyAlgorithm,
-    enabledInApplicationNames
-  }: {
-    profileSlug: string;
-    caId?: string | null;
-    keyAlgorithm?: CertKeyAlgorithm;
-    enabledInApplicationNames?: string[];
-  },
+const checkProfileCaCompatibility = async (
+  { profileSlug, caId, keyAlgorithm }: TProfileCaCompatibilityInput,
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
 ) => {
   const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
@@ -164,7 +132,36 @@ export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
   const isCompatibleCaKey = isEllipticCurveProfile
     ? caKeyAlgorithm.startsWith("EC_")
     : caKeyAlgorithm.startsWith("RSA_");
-  if (isInternalCa && isCompatibleCaKey) return;
+
+  if (isInternalCa && isCompatibleCaKey) return null;
+  if (!isInternalCa) {
+    return {
+      shortReason: "Windows needs a profile that issues from an internal certificate authority",
+      message: `Microsoft Autoenrollment requires a profile that issues from an internal certificate authority, because Windows needs the issuing CA certificate in the template list. Profile '${profileSlug}' does not.`
+    };
+  }
+  return {
+    shortReason: `the profile would ask Windows for ${keyFamily} key, which its certificate authority's ${caKeyAlgorithm} key cannot sign`,
+    message: `Profile '${profileSlug}' asks Windows for ${keyFamily} key, but its certificate authority's key is ${caKeyAlgorithm}, which cannot sign that request. Use a certificate authority with ${keyFamily} key, or change the profile's default key algorithm.`
+  };
+};
+
+export const getMicrosoftAutoenrollmentUnsupportedReason = async (
+  input: TProfileCaCompatibilityInput,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+) => (await checkProfileCaCompatibility(input, certificateAuthorityDAL))?.message ?? null;
+
+export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
+  {
+    enabledInApplicationNames,
+    ...input
+  }: TProfileCaCompatibilityInput & {
+    enabledInApplicationNames?: string[];
+  },
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+) => {
+  const incompatibility = await checkProfileCaCompatibility(input, certificateAuthorityDAL);
+  if (!incompatibility) return;
 
   if (enabledInApplicationNames?.length) {
     const quotedNames = enabledInApplicationNames.map((name) => `'${name}'`);
@@ -172,20 +169,10 @@ export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
       quotedNames.length === 1
         ? `application ${quotedNames[0]}`
         : `applications ${quotedNames.slice(0, -1).join(", ")} and ${quotedNames[quotedNames.length - 1]}`;
-    const reason = isInternalCa
-      ? `the profile would ask Windows for ${keyFamily} key, which its certificate authority's ${caKeyAlgorithm} key cannot sign`
-      : "Windows needs a profile that issues from an internal certificate authority";
     throw new BadRequestError({
-      message: `Microsoft Autoenrollment is on for profile '${profileSlug}' in ${applicationList}. This change would stop it working: ${reason}. Turn Microsoft Autoenrollment off there first, or keep the profile's certificate authority and default key algorithm compatible.`
+      message: `Microsoft Autoenrollment is on for profile '${input.profileSlug}' in ${applicationList}. This change would stop it working: ${incompatibility.shortReason}. Turn Microsoft Autoenrollment off there first, or keep the profile's certificate authority and default key algorithm compatible.`
     });
   }
 
-  if (!isInternalCa) {
-    throw new BadRequestError({
-      message: `Microsoft Autoenrollment requires a profile that issues from an internal certificate authority, because Windows needs the issuing CA certificate in the template list. Profile '${profileSlug}' does not.`
-    });
-  }
-  throw new BadRequestError({
-    message: `Profile '${profileSlug}' asks Windows for ${keyFamily} key, but its certificate authority's key is ${caKeyAlgorithm}, which cannot sign that request. Use a certificate authority with ${keyFamily} key, or change the profile's default key algorithm.`
-  });
+  throw new BadRequestError({ message: incompatibility.message });
 };

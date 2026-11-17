@@ -61,6 +61,7 @@ const EnrollmentStateSchema = z.object({
   microsoftAutoenrollment: MicrosoftAutoenrollmentStateSchema.nullable(),
   microsoftAutoenrollmentOtherProfiles: z.array(MicrosoftAutoenrollmentOtherProfileSchema),
   caType: z.nativeEnum(CaType),
+  microsoftAutoenrollmentUnsupportedReason: z.string().nullable(),
   estConfigured: z.boolean(),
   acmeConfigured: z.boolean(),
   scepConfigured: z.boolean(),

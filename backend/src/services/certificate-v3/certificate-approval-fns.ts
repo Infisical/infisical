@@ -50,6 +50,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -684,14 +685,25 @@ export const certificateApprovalServiceFactory = (
           new Date(newCert.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
+        const updateData: {
+          profileId: string;
+          renewBeforeDays?: number;
+          applicationId?: string;
+          renewedFromCertificateId?: string;
+        } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
         }
         if (certRequest.applicationId) {
           updateData.applicationId = certRequest.applicationId;
         }
+        if (certRequest.renewedFromCertificateId) {
+          updateData.renewedFromCertificateId = certRequest.renewedFromCertificateId;
+        }
         await certificateDAL.updateById(newCert.id, updateData, tx);
+        if (certRequest.renewedFromCertificateId) {
+          await linkRenewedCertificate(certificateDAL, certRequest.renewedFromCertificateId, newCert.id, tx);
+        }
 
         await certificateRequestDAL.updateById(
           certificateRequestId,

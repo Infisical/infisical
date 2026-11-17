@@ -1,9 +1,19 @@
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+
+const MicrosoftAutoenrollmentAllowedGroupsSchema = z.array(z.object({ sid: z.string(), name: z.string().nullable() }));
+
+export type TMicrosoftAutoenrollmentAllowedGroup = z.infer<typeof MicrosoftAutoenrollmentAllowedGroupsSchema>[number];
+
+const withAllowedGroups = <T extends Pick<TPkiMicrosoftAutoenrollmentConfigs, "allowedGroups">>(row: T) => ({
+  ...row,
+  allowedGroups: MicrosoftAutoenrollmentAllowedGroupsSchema.parse(row.allowedGroups ?? [])
+});
 
 export type TMicrosoftAutoenrollmentEnrollmentConfigDALFactory = ReturnType<
   typeof microsoftAutoenrollmentEnrollmentConfigDALFactory
@@ -11,6 +21,12 @@ export type TMicrosoftAutoenrollmentEnrollmentConfigDALFactory = ReturnType<
 
 export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient) => {
   const microsoftAutoenrollmentConfigOrm = ormify(db, TableName.PkiMicrosoftAutoenrollmentConfig);
+
+  const findById = async (id: string, tx?: Knex) => {
+    const row = await microsoftAutoenrollmentConfigOrm.findById(id, tx);
+    if (!row) return row;
+    return withAllowedGroups(row);
+  };
 
   const findByApplicationId = async (applicationId: string, tx?: Knex) => {
     try {
@@ -33,7 +49,7 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
         )
         .orderBy(`${TableName.PkiApplicationProfile}.createdAt`, "asc");
 
-      return rows;
+      return rows.map(withAllowedGroups);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment configs by application" });
     }
@@ -61,6 +77,7 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
 
   return {
     ...microsoftAutoenrollmentConfigOrm,
+    findById,
     findByApplicationId,
     recordKeytabMismatch
   };

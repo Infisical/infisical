@@ -30,6 +30,8 @@ export const PROFILE_ENROLLMENT_TYPES = [
 
 export const ISSUER_NAMED_ENROLLMENT_TYPES: ReadonlySet<string> = new Set([EnrollmentType.MICROSOFT_AUTOENROLLMENT]);
 
+export const RENEWAL_LINKED_ENROLLMENT_TYPES: ReadonlySet<string> = new Set([EnrollmentType.MICROSOFT_AUTOENROLLMENT]);
+
 export const ENROLLMENT_TYPE_NAME_MAP: Record<EnrollmentType, string> = {
   [EnrollmentType.API]: "API",
   [EnrollmentType.EST]: "EST",

@@ -11,8 +11,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("applicationProfileId").references("id").inTable(TableName.PkiApplicationProfile).onDelete("CASCADE");
       t.integer("templateMajorRevision").notNullable().defaultTo(100);
       t.integer("templateMinorRevision").notNullable().defaultTo(0);
-      t.specificType("allowedGroupSids", "text[]").nullable();
-      t.jsonb("allowedGroupNames").nullable();
+      t.jsonb("allowedGroups").nullable();
       t.integer("renewBeforeDays").notNullable();
       t.text("servicePrincipalName").notNullable();
       t.integer("keyVersion").notNullable();
@@ -37,6 +36,16 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  if (!(await knex.schema.hasColumn(TableName.CertificateRequests, "renewedFromCertificateId"))) {
+    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
+      t.uuid("renewedFromCertificateId").nullable();
+      t.foreign("renewedFromCertificateId").references("id").inTable(TableName.Certificate).onDelete("SET NULL");
+      t.index(["renewedFromCertificateId"], "certificate_requests_renewedfromcertificateid_idx", {
+        predicate: knex.whereNotNull("renewedFromCertificateId")
+      });
+    });
+  }
+
   if (!(await knex.schema.hasColumn(TableName.PkiApplicationProfile, "microsoftAutoenrollmentConfigId"))) {
     await knex.schema.alterTable(TableName.PkiApplicationProfile, (t) => {
       t.uuid("microsoftAutoenrollmentConfigId");
@@ -55,6 +64,14 @@ export async function down(knex: Knex): Promise<void> {
       t.dropForeign(["microsoftAutoenrollmentConfigId"]);
       t.dropIndex("microsoftAutoenrollmentConfigId");
       t.dropColumn("microsoftAutoenrollmentConfigId");
+    });
+  }
+
+  if (await knex.schema.hasColumn(TableName.CertificateRequests, "renewedFromCertificateId")) {
+    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
+      t.dropIndex(["renewedFromCertificateId"], "certificate_requests_renewedfromcertificateid_idx");
+      t.dropForeign(["renewedFromCertificateId"]);
+      t.dropColumn("renewedFromCertificateId");
     });
   }
 

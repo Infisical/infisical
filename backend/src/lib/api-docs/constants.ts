@@ -2798,7 +2798,7 @@ export const MICROSOFT_AUTOENROLLMENT = {
     keytab:
       "The keytab file created with ktpass, base64 encoded. When turning Microsoft Autoenrollment on, send this or reuseKeytab. Send a new one to replace the stored keytab.",
     reuseKeytab:
-      "Copy the keytab another profile in this application already has, named by its service principal name (with the realm) and key version. Cannot be sent together with keytab."
+      "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab."
   },
   LIST_GROUPS: {
     connectionId: "The ID of the Active Directory LDAP connection to search.",

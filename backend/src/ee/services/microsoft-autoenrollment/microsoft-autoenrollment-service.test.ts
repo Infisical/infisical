@@ -25,6 +25,7 @@ import { microsoftAutoenrollmentServiceFactory } from "./microsoft-autoenrollmen
 import { buildSidSecurityExtension, buildTemplateOid } from "./microsoft-autoenrollment-template-fns";
 import {
   MicrosoftAutoenrollmentFailureReason,
+  MicrosoftAutoenrollmentIssuanceResult,
   MicrosoftAutoenrollmentMetadataKey
 } from "./microsoft-autoenrollment-types";
 
@@ -65,6 +66,10 @@ const REQUEST_NUMBER = "923";
 const RSA_SHA256 = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
 
 type TRefusalAuditLog = { event: { type: EventType; metadata: { reason: string } } };
+
+type TSignResult = { status: CertificateRequestStatus; certificateRequestId: string } & Record<string, unknown>;
+
+const ISSUANCE_TX = { isTransaction: true };
 
 const GET_POLICIES_ACTION = "http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/GetPolicies";
 
@@ -131,7 +136,7 @@ describe("microsoftAutoenrollmentService", () => {
     templateMajorRevision: 100,
     templateMinorRevision: 0,
     renewBeforeDays: 42,
-    allowedGroupSids: null as string[] | null,
+    allowedGroups: [] as { sid: string; name: string | null }[],
     servicePrincipalName: `${keytabEntry.principal}@${keytabEntry.realm}`,
     keyVersion: keytabEntry.keyVersion,
     encryptedKeytab: Buffer.from("encrypted-keytab"),
@@ -190,6 +195,18 @@ describe("microsoftAutoenrollmentService", () => {
     return auditLog.event;
   };
 
+  const signsWith = (result: TSignResult) =>
+    deps.certificateV3Service.signCertificateFromProfile.mockImplementation(
+      async ({
+        onCertificateRequestPersisted
+      }: {
+        onCertificateRequestPersisted?: (certificateRequestId: string, tx: unknown) => Promise<void>;
+      }) => {
+        await onCertificateRequestPersisted?.(result.certificateRequestId, ISSUANCE_TX);
+        return result;
+      }
+    );
+
   const refusalReasons = () =>
     (deps.auditLogService.createCollapsedAuditLog.mock.calls as [TRefusalAuditLog][]).map(([log]) => {
       expect(log.event.type).toBe(EventType.MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED);
@@ -208,7 +225,7 @@ describe("microsoftAutoenrollmentService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usedReplayKeys.clear();
-    config.allowedGroupSids = null;
+    config.allowedGroups = [];
     deps.pkiApplicationProfileDAL.findOneByApplicationAndProfile.mockResolvedValue({
       id: JUNCTION_ID,
       microsoftAutoenrollmentConfigId: config.id
@@ -242,7 +259,7 @@ describe("microsoftAutoenrollmentService", () => {
       isDisabled: false,
       samAccountName: "LAPTOP01$"
     });
-    deps.certificateV3Service.signCertificateFromProfile.mockResolvedValue({
+    signsWith({
       status: CertificateRequestStatus.ISSUED,
       certificate: caCertificate.toString("pem"),
       certificateChain: caCertificate.toString("pem"),
@@ -399,7 +416,7 @@ describe("microsoftAutoenrollmentService", () => {
     });
 
     test("lists no template for a computer outside the allowed groups", async () => {
-      config.allowedGroupSids = [`${TEST_DOMAIN_SID}-1200`];
+      config.allowedGroups = [{ sid: `${TEST_DOMAIN_SID}-1200`, name: null }];
 
       const response = await service.getPolicies(request(GET_POLICIES_BODY));
 
@@ -409,7 +426,7 @@ describe("microsoftAutoenrollmentService", () => {
     });
 
     test("lists the template for a computer in an allowed group", async () => {
-      config.allowedGroupSids = [`${TEST_DOMAIN_SID}-515`];
+      config.allowedGroups = [{ sid: `${TEST_DOMAIN_SID}-515`, name: null }];
 
       const response = await service.getPolicies(request(GET_POLICIES_BODY));
 
@@ -442,20 +459,39 @@ describe("microsoftAutoenrollmentService", () => {
       expect(issuanceAuditLog().metadata).toMatchObject({ profileSlug: "web-servers", serialNumber: "0a1b2c3d" });
     });
 
-    test("still audits an issued certificate when its request number can't be stored", async () => {
+    test("creates the request number in the issuance transaction and audits it after commit", async () => {
+      const response = await service.requestSecurityToken(request(issueBody(plainCsr)));
+
+      expect(response.body).toContain(`>${REQUEST_NUMBER}</RequestID>`);
+      expect(deps.microsoftAutoenrollmentRequestDAL.createRequestNumber).toHaveBeenCalledWith(
+        CERTIFICATE_REQUEST_ID,
+        ISSUANCE_TX
+      );
+      expect(issuanceAuditLog().metadata).toMatchObject({ requestNumber: REQUEST_NUMBER });
+    });
+
+    test("fails the issuance without an audit when the request number can't be stored", async () => {
       deps.microsoftAutoenrollmentRequestDAL.createRequestNumber.mockRejectedValue(new Error("database down"));
 
       await expect(service.requestSecurityToken(request(issueBody(plainCsr)))).rejects.toThrow("database down");
 
-      const [auditLog] = deps.auditLogService.createAuditLog.mock.calls[0] as [
-        { event: { type: EventType; metadata: { requestNumber?: string; certificateRequestId: string } } }
-      ];
-      expect(auditLog.event.type).toBe(EventType.MICROSOFT_AUTOENROLLMENT_ISSUANCE);
-      expect(auditLog.event.metadata.requestNumber).toBeUndefined();
+      expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+    });
+
+    test("refuses to answer when the certificate request was saved without a request number", async () => {
+      deps.certificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificateRequestId: CERTIFICATE_REQUEST_ID
+      });
+
+      await expect(service.requestSecurityToken(request(issueBody(plainCsr)))).rejects.toThrow(
+        "saved without a request number"
+      );
+      expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
     });
 
     test("answers pending with a numeric request id when an approval policy holds the request", async () => {
-      deps.certificateV3Service.signCertificateFromProfile.mockResolvedValue({
+      signsWith({
         status: CertificateRequestStatus.PENDING_APPROVAL,
         certificateRequestId: CERTIFICATE_REQUEST_ID
       });
@@ -464,12 +500,19 @@ describe("microsoftAutoenrollmentService", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toContain(`>${REQUEST_NUMBER}</RequestID>`);
-      expect(deps.microsoftAutoenrollmentRequestDAL.createRequestNumber).toHaveBeenCalledWith(CERTIFICATE_REQUEST_ID);
+      expect(deps.microsoftAutoenrollmentRequestDAL.createRequestNumber).toHaveBeenCalledWith(
+        CERTIFICATE_REQUEST_ID,
+        ISSUANCE_TX
+      );
+      expect(issuanceAuditLog().metadata).toMatchObject({
+        result: MicrosoftAutoenrollmentIssuanceResult.Pending,
+        requestNumber: REQUEST_NUMBER
+      });
       expect(response.body).not.toContain("<RequestedSecurityToken><BinarySecurityToken");
     });
 
     test("refuses a computer outside the allowed groups before reading Active Directory", async () => {
-      config.allowedGroupSids = [`${TEST_DOMAIN_SID}-1200`];
+      config.allowedGroups = [{ sid: `${TEST_DOMAIN_SID}-1200`, name: null }];
 
       const response = await service.requestSecurityToken(request(issueBody(plainCsr)));
 
@@ -490,6 +533,11 @@ describe("microsoftAutoenrollmentService", () => {
         "the computer has no DNS host name",
         { dnsHostName: null, isDisabled: false, samAccountName: "LAPTOP01$" },
         MicrosoftAutoenrollmentFailureReason.NoDnsHostName
+      ],
+      [
+        "the LDAP account cannot read userAccountControl",
+        { dnsHostName: DNS_HOST_NAME, isDisabled: null, samAccountName: "LAPTOP01$" },
+        MicrosoftAutoenrollmentFailureReason.DirectoryLookupFailed
       ]
     ])("refuses when %s", async (_name, computer, reason) => {
       if (computer === "reject") {

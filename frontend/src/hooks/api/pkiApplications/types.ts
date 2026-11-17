@@ -157,6 +157,7 @@ export type TPkiApplicationEnrollmentState = {
   microsoftAutoenrollment: TMicrosoftAutoenrollmentEnrollment | null;
   microsoftAutoenrollmentOtherProfiles: TMicrosoftAutoenrollmentOtherProfile[];
   caType: CaType;
+  microsoftAutoenrollmentUnsupportedReason: string | null;
   estConfigured: boolean;
   acmeConfigured: boolean;
   scepConfigured: boolean;
@@ -282,8 +283,7 @@ export type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
   renewBeforeDays?: number;
   keytab?: string;
   reuseKeytab?: {
-    servicePrincipalName: string;
-    keyVersion: number;
+    profileId: string;
   };
 };
 
@@ -292,6 +292,11 @@ export type TListMicrosoftAutoenrollmentGroupsDTO = {
   profileId: string;
   connectionId?: string;
   search?: string;
+};
+
+export type TMicrosoftAutoenrollmentGroupSearch = {
+  groups: TMicrosoftAutoenrollmentGroup[];
+  isTruncated: boolean;
 };
 
 export type TMicrosoftAutoenrollmentServicePrincipal = {

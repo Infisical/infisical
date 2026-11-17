@@ -78,6 +78,12 @@ export enum ActorType {
   AGENT_VAULT_PROXY = "agentVaultProxy"
 }
 
+export const PROTOCOL_ENROLLMENT_ACTORS: ReadonlySet<ActorType> = new Set([
+  ActorType.EST_ACCOUNT,
+  ActorType.SCEP_ACCOUNT,
+  ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT
+]);
+
 export type TGatewayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
   gatewayId: string;

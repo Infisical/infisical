@@ -231,7 +231,7 @@ const ReenrollComputersButton = ({
             <AlertDialogMedia>
               <AlertTriangleIcon className="text-warning" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Re-enroll Every Computer for {profileName}?</AlertDialogTitle>
+            <AlertDialogTitle>Re-enroll All Computers for {profileName}?</AlertDialogTitle>
             <AlertDialogDescription>
               Every computer that holds a certificate from this profile requests a new one the next
               time it fetches the enrollment policy, which can take up to 8 hours. If an approval
@@ -1513,6 +1513,7 @@ const DEFAULT_RENEW_BEFORE_DAYS = 42;
 const MAX_RENEW_BEFORE_DAYS = 3650;
 const MAX_ALLOWED_GROUPS = 50;
 const MAX_GROUP_SEARCH_LENGTH = 64;
+const MAX_GROUP_RESULTS = 50;
 const MAX_KEYTAB_BYTES = 64 * 1024;
 const KEYTAB_FILE_NAME = "infisical.keytab";
 
@@ -1601,7 +1602,7 @@ const MicrosoftAutoenrollmentPanel = ({
   const { data: servicePrincipal, error: servicePrincipalError } =
     useGetMicrosoftAutoenrollmentServicePrincipal(applicationId, profileId);
   const {
-    data: groups,
+    data: groupSearchResult,
     isFetching: isGroupsFetching,
     isError: isGroupsError,
     error: groupsError
@@ -1671,12 +1672,7 @@ const MicrosoftAutoenrollmentPanel = ({
       keytab: values.keytabFile
         ? bytesToBase64(new Uint8Array(await values.keytabFile.arrayBuffer()))
         : undefined,
-      reuseKeytab: values.reuseFrom
-        ? {
-            servicePrincipalName: values.reuseFrom.servicePrincipalName,
-            keyVersion: values.reuseFrom.keyVersion
-          }
-        : undefined
+      reuseKeytab: values.reuseFrom ? { profileId: values.reuseFrom.profileId } : undefined
     });
     reset({ ...values, keytabFile: null, reuseFrom: null });
     setIsReplacingKeytab(false);
@@ -1793,8 +1789,15 @@ const MicrosoftAutoenrollmentPanel = ({
           {isKeytabUploadShown ? (
             <>
               <p className="text-sm text-accent">
-                Run this on a domain controller with your realm and service account, then upload the
-                file it creates.
+                On a domain controller, turn on AES for the service account first. Without it,
+                tickets can be encrypted with RC4, which the keytab can&apos;t read.
+              </p>
+              <CodeBlock
+                value="Set-ADUser <service-account> -KerberosEncryptionType AES128,AES256"
+                className="whitespace-pre-wrap"
+              />
+              <p className="text-sm text-accent">
+                Then run this with your realm and service account, and upload the file it creates.
               </p>
               {ktpassContent}
               <p className="text-xs text-warning">
@@ -1814,7 +1817,7 @@ const MicrosoftAutoenrollmentPanel = ({
                   }
                 }}
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
+                  <Field ref={field.ref} tabIndex={-1} className="scroll-mb-20 outline-none">
                     <FileDropzone
                       accept=".keytab"
                       title="Upload keytab"
@@ -1888,7 +1891,7 @@ const MicrosoftAutoenrollmentPanel = ({
                     id="microsoft-autoenrollment-groups"
                     multiple
                     isDisabled={isPending}
-                    options={groups ?? []}
+                    options={groupSearchResult?.groups ?? []}
                     value={field.value}
                     onValueChange={field.onChange}
                     getOptionValue={(option) => option.sid}
@@ -1905,6 +1908,11 @@ const MicrosoftAutoenrollmentPanel = ({
                     isLoading={isGroupsFetching}
                     isError={Boolean(error)}
                     placeholder="Search groups by name"
+                    listFooter={
+                      groupSearchResult?.isTruncated
+                        ? `Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`
+                        : undefined
+                    }
                     emptyMessage={(() => {
                       if (!connectionId) return "Select an LDAP connection first.";
                       if (isGroupsError) {
@@ -1986,7 +1994,7 @@ const MicrosoftAutoenrollmentPanel = ({
         {enabled && (
           <DisableEnrollmentButton
             method="Microsoft Autoenrollment"
-            consequence="The stored keytab, allowed groups and renewal setting are deleted, so turning it back on needs the keytab again."
+            consequence="The stored keytab, allowed groups and renewal setting are deleted, so turning it back on needs a keytab again, uploaded or reused from another profile."
             onConfirmed={onDisable}
             isPending={isPending}
           />
@@ -2247,9 +2255,11 @@ export const ConfigureEnrollmentModal = ({
                   <DropdownMenuContent align="end">
                     {addableMethods.map((m) => {
                       const isLocked = lockedMethods[m] ?? false;
-                      const isUnsupported =
-                        m === "microsoft-autoenrollment" &&
-                        (data?.caType ?? CaType.INTERNAL) !== CaType.INTERNAL;
+                      const unsupportedReason =
+                        m === "microsoft-autoenrollment"
+                          ? (data?.microsoftAutoenrollmentUnsupportedReason ?? null)
+                          : null;
+                      const isUnsupported = Boolean(unsupportedReason);
                       const item = (
                         <DropdownMenuItem
                           key={m}
@@ -2271,8 +2281,8 @@ export const ConfigureEnrollmentModal = ({
                       return (
                         <Tooltip key={m}>
                           <TooltipTrigger className="block w-full">{item}</TooltipTrigger>
-                          <TooltipContent side="left">
-                            Needs a profile that issues from an internal certificate authority.
+                          <TooltipContent side="left" className="max-w-xs">
+                            {unsupportedReason}
                           </TooltipContent>
                         </Tooltip>
                       );

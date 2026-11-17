@@ -62,8 +62,7 @@ const existingConfig = {
   templateMajorRevision: 100,
   templateMinorRevision: 3,
   renewBeforeDays: 30,
-  allowedGroupSids: [SERVERS_SID],
-  allowedGroupNames: { [SERVERS_SID]: "Servers" },
+  allowedGroups: [{ sid: SERVERS_SID, name: "Servers" }],
   servicePrincipalName: SERVICE_PRINCIPAL_NAME,
   keyVersion: 3,
   encryptedKeytab: Buffer.from("existing-encrypted-keytab"),
@@ -120,7 +119,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    searchDirectoryGroups.mockResolvedValue([]);
+    searchDirectoryGroups.mockResolvedValue({ groups: [], isTruncated: false });
     resolveDirectorySidNames.mockResolvedValue({});
     deps.pkiApplicationDAL.findById.mockResolvedValue({ id: APPLICATION_ID, projectId: "project-id", name: "fleet" });
     deps.pkiApplicationProfileDAL.findOneByApplicationAndProfile.mockResolvedValue({
@@ -187,7 +186,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     test.each([
       [
         "both a keytab and a keytab to reuse",
-        { keytab: encodeKeytab([3]), reuseKeytab: { servicePrincipalName: SERVICE_PRINCIPAL_NAME, keyVersion: 3 } }
+        { keytab: encodeKeytab([3]), reuseKeytab: { profileId: OTHER_PROFILE_ID } }
       ],
       ["no keytab when turning it on", {}]
     ])("refuses %s", async (_name, keytabFields) => {
@@ -296,7 +295,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(resolveDirectorySidNames).toHaveBeenCalledTimes(1);
       expect(searchDirectoryGroups).not.toHaveBeenCalled();
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).toHaveBeenCalledWith(
-        expect.objectContaining({ allowedGroupNames: { [groupSid]: "Operators" } }),
+        expect.objectContaining({ allowedGroups: JSON.stringify([{ sid: groupSid, name: "Operators" }]) }),
         "tx"
       );
     });
@@ -340,7 +339,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
         servicePrincipalName: SERVICE_PRINCIPAL_NAME,
         keyVersion: 5,
         renewBeforeDays: 42,
-        allowedGroupSids: null,
+        allowedGroups: null,
         appConnectionId: CONNECTION_ID,
         applicationProfileId: "junction-id"
       });
@@ -353,14 +352,16 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(result).toMatchObject({ keytabSource: MicrosoftAutoenrollmentKeytabSource.Uploaded });
     });
 
-    test("reuses the keytab another profile in the application holds for the same principal and key version", async () => {
+    test("reuses the keytab of the named profile in the same application, and names that profile", async () => {
+      const THIRD_PROFILE_ID = "2d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a";
       deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId.mockResolvedValue([
+        { ...existingConfig, profileId: THIRD_PROFILE_ID, profileName: "desktops", keyVersion: 2 },
         { ...existingConfig, profileId: OTHER_PROFILE_ID, profileName: "laptops" }
       ]);
 
       const result = await set({
         connectionId: CONNECTION_ID,
-        reuseKeytab: { servicePrincipalName: SERVICE_PRINCIPAL_NAME, keyVersion: 3 }
+        reuseKeytab: { profileId: OTHER_PROFILE_ID }
       });
 
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
@@ -379,18 +380,27 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       });
     });
 
-    test.each([
-      ["another key version", [{ ...existingConfig, profileId: OTHER_PROFILE_ID, keyVersion: 2 }]],
-      ["only the profile being configured", [{ ...existingConfig, profileId: PROFILE_ID }]]
-    ])("refuses to reuse a keytab when the application has %s", async (_name, configs) => {
-      deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId.mockResolvedValue(configs);
+    test("refuses to reuse the keytab of a profile with no Microsoft Autoenrollment keytab in this application, which covers a profile of another application", async () => {
+      deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId.mockResolvedValue([
+        { ...existingConfig, profileId: "2d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a", profileName: "desktops" }
+      ]);
 
-      await expect(
-        set({
-          connectionId: CONNECTION_ID,
-          reuseKeytab: { servicePrincipalName: SERVICE_PRINCIPAL_NAME, keyVersion: 3 }
-        })
-      ).rejects.toBeInstanceOf(BadRequestError);
+      await expect(set({ connectionId: CONNECTION_ID, reuseKeytab: { profileId: OTHER_PROFILE_ID } })).rejects.toThrow(
+        `Profile '${OTHER_PROFILE_ID}' has no Microsoft Autoenrollment keytab in application 'fleet'`
+      );
+      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
+      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("refuses to reuse the keytab of the profile being configured", async () => {
+      deps.microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId.mockResolvedValue([
+        { ...existingConfig, profileId: PROFILE_ID, profileName: "web-servers" }
+      ]);
+
+      await expect(set({ connectionId: CONNECTION_ID, reuseKeytab: { profileId: PROFILE_ID } })).rejects.toThrow(
+        "A profile cannot reuse its own keytab"
+      );
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
     });
 
@@ -407,7 +417,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(update).toMatchObject({
         encryptedKeytab: existingConfig.encryptedKeytab,
         appConnectionId: CONNECTION_ID,
-        allowedGroupSids: [SERVERS_SID],
+        allowedGroups: JSON.stringify([{ sid: SERVERS_SID, name: "Servers" }]),
         renewBeforeDays: 10,
         $incr: { templateMinorRevision: 1 }
       });
@@ -458,13 +468,54 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     test("clearing the allowed groups sends every computer through", async () => {
       withExistingConfig();
 
-      await set({ allowedGroupSids: null });
+      const result = await set({ allowedGroupSids: null });
 
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.updateById).toHaveBeenCalledWith(
         existingConfig.id,
-        expect.objectContaining({ allowedGroupSids: null }),
+        expect.objectContaining({ allowedGroups: null }),
         "tx"
       );
+      expect(result.microsoftAutoenrollment.allowedGroups).toEqual([]);
+    });
+
+    test("refuses changed allowed groups on the stored LDAP connection when the caller may not use that connection, before asking Active Directory", async () => {
+      withExistingConfig();
+      deps.appConnectionService.validateAppConnectionUsageById.mockRejectedValue(
+        new BadRequestError({ message: "no" })
+      );
+
+      await expect(set({ allowedGroupSids: ["S-1-5-21-1111111111-2222222222-3333333333-1300"] })).rejects.toThrow("no");
+      expect(deps.appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
+        AppConnection.LDAP,
+        { connectionId: CONNECTION_ID, projectId: "project-id" },
+        expect.objectContaining({ id: "user-id" })
+      );
+      expect(resolveDirectorySidNames).not.toHaveBeenCalled();
+      expect(searchDirectoryGroups).not.toHaveBeenCalled();
+      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    test("clears the allowed groups without checking the stored LDAP connection, since nothing is looked up", async () => {
+      withExistingConfig();
+      deps.appConnectionService.validateAppConnectionUsageById.mockRejectedValue(
+        new BadRequestError({ message: "no" })
+      );
+
+      const result = await set({ allowedGroupSids: [] });
+
+      expect(deps.appConnectionService.validateAppConnectionUsageById).not.toHaveBeenCalled();
+      expect(resolveDirectorySidNames).not.toHaveBeenCalled();
+      expect(result.microsoftAutoenrollment.allowedGroups).toEqual([]);
+    });
+
+    test("keeps the stored LDAP connection without checking it when the allowed groups do not change", async () => {
+      withExistingConfig();
+
+      const result = await set({ renewBeforeDays: 10 });
+
+      expect(deps.appConnectionService.validateAppConnectionUsageById).not.toHaveBeenCalled();
+      expect(deps.appConnectionDAL.findById).toHaveBeenCalledWith(CONNECTION_ID);
+      expect(result.connectionName).toBe("corp-ad");
     });
   });
 
@@ -478,8 +529,10 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       });
       deps.microsoftAutoenrollmentEnrollmentConfigDAL.findById.mockResolvedValue({
         ...existingConfig,
-        allowedGroupSids: [SERVERS_SID, OPERATORS_SID],
-        allowedGroupNames: { [SERVERS_SID]: "Servers", [OPERATORS_SID]: "Operators" }
+        allowedGroups: [
+          { sid: SERVERS_SID, name: "Servers" },
+          { sid: OPERATORS_SID, name: "Operators" }
+        ]
       });
 
       await set({ allowedGroupSids: [OPERATORS_SID, SERVERS_SID] });
@@ -496,27 +549,25 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.updateById).toHaveBeenCalledWith(
         existingConfig.id,
-        expect.objectContaining({ allowedGroupNames: { [OPERATORS_SID]: "Operators" } }),
+        expect.objectContaining({ allowedGroups: JSON.stringify([{ sid: OPERATORS_SID, name: "Operators" }]) }),
         "tx"
       );
       expect(resolveDirectorySidNames).toHaveBeenCalledTimes(1);
       expect(result.microsoftAutoenrollment.allowedGroups).toEqual([{ sid: OPERATORS_SID, name: "Operators" }]);
     });
 
-    const withStoredNames = (allowedGroupNames: Record<string, string | null>) => {
+    test("does not ask Active Directory for names when only the renewal setting changes", async () => {
       deps.pkiApplicationProfileDAL.findOneByApplicationAndProfile.mockResolvedValue({
         id: "junction-id",
         microsoftAutoenrollmentConfigId: existingConfig.id
       });
       deps.microsoftAutoenrollmentEnrollmentConfigDAL.findById.mockResolvedValue({
         ...existingConfig,
-        allowedGroupSids: [SERVERS_SID, OPERATORS_SID],
-        allowedGroupNames
+        allowedGroups: [
+          { sid: SERVERS_SID, name: "Servers" },
+          { sid: OPERATORS_SID, name: "Operators" }
+        ]
       });
-    };
-
-    test("does not ask Active Directory for names when only the renewal setting changes", async () => {
-      withStoredNames({ [SERVERS_SID]: "Servers", [OPERATORS_SID]: "Operators" });
 
       await set({ renewBeforeDays: 10 });
 
@@ -531,9 +582,94 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.updateById).toHaveBeenCalledWith(
         existingConfig.id,
-        expect.objectContaining({ allowedGroupNames: { [SERVERS_SID]: "Servers", [OPERATORS_SID]: null } }),
+        expect.objectContaining({
+          allowedGroups: JSON.stringify([
+            { sid: SERVERS_SID, name: "Servers" },
+            { sid: OPERATORS_SID, name: null }
+          ])
+        }),
         "tx"
       );
+    });
+  });
+
+  describe("listMicrosoftAutoenrollmentGroups", () => {
+    const list = () =>
+      service.listMicrosoftAutoenrollmentGroups({
+        applicationId: APPLICATION_ID,
+        profileId: PROFILE_ID,
+        connectionId: CONNECTION_ID,
+        search: "serv",
+        ...actor
+      });
+
+    test("returns the groups and whether the directory had more than it sent", async () => {
+      searchDirectoryGroups.mockResolvedValue({
+        groups: [{ sid: SERVERS_SID, name: "Servers" }],
+        isTruncated: true
+      });
+
+      await expect(list()).resolves.toEqual({ groups: [{ sid: SERVERS_SID, name: "Servers" }], isTruncated: true });
+    });
+
+    test("names the LDAP connection when the directory refuses the search, keeping the cause", async () => {
+      searchDirectoryGroups.mockRejectedValue(
+        new BadRequestError({ message: "TLS connection error: certificate has expired" })
+      );
+
+      await expect(list()).rejects.toThrow(
+        "Could not search Active Directory with the LDAP connection 'corp-ad'. Check that the directory is reachable and the connection's credentials are valid. Details: TLS connection error: certificate has expired"
+      );
+    });
+
+    test("names the LDAP connection without the raw error when the search fails unexpectedly", async () => {
+      searchDirectoryGroups.mockRejectedValue(new Error("ECONNRESET 10.0.0.4:636"));
+
+      const error = await list().catch((err: Error) => err);
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect((error as Error).message).toContain("'corp-ad'");
+      expect((error as Error).message).not.toContain("ECONNRESET");
+    });
+  });
+
+  describe("getEnrollment", () => {
+    const get = () =>
+      service.getEnrollment({
+        applicationId: APPLICATION_ID,
+        profileId: PROFILE_ID,
+        ...actor
+      });
+
+    test("has no unsupported reason for an RSA profile on an RSA certificate authority", async () => {
+      const result = await get();
+
+      expect(result.microsoftAutoenrollmentUnsupportedReason).toBeNull();
+    });
+
+    test("gives the reason Microsoft Autoenrollment would be refused for a profile with no default key on an elliptic curve certificate authority", async () => {
+      deps.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: "ca-id",
+        externalCa: null,
+        internalCa: { keyAlgorithm: "EC_prime256v1" }
+      });
+
+      const result = await get();
+
+      expect(result.microsoftAutoenrollmentUnsupportedReason).toMatch(
+        /Profile 'web-servers' asks Windows for an RSA key, but its certificate authority's key is EC_prime256v1/
+      );
+    });
+
+    test("gives the reason for a profile that issues from an external certificate authority", async () => {
+      deps.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: "ca-id",
+        externalCa: { type: CaType.ACME }
+      });
+
+      const result = await get();
+
+      expect(result.microsoftAutoenrollmentUnsupportedReason).toMatch(/internal certificate authority/);
     });
   });
 
