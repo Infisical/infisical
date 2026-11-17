@@ -104,13 +104,14 @@ func (a *STSAccount) assumeRole(c call) (any, *apiError) {
 	}
 
 	user := "assumed-role/" + role.RoleName + "/" + session
-	id, secret, token := issueSessionKey(role.Owner, user)
+	expires := now().Add(time.Duration(duration) * time.Second)
+	id, secret, token := issueSessionKey(role.Owner, user, expires)
 	a.events.Publish(RoleAssumed{RoleArn: arn, ExternalID: externalID})
 	return struct {
 		Credentials     xmlCredentials     `xml:"Credentials"`
 		AssumedRoleUser xmlAssumedRoleUser `xml:"AssumedRoleUser"`
 	}{
-		xmlCredentials{id, secret, token, iso(now().Add(time.Duration(duration) * time.Second))},
+		xmlCredentials{id, secret, token, iso(expires)},
 		xmlAssumedRoleUser{"AROA" + randomBase32(16) + ":" + session, "arn:aws:sts::" + AccountID(role.Owner) + ":" + user},
 	}, nil
 }

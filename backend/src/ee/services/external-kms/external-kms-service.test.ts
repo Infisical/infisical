@@ -58,7 +58,7 @@ const service = externalKmsServiceFactory({
   } as never,
   licenseService: { getPlan: vi.fn().mockResolvedValue({ has: () => true }) } as never,
   orgDAL: { findById: vi.fn() },
-  projectDAL: { findById: vi.fn() }
+  projectDAL: { findByIdIncludingExpired: vi.fn() }
 });
 
 const updateRegion = () =>

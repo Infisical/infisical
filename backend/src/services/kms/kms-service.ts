@@ -78,7 +78,7 @@ import {
 
 type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findByIdIncludingExpired" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<
     TKmsRootConfigDALFactory,
@@ -473,7 +473,8 @@ export const kmsServiceFactory = ({
             inputsVersion: kmsDoc.externalKms.providerInputsVersion ?? ExternalKmsProviderInputsVersion.Legacy,
             orgId: kmsDoc.orgId,
             orgDAL,
-            projectDAL
+            projectDAL,
+            tx
           });
           break;
         }
@@ -887,7 +888,8 @@ export const kmsServiceFactory = ({
             inputsVersion: kmsDoc.externalKms.providerInputsVersion ?? ExternalKmsProviderInputsVersion.Legacy,
             orgId: kmsDoc.orgId,
             orgDAL,
-            projectDAL
+            projectDAL,
+            tx
           });
           break;
         }

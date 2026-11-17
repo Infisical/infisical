@@ -43,7 +43,7 @@ type TExternalKmsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findByIdIncludingExpired">;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;

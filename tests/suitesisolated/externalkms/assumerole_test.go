@@ -90,7 +90,7 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 		victimRole, _ := customerRole(t, victim, victimProj.ID)
 		attacker := h.NewTenant(t)
 		ownRole, ownKey := customerRole(t, attacker, attacker.OrgID.String())
-		created := createAWSKMS(t, attacker.Admin, ownRole, "", ownKey)
+		created := createAWSKMS(t, attacker.Admin, ownRole, attacker.OrgID.String(), ownKey)
 		requireStatus(t, http.StatusOK, created.StatusCode(), created.Body)
 		kms := kmsID(t, created.Body)
 		sts := infisicalSTS(t, attacker)

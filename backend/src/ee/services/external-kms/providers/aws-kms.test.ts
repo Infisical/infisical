@@ -37,19 +37,24 @@ const ORG_ID = "8a3c2f0e-6f4b-4b0e-9a57-3f1d2c4b5a60";
 const OWN_PROJECT_ID = "0f1e2d3c-4b5a-4968-8776-655443322110";
 const FOREIGN_PROJECT_ID = "11111111-2222-4333-8444-555555555555";
 const FOREIGN_ORG_ID = "99999999-8888-4777-8666-555555555555";
+const FOREIGN_MONGO_PROJECT_ID = "65a1f0c2e4b0a1b2c3d4e5f6";
+const FOREIGN_PENDING_DELETION_PROJECT_ID = "22222222-3333-4444-8555-666666666666";
 const UNKNOWN_UUID = "abcdefab-cdef-4abc-8def-abcdefabcdef";
 
-const projects: Record<string, { orgId: string }> = {
+const projects: Record<string, { orgId: string; deleteAfter?: Date }> = {
   [OWN_PROJECT_ID]: { orgId: ORG_ID },
-  [FOREIGN_PROJECT_ID]: { orgId: FOREIGN_ORG_ID }
+  [FOREIGN_PROJECT_ID]: { orgId: FOREIGN_ORG_ID },
+  [FOREIGN_MONGO_PROJECT_ID]: { orgId: FOREIGN_ORG_ID },
+  [FOREIGN_PENDING_DELETION_PROJECT_ID]: { orgId: FOREIGN_ORG_ID, deleteAfter: new Date() }
 };
 const orgs: Record<string, { id: string }> = {
   [ORG_ID]: { id: ORG_ID },
   [FOREIGN_ORG_ID]: { id: FOREIGN_ORG_ID }
 };
 
-const projectDAL = { findById: vi.fn(async (id: string) => projects[id] as never) };
-const orgDAL = { findById: vi.fn(async (id: string) => orgs[id] as never) };
+type TLookup = (id: string, tx?: unknown) => Promise<never>;
+const projectDAL = { findByIdIncludingExpired: vi.fn<TLookup>(async (id) => projects[id] as never) };
+const orgDAL = { findById: vi.fn<TLookup>(async (id) => orgs[id] as never) };
 const lookups = { orgId: ORG_ID, orgDAL, projectDAL };
 
 const assumeRoleInputs = (externalId?: string): TExternalKmsAwsSchema => ({
@@ -65,7 +70,7 @@ const externalIdOf = (inputs: TExternalKmsAwsSchema) =>
   inputs.credential.type === KmsAwsCredentialType.AssumeRole ? inputs.credential.data.externalId : undefined;
 
 beforeEach(() => {
-  projectDAL.findById.mockClear();
+  projectDAL.findByIdIncludingExpired.mockClear();
   orgDAL.findById.mockClear();
   sts.externalIds = [];
 });
@@ -84,10 +89,10 @@ describe("bindAwsKmsExternalIdToOrg", () => {
     expect(externalIdOf(bindAwsKmsExternalIdToOrg({ inputs: assumeRoleInputs(), orgId: ORG_ID }))).toBe(ORG_ID);
   });
 
-  test("accepts the organization ID in any case", () => {
+  test("stores the organization ID itself when given it in another case", () => {
     const inputs = assumeRoleInputs(ORG_ID.toUpperCase());
 
-    expect(bindAwsKmsExternalIdToOrg({ inputs, orgId: ORG_ID })).toEqual(inputs);
+    expect(bindAwsKmsExternalIdToOrg({ inputs, orgId: ORG_ID })).toEqual(assumeRoleInputs(ORG_ID));
   });
 
   test.each([
@@ -105,12 +110,23 @@ describe("bindAwsKmsExternalIdToOrg", () => {
 describe("assertAwsKmsLegacyExternalIdNotForeign", () => {
   test.each([
     ["another organization's project ID", FOREIGN_PROJECT_ID],
+    ["another organization's project ID carried over from MongoDB", FOREIGN_MONGO_PROJECT_ID],
+    ["another organization's project pending deletion", FOREIGN_PENDING_DELETION_PROJECT_ID],
     ["another organization's ID", FOREIGN_ORG_ID],
     ["another organization's ID in upper case", FOREIGN_ORG_ID.toUpperCase()]
   ])("refuses %s", async (_, externalId) => {
     await expect(
       assertAwsKmsLegacyExternalIdNotForeign({ inputs: assumeRoleInputs(externalId), ...lookups })
     ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  test("runs both lookups in the caller's transaction", async () => {
+    const tx = {} as never;
+
+    await assertAwsKmsLegacyExternalIdNotForeign({ inputs: assumeRoleInputs(UNKNOWN_UUID), ...lookups, tx });
+
+    expect(orgDAL.findById).toHaveBeenCalledWith(UNKNOWN_UUID, tx);
+    expect(projectDAL.findByIdIncludingExpired).toHaveBeenCalledWith(UNKNOWN_UUID, tx);
   });
 
   test.each([
@@ -124,12 +140,20 @@ describe("assertAwsKmsLegacyExternalIdNotForeign", () => {
     ).resolves.toBeUndefined();
   });
 
-  test("allows a free-form value without looking anything up", async () => {
+  test("allows a free-form value, looking it up only as a project", async () => {
     await expect(
       assertAwsKmsLegacyExternalIdNotForeign({ inputs: assumeRoleInputs("my-custom-id"), ...lookups })
     ).resolves.toBeUndefined();
     expect(orgDAL.findById).not.toHaveBeenCalled();
-    expect(projectDAL.findById).not.toHaveBeenCalled();
+    expect(projectDAL.findByIdIncludingExpired).toHaveBeenCalledWith("my-custom-id", undefined);
+  });
+
+  test("allows a value too long to be a project ID without looking anything up", async () => {
+    await expect(
+      assertAwsKmsLegacyExternalIdNotForeign({ inputs: assumeRoleInputs("x".repeat(37)), ...lookups })
+    ).resolves.toBeUndefined();
+    expect(orgDAL.findById).not.toHaveBeenCalled();
+    expect(projectDAL.findByIdIncludingExpired).not.toHaveBeenCalled();
   });
 });
 

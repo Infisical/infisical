@@ -597,6 +597,27 @@ func TestAWSFake_KMS(t *testing.T) {
 		require.Equal(t, "InvalidCiphertextException", refused["__type"])
 	})
 
+	t.Run("should refuse an encryption context it cannot bind to the ciphertext", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		a := r.account(t)
+		keyID := uuid.NewString()
+		a.cp(t).Seed(t, aws.SeedKey(keyID))
+		status, enc := a.kms(t, "Encrypt", map[string]any{"KeyId": keyID, "Plaintext": []byte("data key")})
+		require.Equalf(t, http.StatusOK, status, "%v", enc)
+		ctx := map[string]string{"org": "A"}
+
+		// Action
+		encStatus, encOut := a.kms(t, "Encrypt", map[string]any{"KeyId": keyID, "Plaintext": []byte("data key"), "EncryptionContext": ctx})
+		decStatus, decOut := a.kms(t, "Decrypt", map[string]any{"CiphertextBlob": enc["CiphertextBlob"], "EncryptionContext": ctx})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, encStatus)
+		require.Equal(t, "UnsupportedOperationException", encOut["__type"])
+		require.Equal(t, http.StatusBadRequest, decStatus)
+		require.Equal(t, "UnsupportedOperationException", decOut["__type"])
+	})
+
 	t.Run("should refuse a key the account does not hold with NotFoundException", func(t *testing.T) {
 		// Setup
 		a := newRig(t).account(t)

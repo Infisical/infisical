@@ -1,5 +1,6 @@
 import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, KMSClient } from "@aws-sdk/client-kms";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -19,8 +20,11 @@ import {
 
 type TInfisicalIdLookupDeps = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findByIdIncludingExpired">;
+  tx?: Knex;
 };
+
+const PROJECT_ID_MAX_LENGTH = 36;
 
 const isOrgId = (externalId: string, orgId: string) => externalId.toLowerCase() === orgId.toLowerCase();
 
@@ -34,14 +38,12 @@ export const bindAwsKmsExternalIdToOrg = ({
   if (inputs.credential.type !== KmsAwsCredentialType.AssumeRole) return inputs;
 
   const { externalId } = inputs.credential.data;
-  if (!externalId) {
+  if (!externalId || isOrgId(externalId, orgId)) {
     return {
       ...inputs,
       credential: { ...inputs.credential, data: { ...inputs.credential.data, externalId: orgId } }
     };
   }
-
-  if (isOrgId(externalId, orgId)) return inputs;
 
   throw new BadRequestError({
     message: `The AWS external ID must be your organization ID (${orgId}). Set the sts:ExternalId condition in the IAM role's trust policy to your organization ID and use the same value here.`
@@ -50,18 +52,25 @@ export const bindAwsKmsExternalIdToOrg = ({
 
 // Legacy rows keep their stored external ID, except one that names another organization or one of its
 // projects: no customer sets that up for themselves, and it is what a cross-organization takeover stores.
+// Projects carried over from MongoDB kept 24-character IDs, so every value that fits projects.id is looked
+// up as a project, and one pending deletion still counts because its role can still trust its ID. Only a
+// UUID can name an organization, and organizations.id is a uuid column that rejects anything else.
 export const assertAwsKmsLegacyExternalIdNotForeign = async ({
   inputs,
   orgId,
   orgDAL,
-  projectDAL
+  projectDAL,
+  tx
 }: TInfisicalIdLookupDeps & { inputs: TExternalKmsAwsSchema; orgId: string }) => {
   if (inputs.credential.type !== KmsAwsCredentialType.AssumeRole) return;
 
   const { externalId } = inputs.credential.data;
-  if (!externalId || isOrgId(externalId, orgId) || !z.string().uuid().safeParse(externalId).success) return;
+  if (!externalId || isOrgId(externalId, orgId) || externalId.length > PROJECT_ID_MAX_LENGTH) return;
 
-  const [org, project] = await Promise.all([orgDAL.findById(externalId), projectDAL.findById(externalId)]);
+  const [org, project] = await Promise.all([
+    z.string().uuid().safeParse(externalId).success ? orgDAL.findById(externalId, tx) : undefined,
+    projectDAL.findByIdIncludingExpired(externalId, tx)
+  ]);
   if (!org && (!project || project.orgId === orgId)) return;
 
   throw new BadRequestError({
@@ -164,11 +173,12 @@ export const AwsKmsProviderFactory = async ({
   inputsVersion,
   orgId,
   orgDAL,
-  projectDAL
+  projectDAL,
+  tx
 }: AwsKmsProviderArgs): Promise<TAwsKmsProviderFactoryReturn> => {
   const parsedInputs = await ExternalKmsAwsSchema.parseAsync(inputs);
   if (inputsVersion === ExternalKmsProviderInputsVersion.Legacy) {
-    await assertAwsKmsLegacyExternalIdNotForeign({ inputs: parsedInputs, orgId, orgDAL, projectDAL });
+    await assertAwsKmsLegacyExternalIdNotForeign({ inputs: parsedInputs, orgId, orgDAL, projectDAL, tx });
   }
   let providerInputs =
     inputsVersion === ExternalKmsProviderInputsVersion.Legacy

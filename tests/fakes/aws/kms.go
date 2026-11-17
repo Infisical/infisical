@@ -77,8 +77,8 @@ func (a *KMSAccount) Seed(raw []byte) error {
 	defer a.mu.Unlock()
 	a.merge(in.Policy)
 	for id := range in.Keys {
-		if uuid.Validate(id) != nil {
-			return fmt.Errorf("KMS key id %q is not a UUID", id)
+		if len(id) != kmsKeyIDLen || uuid.Validate(id) != nil {
+			return fmt.Errorf("KMS key id %q is not a UUID in its 36-character form", id)
 		}
 		if _, ok := a.Keys[id]; !ok {
 			a.Keys[id] = newKMSKey(id)
@@ -168,10 +168,14 @@ func (a *KMSAccount) describeKey(c call) (any, *apiError) {
 
 func (a *KMSAccount) encrypt(c call) (any, *apiError) {
 	var in struct {
-		KeyID     string `json:"KeyId"`
-		Plaintext []byte `json:"Plaintext"`
+		KeyID             string            `json:"KeyId"`
+		Plaintext         []byte            `json:"Plaintext"`
+		EncryptionContext map[string]string `json:"EncryptionContext"`
 	}
 	if err := decodeJSON(c, &in); err != nil {
+		return nil, err
+	}
+	if err := refuseEncryptionContext(in.EncryptionContext); err != nil {
 		return nil, err
 	}
 	k, err := a.key(c, in.KeyID)
@@ -192,18 +196,21 @@ func (a *KMSAccount) encrypt(c call) (any, *apiError) {
 
 func (a *KMSAccount) decrypt(c call) (any, *apiError) {
 	var in struct {
-		KeyID          string `json:"KeyId"`
-		CiphertextBlob []byte `json:"CiphertextBlob"`
+		KeyID             string            `json:"KeyId"`
+		CiphertextBlob    []byte            `json:"CiphertextBlob"`
+		EncryptionContext map[string]string `json:"EncryptionContext"`
 	}
 	if err := decodeJSON(c, &in); err != nil {
+		return nil, err
+	}
+	if err := refuseEncryptionContext(in.EncryptionContext); err != nil {
 		return nil, err
 	}
 	invalid := errf(http.StatusBadRequest, "InvalidCiphertextException", "")
 	if len(in.CiphertextBlob) < kmsKeyIDLen+kmsNonceLen {
 		return nil, invalid
 	}
-	blobKeyID := string(in.CiphertextBlob[:kmsKeyIDLen])
-	k, ok := a.Keys[blobKeyID]
+	k, ok := a.Keys[string(in.CiphertextBlob[:kmsKeyIDLen])]
 	if !ok {
 		return nil, invalid
 	}
@@ -223,6 +230,16 @@ func (a *KMSAccount) decrypt(c call) (any, *apiError) {
 		return nil, invalid
 	}
 	return map[string]any{"Plaintext": plaintext, "KeyId": kmsArn(c.account(), k.KeyID), "EncryptionAlgorithm": "SYMMETRIC_DEFAULT"}, nil
+}
+
+// refuseEncryptionContext fails a call that sends an encryption context. AWS binds the
+// context to the ciphertext and this fake does not, so accepting one would let a
+// decrypt under the wrong context succeed here when it fails on AWS.
+func refuseEncryptionContext(ctx map[string]string) *apiError {
+	if len(ctx) == 0 {
+		return nil
+	}
+	return errf(http.StatusBadRequest, "UnsupportedOperationException", "EncryptionContext is not modelled")
 }
 
 func (k *KMSKey) gcm() cipher.AEAD {

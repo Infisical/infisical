@@ -93,12 +93,13 @@ func AccountID(credential string) string {
 }
 
 // issued is an access key IAM handed out, or the temporary key of an STS session, which
-// is only accepted with its session token.
+// is only accepted with its session token and until it expires.
 type issued struct {
 	owner        string
 	user         string
 	secret       string
 	sessionToken string
+	expires      time.Time
 	active       bool
 }
 
@@ -121,13 +122,13 @@ func issueKey(ownerKey, user string) (id, secret string) {
 
 // issueSessionKey is the temporary key STS hands out for an assumed role. It belongs to
 // the role's account, so what the session does lands in that account's state.
-func issueSessionKey(ownerKey, user string) (id, secret, token string) {
+func issueSessionKey(ownerKey, user string, expires time.Time) (id, secret, token string) {
 	id = "ASIA" + randomBase32(16)
 	secret = randomBase64(40)
 	token = randomBase64(64)
 	keyring.mu.Lock()
 	defer keyring.mu.Unlock()
-	keyring.keys[id] = &issued{owner: ownerKey, user: user, secret: secret, sessionToken: token, active: true}
+	keyring.keys[id] = &issued{owner: ownerKey, user: user, secret: secret, sessionToken: token, expires: expires, active: true}
 	return id, secret, token
 }
 
@@ -219,6 +220,9 @@ func authenticate(svc service, r *http.Request, body []byte) (string, *apiError)
 		if !k.active || k.sessionToken != r.Header.Get("X-Amz-Security-Token") {
 			return "", invalidToken(svc)
 		}
+		if !k.expires.IsZero() && !time.Now().Before(k.expires) {
+			return "", expiredToken(svc)
+		}
 		secret = k.secret
 	}
 
@@ -236,6 +240,13 @@ func invalidToken(svc service) *apiError {
 		return errf(http.StatusBadRequest, "UnrecognizedClientException", "The security token included in the request is invalid.")
 	}
 	return errf(http.StatusForbidden, "InvalidClientTokenId", "The security token included in the request is invalid.")
+}
+
+func expiredToken(svc service) *apiError {
+	if svc.json() {
+		return errf(http.StatusBadRequest, "ExpiredTokenException", "The security token included in the request is expired")
+	}
+	return errf(http.StatusForbidden, "ExpiredToken", "The security token included in the request is expired")
 }
 
 func (s service) json() bool { return s.name == "ssm" || s.name == "secretsmanager" || s.name == "kms" }
