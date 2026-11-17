@@ -32,8 +32,25 @@ const baseCmekQuery = ({ filter, db, tx }: { db: TDbClient; filter?: TCmekFindFi
   return query;
 };
 
-export const kmskeyDALFactory = (db: TDbClient) => {
+type TKmsKeyDALOptions = {
+  // Historical data migrations run these lookups before the migration that adds providerInputsVersion, so the
+  // migration services turn this off; the KMS service then treats the key as legacy.
+  selectProviderInputsVersion?: boolean;
+};
+
+export const kmskeyDALFactory = (db: TDbClient, { selectProviderInputsVersion = true }: TKmsKeyDALOptions = {}) => {
   const kmsOrm = ormify(db, TableName.KmsKey);
+
+  const externalKmsColumns = () => [
+    db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
+    db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
+    db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
+    ...(selectProviderInputsVersion
+      ? [db.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion")]
+      : []),
+    db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
+    db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
+  ];
 
   // akhilmhdh: this function should never be called outside kms service
   // why: because the encrypted key should never be shared with another service
@@ -53,14 +70,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
           db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId")
         )
-        .select(
-          db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
-          db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
-          db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
-          db.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion"),
-          db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
-          db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
-        )
+        .select(externalKmsColumns())
         .select(
           db.ref("kmsDefaultKeyId").withSchema(TableName.Organization).as("orgKmsDefaultKeyId"),
           db.ref("kmsEncryptedDataKey").withSchema(TableName.Organization).as("orgKmsEncryptedDataKey")
@@ -114,14 +124,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
           db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
         )
-        .select(
-          db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
-          db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
-          db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
-          db.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion"),
-          db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
-          db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
-        )
+        .select(externalKmsColumns())
         .select(
           db.ref("kmsDefaultKeyId").withSchema(TableName.Organization).as("orgKmsDefaultKeyId"),
           db.ref("kmsEncryptedDataKey").withSchema(TableName.Organization).as("orgKmsEncryptedDataKey")

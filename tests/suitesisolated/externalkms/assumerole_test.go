@@ -7,14 +7,13 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
 // Every organization assumes customers' roles with the same Infisical credential, so a
 // role's trust policy can only tell organizations apart by the external ID. These pin that
-// Infisical sends its own organization's ID (or one of its projects) and nothing a caller
-// chooses, so one organization cannot reach a role another organization's customer set up.
+// Infisical sends its own organization's ID and nothing a caller chooses, so one
+// organization cannot reach a role another organization's customer set up.
 func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 	h := harness.From(t)
 
@@ -29,8 +28,7 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 
 		// Assert
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		_, stored := storedAssumeRole(t, tn.Admin, kmsID(t, res.Body))
-		require.Equal(t, tn.OrgID.String(), stored)
+		require.Equal(t, tn.OrgID.String(), storedAssumeRole(t, tn.Admin, kmsID(t, res.Body)).ExternalID)
 		sts.ExpectEvent(t, func(e aws.RoleAssumed) bool {
 			return e.RoleArn == roleArn && e.ExternalID == tn.OrgID.String()
 		})
@@ -47,8 +45,7 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 		res := createAWSKMS(t, tn.Admin, roleArn, proj.ID, keyID)
 
 		// Assert
-		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Contains(t, apierr.Message(res.Body), "must be your organization ID ("+tn.OrgID.String()+")")
+		requireOrgIDRequired(t, tn, res.StatusCode(), res.Body)
 		require.Zero(t, externalKMSCount(t, tn.Admin))
 		sts.ExpectNoEvent(t, func(e aws.RoleAssumed) bool { return e.RoleArn == roleArn })
 	})
@@ -65,8 +62,7 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 		res := createAWSKMS(t, attacker.Admin, victimRole, victimProj.ID, victimKey)
 
 		// Assert
-		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Contains(t, apierr.Message(res.Body), "must be your organization ID ("+attacker.OrgID.String()+")")
+		requireOrgIDRequired(t, attacker, res.StatusCode(), res.Body)
 		require.Zero(t, externalKMSCount(t, attacker.Admin))
 		sts.ExpectNoEvent(t, func(e aws.RoleAssumed) bool { return e.RoleArn == victimRole })
 	})
@@ -82,7 +78,7 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 		res := createAWSKMS(t, attacker.Admin, victimRole, victim.OrgID.String(), victimKey)
 
 		// Assert
-		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		requireOrgIDRequired(t, attacker, res.StatusCode(), res.Body)
 		require.Zero(t, externalKMSCount(t, attacker.Admin))
 		sts.ExpectNoEvent(t, func(e aws.RoleAssumed) bool { return e.RoleArn == victimRole })
 	})
@@ -103,13 +99,11 @@ func TestExternalKMS_AssumeRoleExternalID(t *testing.T) {
 		res, err := attacker.Admin.API.UpdateAwsExternalKmsWithBodyWithResponse(t.Context(), kms, "application/json", jsonBody(t, map[string]any{
 			"configuration": map[string]any{"credential": assumeRoleCredential(victimRole, victimProj.ID)},
 		}))
+		require.NoError(t, err)
 
 		// Assert
-		require.NoError(t, err)
-		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		storedRole, storedID := storedAssumeRole(t, attacker.Admin, kms)
-		require.Equal(t, ownRole, storedRole)
-		require.Equal(t, attacker.OrgID.String(), storedID)
+		requireOrgIDRequired(t, attacker, res.StatusCode(), res.Body)
+		require.Equal(t, assumeRole{RoleArn: ownRole, ExternalID: attacker.OrgID.String()}, storedAssumeRole(t, attacker.Admin, kms))
 		sts.ExpectNoEvent(t, func(e aws.RoleAssumed) bool { return e.RoleArn == victimRole })
 	})
 }

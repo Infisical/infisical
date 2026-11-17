@@ -29,6 +29,14 @@ func requireStatus(t *testing.T, want, got int, body []byte) {
 	require.Equalf(t, want, got, "answered %d: %s", got, apierr.Body(body))
 }
 
+// requireOrgIDRequired is the refusal of an external ID that is not the organization's own,
+// which tells the admin the value to use instead.
+func requireOrgIDRequired(t *testing.T, tn *harness.Tenant, status int, body []byte) {
+	t.Helper()
+	requireStatus(t, http.StatusBadRequest, status, body)
+	require.Contains(t, apierr.Message(body), "must be your organization ID ("+tn.OrgID.String()+")")
+}
+
 // customerRole seeds a customer's AWS account holding a KMS key and a role that trusts
 // Infisical's account with the given external ID, as the KMS guide has customers set up.
 func customerRole(t *testing.T, tn *harness.Tenant, externalID string) (roleArn, keyID string) {
@@ -82,9 +90,14 @@ func kmsID(t *testing.T, body []byte) string {
 	return out.ID
 }
 
+type assumeRole struct {
+	RoleArn    string
+	ExternalID string
+}
+
 // storedAssumeRole is the role and external ID an external KMS holds, as its admin reads
 // them back.
-func storedAssumeRole(t *testing.T, actor *harness.Principal, kmsID string) (roleArn, externalID string) {
+func storedAssumeRole(t *testing.T, actor *harness.Principal, kmsID string) assumeRole {
 	t.Helper()
 	res, err := actor.API.GetAwsExternalKmsWithResponse(t.Context(), kmsID)
 	require.NoError(t, err)
@@ -102,7 +115,8 @@ func storedAssumeRole(t *testing.T, actor *harness.Principal, kmsID string) (rol
 		} `json:"externalKms"`
 	}
 	require.NoError(t, json.Unmarshal(res.Body, &out))
-	return out.ExternalKms.Configuration.Credential.Data.AssumeRoleArn, out.ExternalKms.Configuration.Credential.Data.ExternalID
+	data := out.ExternalKms.Configuration.Credential.Data
+	return assumeRole{RoleArn: data.AssumeRoleArn, ExternalID: data.ExternalID}
 }
 
 func externalKMSCount(t *testing.T, actor *harness.Principal) int {

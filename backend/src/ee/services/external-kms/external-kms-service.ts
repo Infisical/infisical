@@ -5,7 +5,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -324,14 +324,23 @@ export const externalKmsServiceFactory = ({
         );
       }
       if (encryptedProviderInputs) {
-        const externalKmsCfg = await externalKmsDAL.updateById(
-          externalKmsDoc.id,
+        const [externalKmsCfg] = await externalKmsDAL.update(
+          {
+            id: externalKmsDoc.id,
+            encryptedProviderInputs: externalKmsDoc.encryptedProviderInputs,
+            providerInputsVersion: externalKmsDoc.providerInputsVersion
+          },
           {
             encryptedProviderInputs,
             providerInputsVersion
           },
           tx
         );
+        if (!externalKmsCfg) {
+          throw new ConflictError({
+            message: "This external KMS was changed while your update was being saved. Reload it and try again."
+          });
+        }
         return { ...kms, external: { ...externalKmsCfg, providerInput: sanitizedProviderInputObject } };
       }
       return { ...kms, external: { ...externalKmsDoc, providerInput: sanitizedProviderInputObject } };

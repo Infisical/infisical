@@ -54,7 +54,7 @@ export const getMigrationEncryptionServices = async ({
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(db);
   const kmsKekHistoryDAL = kmsKekHistoryDALFactory(db);
-  const kmsDAL = kmskeyDALFactory(db);
+  const kmsDAL = kmskeyDALFactory(db, { selectProviderInputsVersion: false });
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
 

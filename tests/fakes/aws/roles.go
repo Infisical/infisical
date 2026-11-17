@@ -86,16 +86,39 @@ type trustStatement struct {
 	Condition map[string]map[string]stringList
 }
 
+// statementList is a policy's Statement, which may be one statement or a list of them.
+type statementList []trustStatement
+
+func (s *statementList) UnmarshalJSON(b []byte) error {
+	var one trustStatement
+	if err := json.Unmarshal(b, &one); err == nil {
+		*s = []trustStatement{one}
+		return nil
+	}
+	var many []trustStatement
+	if err := json.Unmarshal(b, &many); err != nil {
+		return fmt.Errorf("policy Statement is neither a statement nor a list: %s", b)
+	}
+	*s = many
+	return nil
+}
+
 // trusts evaluates the trust policy for an AssumeRole from an account carrying an
-// external ID. Only the parts a third-party trust policy uses are understood: an AWS
-// account principal and a StringEquals on sts:ExternalId. Anything else fails closed.
+// external ID. Only the parts a third-party trust policy uses are understood: Allow
+// statements with an AWS account principal and a StringEquals on sts:ExternalId.
+// Anything else fails closed. On AWS an explicit Deny overrides every Allow, and denies
+// are not evaluated here, so a policy holding any statement but an Allow refuses everyone.
 func (r Role) trusts(callerAccount, externalID string) bool {
-	var doc struct{ Statement []trustStatement }
+	var doc struct{ Statement statementList }
 	if err := json.Unmarshal([]byte(r.AssumeRolePolicyDocument), &doc); err != nil {
 		return false
 	}
+	allowed := false
 	for _, s := range doc.Statement {
-		if s.Effect != "Allow" || !slices.Contains(s.Action, "sts:AssumeRole") {
+		if s.Effect != "Allow" {
+			return false
+		}
+		if allowed || !slices.Contains(s.Action, "sts:AssumeRole") {
 			continue
 		}
 		if !slices.ContainsFunc(s.Principal.AWS, func(p string) bool {
@@ -103,11 +126,9 @@ func (r Role) trusts(callerAccount, externalID string) bool {
 		}) {
 			continue
 		}
-		if conditionsHold(s.Condition, externalID) {
-			return true
-		}
+		allowed = conditionsHold(s.Condition, externalID)
 	}
-	return false
+	return allowed
 }
 
 func conditionsHold(cond map[string]map[string]stringList, externalID string) bool {

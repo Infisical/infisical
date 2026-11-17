@@ -523,6 +523,55 @@ func TestAWSFake_AssumeRole(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, status)
 		require.Equal(t, "UnrecognizedClientException", out["__type"])
 	})
+
+	// trustStatement is one statement of a trust policy letting caller's account assume a
+	// role with the given external ID.
+	trustStatement := func(effect string, caller *account, externalID string) map[string]any {
+		return map[string]any{
+			"Effect":    effect,
+			"Principal": map[string]any{"AWS": "arn:aws:iam::" + aws.AccountID(caller.id) + ":root"},
+			"Action":    "sts:AssumeRole",
+			"Condition": map[string]any{"StringEquals": map[string]any{"sts:ExternalId": externalID}},
+		}
+	}
+	roleWithPolicy := func(t *testing.T, customer *account, statement any) string {
+		t.Helper()
+		doc, err := json.Marshal(map[string]any{"Version": "2012-10-17", "Statement": statement})
+		require.NoError(t, err)
+		customer.cp(t).Seed(t, aws.SeedRole(customer.id, "infisical-kms", string(doc)))
+		return aws.RoleArn(customer.id, "infisical-kms")
+	}
+
+	t.Run("should grant a session when the trust policy's Statement is a single object", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn := roleWithPolicy(t, customer, trustStatement("Allow", caller, "org-1"))
+
+		// Action
+		_, refused := caller.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Empty(t, refused)
+	})
+
+	t.Run("should refuse with AccessDenied when a Deny accompanies a matching Allow", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+		customer, caller := r.account(t), r.account(t)
+		roleArn := roleWithPolicy(t, customer, []any{
+			trustStatement("Allow", caller, "org-1"),
+			trustStatement("Deny", caller, "org-1"),
+		})
+		callerCP := caller.cp(t)
+
+		// Action
+		_, refused := caller.assumeRole(t, roleArn, "org-1")
+
+		// Assert
+		require.Equal(t, "AccessDenied", refused)
+		callerCP.STS.ExpectNoEvent[aws.RoleAssumed](t, nil)
+	})
 }
 
 func TestAWSFake_KMS(t *testing.T) {

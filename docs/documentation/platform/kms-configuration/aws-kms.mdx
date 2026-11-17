@@ -27,7 +27,7 @@ Before you begin, you'll first need to choose a method of authentication with AW
       <Note>
         **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
       </Note>
-      4. Enable **Require external ID** and enter your Organization ID. Copy it from the **External ID** field of the AWS KMS form in Infisical, or from **Organization ID** in your organization's **Settings**.
+      4. Enable **Require external ID** and enter your Organization ID. It's shown under **Organization ID** in your organization's **Settings**.
 
       Infisical sends this ID every time it assumes the role, so the role only works for external KMS keys in your organization. This protects your AWS account from the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
 
@@ -131,8 +131,8 @@ Next, you'll need to follow the steps listed below to add AWS KMS for your organ
         ARN of the AWS role to assume for providing Infisical access to the AWS KMS Key (required if Authentication Mode is "AWS Assume Role")
     </ParamField>
 
-    <ParamField path="External ID" type="string">
-    	Your Organization ID, which Infisical sends when it assumes the role. You can't edit this field. Copy it into the `sts:ExternalId` condition of the role's trust policy.
+    <ParamField path="Assume Role External ID" type="string">
+    	Your Organization ID. Infisical sends it as the external ID when it assumes the role, so the role's trust policy must require it in the `sts:ExternalId` condition. The Infisical UI fills it in for you. Through the API or Terraform, set it to your Organization ID; any other value is rejected.
     </ParamField>
 
     <ParamField path="Access Key ID" type="string">
@@ -194,7 +194,7 @@ To move the key to your Organization ID without interrupting encryption, follow 
         In the AWS Console, open the IAM role and select **Trust relationships** > **Edit trust policy**. In the `sts:ExternalId` condition, add your Organization ID next to the existing value, then save the policy.
       </Step>
       <Step>
-        In Infisical, go to **Settings** > **Encryption**, open the menu next to the key, and select **Edit Credentials**. The **External ID** field shows your Organization ID. Select **Update Credentials**.
+        In Infisical, go to **Settings** > **Encryption**, open the menu next to the key, and select **Edit Credentials**. Select **Update Credentials**, and Infisical switches the key to your Organization ID.
       </Step>
       <Step>
         Edit the trust policy again and remove the old value.
@@ -204,7 +204,7 @@ To move the key to your Organization ID without interrupting encryption, follow 
   <Tab title="No external ID">
     <Steps>
       <Step>
-        In Infisical, go to **Settings** > **Encryption**, open the menu next to the key, and select **Edit Credentials**. The **External ID** field shows your Organization ID. Select **Update Credentials**. The role accepts the new ID because its trust policy has no `sts:ExternalId` condition yet.
+        In Infisical, go to **Settings** > **Encryption**, open the menu next to the key, and select **Edit Credentials**. Select **Update Credentials**, and Infisical switches the key to your Organization ID. The role accepts the new ID because its trust policy has no `sts:ExternalId` condition yet.
       </Step>
       <Step>
         In the AWS Console, open the IAM role and select **Trust relationships** > **Edit trust policy**. Add an `sts:ExternalId` condition with your Organization ID, then save the policy.

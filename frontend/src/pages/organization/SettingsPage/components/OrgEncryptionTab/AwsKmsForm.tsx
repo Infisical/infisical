@@ -9,7 +9,7 @@ import {
   AlertTitle,
   Badge,
   Button,
-  CodeBlock,
+  Code,
   CopyButton,
   DialogFooter,
   DocumentationLinkBadge,
@@ -18,10 +18,10 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   SecretInput,
   Select,
   SelectContent,
@@ -153,11 +153,8 @@ export const AwsKmsForm = ({
 
   const selectedAwsAuthType = watch("configuration.inputs.credential.type");
   const hasLegacyExternalId = Boolean(kms?.externalKms?.hasLegacyExternalId);
-  const trustPolicyCondition = JSON.stringify(
-    { Condition: { StringEquals: { "sts:ExternalId": currentOrg.id } } },
-    null,
-    2
-  );
+  const storedExternalId: string | undefined =
+    kms?.externalKms?.configuration?.credential?.data?.externalId;
 
   const withOrgExternalId = (credential: AwsKmsCredential): AwsKmsCredential =>
     credential.type === KmsAwsCredentialType.AssumeRole
@@ -393,7 +390,26 @@ export const AwsKmsForm = ({
                         placeholder="arn:aws:iam::123456789012:role/InfisicalKms"
                       />
                       <FieldDescription>
-                        The role Infisical assumes to access AWS KMS.
+                        Infisical sends your{" "}
+                        <HoverCard openDelay={150} closeDelay={150}>
+                          <HoverCardTrigger asChild>
+                            <span className="cursor-help text-foreground underline decoration-muted decoration-dotted underline-offset-4">
+                              organization ID
+                            </span>
+                          </HoverCardTrigger>
+                          <HoverCardContent align="start" className="w-auto max-w-sm">
+                            <p className="text-xs font-medium text-foreground">External ID</p>
+                            <div className="mt-1 flex items-center gap-1">
+                              <span className="font-mono text-xs">{currentOrg.id}</span>
+                              <CopyButton value={currentOrg.id} ariaLabel="Copy organization ID" />
+                            </div>
+                            <p className="mt-2 text-xs text-muted">
+                              Require it in the role&apos;s trust policy with the{" "}
+                              <Code>sts:ExternalId</Code> condition.
+                            </p>
+                          </HoverCardContent>
+                        </HoverCard>{" "}
+                        as the External ID when it assumes this role.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>
@@ -402,39 +418,31 @@ export const AwsKmsForm = ({
                 {hasLegacyExternalId && (
                   <Alert variant="warning">
                     <TriangleAlertIcon />
-                    <AlertTitle>External ID Not Tied to This Organization</AlertTitle>
+                    <AlertTitle>
+                      {storedExternalId
+                        ? "External ID Not Tied to This Organization"
+                        : "No External ID on This Key"}
+                    </AlertTitle>
                     <AlertDescription>
-                      <p>
-                        This key keeps working with its current external ID. Updating its
-                        credentials switches it to your organization ID, so add that value to the
-                        role&apos;s trust policy first.
-                      </p>
+                      {storedExternalId ? (
+                        <p>
+                          This key keeps working with its current external ID. Before updating its
+                          credentials, add your organization ID to the role&apos;s trust policy next
+                          to the current value. Remove the old value after the update.
+                        </p>
+                      ) : (
+                        <p>
+                          This key keeps working without an external ID. Update its credentials
+                          first so Infisical sends your organization ID, then require that value in
+                          the role&apos;s trust policy.
+                        </p>
+                      )}
                       <DocumentationLinkBadge
                         href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
                       />
                     </AlertDescription>
                   </Alert>
                 )}
-                <Field>
-                  <FieldLabel htmlFor="aws-kms-external-id">External ID</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput id="aws-kms-external-id" value={currentOrg.id} readOnly />
-                    <InputGroupAddon align="inline-end">
-                      <CopyButton
-                        key={currentOrg.id}
-                        type="button"
-                        value={currentOrg.id}
-                        ariaLabel="Copy external ID"
-                      />
-                    </InputGroupAddon>
-                  </InputGroup>
-                  <FieldDescription>
-                    Infisical sends your organization ID when it assumes the role. Add this
-                    condition to the role&apos;s trust policy so no other organization can use it.
-                  </FieldDescription>
-                  <CodeBlock label="Trust Policy Condition" value={trustPolicyCondition} />
-                  <DocumentationLinkBadge href={`${AWS_KMS_DOCS_URL}#prerequisites`} />
-                </Field>
               </>
             )}
           </>

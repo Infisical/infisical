@@ -8,6 +8,7 @@ import { GcpKmsProviderFactory } from "@app/ee/services/external-kms/providers/g
 import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
+  ExternalKmsProviderInputsVersion,
   KmsProviders,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
@@ -469,7 +470,7 @@ export const kmsServiceFactory = ({
 
           externalKms = await AwsKmsProviderFactory({
             inputs: decryptedProviderInput,
-            inputsVersion: kmsDoc.externalKms.providerInputsVersion,
+            inputsVersion: kmsDoc.externalKms.providerInputsVersion ?? ExternalKmsProviderInputsVersion.Legacy,
             orgId: kmsDoc.orgId,
             orgDAL,
             projectDAL
@@ -883,7 +884,7 @@ export const kmsServiceFactory = ({
 
           externalKms = await AwsKmsProviderFactory({
             inputs: decryptedProviderInput,
-            inputsVersion: kmsDoc.externalKms.providerInputsVersion,
+            inputsVersion: kmsDoc.externalKms.providerInputsVersion ?? ExternalKmsProviderInputsVersion.Legacy,
             orgId: kmsDoc.orgId,
             orgDAL,
             projectDAL

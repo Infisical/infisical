@@ -16,7 +16,7 @@ export const ExternalKmsSchema = z.object({
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
   kmsKeyId: z.string().uuid(),
-  providerInputsVersion: z.number().default(2)
+  providerInputsVersion: z.number().default(1)
 });
 
 export type TExternalKms = z.infer<typeof ExternalKmsSchema>;
