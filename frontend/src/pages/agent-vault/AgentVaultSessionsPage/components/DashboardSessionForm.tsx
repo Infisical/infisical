@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { TriangleAlertIcon } from "lucide-react";
@@ -41,6 +41,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { sessionLabelSchema } from "./sessionLabelSchema";
+import { SessionMetadataFields } from "./SessionMetadataFields";
+import { metadataRowsToRecord, sessionMetadataRowsSchema } from "./sessionMetadataSchema";
 
 const NEVER_TTL = "never";
 const CUSTOM_TTL = "custom";
@@ -81,6 +83,7 @@ const schema = z
   .object({
     services: z.custom<TAgentVaultProjectService[]>(),
     label: sessionLabelSchema,
+    metadata: sessionMetadataRowsSchema,
     ttlPreset: z.string(),
     customTtl: z.string()
   })
@@ -102,7 +105,12 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export type TDashboardSessionInput = { label?: string; ttl: string; services: string[] };
+export type TDashboardSessionInput = {
+  label?: string;
+  metadata?: Record<string, string>;
+  ttl: string;
+  services: string[];
+};
 
 type Props = {
   formId: string;
@@ -114,10 +122,17 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
 
-  const { control, handleSubmit, watch, setError } = useForm<FormData>({
+  const formMethods = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { services: [], label: "", ttlPreset: DEFAULT_TTL_PRESET, customTtl: "" }
+    defaultValues: {
+      services: [],
+      label: "",
+      metadata: [],
+      ttlPreset: DEFAULT_TTL_PRESET,
+      customTtl: ""
+    }
   });
+  const { control, handleSubmit, watch, setError } = formMethods;
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
 
@@ -164,15 +179,17 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit(({ services, label, ttlPreset: preset, customTtl }) => {
+      onSubmit={handleSubmit(({ services, label, metadata, ttlPreset: preset, customTtl }) => {
         // The bundle is picked outside this form, so this check can't live in the schema.
         if (!accessBundle && !services.length) {
           setError("services", { message: "Pick an access bundle or at least one service." });
           return undefined;
         }
+        const metadataRecord = metadataRowsToRecord(metadata);
         return onSubmit({
           services: services.map((service) => service.name),
           label: label || undefined,
+          metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
           ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
         });
       })}
@@ -245,6 +262,10 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           </Field>
         )}
       />
+
+      <FormProvider {...formMethods}>
+        <SessionMetadataFields idPrefix="agent-vault-session" />
+      </FormProvider>
 
       <Field>
         <FieldLabel>Expires</FieldLabel>

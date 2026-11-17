@@ -87,6 +87,7 @@ import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { TOrgDeletionServiceFactory } from "./org-deletion-service";
 import { deleteOrgMembershipsFn } from "./org-fns";
+import { TOrgInviteQuota } from "./org-invite-quota";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -143,6 +144,7 @@ type TOrgServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -179,7 +181,8 @@ export const orgServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
-  eventEmitter
+  eventEmitter,
+  orgInviteQuota
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -1143,8 +1146,20 @@ export const orgServiceFactory = ({
       });
     }
 
+    // Only a mailed invitation counts: without SMTP the caller gets the link instead. A step that fails before
+    // the mail goes out gives the reservation back.
+    const reservation = appCfg.isSmtpConfigured ? await orgInviteQuota.admit(orgId, 1) : undefined;
+    const releaseOnFailure = async <T>(step: () => Promise<T>) => {
+      try {
+        return await step();
+      } catch (error) {
+        await reservation?.release();
+        throw error;
+      }
+    };
+
     if (org?.authEnforced) {
-      const ssoLoginUrl = await $getEnforcedSsoLoginUrl(org.id, org.slug);
+      const ssoLoginUrl = await releaseOnFailure(() => $getEnforcedSsoLoginUrl(org.id, org.slug));
 
       if (!appCfg.isSmtpConfigured) {
         return {
@@ -1155,17 +1170,19 @@ export const orgServiceFactory = ({
         };
       }
 
-      await smtpService.sendMail({
-        template: SmtpTemplates.OrgInvite,
-        subjectLine: "Infisical organization invitation",
-        recipients: [inviteeOrgMembership.email as string],
-        substitutions: {
-          inviterFirstName: invitingUser.firstName,
-          inviterUsername: invitingUser.email,
-          organizationName: org?.name,
-          callback_url: ssoLoginUrl
-        }
-      });
+      await releaseOnFailure(() =>
+        smtpService.sendMail({
+          template: SmtpTemplates.OrgInvite,
+          subjectLine: "Infisical organization invitation",
+          recipients: [inviteeOrgMembership.email as string],
+          substitutions: {
+            inviterFirstName: invitingUser.firstName,
+            inviterUsername: invitingUser.email,
+            organizationName: org?.name,
+            callback_url: ssoLoginUrl
+          }
+        })
+      );
 
       await membershipUserDAL.updateById(inviteeOrgMembership.id, {
         lastInvitedAt: new Date()
@@ -1174,11 +1191,13 @@ export const orgServiceFactory = ({
       return { signupToken: undefined };
     }
 
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: inviteeOrgMembership.actorUserId as string,
-      orgId
-    });
+    const token = await releaseOnFailure(() =>
+      tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: inviteeOrgMembership.actorUserId as string,
+        orgId
+      })
+    );
 
     if (!appCfg.isSmtpConfigured) {
       return {
@@ -1189,19 +1208,21 @@ export const orgServiceFactory = ({
       };
     }
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.OrgInvite,
-      subjectLine: "Infisical organization invitation",
-      recipients: [inviteeOrgMembership.email as string],
-      substitutions: {
-        inviterFirstName: invitingUser.firstName,
-        inviterUsername: invitingUser.email,
-        organizationName: org?.name,
-        callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
-          inviteeOrgMembership.email as string
-        )}&organization_id=${org?.id}`
-      }
-    });
+    await releaseOnFailure(() =>
+      smtpService.sendMail({
+        template: SmtpTemplates.OrgInvite,
+        subjectLine: "Infisical organization invitation",
+        recipients: [inviteeOrgMembership.email as string],
+        substitutions: {
+          inviterFirstName: invitingUser.firstName,
+          inviterUsername: invitingUser.email,
+          organizationName: org?.name,
+          callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+            inviteeOrgMembership.email as string
+          )}&organization_id=${org?.id}`
+        }
+      })
+    );
 
     await membershipUserDAL.updateById(inviteeOrgMembership.id, {
       lastInvitedAt: new Date()

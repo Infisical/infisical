@@ -24,7 +24,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
+import { emailListSchema, MAX_PROJECT_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,7 +35,7 @@ import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib
 const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
 
 const inviteMembersFormSchema = z.object({
-  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true }),
+  emails: emailListSchema({ max: MAX_PROJECT_INVITE_EMAILS, isRequired: true }),
   projectRole: z
     .object({
       slug: z.string().min(1),

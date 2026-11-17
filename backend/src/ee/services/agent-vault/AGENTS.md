@@ -23,7 +23,7 @@ agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
-agent-vault-session/         mint, revoke, list, get, edit label
+agent-vault-session/         mint, revoke, list, get, edit label and metadata
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
@@ -189,9 +189,10 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
-  went, and the session log service retires the session from it. So nothing writes to such a row: label edits
-  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
-  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  went, and the session log service retires the session from it. So nothing writes to such a row: label and
+  metadata edits are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each
+  write's own SQL on the primary (`updateLabel`, `lockForEdit`, `revokeIfActive`), not in a check on the session
+  read beforehand, which
   can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
   reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
@@ -1074,7 +1075,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
     never `passthrough` or `brokered`, which a host's own answer gets. A proxy refusal with no URL (a session refused
     since the CONNECT) neither confirms nor contradicts the claim. Otherwise the agent gets no variable, the skills come
     from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
-    `HEAD` of the services list confirms the claim (logged as Listed Services).
+    `HEAD` of the services list confirms the claim (logged with decision `discovery`).
   - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
     base URL (an inherited value never passes through). A proxy
     that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
@@ -1118,8 +1119,9 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
   without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
 - **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
-  services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
-  forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
+  services list with decision `discovery` and the skills with `skills`. Each forwarded endpoint gets its own decision,
+  so a new one on the allowlist needs a value and an outcome hover in `SessionLogRow.tsx`; the frontend shows and filters
+  them all as Passthrough (`sessionLogOutcome`), so the outcome filter keeps four entries. The
   frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
   value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional

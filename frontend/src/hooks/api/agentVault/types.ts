@@ -452,6 +452,7 @@ export type TAgentVaultSessionOnBehalfOf = Extract<
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
@@ -514,6 +515,7 @@ export type TSetAgentVaultDelegationDTO = {
 export type TAgentVaultMintedSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   token: string;
   expiresAt: string | null;
   createdAt: string;
@@ -556,6 +558,7 @@ export type TListAgentVaultSessionsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  metadata?: Record<string, string>;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {
@@ -704,11 +707,14 @@ export type TCreateAgentVaultSessionDTO = {
   services?: string[];
   ttl: string;
   label?: string;
+  metadata?: Record<string, string>;
 };
 
-export type TUpdateAgentVaultSessionLabelDTO = {
+export type TUpdateAgentVaultSessionDTO = {
   sessionId: string;
-  label: string | null;
+  label?: string | null;
+  /** Replaces the session's whole metadata set; an empty object clears it. */
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultProxySettingsDTO = {

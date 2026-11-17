@@ -6161,7 +6161,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(set.json().session).toMatchObject({ id, label: "first pass", status: "active" });
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
 
-      // The label is the only field, so leaving it out must not read as clearing it.
+      // Neither field sent is refused, rather than read as clearing the label.
       expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, {})).statusCode).toBe(422);
       expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "a\u200bb" })).statusCode).toBe(422);
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
@@ -6193,6 +6193,133 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await member.cleanup();
       }
+    });
+
+    test("metadata is set at creation, returned on every read, and replaced or cleared later", async () => {
+      const bundle = await createAccessBundle(`session-metadata-${Date.now()}`);
+      const label = `metadata run ${Date.now()}`;
+
+      const plain = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(plain.statusCode).toBe(200);
+      expect(plain.json().session.metadata).toEqual({});
+
+      const minted = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        label,
+        metadata: { " runId ": " 8812 ", slackChannel: "#deploys", endUser: "alice@example.com" }
+      });
+      expect(minted.statusCode).toBe(200);
+      const { id } = minted.json().session as { id: string };
+      const expected = [
+        ["runId", "8812"],
+        ["slackChannel", "#deploys"],
+        ["endUser", "alice@example.com"]
+      ];
+      expect(Object.entries(minted.json().session.metadata as Record<string, string>)).toEqual(expected);
+
+      const byId = await inject("GET", `/api/v1/agent-vault/sessions/${id}`);
+      expect(Object.entries(byId.json().session.metadata as Record<string, string>)).toEqual(expected);
+      const listed = await inject("GET", `/api/v1/agent-vault/sessions?search=${encodeURIComponent(label)}`);
+      expect(listed.json().sessions[0]).toMatchObject({ id, metadata: Object.fromEntries(expected) });
+
+      // Metadata is not searchable.
+      const searched = await inject("GET", "/api/v1/agent-vault/sessions?search=8812");
+      expect((searched.json() as { sessions: { id: string }[] }).sessions.map((row) => row.id)).not.toContain(id);
+
+      // A label-only edit keeps the metadata.
+      const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "renamed" });
+      expect(relabelled.statusCode).toBe(200);
+      expect(relabelled.json().session).toMatchObject({ label: "renamed", metadata: Object.fromEntries(expected) });
+
+      // Metadata replaces the whole set and leaves the label alone.
+      const replaced = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: { ticket: "OPS-12" } });
+      expect(replaced.statusCode).toBe(200);
+      expect(replaced.json().session).toMatchObject({ label: "renamed", metadata: { ticket: "OPS-12" } });
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({
+        ticket: "OPS-12"
+      });
+
+      // Still editable once the session is revoked, like the label.
+      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${id}/revoke`);
+      expect(revoked.json().session.metadata).toEqual({ ticket: "OPS-12" });
+      const cleared = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: {} });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().session).toMatchObject({ status: "revoked", metadata: {} });
+
+      const rejected = {
+        tooMany: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`key${index}`, "v"])),
+        collision: { runId: "1", "runId ": "2" },
+        emptyKey: { "": "v" },
+        emptyValue: { runId: " " },
+        equalsInKey: { "run=id": "v" },
+        invisible: { "alice\u200b": "v" },
+        nonString: { runId: 8812 }
+      };
+      for await (const [name, metadata] of Object.entries(rejected)) {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          metadata
+        });
+        expect(res.statusCode, name).toBe(422);
+      }
+      const collision = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: rejected.collision });
+      expect(JSON.stringify(collision.json().message)).toContain(
+        "The metadata key 'runId' appears more than once. Each key can be used once per session."
+      );
+      const emptyValue = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: rejected.emptyValue });
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({});
+    });
+
+    test("metadata filters the session list, every pair must match, and the count follows it", async () => {
+      const bundle = await createAccessBundle(`session-metadata-filter-${Date.now()}`);
+      const runId = `run-${Date.now()}`;
+      const mint = async (metadata: Record<string, string>) => {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          metadata
+        });
+        expect(res.statusCode).toBe(200);
+        return res.json().session.id as string;
+      };
+      const prod = await mint({ runId, env: "prod" });
+      const staging = await mint({ runId, env: "staging" });
+      await mint({ runId: `${runId}-other`, env: "prod" });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/sessions?${query}`);
+        expect(res.statusCode, query).toBe(200);
+        const body = res.json() as { sessions: { id: string }[]; totalCount: number };
+        return { ids: body.sessions.map((row) => row.id).sort(), totalCount: body.totalCount };
+      };
+
+      expect(await list(`metadata=runId=${runId}`)).toEqual({ ids: [prod, staging].sort(), totalCount: 2 });
+      // A real repeated param, which arrives as an array.
+      expect(await list(`metadata=runId=${runId}&metadata=env=prod`)).toEqual({ ids: [prod], totalCount: 1 });
+      expect(await list(`metadata=${encodeURIComponent(` runId = ${runId} `)}&metadata=env=dev`)).toEqual({
+        ids: [],
+        totalCount: 0
+      });
+      // The count describes the filtered set, not the page.
+      const paged = await list(`metadata=runId=${runId}&limit=1`);
+      expect(paged.ids).toHaveLength(1);
+      expect(paged.totalCount).toBe(2);
+
+      const malformed = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId");
+      expect(malformed.statusCode).toBe(422);
+      expect(JSON.stringify(malformed.json().message)).toContain(
+        "Filter metadata as key=value, such as metadata=runId=8812"
+      );
+      const emptyValue = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=");
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
+      const repeated = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=1&metadata=runId=2");
+      expect(repeated.statusCode).toBe(422);
+      expect(JSON.stringify(repeated.json().message)).toContain("The metadata key 'runId' appears more than once.");
     });
 
     test("search filters and counts on the server, not just the page", async () => {
