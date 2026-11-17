@@ -32,7 +32,6 @@ import {
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
-import { identityAuthToNameMap } from "@app/hooks/api/identities/constants";
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -40,8 +39,19 @@ import { failed, readableFailure, saved } from "../toast";
 import { DetailSkeleton, FormSkeleton, Gate } from "../ui";
 import { AccessTokens, ClientSecrets } from "./credentials";
 import { AUTH_METHOD_SPECS } from "./methods";
+import { AUTH_METHOD_ORDER, authMethodName } from "./order";
+
+export { AUTH_METHOD_ORDER, authMethodName, sortedMethods } from "./order";
 
 export type AuthScope = { organizationId: string } | { projectId: string };
+
+export type AuthGates = {
+  canEditAuth: boolean;
+  canRevokeAuth: boolean;
+  canCreateToken: boolean;
+  canDeleteToken: boolean;
+  canEdit: boolean;
+};
 
 export type AuthIdentity = {
   id: string;
@@ -49,22 +59,6 @@ export type AuthIdentity = {
   authMethods: readonly IdentityAuthMethod[];
   activeLockoutAuthMethods?: readonly IdentityAuthMethod[];
 };
-
-export const authMethodName = (method: IdentityAuthMethod) => identityAuthToNameMap[method];
-
-export const AUTH_METHOD_ORDER: IdentityAuthMethod[] = [
-  IdentityAuthMethod.UNIVERSAL_AUTH,
-  IdentityAuthMethod.TOKEN_AUTH,
-  ...Object.values(IdentityAuthMethod)
-    .filter(
-      (method) =>
-        method !== IdentityAuthMethod.UNIVERSAL_AUTH && method !== IdentityAuthMethod.TOKEN_AUTH
-    )
-    .sort((a, b) => authMethodName(a).localeCompare(authMethodName(b)))
-];
-
-export const sortedMethods = (methods: readonly IdentityAuthMethod[]) =>
-  AUTH_METHOD_ORDER.filter((method) => methods.includes(method));
 
 export const LockBadge = ({ label }: { label: string }) => (
   <Tooltip content={label}>
@@ -163,6 +157,34 @@ type FormProps = {
   onClose: () => void;
 };
 
+const ADD_COPY = { run: "add", done: "added", complete: "Add" } as const;
+const UPDATE_COPY = { run: "update", done: "updated", complete: "Save" } as const;
+
+const MethodPicker = ({
+  value,
+  configured,
+  onChange
+}: {
+  value?: IdentityAuthMethod;
+  configured: readonly IdentityAuthMethod[];
+  onChange: (method: IdentityAuthMethod) => void;
+}) => (
+  <Field label="Auth method">
+    <Select
+      label="Auth method"
+      placeholder="Select auth method..."
+      value={value ?? ""}
+      options={AUTH_METHOD_ORDER.map((method) => ({
+        value: method,
+        label: authMethodName(method),
+        disabled: configured.includes(method),
+        description: configured.includes(method) ? "Configured" : undefined
+      }))}
+      onChange={(next) => onChange(next as IdentityAuthMethod)}
+    />
+  </Field>
+);
+
 const AuthMethodForm = ({
   identity,
   scope,
@@ -181,18 +203,19 @@ const AuthMethodForm = ({
   const [method, setMethod] = useState(
     () => initialMethod ?? AUTH_METHOD_ORDER.find((entry) => !configured.includes(entry))
   );
-  const [edited, setEdited] = useState<{ method: IdentityAuthMethod; draft: unknown }>();
+  const [edited, setEdited] = useState<unknown>();
   const completed = useRef(false);
   const mutations = useAuthMethodMutations();
   const spec = method ? AUTH_METHOD_SPECS[method] : undefined;
-  const ctx = { isUpdate, config };
+  const access = useV4Adapter("access");
+  const ctx = { isUpdate, config, maxTtl: access.useIdentityAccessTokenMaxTtl() };
   const baseline = spec && !loading ? spec.draft(config) : undefined;
-  const draft = edited && edited.method === method ? edited.draft : baseline;
+  const draft = edited ?? baseline;
+  const copy = isUpdate ? UPDATE_COPY : ADD_COPY;
   const isDirty =
     !completed.current &&
-    Boolean(edited) &&
-    edited?.method === method &&
-    JSON.stringify(edited?.draft) !== JSON.stringify(baseline);
+    edited !== undefined &&
+    JSON.stringify(edited) !== JSON.stringify(baseline);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty,
     onDiscard: onClose
@@ -200,11 +223,14 @@ const AuthMethodForm = ({
 
   const submit = async () => {
     if (!method || !spec) return;
-    const run = isUpdate ? mutations[method].update : mutations[method].add;
-    await run({ identityId: identity.id, ...scope, ...spec.payload(draft, ctx) }).catch(
-      readableFailure(`Couldn't ${isUpdate ? "update" : "add"} ${authMethodName(method)}`)
-    );
-    saved(`${authMethodName(method)} ${isUpdate ? "updated" : "added"}`);
+    await mutations[method]
+      [copy.run]({
+        identityId: identity.id,
+        ...scope,
+        ...spec.payload(draft, ctx)
+      })
+      .catch(readableFailure(`Couldn't ${copy.run} ${authMethodName(method)}`));
+    saved(`${authMethodName(method)} ${copy.done}`);
     completed.current = true;
     onClose();
   };
@@ -214,26 +240,19 @@ const AuthMethodForm = ({
     content = (
       <Stack gap={24}>
         {!isUpdate && (
-          <Field label="Auth method">
-            <Select
-              label="Auth method"
-              placeholder="Select auth method..."
-              value={method ?? ""}
-              options={AUTH_METHOD_ORDER.map((value) => ({
-                value,
-                label: authMethodName(value),
-                disabled: configured.includes(value),
-                description: configured.includes(value) ? "Configured" : undefined
-              }))}
-              onChange={(value) => setMethod(value as IdentityAuthMethod)}
-            />
-          </Field>
+          <MethodPicker
+            value={method}
+            configured={configured}
+            onChange={(next) => {
+              setMethod(next);
+              setEdited(undefined);
+            }}
+          />
         )}
         {spec.fields({
           draft,
           ctx,
-          set: (patch: object) =>
-            setEdited({ method: method!, draft: { ...(draft as object), ...patch } })
+          set: (patch: object) => setEdited({ ...(draft as object), ...patch })
         })}
       </Stack>
     );
@@ -244,7 +263,7 @@ const AuthMethodForm = ({
         variant="sheet"
         open
         title={isUpdate && method ? `Edit ${authMethodName(method)}` : "Add auth method"}
-        completeLabel={isUpdate ? "Save" : "Add"}
+        completeLabel={copy.complete}
         onOpenChange={(open) => {
           if (open) return;
           if (completed.current) onClose();
@@ -274,6 +293,19 @@ const AuthMethodForm = ({
 
 const EditAuthMethodForm = ({ method, ...props }: FormProps & { method: IdentityAuthMethod }) => {
   const { data, isPending } = AUTH_METHOD_SPECS[method].useConfig(props.identity.id, true);
+  if (!isPending && !data)
+    return (
+      <Sheet open onOpenChange={(open) => !open && props.onClose()}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{`Edit ${authMethodName(method)}`}</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <EmptyState size="sm" icon="lock" title={`Couldn't load ${authMethodName(method)}`} />
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
+    );
   return (
     <AuthMethodForm {...props} initialMethod={method} isUpdate config={data} loading={isPending} />
   );
@@ -365,11 +397,11 @@ const LockoutAlert = ({
 const MethodDetails = ({
   identity,
   method,
-  canEdit
+  gates
 }: {
   identity: AuthIdentity;
   method: IdentityAuthMethod;
-  canEdit: boolean;
+  gates: AuthGates;
 }) => {
   const spec = AUTH_METHOD_SPECS[method];
   const { data: config, isPending } = spec.useConfig(identity.id, true);
@@ -385,7 +417,7 @@ const MethodDetails = ({
     );
   return (
     <Stack gap={24}>
-      {locked && <LockoutAlert identityId={identity.id} method={method} canEdit={canEdit} />}
+      {locked && <LockoutAlert identityId={identity.id} method={method} canEdit={gates.canEdit} />}
       {method === IdentityAuthMethod.UNIVERSAL_AUTH && (
         <Field label="Client ID">
           <Snippet label="Client ID" copyLabel="Copy client ID" value={config.clientId} />
@@ -401,10 +433,18 @@ const MethodDetails = ({
           </Field>
         ))}
       {method === IdentityAuthMethod.UNIVERSAL_AUTH && (
-        <ClientSecrets identityId={identity.id} canEdit={canEdit} />
+        <ClientSecrets
+          identityId={identity.id}
+          canCreate={gates.canCreateToken}
+          canRevoke={gates.canDeleteToken}
+        />
       )}
       {method === IdentityAuthMethod.TOKEN_AUTH && (
-        <AccessTokens identityId={identity.id} canEdit={canEdit} />
+        <AccessTokens
+          identityId={identity.id}
+          canCreate={gates.canCreateToken}
+          canRevoke={gates.canEdit}
+        />
       )}
     </Stack>
   );
@@ -417,9 +457,7 @@ export const AuthMethodViewSheet = ({
   onOpenChange,
   onEdit,
   onRemove,
-  canEditAuth,
-  canEdit,
-  canDelete
+  gates
 }: {
   identity: AuthIdentity;
   method?: IdentityAuthMethod;
@@ -427,9 +465,7 @@ export const AuthMethodViewSheet = ({
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
   onRemove: () => void;
-  canEditAuth: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
+  gates: AuthGates;
 }) => {
   const locked = Boolean(method && identity.activeLockoutAuthMethods?.includes(method));
   return (
@@ -446,17 +482,17 @@ export const AuthMethodViewSheet = ({
               </SheetTitle>
             </SheetHeader>
             <SheetBody>
-              <MethodDetails key={method} identity={identity} method={method} canEdit={canEdit} />
+              <MethodDetails key={method} identity={identity} method={method} gates={gates} />
             </SheetBody>
             <SheetFooter>
               <Inline gap={8} justify="end">
-                <Gate allowed={canDelete}>
-                  <Button variant="destructive" disabled={!canDelete} onClick={onRemove}>
+                <Gate allowed={gates.canRevokeAuth}>
+                  <Button variant="destructive" disabled={!gates.canRevokeAuth} onClick={onRemove}>
                     Remove
                   </Button>
                 </Gate>
-                <Gate allowed={canEditAuth}>
-                  <Button variant="primary" disabled={!canEditAuth} onClick={onEdit}>
+                <Gate allowed={gates.canEditAuth}>
+                  <Button variant="primary" disabled={!gates.canEditAuth} onClick={onEdit}>
                     Edit
                   </Button>
                 </Gate>

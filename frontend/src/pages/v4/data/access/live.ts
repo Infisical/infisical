@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
 import { apiRequest } from "@app/config/request";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import {
@@ -64,6 +65,7 @@ import {
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api/identities/mutations";
 import {
+  identitiesKeys,
   identityProjectMembershipsQuery,
   useCountOrgIdentityMemberships,
   useGetIdentityAliCloudAuth,
@@ -155,6 +157,7 @@ import {
   useGetUserOrgPermissions,
   useGetUserProjectPermissions
 } from "@app/hooks/api/roles/queries";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import {
   useCreateServiceToken,
   useDeleteServiceToken,
@@ -178,6 +181,25 @@ import { useProjectById } from "../projectQuery";
 import type { AccessAdapter } from "./contract";
 
 const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
+
+type IdentityAuthMutationHook = () => { mutateAsync: (variables: never) => Promise<unknown> };
+
+const withIdentitySearchRefresh = <H extends IdentityAuthMutationHook>(useMutationHook: H): H => {
+  const useRefreshingMutation = () => {
+    const queryClient = useQueryClient();
+    const mutation = useMutationHook();
+    const mutateAsync = mutation.mutateAsync as (variables: unknown) => Promise<unknown>;
+    return {
+      ...mutation,
+      mutateAsync: async (variables: unknown) => {
+        const result = await mutateAsync(variables);
+        await queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+        return result;
+      }
+    };
+  };
+  return useRefreshingMutation as unknown as H;
+};
 
 export const accessLive: AccessAdapter = {
   useOrgPermission: useGetUserOrgPermissions,
@@ -219,9 +241,9 @@ export const accessLive: AccessAdapter = {
   useDeleteOrgIdentity,
   useIdentityUniversalAuth: useGetIdentityUniversalAuth,
   useIdentityUniversalAuthClientSecrets: useGetIdentityUniversalAuthClientSecrets,
-  useAddIdentityUniversalAuth,
-  useUpdateIdentityUniversalAuth,
-  useDeleteIdentityUniversalAuth,
+  useAddIdentityUniversalAuth: withIdentitySearchRefresh(useAddIdentityUniversalAuth),
+  useUpdateIdentityUniversalAuth: withIdentitySearchRefresh(useUpdateIdentityUniversalAuth),
+  useDeleteIdentityUniversalAuth: withIdentitySearchRefresh(useDeleteIdentityUniversalAuth),
   useCreateIdentityUniversalAuthClientSecret,
   useRevokeIdentityUniversalAuthClientSecret,
   useClearIdentityUniversalAuthLockouts,
@@ -235,55 +257,58 @@ export const accessLive: AccessAdapter = {
   useIdentityTokenAuthTokens: useGetIdentityTokensTokenAuth,
   useCreateIdentityTokenAuthToken: useCreateTokenIdentityTokenAuth,
   useRevokeIdentityTokenAuthToken,
-  useDeleteIdentityTokenAuth,
+  useDeleteIdentityTokenAuth: withIdentitySearchRefresh(useDeleteIdentityTokenAuth),
   useIdentityKubernetesAuth: useGetIdentityKubernetesAuth,
-  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityKubernetesAuth: withIdentitySearchRefresh(useDeleteIdentityKubernetesAuth),
   useIdentityAwsAuth: useGetIdentityAwsAuth,
-  useDeleteIdentityAwsAuth,
+  useDeleteIdentityAwsAuth: withIdentitySearchRefresh(useDeleteIdentityAwsAuth),
   useIdentityOidcAuth: useGetIdentityOidcAuth,
-  useDeleteIdentityOidcAuth,
-  useAddIdentityTokenAuth,
-  useUpdateIdentityTokenAuth,
-  useAddIdentityKubernetesAuth,
-  useUpdateIdentityKubernetesAuth,
-  useAddIdentityAwsAuth,
-  useUpdateIdentityAwsAuth,
-  useAddIdentityOidcAuth,
-  useUpdateIdentityOidcAuth,
+  useDeleteIdentityOidcAuth: withIdentitySearchRefresh(useDeleteIdentityOidcAuth),
+  useAddIdentityTokenAuth: withIdentitySearchRefresh(useAddIdentityTokenAuth),
+  useUpdateIdentityTokenAuth: withIdentitySearchRefresh(useUpdateIdentityTokenAuth),
+  useAddIdentityKubernetesAuth: withIdentitySearchRefresh(useAddIdentityKubernetesAuth),
+  useUpdateIdentityKubernetesAuth: withIdentitySearchRefresh(useUpdateIdentityKubernetesAuth),
+  useAddIdentityAwsAuth: withIdentitySearchRefresh(useAddIdentityAwsAuth),
+  useUpdateIdentityAwsAuth: withIdentitySearchRefresh(useUpdateIdentityAwsAuth),
+  useAddIdentityOidcAuth: withIdentitySearchRefresh(useAddIdentityOidcAuth),
+  useUpdateIdentityOidcAuth: withIdentitySearchRefresh(useUpdateIdentityOidcAuth),
   useIdentityGcpAuth: useGetIdentityGcpAuth,
-  useAddIdentityGcpAuth,
-  useUpdateIdentityGcpAuth,
-  useDeleteIdentityGcpAuth,
+  useAddIdentityGcpAuth: withIdentitySearchRefresh(useAddIdentityGcpAuth),
+  useUpdateIdentityGcpAuth: withIdentitySearchRefresh(useUpdateIdentityGcpAuth),
+  useDeleteIdentityGcpAuth: withIdentitySearchRefresh(useDeleteIdentityGcpAuth),
   useIdentityAzureAuth: useGetIdentityAzureAuth,
-  useAddIdentityAzureAuth,
-  useUpdateIdentityAzureAuth,
-  useDeleteIdentityAzureAuth,
+  useAddIdentityAzureAuth: withIdentitySearchRefresh(useAddIdentityAzureAuth),
+  useUpdateIdentityAzureAuth: withIdentitySearchRefresh(useUpdateIdentityAzureAuth),
+  useDeleteIdentityAzureAuth: withIdentitySearchRefresh(useDeleteIdentityAzureAuth),
   useIdentityAliCloudAuth: useGetIdentityAliCloudAuth,
-  useAddIdentityAliCloudAuth,
-  useUpdateIdentityAliCloudAuth,
-  useDeleteIdentityAliCloudAuth,
+  useAddIdentityAliCloudAuth: withIdentitySearchRefresh(useAddIdentityAliCloudAuth),
+  useUpdateIdentityAliCloudAuth: withIdentitySearchRefresh(useUpdateIdentityAliCloudAuth),
+  useDeleteIdentityAliCloudAuth: withIdentitySearchRefresh(useDeleteIdentityAliCloudAuth),
   useIdentityOciAuth: useGetIdentityOciAuth,
-  useAddIdentityOciAuth,
-  useUpdateIdentityOciAuth,
-  useDeleteIdentityOciAuth,
+  useAddIdentityOciAuth: withIdentitySearchRefresh(useAddIdentityOciAuth),
+  useUpdateIdentityOciAuth: withIdentitySearchRefresh(useUpdateIdentityOciAuth),
+  useDeleteIdentityOciAuth: withIdentitySearchRefresh(useDeleteIdentityOciAuth),
   useIdentityLdapAuth: useGetIdentityLdapAuth,
-  useAddIdentityLdapAuth,
-  useUpdateIdentityLdapAuth,
-  useDeleteIdentityLdapAuth,
+  useAddIdentityLdapAuth: withIdentitySearchRefresh(useAddIdentityLdapAuth),
+  useUpdateIdentityLdapAuth: withIdentitySearchRefresh(useUpdateIdentityLdapAuth),
+  useDeleteIdentityLdapAuth: withIdentitySearchRefresh(useDeleteIdentityLdapAuth),
   useIdentityJwtAuth: useGetIdentityJwtAuth,
-  useAddIdentityJwtAuth,
-  useUpdateIdentityJwtAuth,
-  useDeleteIdentityJwtAuth,
+  useAddIdentityJwtAuth: withIdentitySearchRefresh(useAddIdentityJwtAuth),
+  useUpdateIdentityJwtAuth: withIdentitySearchRefresh(useUpdateIdentityJwtAuth),
+  useDeleteIdentityJwtAuth: withIdentitySearchRefresh(useDeleteIdentityJwtAuth),
   useIdentityTlsCertAuth: useGetIdentityTlsCertAuth,
-  useAddIdentityTlsCertAuth,
-  useUpdateIdentityTlsCertAuth,
-  useDeleteIdentityTlsCertAuth,
+  useAddIdentityTlsCertAuth: withIdentitySearchRefresh(useAddIdentityTlsCertAuth),
+  useUpdateIdentityTlsCertAuth: withIdentitySearchRefresh(useUpdateIdentityTlsCertAuth),
+  useDeleteIdentityTlsCertAuth: withIdentitySearchRefresh(useDeleteIdentityTlsCertAuth),
   useIdentitySpiffeAuth: useGetIdentitySpiffeAuth,
-  useAddIdentitySpiffeAuth,
-  useUpdateIdentitySpiffeAuth,
-  useDeleteIdentitySpiffeAuth,
+  useAddIdentitySpiffeAuth: withIdentitySearchRefresh(useAddIdentitySpiffeAuth),
+  useUpdateIdentitySpiffeAuth: withIdentitySearchRefresh(useUpdateIdentitySpiffeAuth),
+  useDeleteIdentitySpiffeAuth: withIdentitySearchRefresh(useDeleteIdentitySpiffeAuth),
   useUpdateIdentityTokenAuthToken,
   useClearIdentityLdapAuthLockouts,
+  useIdentityAccessTokenMaxTtl: () =>
+    useFetchServerStatus().data?.maxIdentityAccessTokenTTL ??
+    MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK,
   useAvailableIdentityAuthTemplates: (authMethod, options) =>
     useGetAvailableTemplates(authMethod, options) as V4QueryResult<IdentityAuthTemplate[]>,
 

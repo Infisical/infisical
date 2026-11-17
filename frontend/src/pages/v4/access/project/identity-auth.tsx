@@ -17,6 +17,7 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import {
   ACTIVE_LOCKOUTS,
   AUTH_METHOD_ORDER,
+  type AuthGates,
   AuthMethodFormSheet,
   AuthMethodViewSheet,
   RemoveAuthMethodDialog,
@@ -26,13 +27,15 @@ import { useProjectPermission } from "../permissions";
 import { Gate, RESTRICTED } from "../ui";
 import { type AuthIdentity, authMethodName, identitySubject, LockedBadge } from "./identity-common";
 
-const useAuthGates = (projectId: string, identityId?: string) => {
+const useAuthGates = (projectId: string, identityId?: string): AuthGates => {
   const { permission } = useProjectPermission(projectId);
   const target = identitySubject(identityId ?? "");
   return {
     canEditAuth: permission.can(ProjectPermissionIdentityActions.EditAuth, target),
-    canEdit: permission.can(ProjectPermissionIdentityActions.Edit, target),
-    canDelete: permission.can(ProjectPermissionIdentityActions.Delete, target)
+    canRevokeAuth: permission.can(ProjectPermissionIdentityActions.RevokeAuth, target),
+    canCreateToken: permission.can(ProjectPermissionIdentityActions.CreateToken, target),
+    canDeleteToken: permission.can(ProjectPermissionIdentityActions.DeleteToken, target),
+    canEdit: permission.can(ProjectPermissionIdentityActions.Edit, target)
   };
 };
 
@@ -53,7 +56,7 @@ export const useAuthMethodFlows = (projectId: string, identity?: AuthIdentity) =
           identity={identity}
           method={viewing}
           open={Boolean(viewing)}
-          {...gates}
+          gates={gates}
           onOpenChange={(open) => !open && setViewing(undefined)}
           onEdit={() => {
             setForm({ method: viewing, key: Date.now() });
@@ -90,7 +93,7 @@ export const ProjectIdentityAuthSection = ({
   identity: AuthIdentity;
   projectId: string;
 }) => {
-  const { canEditAuth, canDelete } = useAuthGates(projectId, identity.id);
+  const { canEditAuth, canRevokeAuth } = useAuthGates(projectId, identity.id);
   const flows = useAuthMethodFlows(projectId, identity);
   const methods = sortedMethods(identity.authMethods);
   const addButton = (
@@ -133,8 +136,8 @@ export const ProjectIdentityAuthSection = ({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
-          disabled={!canDelete}
-          description={canDelete ? undefined : RESTRICTED}
+          disabled={!canRevokeAuth}
+          description={canRevokeAuth ? undefined : RESTRICTED}
           onSelect={() => flows.remove(method)}
         >
           <Icon name="trash" />

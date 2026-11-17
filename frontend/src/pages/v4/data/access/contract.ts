@@ -289,6 +289,7 @@ export type AccessAdapter = {
   useDeleteIdentitySpiffeAuth: MutationOf<typeof useDeleteIdentitySpiffeAuth>;
   useUpdateIdentityTokenAuthToken: MutationOf<typeof useUpdateIdentityTokenAuthToken>;
   useClearIdentityLdapAuthLockouts: MutationOf<typeof useClearIdentityLdapAuthLockouts>;
+  useIdentityAccessTokenMaxTtl: () => number;
   useAvailableIdentityAuthTemplates: (
     authMethod: MachineIdentityAuthMethod,
     options?: { enabled?: boolean }

@@ -8,8 +8,6 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { TagsInput } from "@infisical/cipher/ui/tags-input";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
-import { isValidIpOrCidr } from "@app/helpers/ip";
-
 import css from "./identity-auth.module.css";
 
 type TextProps = {
@@ -54,12 +52,14 @@ export const TextAreaField = ({
   placeholder,
   description,
   optional,
-  rows = 4
-}: Omit<TextProps, "type"> & { rows?: number }) => (
+  rows = 4,
+  readOnly
+}: Omit<TextProps, "type"> & { rows?: number; readOnly?: boolean }) => (
   <Field name={name} label={label} description={description} optional={optional}>
     <Textarea
       mono
       rows={rows}
+      readOnly={readOnly}
       className={css.capped}
       placeholder={placeholder}
       value={value}
@@ -67,12 +67,6 @@ export const TextAreaField = ({
     />
   </Field>
 );
-
-export const splitList = (value?: string | null) =>
-  (value ?? "")
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 
 export const ListField = ({
   name,
@@ -275,9 +269,6 @@ export const TextListField = ({
     </Stack>
   </Field>
 );
-
-export const ipTagError = (tag: string) =>
-  isValidIpOrCidr(tag) ? undefined : "Enter a valid IPv4, IPv6, or CIDR block";
 
 export const Group = ({ legend, children }: { legend: string; children: ReactNode }) => (
   <FieldSet legend={legend}>

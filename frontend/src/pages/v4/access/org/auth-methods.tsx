@@ -39,18 +39,18 @@ export const AuthMethodViewSheet = (props: {
   onRemove: () => void;
 }) => {
   const { permission } = useOrgPermission();
+  const can = (action: OrgPermissionIdentityActions) =>
+    permission.can(action, OrgPermissionSubjects.Identity);
   return (
     <SharedViewSheet
       {...props}
-      canEditAuth={permission.can(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      )}
-      canEdit={permission.can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity)}
-      canDelete={permission.can(
-        OrgPermissionIdentityActions.Delete,
-        OrgPermissionSubjects.Identity
-      )}
+      gates={{
+        canEditAuth: can(OrgPermissionIdentityActions.EditAuth),
+        canRevokeAuth: can(OrgPermissionIdentityActions.RevokeAuth),
+        canCreateToken: can(OrgPermissionIdentityActions.CreateToken),
+        canDeleteToken: can(OrgPermissionIdentityActions.DeleteToken),
+        canEdit: can(OrgPermissionIdentityActions.Edit)
+      }}
     />
   );
 };

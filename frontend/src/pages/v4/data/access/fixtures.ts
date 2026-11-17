@@ -769,7 +769,15 @@ const authConfigs: AccessState["authConfigs"] = Object.fromEntries(
     method,
     {
       [FEDERATION_BROKER]: config,
-      [SETTLEMENT_BROKER]: { ...(config as object), identityId: SETTLEMENT_BROKER }
+      [SETTLEMENT_BROKER]: { ...(config as object), identityId: SETTLEMENT_BROKER },
+      ...(method === IdentityAuthMethod.LDAP_AUTH
+        ? {
+            [DIRECTORY_SYNC]: {
+              ...defaultLdapAuth(DIRECTORY_SYNC),
+              ldapCaCertificate: DEMO_CA_CERT
+            }
+          }
+        : {})
     }
   ])
 );

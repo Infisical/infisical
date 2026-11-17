@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 
 import type { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import type { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { GroupMemberType, type TGroupMembership } from "@app/hooks/api/groups/types";
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
@@ -534,6 +535,7 @@ const saveIdentityAuth = <TDto extends { identityId: string }, T>(
       .accessTokenTrustedIps;
     const next = {
       ...storedAuth(state, method, dto.identityId, fallback),
+      ...(mode === "add" ? { templateId: undefined } : {}),
       ...fields,
       ...(trustedIps ? { accessTokenTrustedIps: toTrustedIps(trustedIps) } : {})
     } as T;
@@ -1371,6 +1373,7 @@ export const accessDemo: AccessAdapter = {
       1
     )
   ),
+  useIdentityAccessTokenMaxTtl: () => MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK,
   useAvailableIdentityAuthTemplates: demoQuery(
     "available-auth-templates",
     (state, authMethod: MachineIdentityAuthMethod) =>

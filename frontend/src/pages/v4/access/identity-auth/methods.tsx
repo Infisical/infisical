@@ -7,10 +7,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { getObjectFromSeconds } from "@app/helpers/datetime";
-import {
-  MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK,
-  mapTrustedIpsFromServer
-} from "@app/helpers/identityAuthSchemas";
+import { mapTrustedIpsFromServer } from "@app/helpers/identityAuthSchemas";
 import { isValidIpOrCidr } from "@app/helpers/ip";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
 import {
@@ -42,22 +39,21 @@ import type { V4QueryResult } from "../../data/contract";
 import { useOrgPermission } from "../permissions";
 import {
   Group,
-  ipTagError,
   ListField,
   type Pair,
   PairsField,
   SelectField,
-  splitList,
   SwitchField,
   TextAreaField,
   TextField,
   TextListField
 } from "./fields";
+import { ipTagError, splitList } from "./lists";
 
 import css from "./identity-auth.module.css";
 
 export type FieldErrors = Record<string, string>;
-export type MethodContext<C> = { isUpdate: boolean; config?: C };
+export type MethodContext<C> = { isUpdate: boolean; config?: C; maxTtl: number };
 type FieldsProps<D, C> = {
   draft: D;
   set: (patch: Partial<D>) => void;
@@ -74,8 +70,7 @@ export type MethodSpec<C, D> = {
   certificates?(config: C): Certificate[];
 };
 
-const MAX_TTL = MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK;
-const MAX_TTL_DAYS = Math.floor(MAX_TTL / 86_400);
+const ttlDays = (maxTtl: number) => Math.floor(maxTtl / 86_400);
 const DEFAULT_TTL = "2592000";
 const DEFAULT_IPS = UNIVERSAL_AUTH_DEFAULTS.accessTokenTrustedIps.map((entry) => entry.ipAddress);
 const CERT_PLACEHOLDER = "-----BEGIN CERTIFICATE----- ...";
@@ -139,7 +134,7 @@ const ipErrors = (values: string[]) => {
     : undefined;
 };
 
-const tokenErrors = (draft: TokenDraft, skipTtl = false): FieldErrors => {
+const tokenErrors = (draft: TokenDraft, maxTtl: number, skipTtl = false): FieldErrors => {
   const errors: FieldErrors = {};
   if (!skipTtl) {
     (
@@ -149,12 +144,12 @@ const tokenErrors = (draft: TokenDraft, skipTtl = false): FieldErrors => {
       ] as const
     ).forEach(([key, label]) => {
       if (!WHOLE.test(draft[key])) errors[key] = "Enter a whole number";
-      else if (Number(draft[key]) > MAX_TTL)
-        errors[key] = `${label} cannot exceed ${MAX_TTL_DAYS} days`;
+      else if (Number(draft[key]) > maxTtl)
+        errors[key] = `${label} cannot exceed ${ttlDays(maxTtl)} days`;
     });
-    const maxTtl = Number(draft.accessTokenMaxTTL);
-    if (!errors.accessTokenTTL && !errors.accessTokenMaxTTL && maxTtl > 0)
-      if (Number(draft.accessTokenTTL) > maxTtl)
+    const draftMaxTtl = Number(draft.accessTokenMaxTTL);
+    if (!errors.accessTokenTTL && !errors.accessTokenMaxTTL && draftMaxTtl > 0)
+      if (Number(draft.accessTokenTTL) > draftMaxTtl)
         errors.accessTokenTTL = "Access token TTL cannot be greater than access token max TTL";
   }
   if (draft.accessTokenNumUsesLimit && !WHOLE.test(draft.accessTokenNumUsesLimit))
@@ -167,12 +162,14 @@ const tokenErrors = (draft: TokenDraft, skipTtl = false): FieldErrors => {
 const TokenFields = <D extends TokenDraft>({
   draft,
   set,
+  maxTtl,
   hideTtl,
   extraTokenFields,
   extraIps
 }: {
   draft: D;
   set: (patch: Partial<D>) => void;
+  maxTtl: number;
   hideTtl?: boolean;
   extraTokenFields?: ReactNode;
   extraIps?: ReactNode;
@@ -186,7 +183,7 @@ const TokenFields = <D extends TokenDraft>({
             label="Access token TTL (seconds)"
             type="number"
             placeholder={DEFAULT_TTL}
-            description={`Max: ${MAX_TTL_DAYS} days`}
+            description={`Max: ${ttlDays(maxTtl)} days`}
             value={draft.accessTokenTTL}
             onChange={(accessTokenTTL) => set({ accessTokenTTL } as Partial<D>)}
           />
@@ -195,7 +192,7 @@ const TokenFields = <D extends TokenDraft>({
             label="Access token max TTL (seconds)"
             type="number"
             placeholder={DEFAULT_TTL}
-            description={`Max: ${MAX_TTL_DAYS} days`}
+            description={`Max: ${ttlDays(maxTtl)} days`}
             value={draft.accessTokenMaxTTL}
             onChange={(accessTokenMaxTTL) => set({ accessTokenMaxTTL } as Partial<D>)}
           />
@@ -526,14 +523,14 @@ const universal = define<IdentityUniversalAuth, UniversalDraft>({
     accessTokenPeriod: String(config?.accessTokenPeriod ?? 0),
     clientSecretTrustedIps: config ? ipStrings(config.clientSecretTrustedIps) : DEFAULT_IPS
   }),
-  validate: (draft) => {
+  validate: (draft, ctx) => {
     const usesPeriod = Number(draft.accessTokenPeriod) > 0;
-    const errors = { ...tokenErrors(draft, usesPeriod), ...lockoutErrors(draft) };
+    const errors = { ...tokenErrors(draft, ctx.maxTtl, usesPeriod), ...lockoutErrors(draft) };
     if (!usesPeriod && !errors.accessTokenTTL && Number(draft.accessTokenTTL) < 1)
       errors.accessTokenTTL = "Access token TTL must be at least 1 second";
     if (!WHOLE.test(draft.accessTokenPeriod)) errors.accessTokenPeriod = "Enter a whole number";
-    else if (Number(draft.accessTokenPeriod) > MAX_TTL)
-      errors.accessTokenPeriod = `Access token period cannot exceed ${MAX_TTL_DAYS} days`;
+    else if (Number(draft.accessTokenPeriod) > ctx.maxTtl)
+      errors.accessTokenPeriod = `Access token period cannot exceed ${ttlDays(ctx.maxTtl)} days`;
     const ips = ipErrors(draft.clientSecretTrustedIps);
     if (ips) errors.clientSecretTrustedIps = ips;
     return errors;
@@ -544,11 +541,12 @@ const universal = define<IdentityUniversalAuth, UniversalDraft>({
     accessTokenPeriod: Number(draft.accessTokenPeriod),
     clientSecretTrustedIps: draft.clientSecretTrustedIps.map((ipAddress) => ({ ipAddress }))
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <TokenFields
         draft={draft}
         set={set}
+        maxTtl={ctx.maxTtl}
         hideTtl={Number(draft.accessTokenPeriod) > 0}
         extraTokenFields={
           <TextField
@@ -586,9 +584,9 @@ const token = define<IdentityTokenAuth, TokenDraft>({
   useConfig: (identityId, enabled) =>
     useV4Adapter("access").useIdentityTokenAuth(identityId, { enabled }),
   draft: (config) => tokenDraft(config),
-  validate: (draft) => tokenErrors(draft),
+  validate: (draft, ctx) => tokenErrors(draft, ctx.maxTtl),
   payload: (draft) => tokenPayload(draft),
-  fields: ({ draft, set }) => <TokenFields draft={draft} set={set} />,
+  fields: ({ draft, set, ctx }) => <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />,
   details: (config) => accessTokenItems(config)
 });
 
@@ -630,8 +628,8 @@ const kubernetes = define<IdentityKubernetesAuth, KubernetesDraft>({
     caCert: config?.caCert ?? "",
     verifyTlsCertificate: config ? (config.verifyTlsCertificate ?? false) : true
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (draft.templateId) return errors;
     const isApi = draft.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api;
     if (isApi && !draft.kubernetesHost.trim())
@@ -674,7 +672,9 @@ const kubernetes = define<IdentityKubernetesAuth, KubernetesDraft>({
   },
   fields: ({ draft, set, ctx }) => {
     const isApi = draft.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api;
-    const keepsJwt = ctx.isUpdate && ctx.config?.hasTokenReviewerJwt;
+    const keepsJwt =
+      ctx.isUpdate &&
+      Boolean(ctx.config?.hasTokenReviewerJwt || ctx.config?.isTokenReviewerJwtTemplateSourced);
     return (
       <>
         <Group legend="Configuration">
@@ -719,12 +719,21 @@ const kubernetes = define<IdentityKubernetesAuth, KubernetesDraft>({
                     value={draft.tokenReviewerJwt}
                     onChange={(tokenReviewerJwt) => set({ tokenReviewerJwt })}
                   />
-                  {ctx.config?.isTokenReviewerJwtTemplateSourced && (
+                  {keepsJwt && (
                     <SwitchField
                       name="removeTemplateSourcedJwt"
-                      label="Remove the token reviewer JWT copied from the template"
+                      label={
+                        ctx.config?.isTokenReviewerJwtTemplateSourced
+                          ? "Remove the token reviewer JWT copied from the template"
+                          : "Remove the stored token reviewer JWT"
+                      }
                       checked={draft.removeTemplateSourcedJwt}
-                      onChange={(removeTemplateSourcedJwt) => set({ removeTemplateSourcedJwt })}
+                      onChange={(removeTemplateSourcedJwt) =>
+                        set({
+                          removeTemplateSourcedJwt,
+                          ...(removeTemplateSourcedJwt ? { tokenReviewerJwt: "" } : {})
+                        })
+                      }
                     />
                   )}
                 </>
@@ -778,7 +787,7 @@ const kubernetes = define<IdentityKubernetesAuth, KubernetesDraft>({
             />
           </Group>
         )}
-        <TokenFields draft={draft} set={set} />
+        <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
       </>
     );
   },
@@ -823,8 +832,8 @@ const aws = define<IdentityAwsAuth, AwsDraft>({
     allowedPrincipalArns: splitList(config?.allowedPrincipalArns),
     allowedAccountIds: splitList(config?.allowedAccountIds)
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.allowedPrincipalArns.length && !draft.allowedAccountIds.length) {
       const message = "Configure at least one allowed AWS account ID or principal ARN";
       errors.allowedPrincipalArns = message;
@@ -839,7 +848,7 @@ const aws = define<IdentityAwsAuth, AwsDraft>({
     allowedPrincipalArns: joinList(draft.allowedPrincipalArns),
     allowedAccountIds: joinList(draft.allowedAccountIds)
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <ListField
@@ -864,7 +873,7 @@ const aws = define<IdentityAwsAuth, AwsDraft>({
           onChange={(stsEndpoint) => set({ stsEndpoint })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -892,8 +901,8 @@ const gcp = define<IdentityGcpAuth, GcpDraft>({
     allowedProjects: splitList(config?.allowedProjects),
     allowedZones: splitList(config?.allowedZones)
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     const isGce = draft.type === "gce";
     if (!draft.allowedServiceAccounts.length && !(isGce && draft.allowedProjects.length)) {
       const message = isGce
@@ -911,7 +920,7 @@ const gcp = define<IdentityGcpAuth, GcpDraft>({
     allowedProjects: draft.type === "gce" ? joinList(draft.allowedProjects) : "",
     allowedZones: draft.type === "gce" ? joinList(draft.allowedZones) : ""
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <SelectField
@@ -951,7 +960,7 @@ const gcp = define<IdentityGcpAuth, GcpDraft>({
           </>
         )}
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -982,8 +991,8 @@ const azure = define<IdentityAzureAuth, AzureDraft>({
     resource: config?.resource ?? "https://management.azure.com/",
     allowedServicePrincipalIds: splitList(config?.allowedServicePrincipalIds)
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.tenantId.trim()) errors.tenantId = "Enter a tenant ID";
     return errors;
   },
@@ -993,7 +1002,7 @@ const azure = define<IdentityAzureAuth, AzureDraft>({
     resource: draft.resource.trim(),
     allowedServicePrincipalIds: joinList(draft.allowedServicePrincipalIds)
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <TextField
@@ -1019,7 +1028,7 @@ const azure = define<IdentityAzureAuth, AzureDraft>({
           onChange={(allowedServicePrincipalIds) => set({ allowedServicePrincipalIds })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1036,13 +1045,13 @@ const aliCloud = define<IdentityAliCloudAuth, AliCloudDraft>({
   useConfig: (identityId, enabled) =>
     useV4Adapter("access").useIdentityAliCloudAuth(identityId, { enabled }),
   draft: (config) => ({ ...tokenDraft(config), allowedArns: splitList(config?.allowedArns) }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.allowedArns.length) errors.allowedArns = "Add at least one allowed ARN";
     return errors;
   },
   payload: (draft) => ({ ...tokenPayload(draft), allowedArns: joinList(draft.allowedArns) }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <ListField
@@ -1053,7 +1062,7 @@ const aliCloud = define<IdentityAliCloudAuth, AliCloudDraft>({
           onChange={(allowedArns) => set({ allowedArns })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1072,8 +1081,8 @@ const oci = define<IdentityOciAuth, OciDraft>({
     tenancyOcid: config?.tenancyOcid ?? "",
     allowedUsernames: splitList(config?.allowedUsernames)
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.tenancyOcid.trim()) errors.tenancyOcid = "Enter a tenancy OCID";
     else if (!/^ocid1\.tenancy\.oc1\..+$/.test(draft.tenancyOcid.trim()))
       errors.tenancyOcid = "Tenancy OCIDs start with ocid1.tenancy.oc1.";
@@ -1084,7 +1093,7 @@ const oci = define<IdentityOciAuth, OciDraft>({
     tenancyOcid: draft.tenancyOcid.trim(),
     allowedUsernames: draft.allowedUsernames.length ? joinList(draft.allowedUsernames) : null
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <TextField
@@ -1103,7 +1112,7 @@ const oci = define<IdentityOciAuth, OciDraft>({
           onChange={(allowedUsernames) => set({ allowedUsernames })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1115,7 +1124,7 @@ const oci = define<IdentityOciAuth, OciDraft>({
 
 type ClaimsDraft = {
   boundIssuer: string;
-  boundAudiences: string[];
+  boundAudiences: string;
   boundClaims: Pair[];
   boundSubject: string;
 };
@@ -1148,12 +1157,12 @@ const ClaimsFields = <D extends ClaimsDraft>({
       onChange={(boundSubject) => set({ boundSubject } as Partial<D>)}
     />
     {showIssuer && (
-      <ListField
+      <TextField
         name="boundAudiences"
         label="Audiences"
         optional
-        placeholder="service1"
-        values={draft.boundAudiences}
+        placeholder="service1, service2"
+        value={draft.boundAudiences}
         onChange={(boundAudiences) => set({ boundAudiences } as Partial<D>)}
       />
     )}
@@ -1188,13 +1197,13 @@ const oidc = define<IdentityOidcAuth, OidcDraft>({
     oidcDiscoveryUrl: config?.oidcDiscoveryUrl ?? "",
     caCert: config?.caCert ?? "",
     boundIssuer: config?.boundIssuer ?? "",
-    boundAudiences: splitList(config?.boundAudiences),
+    boundAudiences: config?.boundAudiences ?? "",
     boundClaims: toPairs(config?.boundClaims),
     claimMetadataMapping: toPairs(config?.claimMetadataMapping),
     boundSubject: config?.boundSubject ?? ""
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (draft.templateId) {
       if (!draft.boundSubject.trim() && !draft.boundClaims.some((claim) => claim.key.trim()))
         errors.boundSubject =
@@ -1223,10 +1232,10 @@ const oidc = define<IdentityOidcAuth, OidcDraft>({
       oidcDiscoveryUrl: draft.oidcDiscoveryUrl.trim(),
       caCert: draft.caCert.trim(),
       boundIssuer: draft.boundIssuer.trim(),
-      boundAudiences: joinList(draft.boundAudiences)
+      boundAudiences: draft.boundAudiences.trim()
     };
   },
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <TemplateField
@@ -1268,7 +1277,7 @@ const oidc = define<IdentityOidcAuth, OidcDraft>({
           onChange={(claimMetadataMapping) => set({ claimMetadataMapping })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1303,12 +1312,12 @@ const jwt = define<IdentityJwtAuth, JwtDraft>({
     jwksCaCert: config?.jwksCaCert ?? "",
     publicKeys: config?.publicKeys?.length ? config.publicKeys : [""],
     boundIssuer: config?.boundIssuer ?? "",
-    boundAudiences: splitList(config?.boundAudiences),
+    boundAudiences: config?.boundAudiences ?? "",
     boundClaims: toPairs(config?.boundClaims),
     boundSubject: config?.boundSubject ?? ""
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (draft.configurationType === IdentityJwtConfigurationType.JWKS) {
       if (!isUrl(draft.jwksUrl.trim())) errors.jwksUrl = "Enter a valid JWKS URL";
     } else if (!draft.publicKeys.some((key) => key.trim()))
@@ -1322,11 +1331,11 @@ const jwt = define<IdentityJwtAuth, JwtDraft>({
     jwksCaCert: draft.jwksCaCert.trim(),
     publicKeys: draft.publicKeys.map((key) => key.trim()).filter(Boolean),
     boundIssuer: draft.boundIssuer.trim(),
-    boundAudiences: joinList(draft.boundAudiences),
+    boundAudiences: draft.boundAudiences.trim(),
     boundClaims: fromPairs(draft.boundClaims),
     boundSubject: draft.boundSubject.trim()
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <SelectField
@@ -1369,7 +1378,7 @@ const jwt = define<IdentityJwtAuth, JwtDraft>({
         )}
       </Group>
       <ClaimsFields draft={draft} set={set} showIssuer />
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1426,8 +1435,8 @@ const ldap = define<IdentityLdapAuth, LdapDraft>({
     allowAnyUser: Boolean(config && !config.allowedFields?.length),
     allowedFields: config?.allowedFields?.length ? config.allowedFields : [{ key: "", value: "" }]
   }),
-  validate: (draft, { isUpdate, config }) => {
-    const errors = { ...tokenErrors(draft), ...lockoutErrors(draft) };
+  validate: (draft, { isUpdate, config, maxTtl }) => {
+    const errors = { ...tokenErrors(draft, maxTtl), ...lockoutErrors(draft) };
     if (!draft.searchFilter.trim()) errors.searchFilter = "Enter a search filter";
     if (!draft.allowAnyUser) {
       if (!draft.allowedFields.length)
@@ -1445,12 +1454,12 @@ const ldap = define<IdentityLdapAuth, LdapDraft>({
     if (!draft.searchBase.trim()) errors.searchBase = "Enter a search base";
     return errors;
   },
-  payload: (draft) => {
+  payload: (draft, { isUpdate }) => {
     const base = {
       ...tokenPayload(draft),
       ...lockoutPayload(draft),
       searchFilter: draft.searchFilter.trim(),
-      ldapCaCertificate: draft.ldapCaCertificate.trim() || undefined,
+      ...(isUpdate ? {} : { ldapCaCertificate: draft.ldapCaCertificate.trim() || undefined }),
       allowedFields: draft.allowAnyUser
         ? []
         : draft.allowedFields.map((field) => ({
@@ -1519,7 +1528,8 @@ const ldap = define<IdentityLdapAuth, LdapDraft>({
           name="ldapCaCertificate"
           label="CA certificate"
           optional
-          placeholder={CERT_PLACEHOLDER}
+          readOnly={ctx.isUpdate}
+          placeholder={ctx.isUpdate ? undefined : CERT_PLACEHOLDER}
           value={draft.ldapCaCertificate}
           onChange={(ldapCaCertificate) => set({ ldapCaCertificate })}
         />
@@ -1545,7 +1555,7 @@ const ldap = define<IdentityLdapAuth, LdapDraft>({
           />
         )}
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
       <LockoutFields draft={draft} set={set} />
     </>
   ),
@@ -1588,8 +1598,8 @@ const tlsCert = define<IdentityTlsCertAuth, TlsDraft>({
     verifyClientCertificateChain: config?.verifyClientCertificateChain ?? false,
     bindAccessTokenToCertificate: config?.bindAccessTokenToCertificate ?? false
   }),
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.caCertificate.trim()) errors.caCertificate = "Paste the CA certificate";
     return errors;
   },
@@ -1608,7 +1618,7 @@ const tlsCert = define<IdentityTlsCertAuth, TlsDraft>({
       bindAccessTokenToCertificate: draft.bindAccessTokenToCertificate
     };
   },
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <TextAreaField
@@ -1648,7 +1658,7 @@ const tlsCert = define<IdentityTlsCertAuth, TlsDraft>({
           onChange={(bindAccessTokenToCertificate) => set({ bindAccessTokenToCertificate })}
         />
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => [
@@ -1699,8 +1709,8 @@ const spiffe = define<IdentitySpiffeAuth, SpiffeDraft>({
           : "3600"
     };
   },
-  validate: (draft) => {
-    const errors = tokenErrors(draft);
+  validate: (draft, ctx) => {
+    const errors = tokenErrors(draft, ctx.maxTtl);
     if (!draft.trustDomain.trim()) errors.trustDomain = "Enter a trust domain";
     if (!draft.allowedSpiffeIds.length) errors.allowedSpiffeIds = "Add at least one SPIFFE ID";
     if (!draft.allowedAudiences.length) errors.allowedAudiences = "Add at least one audience";
@@ -1727,7 +1737,7 @@ const spiffe = define<IdentitySpiffeAuth, SpiffeDraft>({
             refreshHintSeconds: Number(draft.refreshHintSeconds)
           }
   }),
-  fields: ({ draft, set }) => (
+  fields: ({ draft, set, ctx }) => (
     <>
       <Group legend="Configuration">
         <TextField
@@ -1800,7 +1810,7 @@ const spiffe = define<IdentitySpiffeAuth, SpiffeDraft>({
           </>
         )}
       </Group>
-      <TokenFields draft={draft} set={set} />
+      <TokenFields draft={draft} set={set} maxTtl={ctx.maxTtl} />
     </>
   ),
   details: (config) => {

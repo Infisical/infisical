@@ -154,11 +154,13 @@ const CreateButton = ({ allowed, onClick }: { allowed: boolean; onClick: () => v
 
 const RevokeMenu = ({
   allowed,
+  renameAllowed,
   label,
   onClick,
   onRename
 }: {
   allowed: boolean;
+  renameAllowed?: boolean;
   label: string;
   onClick: () => void;
   onRename?: () => void;
@@ -172,8 +174,8 @@ const RevokeMenu = ({
     <DropdownMenuContent align="end">
       {onRename && (
         <DropdownMenuItem
-          disabled={!allowed}
-          description={allowed ? undefined : RESTRICTED}
+          disabled={!renameAllowed}
+          description={renameAllowed ? undefined : RESTRICTED}
           onSelect={onRename}
         >
           <Icon name="pencil" />
@@ -195,10 +197,12 @@ const RevokeMenu = ({
 
 export const ClientSecrets = ({
   identityId,
-  canEdit
+  canCreate,
+  canRevoke
 }: {
   identityId: string;
-  canEdit: boolean;
+  canCreate: boolean;
+  canRevoke: boolean;
 }) => {
   const access = useV4Adapter("access");
   const { data: secrets = [], isPending } =
@@ -251,7 +255,7 @@ export const ClientSecrets = ({
         title="Client secrets"
         loading={isPending}
         loadingRows={2}
-        action={<CreateButton allowed={canEdit} onClick={() => setCreating(true)} />}
+        action={<CreateButton allowed={canCreate} onClick={() => setCreating(true)} />}
         empty={
           <EmptyState
             size="sm"
@@ -276,7 +280,7 @@ export const ClientSecrets = ({
             }
             actions={
               <RevokeMenu
-                allowed={canEdit}
+                allowed={canRevoke}
                 label={secret.description || secret.clientSecretPrefix}
                 onClick={() => setRevoking(secret)}
               />
@@ -412,7 +416,15 @@ const RenameTokenDialog = ({
   );
 };
 
-export const AccessTokens = ({ identityId, canEdit }: { identityId: string; canEdit: boolean }) => {
+export const AccessTokens = ({
+  identityId,
+  canCreate,
+  canRevoke
+}: {
+  identityId: string;
+  canCreate: boolean;
+  canRevoke: boolean;
+}) => {
   const access = useV4Adapter("access");
   const { data: tokens = [], isPending } = access.useIdentityTokenAuthTokens(identityId);
   const create = access.useCreateIdentityTokenAuthToken();
@@ -455,7 +467,7 @@ export const AccessTokens = ({ identityId, canEdit }: { identityId: string; canE
         title="Access tokens"
         loading={isPending}
         loadingRows={2}
-        action={<CreateButton allowed={canEdit} onClick={() => setCreating(true)} />}
+        action={<CreateButton allowed={canCreate} onClick={() => setCreating(true)} />}
         empty={
           <EmptyState
             size="sm"
@@ -476,7 +488,8 @@ export const AccessTokens = ({ identityId, canEdit }: { identityId: string; canE
               description={`${usesLabel(token.accessTokenNumUses, token.accessTokenNumUsesLimit)}, ${expiryLabel(token.createdAt, token.accessTokenTTL)}`}
               actions={
                 <RevokeMenu
-                  allowed={canEdit}
+                  allowed={canRevoke}
+                  renameAllowed={canCreate}
                   label={token.name || token.id}
                   onClick={() => setRevoking(token)}
                   onRename={() => setRenaming(token)}
