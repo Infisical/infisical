@@ -86,6 +86,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
     // Get total projects and projects by type
     const projectMetrics = (await db
       .from(TableName.Project)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select("type")
       .count("* as count")
       .groupBy("type")) as Array<{ type: string; count: string }>;
@@ -111,7 +112,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
         this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
-      .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .leftJoin(`${TableName.Project} as p`, function joinActiveProjectForFolder() {
+        this.on("e.projectId", "p.id").andOnNull("p.deleteAfter");
+      })
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id")
       .whereNotNull("p.id")) as Array<{ projectId: string; count: string }>;
@@ -132,10 +135,17 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
   };
 
   const getSecretMetrics = async () => {
-    // Get total secrets
-    const totalSecretsResult = (await db.from(TableName.SecretV2).count("* as count").first()) as
-      | { count: string }
-      | undefined;
+    // Get total secrets, excluding secrets whose environment or project has been soft-deleted so
+    // this aggregate stays consistent with the per-project breakdown below.
+    const totalSecretsResult = (await db
+      .from(`${TableName.SecretV2} as s`)
+      .count("s.id as count")
+      .join(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
+      .join(`${TableName.Environment} as e`, "sf.envId", "e.id")
+      .join(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .whereNull("e.deleteAfter")
+      .whereNull("p.deleteAfter")
+      .first()) as { count: string } | undefined;
 
     const totalSecrets = parseInt(totalSecretsResult?.count || "0", 10);
 
@@ -148,7 +158,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
         this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
-      .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .leftJoin(`${TableName.Project} as p`, function joinActiveProjectForFolder() {
+        this.on("e.projectId", "p.id").andOnNull("p.deleteAfter");
+      })
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id", "p.name")
       .whereNotNull("p.id")) as Array<{ projectId: string; projectName: string; secretCount: string }>;
