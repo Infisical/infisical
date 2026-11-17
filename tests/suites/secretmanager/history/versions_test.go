@@ -1,8 +1,10 @@
 package history_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -189,6 +191,43 @@ func TestSecretVersion_TagConditions(t *testing.T) {
 		}, values)
 	})
 
+	t.Run("should hide every version's value in commit changes when the role is denied the tag", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, _, reader := sensitiveHistory(t, h.NewTenant(t))
+
+		// Action
+		versions := commitChangeVersions(t, reader, proj)
+
+		// Assert
+		values := map[string]bool{}
+		for _, v := range versions {
+			values[v.SecretValue] = true
+		}
+		require.Equal(t, map[string]bool{"<hidden-by-infisical>": true}, values)
+	})
+
+	t.Run("should hide a deleted secret's tagged version in commit changes when the role is denied the tag", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, _, reader := sensitiveHistory(t, h.NewTenant(t))
+		secretmanager.DeleteSecret(t, proj, "dev", "DB_PASS")
+
+		// Action
+		versions := commitChangeVersions(t, reader, proj)
+
+		// Assert
+		values := map[string]bool{}
+		for _, v := range versions {
+			if slices.Contains(v.Tags, "sensitive") {
+				values[v.SecretValue] = true
+			}
+		}
+		require.Equal(t, map[string]bool{"<hidden-by-infisical>": true}, values)
+	})
+
 	t.Run("should refuse an untagged version's value to a role that can describe the secret but not read its value", func(t *testing.T) {
 		t.Parallel()
 
@@ -271,4 +310,38 @@ func readVersion(t *testing.T, pr *harness.Principal, proj *fixture.Project, ver
 	})
 	require.NoError(t, err)
 	return res
+}
+
+type changeVersion struct {
+	SecretKey   string   `json:"secretKey"`
+	SecretValue string   `json:"secretValue"`
+	Tags        []string `json:"tags"`
+}
+
+// commitChangeVersions reads the changes of every commit at dev:/ and returns the secret versions they show.
+func commitChangeVersions(t *testing.T, pr *harness.Principal, proj *fixture.Project) []changeVersion {
+	t.Helper()
+	var versions []changeVersion
+	for _, c := range commitsAt(t, pr, proj, "dev", "/") {
+		res, err := pr.API.GetFolderCommitChangesWithResponse(t.Context(), c.ID, &api.GetFolderCommitChangesParams{ProjectId: proj.ID})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		var body struct {
+			Changes struct {
+				Changes []struct {
+					Versions []changeVersion `json:"versions"`
+				} `json:"changes"`
+			} `json:"changes"`
+		}
+		require.NoError(t, json.Unmarshal(res.Body, &body))
+		for _, change := range body.Changes.Changes {
+			for _, v := range change.Versions {
+				if v.SecretKey != "" {
+					versions = append(versions, v)
+				}
+			}
+		}
+	}
+	require.NotEmpty(t, versions)
+	return versions
 }
