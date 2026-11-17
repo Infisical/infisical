@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -35,12 +34,6 @@ import {
   type TCredentialSourceForm,
   type TProxiedServiceForm
 } from "./managed-proxy-schema";
-import {
-  POPULAR_PROXIED_SERVICE_TEMPLATES,
-  PROXIED_SERVICE_TEMPLATES,
-  type ProxiedServiceTemplate
-} from "./managed-proxy-templates";
-import { ProviderLogo } from "./wizard-sheet";
 
 import styles from "./flows.module.css";
 
@@ -52,13 +45,13 @@ export type SourceOption = {
   disabled?: boolean;
 };
 
-export const genPlaceholder = () =>
+const genPlaceholder = () =>
   `placeholder_${Array.from(
     { length: 12 },
     () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]
   ).join("")}`;
 
-export const emptySource = (): TCredentialSourceForm => ({
+const emptySource = (): TCredentialSourceForm => ({
   secretKey: "",
   dynamicSecretName: "",
   dynamicSecretField: ""
@@ -70,7 +63,7 @@ const SURFACE_OPTIONS = Object.values(ProxiedServiceSubstitutionSurface).map((va
   label: capitalize(value)
 }));
 
-export const encodeSource = (source: TCredentialSourceForm) => {
+const encodeSource = (source: TCredentialSourceForm) => {
   if (source.dynamicSecretName)
     return `dynamic:${source.dynamicSecretName}:${source.dynamicSecretField}`;
   return source.secretKey ? `secret:${source.secretKey}` : "";
@@ -83,59 +76,6 @@ const decodeSource = (value: string): TCredentialSourceForm => {
   }
   return emptySource();
 };
-
-export function TemplatePicker({
-  onSelect
-}: {
-  onSelect: (template: ProxiedServiceTemplate | null) => void;
-}) {
-  const items = [
-    { value: "custom", title: "Custom", icon: "plus" as const, popular: true },
-    ...PROXIED_SERVICE_TEMPLATES.map((template) => ({
-      value: template.key,
-      title: template.name,
-      eyebrow: template.category,
-      media: <ProviderLogo image={template.image} />,
-      popular: POPULAR_PROXIED_SERVICE_TEMPLATES.includes(template.key),
-      keywords: [template.key, ...(template.aliases ?? [])]
-    }))
-  ];
-  return (
-    <Stack gap={24}>
-      <TilePicker
-        items={items}
-        onSelect={(key) =>
-          onSelect(PROXIED_SERVICE_TEMPLATES.find((template) => template.key === key) ?? null)
-        }
-        searchLabel="Search services"
-        searchPlaceholder="Search services, such as OpenAI, Stripe, Telegram, GitHub..."
-        allLabel="All services"
-        noun="services"
-      />
-      <SmallText muted>
-        Don&apos;t see the service you&apos;re looking for, or using a protocol other than HTTP?{" "}
-        <a
-          className={styles.inlineLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://community.infisical.com"
-        >
-          Let us know in the community forum
-        </a>{" "}
-        or{" "}
-        <a
-          className={styles.inlineLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://github.com/Infisical/infisical/discussions"
-        >
-          request it on GitHub
-        </a>
-        .
-      </SmallText>
-    </Stack>
-  );
-}
 
 export function CredentialSource({
   label,
@@ -725,13 +665,7 @@ export function ReviewFields({ form }: { form: TProxiedServiceForm }) {
 const truncate = (value: string, max = 16) =>
   value.length > max ? `${value.slice(0, max)}…` : value;
 
-export function SubstitutionDiagram({
-  form,
-  template
-}: {
-  form: TProxiedServiceForm;
-  template?: ProxiedServiceTemplate;
-}) {
+export function SubstitutionDiagram({ form }: { form: TProxiedServiceForm }) {
   const example = form.substitutions.find((row) => row.placeholderKey) ?? form.substitutions[0];
   const envVar = example?.placeholderKey || "API_KEY";
   const placeholder = truncate(example?.placeholderValue || "sk-xxxxxxxxxxxx");
@@ -777,12 +711,8 @@ export function SubstitutionDiagram({
       {connector("Forwards the real request")}
       <Inset className={styles.node}>
         <span className={styles.nodeTitle}>
-          {template ? (
-            <ProviderLogo image={template.image} size={14} />
-          ) : (
-            <Icon name="globe" size={14} />
-          )}
-          {template?.name || "External Service"}
+          <Icon name="globe" size={14} />
+          External Service
         </span>
         <span className={styles.nodeNote}>
           Receives the real credential. Your agent never held it.
