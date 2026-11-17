@@ -19,9 +19,9 @@ export const approvalRequestQuery = {
     queryOptions({
       queryKey: approvalRequestQuery.getByIdKey(params),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{
-          request: TApprovalRequest & { canReview: boolean };
-        }>(`/api/v1/approval-policies/${params.policyType}/requests/${params.requestId}`);
+        const { data } = await apiRequest.get<{ request: TApprovalRequest }>(
+          `/api/v1/approval-policies/${params.policyType}/requests/${params.requestId}`
+        );
         return data.request;
       }
     }),
