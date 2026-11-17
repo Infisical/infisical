@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
+import { KmsKeysSchema, ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
 import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
@@ -22,22 +22,25 @@ type TKmsKeyRow = TKmsKeys & {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const toModel = (row: TKmsKeyRow): KmsKey =>
-  KmsKey.restore({
-    id: row.id,
-    name: row.name,
-    description: row.description ?? null,
-    orgId: row.orgId,
-    projectId: row.projectId ?? null,
-    keyUsage: row.keyUsage,
-    isDisabled: Boolean(row.isDisabled),
-    isReserved: Boolean(row.isReserved),
-    isExportable: row.isExportable,
-    hasDeleteProtection: row.hasDeleteProtection,
-    isPublicKeyPublished: row.isPublicKeyPublished,
-    kmipMetadata: row.kmipMetadata ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+// The schema supplies the column defaults: a historical migration reads kms_keys before keyUsage, isExportable,
+// hasDeleteProtection and isPublicKeyPublished existed.
+const toModel = (row: TKmsKeyRow): KmsKey => {
+  const columns = KmsKeysSchema.parse(row);
+  return KmsKey.restore({
+    id: columns.id,
+    name: columns.name,
+    description: columns.description ?? null,
+    orgId: columns.orgId,
+    projectId: columns.projectId ?? null,
+    keyUsage: columns.keyUsage,
+    isDisabled: Boolean(columns.isDisabled),
+    isReserved: Boolean(columns.isReserved),
+    isExportable: columns.isExportable,
+    hasDeleteProtection: columns.hasDeleteProtection,
+    isPublicKeyPublished: columns.isPublicKeyPublished,
+    kmipMetadata: columns.kmipMetadata ?? null,
+    createdAt: columns.createdAt,
+    updatedAt: columns.updatedAt,
     internal: row.internalKmsId
       ? {
           id: row.internalKmsId,
@@ -56,6 +59,7 @@ const toModel = (row: TKmsKeyRow): KmsKey =>
         }
       : null
   });
+};
 
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export class KmsKeyStore implements TKmsKeyStore {

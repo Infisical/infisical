@@ -6,6 +6,7 @@ import { poolStoreConnection, ReadFrom, singleStoreConnection } from "@app/domai
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { OrderByDirection } from "@app/lib/types";
 
+import { DataKey } from "../models/data-key";
 import { KmsKey } from "../models/kms-key";
 import {
   describeKmsKeyStoreContract,
@@ -157,6 +158,37 @@ describe("KmsKeyStore on Postgres", () => {
       // Assert
       expect(stored?.toJSON()).toMatchObject({ name: "renamed", internal: { version: 2 } });
       expect(versions).toHaveLength(1);
+    });
+  });
+  describe("schema before the April 2025 kms_keys columns", () => {
+    test("should restore a key with the defaults a historical migration relies on", async () => {
+      // Setup
+      const tn = await h.newTenant();
+      const key = KmsKey.createReserved({ orgId: tn.org.id, rootKey: rootKeyForTests });
+      await new KmsKeyStore(poolStoreConnection(h.db)).insert(key);
+      const trx = await h.db.transaction();
+      onTestFinished(async () => {
+        if (!trx.isCompleted()) await trx.rollback();
+      });
+      await trx.schema.alterTable(TableName.KmsKey, (t) => {
+        t.dropColumn("keyUsage");
+        t.dropColumn("isExportable");
+        t.dropColumn("hasDeleteProtection");
+        t.dropColumn("isPublicKeyPublished");
+      });
+
+      // Action
+      const restored = await new KmsKeyStore(singleStoreConnection(trx)).findById(key.id);
+
+      // Assert
+      expect(restored?.toJSON()).toMatchObject({
+        keyUsage: "encrypt-decrypt",
+        isExportable: true,
+        hasDeleteProtection: false,
+        isPublicKeyPublished: false
+      });
+      const sealed = key.sealDataKey(rootKeyForTests, DataKey.generate());
+      expect(() => restored?.openDataKey(rootKeyForTests, sealed)).not.toThrow();
     });
   });
 });
