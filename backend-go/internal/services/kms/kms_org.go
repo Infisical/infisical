@@ -128,7 +128,7 @@ func (s *Service) ensureOrgDataKey(ctx context.Context, orgID uuid.UUID) (dataKe
 			return nil, fmt.Errorf("decrypting KMS key: %w", err)
 		}
 	} else {
-		kmsKeyMaterial, err = s.decryptInternalKmsKey(ctx, org.KmsDefaultKeyID.V)
+		kmsKeyMaterial, err = s.decryptInternalKmsKey(ctx, tx, org.KmsDefaultKeyID.V)
 		if err != nil {
 			return nil, err
 		}
