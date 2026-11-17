@@ -195,7 +195,7 @@ const EmailRecipientsField = ({
     <Field
       wide
       label="Recipients"
-      error={error}
+      error={error ?? members.unavailableReason}
       description={`${
         allowEmailAddresses
           ? "Pick organization members or type an email address on a verified email domain."

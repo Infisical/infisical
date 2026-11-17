@@ -43,6 +43,10 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_RESOURCE_EVENT_TYPES,
@@ -72,7 +76,7 @@ import {
   withoutErrors
 } from "../../cert-manager/SettingsPage/alert-model";
 import { useV4Adapter } from "../../data/adapters";
-import { useOrgId, useOrgPermission } from "../permissions";
+import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
 import { failed, readableFailure, saved } from "../toast";
 import { Gate } from "../ui";
 
@@ -149,8 +153,22 @@ const AlertSheet = ({
     OrgPermissionSubjects.Member
   );
   const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: canReadMembers });
-  const projectUsers = useV4Adapter("access").useProjectUsers(projectId, true);
+  const { permission: projectPermission } = useProjectPermission(projectId);
+  const canReadProjectMembers = projectPermission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
+  const projectUsers = useV4Adapter("access").useProjectUsers(projectId, true, undefined, {
+    enabled: canReadProjectMembers
+  });
   const projectUserIds = new Set(projectUsers.data?.map((membership) => membership.user.id));
+  const recipientsUnavailable = (() => {
+    if (!canReadMembers || !canReadProjectMembers)
+      return "You need permission to read organization and project members to choose recipients.";
+    if (orgUsers.error || projectUsers.error)
+      return "Couldn't load project members. Close the editor and try again.";
+    return undefined;
+  })();
   const firstFree = EVENT_TYPES.find((event) => !used.includes(event)) ?? EVENT_TYPES[0];
   const [initial] = useState((): TDraft => ({
     eventType: (alert?.eventType as AlertEventType) ?? firstFree,
@@ -338,10 +356,13 @@ const AlertSheet = ({
                 onErrorsChange={setChannelErrors}
                 projectId={projectId}
                 alertId={alert?.id}
-                members={toMemberEmails(
-                  projectUsers.data &&
-                    orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
-                )}
+                members={{
+                  ...toMemberEmails(
+                    projectUsers.data &&
+                      orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
+                  ),
+                  unavailableReason: recipientsUnavailable
+                }}
                 allowEmailAddresses={false}
                 hasEnterprise
                 resource={{

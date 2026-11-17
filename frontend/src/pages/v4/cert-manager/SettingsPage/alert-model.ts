@@ -189,6 +189,7 @@ export type TMemberEmails = {
   emailByUserId: Map<string, string>;
   memberIdByEmail: Map<string, string>;
   isAvailable: boolean;
+  unavailableReason?: string;
 };
 
 export const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
