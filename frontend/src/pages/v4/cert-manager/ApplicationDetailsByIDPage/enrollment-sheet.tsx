@@ -107,11 +107,10 @@ const EnrollmentHeader = ({
 }) => (
   <>
     <SheetHeader>
-      <SheetTitle>
-        <Inline gap={8} align="center">
-          Enrollment for {profileSlug}
-          <DocumentationLink href={ENROLLMENT_DOCS.overview} subject="enrollment methods" />
-        </Inline>
+      <SheetTitle
+        badges={<DocumentationLink href={ENROLLMENT_DOCS.overview} subject="enrollment methods" />}
+      >
+        Enrollment for {profileSlug}
       </SheetTitle>
     </SheetHeader>
     {visible.length > 0 && (
