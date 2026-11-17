@@ -102,8 +102,7 @@ export const SlackAppChannelFields = ({ index, scope }: Props) => {
                       "Could not load Slack integrations. Close this list and open it again to retry."
                     ) : (
                       <span>
-                        No Slack integrations yet. Connect Slack under {integrationsLink}, then open
-                        this list again.
+                        No Slack integrations found. Connect one under {integrationsLink} first.
                       </span>
                     )
                   }

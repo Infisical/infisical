@@ -1,19 +1,17 @@
 import { useRef } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
-import { Button, ButtonGroup } from "@app/components/v3";
-import { useScopeVariant } from "@app/hooks";
+import { Tabs, TabsList, TabsTrigger } from "@app/components/v3";
 import { AlertChannelType, TChannelsForm } from "@app/hooks/api/alerts";
 
 const SLACK_METHODS = [
   { channelType: AlertChannelType.SlackApp, label: "Slack app" },
-  { channelType: AlertChannelType.Slack, label: "Incoming webhook" }
+  { channelType: AlertChannelType.Slack, label: "Webhook URL" }
 ];
 
 type Props = { index: number };
 
 export const SlackMethodSwitch = ({ index }: Props) => {
-  const scopeVariant = useScopeVariant();
   const { control, getValues, setValue, clearErrors } = useFormContext<TChannelsForm>();
   const savedChannel = useRef(getValues(`channels.${index}`));
   const channelType = useWatch({ control, name: `channels.${index}.channelType` });
@@ -34,20 +32,15 @@ export const SlackMethodSwitch = ({ index }: Props) => {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <ButtonGroup aria-label="How to post to Slack">
-        {SLACK_METHODS.map((method) => (
-          <Button
-            key={method.channelType}
-            type="button"
-            size="xs"
-            variant={channelType === method.channelType ? scopeVariant : "outline"}
-            aria-pressed={channelType === method.channelType}
-            onClick={() => selectMethod(method.channelType)}
-          >
-            {method.label}
-          </Button>
-        ))}
-      </ButtonGroup>
+      <Tabs value={channelType} onValueChange={(value) => selectMethod(value as AlertChannelType)}>
+        <TabsList variant="filled" aria-label="How to post to Slack">
+          {SLACK_METHODS.map((method) => (
+            <TabsTrigger key={method.channelType} value={method.channelType}>
+              {method.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       {isReplacingSaved && (
         <p className="text-xs text-muted">
           Saving the alert replaces this Slack channel with a new one.
