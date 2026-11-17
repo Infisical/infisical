@@ -21,7 +21,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrol
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import {
@@ -206,14 +205,6 @@ describe("CertificateProfileService", () => {
     generateKmsKey: vi.fn()
   } as unknown as TKmsDataKeyService & TKmsKeyService;
 
-  const mockProjectDAL = {
-    findById: vi.fn(),
-    findOne: vi.fn(),
-    updateById: vi.fn(),
-    findProjectBySlug: vi.fn(),
-    transaction: vi.fn()
-  } as unknown as Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-
   const mockCertificateBodyDAL = {
     create: vi.fn(),
     findById: vi.fn(),
@@ -299,7 +290,6 @@ describe("CertificateProfileService", () => {
       permissionService: mockPermissionService,
       kmsDataKeyService: mockKmsService,
       kmsKeyService: mockKmsService,
-      projectDAL: mockProjectDAL,
       resourceMetadataDAL: mockResourceMetadataDAL
     });
   });
@@ -323,10 +313,6 @@ describe("CertificateProfileService", () => {
     };
 
     beforeEach(() => {
-      (mockProjectDAL.findById as any).mockResolvedValue({
-        id: "project-123",
-        orgId: "org-123"
-      });
       (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
       (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
@@ -858,10 +844,6 @@ describe("CertificateProfileService", () => {
           }
         };
 
-        (mockProjectDAL.findById as any).mockResolvedValue({
-          id: "project-123",
-          orgId: "org-123"
-        });
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);

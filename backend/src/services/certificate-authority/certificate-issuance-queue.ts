@@ -165,7 +165,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: TCertificateDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
@@ -244,7 +244,6 @@ export const certificateIssuanceQueueFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
@@ -264,7 +263,6 @@ export const certificateIssuanceQueueFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
@@ -280,7 +278,6 @@ export const certificateIssuanceQueueFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -296,7 +293,6 @@ export const certificateIssuanceQueueFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL
   });
 
@@ -309,8 +305,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
 
   const godaddyFns = GoDaddyCertificateAuthorityFns({
@@ -322,8 +317,7 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
 
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
@@ -336,7 +330,6 @@ export const certificateIssuanceQueueFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL
   });
 
@@ -350,7 +343,6 @@ export const certificateIssuanceQueueFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService

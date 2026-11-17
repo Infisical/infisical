@@ -188,21 +188,21 @@ export type TCreateExternalKmsInput = {
 };
 
 export type TUpdateExternalKmsInput = {
-  kmsId: string;
   name?: string;
   description?: string;
   provider?: { type: string; inputs: unknown };
 };
 
 // External KMS keys (AWS, GCP). The enterprise edition implements it. Every call that opens or writes provider
-// inputs is handed the org data-key cipher, so the enterprise edition never holds the community module.
+// inputs is handed the org data-key cipher, so the enterprise edition never holds the community module, and an
+// existing key is handed in already read and checked to be external.
 export type TExternalKmsHook = {
   encrypt(key: TExternalKeyRef, orgCipher: TCipherPair, plainText: Buffer): Promise<Buffer<ArrayBuffer>>;
   decrypt(key: TExternalKeyRef, orgCipher: TCipherPair, cipherTextBlob: Buffer): Promise<Buffer<ArrayBuffer>>;
   create(input: TCreateExternalKmsInput, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
-  update(input: TUpdateExternalKmsInput, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
-  delete(kmsId: string, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
-  get(kmsId: string, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
+  update(key: KmsKey, input: TUpdateExternalKmsInput, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
+  delete(key: KmsKey, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
+  get(key: KmsKey, orgCipher: TCipherPair): Promise<TExternalKmsDetails>;
   list(orgId: string): Promise<TExternalKmsSummary[]>;
   fetchGcpKeys(input: { credential: unknown; gcpRegion: string }): Promise<{ keys: string[] }>;
 };

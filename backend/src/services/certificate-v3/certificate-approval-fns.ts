@@ -321,8 +321,8 @@ export const certificateApprovalServiceFactory = (
     return profile;
   };
 
-  // Keeps the customExtensions column this flow has always stored; generation and encryption run before the
-  // transaction through prepareSelfSignedCertificate.
+  // Not persistSelfSignedCertificate: this flow stores the customExtensions column but none of the other parsed
+  // fields extractCertificateFields would add.
   const $persistSelfSignedCertificate = async ({
     prepared,
     certificateRequest,

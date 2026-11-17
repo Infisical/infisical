@@ -47,7 +47,6 @@ type TProjectCleanupQueueFactoryDep = {
     TProjectDALFactory,
     | "findExpiredForHardDelete"
     | "findByIdIncludingExpired"
-    | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
     | "hardDeleteProjectSecretReferencesInBatches"

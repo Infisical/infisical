@@ -1230,8 +1230,6 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getConfiguredEncryptionStrategies = () => kmsRootKeyService.listEncryptionStrategies();
-
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
     if (!licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)) {
       throw new BadRequestError({
@@ -1239,7 +1237,7 @@ export const superAdminServiceFactory = ({
       });
     }
 
-    const configuredStrategies = await getConfiguredEncryptionStrategies();
+    const configuredStrategies = await kmsRootKeyService.listEncryptionStrategies();
 
     const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
 
@@ -1363,7 +1361,6 @@ export const superAdminServiceFactory = ({
     getIdentities,
     getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
     deleteUserSuperAdminAccess,

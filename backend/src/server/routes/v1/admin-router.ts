@@ -614,7 +614,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async () => {
-      const encryptionDetails = await server.services.superAdmin.getConfiguredEncryptionStrategies();
+      const encryptionDetails = await server.services.kmsRootKeyService.listEncryptionStrategies();
       return encryptionDetails;
     }
   });

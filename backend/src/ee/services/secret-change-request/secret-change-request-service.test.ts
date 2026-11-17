@@ -45,8 +45,17 @@ vi.mock("./secret-change-request-merge-fns", async (importOriginal) => ({
     notifySecretApprovalBypass
   })
 }));
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: async () => BLIND_INDEXER
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: async ({
+    kmsDataKeyService,
+    projectId
+  }: {
+    kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+    projectId: string;
+  }) => ({
+    secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+    blindIndexer: BLIND_INDEXER
+  })
 }));
 vi.mock("./secret-change-request-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./secret-change-request-fns")>()),

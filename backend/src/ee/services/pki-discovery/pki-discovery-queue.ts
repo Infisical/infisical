@@ -31,7 +31,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   pkiCertificateInstallationCertDAL: TPkiCertificateInstallationCertDALFactory;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "find">;

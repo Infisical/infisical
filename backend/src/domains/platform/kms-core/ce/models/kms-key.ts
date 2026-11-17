@@ -19,7 +19,6 @@ import { RootKey } from "./root-key";
 
 // Defined beside the material that validates them, so the two files do not import each other.
 export { KmsKeyUsage } from "./key-material";
-export type { TKmsKeyAlgorithmName } from "./key-material";
 
 export type TKmsKeyRecord = {
   id: string;
@@ -328,18 +327,9 @@ export class KmsKey {
     if (!this.exportable) throw new RuleViolationError({ message: `You are not allowed to export this key${suffix}` });
   }
 
-  // Callers word the refusal for their own operation (delete, destroy), so they ask first and throw themselves, or
-  // call assertDeletable for the default wording.
+  // Callers word the refusal for their own operation (delete, destroy), so they ask and throw themselves.
   get isDeletable(): boolean {
     return !this.deleteProtected;
-  }
-
-  assertDeletable() {
-    if (!this.isDeletable) {
-      throw new RuleViolationError({
-        message: `Key with ID ${this.id} has delete protection enabled. Disable delete protection on the key before deleting it.`
-      });
-    }
   }
 
   // The key's own material, for an export the key allows.

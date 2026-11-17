@@ -31,8 +31,6 @@ import {
   TAsyncEncryptor
 } from "../helpers/key-cipher";
 
-export type { TKmsKeyDetails } from "../../models/kms-key";
-
 export enum KmsKeyOrderBy {
   Name = "name"
 }
@@ -65,9 +63,6 @@ export type TImportKeyMaterialDTO = {
   kmipMetadata?: Record<string, unknown> | null;
 };
 
-export type TEncryptWithKmsDTO = { kmsId: string; plainText: Buffer };
-export type TDecryptWithKmsDTO = { kmsId: string; cipherTextBlob: Buffer };
-
 export type TSignWithKmsDTO = {
   kmsId: string;
   data: Buffer;
@@ -82,9 +77,6 @@ export type TVerifyWithKmsDTO = {
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
 };
-
-export type TGenerateMacDTO = { kmsId: string; data: Buffer };
-export type TVerifyMacDTO = { kmsId: string; data: Buffer; mac: Buffer };
 
 export type TListKmsKeysDTO = {
   projectId: string;
@@ -104,8 +96,6 @@ export type TKmsKeyAttributes = {
   isPublicKeyPublished?: boolean;
   kmipMetadata?: Record<string, unknown> | null;
 };
-
-export type TUpdateKmsKeyAttributesDTO = TKmsKeyAttributes;
 
 export type TKmsKeyService = {
   generateKmsKey(input: TGenerateKMSDTO): Promise<TKmsKeyDetails>;
@@ -153,7 +143,7 @@ export type TKmsKeyService = {
   }): Promise<(input: { data: Buffer; mac: Buffer }) => { macValid: boolean; algorithm: HmacAlgorithm }>;
 
   createExternalKms(input: TCreateExternalKmsInput): Promise<TExternalKmsDetails>;
-  updateExternalKms(input: TUpdateExternalKmsInput): Promise<TExternalKmsDetails>;
+  updateExternalKms(kmsId: string, input: TUpdateExternalKmsInput): Promise<TExternalKmsDetails>;
   deleteExternalKms(kmsId: string): Promise<TExternalKmsDetails>;
   getExternalKms(kmsId: string): Promise<TExternalKmsDetails>;
   getExternalKmsByName(orgId: string, name: string): Promise<TExternalKmsDetails>;
@@ -386,22 +376,22 @@ export class KmsKeyService implements TKmsKeyService {
     return provider.create(input, cipher);
   }
 
-  async updateExternalKms(input: TUpdateExternalKmsInput) {
+  async updateExternalKms(kmsId: string, input: TUpdateExternalKmsInput) {
     const provider = requireExternalKms(this.externalKms);
-    const cipher = await this.externalKeyCipher(input.kmsId);
-    return provider.update(input, cipher);
+    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
+    return provider.update(key, input, cipher);
   }
 
   async deleteExternalKms(kmsId: string) {
     const provider = requireExternalKms(this.externalKms);
-    const cipher = await this.externalKeyCipher(kmsId);
-    return provider.delete(kmsId, cipher);
+    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
+    return provider.delete(key, cipher);
   }
 
   async getExternalKms(kmsId: string) {
     const provider = requireExternalKms(this.externalKms);
-    const cipher = await this.externalKeyCipher(kmsId);
-    return provider.get(kmsId, cipher);
+    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
+    return provider.get(key, cipher);
   }
 
   async getExternalKmsByName(orgId: string, name: string) {
@@ -409,7 +399,7 @@ export class KmsKeyService implements TKmsKeyService {
     const [key] = await this.stores.kmsKeyStore.find({ orgId, name });
     if (!key?.isExternal) throw new EntityNotFoundError({ message: `External KMS with name '${name}' not found` });
     const cipher = await existingOrgCipher(this.stores, this.rootKey, orgId);
-    return provider.get(key.id, cipher);
+    return provider.get(key, cipher);
   }
 
   async listExternalKms(orgId: string) {
@@ -427,10 +417,10 @@ export class KmsKeyService implements TKmsKeyService {
     return key.details();
   }
 
-  private async externalKeyCipher(kmsId: string) {
+  private async externalKeyWithCipher(kmsId: string) {
     const key = await this.stores.kmsKeyStore.findById(kmsId);
     if (!key?.isExternal) throw new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
-    return existingOrgCipher(this.stores, this.rootKey, key.orgId);
+    return { key, cipher: await existingOrgCipher(this.stores, this.rootKey, key.orgId) };
   }
 
   private static applyAttributes(key: KmsKey, attributes: TKmsKeyAttributes) {

@@ -8,7 +8,7 @@ describe("OrganizationKey", () => {
   test("should start with no KMS key and no data key", () => {
     const key = empty();
 
-    expect(key.hasKmsKey()).toBe(false);
+    expect(key.currentKmsKeyId).toBeNull();
     expect(key.hasDataKey()).toBe(false);
   });
 
@@ -18,7 +18,7 @@ describe("OrganizationKey", () => {
     key.assignKmsKey("kms-1");
     key.assignDataKey(Buffer.from("dk"));
 
-    expect(key.hasKmsKey()).toBe(true);
+    expect(key.currentKmsKeyId).toBe("kms-1");
     expect(key.hasDataKey()).toBe(true);
     expect(key.toJSON()).toEqual({ orgId: "org-1", kmsKeyId: "kms-1", encryptedDataKey: Buffer.from("dk") });
   });

@@ -37,7 +37,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
@@ -339,7 +339,6 @@ export const certificateEstV3ServiceFactory = ({
       caId: profile.caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -509,7 +508,6 @@ export const certificateEstV3ServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId as string,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

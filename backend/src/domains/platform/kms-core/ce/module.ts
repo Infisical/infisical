@@ -16,60 +16,32 @@ import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
 import { loadRootKey } from "./services/root-key/load-root-key";
 import { KmsRootKeyService, TKmsCoreEnv, TKmsRootKeyService } from "./services/root-key/service";
 
-export type { TCipherPair, TDecryptor, TEncryptor } from "./models/data-key";
+export type { TCipherPair } from "./models/data-key";
 export { KmsCiphertextUndecryptableError } from "./models/kms-ciphertext-undecryptable-error";
 export { KmsKeyUsage } from "./models/kms-key";
-export type { TKmsKeyDetails, TKmsKeyRecord } from "./models/kms-key";
+export type { TKmsKeyDetails } from "./models/kms-key";
 export { RootKeyEncryptionStrategy } from "./models/root-key-config";
 export { WrappedKeyPayload } from "./models/wrapped-key";
 export { KmsDataKey, KmsType } from "./services/data-key/service";
 export type {
   TKmsDataKeyService,
   TKmsDataKeyTransaction,
-  TEncryptWithKmsDataKeyDTO,
-  TUpdateProjectSecretManagerKmsKeyDTO
+  TEncryptWithKmsDataKeyDTO
 } from "./services/data-key/service";
-export type {
-  TCreateExternalKmsInput,
-  TExternalKmsConfig,
-  TExternalKmsDetails,
-  TExternalKmsHook,
-  TExternalKmsSummary,
-  TKmsCoreHooks,
-  TKmsKeyFilter,
-  TRootKeyWrapper,
-  TUpdateExternalKmsInput
-} from "./services/dependencies";
-export type { TAsyncDecryptor, TAsyncEncryptor } from "./services/helpers/key-cipher";
+export type { TExternalKmsDetails } from "./services/dependencies";
 export { ReadFrom } from "@app/domains/lib/data-access";
 export type { TReadOptions } from "@app/domains/lib/data-access";
 export { KmsKeyOrderBy } from "./services/kms-key/service";
-export type {
-  TGenerateKMSDTO,
-  TImportKeyMaterialDTO,
-  TKmsKeyAttributes,
-  TKmsKeyService,
-  TKmsKeyTransaction,
-  TListKmsKeysDTO,
-  TSignWithKmsDTO,
-  TVerifyWithKmsDTO
-} from "./services/kms-key/service";
-export type {
-  TCreatedRotation,
-  TEncryptionStrategyOption,
-  TKmsCoreEnv,
-  TKmsRootKeyService,
-  TRootKeyStatus,
-  TRotationHistoryEntry
-} from "./services/root-key/service";
+export type { TKmsKeyService } from "./services/kms-key/service";
+export type { TKmsRootKeyService } from "./services/root-key/service";
 
-export type TKmsCoreStoreAccess = {
+type TKmsCoreStoreAccess = {
   transactionRunner: TTransactionRunner<TKmsCoreStores>;
   // Outside a transaction: the replica on the server.
   stores: TKmsCoreStores;
 };
 
-export type TKmsCoreDeps = (
+type TKmsCoreDeps = (
   | {
       db: TDbClient;
       // Where reads outside a transaction go: the replica on the server, the same connection in a migration (never

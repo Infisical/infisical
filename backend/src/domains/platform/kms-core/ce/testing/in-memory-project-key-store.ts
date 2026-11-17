@@ -67,8 +67,9 @@ export class InMemoryProjectKeyStore implements TProjectKeyStore {
   }
 
   private claim<K extends TClaimColumn>(projectId: string, column: K, value: TInMemoryProjectRow[K]) {
+    if (value === null) throw new Error(`The project key has no ${column} to claim`);
     const project = this.rows.projects.get(projectId);
-    if (!project || value === null || project[column] !== null) return false;
+    if (!project || project[column] !== null) return false;
     this.rows.projects.set(projectId, { ...project, [column]: value });
     return true;
   }

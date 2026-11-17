@@ -54,7 +54,6 @@ import {
   getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -188,7 +187,6 @@ type TAwsPcaCertificateAuthorityFnsDeps = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 

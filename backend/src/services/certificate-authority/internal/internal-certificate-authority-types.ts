@@ -19,7 +19,6 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
@@ -355,7 +354,6 @@ export type TGetCaCredentialsDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
@@ -370,7 +368,6 @@ export type TGetCaSignerDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
@@ -382,7 +379,6 @@ export type TGetCaCertChainsDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
@@ -391,7 +387,6 @@ export type TGetCaCertChainDTO = {
   caCertId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
@@ -413,7 +408,6 @@ export type TBuildIssuedCertificateChainDTO = {
     TCertificateAuthorityCrossSignedCertDALFactory,
     "findValidInCaHierarchy"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
@@ -427,7 +421,6 @@ export type TRebuildCaCrlDTO = {
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;

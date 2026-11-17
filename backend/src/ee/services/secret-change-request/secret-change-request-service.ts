@@ -21,7 +21,7 @@ import {
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -528,11 +528,10 @@ export const secretChangeRequestServiceFactory = ({
       folderId: folder.id,
       commits
     });
-    const cipher = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({
-      projectCipher: cipher,
-      orgId: actorOrgId,
-      kmsDataKeyService
+    const { secretManager: cipher, blindIndexer } = await prepareSecretWriteCiphers({
+      kmsDataKeyService,
+      projectId,
+      orgId: actorOrgId
     });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {

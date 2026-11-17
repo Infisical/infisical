@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { TProjectKeyStore } from "../services/dependencies";
 
-export type TProjectKeyStoreHarness = {
+type TProjectKeyStoreHarness = {
   store: TProjectKeyStore;
   // A project whose key columns are empty.
   newProject: () => Promise<{ projectId: string; orgId: string }>;
@@ -104,6 +104,21 @@ export const describeProjectKeyStoreContract = (name: string, setup: () => Promi
         kmsKeyId: winnerKmsKeyId,
         encryptedDataKey: Buffer.from("winner"),
         certificateKmsKeyId: winnerCertificateKeyId
+      });
+    });
+
+    test("should refuse to claim a column the key has not been assigned", async () => {
+      const { store, newProject } = await setup();
+      const { projectId } = await newProject();
+      const key = (await store.find(projectId))!;
+
+      await expect(store.claimKmsKey(key)).rejects.toThrow();
+      await expect(store.claimDataKey(key)).rejects.toThrow();
+      await expect(store.claimCertificateKey(key)).rejects.toThrow();
+      expect((await store.find(projectId))?.toJSON()).toMatchObject({
+        kmsKeyId: null,
+        encryptedDataKey: null,
+        certificateKmsKeyId: null
       });
     });
 

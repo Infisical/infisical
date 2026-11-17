@@ -10,7 +10,6 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
-import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 
 export enum CertStatus {
@@ -183,7 +182,6 @@ export type TGetCertificateCredentialsDTO = {
   certId: string;
   projectId: string;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };

@@ -5,7 +5,6 @@ import RE2 from "re2";
 import { TCertificates } from "@app/db/schemas";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -31,7 +30,6 @@ type TBuildCertificateMapDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findCertificateIdsByPkiSyncId">;
-  projectDAL: TProjectDALFactory;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
@@ -45,7 +43,6 @@ export const buildCertificateMap = async (
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateSyncDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService
   }: TBuildCertificateMapDeps,
@@ -111,7 +108,6 @@ export const buildCertificateMap = async (
               certId: certificate.id,
               projectId: certificate.projectId,
               certificateSecretDAL,
-              projectDAL,
               kmsDataKeyService,
               kmsKeyService
             });
@@ -138,7 +134,6 @@ export const buildCertificateMap = async (
                 caCertId: certificate.caCertId,
                 certificateAuthorityDAL,
                 certificateAuthorityCertDAL,
-                projectDAL,
                 kmsDataKeyService,
                 kmsKeyService
               });

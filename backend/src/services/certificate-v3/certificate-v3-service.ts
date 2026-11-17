@@ -1136,7 +1136,6 @@ export const certificateV3ServiceFactory = ({
     });
 
     const $recordInternalCaIssuance = async (certificateRecord: TCertificates, tx: Knex): Promise<string> => {
-      const certResult = { certificateId: certificateRecord.id };
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         { apiConfig: effectiveApiConfig },
         effectiveTtl,
@@ -1174,7 +1173,7 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: effectiveKeyAlgorithm,
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
-        certificateId: certResult.certificateId,
+        certificateId: certificateRecord.id,
         customExtensions: resolvedCustomExtensions,
         basicConstraints: certificateRequestWithDefaults.basicConstraints,
         ttl: effectiveTtl,
@@ -1190,7 +1189,7 @@ export const certificateV3ServiceFactory = ({
       if (metadata && metadata.length > 0) {
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,
-          certificateId: certResult.certificateId,
+          certificateId: certificateRecord.id,
           orgId: actorOrgId,
           tx
         });
@@ -1205,7 +1204,7 @@ export const certificateV3ServiceFactory = ({
 
       await $emitIssuanceAlert(
         {
-          certificateId: certResult.certificateId,
+          certificateId: certificateRecord.id,
           projectId: profile.projectId,
           orgId: profile.project?.orgId,
           applicationId

@@ -1,9 +1,10 @@
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 
 import { kmsWireFormatFixture } from "../testing/kms-wire-format-fixture";
+import { fixtureKmsKeyRecord } from "../testing/load-kms-wire-format-fixture";
 import { DataKey } from "./data-key";
 import { KmsCiphertextUndecryptableError } from "./kms-ciphertext-undecryptable-error";
-import { KmsKey, TKmsKeyRecord } from "./kms-key";
+import { KmsKey } from "./kms-key";
 import { KmsKeyVersion } from "./kms-key-version";
 import { RootKey } from "./root-key";
 import { WrappedKeyPayload } from "./wrapped-key";
@@ -21,20 +22,8 @@ const loadFixture = () => {
     symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256).decrypt(config.encryptedRootKey as Buffer, kek)
   );
 
-  const keyById = (id: string) => {
-    const row = fixture.rows.kmsKeys.find((candidate) => candidate.id === id) as TRow;
-    const internal = fixture.rows.internalKms.find((candidate) => candidate.kmsKeyId === id) as TRow;
-    return KmsKey.restore({
-      ...(row as unknown as Omit<TKmsKeyRecord, "internal" | "external">),
-      internal: {
-        id: internal.id as string,
-        encryptedKey: internal.encryptedKey as Buffer,
-        encryptionAlgorithm: internal.encryptionAlgorithm as string,
-        version: internal.version as number
-      },
-      external: null
-    });
-  };
+  const keyById = (id: string) =>
+    KmsKey.restore(fixtureKmsKeyRecord(fixture, fixture.rows.kmsKeys.find((candidate) => candidate.id === id) as TRow));
 
   const archivedOf = (kmsKeyId: string) => {
     const internal = fixture.rows.internalKms.find((candidate) => candidate.kmsKeyId === kmsKeyId) as TRow;

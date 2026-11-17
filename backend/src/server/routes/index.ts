@@ -1929,7 +1929,6 @@ export const registerRoutes = async (
     permissionService,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     licenseService
   });
 
@@ -3456,7 +3455,6 @@ export const registerRoutes = async (
     permissionService,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     resourceMetadataDAL,
     pkiApplicationProfileDAL
   });
@@ -3747,7 +3745,6 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     pkiSyncDAL,
@@ -3760,7 +3757,6 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateAuthoritySecretDAL,
     certificateDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     queueService,
@@ -3785,7 +3781,6 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateAuthoritySecretDAL,
     certificateDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     caKeySourceService,
@@ -3907,7 +3902,6 @@ export const registerRoutes = async (
     certificateTemplateDAL,
     certificateAuthorityCertDAL,
     certificateAuthorityDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     licenseService
@@ -3950,8 +3944,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
 
   const certificateService = certificateServiceFactory({
@@ -4003,8 +3996,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
@@ -4158,7 +4150,6 @@ export const registerRoutes = async (
     caKeySourceService,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     permissionService
   });
 
@@ -4377,7 +4368,6 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateDAL,
     certificateBodyDAL,
-    projectDAL,
     appConnectionDAL,
     kmsDataKeyService,
     kmsKeyService,
@@ -4500,7 +4490,6 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     permissionService,
@@ -4651,7 +4640,6 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     permissionService,

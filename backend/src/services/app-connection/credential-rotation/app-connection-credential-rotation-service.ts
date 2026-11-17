@@ -14,7 +14,8 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   decryptAppConnectionCredentials,
-  encryptAppConnectionCredentials
+  encryptAppConnectionCredentials,
+  TCipherPairSource
 } from "@app/services/app-connection/app-connection-fns";
 
 import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
@@ -143,15 +144,18 @@ export const appConnectionCredentialRotationServiceFactory = ({
   /**
    * Decrypt connection credentials.
    */
-  const getConnectionClientCredentials = async (connection: {
-    orgId: string;
-    encryptedCredentials: Buffer;
-    projectId?: string | null;
-  }): Promise<Record<string, unknown>> => {
+  const getConnectionClientCredentials = async (
+    connection: {
+      orgId: string;
+      encryptedCredentials: Buffer;
+      projectId?: string | null;
+    },
+    dataKeyService: TCipherPairSource = kmsDataKeyService
+  ): Promise<Record<string, unknown>> => {
     return decryptAppConnectionCredentials({
       orgId: connection.orgId,
       encryptedCredentials: connection.encryptedCredentials,
-      kmsDataKeyService,
+      kmsDataKeyService: dataKeyService,
       projectId: connection.projectId
     }) as Promise<Record<string, unknown>>;
   };
@@ -205,18 +209,13 @@ export const appConnectionCredentialRotationServiceFactory = ({
       throw new BadRequestError({ message: "Credential rotation is already configured for this connection" });
     }
 
-    const credentials = await decryptAppConnectionCredentials({
-      orgId: connection.orgId,
-      encryptedCredentials: connection.encryptedCredentials,
-      kmsDataKeyService: kmsDataKeyService.within(sealKnexTransaction(tx)),
-      projectId: connection.projectId
-    });
+    const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
+    const credentials = await getConnectionClientCredentials(connection, txDataKeyService);
 
     const { strategyConfig, generatedCredentials, updatedCredentials, postCommitCallback } =
-      await provider.issueInitialCredentials(credentials as Record<string, unknown>, rotationInterval);
+      await provider.issueInitialCredentials(credentials, rotationInterval);
 
     const now = new Date();
-    const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
 
     const encryptedGeneratedCreds = await encryptCredentialRotationGeneratedCredentials({
       orgId: connection.orgId,

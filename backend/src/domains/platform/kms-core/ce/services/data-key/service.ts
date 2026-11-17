@@ -35,8 +35,8 @@ export type TUpdateProjectSecretManagerKmsKeyDTO = {
 
 export type TKmsDataKeyService = {
   createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions): Promise<TCipherPair>;
-  getProjectSecretManagerKmsKeyId(projectId: string, options?: TReadOptions): Promise<string>;
-  getProjectCertificateKmsKeyId(projectId: string, options?: TReadOptions): Promise<string>;
+  getProjectSecretManagerKmsKeyId(projectId: string): Promise<string>;
+  getProjectCertificateKmsKeyId(projectId: string): Promise<string>;
   wrapKey(input: { projectId: string; label: string; key: Buffer }): Promise<Buffer<ArrayBuffer>>;
   unwrapKey(input: { projectId: string; label: string; wrappedKey: Buffer; keyBytes: number }): Promise<Buffer | null>;
   updateProjectSecretManagerKmsKey(input: TUpdateProjectSecretManagerKmsKeyDTO): Promise<TKmsKeyDetails>;
@@ -139,15 +139,15 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return dataKey.toCipherPair();
   }
 
-  async getProjectSecretManagerKmsKeyId(projectId: string, options?: TReadOptions): Promise<string> {
-    const projectKey = await this.findProjectKey(projectId, options);
+  async getProjectSecretManagerKmsKeyId(projectId: string): Promise<string> {
+    const projectKey = await this.findProjectKey(projectId);
     if (projectKey.currentKmsKeyId) return projectKey.currentKmsKeyId;
-    const { kmsKey } = await this.ensureProjectKmsKey(projectKey, options);
+    const { kmsKey } = await this.ensureProjectKmsKey(projectKey);
     return kmsKey.id;
   }
 
-  async getProjectCertificateKmsKeyId(projectId: string, options?: TReadOptions): Promise<string> {
-    const projectKey = await this.findProjectKey(projectId, options);
+  async getProjectCertificateKmsKeyId(projectId: string): Promise<string> {
+    const projectKey = await this.findProjectKey(projectId);
     if (projectKey.certificateKmsKeyId) return projectKey.certificateKmsKeyId;
 
     // The losing key is deleted rather than rolled back: inside a caller's transaction there is nothing to roll back.
@@ -162,8 +162,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     if (claimed) return key.id;
 
     const winner = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
-    if (!winner.certificateKmsKeyId) throw projectNotFound(projectId);
-    return winner.certificateKmsKeyId;
+    return claimedKeyId(winner.certificateKmsKeyId, "project's certificate key");
   }
 
   async wrapKey({

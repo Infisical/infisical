@@ -4,8 +4,6 @@ import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 
 import { TKmsCoreLocks } from "../services/dependencies";
 
-export type { TKmsCoreLocks } from "../services/dependencies";
-
 // Frozen lock ids. Pods of the previous release take these exact ids, so changing the id or the hash (the generic
 // data access locks use hashtextextended) would let an old and a new pod create the same key at once during a deploy.
 export const KMS_LOCK_IDS = {

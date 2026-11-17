@@ -11,7 +11,6 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -42,7 +41,6 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -68,7 +66,6 @@ export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   queueService,
@@ -98,7 +95,6 @@ export const certificateAuthorityQueueFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     gatewayV2Service,
@@ -117,7 +113,6 @@ export const certificateAuthorityQueueFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue
   });
@@ -155,7 +150,6 @@ export const certificateAuthorityQueueFactory = ({
                 certificateAuthorityCrlDAL,
                 certificateAuthorityCertDAL,
                 certificateAuthoritySecretDAL,
-                projectDAL,
                 certificateDAL,
                 kmsDataKeyService,
                 kmsKeyService,

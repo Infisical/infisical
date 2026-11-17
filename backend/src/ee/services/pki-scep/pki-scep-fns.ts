@@ -19,7 +19,6 @@ import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/c
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 const RA_CERT_VALIDITY_YEARS = 10;
 
@@ -124,9 +123,8 @@ type TGenerateScepRaCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsDataKeyService: Parameters<typeof getCaCertChains>[0]["kmsDataKeyService"];
-  kmsKeyService: Parameters<typeof getCaCertChains>[0]["kmsKeyService"];
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 
@@ -178,7 +176,6 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     caId,
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
-    projectDAL: deps.projectDAL,
     kmsDataKeyService: deps.kmsDataKeyService,
     kmsKeyService: deps.kmsKeyService,
     caKeySourceService: deps.caKeySourceService
@@ -188,7 +185,6 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     caId,
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthorityCertDAL: deps.certificateAuthorityCertDAL,
-    projectDAL: deps.projectDAL,
     kmsDataKeyService: deps.kmsDataKeyService,
     kmsKeyService: deps.kmsKeyService
   });
@@ -256,7 +252,6 @@ export const isSignerCertIssuedByCa = async ({
   certificateDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService
 }: {
@@ -266,7 +261,6 @@ export const isSignerCertIssuedByCa = async ({
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 }): Promise<boolean> => {
@@ -281,7 +275,6 @@ export const isSignerCertIssuedByCa = async ({
       caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

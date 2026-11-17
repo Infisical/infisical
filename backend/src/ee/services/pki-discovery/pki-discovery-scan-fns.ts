@@ -65,7 +65,7 @@ type TExecuteScanDeps = {
   pkiCertificateInstallationCertDAL: TPkiCertificateInstallationCertDALFactory;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;

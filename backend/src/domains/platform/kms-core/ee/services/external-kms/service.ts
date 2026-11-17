@@ -78,8 +78,7 @@ export class ExternalKmsService implements TExternalKmsHook {
     return ExternalKmsService.details(key, providerInput);
   }
 
-  async update({ kmsId, name, description, provider }: TUpdateExternalKmsInput, orgCipher: TCipherPair) {
-    const key = await this.requireExternal(kmsId);
+  async update(key: KmsKey, { name, description, provider }: TUpdateExternalKmsInput, orgCipher: TCipherPair) {
     let providerInput = ExternalKmsService.openInputs(key, orgCipher);
     let encryptedProviderInputs: Buffer | undefined;
     if (provider) {
@@ -90,8 +89,8 @@ export class ExternalKmsService implements TExternalKmsHook {
     }
 
     const updated = await this.transactionRunner.run(async ({ stores }) => {
-      const current = await stores.kmsKeyStore.findForUpdate(kmsId);
-      if (!current?.isExternal) throw notFound(kmsId);
+      const current = await stores.kmsKeyStore.findForUpdate(key.id);
+      if (!current?.isExternal) throw notFound(key.id);
       if (name) current.rename(slugify(name));
       if ((name || description) && description !== undefined) current.describe(description);
       if (encryptedProviderInputs) current.replaceProviderInputs(encryptedProviderInputs);
@@ -101,15 +100,14 @@ export class ExternalKmsService implements TExternalKmsHook {
     return ExternalKmsService.details(updated, providerInput);
   }
 
-  async delete(kmsId: string, orgCipher: TCipherPair) {
-    const key = await this.requireExternal(kmsId);
+  async delete(key: KmsKey, orgCipher: TCipherPair) {
     const providerInput = ExternalKmsService.openInputs(key, orgCipher);
-    await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.delete(kmsId));
+    await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.delete(key.id));
     return ExternalKmsService.details(key, providerInput);
   }
 
-  async get(kmsId: string, orgCipher: TCipherPair) {
-    const key = await this.requireExternal(kmsId);
+  // eslint-disable-next-line class-methods-use-this
+  async get(key: KmsKey, orgCipher: TCipherPair) {
     return ExternalKmsService.details(key, ExternalKmsService.openInputs(key, orgCipher));
   }
 
@@ -147,12 +145,6 @@ export class ExternalKmsService implements TExternalKmsHook {
     } finally {
       await client.cleanup();
     }
-  }
-
-  private async requireExternal(kmsId: string) {
-    const key = await this.stores.kmsKeyStore.findById(kmsId);
-    if (!key?.isExternal) throw notFound(kmsId);
-    return key;
   }
 
   private static openInputs(key: KmsKey, orgCipher: TCipherPair): TProviderInput {
@@ -194,7 +186,9 @@ export class ExternalKmsService implements TExternalKmsHook {
       case KmsProviders.Aws: {
         const client = await this.providers.aws({ inputs: provider.inputs }).catch((error) => {
           if (error instanceof STSServiceException || error instanceof KMSServiceException) {
-            throw new ExternalSystemError({ message: error.message ? `AWS error: ${error.message}` : "" });
+            throw new ExternalSystemError({
+              message: error.message ? `AWS error: ${error.message}` : "Failed to connect to AWS KMS"
+            });
           }
           throw error;
         });

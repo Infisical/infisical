@@ -89,7 +89,6 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { previousSecretLocation } from "@app/services/secret-folder/secret-folder-events";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -101,6 +100,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
@@ -685,12 +685,12 @@ export const secretRotationV2ServiceFactory = ({
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // and the advisory lock while it answers.
-        const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
+        const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+          kmsDataKeyService,
+          projectId,
+          orgId: actor.orgId
         });
         const { encryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsDataKeyService });
 
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -1149,14 +1149,13 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
+    const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+      kmsDataKeyService,
+      projectId,
+      orgId: actor.orgId
     });
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
-
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsDataKeyService });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1434,16 +1433,12 @@ export const secretRotationV2ServiceFactory = ({
 
           // Resolved before the transaction opens, so a slow external KMS does not hold a connection
           // while it answers.
-          const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
+          const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+            kmsDataKeyService,
+            projectId,
+            orgId: connection.orgId
           });
           const { encryptor } = projectCipher;
-          const blindIndexer = await createSecretBlindIndexer({
-            projectCipher,
-            orgId: connection.orgId,
-            kmsDataKeyService
-          });
 
           let isRecovery = false;
           const rotated = await secretRotationV2DAL.transaction(async (tx) => {
@@ -2206,12 +2201,12 @@ export const secretRotationV2ServiceFactory = ({
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // while it answers.
-        const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
+        const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+          kmsDataKeyService,
+          projectId,
+          orgId: actor.orgId
         });
         const { encryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsDataKeyService });
 
         let isRecovery = false;
         const reconciled = await secretRotationV2DAL.transaction(async (tx) => {

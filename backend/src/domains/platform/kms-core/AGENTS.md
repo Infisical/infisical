@@ -19,12 +19,10 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
 
 ## Transactions
 
-- **KMS Core joins a caller's transaction.** Inside one, call `kmsDataKeyService.within(tx)` (cipher pairs, first use
-  included, the project's KMS key id, the certificate key id, `deleteProjectKeys`) or `kmsKeyService.within(tx)`
-  (encrypt, decrypt, `getKmsById`). Legacy code passes `sealKnexTransaction(trx)`. A joined call sees the caller's
-  uncommitted rows, so a project created in the same transaction gets its keys there. Outside a transaction, call the
-  service directly. Root key, rotation and external KMS management never join. See "KMS Core joins transactions" in
-  `src/domains/AGENTS.md` for why this domain is the exception.
+- **KMS Core joins a caller's transaction** through `kmsDataKeyService.within(tx)` and `kmsKeyService.within(tx)`;
+  "KMS Core joins transactions" in `src/domains/AGENTS.md` lists what joins and the rules for callers. Legacy code
+  passes `sealKnexTransaction(trx)`. A joined call sees the caller's uncommitted rows, so a project created in the
+  same transaction gets its keys there.
 - **A joined service is built on the transaction's stores and without the cache** (`within` in each service). Never
   read through `this.stores` (the replica) on a path `within` exposes, and never let a joined path touch the cache.
 - **A joined call takes no savepoint**, so a database error aborts the caller's transaction, and anything that relied

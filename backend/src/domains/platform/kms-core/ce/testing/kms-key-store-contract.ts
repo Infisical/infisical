@@ -8,6 +8,9 @@ import { KeyMaterial, KmsKeyUsage } from "../models/key-material";
 import { KmsKey } from "../models/kms-key";
 import { RootKey } from "../models/root-key";
 import { TKmsKeyStore, TKmsKeyVersionStore } from "../services/dependencies";
+import { InMemoryKmsKeyStore } from "./in-memory-kms-key-store";
+import { InMemoryKmsKeyVersionStore } from "./in-memory-kms-key-version-store";
+import { InMemoryPlatformRows } from "./in-memory-platform-rows";
 
 // Organizations and projects belong to no store here, so each backend creates them its own way.
 export type TKmsKeyStoreFixture = {
@@ -15,6 +18,25 @@ export type TKmsKeyStoreFixture = {
   versionStore: TKmsKeyVersionStore;
   newOrg: () => Promise<string>;
   newProject: (orgId: string, options?: { type?: ProjectType; pendingDeletion?: boolean }) => Promise<string>;
+};
+
+export const inMemoryKmsKeyStoreFixture = async (): Promise<TKmsKeyStoreFixture> => {
+  const platformRows = new InMemoryPlatformRows();
+  const versionStore = new InMemoryKmsKeyVersionStore();
+  return {
+    keyStore: new InMemoryKmsKeyStore(platformRows, versionStore),
+    versionStore,
+    newOrg: async () => {
+      const id = randomUUID();
+      platformRows.addOrg(id);
+      return id;
+    },
+    newProject: async (orgId, { type, pendingDeletion } = {}) => {
+      const id = randomUUID();
+      platformRows.addProject(id, orgId, { type, deleteAfter: pendingDeletion ? new Date() : null });
+      return id;
+    }
+  };
 };
 
 export const rootKeyForTests = RootKey.generate();
@@ -31,7 +53,7 @@ export const newInternalKey = (orgId: string, overrides: TInternalOverrides = {}
     ...overrides
   });
 
-export const newExternalKey = (orgId: string, overrides: Partial<Parameters<typeof KmsKey.createExternal>[0]> = {}) =>
+const newExternalKey = (orgId: string, overrides: Partial<Parameters<typeof KmsKey.createExternal>[0]> = {}) =>
   KmsKey.createExternal({
     orgId,
     name: "aws-key",

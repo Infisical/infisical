@@ -688,12 +688,12 @@ export const appConnectionServiceFactory = ({
       validatedCredentials = await runValidation(gatewayId);
     }
 
-    // Set only once the transaction that wrote the rotation has committed.
+    // Revokes the credential a new rotation replaced, so it is called only after the transaction commits.
     let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
-        const created = await appConnectionDAL.transaction(async (tx) => {
+        return appConnectionDAL.transaction(async (tx) => {
           const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
 
           const encryptedCredentials = await encryptAppConnectionCredentials({
@@ -753,8 +753,6 @@ export const appConnectionServiceFactory = ({
 
           return appConnection;
         });
-
-        return created;
       };
 
       let connection: TAppConnectionRaw;
@@ -1029,7 +1027,7 @@ export const appConnectionServiceFactory = ({
     }
 
     try {
-      // Set only once the transaction that wrote the rotation has committed.
+      // Revokes the credential a new rotation replaced, so it is called only after the transaction commits.
       let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx: Knex) => {

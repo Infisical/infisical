@@ -48,17 +48,17 @@ const setup = (options: { withHook?: boolean } = {}) => {
     seenCiphers.push(cipher);
     return fakeDetails("new", input.orgId);
   });
-  const update = vi.fn(async (input: TUpdateExternalKmsInput, cipher: TCipherPair) => {
+  const update = vi.fn(async (key: KmsKey, _input: TUpdateExternalKmsInput, cipher: TCipherPair) => {
     seenCiphers.push(cipher);
-    return fakeDetails(input.kmsId, "org");
+    return fakeDetails(key.id, "org");
   });
-  const remove = vi.fn(async (kmsId: string, cipher: TCipherPair) => {
+  const remove = vi.fn(async (key: KmsKey, cipher: TCipherPair) => {
     seenCiphers.push(cipher);
-    return fakeDetails(kmsId, "org");
+    return fakeDetails(key.id, "org");
   });
-  const get = vi.fn(async (kmsId: string, cipher: TCipherPair) => {
+  const get = vi.fn(async (key: KmsKey, cipher: TCipherPair) => {
     seenCiphers.push(cipher);
-    return fakeDetails(kmsId, "org");
+    return fakeDetails(key.id, "org");
   });
   const list = vi.fn<(orgId: string) => Promise<TExternalKmsSummary[]>>(async () => []);
   const fetchGcpKeys = vi.fn<(input: { credential: unknown; gcpRegion: string }) => Promise<{ keys: string[] }>>(
@@ -661,7 +661,7 @@ describe("KmsKeyService external KMS", () => {
     const key = await seedExternalKey(org);
 
     // Action
-    await service.updateExternalKms({ kmsId: key.id, description: "d" });
+    await service.updateExternalKms(key.id, { description: "d" });
     await service.getExternalKms(key.id);
     await service.deleteExternalKms(key.id);
 

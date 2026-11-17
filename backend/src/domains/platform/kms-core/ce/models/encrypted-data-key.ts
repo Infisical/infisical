@@ -4,14 +4,14 @@ export type TEncryptedDataKeyRecord = {
   orgId: string;
 };
 
-// The KMS key id and the data key it encrypted, read from one row so a key switch committing between two reads can
-// never pair one key with the other's ciphertext.
 export type TEncryptedDataKeyCacheJSON = {
   kmsSecretManagerKeyId: string;
   kmsSecretManagerEncryptedDataKey: string;
   orgId: string;
 };
 
+// The KMS key id and the data key it encrypted, read from one row so a key switch committing between two reads can
+// never pair one key with the other's ciphertext.
 export class EncryptedDataKey {
   private constructor(
     readonly kmsKeyId: string,
@@ -23,7 +23,7 @@ export class EncryptedDataKey {
     return new EncryptedDataKey(record.kmsKeyId, record.encryptedDataKey, record.orgId);
   }
 
-  // Old pods read and write this payload under the same Redis key during a rolling deploy, so it keeps main's names.
+  // Old pods read and write this payload under the same Redis key during a rolling deploy, so it keeps their names.
   // Null for any missing field: a partial entry is a miss, never a key.
   static fromCacheJSON(
     payload:

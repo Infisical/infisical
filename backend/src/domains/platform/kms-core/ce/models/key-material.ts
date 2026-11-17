@@ -21,8 +21,8 @@ export enum KmsKeyUsage {
 
 export type TKmsKeyAlgorithmName = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
 
-export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 16;
-export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
+const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 16;
+const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
 
 type TClassicalKeyShape = { keyType: string; modulusLength?: number; namedCurve?: string; label: string };
 
@@ -84,7 +84,7 @@ export class KeyMaterial {
     throw new RuleViolationError({ message: `Unsupported key type: ${usage as string}` });
   }
 
-  static symmetricKeyLength(algorithm: SymmetricKeyAlgorithm): number {
+  private static symmetricKeyLength(algorithm: SymmetricKeyAlgorithm): number {
     switch (algorithm) {
       case SymmetricKeyAlgorithm.AES_GCM_128:
         return 16;

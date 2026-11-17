@@ -40,7 +40,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -201,7 +201,6 @@ export const certificateAuthorityCrlServiceFactory = ({
       certificateAuthorityCrlDAL,
       certificateAuthorityCertDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       certificateDAL,
       kmsDataKeyService,
       kmsKeyService,

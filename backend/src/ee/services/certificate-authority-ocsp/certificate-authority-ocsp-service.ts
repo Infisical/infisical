@@ -17,7 +17,6 @@ import { getCaSigner } from "@app/services/certificate-authority/certificate-aut
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import {
   OCSP_MAX_CACHED_CA_CERTIFICATES,
@@ -54,7 +53,6 @@ type TCertificateAuthorityOcspServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
@@ -98,7 +96,6 @@ export const certificateAuthorityOcspServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   caKeySourceService,
@@ -273,7 +270,6 @@ export const certificateAuthorityOcspServiceFactory = ({
           caId: ca.id,
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService,
           caKeySourceService,

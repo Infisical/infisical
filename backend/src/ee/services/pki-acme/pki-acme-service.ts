@@ -144,7 +144,7 @@ const assertAcmeCaSupportsCustomExtensions = (caType: CaType, count: number): vo
 };
 
 type TPkiAcmeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;

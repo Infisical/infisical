@@ -39,7 +39,7 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
     TCertificateAuthorityCrossSignedCertDALFactory,
     "findOne" | "findByCaIdForUpdate" | "upsert" | "delete" | "transaction"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -145,7 +145,6 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

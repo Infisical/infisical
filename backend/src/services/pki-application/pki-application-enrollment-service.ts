@@ -39,7 +39,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "./pki-application-profile-dal";
@@ -119,7 +118,6 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
 };
 
@@ -142,7 +140,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   caKeySourceService,
   kmsDataKeyService,
   kmsKeyService,
-  projectDAL,
   permissionService
 }: TPkiApplicationEnrollmentServiceFactoryDep) => {
   const $loadJunction = async (applicationId: string, profileId: string, projectId: string) => {
@@ -808,7 +805,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService,
           caKeySourceService

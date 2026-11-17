@@ -12,7 +12,7 @@ import { TKmsWireFormatFixture } from "./kms-wire-format-fixture";
 
 type TRow = Record<string, unknown>;
 
-const keyRecord = (fixture: TKmsWireFormatFixture, key: TRow): TKmsKeyRecord => {
+export const fixtureKmsKeyRecord = (fixture: TKmsWireFormatFixture, key: TRow): TKmsKeyRecord => {
   const internal = fixture.rows.internalKms.find((row) => row.kmsKeyId === key.id) as TRow | undefined;
   return {
     ...(key as unknown as TKmsKeyRecord),
@@ -59,7 +59,7 @@ export const loadFixtureIntoMemory = async (fixture: TKmsWireFormatFixture, memo
   });
   for (const key of rows.kmsKeys) {
     // eslint-disable-next-line no-await-in-loop
-    await memory.kmsKeyStore.insert(KmsKey.restore(keyRecord(fixture, key)));
+    await memory.kmsKeyStore.insert(KmsKey.restore(fixtureKmsKeyRecord(fixture, key)));
   }
   for (const row of rows.internalKmsKeyVersions) {
     // eslint-disable-next-line no-await-in-loop

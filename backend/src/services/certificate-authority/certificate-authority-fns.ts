@@ -404,9 +404,8 @@ export const getCaCredentials = async ({
     });
   }
 
-  // getProjectKmsCertificateKeyId opens a transaction even on its read-only path, so a caller that
-  // already resolved the key skips it. That matters on the OCSP signing path, where the concurrency
-  // cap would otherwise hold one transaction per in-flight signature against a ten-connection pool.
+  // The OCSP signing path resolves the key once per CA and passes it, rather than reading the project
+  // row again for every in-flight signature against a ten-connection pool.
   const keyId = prefetched?.kmsKeyId ?? (await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId));
 
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
@@ -467,7 +466,6 @@ export const getCaSigner = async ({
   caId,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   caKeySourceService,
@@ -501,7 +499,6 @@ export const getCaSigner = async ({
     caId,
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService,
     signatureAlgorithm,
@@ -758,7 +755,6 @@ export const getIssuedCaCertChain = async ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService
 }: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caId" | "caCert" | "caCertChain">) => {
@@ -766,7 +762,6 @@ export const getIssuedCaCertChain = async ({
     caCertId,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService
   });
@@ -777,7 +772,6 @@ export const getIssuedCaCertChain = async ({
     caCertChain,
     projectId,
     certificateAuthorityCrossSignedCertDAL,
-    projectDAL,
     kmsDataKeyService,
     kmsKeyService
   });
@@ -812,7 +806,6 @@ export const rebuildCaCrl = async ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrlDAL,
   certificateAuthoritySecretDAL,
-  projectDAL,
   certificateDAL,
   kmsDataKeyService,
   kmsKeyService,
@@ -834,7 +827,6 @@ export const rebuildCaCrl = async ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService

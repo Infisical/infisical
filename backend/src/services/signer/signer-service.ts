@@ -190,7 +190,7 @@ type TSignerServiceFactoryDep = {
     | "fetchIssuedCodeSigningCertificate"
     | "prepareCodeSigningCertificateImport"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
@@ -1992,7 +1992,6 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });
@@ -2214,7 +2213,6 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });

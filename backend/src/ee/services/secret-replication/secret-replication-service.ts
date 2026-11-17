@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
@@ -24,7 +24,6 @@ import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -34,6 +33,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -282,12 +282,12 @@ export const secretReplicationServiceFactory = ({
     if (!destinationReplicatedSecretImports.length) return;
 
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId
       });
       const { decryptor: secretManagerDecryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId, kmsDataKeyService });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });

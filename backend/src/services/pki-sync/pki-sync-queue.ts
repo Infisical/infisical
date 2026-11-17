@@ -172,7 +172,6 @@ export const pkiSyncQueueFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateSyncDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

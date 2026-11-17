@@ -100,7 +100,7 @@ type TPkiScepServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -268,7 +268,6 @@ export const pkiScepServiceFactory = ({
         caCertId: ca.internalCa.activeCaCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });
@@ -479,7 +478,6 @@ export const pkiScepServiceFactory = ({
           certificateDAL,
           certificateAuthorityCertDAL,
           certificateAuthorityDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService
         });
@@ -671,7 +669,6 @@ export const pkiScepServiceFactory = ({
         certificateDAL,
         certificateAuthorityCertDAL,
         certificateAuthorityDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       }));

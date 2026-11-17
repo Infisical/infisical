@@ -88,18 +88,17 @@ export const keyDecryptor = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {},
-  options?: TReadOptions
+  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {}
 ): Promise<TAsyncDecryptor> => {
   const ref = key.externalRef();
   if (!ref && loadArchivedNow) {
     const internalKmsId = key.toJSON().internal?.id;
-    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId, options) : [];
+    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId) : [];
     return key.decryptor(rootKey, () => Promise.resolve(archived));
   }
-  if (!ref) return internalDecryptor(stores, rootKey, key, options);
+  if (!ref) return internalDecryptor(stores, rootKey, key);
   const provider = requireExternalKms(externalKms);
-  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId, options);
+  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId);
   return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
 };
 
@@ -109,10 +108,9 @@ export const openDataKey = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  encryptedDataKey: Buffer,
-  options?: TReadOptions
+  encryptedDataKey: Buffer
 ): Promise<DataKey> => {
-  const decrypt = await keyDecryptor(stores, rootKey, externalKms, key, {}, options);
+  const decrypt = await keyDecryptor(stores, rootKey, externalKms, key);
   const bytes = await decrypt({ cipherTextBlob: encryptedDataKey });
   return DataKey.fromBytes(bytes);
 };
@@ -122,10 +120,9 @@ export const sealDataKey = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  dataKey: DataKey,
-  options?: TReadOptions
+  dataKey: DataKey
 ): Promise<Buffer> => {
-  const encrypt = await keyEncryptor(stores, rootKey, externalKms, key, options);
+  const encrypt = await keyEncryptor(stores, rootKey, externalKms, key);
   const { cipherTextBlob } = await encrypt({ plainText: dataKey.exportForWrapping() });
   return cipherTextBlob;
 };

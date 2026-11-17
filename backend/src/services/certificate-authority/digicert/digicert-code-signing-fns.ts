@@ -18,7 +18,6 @@ import {
   extractExternallyIssuedCertificateFields
 } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -63,7 +62,6 @@ type TDigiCertCodeSigningFnsDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
 export const digiCertCodeSigningFns = ({

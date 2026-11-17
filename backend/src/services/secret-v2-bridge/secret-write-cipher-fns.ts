@@ -1,40 +1,36 @@
 import { Knex } from "knex";
 
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { KmsDataKey, ReadFrom, TKmsDataKeyService, TReadOptions } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 
 import { buildSecretBlindIndexer } from "./secret-blind-index-fns";
 import { TSecretWriteCiphers } from "./secret-v2-bridge-types";
 
-// The ciphers a secret write needs, fetched once. Without `tx` the project and org ciphers are fetched in parallel.
-// With the caller's transaction they are fetched on it, one after the other, so the locks a first use takes are
-// acquired in a fixed order. A caller that has just created the project passes { readFrom: ReadFrom.Primary }, which
-// only applies outside a transaction.
+// The ciphers a secret write needs, fetched once per request rather than once per secret, since each resolution
+// can be a round trip to an external KMS. Without a transaction the project and org ciphers are fetched in
+// parallel. On the caller's transaction they are fetched one after the other, so the locks a first use takes are
+// acquired in a fixed order.
 export const prepareSecretWriteCiphers = async ({
   kmsDataKeyService,
   projectId,
   orgId,
-  readOptions,
   tx
 }: {
   kmsDataKeyService: TKmsDataKeyService;
   projectId: string;
   orgId: string;
-  readOptions?: TReadOptions;
   tx?: Knex;
 }): Promise<TSecretWriteCiphers> => {
+  const dataKeys = dataKeysOn(kmsDataKeyService, tx);
+  const fetchOrgCipher = () => dataKeys.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+  const fetchProjectCipher = () => dataKeys.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+
   if (tx?.isTransaction) {
-    const joined = kmsDataKeyService.within(sealKnexTransaction(tx));
-    const orgCipher = await joined.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
-    const secretManager = await joined.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const orgCipher = await fetchOrgCipher();
+    const secretManager = await fetchProjectCipher();
     return { secretManager, blindIndexer: buildSecretBlindIndexer(secretManager, orgCipher) };
   }
 
-  // A plain connection handed down as `tx` means the caller needs rows that have just committed.
-  const options = tx ? { readFrom: ReadFrom.Primary } : readOptions;
-  const [secretManager, orgCipher] = await Promise.all([
-    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, options),
-    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, options)
-  ]);
+  const [secretManager, orgCipher] = await Promise.all([fetchProjectCipher(), fetchOrgCipher()]);
   return { secretManager, blindIndexer: buildSecretBlindIndexer(secretManager, orgCipher) };
 };

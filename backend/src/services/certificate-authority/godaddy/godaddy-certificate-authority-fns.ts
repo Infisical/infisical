@@ -28,7 +28,6 @@ import {
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -57,7 +56,6 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
 // GoDaddy renewal reuses the same certificate id and only issues a genuinely renewed certificate

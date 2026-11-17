@@ -41,7 +41,6 @@ import {
   CertKeyUsage,
   CertStatus
 } from "../certificate/certificate-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TPkiTemplatesDALFactory } from "./pki-templates-dal";
 import {
   TCreatePkiTemplateDTO,
@@ -82,7 +81,6 @@ type TPkiTemplatesServiceFactoryDep = {
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
 };
 
 export type TPkiTemplatesServiceFactory = ReturnType<typeof pkiTemplatesServiceFactory>;
@@ -99,8 +97,7 @@ export const pkiTemplatesServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
   kmsDataKeyService,
-  kmsKeyService,
-  projectDAL
+  kmsKeyService
 }: TPkiTemplatesServiceFactoryDep) => {
   const createTemplate = async ({
     actor,
@@ -466,7 +463,6 @@ export const pkiTemplatesServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -593,7 +589,6 @@ export const pkiTemplatesServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

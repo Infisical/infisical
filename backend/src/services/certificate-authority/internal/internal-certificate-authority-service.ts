@@ -162,7 +162,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -228,7 +228,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityCrlDAL,
       certificateAuthorityCertDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       certificateDAL,
       kmsDataKeyService,
       kmsKeyService,
@@ -883,7 +882,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
@@ -971,7 +969,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
@@ -1071,7 +1068,6 @@ export const internalCertificateAuthorityServiceFactory = ({
           caId: parentCa.id,
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService,
           caKeySourceService
@@ -1136,7 +1132,6 @@ export const internalCertificateAuthorityServiceFactory = ({
           caCertId: parentCa.internalCa.activeCaCertId,
           certificateAuthorityDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService
         });
@@ -1221,7 +1216,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1244,7 +1238,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1282,7 +1275,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1310,7 +1302,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1395,7 +1386,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: certId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1453,7 +1443,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: certId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1572,7 +1561,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
@@ -1610,7 +1598,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -1764,7 +1751,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
@@ -1894,7 +1880,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: intermediateCa.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
@@ -2162,7 +2147,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService,
@@ -2339,7 +2323,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -2585,7 +2568,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService,
@@ -2830,7 +2812,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -2998,7 +2979,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService,
       caKeySourceService

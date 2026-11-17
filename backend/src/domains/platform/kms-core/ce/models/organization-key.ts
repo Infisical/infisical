@@ -22,10 +22,6 @@ export class OrganizationKey {
     return new OrganizationKey(record.orgId, record.kmsKeyId, record.encryptedDataKey);
   }
 
-  hasKmsKey(): boolean {
-    return this.kmsKeyId !== null;
-  }
-
   hasDataKey(): boolean {
     return this.dataKey !== null;
   }

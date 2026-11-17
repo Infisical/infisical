@@ -14,7 +14,7 @@ import { OrganizationKeyStore } from "./organization-key-store";
 import { ProjectKeyStore } from "./project-key-store";
 import { RootKeyConfigStore } from "./root-key-config-store";
 
-export const buildKmsCoreStores = (connection: TStoreConnection, locks: TKmsCoreLocks): TKmsCoreStores => ({
+const buildKmsCoreStores = (connection: TStoreConnection, locks: TKmsCoreLocks): TKmsCoreStores => ({
   kmsKeyStore: new KmsKeyStore(connection),
   kmsKeyVersionStore: new KmsKeyVersionStore(connection),
   rootKeyConfigStore: new RootKeyConfigStore(connection),

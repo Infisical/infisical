@@ -119,15 +119,14 @@ const recordResolution = async (deps: TLoadRootKeyDeps, row: RootKeyConfig) => {
 const bootstrapRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean): Promise<RootKeyConfig> => {
   const { transactionRunner, env, rootKeyWrapper, skipRotationState = false } = deps;
   logger.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
-  const useHsm = isHsmConfigured && Boolean(rootKeyWrapper);
-  const rootKey =
-    useHsm && rootKeyWrapper ? RootKey.fromBytes(await rootKeyWrapper.randomBytes(32)) : RootKey.generate();
-  const strategy = useHsm ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+  const hsm = isHsmConfigured ? rootKeyWrapper : undefined;
+  const rootKey = hsm ? RootKey.fromBytes(await hsm.randomBytes(32)) : RootKey.generate();
+  const strategy = hsm ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
 
   // Wrapped before the transaction opens: this can be an HSM round trip. A pod that loses the race below
   // discards its key unused.
   const encryptedRootKey = await wrapRootKey(rootKey, strategy, env, rootKeyWrapper).catch((err) => {
-    logger.error({ hsmEnabled: useHsm, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
+    logger.error({ hsmEnabled: Boolean(hsm), encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
     throw err;
   });
 

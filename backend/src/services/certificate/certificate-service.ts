@@ -169,7 +169,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
@@ -502,7 +502,6 @@ export const certificateServiceFactory = ({
       certId: cert.id,
       projectId: cert.projectId,
       certificateSecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -633,7 +632,6 @@ export const certificateServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -826,7 +824,6 @@ export const certificateServiceFactory = ({
         certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
         certificateAuthoritySecretDAL,
-        projectDAL,
         certificateDAL,
         kmsDataKeyService,
         kmsKeyService,
@@ -948,7 +945,6 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });
@@ -1676,7 +1672,6 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });
@@ -1690,7 +1685,6 @@ export const certificateServiceFactory = ({
         certId: cert.id,
         projectId: cert.projectId,
         certificateSecretDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });

@@ -11,7 +11,6 @@ import {
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
-import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
@@ -35,7 +34,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -755,12 +754,12 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
       const { encryptor: secretManagerEncryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsDataKeyService });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -950,12 +949,12 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
       const { encryptor: secretManagerEncryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsDataKeyService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,

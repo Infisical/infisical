@@ -23,7 +23,6 @@ import { getCertificateOcspStatus } from "@app/services/certificate/certificate-
 import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -49,7 +48,6 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
     "findActiveDigiCertCertsByOrderIds" | "findActiveDigiCertCertsByCaId" | "updateById"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;

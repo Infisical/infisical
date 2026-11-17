@@ -50,7 +50,6 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -162,7 +161,6 @@ type TAcmeCertificateAuthorityFnsDeps = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -178,7 +176,6 @@ type TOrderCertificateDeps = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -765,7 +762,6 @@ export const AcmeCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsDataKeyService,
   kmsKeyService,
-  projectDAL,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -1028,7 +1024,6 @@ export const AcmeCertificateAuthorityFns = ({
         certificateSecretDAL,
         kmsDataKeyService,
         kmsKeyService,
-        projectDAL,
         gatewayV2Service,
         gatewayPoolService,
         keyStore
@@ -1101,7 +1096,6 @@ export const AcmeCertificateAuthorityFns = ({
         certificateSecretDAL,
         kmsDataKeyService,
         kmsKeyService,
-        projectDAL,
         certificateProfileDAL,
         gatewayV2Service,
         gatewayPoolService,

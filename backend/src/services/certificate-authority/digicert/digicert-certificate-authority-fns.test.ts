@@ -73,8 +73,7 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
     kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
     kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
-    },
-    projectDAL: {}
+    }
   } as unknown as Parameters<typeof DigiCertCertificateAuthorityFns>[0]);
 };
 

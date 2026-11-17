@@ -107,7 +107,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return typed(await kmsKeyService.updateExternalKms({ kmsId, name, description, provider }));
+    return typed(await kmsKeyService.updateExternalKms(kmsId, { name, description, provider }));
   };
 
   const deleteById = async ({ actor, id: kmsId, actorId, actorOrgId, actorAuthMethod }: TDeleteExternalKmsDTO) => {

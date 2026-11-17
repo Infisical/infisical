@@ -64,7 +64,6 @@ import {
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
@@ -329,7 +328,6 @@ type TCertificateProfileServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
     TPkiApplicationProfileDALFactory,
@@ -394,7 +392,6 @@ export const certificateProfileServiceFactory = ({
   permissionService,
   kmsDataKeyService,
   kmsKeyService,
-  projectDAL,
   resourceMetadataDAL,
   pkiApplicationProfileDAL
 }: TCertificateProfileServiceFactoryDep) => {
@@ -618,7 +615,6 @@ export const certificateProfileServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
           kmsDataKeyService,
           kmsKeyService,
           caKeySourceService
@@ -1610,7 +1606,6 @@ export const certificateProfileServiceFactory = ({
         certId: cert.id,
         projectId: cert.projectId,
         certificateSecretDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });

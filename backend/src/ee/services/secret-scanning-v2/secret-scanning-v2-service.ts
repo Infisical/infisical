@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -393,24 +392,22 @@ export const secretScanningV2ServiceFactory = ({
         },
         async ({ credentials, externalId }) => {
           try {
+            let encryptedCredentials: Buffer | null = null;
+
+            if (credentials) {
+              const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+                type: KmsDataKey.SecretManager,
+                projectId: payload.projectId
+              });
+
+              const { cipherTextBlob } = encryptor({
+                plainText: Buffer.from(JSON.stringify(credentials))
+              });
+
+              encryptedCredentials = cipherTextBlob;
+            }
+
             return await secretScanningV2DAL.dataSources.transaction(async (tx) => {
-              let encryptedCredentials: Buffer | null = null;
-
-              if (credentials) {
-                const { encryptor } = await kmsDataKeyService
-                  .within(sealKnexTransaction(tx))
-                  .createCipherPairWithDataKey({
-                    type: KmsDataKey.SecretManager,
-                    projectId: payload.projectId
-                  });
-
-                const { cipherTextBlob } = encryptor({
-                  plainText: Buffer.from(JSON.stringify(credentials))
-                });
-
-                encryptedCredentials = cipherTextBlob;
-              }
-
               const dataSource = await secretScanningV2DAL.dataSources.create(
                 {
                   encryptedCredentials,

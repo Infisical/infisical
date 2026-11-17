@@ -151,7 +151,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
@@ -226,7 +226,6 @@ export const certificateAuthorityServiceFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
@@ -246,7 +245,6 @@ export const certificateAuthorityServiceFactory = ({
     kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
-    projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
@@ -262,7 +260,6 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -278,7 +275,6 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService
@@ -294,7 +290,6 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL
   });
 
@@ -307,8 +302,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
   const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
@@ -319,8 +313,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService,
-    projectDAL
+    kmsKeyService
   });
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
@@ -332,7 +325,6 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsDataKeyService,
     kmsKeyService,
-    projectDAL,
     certificateProfileDAL
   });
 

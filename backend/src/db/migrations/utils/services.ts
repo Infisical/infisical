@@ -11,10 +11,5 @@ type TDependencies = {
 
 // KMS Core over the migration's own connection, with only the root key loaded. Every query runs on `db`, so the
 // migration's transaction sees what it writes (KMS Core's own transactions nest as savepoints on it).
-export const getMigrationEncryptionServices = async ({ envConfig, db }: TDependencies) => {
-  const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = await startStandaloneKmsCore({
-    db,
-    envConfig: { ...envConfig, KMS_ROOT_KEY_RETENTION_DAYS: 7 }
-  });
-  return { kmsDataKeyService, kmsKeyService, kmsRootKeyService };
-};
+export const getMigrationEncryptionServices = ({ envConfig, db }: TDependencies) =>
+  startStandaloneKmsCore({ db, envConfig: { ...envConfig, KMS_ROOT_KEY_RETENTION_DAYS: 7 } });

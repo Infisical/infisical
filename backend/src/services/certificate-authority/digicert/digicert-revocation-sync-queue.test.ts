@@ -100,7 +100,6 @@ const runSync = async ({
     certificateAuthorityDAL: { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) },
     certificateDAL,
     certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
-    projectDAL: {},
     appConnectionDAL: {},
     kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
     kmsKeyService: {

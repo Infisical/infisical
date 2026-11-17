@@ -17,8 +17,8 @@ const makeDataKeyService = () => ({
 });
 
 describe("prepareSecretWriteCiphers", () => {
-  // Each resolution of the project pair is a few queries and, for a project on an external KMS, a provider call.
-  it("should resolve the project data key once and reuse it for the blind indexer", async () => {
+  // Each resolution of a data key is a few queries and, for a key on an external KMS, a provider call.
+  it("should resolve each data key once, however many values the blind indexer digests", async () => {
     // Setup
     const kmsDataKeyService = makeDataKeyService();
 
@@ -29,34 +29,33 @@ describe("prepareSecretWriteCiphers", () => {
       orgId: ORG_ID
     });
 
+    await Promise.all(["a", "b", "c"].map((value) => ciphers.blindIndexer.generateBlindIndexes(Buffer.from(value))));
+
     // Assert
-    const projectCalls = kmsDataKeyService.createCipherPairWithDataKey.mock.calls.filter(
-      ([ctx]) => ctx.type === KmsDataKey.SecretManager
-    );
-    expect(projectCalls).toHaveLength(1);
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
     await expect(ciphers.blindIndexer.generateBlindIndexes(Buffer.from("v"))).resolves.toEqual({
       secretValueBlindIndex: "project:v",
       secretValueOrgBlindIndex: "org:v"
     });
   });
 
-  it("should pass the caller's read options to KMS Core", async () => {
+  it("should read the primary when handed a plain connection instead of a transaction", async () => {
     // Setup
     const kmsDataKeyService = makeDataKeyService();
-    const readOptions = { readFrom: ReadFrom.Primary };
+    const plainConnection = { isTransaction: false } as unknown as Knex;
 
     // Action
     await prepareSecretWriteCiphers({
       kmsDataKeyService: kmsDataKeyService as never,
       projectId: PROJECT_ID,
       orgId: ORG_ID,
-      readOptions
+      tx: plainConnection
     });
 
     // Assert
     expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith(
       { type: KmsDataKey.SecretManager, projectId: PROJECT_ID },
-      readOptions
+      { readFrom: ReadFrom.Primary }
     );
   });
 
@@ -75,7 +74,7 @@ describe("prepareSecretWriteCiphers", () => {
     });
 
     // Assert
-    expect(within).toHaveBeenCalledTimes(1);
+    expect(within).toHaveBeenCalled();
     expect(joined.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
     expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
     await expect(ciphers.blindIndexer.generateBlindIndexes(Buffer.from("v"))).resolves.toEqual({

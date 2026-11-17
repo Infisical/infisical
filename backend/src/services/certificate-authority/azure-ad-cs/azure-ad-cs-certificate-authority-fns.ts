@@ -38,7 +38,6 @@ import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subsc
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -120,7 +119,6 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 

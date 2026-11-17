@@ -25,7 +25,6 @@ import {
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -54,7 +53,6 @@ type TInternalCertificateAuthorityFnsDeps = {
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
@@ -68,7 +66,6 @@ export const InternalCertificateAuthorityFns = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   certificateAuthoritySecretDAL,
@@ -136,7 +133,6 @@ export const InternalCertificateAuthorityFns = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -239,7 +235,6 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -386,7 +381,6 @@ export const InternalCertificateAuthorityFns = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -524,7 +518,6 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

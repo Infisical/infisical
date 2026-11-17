@@ -44,7 +44,6 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
@@ -86,7 +85,6 @@ type TPkiSubscriberServiceFactoryDep = {
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -107,7 +105,6 @@ export const pkiSubscriberServiceFactory = ({
   certificateDAL,
   certificateSecretDAL,
   certificateBodyDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   permissionService,
@@ -525,7 +522,6 @@ export const pkiSubscriberServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -656,7 +652,6 @@ export const pkiSubscriberServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -837,7 +832,6 @@ export const pkiSubscriberServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
         kmsDataKeyService,
         kmsKeyService
       });
@@ -849,7 +843,6 @@ export const pkiSubscriberServiceFactory = ({
       certId: cert.id,
       projectId: cert.projectId,
       certificateSecretDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });

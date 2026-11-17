@@ -35,8 +35,9 @@ export class InMemoryOrganizationKeyStore implements TOrganizationKeyStore {
     column: K,
     value: TInMemoryOrgRow[K]
   ) {
+    if (value === null) throw new Error(`The organization key has no ${column} to claim`);
     const org = this.rows.orgs.get(orgId);
-    if (!org || value === null || org[column] !== null) return false;
+    if (!org || org[column] !== null) return false;
     this.rows.orgs.set(orgId, { ...org, [column]: value });
     return true;
   }

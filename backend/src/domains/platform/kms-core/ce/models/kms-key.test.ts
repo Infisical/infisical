@@ -398,19 +398,18 @@ describe("KmsKey.assertInOrg", () => {
 });
 
 describe("KmsKey delete protection", () => {
-  test("should refuse deleting a protected key and allow it once unprotected", () => {
+  test("should not be deletable while protected and be deletable once unprotected", () => {
     // Setup
     const key = internalKey();
-    key.protect();
 
     // Action
-    const refused = () => key.assertDeletable();
+    key.protect();
+    const whileProtected = key.isDeletable;
+    key.unprotect();
 
     // Assert
-    expect(refused).toThrow("has delete protection enabled");
-    key.unprotect();
+    expect(whileProtected).toBe(false);
     expect(key.isDeletable).toBe(true);
-    expect(refused).not.toThrow();
   });
 });
 

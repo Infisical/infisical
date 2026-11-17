@@ -36,16 +36,8 @@ export class ProjectKey {
     );
   }
 
-  hasKmsKey(): boolean {
-    return this.kmsKeyId !== null;
-  }
-
   hasDataKey(): boolean {
     return this.dataKey !== null;
-  }
-
-  hasCertificateKey(): boolean {
-    return this.certificateKeyId !== null;
   }
 
   // For the caller that reads the KMS key and has no data key yet; once both exist, `material()` carries the id.

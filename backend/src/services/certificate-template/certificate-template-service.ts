@@ -16,7 +16,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { isCertChainValid } from "../certificate/certificate-fns";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificateTemplateDALFactory } from "./certificate-template-dal";
 import { TCertificateTemplateEstConfigDALFactory } from "./certificate-template-est-config-dal";
 import {
@@ -32,7 +31,6 @@ import {
 type TCertificateTemplateServiceFactoryDep = {
   certificateTemplateDAL: TCertificateTemplateDALFactory;
   certificateTemplateEstConfigDAL: TCertificateTemplateEstConfigDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;

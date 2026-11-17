@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { TOrganizationKeyStore } from "../services/dependencies";
 
-export type TOrganizationKeyStoreHarness = {
+type TOrganizationKeyStoreHarness = {
   store: TOrganizationKeyStore;
   // An organization whose key columns are empty.
   newOrg: () => Promise<string>;
@@ -75,6 +75,16 @@ export const describeOrganizationKeyStoreContract = (
         kmsKeyId: winnerKmsKeyId,
         encryptedDataKey: Buffer.from("winner")
       });
+    });
+
+    test("should refuse to claim a column the key has not been assigned", async () => {
+      const { store, newOrg } = await setup();
+      const orgId = await newOrg();
+      const key = (await store.find(orgId))!;
+
+      await expect(store.claimKmsKey(key)).rejects.toThrow();
+      await expect(store.claimDataKey(key)).rejects.toThrow();
+      expect((await store.find(orgId))?.toJSON()).toEqual({ orgId, kmsKeyId: null, encryptedDataKey: null });
     });
 
     test("should report whether an organization uses a KMS key", async () => {

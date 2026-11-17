@@ -11,7 +11,6 @@ import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certi
 import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
 
@@ -21,7 +20,6 @@ type TCertificateEstServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
@@ -35,7 +33,6 @@ export const certificateEstServiceFactory = ({
   certificateTemplateDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
-  projectDAL,
   kmsDataKeyService,
   kmsKeyService,
   licenseService
@@ -82,7 +79,6 @@ export const certificateEstServiceFactory = ({
       caId: certTemplate.caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
@@ -241,7 +237,6 @@ export const certificateEstServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId as string,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
       kmsDataKeyService,
       kmsKeyService
     });
