@@ -98,7 +98,11 @@ export function SecretEntryFields({
           <Input
             ref={keyRef}
             value={entry.key}
-            readOnly={locked}
+            disabledReason={
+              locked
+                ? "The name is shared across environments. Rename it from the secret's row."
+                : undefined
+            }
             placeholder="Type your secret name"
             autoComplete="off"
             spellCheck={false}

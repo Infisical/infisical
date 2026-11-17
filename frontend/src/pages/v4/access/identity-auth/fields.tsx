@@ -19,6 +19,7 @@ type TextProps = {
   description?: ReactNode;
   optional?: boolean;
   type?: "text" | "password" | "number";
+  disabledReason?: string;
 };
 
 export const TextField = ({
@@ -29,7 +30,8 @@ export const TextField = ({
   placeholder,
   description,
   optional,
-  type = "text"
+  type = "text",
+  disabledReason
 }: TextProps) => (
   <Field name={name} label={label} description={description} optional={optional}>
     <Input
@@ -38,6 +40,7 @@ export const TextField = ({
       min={type === "number" ? 0 : undefined}
       step={type === "number" ? 1 : undefined}
       placeholder={placeholder}
+      disabledReason={disabledReason}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -52,14 +55,12 @@ export const TextAreaField = ({
   placeholder,
   description,
   optional,
-  rows = 4,
-  readOnly
-}: Omit<TextProps, "type"> & { rows?: number; readOnly?: boolean }) => (
+  rows = 4
+}: Omit<TextProps, "type" | "disabledReason"> & { rows?: number }) => (
   <Field name={name} label={label} description={description} optional={optional}>
     <Textarea
       mono
       rows={rows}
-      readOnly={readOnly}
       maxRows={16}
       placeholder={placeholder}
       value={value}
