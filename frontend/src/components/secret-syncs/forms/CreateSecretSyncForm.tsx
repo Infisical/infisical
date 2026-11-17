@@ -81,7 +81,8 @@ type FormTab = {
 const getFormTabs = (
   destination: SecretSync,
   destinationName: string,
-  supportsFolderStructure: boolean
+  supportsFolderStructure: boolean,
+  preservesFolderStructure: boolean
 ): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
@@ -109,10 +110,19 @@ const getFormTabs = (
           title: "About duplicate keys",
           description:
             "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: mirroring keeps every value at its own path, while flattening needs each name to be unique.",
-          examples: [
-            { path: "/backend/API_KEY", result: "duplicate", tone: "warning" },
-            { path: "/backend/api/API_KEY", result: "duplicate", tone: "warning" }
-          ]
+          examples: preservesFolderStructure
+            ? [
+                { path: "/backend/API_KEY", result: `${mirroredPrefix}API_KEY`, tone: "success" },
+                {
+                  path: "/backend/api/API_KEY",
+                  result: `${mirroredPrefix}api/API_KEY`,
+                  tone: "success"
+                }
+              ]
+            : [
+                { path: "/backend/API_KEY", result: "duplicate", tone: "warning" },
+                { path: "/backend/api/API_KEY", result: "duplicate", tone: "warning" }
+              ]
         }
       })
     },
@@ -211,7 +221,6 @@ export const CreateSecretSyncForm = ({
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
   const { syncOption } = useSecretSyncOption(destination);
   const supportsFolderStructure = Boolean(syncOption?.supportsPreserveFolderStructure);
-  const formTabs = getFormTabs(destination, destinationName, supportsFolderStructure);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -237,6 +246,13 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
+  const preservesFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
+  const formTabs = getFormTabs(
+    destination,
+    destinationName,
+    supportsFolderStructure,
+    preservesFolderStructure
+  );
   const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
@@ -310,7 +326,6 @@ export const CreateSecretSyncForm = ({
 
   // Duplicate names block a flattened sync. Where the destination can keep folders instead, that
   // choice is made in the Destination step, so the block moves there and lifts once folders are kept.
-  const preservesFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
   const isSourceBlocked = !supportsFolderStructure && recursiveConflicts.length > 0;
   const isDestinationBlocked =
     supportsFolderStructure && !preservesFolderStructure && recursiveConflicts.length > 0;

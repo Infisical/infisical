@@ -12,7 +12,11 @@ import {
   Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { applySecretSyncKeySchema, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import {
+  applySecretSyncKeySchema,
+  getSecretSyncRelativeFolder,
+  SECRET_SYNC_MAP
+} from "@app/helpers/secretSyncs";
 import { SecretSync, useRecursiveConflictsCheck } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -27,9 +31,6 @@ type Props = {
   // Manager's many-to-one mapping. Only the duplicate names are shown then.
   canPreserve?: boolean;
 };
-
-const getRelativeFolder = (path: string, secretPath: string) =>
-  path.split("/").filter(Boolean).slice(secretPath.split("/").filter(Boolean).length).join("/");
 
 export const SecretSyncPreserveFolderStructureField = ({
   destinationPrefix = "",
@@ -59,7 +60,7 @@ export const SecretSyncPreserveFolderStructureField = ({
     const names = applySecretSyncKeySchema(keySchema, "*", environment?.slug ?? "");
 
     const mapped = folders.map(({ path }) => {
-      const folder = preserveFolderStructure ? getRelativeFolder(path, secretPath) : "";
+      const folder = preserveFolderStructure ? getSecretSyncRelativeFolder(path, secretPath) : "";
 
       return {
         source: `${path === "/" ? "" : path}/*`,
@@ -86,8 +87,10 @@ export const SecretSyncPreserveFolderStructureField = ({
   if (!includeAllSubFolders) return null;
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
-  const nestedFolder = folders.find(({ path }) => getRelativeFolder(path, secretPath));
-  const exampleFolder = nestedFolder ? getRelativeFolder(nestedFolder.path, secretPath) : "api";
+  const nestedFolder = folders.find(({ path }) => getSecretSyncRelativeFolder(path, secretPath));
+  const exampleFolder = nestedFolder
+    ? getSecretSyncRelativeFolder(nestedFolder.path, secretPath)
+    : "api";
   const sourceRoot = secretPath === "/" ? "" : secretPath;
 
   return (

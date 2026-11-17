@@ -9,10 +9,13 @@ import {
   FileTreeNode,
   Spinner
 } from "@app/components/v3";
+import { getSecretSyncRelativeFolder } from "@app/helpers/secretSyncs";
 import {
   TSecretSyncRecursiveConflict,
   TSecretSyncRecursiveFolder
 } from "@app/hooks/api/secretSyncs";
+
+const MAX_COLLAPSED_ROWS = 8;
 
 type Props = {
   secretPath: string;
@@ -34,7 +37,7 @@ const getFolderRows = (secretPath: string, folders: TSecretSyncRecursiveFolder[]
   const rootSegments = secretPath.split("/").filter(Boolean);
   const counts = new Map(
     folders.map(({ path, secretCount }) => [
-      path.split("/").filter(Boolean).slice(rootSegments.length).join("/"),
+      getSecretSyncRelativeFolder(path, secretPath),
       secretCount
     ])
   );
@@ -61,6 +64,7 @@ export const SecretSyncSourceFolderTree = ({
   isLoading
 }: Props) => {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const rows = useMemo(() => getFolderRows(secretPath, folders), [secretPath, folders]);
   const secretCount = rows.reduce((total, row) => total + row.secretCount, 0);
@@ -84,23 +88,8 @@ export const SecretSyncSourceFolderTree = ({
         </p>
       </div>
       <div className="overflow-hidden rounded-md border border-border">
-        {rows.map((folder) => (
-          <div
-            key={folder.path}
-            className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-sm last:border-b-0"
-            style={{ paddingLeft: `${16 + Math.max(folder.depth - 1, 0) * 20}px` }}
-          >
-            {folder.depth > 0 && <span className="text-muted">└</span>}
-            <FolderIcon className="size-4 shrink-0 text-warning" />
-            <span className="truncate font-mono">{folder.name}</span>
-            {folder.depth === 0 && <Badge variant="warning">Sync Root</Badge>}
-            <span className="ml-auto shrink-0 text-xs text-muted">
-              {folder.secretCount} {folder.secretCount === 1 ? "secret" : "secrets"}
-            </span>
-          </div>
-        ))}
         {conflicts.length > 0 && (
-          <div>
+          <div className="border-b border-border">
             <div className="flex items-center gap-2 px-4 py-2 text-sm">
               <TriangleAlert className="size-4 shrink-0 text-warning" />
               <span>
@@ -140,6 +129,28 @@ export const SecretSyncSourceFolderTree = ({
                 </ul>
               </div>
             </AnimatedCollapse>
+          </div>
+        )}
+        {(isExpanded ? rows : rows.slice(0, MAX_COLLAPSED_ROWS)).map((folder) => (
+          <div
+            key={folder.path}
+            className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-sm last:border-b-0"
+            style={{ paddingLeft: `${16 + Math.max(folder.depth - 1, 0) * 20}px` }}
+          >
+            {folder.depth > 0 && <span className="text-muted">└</span>}
+            <FolderIcon className="size-4 shrink-0 text-warning" />
+            <span className="truncate font-mono">{folder.name}</span>
+            {folder.depth === 0 && <Badge variant="warning">Sync Root</Badge>}
+            <span className="ml-auto shrink-0 text-xs text-muted">
+              {folder.secretCount} {folder.secretCount === 1 ? "secret" : "secrets"}
+            </span>
+          </div>
+        ))}
+        {rows.length > MAX_COLLAPSED_ROWS && (
+          <div className="flex justify-center px-4 py-1.5">
+            <Button variant="ghost" size="xs" onClick={() => setIsExpanded((prev) => !prev)}>
+              {isExpanded ? "Show fewer folders" : `Show all ${rows.length} folders`}
+            </Button>
           </div>
         )}
       </div>
