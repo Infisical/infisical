@@ -479,6 +479,7 @@ export function AnnotateMenu({
   );
 }
 
+// TODO: replace with Cipher's inline editable cell once it ships; Cipher has none yet.
 function CellEditor({
   label,
   initial,
@@ -584,6 +585,7 @@ function CellEditor({
   );
 }
 
+// TODO: replace with Cipher's inline editable cell once it ships; Cipher has none yet.
 function EditableCell({
   canEdit,
   load,
