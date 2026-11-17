@@ -110,15 +110,18 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
     const data = request.requestData.requestData as CertRevocationRequestData;
     return {
       typeLabel: "Revocation",
-      commonName: data.commonName || truncateSerialNumber(data.serialNumber),
+      commonName: data.commonName || data.serialNumber,
+      displayName: data.commonName || truncateSerialNumber(data.serialNumber),
       profileName: data.profileName
     };
   }
 
   const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
+  const commonName = data?.certificateRequest?.commonName ?? "";
   return {
     typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
-    commonName: data?.certificateRequest?.commonName ?? "",
+    commonName,
+    displayName: commonName,
     profileName: data?.profileName ?? ""
   };
 };
@@ -401,7 +404,7 @@ export const RequestsPage = () => {
                         <TableBody>
                           {filtered.map((r) => {
                             const summary = getApplicationRequestSummary(r);
-                            const cn = summary.commonName || "—";
+                            const cn = summary.displayName || "—";
                             const profile = summary.profileName || "—";
                             const requestAppId =
                               r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
