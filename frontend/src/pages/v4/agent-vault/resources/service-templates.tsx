@@ -34,6 +34,7 @@ const ITEMS: TTemplateItem[] = [
     eyebrow: "MCP server",
     icon: "plus",
     popular: true,
+    pinned: true,
     template: null,
     serviceType: AgentVaultServiceType.Mcp
   },
@@ -44,6 +45,7 @@ const ITEMS: TTemplateItem[] = [
     eyebrow: "HTTP API",
     icon: "plus",
     popular: true,
+    pinned: true,
     template: null,
     serviceType: AgentVaultServiceType.Http
   },
