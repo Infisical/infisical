@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import {
   ArrowRightIcon,
   BookOpenTextIcon,
-  ChevronRightIcon,
   CircleHelpIcon,
   CircleXIcon,
   InfoIcon,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { McpIcon } from "@app/components/agent-vault/McpIcon";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Badge,
@@ -45,7 +45,8 @@ import {
   nativeSessionLogSummary,
   sessionLogMcpCalls,
   sessionLogMcpCallsTruncated,
-  sessionLogMethodLabel
+  sessionLogMethodLabel,
+  sessionLogNativeMeta
 } from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
@@ -179,10 +180,6 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <Badge variant="info">
-        <ServerIcon />
-        MCP
-      </Badge>
       {first ? (
         <McpCallText call={first} path={record.path} />
       ) : (
@@ -252,13 +249,6 @@ const NativeSummary = ({
       }}
       className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <ChevronRightIcon
-        aria-hidden
-        className={twMerge(
-          "size-3.5 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
-          isExpanded && "rotate-90 text-foreground"
-        )}
-      />
       <span className="min-w-0 truncate font-mono text-xs">
         {summary || <span className="font-sans text-muted">Show details</span>}
       </span>
@@ -294,6 +284,25 @@ const NativeDetailPanel = ({ native }: { native: TAgentVaultSessionLogNativeDeta
     )}
   </div>
 );
+
+// Every row leads with one, so the requests line up whatever their type.
+const RequestTypeIcon = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  const native = sessionLogNativeMeta(record);
+  const isMcp = record.serviceType === AgentVaultServiceType.Mcp;
+  const label = native?.label ?? (isMcp ? "MCP" : "HTTP");
+  const Icon = native?.icon ?? (isMcp ? McpIcon : ServerIcon);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} className="flex shrink-0 text-muted">
+          <Icon className="size-3.5" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
   record.serviceType === AgentVaultServiceType.Mcp ? (
@@ -430,16 +439,21 @@ export const SessionLogRow = ({
           )}
         </TableCell>
         <TableCell>
-          {isNative ? (
-            <NativeSummary
-              record={record}
-              detailId={detailId}
-              isExpanded={isOpen}
-              onToggle={isExpandable ? onToggleExpanded : undefined}
-            />
-          ) : (
-            <RequestDetail record={record} />
-          )}
+          <span className="flex min-w-0 items-center gap-2">
+            <RequestTypeIcon record={record} />
+            <span className="min-w-0 flex-1">
+              {isNative ? (
+                <NativeSummary
+                  record={record}
+                  detailId={detailId}
+                  isExpanded={isOpen}
+                  onToggle={isExpandable ? onToggleExpanded : undefined}
+                />
+              ) : (
+                <RequestDetail record={record} />
+              )}
+            </span>
+          </span>
         </TableCell>
         <TableCell className="font-mono text-xs">
           {hasHttpStatus ? (
