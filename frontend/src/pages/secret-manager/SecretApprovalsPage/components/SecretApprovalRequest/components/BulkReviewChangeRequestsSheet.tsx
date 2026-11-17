@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Field,
   FieldLabel,
@@ -168,8 +169,14 @@ const BulkReviewChangeRequestsSheetContent = ({
     setCollapsed((prev) => ({ ...prev, [requestId]: true }));
   };
 
-  const decideAll = (decision: Decision) => {
-    setDecisions(Object.fromEntries(requests.map(({ id }) => [id, decision])));
+  const remainingCount = requests.length - decidedCount;
+
+  const decideAll = (decision: Decision, { onlyRemaining }: { onlyRemaining: boolean }) => {
+    setDecisions((prev) =>
+      Object.fromEntries(
+        requests.map(({ id }) => [id, onlyRemaining ? (prev[id] ?? decision) : decision])
+      )
+    );
   };
 
   const handleSubmit = async (shouldMerge: boolean) => {
@@ -540,33 +547,6 @@ const BulkReviewChangeRequestsSheetContent = ({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b border-border pb-3">
-                <p className="flex-1 text-sm text-muted">Apply one decision to every request</p>
-                <ButtonGroup>
-                  <Button
-                    size="xs"
-                    variant={approveCount === requests.length ? "success" : "outline"}
-                    aria-pressed={approveCount === requests.length}
-                    isDisabled={isSubmitting}
-                    onClick={() => decideAll("approve")}
-                  >
-                    <CheckIcon />
-                    Approve All
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={
-                      decidedCount === requests.length && !approveCount ? "danger" : "outline"
-                    }
-                    aria-pressed={decidedCount === requests.length && !approveCount}
-                    isDisabled={isSubmitting}
-                    onClick={() => decideAll("reject")}
-                  >
-                    <XIcon />
-                    Reject All
-                  </Button>
-                </ButtonGroup>
-              </div>
               <Field>
                 <FieldLabel htmlFor="bulk-review-comment">Comment (optional)</FieldLabel>
                 <TextArea
@@ -586,6 +566,67 @@ const BulkReviewChangeRequestsSheetContent = ({
                 <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
                   Cancel
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" isDisabled={isSubmitting}>
+                      Decide All
+                      <ChevronDownIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuItem
+                      className="text-success focus:bg-success/10 [&_svg]:!text-success"
+                      isDisabled={!remainingCount}
+                      onClick={() => decideAll("approve", { onlyRemaining: true })}
+                    >
+                      <CheckIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Approve remaining ({remainingCount})</span>
+                        <span className="text-xs text-accent">
+                          Keeps the decisions you already made.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="danger"
+                      isDisabled={!remainingCount}
+                      onClick={() => decideAll("reject", { onlyRemaining: true })}
+                    >
+                      <XIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Reject remaining ({remainingCount})</span>
+                        <span className="text-xs text-accent">
+                          Keeps the decisions you already made.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-success focus:bg-success/10 [&_svg]:!text-success"
+                      onClick={() => decideAll("approve", { onlyRemaining: false })}
+                    >
+                      <CheckIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Approve all {requests.length}</span>
+                        <span className="text-xs text-accent">
+                          Replaces every decision, including rejections.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="danger"
+                      onClick={() => decideAll("reject", { onlyRemaining: false })}
+                    >
+                      <XIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Reject all {requests.length}</span>
+                        <span className="text-xs text-accent">
+                          Replaces every decision, including approvals.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
