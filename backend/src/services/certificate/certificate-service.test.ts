@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalRequestStatus, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -321,7 +321,12 @@ describe("certificate revocation behind an approval policy", () => {
     internalCa: { id: "internal-ca-1", keyAlgorithm: "RSA_2048", notAfter: new Date("2099-01-01T00:00:00.000Z") }
   };
 
-  const revocationPolicy = { id: "policy-1", name: "prod-revocations", maxRequestTtl: null };
+  const revocationPolicy = {
+    id: "policy-1",
+    name: "prod-revocations",
+    maxRequestTtl: null,
+    steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }] }]
+  };
 
   const approvedRevocation = {
     id: "approval-request-1",
@@ -466,6 +471,57 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it.each([
+      [
+        "a step has no approvers",
+        [{ requiredApprovals: 1, approvers: [] }],
+        "Revocation approval policy 'prod-revocations' has no approvers on step 1, so nobody could approve this request. Ask an Application Admin to add approvers to the policy."
+      ],
+      [
+        "a step requires more approvals than it has user approvers",
+        [
+          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }] },
+          { requiredApprovals: 2, approvers: [{ type: ApproverType.User, id: "user-3" }] }
+        ],
+        "Revocation approval policy 'prod-revocations' requires 2 approvals on step 2 but has only 1 approver, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
+      ],
+      [
+        "a step lists the same user twice to reach its required approvals",
+        [
+          {
+            requiredApprovals: 3,
+            approvers: [
+              { type: ApproverType.User, id: "user-2" },
+              { type: ApproverType.User, id: "user-2" },
+              { type: ApproverType.User, id: "user-3" }
+            ]
+          }
+        ],
+        "Revocation approval policy 'prod-revocations' requires 3 approvals on step 1 but has only 2 approvers, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
+      ]
+    ])("refuses to open a request nobody could approve when %s", async (_label, steps, message) => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue({ ...revocationPolicy, steps });
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(new BadRequestError({ message }));
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it("opens a request when a step's required approvals could come from a group", async () => {
+      const ctx = buildRevocationService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue({
+        ...revocationPolicy,
+        steps: [{ requiredApprovals: 3, approvers: [{ type: ApproverType.Group, id: "group-1" }] }]
+      });
+
+      await expect(ctx.service.revokeCert(revokeRequest)).resolves.toMatchObject({
+        status: CertificateRevocationStatus.PendingApproval
+      });
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalled();
     });
 
     describe("when the pending request expires at this very moment", () => {
