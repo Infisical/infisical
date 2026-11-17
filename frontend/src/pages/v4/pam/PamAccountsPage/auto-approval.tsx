@@ -312,7 +312,10 @@ const RuleCard = ({
 
   let addBlocker: string | undefined;
   if (choices.length === 0) addBlocker = "Add a request form field first";
-  else if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions)
+  else if (
+    rule.conditions.length + (rule.aiConditions?.length ?? 0) >=
+    AUTO_APPROVAL_LIMITS.conditions
+  )
     addBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions`;
   else if (menuGroups.length === 0) addBlocker = "Every available check is already in this rule";
 

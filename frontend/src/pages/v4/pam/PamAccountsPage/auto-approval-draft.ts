@@ -4,6 +4,7 @@ import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   type TAutoApprovalCatalogConnection,
+  type TAutoApprovalCondition,
   type TAutoApprovalConfig,
   type TAutoApprovalConfigResponse
 } from "@app/hooks/api/approvalPolicies";
@@ -16,7 +17,12 @@ export type TDraftCondition = {
   values: string[];
 };
 
-export type TDraftRule = { key: string; name: string; conditions: TDraftCondition[] };
+export type TDraftRule = {
+  key: string;
+  name: string;
+  conditions: TDraftCondition[];
+  aiConditions?: TAutoApprovalCondition[];
+};
 
 export type TAutoApprovalDraft = {
   inputs: { connectionId: string; subject: string }[];
@@ -47,13 +53,29 @@ export const toAutoApprovalDraft = (config?: TAutoApprovalConfigResponse): TAuto
   rules: (config?.rules ?? []).map((rule) => ({
     key: rule.id,
     name: rule.name,
-    conditions: rule.conditions.map((condition) => ({
-      key: condition.id,
-      connectionId: condition.connectionId,
-      subject: condition.subject,
-      constraint: condition.constraint,
-      values: condition.values
-    }))
+    conditions: rule.conditions.flatMap((condition) =>
+      condition.connectionId
+        ? [
+            {
+              key: condition.id,
+              connectionId: condition.connectionId,
+              subject: condition.subject,
+              constraint: condition.constraint,
+              values: condition.values
+            }
+          ]
+        : []
+    ),
+    aiConditions: rule.conditions
+      .filter((condition) => !condition.connectionId)
+      .map(({ connectionId, subject, constraint, values, prompt, contextConnectionIds }) => ({
+        connectionId,
+        subject,
+        constraint,
+        values,
+        prompt,
+        contextConnectionIds
+      }))
   }))
 });
 
@@ -61,12 +83,15 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
   inputs: draft.inputs,
   rules: draft.rules.map((rule) => ({
     name: rule.name.trim(),
-    conditions: rule.conditions.map(({ connectionId, subject, constraint, values }) => ({
-      connectionId,
-      subject,
-      constraint,
-      values
-    }))
+    conditions: [
+      ...rule.conditions.map(({ connectionId, subject, constraint, values }) => ({
+        connectionId,
+        subject,
+        constraint,
+        values
+      })),
+      ...(rule.aiConditions ?? [])
+    ]
   }))
 });
 
@@ -130,8 +155,9 @@ export const conditionError = (
 
 export const ruleError = (rule: TDraftRule): string | null => {
   if (!rule.name.trim()) return "Name this rule";
-  if (rule.conditions.length === 0) return "Add at least one condition";
-  if (rule.conditions.length > AUTO_APPROVAL_LIMITS.conditions)
+  const count = rule.conditions.length + (rule.aiConditions?.length ?? 0);
+  if (count === 0) return "Add at least one condition";
+  if (count > AUTO_APPROVAL_LIMITS.conditions)
     return `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions`;
   return null;
 };
