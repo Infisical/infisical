@@ -218,10 +218,10 @@ const envSchema = z
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
-    DISABLE_BREACHED_PASSWORD_CHECK: zodStrBool
-      .default("false")
+    BREACHED_PASSWORD_CHECK_ENABLED: zodStrBool
+      .optional()
       .describe(
-        "Skip the Have I Been Pwned check on signup and password changes, for instances with no outbound egress."
+        "Check new passwords against Have I Been Pwned. When unset, on for Infisical Cloud and Dedicated and off for self-hosted."
       ),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),

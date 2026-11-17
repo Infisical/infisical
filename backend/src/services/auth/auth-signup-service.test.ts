@@ -10,7 +10,7 @@ import { AuthTokenType } from "./auth-type";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ AUTH_SECRET: "test-secret", SALT_ROUNDS: 4, DISABLE_BREACHED_PASSWORD_CHECK: false })
+  getConfig: () => ({ AUTH_SECRET: "test-secret", SALT_ROUNDS: 4, BREACHED_PASSWORD_CHECK_ENABLED: true })
 }));
 vi.mock("@app/lib/config/request", () => ({ request: { get: mocks.get } }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));

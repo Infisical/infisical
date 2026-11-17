@@ -13,7 +13,9 @@ export const BREACHED_PASSWORD_ERROR_NAME = "BREACHED_PASSWORD";
 // Only the first five hex characters of the SHA-1 are sent; the suffix is compared here.
 export const isPasswordBreached = async (password: string): Promise<boolean> => {
   const appCfg = getConfig();
-  if (appCfg.DISABLE_BREACHED_PASSWORD_CHECK) return false;
+  // Self-hosted instances may have no outbound access, so they opt in.
+  const isEnabled = appCfg.BREACHED_PASSWORD_CHECK_ENABLED ?? (appCfg.isCloud || appCfg.INFISICAL_DEDICATED);
+  if (!isEnabled) return false;
 
   const hash = crypto.nativeCrypto.createHash("sha1").update(password, "utf8").digest("hex").toUpperCase();
   const prefix = hash.slice(0, 5);

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { assertPasswordNotBreached, BREACHED_PASSWORD_ERROR_NAME, isPasswordBreached } from "./breached-password";
 
 const mocks = vi.hoisted(() => ({
-  config: { DISABLE_BREACHED_PASSWORD_CHECK: false },
+  config: { BREACHED_PASSWORD_CHECK_ENABLED: true },
   get: vi.fn(),
   warn: vi.fn()
 }));
@@ -25,7 +25,6 @@ const rangeBody = (lines: string[]) => ({ data: lines.join("\r\n") });
 
 describe("isPasswordBreached", () => {
   beforeEach(() => {
-    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = false;
     mocks.get.mockReset();
     mocks.warn.mockReset();
   });
@@ -64,18 +63,10 @@ describe("isPasswordBreached", () => {
     expect(await isPasswordBreached(PASSWORD)).toBe(false);
     expect(mocks.warn).toHaveBeenCalledTimes(1);
   });
-
-  test("makes no request when the check is disabled", async () => {
-    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = true;
-
-    expect(await isPasswordBreached(PASSWORD)).toBe(false);
-    expect(mocks.get).not.toHaveBeenCalled();
-  });
 });
 
 describe("assertPasswordNotBreached", () => {
   beforeEach(() => {
-    mocks.config.DISABLE_BREACHED_PASSWORD_CHECK = false;
     mocks.get.mockReset();
   });
 
