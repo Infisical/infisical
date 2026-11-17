@@ -1,5 +1,6 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
+import { ProjectType } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -27,7 +28,10 @@ export const createAcmClient = async ({
   }
 
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
-  const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMClient({
     sha256: CustomAWSHasher,

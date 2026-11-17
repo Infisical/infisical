@@ -144,13 +144,16 @@ export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
 
 // The proxy writes the type in upper case as the method, as in POSTGRES, so a row whose serviceType is missing can
 // still be named.
-export const sessionLogMethodLabel = (record: TAgentVaultSessionLogRecord) => {
-  if (!isNativeSessionLogRecord(record)) return record.method;
+export const sessionLogNativeMeta = (record: TAgentVaultSessionLogRecord) => {
+  if (!isNativeSessionLogRecord(record)) return null;
   const type = isNativeServiceType(record.serviceType)
     ? record.serviceType
     : (record.method.toLowerCase() as AgentVaultServiceType);
-  return isNativeServiceType(type) ? NATIVE_SERVICE_META[type].label : record.method;
+  return isNativeServiceType(type) ? NATIVE_SERVICE_META[type] : null;
 };
+
+export const sessionLogMethodLabel = (record: TAgentVaultSessionLogRecord) =>
+  sessionLogNativeMeta(record)?.label ?? record.method;
 
 const NATIVE_SEARCH_FIELDS = [
   "statement",

@@ -18,7 +18,7 @@ import {
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { ProjectType, TCertificateSyncs } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -213,7 +213,10 @@ const getAwsAcmClient = async (
       });
   }
 
-  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...awsConnectionConfig, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMClient(awsConfig);
 };

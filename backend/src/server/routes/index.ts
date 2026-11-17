@@ -270,6 +270,8 @@ import { secretReminderAlertDALFactory } from "@app/services/alert/providers/sec
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
 import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
+import { secretSyncAlertDALFactory } from "@app/services/alert/providers/secret-sync-alert-dal";
+import { secretSyncAlertProviderFactory } from "@app/services/alert/providers/secret-sync-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -476,6 +478,7 @@ import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
+import { orgInviteQuotaFactory } from "@app/services/org/org-invite-quota";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -1082,6 +1085,13 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    secretSyncAlertProviderFactory({
+      secretSyncAlertDAL: secretSyncAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
       certManagerCertificateAlertDAL,
       permissionService,
@@ -1275,7 +1285,9 @@ export const registerRoutes = async (
 
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsKeyService, keyStore, auditLogService });
 
+  const orgInviteQuota = orgInviteQuotaFactory({ keyStore, licenseService, orgMembershipDAL });
   const membershipUserService = membershipUserServiceFactory({
+    orgInviteQuota,
     licenseService,
     usageMeteringService,
     membershipRoleDAL,
@@ -1668,6 +1680,7 @@ export const registerRoutes = async (
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
   const orgService = orgServiceFactory({
+    orgInviteQuota,
     auditLogSettingsService,
     userAliasDAL,
     identityMetadataDAL,
@@ -2334,6 +2347,7 @@ export const registerRoutes = async (
 
   const secretSyncQueue = secretSyncQueueFactory({
     eventEmitter: eventOutboxService,
+    alertService,
     queueService,
     cronJob,
     secretSyncDAL,
@@ -2344,7 +2358,6 @@ export const registerRoutes = async (
     kmsDataKeyService,
     keyStore,
     auditLogService,
-    smtpService,
     projectDAL,
     projectMembershipDAL,
     projectBotDAL,
@@ -2369,6 +2382,7 @@ export const registerRoutes = async (
     telemetryService,
     projectFolderGrantDAL,
     orgDAL,
+    userDAL,
     oidcIssuerService
   });
 
@@ -3543,7 +3557,8 @@ export const registerRoutes = async (
     secretSyncQueue,
     projectBotService,
     keyStore,
-    licenseService
+    licenseService,
+    alertService
   });
 
   const kmipService = kmipServiceFactory({

@@ -304,7 +304,8 @@
                                 "pages": [
                                   "integrations/platforms/kubernetes/infisical-connection-crd",
                                   "integrations/platforms/kubernetes/infisical-auth-crd",
-                                  "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                                  "integrations/platforms/kubernetes/infisical-static-secret-crd",
+                                  "integrations/platforms/kubernetes/infisical-static-secret-push-crd"
                                 ]
                               },
                               {
