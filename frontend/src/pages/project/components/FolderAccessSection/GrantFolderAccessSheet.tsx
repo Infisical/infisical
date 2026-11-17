@@ -38,6 +38,7 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   canGrantFolderAccess,
   normalizeFolderPath
@@ -122,6 +123,19 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       ? `This ${actorNoun} already has access to ${normalizedPath}. Saving updates that access.`
       : null;
 
+  const environmentGrant = isRoot
+    ? null
+    : existingAccess.find(
+        (row) =>
+          row.environment === environmentSlug &&
+          row.isPermissionRecursive &&
+          normalizeFolderPath(row.secretPath) === "/"
+      );
+  const inheritedNote =
+    environmentGrant && !targetError && !isCheckingFolder
+      ? `This ${actorNoun} has ${FOLDER_ROLE_TIER_LABELS[environmentGrant.permission]} on ${normalizedPath} through access applied to the environment from /. ${existingGrant ? "The access set on this folder overrides it here." : "Access you set here overrides it on this folder."}`
+      : null;
+
   const isSubmitDisabled =
     isCheckingFolder ||
     Boolean(targetError) ||
@@ -165,7 +179,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     <>
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2">
-          Grant Folder Access
+          Manage Folder Access
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
         <ActorSummary actor={actor} />
@@ -211,6 +225,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
               {editNote}
             </p>
           )}
+          {inheritedNote && (
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+              {inheritedNote}
+            </p>
+          )}
         </div>
 
         <FolderGrantFields grant={grant} />
@@ -229,7 +249,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           }
           onClick={() => handleSubmit().catch(() => undefined)}
         >
-          {existingGrant ? "Save Changes" : "Grant Access"}
+          {existingGrant ? "Save Changes" : "Save Access"}
         </Button>
       </SheetFooter>
       {upgradeGate}
