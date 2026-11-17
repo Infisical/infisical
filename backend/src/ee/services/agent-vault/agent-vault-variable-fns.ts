@@ -19,6 +19,9 @@ export const AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE = `Double braces are reserv
 
 export const AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE = `A value can use at most ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} variable references, and a reference that repeats counts each time. Combine some into one variable to use fewer.`;
 
+export const AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE =
+  "An SSH key credential can't use variables yet, so its username, key and certificate can't contain double braces, as in {{SSH_USER}}. Enter the values themselves.";
+
 export const AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE =
   "Services sent with a session can't use variables, so a value can't wrap text in double braces, as in {{GITHUB_TOKEN}}. Send the value itself, or add the service to an access bundle to use a variable.";
 

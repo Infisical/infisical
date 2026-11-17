@@ -35,7 +35,7 @@ Before users can submit access requests, a project administrator must create an 
 | **Policy Name** | A descriptive name for the policy (e.g., "Production Access Policy"). |
 | **Max Time Period** | The maximum duration a user can request access for (e.g., `1h`, `3d`, `1w`). Leave empty or set to "permanent" to allow permanent access requests. |
 | **Request Expiration** | Time before unapproved requests automatically expire (e.g., `24h`, `3d`, `72h`). Expired requests are moved to the Closed tab and can't be approved. Leave empty or set to "never" for requests that never expire. |
-| **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). |
+| **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). Users can request this path or any narrower path that it matches. |
 | **Environments** | One or more environments this policy applies to (e.g., Production, Staging). |
 
 ### Multi-step approval workflows
@@ -87,7 +87,7 @@ Once access policies are configured, users can request access to resources cover
 2. Select **Request Access**.
 3. Fill in the request details:
    - **Environment**: Select the target environment
-   - **Secret Path**: Choose the folder path
+   - **Secret Path**: Enter the folder path you need, or select one of the suggested folders (see [Choosing a secret path](#choosing-a-secret-path))
    - **Permissions**: Select the access level (Read, Create, Edit, Delete)
    - **Access Duration**: Choose temporary access with a specific duration or permanent access (limited by policy's Max Time Period)
    - **Note**: Optional justification or context for the request
@@ -98,6 +98,17 @@ Once access policies are configured, users can request access to resources cover
 <Note>
   If a policy has a **Max Time Period** configured, the requested duration can't exceed this limit.
 </Note>
+
+### Choosing a secret path
+
+You can request access to any path that an access policy's secret path matches, not only to the secret path itself. For example, if a policy covers `/**` in the Development environment, you can request access to `/aws/rds` alone.
+
+- If no policy in the environment uses a glob, **Secret Path** is a list of the policies' paths, and you can only request one of those paths
+- The path must match at least one existing folder in the environment
+- To request a folder and every folder inside it, end the path with `/**` (for example, `/payments/**`), or select the `/**` suggestion for that folder
+- If you request `/**`, the request covers every folder in the environment, including folders created later, and approvers see it marked as **Entire Scope**
+- If more than one policy covers the path, the request goes to the policy with the most specific secret path (for example, `/apps/**` rather than `/**`), and that policy's approvers and **Max Time Period** apply
+- If you select **Request Access** on the dashboard while viewing a folder you can't access, the **Secret Path** field is pre-filled with that folder's path
 
 
 ## Reviewing access requests
@@ -116,7 +127,7 @@ The access requests dashboard shows two tabs:
 
 ### Reviewing a request
 
-Select any request to open the review modal with full details:
+Select any request to open the review modal with full details. **Requested Scope** shows the path the user asked for, which can be narrower than the secret path of the **Policy** above it. If the path is a glob, **Requested Scope** lists the folders the path matches today, and approving the request also grants access to matching folders created later.
 
 ![Review Request Modal](/images/platform/access-controls/access-request/review-request-modal.png)
 

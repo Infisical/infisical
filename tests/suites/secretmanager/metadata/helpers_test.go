@@ -1,9 +1,7 @@
 package metadata_test
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 
@@ -70,22 +68,25 @@ type match struct {
 	Metadata    map[string]string
 }
 
-// searchDashboard runs the dashboard metadata search. Its filters are nested qs
-// parameters the generated client cannot express, so they are appended to the query.
+// The search body declares its filters as an anonymous struct too.
+type filter = struct {
+	Key      string                                              `json:"key"`
+	Operator *api.SearchSecretsByMetadataJSONBodyFiltersOperator `json:"operator,omitempty"`
+	Value    string                                              `json:"value"`
+}
+
+// searchDashboard runs the dashboard metadata search.
 func searchDashboard(t *testing.T, pr *harness.Principal, proj *fixture.Project, operator string, filters ...[2]string) map[string]match {
 	t.Helper()
-	appendFilters := func(_ context.Context, req *http.Request) error {
-		q := req.URL.Query()
-		q.Set("operator", operator)
-		for i, f := range filters {
-			q.Set(fmt.Sprintf("filters[%d][key]", i), f[0])
-			q.Set(fmt.Sprintf("filters[%d][value]", i), f[1])
-			q.Set(fmt.Sprintf("filters[%d][operator]", i), "is")
-		}
-		req.URL.RawQuery = q.Encode()
-		return nil
+	body := api.SearchSecretsByMetadataJSONRequestBody{
+		ProjectId: proj.ID,
+		Operator:  new(api.SearchSecretsByMetadataJSONBodyOperator(operator)),
+		Filters:   []filter{},
 	}
-	res, err := pr.API.SearchSecretsByMetadataWithResponse(t.Context(), &api.SearchSecretsByMetadataParams{ProjectId: proj.ID}, appendFilters)
+	for _, f := range filters {
+		body.Filters = append(body.Filters, filter{Key: f[0], Value: f[1]})
+	}
+	res, err := pr.API.SearchSecretsByMetadataWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "searching by metadata returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	out := map[string]match{}

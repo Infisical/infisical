@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import qs from "qs";
 import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
@@ -47,7 +46,9 @@ const DEEP_SEARCH_MAX_PAGE_LIMIT = 100;
 
 const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
 
-const SecretMetadataSearchQuerySchema = z.object({
+const DashboardSlugListSchema = z.string().trim().min(1).max(255).array().max(1000);
+
+const SecretMetadataSearchFiltersSchema = z.object({
   operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).default(SecretMetadataSearchLogicalOperator.And),
   filters: z
     .object({
@@ -83,8 +84,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       })
   });
 
+  // POST rather than GET so metadata values stay out of the URL, which proxies and access logs record.
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/secrets-by-metadata",
     config: {
       rateLimit: readLimit
@@ -92,30 +94,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "searchSecretsByMetadata",
       description:
-        "Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.",
+        "Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.",
       security: [
         {
           bearerAuth: []
         }
       ],
-      querystring: z
-        .object({
-          projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
-          operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
-          environments: z
-            .string()
-            .trim()
-            .max(65535)
-            .transform((value) => value.split(","))
-            .pipe(slugSchema({ field: "Environment slug" }).array().min(1).max(1000))
-            .optional()
-            .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
-          secretPath: SecretMetadataQuerySchema.shape.secretPath,
-          tags: z.string().trim().transform(decodeURIComponent).optional()
-        })
-        .describe(
-          "Metadata conditions are passed as nested `filters[<n>][key|value|operator]` params (qs syntax); `operator` is the top-level and/or combinator. `tags` is an optional comma-separated list of tag slugs that further narrows results to secrets carrying at least one of them."
-        ),
+      body: SecretMetadataSearchFiltersSchema.extend({
+        projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
+        environments: slugSchema({ field: "Environment slug" })
+          .array()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
+        secretPath: SecretMetadataQuerySchema.shape.secretPath,
+        tags: DashboardSlugListSchema.optional().describe(
+          "Tag slugs that further narrow results to secrets carrying at least one of them."
+        )
+      }),
       response: {
         200: z.object({
           searchLimit: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.searchLimit),
@@ -143,17 +140,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
-      const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
-      const { projectId } = req.query;
-      const tagSlugs = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
+      const { filters, operator, projectId } = req.body;
+      const tagSlugs = req.body.tags ?? [];
 
       const result = await server.services.resourceMetadata.searchSecretMetadata({
         filters,
         operator,
         tagSlugs,
-        environments: req.query.environments,
-        secretPath: req.query.secretPath,
+        environments: req.body.environments,
+        secretPath: req.body.secretPath,
         actor: req.permission,
         projectId
       });
@@ -183,8 +178,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // POST rather than GET so the search term stays out of the URL, which proxies and access logs record.
+  // Users paste secret values into the dashboard search.
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/secrets-overview",
     config: {
       rateLimit: secretsLimit
@@ -197,13 +194,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
+      body: z.object({
         projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
-        environments: z
-          .string()
-          .trim()
-          .transform(decodeURIComponent)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
+        environments: DashboardSlugListSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
         secretPath: z
           .string()
           .trim()
@@ -222,14 +215,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection),
         sortEnvironment: slugSchema().describe(DASHBOARD.SECRET_OVERVIEW_LIST.sortEnvironment).optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
-        tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
-        includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
-        includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
-        includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
-        includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
-        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens),
-        includeProxiedServices: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeProxiedServices)
+        tags: DashboardSlugListSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
+        includeSecrets: z.boolean().default(true).describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
+        includeFolders: z.boolean().default(true).describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
+        includeImports: z.boolean().default(true).describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
+        includeSecretRotations: z
+          .boolean()
+          .default(true)
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
+        includeDynamicSecrets: z.boolean().default(true).describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
+        includeHoneyTokens: z.boolean().default(true).describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens),
+        includeProxiedServices: z
+          .boolean()
+          .default(true)
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeProxiedServices)
       }),
       response: {
         200: z.object({
@@ -360,11 +359,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
-        includeProxiedServices
-      } = req.query;
+        includeProxiedServices,
+        environments
+      } = req.body;
 
-      const environments = req.query.environments.split(",");
-      const tagSlugs = req.query.tags?.split(",").filter(Boolean) ?? [];
+      const tagSlugs = req.body.tags ?? [];
 
       if (!projectId || environments.length === 0)
         throw new BadRequestError({ message: "Missing project id or environment(s)" });
@@ -380,7 +379,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (isTimestampSort && environments.length > 1 && !sortEnvironment) {
         throw new BadRequestError({
           message:
-            "The 'sortEnvironment' query parameter is required for recency sorting when multiple environments are requested"
+            "The 'sortEnvironment' field is required for recency sorting when multiple environments are requested"
         });
       }
 
@@ -449,7 +448,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            projectId: req.query.projectId,
+            projectId: req.body.projectId,
             event: {
               type: EventType.GET_SECRET_IMPORTS,
               metadata: {
@@ -479,7 +478,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          projectId: req.query.projectId,
+          projectId: req.body.projectId,
           path: secretPath,
           environments,
           search
@@ -880,8 +879,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // POST rather than GET so the search term stays out of the URL, which proxies and access logs record.
+  // Users paste secret values into the dashboard search.
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/secrets-details",
     config: {
       rateLimit: secretsLimit
@@ -894,7 +895,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
+      body: z.object({
         projectId: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.projectId),
         environment: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.environment),
         secretPath: z
@@ -916,14 +917,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_DETAILS_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
-        tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
-        includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
-        includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
-        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
-        includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
-        includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens),
-        includeProxiedServices: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeProxiedServices)
+        tags: DashboardSlugListSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
+        includeSecrets: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
+        includeFolders: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
+        includeDynamicSecrets: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
+        includeImports: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
+        includeSecretRotations: z
+          .boolean()
+          .default(true)
+          .describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
+        includeHoneyTokens: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens),
+        includeProxiedServices: z.boolean().default(true).describe(DASHBOARD.SECRET_DETAILS_LIST.includeProxiedServices)
       }),
       response: {
         200: z.object({
@@ -1050,7 +1054,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeSecretRotations,
         includeHoneyTokens,
         includeProxiedServices
-      } = req.query;
+      } = req.body;
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
@@ -1062,7 +1066,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       // verify folder exists and user has project permission
       await server.services.folder.getFolderByPath({ projectId, environment, secretPath }, req.permission);
 
-      const tags = req.query.tags?.split(",") ?? [];
+      const tags = req.body.tags ?? [];
 
       let remainingLimit = limit;
       let adjustedOffset = offset;
@@ -1131,7 +1135,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            projectId: req.query.projectId,
+            projectId: req.body.projectId,
             event: {
               type: EventType.GET_SECRET_IMPORTS,
               metadata: {
@@ -1531,8 +1535,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // POST rather than GET so the search term stays out of the URL, which proxies and access logs record.
+  // Users paste secret values into the dashboard search.
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/secrets-deep-search",
     config: {
       rateLimit: secretsLimit
@@ -1544,12 +1550,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
+      body: z.object({
         projectId: z.string().trim(),
-        environments: z.string().trim().transform(decodeURIComponent),
+        environments: DashboardSlugListSchema,
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         search: z.string().trim().optional(),
-        tags: z.string().trim().transform(decodeURIComponent).optional(),
+        tags: DashboardSlugListSchema.optional(),
         limit: z.coerce
           .number({ invalid_type_error: "Limit must be a number" })
           .int({ message: "Limit must be a whole number" })
@@ -1599,12 +1605,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { secretPath, projectId, search, limit, offset } = req.query;
+      const { secretPath, projectId, search, limit, offset, environments } = req.body;
 
-      const environments = req.query.environments.split(",").filter((env) => Boolean(env.trim()));
       if (!environments.length) throw new BadRequestError({ message: "One or more environments required" });
 
-      const tags = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
+      const tags = req.body.tags ?? [];
       if (!search && !tags.length) throw new BadRequestError({ message: "Search or tags required" });
 
       const allFolders = await server.services.folder.getFoldersDeepByEnvs(

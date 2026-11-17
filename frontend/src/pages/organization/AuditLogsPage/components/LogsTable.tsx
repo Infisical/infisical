@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Ban, FileText, Loader2Icon } from "lucide-react";
+import { Ban, FileText, Loader2Icon, Lock } from "lucide-react";
 
 import {
   Button,
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus, useGetAuditLogs } from "@app/hooks/api";
@@ -34,6 +35,8 @@ const AUDIT_LOG_LIMIT = 30;
 
 export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   const { data: status } = useFetchServerStatus();
+  const { subscription } = useSubscription();
+  const isOnPlan = subscription.auditLogs;
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["logDetails"] as const);
 
   // Determine the project ID for filtering
@@ -49,9 +52,23 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
       },
       filterProjectId,
       {
-        refetchInterval
+        refetchInterval,
+        enabled: isOnPlan
       }
     );
+
+  if (!isOnPlan) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Lock />
+          </EmptyMedia>
+          <EmptyTitle>Upgrade your plan to view audit logs</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
 

@@ -261,10 +261,16 @@ const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF
 const WINDOWS_INVALID_CHARS_RE = /[:<>"|?*]/;
 const WINDOWS_DEVICE_NAME_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
 
-export const isReservedSkillName = (name: string) => WINDOWS_DEVICE_NAME_RE.test(name);
+// Agents get Agent Vault's built-in skill under this name, so the API refuses it for a library skill.
+const BUILTIN_SKILL_NAME = "infisical-agent-vault";
+
+export const isReservedSkillName = (name: string) =>
+  name === BUILTIN_SKILL_NAME || WINDOWS_DEVICE_NAME_RE.test(name);
 
 export const getReservedSkillNameMessage = (name: string) =>
-  `'${name}' is a reserved name and can't be used as a skill name.`;
+  name === BUILTIN_SKILL_NAME
+    ? `'${BUILTIN_SKILL_NAME}' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md.`
+    : `'${name}' is a reserved name and can't be used as a skill name.`;
 
 /** Why the server would refuse a file path, or null. Mirrors assertValidPath in the backend's agent-vault-skill-fns.ts. */
 export const getSkillPathError = (path: string): string | null => {

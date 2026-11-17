@@ -3,9 +3,12 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { KmsKeysSchema, TableName, TInternalKms, TKmsKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { CmekOrderBy, TListCmeksByProjectIdDTO } from "@app/services/cmek/cmek-types";
+
+import { KmsKeyUsage } from "./kms-types";
 
 export type TKmsKeyDALFactory = ReturnType<typeof kmskeyDALFactory>;
 
@@ -156,7 +159,9 @@ export const kmskeyDALFactory = (db: TDbClient) => {
       const result = await (tx || db.replicaNode())(TableName.KmsKey)
         .where({
           [`${TableName.KmsKey}.projectId` as "projectId"]: projectId,
-          [`${TableName.KmsKey}.isReserved` as "isReserved"]: false
+          [`${TableName.KmsKey}.isReserved` as "isReserved"]: false,
+          // KMIP here only handles symmetric keys, so a project's sign-verify and MAC keys are not KMIP objects.
+          [`${TableName.KmsKey}.keyUsage` as "keyUsage"]: KmsKeyUsage.ENCRYPT_DECRYPT
         })
         .join(TableName.Organization, `${TableName.KmsKey}.orgId`, `${TableName.Organization}.id`)
         .join(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
@@ -190,18 +195,21 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.KmsKey)
+      const filteredKeys = (tx || db.replicaNode())(TableName.KmsKey)
         .where("projectId", projectId)
         .where((qb) => {
           if (search) {
-            const pattern = `%${search}%`;
+            const pattern = `%${sanitizeSqlLikeString(search)}%`;
             void qb
               .whereILike(`${TableName.KmsKey}.name`, pattern)
               .orWhereRaw(`?? ::text ILIKE ?`, [`${TableName.KmsKey}.id`, pattern]);
           }
         })
         .where(`${TableName.KmsKey}.isReserved`, false)
-        .join(TableName.InternalKms, `${TableName.InternalKms}.kmsKeyId`, `${TableName.KmsKey}.id`)
+        .join(TableName.InternalKms, `${TableName.InternalKms}.kmsKeyId`, `${TableName.KmsKey}.id`);
+
+      const query = filteredKeys
+        .clone()
         .select<
           (TKmsKeys &
             Pick<TInternalKms, "version" | "encryptionAlgorithm"> & {
@@ -221,6 +229,12 @@ export const kmskeyDALFactory = (db: TDbClient) => {
 
       const data = await query;
 
+      // The window count rides on the page's rows, so a page past the last key has nothing to read it from.
+      if (data.length === 0 && offset > 0) {
+        const [{ count }] = await filteredKeys.count<{ count: string | number }[]>(`${TableName.KmsKey}.id as count`);
+        return { keys: data, totalCount: Number(count) };
+      }
+
       return { keys: data, totalCount: Number(data?.[0]?.total_count ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find kms keys by project id" });
@@ -238,6 +252,24 @@ export const kmskeyDALFactory = (db: TDbClient) => {
       return key;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by ID - KMS Key" });
+    }
+  };
+
+  // A project pending deletion stops publishing, the same as one already deleted
+  const findPublishedCmekById = async (id: string, tx?: Knex) => {
+    try {
+      const key = await baseCmekQuery({
+        filter: { id, isPublicKeyPublished: true },
+        db,
+        tx
+      })
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmsKey}.projectId`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .first();
+
+      return key;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find published KMS key by ID" });
     }
   };
 
@@ -269,6 +301,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     findByIdsWithAssociatedKms,
     listCmeksByProjectId,
     findCmekById,
+    findPublishedCmekById,
     findCmeksByIds,
     findCmekByName,
     findProjectCmeks

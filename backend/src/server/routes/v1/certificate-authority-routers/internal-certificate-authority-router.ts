@@ -19,6 +19,7 @@ import { validateCaDateField } from "@app/services/certificate-authority/certifi
 import {
   CreateInternalCertificateAuthoritySchema,
   InternalCertificateAuthoritySchema,
+  UpdateInternalCertificateAuthorityResponseSchema,
   UpdateInternalCertificateAuthoritySchema
 } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -51,6 +52,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     caType: CaType.INTERNAL,
     server,
     responseSchema: InternalCertificateAuthoritySchema,
+    updateResponseSchema: UpdateInternalCertificateAuthorityResponseSchema,
     createSchema: CreateInternalCertificateAuthoritySchema,
     updateSchema: UpdateInternalCertificateAuthoritySchema
   });
@@ -714,7 +716,10 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         200: z.array(
           z.object({
             id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
-            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl)
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().nullable().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
           })
         )
       }
@@ -741,6 +746,45 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       });
 
       return crls;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/crls/regenerate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "regenerateCaCrl",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Regenerate the CRL of an internal CA and return it",
+      params: z.object({
+        caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.REGENERATE_CRL.caId)
+      }),
+      response: {
+        200: z.object({
+          crl: z.object({
+            id: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().describe(CERTIFICATE_AUTHORITIES.REGENERATE_CRL.crlNumber)
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      return server.services.certificateAuthorityCrl.regenerateCrl({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
+      });
     }
   });
 

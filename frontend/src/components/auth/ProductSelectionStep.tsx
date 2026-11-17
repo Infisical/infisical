@@ -1,4 +1,5 @@
 import { type JSX, useState } from "react";
+import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -141,12 +142,16 @@ export default function ProductSelectionStep({
       });
 
       onComplete(orderedSelection, selectedProjects);
-    } catch {
+    } catch (error) {
+      const serverMessage: unknown = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      const reason = typeof serverMessage === "string" ? ` ${serverMessage}` : "";
       createNotification({
         type: "error",
         text: failedProduct
-          ? `Could not set up ${failedProduct}. Please try again.`
-          : "Could not finish setting up your organization. Please try again."
+          ? `Could not set up ${failedProduct}.${reason} Please try again.`
+          : `Could not finish setting up your organization.${reason} Please try again.`
       });
       setIsSettingUp(false);
     }

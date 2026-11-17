@@ -142,6 +142,28 @@ func TestAdminUsers_Delete(t *testing.T) {
 	})
 }
 
+func TestAdminOrganizations_Delete(t *testing.T) {
+	h := harness.From(t)
+
+	t.Run("should delete the org and tell the license server so its subscription is canceled", func(t *testing.T) {
+		// Setup
+		admin := h.InstanceAdmin(t)
+		tn := h.NewTenant(t)
+		licenseServer := fixture.LicenseServer(t, tn, tn.OrgID)
+
+		// Action
+		res, err := admin.API.DeleteAdminOrganizationWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		after, err := tn.Admin.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+		require.NoError(t, err)
+		requireStatus(t, http.StatusUnauthorized, after.StatusCode(), after.Body)
+		fixture.RequireLicenseOrgDeleted(t, licenseServer, tn.OrgID)
+	})
+}
+
 func TestAdminConfig_Read(t *testing.T) {
 	h := harness.From(t)
 	private := []string{"instanceId", "adminIdentityIds", "fipsEnabled"}

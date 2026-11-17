@@ -13,7 +13,7 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
@@ -56,7 +56,7 @@ type TAwsKmsCaKeySourceDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
@@ -129,7 +129,7 @@ export const awsKmsCaKeySourceFactory = ({
       const project = await projectDAL.findById(projectId);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
       const plan = await licenseService.getPlan(project.orgId);
-      if (!plan.pkiAwsKmsSigning) {
+      if (!plan.has(PlanFeature.PkiAwsKmsSigning)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate authority with an AWS KMS key due to plan restriction. Upgrade plan to use AWS KMS-backed certificate authorities."

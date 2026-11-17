@@ -142,6 +142,13 @@ export class ExecutionError extends Error {
   }
 }
 
+export const isLockHeldByAnotherOwner = async (error: ExecutionError) => {
+  const attempts = await Promise.all(error.attempts);
+  return attempts.some((attempt) =>
+    [...attempt.votesAgainst.values()].some((vote) => vote instanceof ResourceLockedError)
+  );
+};
+
 /*
  * An object of this type is returned when a resource is successfully locked. It
  * contains convenience methods `release` and `extend` which perform the

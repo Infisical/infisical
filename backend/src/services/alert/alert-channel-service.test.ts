@@ -323,6 +323,15 @@ describe("alert channel service", () => {
     ).rejects.toThrow("doesn't accept email address recipients");
   });
 
+  test("rejects project admins for alert types that don't accept them", async () => {
+    const { service } = buildService();
+    await expect(
+      service.validateRecipients("org-1", { projectId: "proj-1", allowEmailAddresses: false }, [
+        { principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }
+      ])
+    ).rejects.toThrow("doesn't accept project admins");
+  });
+
   test("rejects an email recipient on an unverified domain", async () => {
     const { service } = buildService();
     await expect(

@@ -287,6 +287,7 @@ export enum TableName {
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultSessionInlineService = "agent_vault_session_inline_services",
+  AgentVaultSessionStats = "agent_vault_session_stats",
   AgentVaultDelegation = "agent_vault_delegations",
   AgentVaultDelegationSubject = "agent_vault_delegation_subjects",
   AgentVaultProxy = "agent_vault_proxies",
@@ -294,6 +295,7 @@ export enum TableName {
   AgentVaultSkill = "agent_vault_skills",
   AgentVaultSkillVersion = "agent_vault_skill_versions",
   AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
+  AgentVaultAccessBundleService = "agent_vault_access_bundle_services",
   // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
@@ -336,6 +338,7 @@ export enum TableName {
   ApprovalPolicyAutoApprovalInputs = "approval_policy_auto_approval_inputs",
   ApprovalPolicyAutoApprovalRules = "approval_policy_auto_approval_rules",
   ApprovalPolicyAutoApprovalConditions = "approval_policy_auto_approval_conditions",
+  ApprovalPolicyAutoApprovalConditionContexts = "approval_policy_auto_approval_condition_contexts",
   ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
@@ -349,6 +352,7 @@ export enum TableName {
   // Code Signing
   PkiSigners = "pki_signers",
   PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
+  PkiSignerCertificateRevocations = "pki_signer_certificate_revocations",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",

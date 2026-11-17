@@ -5,6 +5,12 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -12,8 +18,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -50,7 +54,6 @@ import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -90,6 +93,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -118,7 +122,8 @@ type TOidcConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -144,7 +149,6 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -159,6 +163,7 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  usageMeteringService,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -179,7 +184,6 @@ export const oidcConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   pamAccountDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -341,7 +345,8 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+      const plan = await licenseService.getPlan(orgId);
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -414,13 +419,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
-            orgId,
-            identityLimit,
-            tx,
-            aliasType: UserAliasType.OIDC
-          });
+          seatUsage?.assertAvailable(plan, UserAliasType.OIDC);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -574,7 +573,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
@@ -674,7 +673,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -804,7 +803,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -911,8 +910,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      issuer = await discoverOidcIssuer(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -925,9 +923,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -937,7 +932,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const client = new issuer.Client({
+    await secureOidcIssuer(issuer);
+
+    const client = createSsrfSafeOidcClient(issuer, {
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],

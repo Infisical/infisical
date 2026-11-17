@@ -8,6 +8,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
 
 export const MAX_CA_HIERARCHY_DEPTH = 32;
 
@@ -62,7 +63,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
         db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+        db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -101,7 +103,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
             isOcspEnabled: result.internalIsOcspEnabled ?? false,
-            ocspGeneration: result.internalOcspGeneration ?? 0
+            ocspGeneration: result.internalOcspGeneration ?? 0,
+            crlValidityDays: result.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
           }
         : undefined,
       externalCa: result
@@ -160,7 +163,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
         db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+        db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -202,7 +206,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
             isOcspEnabled: result.internalIsOcspEnabled ?? false,
-            ocspGeneration: result.internalOcspGeneration ?? 0
+            ocspGeneration: result.internalOcspGeneration ?? 0,
+            crlValidityDays: result.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
           }
         : undefined,
       externalCa: result
@@ -302,7 +307,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             .withSchema(TableName.InternalCertificateAuthority)
             .as("internalDisableManagedCrlDistributionPointUrl"),
           db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+          db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -360,7 +366,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
               disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
               isOcspEnabled: ca.internalIsOcspEnabled ?? false,
-              ocspGeneration: ca.internalOcspGeneration ?? 0
+              ocspGeneration: ca.internalOcspGeneration ?? 0,
+              crlValidityDays: ca.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
             }
           : undefined,
         externalCa: ca

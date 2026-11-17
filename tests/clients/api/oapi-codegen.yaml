@@ -18,6 +18,11 @@ output-options:
   # routes are hidden by default, and a route with no operationId gets a name derived
   # from its path that changes when the path does.
   include-operation-ids:
+    - createInternalCertificateAuthorityV1
+    - getCertificateAuthorityQuotaV1
+    - importCertificate
+    - listBillableOrganizations
+    - getBillingUsageBreakdown
     - adminBootstrap
     - updateAdminConfig
     - getInstanceStatus
@@ -375,6 +380,7 @@ output-options:
     - requestProjectAccess
     - resetHoneyToken
     - restoreEnvironment
+    - restoreProject
     - resyncSecretImportReplication
     - revealSecretRequestValue
     - revertFolderCommit
@@ -734,3 +740,69 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createKmsKey
+    - updateKmsKey
+    - rotateKmsKey
+    - deleteKmsKey
+    - listKmsKeys
+    - getKmsKeyById
+    - getKmsKeyByName
+    - encryptWithKmsKey
+    - decryptWithKmsKey
+    - getKmsKeyPublicKey
+    - getKmsKeyPrivateKey
+    - bulkImportKmsKeys
+    - bulkExportKmsKeyPrivateKeys
+    - listKmsKeySigningAlgorithms
+    - signWithKmsKey
+    - verifyWithKmsKey
+    - generateMacWithKmsKey
+    - verifyMacWithKmsKey
+    - createKmipClient
+    - updateKmipClient
+    - deleteKmipClient
+    - getKmipClient
+    - listKmipClients
+    - createKmipClientCertificate
+    - registerKmipServer
+    - createKmipServer
+    - getKmipServer
+    - listKmipServers
+    - updateKmipServer
+    - generateKmipServerEnrollmentToken
+    - revokeKmipServerAccess
+    - deleteKmipServer
+    - loginKmipServer
+    - connectKmipServer
+    - kmipCreate
+    - kmipGet
+    - kmipGetAttributes
+    - kmipDestroy
+    - kmipActivate
+    - kmipRevoke
+    - kmipLocate
+    - kmipRegister
+    - getAcmeApplicationDirectory
+    - createAcmeApplicationAccount
+    - getAcmeNewNonce
+    - createAcmeOrder
+    - getAcmeOrder
+    - finalizeAcmeOrder
+    - listAcmeOrders
+    - downloadAcmeCertificate
+    - getAcmeAuthorization
+    - respondToAcmeChallenge
+    - getScepOperation
+    - getScepApplicationOperation
+    - postScepApplicationOperation
+    - getCertManagerInstanceState
+    - createAcmeCertificateAuthorityV1
+    - createCertificatePolicy
+    - createCertificateProfile
+    - createPkiApplication
+    - attachPkiApplicationProfiles
+    - setPkiApplicationAcmeEnrollment
+    - revealPkiApplicationAcmeEabSecret
+    - setPkiApplicationScepEnrollment
+    - createCloudflareAppConnection
+    - createDnsMadeEasyAppConnection

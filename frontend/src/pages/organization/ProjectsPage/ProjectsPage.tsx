@@ -50,7 +50,7 @@ export const ProjectsPage = () => {
         className="mb-6 md:mb-10"
         scope={isSubOrganization ? "namespace" : "org"}
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
-        description="Your team's complete security toolkit — organized and ready when you need them."
+        description="View and manage your projects across Infisical products."
       />
       <ProjectCategoryOverview />
       {announcements && announcements.length > 0 && (

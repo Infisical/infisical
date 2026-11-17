@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
-import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
@@ -183,6 +183,7 @@ export interface TCreateRequestFromPolicyDTO {
   requesterName: string;
   requesterEmail: string;
   skipApproverNotification?: boolean;
+  deferApproverNotification?: boolean;
   autoApprovalEvidence?: TAutoApprovalEvidence | null;
   tx?: Knex;
 }
@@ -205,7 +206,8 @@ export type TApprovalResource<
   validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
   // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
-  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit.
+  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit. Each
+  // runs at most once, for the approval that completes the request.
   postApprovalTxRoutine?: (
     request: TApprovalRequest,
     tx: Knex,

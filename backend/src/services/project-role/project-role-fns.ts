@@ -20,8 +20,21 @@ const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
   [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"
 };
 
+const SECRET_SCANNING_ROLE_DESCRIPTIONS: Record<string, string> = {
+  [ProjectMembershipRole.Admin]: "Full administrative access over secret scanning",
+  [ProjectMembershipRole.Member]: "Limited read/write role in secret scanning",
+  [ProjectMembershipRole.Viewer]: "Only read role in secret scanning",
+  [ProjectMembershipRole.NoAccess]: "No access to any resources in secret scanning"
+};
+
+const ROLE_DESCRIPTIONS_BY_PROJECT_TYPE: Partial<Record<ProjectType, Record<string, string>>> = {
+  [ProjectType.AgentVault]: AGENT_VAULT_ROLE_DESCRIPTIONS,
+  [ProjectType.SecretScanning]: SECRET_SCANNING_ROLE_DESCRIPTIONS
+};
+
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
   const isNarrowed = NARROWED_ROLE_PROJECT_TYPES.has(projectType);
+  const roleDescriptions = ROLE_DESCRIPTIONS_BY_PROJECT_TYPE[projectType];
   return [
     {
       id: uuidv4(),
@@ -81,9 +94,5 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
         (!roleFilter || roleFilter === slug) &&
         (!isNarrowed || NARROWED_ROLE_SLUGS.has(slug))
     )
-    .map((role) =>
-      projectType === ProjectType.AgentVault && AGENT_VAULT_ROLE_DESCRIPTIONS[role.slug]
-        ? { ...role, description: AGENT_VAULT_ROLE_DESCRIPTIONS[role.slug] }
-        : role
-    );
+    .map((role) => (roleDescriptions?.[role.slug] ? { ...role, description: roleDescriptions[role.slug] } : role));
 };

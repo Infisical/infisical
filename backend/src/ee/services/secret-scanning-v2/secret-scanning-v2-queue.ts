@@ -35,6 +35,7 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
@@ -113,6 +114,31 @@ export const secretScanningV2QueueServiceFactory = ({
   notificationService,
   telemetryService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
+  // Resolves the org data key once per scan rather than once per finding. The blind index is generated the same way as
+  // secrets_v2.secretValueOrgBlindIndex, so a finding can be matched against secrets in the org without decrypting.
+  const createFindingRowsBuilder = async ({
+    projectId,
+    resourceId,
+    scanId
+  }: {
+    projectId: string;
+    resourceId: string;
+    scanId: string;
+  }) => {
+    const project = await projectDAL.findById(projectId);
+    const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsService });
+
+    return (findings: TFindingsPayload) =>
+      Promise.all(
+        findings.map(async ({ secretValue, ...finding }) => ({
+          ...finding,
+          resourceId,
+          scanId,
+          secretFindingBlindIndex: await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
+        }))
+      );
+  };
+
   /**
    * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
    * scan that owns it. A retry or a stalled-job recovery carries the same scan ID, so it reclaims
@@ -417,6 +443,8 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
+      const buildFindingRows = await createFindingRowsBuilder({ projectId: dataSource.projectId, resourceId, scanId });
+
       // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
       // read from the database at the end, because an attempt that resumes a partly-scanned scan
       // never sees the batches an earlier one already persisted.
@@ -432,18 +460,17 @@ export const secretScanningV2QueueServiceFactory = ({
         batchFindings: TFindingsPayload,
         resumePoint?: { lastScannedCommit: string; lastScannedCommitDigest: string }
       ) => {
+        const findingRows = await buildFindingRows(batchFindings);
+
         const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
-          if (batchFindings.length) {
+          if (findingRows.length) {
             await secretScanningV2DAL.findings.upsert(
-              batchFindings.map((finding) => ({
-                ...finding,
-                resourceId,
-                scanId
-              })),
+              findingRows,
               ["resourceId", "fingerprint"],
               tx,
-              // a no-op merge, so rows already found by an earlier scan are returned with their original scanId
-              ["rule"]
+              // rows already found by an earlier scan keep their original scanId; the blind index is merged so findings
+              // saved before it existed get one
+              ["rule", "secretFindingBlindIndex"]
             );
           }
 
@@ -856,20 +883,17 @@ export const secretScanningV2QueueServiceFactory = ({
         configPath
       });
 
+      const buildFindingRows = await createFindingRowsBuilder({ projectId: dataSource.projectId, resourceId, scanId });
+      const findingRows = await buildFindingRows(findingsPayload);
+
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
 
-        if (findingsPayload.length) {
-          findings = await secretScanningV2DAL.findings.upsert(
-            findingsPayload.map((finding) => ({
-              ...finding,
-              resourceId,
-              scanId
-            })),
-            ["resourceId", "fingerprint"],
-            tx,
-            ["rule"]
-          );
+        if (findingRows.length) {
+          findings = await secretScanningV2DAL.findings.upsert(findingRows, ["resourceId", "fingerprint"], tx, [
+            "rule",
+            "secretFindingBlindIndex"
+          ]);
         }
 
         // Same guard as the full scan: a scan the reaper already failed keeps that outcome.

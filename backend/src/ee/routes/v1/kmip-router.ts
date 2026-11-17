@@ -3,6 +3,7 @@ import { z } from "zod";
 import { KmipClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KmipPermission } from "@app/ee/services/kmip/kmip-enum";
+import { kmipServerHostnamesOrIpsField } from "@app/ee/services/kmip/kmip-fns";
 import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";
 import { ms } from "@app/lib/ms";
@@ -11,7 +12,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { csrSchema } from "@app/services/certificate-common/certificate-constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -32,6 +32,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createKmipClient",
       body: z.object({
         projectId: z.string(),
         name: z.string().trim().min(1),
@@ -86,6 +87,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateKmipClient",
       params: z.object({
         id: z.string()
       }),
@@ -146,6 +148,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteKmipClient",
       params: z.object({
         id: z.string()
       }),
@@ -198,6 +201,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getKmipClient",
       params: z.object({
         id: z.string()
       }),
@@ -238,6 +242,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listKmipClients",
       description: "List KMIP clients",
       querystring: z.object({
         projectId: z.string(),
@@ -286,6 +291,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createKmipClientCertificate",
       params: z.object({
         id: z.string()
       }),
@@ -351,8 +357,9 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "registerKmipServer",
       body: z.object({
-        hostnamesOrIps: validateAltNamesField,
+        hostnamesOrIps: kmipServerHostnamesOrIpsField,
         commonName: z.string().trim().min(1).optional(),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")

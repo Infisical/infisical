@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/samlidp"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
@@ -308,6 +309,44 @@ func TestScimUser_Replace(t *testing.T) {
 		// Assert
 		requireOK(t, r, "replacing the user")
 		require.Equal(t, []string{user.ID}, ids(s.findUsers(t, `userName eq "`+p.userName+`"`)))
+	})
+
+	t.Run("should send the member to email confirmation at the next sign-in when a PUT changes the userName", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t)
+		p := s.person()
+		user := s.provision(t, p)
+		s.session(t, p)
+		p.userName = "emp-" + id.Short()
+
+		// Action
+		r := s.replaceUser(t, user.ID, replaceBody(p, true))
+
+		// Assert
+		requireOK(t, r, "replacing the user")
+		login := s.saml.SPLogin(t, samlidp.Response{NameID: p.userName, Email: p.email, FirstName: p.givenName, LastName: p.familyName})
+		require.Equal(t, "/signup/sso", s.saml.Redirect(t, login).Path)
+	})
+
+	t.Run("should sign the member straight back in after a PUT that keeps the userName", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t)
+		p := s.person()
+		user := s.provision(t, p)
+		s.session(t, p)
+		p.givenName = "Ada"
+
+		// Action
+		r := s.replaceUser(t, user.ID, replaceBody(p, true))
+
+		// Assert
+		requireOK(t, r, "replacing the user")
+		login := s.signIn(t, p)
+		require.NotNilf(t, sso.RefreshCookie(login.http), "expected a session: %s", string(login.body))
 	})
 
 	t.Run("should deactivate the member when a PUT sends active false", func(t *testing.T) {

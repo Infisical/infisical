@@ -5,6 +5,7 @@ import {
   IdCard,
   Info,
   ListChecks,
+  Plug,
   Package,
   Server,
   Settings,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
+import { AgentVaultFreeUsageMeter } from "@app/components/agent-vault/FreeUsage";
 import {
   SetupChecklist,
   useAgentVaultSetupProgress
@@ -22,14 +24,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@app/components/v3";
-import { useProjectPermission, useSubscription, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription,
+  useProject
+} from "@app/context";
+import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
-  useListGrantedAgentVaultAccessBundlesRequiringSetup
+  useListGrantedAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import { AGENT_VAULT_SETTINGS_SUBMENU } from "./submenus";
@@ -37,29 +48,52 @@ import type { NavItem, Submenu } from "./types";
 
 export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const { projectId } = useProject();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canReadMembers =
+    permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+    permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  const canReadAuditLogs = permission.can(
+    ProjectPermissionAuditLogsActions.Read,
+    ProjectPermissionSub.AuditLogs
+  );
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
+    projectId,
+    canReadSessionLogSettings
+  );
   const sessionLogSettings = sessionLogState?.settings ?? null;
-  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(
+    projectId,
+    canReadSessionLogSettings
+  );
   const { subscription } = useSubscription();
-  // An admin can use any bundle, but the nav only nags about the ones granted to them.
-  const { data: grantedRequiringSetup } =
-    useListGrantedAgentVaultAccessBundlesRequiringSetup(projectId);
+  // Services is where a member sets up their personal values. An admin can use any bundle, but the nav only nags about
+  // services in the ones granted to them.
+  const { data: grantedRequiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(projectId);
   const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
   const setupProgress = useAgentVaultSetupProgress();
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
     {
-      label: "Access Bundles",
-      icon: Package,
-      pathSuffix: "access-bundles",
+      label: "Services",
+      icon: Plug,
+      pathSuffix: "services",
       alertVariant: needsSetup ? "warning" : undefined
     },
     { label: "Variables", icon: Braces, pathSuffix: "variables" },
-    { label: "Skills", icon: BookOpenText, pathSuffix: "skills", hidden: !isAdmin }
+    {
+      label: "Skills",
+      icon: BookOpenText,
+      pathSuffix: "skills",
+      hidden: !canManageAgentVaultSkills(permission)
+    }
   ];
 
   const infrastructureItems: NavItem[] = [
@@ -80,16 +114,17 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       icon: Shield,
       pathSuffix: "access-management",
       activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      hidden: !isAdmin
+      hidden: !canReadMembers
     },
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs", hidden: !isAdmin },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs", hidden: !canReadAuditLogs },
     {
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings",
-      alertVariant: isAdmin ? settingsAlert : undefined,
-      // Members only see General, so they go straight to it instead of a submenu with one entry.
-      submenu: isAdmin ? AGENT_VAULT_SETTINGS_SUBMENU : undefined
+      alertVariant: canReadSessionLogSettings ? settingsAlert : undefined,
+      // Without the session log settings only General is left, so the item goes straight to it instead of a submenu
+      // with one entry.
+      submenu: canReadSessionLogSettings ? AGENT_VAULT_SETTINGS_SUBMENU : undefined
     }
   ];
 
@@ -104,6 +139,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       </SidebarCollapsibleGroup>
       <div className="mt-auto" />
       <SetupChecklist progress={setupProgress} />
+      <AgentVaultFreeUsageMeter />
       <SidebarMenu>
         {setupProgress.canRestore && (
           <SidebarMenuItem>

@@ -244,6 +244,14 @@ describe("isReservedSkillName", () => {
       "'aux' is a reserved name and can't be used as a skill name."
     );
   });
+
+  test("refuses the built-in skill's name with the API's message", () => {
+    expect(isReservedSkillName("infisical-agent-vault")).toBe(true);
+    expect(isReservedSkillName("infisical-agent-vault-notes")).toBe(false);
+    expect(getReservedSkillNameMessage("infisical-agent-vault")).toBe(
+      "'infisical-agent-vault' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md."
+    );
+  });
 });
 
 describe("fromDraftFiles", () => {

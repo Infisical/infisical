@@ -10,6 +10,7 @@ import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-co
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
+import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
 type TCertificateV3QueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
@@ -77,7 +78,10 @@ export const certificateV3QueueServiceFactory = ({
                   actorAuthMethod: null,
                   actorOrgId: "",
                   certificateId: certificate.id,
-                  internal: true
+                  internal: true,
+                  // A certificate Infisical has no private key for is eligible only because it holds a
+                  // CSR for its key, so it renews on that key pair rather than one its holder lacks.
+                  ...(!certificate.hasPrivateKey && { renewalKeySource: CertificateRenewalKeySource.Reuse })
                 });
 
                 const isIssued = renewed.status === CertificateRequestStatus.ISSUED;

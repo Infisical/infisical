@@ -29,9 +29,12 @@ import {
   TAgentVaultSessionLogChunkCache
 } from "./sessionLogDecrypt";
 import {
+  TAgentVaultAccess,
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
+  TAgentVaultProjectService,
+  TListAgentVaultServicesDTO,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
   TAgentVaultMember,
@@ -86,6 +89,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // Every key carries the org and the project. By-id routes take the project from the row, so without the project in
 // the key a switch to another project would serve the previous one's data from cache.
 export const agentVaultKeys = {
+  // Org-wide: the plan and the free monthly count belong to the org, not a project.
+  access: (orgId: string) => ["agent-vault", orgId, "access"] as const,
   oauthAuthorization: (orgId: string, authorizationId: string) =>
     ["agent-vault", orgId, "oauth-authorizations", authorizationId] as const,
   all: (orgId: string, projectId: string) => ["agent-vault", orgId, projectId] as const,
@@ -127,6 +132,20 @@ export const agentVaultKeys = {
       "available",
       params
     ] as const,
+  // Nested under accessBundle(), the prefix a grant or revoke invalidates, so either refetches it.
+  accessBundleMemberCheck: (
+    orgId: string,
+    projectId: string,
+    accessBundleId: string,
+    actorType: AgentVaultMemberType,
+    actorId: string
+  ) =>
+    [
+      ...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId),
+      "check",
+      actorType,
+      actorId
+    ] as const,
   variables: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "variables"] as const,
   variableList: (orgId: string, projectId: string, params: TListAgentVaultVariablesDTO) =>
@@ -137,6 +156,12 @@ export const agentVaultKeys = {
     scope: AgentVaultVariableScope,
     keys: string[]
   ) => [...agentVaultKeys.variables(orgId, projectId), "key-status", scope, keys] as const,
+  services: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "services"] as const,
+  serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
+    [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  service: (orgId: string, projectId: string, serviceId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "skills"] as const,
   skillLists: (orgId: string, projectId: string) =>
@@ -370,6 +395,55 @@ export const useListAvailableAgentVaultMembers = <
   });
 };
 
+const MEMBER_CHECK_PAGE_SIZE = 100;
+
+// The members endpoint can't filter by ID, and its search matches any name that contains the text,
+// so the actor can sit past the first page. Reads pages until it turns up or the matches run out.
+const findAccessBundleMember = async (
+  accessBundleId: string,
+  actor: { type: AgentVaultMemberType; id: string; name: string },
+  offset = 0
+): Promise<boolean> => {
+  const { data } = await apiRequest.get<{ members: TAgentVaultMember[]; totalCount: number }>(
+    `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+    {
+      params: {
+        actorType: actor.type,
+        search: actor.name,
+        limit: MEMBER_CHECK_PAGE_SIZE,
+        offset
+      }
+    }
+  );
+  if (data.members.some((member) => member.id === actor.id)) return true;
+  const nextOffset = offset + data.members.length;
+  if (data.members.length < MEMBER_CHECK_PAGE_SIZE || nextOffset >= data.totalCount) return false;
+  return findAccessBundleMember(accessBundleId, actor, nextOffset);
+};
+
+export const useIsAgentVaultAccessBundleMember = (
+  projectId: string,
+  accessBundleId: string,
+  actor: { type: AgentVaultMemberType; id: string; name: string } | null
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleMemberCheck(
+      currentOrg.id,
+      projectId,
+      accessBundleId,
+      actor?.type ?? AgentVaultMemberType.MachineIdentity,
+      actor?.id ?? ""
+    ),
+    queryFn: () => (actor ? findAccessBundleMember(accessBundleId, actor) : false),
+    enabled: Boolean(accessBundleId && actor),
+    placeholderData: keepPreviousInProject(projectId),
+    // The access can be granted in another tab, and the answer is fresh for a minute otherwise.
+    refetchOnWindowFocus: "always"
+  });
+};
+
 export const useListAgentVaultAccessBundleMembers = (
   projectId: string,
   accessBundleId: string,
@@ -426,10 +500,6 @@ export const useListAgentVaultAccessBundles = (
 export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
   useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
 
-// Only the count is read, so one row is enough.
-export const useListGrantedAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
-  useListAgentVaultAccessBundles(projectId, { requiresSetup: true, granted: true, limit: 1 });
-
 export const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string) => {
   const { currentOrg } = useOrganization();
 
@@ -460,15 +530,21 @@ export const useListAgentVaultSessions = (
     ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, projectId, params),
     queryFn: async () => {
-      const { statuses, ...rest } = params ?? {};
+      const { statuses, metadata, ...rest } = params ?? {};
+      const metadataFilter = Object.entries(metadata ?? {}).map(
+        ([key, value]) => `${key}=${value}`
+      );
       const { data } = await apiRequest.get<TAgentVaultSessionList>(
         "/api/v1/agent-vault/sessions",
         {
           params: {
             ...rest,
             projectId,
-            status: statuses?.length ? statuses.join(",") : undefined
-          }
+            status: statuses?.length ? statuses.join(",") : undefined,
+            metadata: metadataFilter.length ? metadataFilter : undefined
+          },
+          // The API reads a repeated metadata=key=value, not axios's default metadata[]=.
+          paramsSerializer: { indexes: null }
         }
       );
       return data;
@@ -504,6 +580,21 @@ export const fetchAgentVaultProxyCa = async (proxyId: string) => {
     `/api/v1/agent-vault/proxies/${proxyId}/ca`
   );
   return data.ca;
+};
+
+export const useGetAgentVaultAccess = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    enabled,
+    queryKey: agentVaultKeys.access(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ access: TAgentVaultAccess }>(
+        "/api/v1/agent-vault/settings/access"
+      );
+      return data.access;
+    }
+  });
 };
 
 export const useGetAgentVaultSessionLogSettings = (projectId: string, enabled = true) => {
@@ -860,6 +951,46 @@ export const useAgentVaultVariableKeyStatus = (
       ) as ReadonlySet<string>
     };
   }, [data, keySignature]);
+};
+
+export const useListAgentVaultServices = (
+  projectId: string,
+  params: TListAgentVaultServicesDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.serviceList(currentOrg.id, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        services: TAgentVaultProjectService[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
+      return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+// The services in bundles granted to the caller that still need their personal values, for the sidebar and banners.
+export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string) =>
+  useListAgentVaultServices(projectId, { requiresSetup: true, granted: true, limit: 1 });
+
+export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.service(currentOrg.id, projectId, serviceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ service: TAgentVaultProjectService }>(
+        `/api/v1/agent-vault/services/${serviceId}`
+      );
+      return data.service;
+    },
+    enabled: Boolean(serviceId)
+  });
 };
 
 export const useListAgentVaultSkills = (

@@ -173,11 +173,27 @@ export type TInternalCertificateAuthority = {
     crlDistributionPointUrls?: string[];
     disableManagedCrlDistributionPointUrl?: boolean;
     isOcspEnabled?: boolean;
+    crlValidityDays?: number;
   };
 };
 
 export const MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS = 4;
 export const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
+export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+export const MIN_CRL_VALIDITY_DAYS = 1;
+export const MAX_CRL_VALIDITY_DAYS = 365;
+
+export type TCaCrl = {
+  id: string;
+  crl: string;
+  thisUpdate: string;
+  nextUpdate: string;
+  crlNumber: number | null;
+};
+
+export type TRegenerateCaCrlResponse = {
+  crl: TCaCrl;
+};
 
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
@@ -189,6 +205,10 @@ export type TUnifiedCertificateAuthority =
   | TAwsAcmPublicCaCertificateAuthority
   | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;
+
+export type TUpdateCertificateAuthorityResponse = TUnifiedCertificateAuthority & {
+  crlWarning?: string;
+};
 
 export type TCreateCertificateAuthorityDTO = Omit<
   TUnifiedCertificateAuthority,

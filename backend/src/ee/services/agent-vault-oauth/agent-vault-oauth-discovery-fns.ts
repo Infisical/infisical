@@ -49,8 +49,12 @@ export const describeServer = (serverUrl: string) => {
   }
 };
 
-export const oauthSetupError = (serverUrl: string, problem: string) =>
-  new BadRequestError({ message: `Couldn't set up OAuth for '${describeServer(serverUrl)}': ${problem}` });
+// `oauthSetup` lets the sheet show the refusal on the Credential step without matching the message text.
+export const oauthSetupError = (serverUrl: string, problem: string, details?: { registrationRequired: true }) =>
+  new BadRequestError({
+    message: `Couldn't set up OAuth for '${describeServer(serverUrl)}': ${problem}`,
+    details: { oauthSetup: true, ...details }
+  });
 
 // Printable ASCII only, as RFC 3986 requires: these URLs are stored in jsonb as sent, and the URL parser would
 // accept a NUL or a lone surrogate that the jsonb write then fails on.

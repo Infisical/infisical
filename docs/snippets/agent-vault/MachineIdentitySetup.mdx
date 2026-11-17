@@ -5,6 +5,10 @@
   <Step>
     On the **Create New** tab, enter a **Name**, choose **Member** in **Role**, then select **Create**. Infisical creates the machine identity with [Universal Auth](/documentation/platform/identities/universal-auth) and opens its page.
 
+    <Frame>
+      <img src="/images/platform/agent-vault/machine-identity-create.png" alt="The Add Machine Identity to Project panel on the Create New tab, with ci-runner as the name and Member as the role" />
+    </Frame>
+
     <Tip>
     To use a machine identity that already exists in your organization, select the **Assign Existing** tab instead.
     </Tip>
@@ -13,6 +17,6 @@
     On the machine identity's page, select **Universal Auth** under **Authentication**. Copy the **Client ID**, then select **Add Client Secret** and copy the client secret.
   </Step>
   <Step>
-    Go to **Access Bundles** and open the access bundle the agent uses. Select **Options** > **Manage Access**, then select **Grant Access**. Select the machine identity, then select **Grant Access**.
+    Go to **Access Bundles** and open the access bundle the agent uses. Select **Options** > **Manage Access**. Under **No Access**, select **Grant Access** next to the machine identity.
   </Step>
 </Steps>

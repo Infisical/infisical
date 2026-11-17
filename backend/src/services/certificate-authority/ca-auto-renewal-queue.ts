@@ -27,7 +27,7 @@ import {
   renewVenafiCertificate,
   submitCsrToVenafi
 } from "./ca-signing-config/venafi-signing-fns";
-import { CaRenewalStatus } from "./certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaRenewalStatus } from "./certificate-authority-enums";
 import { TInternalCertificateAuthorityDALFactory } from "./internal/internal-certificate-authority-dal";
 import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal-certificate-authority-service";
 
@@ -155,7 +155,8 @@ export const caAutoRenewalQueueFactory = ({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await caSigningConfigDAL.updateById(signingConfig.id, {
@@ -257,7 +258,8 @@ export const caAutoRenewalQueueFactory = ({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await internalCertificateAuthorityDAL.updateById(internalCaId, {
@@ -315,7 +317,8 @@ export const caAutoRenewalQueueFactory = ({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await internalCertificateAuthorityDAL.updateById(internalCaId, {

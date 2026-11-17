@@ -42,7 +42,6 @@ export * from "./SecretApprovalRequestNeedsReviewTemplate";
 export * from "./SecretLeakIncidentTemplate";
 export * from "./SecretReminderTemplate";
 export * from "./SecretRequestCompletedTemplate";
-export * from "./SecretRotationFailedTemplate";
 export * from "./SecretScanningScanFailedTemplate";
 export * from "./SecretScanningSecretsDetectedTemplate";
 export * from "./SecretSyncFailedTemplate";

@@ -396,6 +396,7 @@ const windowsRotationHandler: TPamRotationHandler = {
 // Full Record over the rotatable types so a missing handler entry is a compile error.
 export const PAM_ROTATION_FACTORY_MAP: Record<TRotatableType, TPamRotationHandler> = {
   [PamAccountType.Postgres]: sqlRotationHandler,
+  [PamAccountType.CockroachDB]: sqlRotationHandler,
   [PamAccountType.MySQL]: sqlRotationHandler,
   [PamAccountType.MsSQL]: sqlRotationHandler,
   [PamAccountType.OracleDB]: sqlRotationHandler,

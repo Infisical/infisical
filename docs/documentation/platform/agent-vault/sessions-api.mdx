@@ -58,7 +58,7 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 - `projectId` is the ID of the Agent Vault project that the access bundle is in
 - `accessBundle` is the name of the access bundle the session carries (an admin can leave it out and send [inline services](/documentation/platform/agent-vault/inline-services) instead)
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
-- `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
+- `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata))
 
 <Tip>
   If your code runs agents for other people, as a chat bot does, the machine identity can create each session [on behalf of the person who asked](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so the session uses that person's personal values and gets no more access than that person.
@@ -112,7 +112,10 @@ The agent uses the session token to authenticate to the proxy. How you pass the 
     ```bash
     export HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
     export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export INFISICAL_AGENT_VAULT_URL=https://app.infisical.com
     ```
+
+    `INFISICAL_AGENT_VAULT_URL` lets the agent [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list). Set it to the URL of the Infisical instance that the proxy connects to.
 
     If you built the agent yourself, you can instead set the proxy in the agent's HTTP client. [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) has examples for Python, Node.js, and Go.
   </Tab>

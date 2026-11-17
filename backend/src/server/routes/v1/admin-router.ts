@@ -8,8 +8,6 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
-import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
-import { LicenseType } from "@app/ee/services/license/license-types";
 import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -93,8 +91,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
-      const licenseKeyConfig = getLicenseKeyConfig();
-      const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+      const hasOfflineLicense = server.services.licenseService.hasOfflineLicenseKey();
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
 
@@ -381,7 +378,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+      const organization = await server.services.orgDeletion.deleteOrganization(req.params.organizationId);
 
       return {
         organization

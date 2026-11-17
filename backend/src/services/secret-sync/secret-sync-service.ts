@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -26,7 +26,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   enterpriseSyncCheck,
@@ -89,7 +89,7 @@ type TSecretSyncServiceFactoryDep = {
     TSecretSyncQueueFactory,
     "queueSecretSyncSyncSecretsById" | "queueSecretSyncImportSecretsById" | "queueSecretSyncRemoveSecretsById"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -236,6 +236,7 @@ export const secretSyncServiceFactory = ({
           sourcePath,
           sourceFolderId,
           syncOptions: { includeAllSubFolders: true, keySchema },
+          includeAllSubFolders: true,
           includeImports: true
         },
         {
@@ -620,12 +621,10 @@ export const secretSyncServiceFactory = ({
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    // secretSyncLimit is uncapped by default (null); only enforce a cap when the plan configures a
-    // numeric limit. Counted org-wide right before creation.
     const plan = await licenseService.getPlan(actor.orgId);
-    if (typeof plan.secretSyncLimit === "number") {
+    if (plan.isLimited(PlanLimit.SecretSyncs)) {
       const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
-      if (currentSecretSyncCount >= plan.secretSyncLimit) {
+      if (plan.exceeds(PlanLimit.SecretSyncs, currentSecretSyncCount)) {
         throw new BadRequestError({
           message: "Failed to create secret sync due to plan limit reached. Upgrade plan to add more secret syncs."
         });
@@ -663,7 +662,16 @@ export const secretSyncServiceFactory = ({
       });
 
     const requestedSyncOptions = params.syncOptions;
-    const includeAllSubFolders = Boolean(requestedSyncOptions?.includeAllSubFolders);
+    const includeAllSubFolders = Boolean(params.includeAllSubFolders ?? requestedSyncOptions?.includeAllSubFolders);
+
+    if (
+      includeAllSubFolders &&
+      requestedSyncOptions?.initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination
+    )
+      throw new BadRequestError({
+        message:
+          "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
+      });
 
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
@@ -729,6 +737,9 @@ export const secretSyncServiceFactory = ({
       preSaveTransformDeps
     );
 
+    // Mirrored into syncOptions so callers still reading the deprecated location see the real value.
+    const syncOptions = { ...(resolvedSyncOptions ?? params.syncOptions), includeAllSubFolders };
+
     const enrichedDestinationConfig = await preSaveTransformDestinationConfig(
       params.destination,
       {
@@ -742,7 +753,8 @@ export const secretSyncServiceFactory = ({
       const secretSync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
-        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        syncOptions,
+        includeAllSubFolders,
         ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
@@ -911,10 +923,19 @@ export const secretSyncServiceFactory = ({
     // so the gate cannot authorize one sync while the row ends up describing another.
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
-    const { includeAllSubFolders: requestedSubFolders, keySchema } = (updatedSyncOptions ?? {}) as NonNullable<
-      TSecretSync["syncOptions"]
-    >;
-    const includeAllSubFolders = Boolean(requestedSubFolders);
+    const { keySchema, initialSyncBehavior } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+    // The deprecated value comes from the request rather than updatedSyncOptions: a destination
+    // that merges options (Azure Entra ID SCIM) would otherwise hand back the stored mirror as if
+    // the caller had sent it.
+    const includeAllSubFolders = Boolean(
+      params.includeAllSubFolders ?? params.syncOptions?.includeAllSubFolders ?? secretSync.includeAllSubFolders
+    );
+
+    if (includeAllSubFolders && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination)
+      throw new BadRequestError({
+        message:
+          "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
+      });
 
     // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
     // actor holding Edit on the source folder can otherwise repoint it at a destination they control
@@ -968,7 +989,8 @@ export const secretSyncServiceFactory = ({
     try {
       const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
         ...params,
-        ...(updatedSyncOptions && { syncOptions: updatedSyncOptions }),
+        syncOptions: { ...updatedSyncOptions, includeAllSubFolders },
+        includeAllSubFolders,
         ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId

@@ -16,7 +16,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 ## Prerequisites
 
 - The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
-- An HTTPS endpoint that accepts POST requests
+- An HTTPS endpoint that accepts POST requests (if you self-host Infisical, an admin of your instance can [allow HTTP and internal endpoints](#http-and-internal-endpoints))
 
 ## Create the alert
 
@@ -28,7 +28,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
     <Steps>
       <Step>
-        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
+        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS, unless your instance [allows HTTP](#http-and-internal-endpoints).
       </Step>
       <Step>
         If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
@@ -56,7 +56,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
     | Field | Value |
     | --- | --- |
-    | `url` (required) | Your endpoint's HTTPS URL |
+    | `url` (required) | Your endpoint's URL, which must use HTTPS unless your instance [allows HTTP](#http-and-internal-endpoints) |
     | `authType` | `bearer` (**Bearer Token**), `basic` (**Basic Auth**), or `header` (**API Key**), for [authentication](#authentication) |
     | `authCredentials` | The token, if `authType` is `bearer` |
     | `basicUsername`, `basicPassword` | The username and password, if `authType` is `basic` |
@@ -143,6 +143,17 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 - A channel can have up to 20 custom headers, and header names, values, and authentication credentials can total up to 4,096 characters
 - Infisical sets `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` itself, so you can't add them
 
+## HTTP and internal endpoints
+
+By default, a webhook channel only sends requests to HTTPS URLs on public addresses. If you self-host Infisical, an admin of your instance can relax these rules for webhook channels with two [environment variables](/self-hosting/configuration/envars):
+
+- `ALERT_WEBHOOK_ALLOW_HTTP` lets a channel use an `http://` URL, such as a sidecar proxy that adds TLS before the request leaves your network
+- `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` lets a channel reach an internal or private IP address, such as `localhost` or a service inside your cluster
+
+An HTTP sidecar proxy that you reach at `localhost` or another private address needs both variables set to `true`.
+
+If an admin turns `ALERT_WEBHOOK_ALLOW_HTTP` off later, a channel with an `http://` URL fails each time its alert fires until you change the URL to HTTPS.
+
 ## Webhook event types
 
 Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and organization-wide alerts use different values:
@@ -159,7 +170,7 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. Except in signer certificate expiration alerts, each item also has a `url` that opens the certificate in Infisical. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
 
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
@@ -216,7 +227,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "<application-id>",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/<certificate-id>"
           }
         ],
         "metadata": {
@@ -272,7 +284,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "<application-id>",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/<certificate-id>"
           }
         ],
         "metadata": {
@@ -328,7 +341,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
               "profileName": "tls-server",
               "applicationId": "d6e7232b-ffa5-48bf-9133-4731c6d001a0",
               "applicationName": "payments-api"
-            }
+            },
+            "url": "https://app.infisical.com/organizations/<org-id>/cert-manager/certificates/4f70e08e-ad7a-4f94-ac16-241126ab88ed"
           }
         ],
         "metadata": {

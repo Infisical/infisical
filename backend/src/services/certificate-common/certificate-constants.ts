@@ -338,6 +338,12 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 } as const;
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+export const MIN_CRL_VALIDITY_DAYS = 1;
+export const MAX_CRL_VALIDITY_DAYS = 365;
+export const CRL_REBUILD_MAX_LEAD_HOURS = 24;
+export const CRL_REBUILD_LEAD_HOURS_PER_VALIDITY_DAY = 12;
+export const CRL_VALIDITY_TOLERANCE_HOURS = 1;
+export const CRL_REVOCATION_CATCH_UP_MARGIN_MINUTES = 5;
 
 /**
  * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose

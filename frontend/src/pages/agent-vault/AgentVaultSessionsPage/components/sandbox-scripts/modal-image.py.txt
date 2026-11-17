@@ -1,0 +1,12 @@
+# sandbox_image.py
+import modal
+
+app = modal.App.lookup("agent-vault-sandboxes", create_if_missing=True)
+
+image = modal.Image.from_registry("node:24-bookworm-slim").dockerfile_commands(
+    [
+        "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
+        "RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
+        "RUN useradd --create-home --uid 2000 agent",
+    ]
+).build(app)

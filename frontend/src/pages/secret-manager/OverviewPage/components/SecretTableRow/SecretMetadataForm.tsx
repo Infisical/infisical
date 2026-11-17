@@ -46,8 +46,11 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
   isBatchMode?: boolean;
   onMetadataChange?: (metadata: { key: string; value: string; isEncrypted?: boolean }[]) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -57,8 +60,11 @@ export const SecretMetadataForm = ({
   environment,
   secretPath,
   onClose,
+  onSaved,
   isBatchMode,
   onMetadataChange,
+  onBatchSave,
+  isBatchSavePending,
   dragHandleProps
 }: Props) => {
   const { projectId, currentProject } = useProject();
@@ -150,6 +156,7 @@ export const SecretMetadataForm = ({
         text: "Successfully updated metadata"
       });
     }
+    onSaved?.(data.metadata.length === 0);
     onClose?.();
   };
 
@@ -284,11 +291,34 @@ export const SecretMetadataForm = ({
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        {metadataFields}
-        <div className="flex justify-end">
+        <fieldset disabled={isBatchSavePending} className="contents">
+          {metadataFields}
+        </fieldset>
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && canEditSecret && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onMetadataChange?.(
+                  watchedMetadata.map((m) => ({
+                    key: m.key,
+                    value: m.value,
+                    isEncrypted: m.isEncrypted
+                  }))
+                );
+                onBatchSave();
+              }}
+            >
+              Save Metadata
+            </Button>
+          )}
         </div>
       </div>
     );

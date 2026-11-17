@@ -10,6 +10,7 @@ import {
   TMemberships
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionGroupActions,
@@ -22,10 +23,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { AgentVaultIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
+import { assertWillRetainProjectAdmin, roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -41,6 +40,7 @@ import {
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
+  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
   AgentVaultMemberType,
   TAgentVaultActorColumn
 } from "../agent-vault/agent-vault-enums";
@@ -56,8 +56,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -118,9 +117,64 @@ type TAgentVaultMemberWriteResult<TMember> = Promise<{
   skipped: TAgentVaultNamedActor[];
 }>;
 
+type TMemberChange = "add" | "edit" | "remove";
+
+const MEMBER_CHANGE_ACTIONS = {
+  add: {
+    user: ProjectPermissionMemberActions.Create,
+    group: ProjectPermissionGroupActions.Create,
+    identity: ProjectPermissionIdentityActions.Create
+  },
+  edit: {
+    user: ProjectPermissionMemberActions.Edit,
+    group: ProjectPermissionGroupActions.Edit,
+    identity: ProjectPermissionIdentityActions.Edit
+  },
+  remove: {
+    user: ProjectPermissionMemberActions.Delete,
+    group: ProjectPermissionGroupActions.Delete,
+    identity: ProjectPermissionIdentityActions.Delete
+  }
+} as const;
+
+// The role-assignment action on each kind of member, and the fields its conditions can match on, as Secrets Management's
+// membership routes check them.
+const ROLE_ASSIGNMENT = {
+  [AgentVaultMemberType.User]: {
+    actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+    subject: ProjectPermissionSub.Member,
+    fields: (_id: string, name?: TAgentVaultActorName) => ({ userEmail: name?.email ?? undefined })
+  },
+  [AgentVaultMemberType.Group]: {
+    actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+    subject: ProjectPermissionSub.Groups,
+    fields: (_id: string, name?: TAgentVaultActorName) => ({ groupName: name?.name })
+  },
+  [AgentVaultMemberType.MachineIdentity]: {
+    actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+    subject: ProjectPermissionSub.Identity,
+    fields: (id: string) => ({ identityId: id })
+  }
+} as const;
+
 const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
+
+// An empty request is checked as every kind, so it still needs the full set rather than none.
+const memberTypesOf = ({
+  userIds,
+  groupIds,
+  machineIdentityIds,
+  emails = []
+}: TAgentVaultMemberIds & { emails?: string[] }) => {
+  const types = [
+    ...(userIds.length || emails.length ? [AgentVaultMemberType.User] : []),
+    ...(groupIds.length ? [AgentVaultMemberType.Group] : []),
+    ...(machineIdentityIds.length ? [AgentVaultMemberType.MachineIdentity] : [])
+  ];
+  return types.length ? types : ALL_ACTOR_TYPES;
+};
 
 const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
@@ -137,7 +191,6 @@ export const agentVaultMembershipServiceFactory = ({
   userAliasDAL,
   orgDAL,
   permissionService,
-  usageMeteringService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
@@ -152,14 +205,46 @@ export const agentVaultMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
 
-  const checkProductAdmin = async (projectId: string, ctx: TGenericPermission) => {
-    const { hasRole } = await getActorPermission(projectId, ctx);
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });
-    }
+  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+
+  // Each kind of member takes the action on its own subject, so a role can manage users without identities.
+  const assertCanChangeActorTypes = (
+    permission: TProjectPermission,
+    change: TMemberChange,
+    types: AgentVaultMemberType[]
+  ) => {
+    const forbidden = ForbiddenError.from(permission);
+    types.forEach((type) => {
+      if (type === AgentVaultMemberType.User) {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member);
+      } else if (type === AgentVaultMemberType.Group) {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups);
+      } else {
+        forbidden.throwUnlessCan(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
+      }
+    });
   };
 
-  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+  const canChangeActorType = (permission: TProjectPermission, change: TMemberChange, type: AgentVaultMemberType) => {
+    if (type === AgentVaultMemberType.User) {
+      return permission.can(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member);
+    }
+    if (type === AgentVaultMemberType.Group) {
+      return permission.can(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups);
+    }
+    return permission.can(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
+  };
+
+  const checkCanChangeMembers = async (
+    projectId: string,
+    ctx: TGenericPermission,
+    change: TMemberChange,
+    types: AgentVaultMemberType[]
+  ) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    assertCanChangeActorTypes(permission, change, types);
+    return permission;
+  };
 
   const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
     if (type === AgentVaultMemberType.User) {
@@ -216,14 +301,16 @@ export const agentVaultMembershipServiceFactory = ({
     offset,
     ctx
   }: TListAgentVaultMembersDTO) => {
-    await checkProductAdmin(projectId, ctx);
-
-    // checkProductAdmin reads hasRole, which does not intersect a delegated token's scopes. The CASL
-    // check below is what narrows an OAuth token holding less than the admin it acts for.
     const { permission } = await getActorPermission(projectId, ctx);
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
-    const readable = asked.filter((type) => canReadActorType(permission, type));
-    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+    // Only kinds the caller could add are offered, so each has to be both readable and addable.
+    const readable = asked.filter(
+      (type) => canReadActorType(permission, type) && canChangeActorType(permission, "add", type)
+    );
+    if (!readable.length) {
+      assertCanReadActorType(permission, asked[0]);
+      assertCanChangeActorTypes(permission, "add", [asked[0]]);
+    }
 
     return agentVaultMemberDAL.findAvailableActors({
       projectId,
@@ -449,6 +536,65 @@ export const agentVaultMembershipServiceFactory = ({
     return byActor;
   };
 
+  // Giving a member a role, or changing or removing the one they hold, takes assign-role on that kind of member, and on
+  // the legacy privilege system every permission of each role involved. The change actions alone would let a role that
+  // only manages identities add or promote an Agent Vault admin.
+  const assertRoleBoundary = async ({
+    projectId,
+    ctx,
+    permission,
+    entries,
+    baseMessage
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    permission: TProjectPermission;
+    entries: { actor: TAgentVaultActorRef; roles: string[] }[];
+    baseMessage: string;
+  }) => {
+    if (!entries.length) return;
+    const slugs = [...new Set(entries.flatMap(({ roles }) => roles))].filter(roleNeedsPrivilegeBoundary);
+    const [org, roleAbilities, names] = await Promise.all([
+      orgDAL.findById(ctx.actorOrgId),
+      slugs.length ? permissionService.getProjectPermissionByRoles(slugs, projectId) : [],
+      resolveActorNames(entries.map(({ actor }) => actor))
+    ]);
+    const abilityOf = new Map(roleAbilities.map((el) => [el.role?.slug, el]));
+
+    entries.forEach(({ actor, roles }) => {
+      const op = ROLE_ASSIGNMENT[actor.type];
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem: Boolean(org?.shouldUseNewPrivilegeSystem),
+        opActions: [...op.actions],
+        opSubject: op.subject,
+        actorPermission: permission,
+        targetPermissions: roles.flatMap((role) => {
+          const ability = abilityOf.get(role);
+          return ability ? [ability] : [];
+        }),
+        baseMessage,
+        subjectFields: op.fields(actor.id, names.get(actorKey(actor)))
+      });
+    });
+  };
+
+  // Read outside the write's transaction: the boundary check reads roles and the org, and the write re-reads under lock.
+  const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[]) => {
+    const memberships = await findMembershipsForActors(projectId, actors);
+    const membershipIds = [...memberships.values()].map((membership) => membership.id);
+    const roles = membershipIds.length ? await membershipRoleDAL.find({ $in: { membershipId: membershipIds } }) : [];
+    return actors.flatMap((actor) => {
+      const membership = memberships.get(actorKey(actor));
+      if (!membership) return [];
+      return [
+        {
+          actor,
+          roles: roles.filter((role) => role.membershipId === membership.id).map((role) => role.role)
+        }
+      ];
+    });
+  };
+
   const addProductMembers = async ({
     projectId,
     role,
@@ -457,12 +603,24 @@ export const agentVaultMembershipServiceFactory = ({
     usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkProductAdmin(projectId, ctx);
+    const permission = await checkCanChangeMembers(
+      projectId,
+      ctx,
+      "add",
+      memberTypesOf({ ...ids, emails: [...emails, ...usernames] })
+    );
     assertValidRole(role);
 
     // A username is matched the same way as an email, by the user's username and then their SSO aliases.
     const actors = await resolveNamedActors({ ...ids, emails: [...emails, ...usernames] }, ctx.actorOrgId);
     await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
+    await assertRoleBoundary({
+      projectId,
+      ctx,
+      permission,
+      entries: actors.map((actor) => ({ actor, roles: [role] })),
+      baseMessage: "Failed to add the member with this role"
+    });
 
     const nameByKey = await resolveActorNames(actors);
 
@@ -525,7 +683,6 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -535,7 +692,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkProductAdmin(projectId, ctx);
+    const permission = await checkCanChangeMembers(projectId, ctx, "edit", memberTypesOf(ids));
     assertValidRole(role);
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
@@ -543,6 +700,21 @@ export const agentVaultMembershipServiceFactory = ({
     if (actors.some((actor) => isSelf(actor, ctx))) {
       throw new ForbiddenRequestError({ message: "You cannot change your own role" });
     }
+
+    await assertRoleBoundary({
+      projectId,
+      ctx,
+      permission,
+      entries: await currentRolesOf(projectId, actors),
+      baseMessage: "Failed to change the role of a more privileged member"
+    });
+    await assertRoleBoundary({
+      projectId,
+      ctx,
+      permission,
+      entries: actors.map((actor) => ({ actor, roles: [role] })),
+      baseMessage: "Failed to give the member this role"
+    });
 
     // Promotion only: a deactivated member must not be made an admin, but taking admin away from one has
     // to work without reactivating them first.
@@ -594,7 +766,7 @@ export const agentVaultMembershipServiceFactory = ({
       );
 
       // A demoted admin no longer reaches the bundles they hold no grant on, so what they saved there goes.
-      if (role !== ProjectMembershipRole.Admin) {
+      if (!AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role)) {
         await clearPersonalValuesAfterRevoke(
           { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
           {
@@ -627,7 +799,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
-    await checkProductAdmin(projectId, ctx);
+    const permission = await checkCanChangeMembers(projectId, ctx, "remove", memberTypesOf(ids));
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 
@@ -635,6 +807,14 @@ export const agentVaultMembershipServiceFactory = ({
     if (actors.some((actor) => isSelf(actor, ctx))) {
       throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
     }
+
+    await assertRoleBoundary({
+      projectId,
+      ctx,
+      permission,
+      entries: await currentRolesOf(projectId, actors),
+      baseMessage: "Failed to remove a more privileged member"
+    });
 
     // An identity scoped to this project exists only to be an Agent Vault member. Detaching it would leave
     // a live identity no screen can reach: this tab lists by membership, and the org list hides scoped ones.
@@ -714,7 +894,6 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

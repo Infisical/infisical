@@ -27,7 +27,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -57,6 +56,8 @@ type Props = {
   onViewLeases: (dynamicSecret: DynamicSecretWithEnv) => void;
   onDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
   onForceDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const DynamicSecretTableRow = ({
@@ -70,10 +71,10 @@ export const DynamicSecretTableRow = ({
   onGenerateLease,
   onViewLeases,
   onDelete,
-  onForceDelete
+  onForceDelete,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
-
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
 
@@ -271,7 +272,7 @@ export const DynamicSecretTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className="group hover:z-10"
       >
         <TableCell

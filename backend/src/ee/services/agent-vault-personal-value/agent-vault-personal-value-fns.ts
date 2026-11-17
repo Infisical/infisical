@@ -13,9 +13,11 @@ export type TClearPersonalValuesDeps = {
 };
 
 /**
- * Losing a bundle clears the values an actor saved for its services, so a later grant starts from nothing. A
- * group's revoke reaches its members, and anyone who still holds the bundle another way keeps theirs. Without
- * `accessBundleId` this covers every bundle in the project, for an actor leaving Agent Vault.
+ * Losing a service clears the values an actor saved for it, so being given it again starts from nothing. A group's
+ * revoke reaches its members, and anyone who still reaches the service through any bundle keeps theirs. The services
+ * are `accessBundleId`'s, or `serviceIds` (a deleted bundle's, read before its links went), or with neither every
+ * service in the project, for an actor leaving Agent Vault. `everyActor` covers everyone who saved a value for them,
+ * for a service taken out of a bundle.
  *
  * Call it after the change is written in `tx`. Cleanups in one project run one at a time, so of two changes that
  * each leave the other's access in place (a demotion and the revoke of the last grant), the second checks against
@@ -26,10 +28,20 @@ export const clearPersonalValuesAfterRevoke = async (
   {
     projectId,
     accessBundleId,
-    userIds,
-    identityIds,
-    groupIds
-  }: { projectId: string; accessBundleId?: string; userIds: string[]; identityIds: string[]; groupIds: string[] },
+    serviceIds,
+    userIds = [],
+    identityIds = [],
+    groupIds = [],
+    everyActor = false
+  }: {
+    projectId: string;
+    accessBundleId?: string;
+    serviceIds?: string[];
+    userIds?: string[];
+    identityIds?: string[];
+    groupIds?: string[];
+    everyActor?: boolean;
+  },
   tx: Knex
 ) => {
   await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(projectId)]);
@@ -45,6 +57,8 @@ export const clearPersonalValuesAfterRevoke = async (
     {
       projectId,
       accessBundleId,
+      ...(serviceIds ? { serviceIds } : {}),
+      ...(everyActor ? { everyActor } : {}),
       userIds: [...new Set([...userIds, ...groupUsers.map((row) => row.userId)])],
       identityIds: [...new Set([...identityIds, ...groupIdentities.map((row) => row.identityId)])]
     },

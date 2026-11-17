@@ -2,7 +2,7 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { RequestState } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { haveDisjointLiteralPrefixes } from "@app/lib/casl/glob-subset";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";

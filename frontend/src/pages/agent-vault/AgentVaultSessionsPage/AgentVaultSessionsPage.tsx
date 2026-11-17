@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -17,10 +17,6 @@ import {
 } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
-import {
-  useAgentVaultSetupProgress,
-  useOpenAgentVaultSetupStep
-} from "@app/components/agent-vault/SetupChecklist";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -33,12 +29,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   DocumentationLinkBadge,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -48,9 +43,14 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Label,
   OverflowBadgeList,
   PageHeader,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
   Skeleton,
   Table,
   TableBody,
@@ -65,7 +65,19 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useSubscription, useProject } from "@app/context";
+import { cn } from "@app/components/v3/utils";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useSubscription,
+  useProject,
+  useUser
+} from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -83,20 +95,21 @@ import {
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
-import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { EditSessionDialog } from "./components/EditSessionDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
-import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
-import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
@@ -106,6 +119,10 @@ import {
   TSessionAccessItem
 } from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
+import {
+  SESSION_METADATA_MAX_KEYS,
+  sessionMetadataRowsSchema
+} from "./components/sessionMetadataSchema";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -123,12 +140,44 @@ const accessItemHoverCard = (item: TSessionAccessItem) =>
 export const AgentVaultSessionsPage = () => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
+  const canReadAnySession = permission.can(
+    ProjectPermissionAgentVaultSessionActions.ReadAny,
+    ProjectPermissionSub.AgentVaultSessions
+  );
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canCreateBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Create,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
+  const metadataFilter = useMemo(() => {
+    const entries = appliedMetadataFilters
+      .map(({ key, value }) => [key.trim(), value.trim()] as const)
+      .filter(([key, value]) => key && value);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  }, [appliedMetadataFilters]);
+  // The same limits the API applies, checked here so a refused filter never reads as "no sessions match".
+  const metadataFilterErrors = useMemo(() => {
+    const errors: (string | undefined)[] = pendingMetadataFilters.map(() => undefined);
+    const result = sessionMetadataRowsSchema.safeParse(pendingMetadataFilters);
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        const [row] = issue.path;
+        if (typeof row === "number" && !errors[row]) errors[row] = issue.message;
+      });
+    }
+    return errors;
+  }, [pendingMetadataFilters]);
   const [scope, setScope] = useState(() => {
     const stored = getUserTablePreference(
       "agentVaultSessionsTable",
@@ -144,22 +193,27 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
-  const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
+  const [sessionToEdit, setSessionToEdit] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
-  const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions(projectId, {
-    scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
+    scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
+    metadata: metadataFilter,
     limit: perPage,
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
-  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
+    projectId,
+    canReadSessionLogSettings
+  );
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(
+    projectId,
+    canReadSessionLogSettings
+  );
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const sessionLogSettings = sessionLogState?.settings ?? null;
@@ -184,34 +238,19 @@ export const AgentVaultSessionsPage = () => {
 
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
-  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
+  const isFiltered =
+    Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
-
-  const setupProgress = useAgentVaultSetupProgress();
-  const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
-  // An admin sees the sample only while the org has no session at all. A member can't list the org's
-  // sessions, so they see it while they have none of their own.
-  const isSampleShown =
-    !isFiltered && (!isAdmin || (setupProgress.isSessionCountLoaded && !setupProgress.hasSession));
-  // Offered only once the next step is known; until then there's nowhere to send the admin.
-  const { nextStep } = setupProgress;
-  const startSetup = nextStep
-    ? () => {
-        setupProgress.restore();
-        setIsSampleOpen(false);
-        openSetupStep(nextStep);
-      }
-    : undefined;
 
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
     emptyTitle = "No sessions match these filters";
-    emptyDescription = "Try a different search term or status.";
+    emptyDescription = "Try a different search term, status or metadata.";
   } else if (!hasReachableBundles) {
-    emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
-    emptyDescription = isAdmin
+    emptyTitle = canCreateBundles ? "No sessions yet" : "No access bundles granted to you";
+    emptyDescription = canCreateBundles
       ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   } else {
@@ -219,14 +258,14 @@ export const AgentVaultSessionsPage = () => {
     emptyDescription = "Create a session to get a token an agent can run with.";
   }
 
-  const emptyState = !isSampleShown ? (
+  const emptyState = (
     <CardContent>
       <Empty className="border">
         <EmptyHeader>
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !hasReachableBundles && isAdmin && (
+        {!isFiltered && !hasReachableBundles && canCreateBundles && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
@@ -238,25 +277,6 @@ export const AgentVaultSessionsPage = () => {
         )}
       </Empty>
     </CardContent>
-  ) : (
-    <>
-      <SampleSessionTable onOpen={() => setIsSampleOpen(true)} />
-      <CardContent className="flex items-center justify-between gap-4">
-        <span className="text-sm text-muted">
-          {emptyDescription} Open the sample to see what a session records.
-        </span>
-        {!hasReachableBundles && isAdmin && (
-          <Button variant="av" size="sm" asChild>
-            <Link
-              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
-              params={{ orgId: currentOrg.id, projectId }}
-            >
-              Go to Access Bundles
-            </Link>
-          </Button>
-        )}
-      </CardContent>
-    </>
   );
 
   return (
@@ -333,7 +353,9 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-        {isAdmin && !sessionLogHealth?.connectionError && <SessionLogReadAccessAlert />}
+        {canReadSessionLogSettings && !sessionLogHealth?.connectionError && (
+          <SessionLogReadAccessAlert />
+        )}
 
         <Card>
           <CardHeader>
@@ -371,41 +393,78 @@ export const AgentVaultSessionsPage = () => {
                 placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <IconButton
                   aria-label="Filter sessions"
-                  variant={statuses.length ? "av" : "outline"}
+                  variant={statuses.length || metadataFilter ? "av" : "outline"}
                 >
                   <FilterIcon />
                 </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Status</DropdownMenuLabel>
-                {STATUS_OPTIONS.map((status) => {
-                  const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={status}
-                      checked={statuses.includes(status)}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setStatuses((prev) =>
-                          prev.includes(status)
-                            ? prev.filter((s) => s !== status)
-                            : [...prev, status]
-                        );
-                        setPage(1);
-                      }}
-                    >
-                      <Icon className={iconClassName} />
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isAdmin && (
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="flex max-h-(--radix-popover-content-available-height) flex-col gap-3 overflow-y-auto"
+              >
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-accent">Status</span>
+                  {STATUS_OPTIONS.map((status) => {
+                    const {
+                      label,
+                      icon: Icon,
+                      iconClassName
+                    } = SESSION_STATUS_PRESENTATION[status];
+                    const checkboxId = `session-status-filter-${status}`;
+                    return (
+                      <div key={status} className="flex items-center gap-2">
+                        <Checkbox
+                          id={checkboxId}
+                          variant="av"
+                          isChecked={statuses.includes(status)}
+                          onCheckedChange={() => {
+                            setStatuses((prev) =>
+                              prev.includes(status)
+                                ? prev.filter((s) => s !== status)
+                                : [...prev, status]
+                            );
+                            setPage(1);
+                          }}
+                        />
+                        <Label htmlFor={checkboxId}>
+                          <Icon className={cn("size-4", iconClassName)} />
+                          {label}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Separator />
+                <MetadataFilterSection
+                  entries={pendingMetadataFilters}
+                  onChange={setPendingMetadataFilters}
+                  labelClassName="normal-case text-accent"
+                  clearClassName="text-muted hover:text-foreground"
+                  errors={metadataFilterErrors}
+                  maxEntries={SESSION_METADATA_MAX_KEYS}
+                />
+                <Button
+                  variant="av"
+                  size="sm"
+                  isDisabled={
+                    metadataFilterErrors.some(Boolean) ||
+                    JSON.stringify(pendingMetadataFilters) ===
+                      JSON.stringify(appliedMetadataFilters)
+                  }
+                  onClick={() => {
+                    setAppliedMetadataFilters(pendingMetadataFilters);
+                    setPage(1);
+                  }}
+                >
+                  Apply
+                </Button>
+              </PopoverContent>
+            </Popover>
+            {canReadAnySession && (
               <Tabs
                 value={scope}
                 onValueChange={(value) => {
@@ -562,21 +621,30 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
-                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
-                                <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
-                                  <PencilIcon />
-                                  {session.label ? "Edit Label" : "Add Label"}
+                              {/* The API refuses edits once the session's owner, or the user it acts on behalf of, is deleted */}
+                              {session.actor.id !== null &&
+                                session.onBehalfOf?.id !== null &&
+                                canActOnAgentVaultSession(permission, user.id, session, "edit") && (
+                                  <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
+                                    <PencilIcon />
+                                    Edit Session
+                                  </DropdownMenuItem>
+                                )}
+                              {canActOnAgentVaultSession(
+                                permission,
+                                user.id,
+                                session,
+                                "revoke"
+                              ) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                                  onClick={() => setSessionToRevoke(session)}
+                                >
+                                  <BanIcon />
+                                  Revoke Session
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem
-                                variant="danger"
-                                isDisabled={session.status !== AgentVaultSessionStatus.Active}
-                                onClick={() => setSessionToRevoke(session)}
-                              >
-                                <BanIcon />
-                                Revoke Session
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -609,18 +677,7 @@ export const AgentVaultSessionsPage = () => {
         </Card>
       </div>
 
-      <CreateSessionDialog
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onCreated={setMintedSession}
-      />
-
-      <SessionCreatedDialog
-        session={mintedSession}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setMintedSession(null);
-        }}
-      />
+      <CreateSessionDialog isOpen={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
       <RevokeSessionDialog
         session={sessionToRevoke}
@@ -629,23 +686,17 @@ export const AgentVaultSessionsPage = () => {
         }}
       />
 
-      <SampleSessionSheet
-        isOpen={isSampleOpen}
-        onOpenChange={setIsSampleOpen}
-        onSetUp={isAdmin ? startSetup : undefined}
-      />
-
       <SessionDetailSheet
         session={openSession}
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
-        onEditLabel={setSessionToLabel}
+        onEdit={setSessionToEdit}
       />
 
-      <EditSessionLabelDialog
-        session={sessionToLabel}
+      <EditSessionDialog
+        session={sessionToEdit}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setSessionToLabel(null);
+          if (!isOpen) setSessionToEdit(null);
         }}
       />
 

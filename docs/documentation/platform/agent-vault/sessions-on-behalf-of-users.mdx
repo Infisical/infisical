@@ -37,18 +37,26 @@ sequenceDiagram
     <Steps>
       <Step>
         In your Agent Vault project, go to **Access Control**, select the **Machine Identities** tab, and select the machine identity.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/access-control-identities.png" alt="The Access Control page on the Machine Identities tab, listing the github-actions and release-bot machine identities" />
+        </Frame>
       </Step>
       <Step>
         In the **Delegation** section, select **Manage Delegation**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/machine-identity-delegation.png" alt="The Delegation section of a machine identity, listing two groups and a user with the date each was added, and the Manage Delegation button" />
+          <img src="/images/platform/agent-vault/machine-identity-delegation.png" alt="The release-bot machine identity page, with a Delegation section listing the Platform Team group and the users Jordan Lee and Priya Patel, and the Manage Delegation button" />
         </Frame>
       </Step>
       <Step>
         Expand **Not in Delegation**, then select **Add** next to each user or group to add. A group covers every member of the group. If someone isn't listed, search for them by name. Changes save as you make them.
 
         To cover every current and future user in the project instead, turn on **All Project Members** and select **Allow All Members**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/manage-delegation.png" alt="The Manage Delegation sheet, with the All Project Members toggle off, a group and two users In Delegation, and the project's other members under Not in Delegation" />
+        </Frame>
       </Step>
     </Steps>
   </Tab>

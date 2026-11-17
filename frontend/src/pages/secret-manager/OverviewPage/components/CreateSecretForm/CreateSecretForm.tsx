@@ -52,12 +52,13 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import {
-  useCreateSecretV3,
+  useCreateSecretBatch,
   useCreateWsTag,
   useGetOrCreateFolder,
   useGetWsTags
 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -242,6 +243,7 @@ export const CreateSecretForm = ({
     reset,
     setValue,
     getValues,
+    setError,
     watch,
     formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
@@ -271,8 +273,12 @@ export const CreateSecretForm = ({
     remove: removeSecret
   } = useFieldArray({ control, name: "secrets" });
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createSecretBatch } = useCreateSecretBatch({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
   const batchStore = useBatchStoreApi();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
@@ -379,7 +385,7 @@ export const CreateSecretForm = ({
         return;
       }
     }
-    await Promise.all(
+    const areFoldersReady = await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {
           const pathSegment = secretPath.split("/").filter(Boolean);
@@ -403,10 +409,14 @@ export const CreateSecretForm = ({
           }
         }
       })
-    ).catch((error) => {
-      attempt.flow({ ...flow, phase: "failed" });
-      throw error;
-    });
+    )
+      .then(() => true)
+      .catch((error) => {
+        attempt.flow({ ...flow, phase: "failed" });
+        showSecretWriteErrors([{ error }]);
+        return false;
+      });
+    if (!areFoldersReady) return;
 
     if (selectedEnv.length === 1 && secrets.length > 1) {
       const result = await createCommit({
@@ -436,8 +446,10 @@ export const CreateSecretForm = ({
         }
       }).catch((error) => {
         attempt.flow({ ...flow, commitKind: "batch", phase: "failed" });
-        throw error;
+        showSecretWriteErrors([{ error }]);
+        return undefined;
       });
+      if (!result) return;
       attempt.flow({
         ...flow,
         commitKind: "batch",
@@ -467,30 +479,30 @@ export const CreateSecretForm = ({
       return;
     }
 
-    const promises = selectedEnv.flatMap((env) =>
-      secrets.map(async (secret) => {
-        const environment = env.slug;
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        return {
-          ...(await createSecretV3({
-            environment,
-            projectId,
-            secretPath,
-            secretKey: secret.key,
-            secretValue: secret.value || "",
-            secretComment: secret.comment || "",
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            type: SecretType.Shared,
-            tagIds: secret.tags?.map((tag) => tag.value),
-            secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
-          })),
-          environment,
-          secret
-        };
-      })
-    );
+    const batchSecrets = secrets.map((secret) => {
+      const filteredMetadata = secret.metadata
+        ?.filter((metadata) => metadata.key && metadata.value)
+        .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+      return {
+        secretKey: secret.key,
+        secretValue: secret.value || "",
+        secretComment: secret.comment || "",
+        skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+        type: SecretType.Shared,
+        tagIds: secret.tags?.map((tag) => tag.value),
+        secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
+      };
+    });
+    // One batch per environment, so an approval policy opens one request per environment
+    const promises = selectedEnv.map(async (env) => ({
+      ...(await createSecretBatch({
+        environment: env.slug,
+        projectId,
+        secretPath,
+        secrets: batchSecrets
+      })),
+      environment: env.slug
+    }));
 
     const results = await Promise.allSettled(promises);
     const allRequestsSucceeded = didAllSecretCreationsSucceed(results);
@@ -517,13 +529,10 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
-    const responseCount = results.filter(
-      (result) => result.status === "fulfilled" && !("approval" in result.value)
-    ).length;
-    const approvalCount = results.filter(
-      (result) => result.status === "fulfilled" && "approval" in result.value
-    ).length;
-    const failureCount = results.filter((result) => result.status === "rejected").length;
+    const responseCount = updatedEnvs.length * secrets.length;
+    const approvalCount = forApprovalEnvs.length * secrets.length;
+    const failureCount =
+      results.filter((result) => result.status === "rejected").length * secrets.length;
     attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
@@ -542,17 +551,13 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      const createdSecrets = results.flatMap((result) =>
-        result.status === "fulfilled" && !("approval" in result.value)
-          ? [
-              {
-                environment: result.value.environment,
-                key: result.value.secret.key,
-                value: result.value.secret.value,
-                tags: result.value.secret.tags?.map((tag) => tag.label)
-              }
-            ]
-          : []
+      const createdSecrets = updatedEnvs.flatMap((environment) =>
+        secrets.map((secret) => ({
+          environment,
+          key: secret.key,
+          value: secret.value,
+          tags: secret.tags?.map((tag) => tag.label)
+        }))
       );
       notifySecretsCreated(
         new Set(createdSecrets.map(({ key }) => key)).size,
@@ -564,9 +569,26 @@ export const CreateSecretForm = ({
       onSecretCreated?.();
     }
 
-    if (!updatedEnvs.length && !forApprovalEnvs.length) {
-      // this should only occur when a toast notifcation is created from failed mutation
-      console.warn("failed to create secrets");
+    const failedRequests = selectedEnv.flatMap((env, index) => {
+      const result = results[index];
+      return result.status === "rejected" ? [{ env, error: result.reason as unknown }] : [];
+    });
+    if (failedRequests.length && formOwner.current.invocation === invocation) {
+      const failedEnvSlugs = new Set(failedRequests.map(({ env }) => env.slug));
+      // A batch fails as a whole, so keep every secret and only the failed environments
+      setValue(
+        "environments",
+        selectedEnv.filter((env) => failedEnvSlugs.has(env.slug))
+      );
+      showSecretWriteErrors(
+        failedRequests.map(({ env, error }) => ({
+          error,
+          // A batch error is not tied to one key, so only a lone secret shows it inline
+          field: secrets.length === 1 ? ("secrets.0.key" as const) : undefined,
+          environmentName: selectedEnv.length > 1 ? env.name : undefined
+        })),
+        (field, message) => setError(field, { type: "server", message })
+      );
     }
 
     if (
@@ -759,7 +781,7 @@ export const CreateSecretForm = ({
                             </Tooltip>
                           )}
                         </div>
-                        <FieldError errors={[error]} />
+                        <FieldError errors={[error]} className="whitespace-pre-line" />
                       </FieldContent>
                     </Field>
                   )}
@@ -771,6 +793,7 @@ export const CreateSecretForm = ({
                     size="xs"
                     className="mt-6.5"
                     aria-label={`Remove secret ${index + 1}`}
+                    isDisabled={isSubmitting}
                     onClick={() => removeSecret(index)}
                   >
                     <TrashIcon className="size-4" />

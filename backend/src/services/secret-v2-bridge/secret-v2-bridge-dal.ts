@@ -698,6 +698,19 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findFolderIdsWithSecrets = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return [];
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+        .whereIn("folderId", folderIds)
+        .whereNull("userId")
+        .distinct("folderId");
+      return (docs as { folderId: string }[]).map((doc) => doc.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find folder ids with secrets" });
+    }
+  };
+
   // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
@@ -1867,6 +1880,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOneWithTags,
     findByFolderId,
     findByFolderIds,
+    findFolderIdsWithSecrets,
     findMetadataByFolderIds,
     findBySecretKeys,
     findSharedKeyInFolders,

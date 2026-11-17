@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-ARG INFISICAL_CLI_VERSION=0.44.12
+ARG INFISICAL_CLI_VERSION=0.45.4
 
 FROM node:26.12.1-trixie-slim AS base
 
@@ -174,7 +174,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
+RUN rm -rf ./node_modules ./e2e-test ./src
 COPY --from=backend-prod-deps /app/node_modules ./node_modules
 
 RUN mkdir frontend-build
@@ -253,6 +253,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsystemd0=257.13-1~deb13u1 \
     libudev1=257.13-1~deb13u1 \
     sed=4.9-2+deb13u1 \
+    zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage

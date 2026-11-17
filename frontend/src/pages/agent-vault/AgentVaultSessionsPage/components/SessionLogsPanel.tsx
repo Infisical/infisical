@@ -33,7 +33,15 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useProject
+} from "@app/context";
+import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
@@ -50,14 +58,20 @@ import {
   TAgentVaultSession,
   TAgentVaultSessionLogGapReason
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
-import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
+import {
+  DECISION_PRESENTATION,
+  hostPatternFor,
+  SESSION_LOG_COLUMN_COUNT,
+  SessionLogRow
+} from "./SessionLogRow";
 import {
   chunkIdTime,
   groupSessionLogGaps,
+  isNativeSessionLogRecord,
   matchesSessionLogSearch,
+  nativeSessionLogSearchTerm,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
@@ -94,7 +108,8 @@ const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; man
   }
 };
 
-const COLUMN_COUNT = 7;
+const COLUMN_COUNT = SESSION_LOG_COLUMN_COUNT;
+const NO_EXPANDED_ROWS: ReadonlySet<string> = new Set();
 
 type Props = {
   session: TAgentVaultSession;
@@ -103,19 +118,46 @@ type Props = {
 export const SessionLogsPanel = ({ session }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canEditSessionLogSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
-  // Only admins can read the settings; they need the storage type to show the right upgrade.
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
+  // The storage type in the settings picks the right upgrade, for those who can read them.
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
+    projectId,
+    canReadSessionLogSettings
+  );
   const { accessBundle } = session;
-  const canAddService = isAdmin && Boolean(accessBundle?.id);
+  const canAddService =
+    permission.can(
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    ) && Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
   const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
+  // Kept here, not in each row, because the virtualizer unmounts rows scrolled out of view and must keep sizing
+  // an expanded one while it is gone. Tied to the session so another session's rows open collapsed.
+  const [expanded, setExpanded] = useState<{ sessionId: string; keys: ReadonlySet<string> }>(
+    () => ({ sessionId: session.id, keys: new Set() })
+  );
+  const expandedKeys = expanded.sessionId === session.id ? expanded.keys : NO_EXPANDED_ROWS;
+  const toggleExpanded = (key: string) =>
+    setExpanded((prev) => {
+      const keys = new Set(prev.sessionId === session.id ? prev.keys : NO_EXPANDED_ROWS);
+      if (keys.has(key)) keys.delete(key);
+      else keys.add(key);
+      return { sessionId: session.id, keys };
+    });
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
@@ -208,7 +250,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     [records, search, decisionFilter]
   );
 
-  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
+  const hasBrowserFilter =
+    Boolean(sessionLogSearchTerm(search) || nativeSessionLogSearchTerm(search)) ||
+    decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -237,6 +281,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const filterKey = [
     sessionLogSearchTerm(search),
+    nativeSessionLogSearchTerm(search),
     decisionFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
@@ -267,6 +312,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     count: visible.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SESSION_LOG_ROW_HEIGHT,
+    // Keyed by record, so an expanded row keeps its height when newer rows land above it.
+    getItemKey: (index) => sessionLogRecordKey(visible[index]),
     overscan: 16
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -301,9 +348,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
     visible,
+    measuredRows: rowVirtualizer.measurementsCache,
     arrivals,
-    resetKey: `${session.id}|${filterKey}`,
-    rowHeight: SESSION_LOG_ROW_HEIGHT
+    resetKey: `${session.id}|${filterKey}`
   });
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
@@ -406,7 +453,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         <div className="flex gap-2">
           {retryButton}
-          {isAdmin && !isDefaultStorage && (
+          {canEditSessionLogSettings && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
                 to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
@@ -422,8 +469,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so every admin is offered
-  // it; only a running session is offered Settings, since turning logs on can't record one that ended.
+  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so everyone who can change
+  // the session log settings is offered it; only a running session is offered Settings, since turning logs on can't
+  // record one that ended.
   if (!isPending && !isPlaceholderData && !isLoadError && disabledReason) {
     if (disabledReason === "not-on-plan") {
       return (
@@ -431,12 +479,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyHeader>
             <EmptyTitle>Session logs aren&apos;t on your plan</EmptyTitle>
             <EmptyDescription>
-              {isAdmin
+              {canEditSessionLogSettings
                 ? "Upgrade to see recorded logs and record what your agents reach."
                 : "Ask a project admin about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
-          {isAdmin && (
+          {canEditSessionLogSettings && (
             <Button variant="av" onClick={() => setIsUpgradeOpen(true)}>
               Upgrade
             </Button>
@@ -450,7 +498,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
       );
     }
 
-    const offDescription = isAdmin
+    const offDescription = canEditSessionLogSettings
       ? "Turn them on in Settings to record what your agents do."
       : "Ask a project admin to turn them on.";
 
@@ -460,7 +508,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyTitle>Session logs are off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
-        {isAdmin && isActive && (
+        {canEditSessionLogSettings && isActive && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
@@ -508,7 +556,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method, tool or service..."
+              placeholder="Search host, path, method, tool, service, statement, command or output..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -576,12 +624,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   bucket&apos;s CORS rule may not allow this origin, or this network may block the
                   bucket.
                 </p>
-                {!isAdmin && <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>}
+                {!canEditSessionLogSettings && (
+                  <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>
+                )}
               </div>
             )}
             <AlertAction className="flex gap-2">
               {retryButton}
-              {isAdmin && !isDefaultStorage && (
+              {canEditSessionLogSettings && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
@@ -705,13 +755,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
               const isAddable =
                 canAddService &&
                 !record.service &&
+                !isNativeSessionLogRecord(record) &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
+                !isInfisicalSessionEndpointRequest(record) &&
                 !addedHosts.has(hostPatternFor(record));
+              const recordKey = sessionLogRecordKey(record);
               return (
                 <SessionLogRow
-                  key={sessionLogRecordKey(record)}
+                  key={recordKey}
                   record={record}
+                  isExpanded={expandedKeys.has(recordKey)}
+                  onToggleExpanded={() => toggleExpanded(recordKey)}
+                  onMeasure={(height) => rowVirtualizer.resizeItem(virtualRow.index, height)}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
                   accessBundleName={accessBundle?.name}
                   onAddService={

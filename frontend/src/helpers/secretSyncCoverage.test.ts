@@ -6,7 +6,7 @@ describe("isPathCoveredBySecretSync", () => {
   const sync = (path: string, includeAllSubFolders?: boolean, environment = "dev") => ({
     environment: { slug: environment },
     folder: { path },
-    syncOptions: includeAllSubFolders === undefined ? {} : { includeAllSubFolders }
+    ...(includeAllSubFolders === undefined ? {} : { includeAllSubFolders })
   });
 
   const covers = (entry: ReturnType<typeof sync>, secretPath: string, environment = "dev") =>
@@ -60,7 +60,7 @@ describe("getSecretSyncsNewlyCoveringPaths", () => {
     name: id,
     environment: { slug: "dev" },
     folder: { path: "/apps" },
-    syncOptions: { includeAllSubFolders: true },
+    includeAllSubFolders: true,
     ...overrides
   });
 

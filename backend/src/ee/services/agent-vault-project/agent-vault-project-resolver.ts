@@ -26,6 +26,7 @@ export type TAgentVaultFallbackContext = {
 
 type TRowTable =
   | TableName.AgentVaultAccessBundle
+  | TableName.AgentVaultService
   | TableName.AgentVaultSkill
   | TableName.AgentVaultProxy
   | TableName.AgentVaultSession
@@ -33,6 +34,7 @@ type TRowTable =
 
 const ROW_NOT_FOUND: Record<TRowTable, (id: string) => string> = {
   [TableName.AgentVaultAccessBundle]: (id) => `Access bundle with ID '${id}' not found`,
+  [TableName.AgentVaultService]: (id) => `Service with ID '${id}' not found`,
   [TableName.AgentVaultSkill]: (id) => `Skill with ID '${id}' not found`,
   [TableName.AgentVaultProxy]: (id) => `Proxy with ID '${id}' not found`,
   [TableName.AgentVaultSession]: (id) => `Session with ID '${id}' not found`,
@@ -99,9 +101,12 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
 
   const resolveFromRow = async (table: TRowTable, ctx: TGenericPermission, id: string) => {
     const notFound = () => new NotFoundError({ message: ROW_NOT_FOUND[table](id) });
-    const row = (await db(table)
+    const query = db(table)
       .join(TableName.Project, `${table}.projectId`, `${TableName.Project}.id`)
-      .where(`${table}.id`, id)
+      .where(`${table}.id`, id);
+    // A service sent with a session belongs to that session, never to the services routes.
+    if (table === TableName.AgentVaultService) void query.whereNull(`${table}.sessionId`);
+    const row = (await query
       .where(`${TableName.Project}.orgId`, ctx.actorOrgId)
       .where(`${TableName.Project}.type`, ProjectType.AgentVault)
       .whereNull(`${TableName.Project}.deleteAfter`)
@@ -137,6 +142,7 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
     filterAgentVaultProjectIds,
     resolveFromAccessBundle: (ctx: TGenericPermission, id: string) =>
       resolveFromRow(TableName.AgentVaultAccessBundle, ctx, id),
+    resolveFromService: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultService, ctx, id),
     resolveFromSkill: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSkill, ctx, id),
     resolveFromProxy: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultProxy, ctx, id),
     resolveFromSession: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSession, ctx, id),

@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   agentVaultSessionLabelSchema,
   agentVaultSessionLabelUpdateSchema,
+  agentVaultSessionMetadataFilterSchema,
+  agentVaultSessionMetadataSchema,
   describeSessionForAudit
 } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
@@ -31,7 +33,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultInlineServiceSchema,
   AgentVaultInlineServicesInputSchema,
@@ -45,9 +52,12 @@ const SessionAccessBundleSchema = z.object({
   name: z.string()
 });
 
+const SessionMetadataReadSchema = z.record(z.string(), z.string()).describe(AGENT_VAULT.SESSION.metadataRead);
+
 const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
   label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
+  metadata: SessionMetadataReadSchema,
   actor: AgentVaultSessionActorSchema,
   onBehalfOf: AgentVaultSessionOnBehalfOfSchema.nullable().describe(AGENT_VAULT.SESSION.onBehalfOfSession),
   status: z.nativeEnum(AgentVaultSessionStatus),
@@ -60,9 +70,15 @@ const SessionInlineServicesSchema = AgentVaultInlineServiceSchema.array().descri
   AGENT_VAULT.SESSION.inlineServicesRead
 );
 
+const SessionStatsSchema = z.object({
+  requests: z.number().describe(AGENT_VAULT.SESSION.statsRequests),
+  brokered: z.number().nullable().describe(AGENT_VAULT.SESSION.statsBrokered)
+});
+
 const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-  services: SessionInlineServicesSchema
+  services: SessionInlineServicesSchema,
+  stats: SessionStatsSchema.nullable().describe(AGENT_VAULT.SESSION.stats)
 });
 
 // CLI 0.43.132+ and the Python SDK send the list form. Keep until 2027-01-04, then remove.
@@ -88,6 +104,7 @@ const EXAMPLE_ACCESS_BUNDLE = { id: "3c90c3cc-0d44-4b50-8888-8dd25736052a", name
 const EXAMPLE_SESSION = {
   id: "d1f0b5a2-6c3e-4f8a-9b7d-2e4c6a8f0b13",
   label: "Nightly deploy",
+  metadata: { runId: "8812", slackChannel: "#deploys" },
   actor: { type: "machineIdentity", id: "7b1e4f2a-9c3d-4a6b-8e5f-1d2c3b4a5e6f", name: "deploy-bot" },
   onBehalfOf: null,
   status: "active",
@@ -95,7 +112,8 @@ const EXAMPLE_SESSION = {
   revokedAt: null,
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
-  services: []
+  services: [],
+  stats: { requests: 1284, brokered: 1102 }
 };
 
 const docsExample = (example: unknown) => JSON.stringify({ example });
@@ -131,6 +149,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           .optional()
           .describe(AGENT_VAULT.SESSION.search),
+        metadata: agentVaultSessionMetadataFilterSchema.optional().describe(AGENT_VAULT.SESSION.metadataFilter),
         limit: z.coerce.number().int().min(1).max(100).default(20).describe(AGENT_VAULT.SESSION.limit),
         offset: z.coerce.number().int().min(0).default(0).describe(AGENT_VAULT.SESSION.offset)
       }),
@@ -145,12 +164,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, status, ...query } = req.query;
+      const { projectId: requestedProjectId, status, metadata, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultSession.listSessions({
         projectId,
         ctx: actorContext(req),
         statuses: status,
+        metadataFilter: metadata,
         ...query
       });
     }
@@ -255,14 +275,16 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   example: { userEmail: "jsmith@example.com" }
                 })
               ),
-            label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
+            label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label),
+            metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.metadata)
           })
           .describe(
             docsExample({
               projectId: EXAMPLE_PROJECT_ID,
               accessBundle: EXAMPLE_ACCESS_BUNDLE.name,
               ttl: "8h",
-              label: EXAMPLE_SESSION.label
+              label: EXAMPLE_SESSION.label,
+              metadata: EXAMPLE_SESSION.metadata
             })
           )
       ),
@@ -273,6 +295,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
               projectId: z.string().uuid().describe(AGENT_VAULT.projectId),
               label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
+              metadata: SessionMetadataReadSchema,
               token: z.string().describe(AGENT_VAULT.SESSION.token),
               expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
               createdAt: z.date(),
@@ -286,6 +309,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 id: EXAMPLE_SESSION.id,
                 projectId: EXAMPLE_PROJECT_ID,
                 label: EXAMPLE_SESSION.label,
+                metadata: EXAMPLE_SESSION.metadata,
                 token: "agv_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
@@ -328,26 +352,31 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           metadata: {
             sessionId: session.id,
             label: session.label,
+            ...(Object.keys(session.metadata).length > 0 && { metadata: session.metadata }),
             accessBundleId: session.accessBundle?.id ?? null,
             accessBundleName: session.accessBundle?.name ?? null,
             expiresAt: session.expiresAt?.toISOString() ?? null,
             ...(session.services.length > 0 && {
-              services: session.services.map((service) => ({
-                serviceId: service.id,
-                name: service.name,
-                serviceType: service.type,
-                serverUrl: service.serverUrl ?? undefined,
-                hostPattern: service.hostPattern,
-                credentialType: service.credential.type,
-                headerName:
-                  service.credential.type === AgentVaultCredentialType.Bearer
-                    ? service.credential.headerName
-                    : undefined,
-                allowedMethods: service.allowedMethods,
-                allowedPathPrefixes: service.allowedPathPrefixes,
-                customHeaderNames: service.customHeaders.map((header) => header.name),
-                substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder)
-              }))
+              services: session.services.map((service) => {
+                const { allowedMethods, allowedPathPrefixes, ...typeFields } = serviceTypeReportFieldsOf(service);
+                return {
+                  serviceId: service.id,
+                  name: service.name,
+                  description: service.description,
+                  serviceType: service.type,
+                  ...typeFields,
+                  credentialType: service.credential.type,
+                  headerName:
+                    service.credential.type === AgentVaultCredentialType.Bearer
+                      ? service.credential.headerName
+                      : undefined,
+                  // Present on every service, null outside HTTP, as this event has always sent them.
+                  allowedMethods: allowedMethods ?? null,
+                  allowedPathPrefixes: allowedPathPrefixes ?? null,
+                  hookUrl: service.hook?.url,
+                  ...serviceTransformationNamesOf(service)
+                };
+              })
             }),
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
@@ -364,6 +393,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           sessionId: session.id,
           accessBundleId: session.accessBundle?.id ?? null,
           inlineServiceCount: session.services.length,
+          metadataCount: Object.keys(session.metadata).length,
           ttlSeconds,
           isOnBehalfOfUser: Boolean(onBehalfOf)
         }
@@ -380,12 +410,18 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       operationId: "updateAgentVaultSession",
-      description: "Update the label of an Agent Vault session",
+      description: "Update the label or metadata of an Agent Vault session",
       tags: [ApiDocsTags.AgentVaultSessions],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
-      body: z.object({
-        label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel)
-      }),
+      body: z
+        .object({
+          label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel),
+          metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.updateMetadata)
+        })
+        .describe(docsExample({ label: EXAMPLE_SESSION.label, metadata: EXAMPLE_SESSION.metadata }))
+        .refine((body) => body.label !== undefined || body.metadata !== undefined, {
+          message: "Send a label, metadata, or both to update the session"
+        }),
       response: {
         200: z.object({ session: SessionWithAccessBundleSchema }).describe(docsExample({ session: EXAMPLE_SESSION }))
       }
@@ -396,14 +432,15 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.sessionId
       );
-      const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
+      const { session, previousLabel, isChanged } = await server.services.agentVaultSession.updateSession({
         projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
-        label: req.body.label
+        label: req.body.label,
+        metadata: req.body.metadata
       });
 
-      if (previousLabel !== session.label) {
+      if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -414,6 +451,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               sessionId: session.id,
               label: session.label,
               previousLabel,
+              metadata: session.metadata,
               ...describeSessionForAudit(session)
             }
           }

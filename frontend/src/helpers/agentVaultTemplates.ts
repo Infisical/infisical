@@ -451,6 +451,72 @@ export const AGENT_VAULT_MCP_TEMPLATES: AgentVaultMcpTemplate[] = [
     transport: AgentVaultMcpTransport.StreamableHttp,
     aliases: ["sentry", "mcp"],
     credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "atlassian-mcp",
+    name: "Atlassian MCP",
+    image: "Atlassian.svg",
+    description: "Jira issues and Confluence pages as MCP tools.",
+    serverUrl: "https://mcp.atlassian.com/v2/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["atlassian", "jira", "confluence", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "granola-mcp",
+    name: "Granola MCP",
+    image: "Granola.png",
+    description: "Meeting notes and transcripts as MCP tools.",
+    serverUrl: "https://mcp.granola.ai/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["granola", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "wispr-flow-mcp",
+    name: "Wispr Flow MCP",
+    image: "Wispr Flow.png",
+    description: "Notetaker meetings and transcripts as MCP tools.",
+    serverUrl: "https://api.wisprflow.ai/connect/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["wispr", "flow", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "posthog-mcp",
+    name: "PostHog MCP",
+    image: "PostHog.svg",
+    description: "Insights, feature flags, and errors as MCP tools.",
+    serverUrl: "https://mcp.posthog.com/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["posthog", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "crustdata-mcp",
+    name: "Crustdata MCP",
+    image: "Crustdata.png",
+    description: "Company and people data as MCP tools.",
+    serverUrl: "https://install.crustdata.com/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["crustdata", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "ashby-mcp",
+    name: "Ashby MCP",
+    image: "Ashby.png",
+    description: "Candidates, jobs, and interviews as MCP tools.",
+    serverUrl: "https://mcp.ashbyhq.com/mcp/v1",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["ashby", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
   }
 ];
 

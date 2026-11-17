@@ -60,6 +60,7 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
+  canRenewFromCsr?: boolean;
   keyAlgorithm?: string | null;
   signatureAlgorithm?: string | null;
   subject?: TCertificateSubject;
@@ -101,6 +102,13 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TRevokeCertResponse = {
+  message: string;
+  serialNumber: string;
+  revokedAt: string;
+  crlWarning?: string;
+};
+
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;
@@ -122,6 +130,7 @@ export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+  csr?: string;
 
   pkiCollectionId?: string;
   friendlyName?: string;
@@ -177,6 +186,7 @@ export type TRenewCertificateDTO = {
 };
 
 export type TRenewCertificateResponse = {
+  status: CertificateRequestStatus;
   certificate: string;
   issuingCaCertificate: string;
   certificateChain: string;

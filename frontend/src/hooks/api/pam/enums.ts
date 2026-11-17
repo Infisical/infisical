@@ -1,6 +1,7 @@
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
+  CockroachDB = "cockroachdb",
   MySQL = "mysql",
   MsSQL = "mssql",
   OracleDB = "oracledb",
@@ -31,6 +32,7 @@ export enum PamDiscoverySchedule {
 
 export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
+  PamAccountType.CockroachDB,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB,
@@ -122,7 +124,19 @@ export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
-  CommandBlocking = "command-blocking"
+  CommandBlocking = "command-blocking",
+  OutputMasking = "output-masking"
+}
+
+export enum PamOutputMaskingPreset {
+  Email = "email",
+  PhoneNumber = "phone-number",
+  Ssn = "ssn",
+  CreditCard = "credit-card",
+  IpAddress = "ip-address",
+  Jwt = "jwt",
+  ConnectionString = "connection-string",
+  AccountCredentials = "account-credentials"
 }
 
 export enum SessionChannelType {

@@ -62,6 +62,7 @@ import { CertificateManageRenewalModal } from "../CertificatesPage/components/Ce
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
 import {
+  canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
@@ -366,7 +367,7 @@ const Page = () => {
                 {!isInventoryView &&
                   !isDeleted &&
                   certificate.profileId &&
-                  certificate.hasPrivateKey !== false &&
+                  canRenewOnExistingKeyPair(certificate) &&
                   !certificate.renewedByCertificateId &&
                   !isRevoked &&
                   !isExpired &&
@@ -408,7 +409,7 @@ const Page = () => {
                 {!isInventoryView &&
                   !isDeleted &&
                   certificate.profileId &&
-                  certificate.hasPrivateKey !== false &&
+                  canRenewOnExistingKeyPair(certificate) &&
                   !certificate.renewedByCertificateId &&
                   !isRevoked &&
                   !isExpired &&

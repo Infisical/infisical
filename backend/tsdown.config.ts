@@ -36,6 +36,8 @@ export default defineConfig({
   outputOptions: { keepNames: true },
   copy: [
     { from: "src/**/*.{pem,yaml,txt}", to: "dist", flatten: false },
+    // Read at runtime from beside its loader. Not a src/**/*.md glob, which would ship every AGENTS.md.
+    { from: "src/ee/services/agent-vault-skill/builtin-skill/*.md", to: "dist", flatten: false },
     { from: "src/ee/LICENSE.md", to: "dist/ee" }
   ]
 });

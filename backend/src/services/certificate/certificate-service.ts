@@ -2,10 +2,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType, TCertificates } from "@app/db/schemas";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -26,8 +27,12 @@ import { ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  CaCapability,
+  CaCrlRegenerationTrigger,
+  CaType
+} from "@app/services/certificate-authority/certificate-authority-enums";
+import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
@@ -55,9 +60,6 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -81,9 +83,11 @@ import {
   expandInternalCa,
   getCaCertChain,
   getCaCertChains,
-  rebuildCaCrl
+  getInternalCaExpiredAt,
+  rebuildCaCrlAfterChange
 } from "../certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
+import { assertCsrMatchesCertificate } from "../certificate-common/certificate-csr-utils";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -92,7 +96,12 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import { assertCanRevokeCertificate } from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
-import { certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
+import {
+  buildCsrRenewalCertificateRequest,
+  certificateSpanToTtl,
+  keepCertificateFactsInCsrRenewal,
+  resolveRenewalUsages
+} from "../certificate-v3/certificate-renewal-fns";
 import { parseExtendedKeyUsages, parseKeyUsages } from "../certificate-v3/certificate-v3-fns";
 import {
   assertCertificateMaterialAvailable,
@@ -117,6 +126,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  CrlReason,
   TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
@@ -145,6 +155,7 @@ type TCertificateServiceFactoryDep = {
     | "findLatestRenewalOf"
     | "updateById"
     | "findByIdForUpdate"
+    | "primaryNode"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -156,7 +167,7 @@ type TCertificateServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create" | "delete">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById" | "find">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
@@ -175,13 +186,10 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
-  >;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
+  certManagerService: TCertManagerService;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
@@ -217,9 +225,9 @@ export const certificateServiceFactory = ({
   digicertFns,
   certificatePolicyService,
   licenseService,
-  usageCounterDAL,
-  keyStore,
   usageMeteringService,
+  certManagerService,
+  keyStore,
   caKeySourceService,
   internalCertificateAuthorityDAL,
   signerDAL,
@@ -613,8 +621,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     return {
       deletedCert,
@@ -649,48 +657,7 @@ export const certificateServiceFactory = ({
     }
   };
 
-  const revokeCert = async ({
-    id,
-    serialNumber,
-    thumbprint,
-    revocationReason,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TRevokeCertDTO) => {
-    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
-    if (id) {
-      cert = await certificateDAL.findById(id);
-    } else if (serialNumber) {
-      cert = await certificateDAL.findOne({ serialNumber });
-    } else if (thumbprint) {
-      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
-      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
-
-      const matches = await certificateDAL.findByThumbprintInOrg({
-        orgId: actorOrgId,
-        column,
-        fingerprint,
-        limit: 2
-      });
-      if (matches.length > 1) {
-        throw new BadRequestError({
-          message:
-            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
-        });
-      }
-      [cert] = matches;
-    } else {
-      throw new BadRequestError({
-        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
-      });
-    }
-
-    if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
+  const $getRevocableCertificateCa = async (cert: TCertificates) => {
     if (!cert.caId) {
       throw new BadRequestError({
         message: "Cannot revoke imported certificates"
@@ -707,16 +674,26 @@ export const certificateServiceFactory = ({
       });
     }
 
-    await assertCanRevokeCertificate({
-      certificate: { ...cert, projectId: ca.projectId },
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
-      resourceMetadataDAL
-    });
+    return ca;
+  };
 
+  const $findOwnedCertificateWithCa = async (certificateId: string) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+    return { cert, ca: await $getRevocableCertificateCa(cert) };
+  };
+
+  const $submitCertificateRevocation = async ({
+    cert,
+    ca,
+    revocationReason
+  }: {
+    cert: TCertificates;
+    ca: Awaited<ReturnType<typeof $getRevocableCertificateCa>>;
+    revocationReason: CrlReason;
+  }) => {
     if (cert.status === CertStatus.REVOKED) {
       throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
     }
@@ -764,11 +741,27 @@ export const certificateServiceFactory = ({
         reason: revocationReason
       });
     }
+  };
 
+  const $recordCertificateRevocation = async ({
+    cert,
+    ca,
+    revocationReason,
+    orgId
+  }: {
+    cert: TCertificates;
+    ca: Awaited<ReturnType<typeof $getRevocableCertificateCa>>;
+    revocationReason: CrlReason;
+    orgId: string;
+  }) => {
     const revokedAt = new Date();
     const revokedCertId = cert.id;
     const revokedCertApplicationId = cert.applicationId ?? null;
     await certificateDAL.transaction(async (tx) => {
+      const lockedCert = await certificateDAL.findByIdForUpdate(revokedCertId, tx);
+      if (lockedCert?.status === CertStatus.REVOKED) {
+        throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
+      }
       await certificateDAL.update(
         {
           id: revokedCertId
@@ -790,14 +783,14 @@ export const certificateServiceFactory = ({
       await certificateAlertEventEmitter.notify({
         certificateId: revokedCertId,
         projectId: ca.projectId,
-        orgId: actorOrgId,
+        orgId,
         eventType: CertificateApplicationAlertEvent.Revocation,
         applicationId: revokedCertApplicationId
       });
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(orgId, Meter.ActiveCerts);
+    usageMeteringService.emit(orgId, Meter.WildcardCerts);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -810,19 +803,23 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    // rebuild CRL (TODO: move to interval-based cron job)
-    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
-    if (!ca.externalCa?.id) {
-      await rebuildCaCrl({
+    let crlWarning: string | undefined;
+    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
+      const crlRegeneration = await rebuildCaCrlAfterChange({
         caId: ca.id,
+        trigger: CaCrlRegenerationTrigger.Revocation,
+        auditLogService,
         certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,
         kmsService,
-        caKeySourceService
+        caKeySourceService,
+        keyStore
       });
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
     if (!cert.deletedAt) {
@@ -838,6 +835,106 @@ export const certificateServiceFactory = ({
       }
     }
 
+    return { revokedAt, crlWarning };
+  };
+
+  const revokeOwnedCertificate = async ({
+    certificateId,
+    revocationReason,
+    orgId
+  }: {
+    certificateId: string;
+    revocationReason: CrlReason;
+    orgId: string;
+  }) => {
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
+    await $submitCertificateRevocation({ cert, ca, revocationReason });
+    const { revokedAt, crlWarning } = await $recordCertificateRevocation({ cert, ca, revocationReason, orgId });
+    return { cert, revokedAt, crlWarning };
+  };
+
+  const completeOwnedCertificateRevocation = async ({
+    certificateId,
+    revocationReason,
+    orgId
+  }: {
+    certificateId: string;
+    revocationReason: CrlReason;
+    orgId: string;
+  }) => {
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
+    return $recordCertificateRevocation({ cert, ca, revocationReason, orgId });
+  };
+
+  const revokeCert = async ({
+    id,
+    serialNumber,
+    thumbprint,
+    revocationReason,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TRevokeCertDTO) => {
+    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+    if (id) {
+      cert = await certificateDAL.findById(id);
+    } else if (serialNumber) {
+      cert = await certificateDAL.findOne({ serialNumber });
+    } else if (thumbprint) {
+      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
+      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
+
+      const matches = await certificateDAL.findByThumbprintInOrg({
+        orgId: actorOrgId,
+        column,
+        fingerprint,
+        limit: 2
+      });
+      if (matches.length > 1) {
+        throw new BadRequestError({
+          message:
+            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+        });
+      }
+      [cert] = matches;
+    } else {
+      throw new BadRequestError({
+        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
+      });
+    }
+
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const ca = await $getRevocableCertificateCa(cert);
+
+    await assertCanRevokeCertificate({
+      certificate: { ...cert, projectId: ca.projectId },
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
+
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId: cert.id });
+    if (signerUsingCertificate) {
+      throw new BadRequestError({
+        message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
+      });
+    }
+
+    await $submitCertificateRevocation({ cert, ca, revocationReason });
+    const { revokedAt, crlWarning } = await $recordCertificateRevocation({
+      cert,
+      ca,
+      revocationReason,
+      orgId: actorOrgId
+    });
+
     // Return appropriate CA format based on CA type
     const caResult = ca.externalCa?.id
       ? {
@@ -851,7 +948,13 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
+    return {
+      revokedAt,
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
+      ca: caResult,
+      crlWarning
+    };
   };
 
   /**
@@ -1084,6 +1187,7 @@ export const certificateServiceFactory = ({
         caType: null,
         externalMetadata: undefined,
         profileName: profile.slug,
+        policyId: profile.certificatePolicyId,
         caName: null,
         profileApiConfig: profile.apiConfig,
         verifyCertificate: $buildImportCertificateVerifier({
@@ -1113,6 +1217,7 @@ export const certificateServiceFactory = ({
         caType,
         externalMetadata: undefined,
         profileName: profile.slug,
+        policyId: profile.certificatePolicyId,
         caName,
         profileApiConfig: profile.apiConfig,
         verifyCertificate: $buildImportCertificateVerifier({
@@ -1144,6 +1249,7 @@ export const certificateServiceFactory = ({
       caType,
       externalMetadata: parsedMetadata,
       profileName: profile.slug,
+      policyId: profile.certificatePolicyId,
       caName,
       profileApiConfig: profile.apiConfig,
       verifyCertificate: $buildImportCertificateVerifier({
@@ -1173,6 +1279,7 @@ export const certificateServiceFactory = ({
     certificatePem: rawCertificatePem,
     chainPem: rawChainPem,
     privateKeyPem: rawPrivateKeyPem,
+    csr: rawCsr,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
@@ -1180,6 +1287,7 @@ export const certificateServiceFactory = ({
     const certificatePem = normalizePemText(rawCertificatePem);
     const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
     const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
+    const csr = rawCsr ? normalizePemText(rawCsr) : undefined;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1251,6 +1359,25 @@ export const certificateServiceFactory = ({
     if (!profileId && externalMetadata) {
       throw new BadRequestError({
         message: "'externalMetadata' can only be set when the certificate is imported into a certificate profile."
+      });
+    }
+
+    if (csr && !linkage) {
+      throw new BadRequestError({
+        message:
+          "'csr' can only be set when the certificate is imported into a certificate profile, because only a certificate a profile manages can be renewed."
+      });
+    }
+
+    if (csr && linkage && !linkage.caId) {
+      throw new BadRequestError({
+        message: `Certificate profile '${linkage.profileName}' is self-signed, and a self-signed certificate can only be renewed with its private key, which a signing request does not carry. Import the private key instead of 'csr'.`
+      });
+    }
+
+    if (csr && linkage?.caType && !caIssuesFromCsr(linkage.caType)) {
+      throw new BadRequestError({
+        message: `Certificate profile '${linkage.profileName}' issues from ${CA_TYPE_LABEL[linkage.caType] ?? linkage.caType}, which can't issue a certificate from a signing request. Remove 'csr', or import the certificate into a profile backed by another certificate authority.`
       });
     }
 
@@ -1364,6 +1491,35 @@ export const certificateServiceFactory = ({
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
     const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
+    if (csr && linkage) {
+      await assertCsrMatchesCertificate(csr, leafCert);
+
+      // Renewal from the stored CSR runs as a CSR renewal, so refuse here any CSR that renewal would refuse.
+      const csrRenewalRequest = keepCertificateFactsInCsrRenewal(
+        buildCsrRenewalCertificateRequest({
+          csr,
+          attributes: { ttl: certificateSpanToTtl(leafCert.notBefore, leafCert.notAfter) }
+        }),
+        {
+          signatureAlgorithm: certificateAlgorithms.signatureAlgorithm,
+          ...resolveRenewalUsages(
+            { exists: false, keyUsages: null, extendedKeyUsages: null },
+            { keyUsages, extendedKeyUsages }
+          )
+        }
+      );
+      const csrValidation = await certificatePolicyService.validateCertificateRequest(
+        linkage.policyId,
+        csrRenewalRequest
+      );
+      if (!csrValidation.isValid) {
+        const violations = csrValidation.errors.map((error) => `- ${error}`).join("\n");
+        throw new BadRequestError({
+          message: `This certificate signing request can't be used to renew the certificate, because it does not satisfy the policy of certificate profile '${linkage.profileName}':\n${violations}\nSupply a CSR the policy allows, or import the certificate without one.`
+        });
+      }
+    }
+
     const providerMetadata = await linkage?.verifyCertificate({
       certificatePem,
       serialNumber,
@@ -1405,7 +1561,7 @@ export const certificateServiceFactory = ({
       projectId,
       commonName,
       altNames,
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      deps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     let renewBeforeDays: number | undefined;
@@ -1454,7 +1610,8 @@ export const certificateServiceFactory = ({
           {
             certId: txCert.id,
             encryptedCertificate,
-            encryptedCertificateChain
+            encryptedCertificateChain,
+            importedCsr: csr ?? null
           },
           tx
         );
@@ -1492,8 +1649,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    usageMeteringService.emitForProject(projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(projectId, WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
@@ -1799,6 +1956,8 @@ export const certificateServiceFactory = ({
     getCertPrivateKey,
     deleteCert,
     revokeCert,
+    revokeOwnedCertificate,
+    completeOwnedCertificateRevocation,
     getCertBody,
     importCert,
     getCertBundle,

@@ -22,6 +22,9 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleServices,
+  TAgentVaultAccessBundleServicesInsert,
+  TAgentVaultAccessBundleServicesUpdate,
   TAgentVaultAccessBundleSkills,
   TAgentVaultAccessBundleSkillsInsert,
   TAgentVaultAccessBundleSkillsUpdate,
@@ -65,6 +68,9 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSessionStats,
+  TAgentVaultSessionStatsInsert,
+  TAgentVaultSessionStatsUpdate,
   TAgentVaultSkills,
   TAgentVaultSkillsInsert,
   TAgentVaultSkillsUpdate,
@@ -101,6 +107,9 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditionContexts,
+  TApprovalPolicyAutoApprovalConditionContextsInsert,
+  TApprovalPolicyAutoApprovalConditionContextsUpdate,
   TApprovalPolicyAutoApprovalConditions,
   TApprovalPolicyAutoApprovalConditionsInsert,
   TApprovalPolicyAutoApprovalConditionsUpdate,
@@ -515,6 +524,9 @@ import {
   TPkiSignerCertificateIssuanceJobs,
   TPkiSignerCertificateIssuanceJobsInsert,
   TPkiSignerCertificateIssuanceJobsUpdate,
+  TPkiSignerCertificateRevocations,
+  TPkiSignerCertificateRevocationsInsert,
+  TPkiSignerCertificateRevocationsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1115,6 +1127,11 @@ declare module "knex/types/tables" {
       TPkiSignerCertificateIssuanceJobs,
       TPkiSignerCertificateIssuanceJobsInsert,
       TPkiSignerCertificateIssuanceJobsUpdate
+    >;
+    [TableName.PkiSignerCertificateRevocations]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateRevocations,
+      TPkiSignerCertificateRevocationsInsert,
+      TPkiSignerCertificateRevocationsUpdate
     >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
@@ -1935,6 +1952,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
     >;
+    [TableName.AgentVaultSessionStats]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionStats,
+      TAgentVaultSessionStatsInsert,
+      TAgentVaultSessionStatsUpdate
+    >;
     [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultSkills,
       TAgentVaultSkillsInsert,
@@ -1944,6 +1966,11 @@ declare module "knex/types/tables" {
       TAgentVaultSkillVersions,
       TAgentVaultSkillVersionsInsert,
       TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleService]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleServices,
+      TAgentVaultAccessBundleServicesInsert,
+      TAgentVaultAccessBundleServicesUpdate
     >;
     [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultAccessBundleSkills,
@@ -2048,6 +2075,11 @@ declare module "knex/types/tables" {
       TApprovalPolicyAutoApprovalConditions,
       TApprovalPolicyAutoApprovalConditionsInsert,
       TApprovalPolicyAutoApprovalConditionsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditionContexts]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditionContexts,
+      TApprovalPolicyAutoApprovalConditionContextsInsert,
+      TApprovalPolicyAutoApprovalConditionContextsUpdate
     >;
     [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
       TApprovalPolicySecretEnvironments,

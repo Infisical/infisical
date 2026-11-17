@@ -332,7 +332,7 @@ hand them a different set of permissions than they had the day before.
 What the downgrade takes away is the ability to change the set. Creating a new custom role
 and editing an existing one both fail with a message naming the plan, and the UI opens the
 upgrade modal on those same two actions. `role-service.ts` is the model to copy: `createRole`
-and `updateRole` check `plan.rbac`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
+and `updateRole` check `plan.has(PlanFeature.Rbac)`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
 check nothing.
 
 One rule produces both outcomes. Entitlement decides what a customer can build. It never
@@ -367,3 +367,13 @@ decides what an already-built thing does.
   how to get it. A hidden feature teaches a customer nothing and looks like it does not
   exist. The modal is the frontend half of the same rule the backend follows: the block
   lands on the attempt to create or edit, never on viewing what is already there.
+
+### The exception: Agent Vault brokering
+
+On Infisical Cloud, Agent Vault refuses to broker credentials for an org without Agent Vault on its plan once
+the org has used its free requests for the month, on purpose. Each request a proxy brokers is the usage
+Infisical bills for, and "existing objects keep working" would mean an org's proxies broker past the free limit
+indefinitely, since a session can be minted with no expiry. Nothing is deleted or hidden: bundles, services,
+sessions, proxies and session logs stay readable and editable, and brokering resumes on its own once the org
+adds a payment method or the month resets. Which calls are gated is in
+`src/domains/agent-vault/agent-vault/AGENTS.md`. Do not copy this to another feature.
