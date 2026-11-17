@@ -25,6 +25,7 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
 
@@ -42,6 +43,7 @@ export const alertChannelTestServiceFactory = ({
   alertProviderRegistry,
   kmsService,
   smtpService,
+  slackIntegrationDAL,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
   const $assertCooldown = async (orgId: string, actorId: string, channelType: string) => {
@@ -155,7 +157,7 @@ export const alertChannelTestServiceFactory = ({
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
     await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
 
-    const deps: TAlertChannelDeps = { smtpService };
+    const deps: TAlertChannelDeps = { smtpService, kmsService, slackIntegrationDAL };
     const payload = buildTestAlertPayload({
       orgId: dto.actorOrgId,
       projectId,
@@ -168,7 +170,7 @@ export const alertChannelTestServiceFactory = ({
       if (!definition.directed) {
         const result = await definition.send({ channelId: TEST_CHANNEL_ID, config, payload, deps });
         if (!result.success) return { success: false, error: result.error ?? "Delivery failed" };
-        return { success: true, deliveredTo: 1 };
+        return { success: true, deliveredTo: 1, ...(result.error ? { error: result.error } : {}) };
       }
 
       const results = await Promise.all(

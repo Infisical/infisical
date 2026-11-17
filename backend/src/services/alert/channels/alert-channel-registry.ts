@@ -2,6 +2,7 @@ import {
   AlertChannelType,
   EmailChannelConfigSchema,
   PagerDutyChannelConfigSchema,
+  SlackAppChannelConfigSchema,
   SlackChannelConfigSchema,
   TAlertChannelDefinition,
   WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE,
@@ -9,6 +10,11 @@ import {
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { PAGERDUTY_MAX_INCIDENTS_PER_RUN, sendPagerDutyNotification } from "./alert-channel-pagerduty-fns";
+import {
+  assertSlackAppConfigInScope,
+  getSlackAppWorkflowIntegrationId,
+  sendSlackAppNotification
+} from "./alert-channel-slack-app-fns";
 import { sendSlackNotification } from "./alert-channel-slack-fns";
 import { assertWebhookUrlUnchangedForKeptCredentials, sendWebhookNotification } from "./alert-channel-webhook-fns";
 
@@ -26,6 +32,15 @@ export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefin
     secretFields: ["webhookUrl"],
     configSchema: SlackChannelConfigSchema,
     send: sendSlackNotification
+  },
+  [AlertChannelType.SLACK_APP]: {
+    type: AlertChannelType.SLACK_APP,
+    directed: false,
+    secretFields: [],
+    configSchema: SlackAppChannelConfigSchema,
+    assertConfigInScope: assertSlackAppConfigInScope,
+    getWorkflowIntegrationId: getSlackAppWorkflowIntegrationId,
+    send: sendSlackAppNotification
   },
   [AlertChannelType.WEBHOOK]: {
     type: AlertChannelType.WEBHOOK,

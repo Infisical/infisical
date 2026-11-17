@@ -23,7 +23,7 @@ import {
   TPreparedChannelCreate,
   TPreparedChannelUpdate
 } from "./alert-channel-service-types";
-import { AlertChannelType } from "./alert-channel-types";
+import { AlertChannelType, TAlertChannelDefinition, TAlertChannelScopeDeps } from "./alert-channel-types";
 import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType, PROJECT_WIDE_PRINCIPAL_TYPES, TAlertRecipientScope } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
@@ -35,6 +35,7 @@ export type TAlertChannelServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  slackIntegrationDAL: TAlertChannelScopeDeps["slackIntegrationDAL"];
 };
 
 export type TAlertChannelServiceFactory = ReturnType<typeof alertChannelServiceFactory>;
@@ -73,7 +74,8 @@ export const alertChannelServiceFactory = ({
   orgDAL,
   projectDAL,
   groupDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  slackIntegrationDAL
 }: TAlertChannelServiceFactoryDep) => {
   const $idsOfType = (recipients: TChannelRecipientInput[], principalType: AlertPrincipalType) => [
     ...new Set(recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId))
@@ -190,6 +192,35 @@ export const alertChannelServiceFactory = ({
     }
   };
 
+  const $assertConfigInScope = async (
+    definition: TAlertChannelDefinition,
+    orgId: string,
+    config: Record<string, unknown>
+  ): Promise<string | null> => {
+    await definition.assertConfigInScope?.({ orgId, config }, { slackIntegrationDAL });
+    return definition.getWorkflowIntegrationId?.(config) ?? null;
+  };
+
+  // A stored integration that has since been deleted must not block unrelated edits, and its id can no
+  // longer be written back to the foreign key, so only a changed integration is checked and stored.
+  const $resolveChangedWorkflowIntegration = async (
+    definition: TAlertChannelDefinition,
+    orgId: string,
+    config: Record<string, unknown>,
+    existingConfig: Record<string, unknown>
+  ): Promise<{ workflowIntegrationId: string | null } | null> => {
+    if (!definition.getWorkflowIntegrationId) return null;
+    const next = definition.getWorkflowIntegrationId(config);
+    let previous: string | null = null;
+    try {
+      previous = definition.getWorkflowIntegrationId(existingConfig);
+    } catch {
+      previous = null;
+    }
+    if (next === previous) return null;
+    return { workflowIntegrationId: await $assertConfigInScope(definition, orgId, config) };
+  };
+
   const $redactConfig = (channelType: string, config: Record<string, unknown>): Record<string, unknown> => {
     const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
     if (!definition) return {};
@@ -212,6 +243,7 @@ export const alertChannelServiceFactory = ({
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
     const config = parseChannelConfig(definition, input.channelType, input.config);
+    const workflowIntegrationId = await $assertConfigInScope(definition, input.orgId, config);
     await validateRecipients(input.orgId, input.recipientScope, recipients, tx);
 
     return {
@@ -219,6 +251,7 @@ export const alertChannelServiceFactory = ({
         name: input.name,
         channelType: input.channelType,
         encryptedConfig: encryptChannelConfig(config, encryptor),
+        workflowIntegrationId,
         enabled: input.enabled ?? true,
         orgId: input.orgId,
         projectId: input.projectId ?? null,
@@ -262,9 +295,16 @@ export const alertChannelServiceFactory = ({
     const existingConfig = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, cipher.decryptor);
 
     let finalConfig = existingConfig;
+    let integrationPatch: { workflowIntegrationId: string | null } | null = null;
     if (input.config !== undefined) {
       const merged = mergeChannelConfigWithStored(channel.channelType, input.config, existingConfig);
       finalConfig = parseChannelConfig(definition, channel.channelType, merged);
+      integrationPatch = await $resolveChangedWorkflowIntegration(
+        definition,
+        channel.orgId,
+        finalConfig,
+        existingConfig
+      );
     }
 
     const { recipients } = input;
@@ -278,7 +318,8 @@ export const alertChannelServiceFactory = ({
       patch: {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
-        ...(input.config !== undefined ? { encryptedConfig: encryptChannelConfig(finalConfig, cipher.encryptor) } : {})
+        ...(input.config !== undefined ? { encryptedConfig: encryptChannelConfig(finalConfig, cipher.encryptor) } : {}),
+        ...(integrationPatch ?? {})
       },
       recipients
     };

@@ -2718,7 +2718,9 @@
                       "api-reference/endpoints/alerts/create",
                       "api-reference/endpoints/alerts/get-by-id",
                       "api-reference/endpoints/alerts/update",
-                      "api-reference/endpoints/alerts/delete"
+                      "api-reference/endpoints/alerts/delete",
+                      "api-reference/endpoints/alerts/list-slack-integrations",
+                      "api-reference/endpoints/alerts/list-slack-channels"
                     ]
                   },
                   {

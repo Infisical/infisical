@@ -261,6 +261,7 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { alertSlackAppServiceFactory } from "@app/services/alert/alert-slack-app-service";
 import { auditLogStreamAlertDALFactory } from "@app/services/alert/providers/audit-log-stream-alert-dal";
 import { auditLogStreamAlertProviderFactory } from "@app/services/alert/providers/audit-log-stream-alert-provider";
 import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
@@ -1172,7 +1173,8 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertRecipientResolver,
     kmsService,
-    smtpService
+    smtpService,
+    slackIntegrationDAL
   });
   const alertQueue = alertQueueServiceFactory({
     cronJob,
@@ -1203,7 +1205,8 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     groupDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    slackIntegrationDAL
   });
   const alertService = alertServiceFactory({
     alertDAL,
@@ -1223,7 +1226,13 @@ export const registerRoutes = async (
     alertProviderRegistry,
     kmsService,
     smtpService,
+    slackIntegrationDAL,
     keyStore
+  });
+  const alertSlackAppService = alertSlackAppServiceFactory({
+    alertProviderRegistry,
+    slackIntegrationDAL,
+    kmsService
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -3249,7 +3258,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     slackIntegrationDAL,
-    workflowIntegrationDAL
+    workflowIntegrationDAL,
+    alertChannelDAL
   });
 
   const workflowIntegrationService = workflowIntegrationServiceFactory({
@@ -5035,6 +5045,7 @@ export const registerRoutes = async (
     notification: notificationService,
     alert: alertService,
     alertChannelTest: alertChannelTestService,
+    alertSlackApp: alertSlackAppService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

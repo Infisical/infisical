@@ -174,6 +174,82 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/slack-integrations",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAlertSlackIntegrations",
+      tags: [ApiDocsTags.Alerting],
+      description: "List the organization's Slack integrations that an alert's Slack channel can post through.",
+      querystring: z.object({
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST_SLACK_INTEGRATIONS.resourceType),
+        resourceId: z.string().uuid().optional().describe(ALERTING.LIST_SLACK_INTEGRATIONS.resourceId),
+        projectId: z.string().trim().min(1).max(36).optional().describe(ALERTING.LIST_SLACK_INTEGRATIONS.projectId)
+      }),
+      response: {
+        200: z.object({
+          slackIntegrations: z.array(
+            z.object({
+              id: z.string().uuid(),
+              slug: z.string(),
+              description: z.string().nullable(),
+              teamName: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const slackIntegrations = await server.services.alertSlackApp.listSlackIntegrations({
+        ...req.query,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { slackIntegrations };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/slack-integrations/:workflowIntegrationId/channels",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAlertSlackChannels",
+      tags: [ApiDocsTags.Alerting],
+      description:
+        "List the Slack channels a Slack integration can post to, for an alert's Slack channel. Private channels appear only once the Infisical app has been added to them.",
+      params: z.object({
+        workflowIntegrationId: z.string().uuid().describe(ALERTING.LIST_SLACK_CHANNELS.workflowIntegrationId)
+      }),
+      querystring: z.object({
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST_SLACK_CHANNELS.resourceType),
+        resourceId: z.string().uuid().optional().describe(ALERTING.LIST_SLACK_CHANNELS.resourceId),
+        projectId: z.string().trim().min(1).max(36).optional().describe(ALERTING.LIST_SLACK_CHANNELS.projectId)
+      }),
+      response: {
+        200: z.object({ channels: z.array(z.object({ id: z.string(), name: z.string() })) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const channels = await server.services.alertSlackApp.listSlackChannels({
+        ...req.query,
+        workflowIntegrationId: req.params.workflowIntegrationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { channels };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: { rateLimit: readLimit },
     schema: {

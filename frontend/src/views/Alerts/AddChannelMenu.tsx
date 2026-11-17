@@ -8,7 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
-import { ALERT_CHANNEL_TYPE_LABELS, AlertChannelType } from "@app/hooks/api/alerts";
+import {
+  ADD_MENU_CHANNEL_TYPES,
+  ALERT_CHANNEL_TYPE_LABELS,
+  AlertChannelType
+} from "@app/hooks/api/alerts";
 
 import { getChannelIcon } from "./channelIcons";
 
@@ -38,7 +42,7 @@ export const AddChannelMenu = ({
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" sideOffset={4} className={contentClassName}>
-      {Object.values(AlertChannelType).map((channelType) => {
+      {ADD_MENU_CHANNEL_TYPES.map((channelType) => {
         const Icon = getChannelIcon(channelType);
         const isLocked = lockedChannelTypes.includes(channelType);
         return (
