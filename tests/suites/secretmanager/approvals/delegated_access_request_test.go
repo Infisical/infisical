@@ -119,7 +119,7 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 		// Setup
 		req := newWaitingDelegatedRequest(t)
 		req.sn.Seed(t, servicenow.Approved(req.record.SysID))
-		deleted, err := req.requester.API.DeleteUserWithResponse(t.Context())
+		deleted, err := req.requester.API.DeleteUserWithResponse(t.Context(), nil)
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, deleted.StatusCode(), "deleting the requester returned %s", apierr.Body(deleted.Body))
 

@@ -855,7 +855,6 @@ export const githubOrgSyncServiceFactory = ({
       // Group membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgId, Meter.SecretIdentities);
       usageMeteringService.emit(orgId, Meter.PamIdentities);
-      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     }
   };
 
@@ -1314,7 +1313,6 @@ export const githubOrgSyncServiceFactory = ({
       // Team membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgPermission.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(orgPermission.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(orgPermission.orgId, Meter.AgentVaultIdentities);
     }
 
     if (unmatchedGithubUsers.size) {

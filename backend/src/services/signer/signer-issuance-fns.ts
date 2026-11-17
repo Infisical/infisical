@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import * as x509 from "@peculiar/x509";
 
-import { TCertificates } from "@app/db/schemas";
+import { TCertificates, TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
@@ -9,7 +9,7 @@ import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external
 import { BadRequestError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -22,7 +22,21 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { CertKeySource, HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
+import { CertKeySource, DigiCertLifecycleMode, HsmKeyAlgorithm, SignerStatus } from "@app/services/signer/signer-enums";
+
+export const assertDigiCertCodeSigningKey = ({ isHsm, keyAlgorithm }: { isHsm: boolean; keyAlgorithm: string }) => {
+  if (!isHsm) {
+    throw new BadRequestError({
+      message:
+        "DigiCert code signing requires an HSM-backed key. Industry rules require code signing private keys to be generated and stored on certified hardware. Choose an HSM key source for this signer."
+    });
+  }
+  if (keyAlgorithm.startsWith("RSA_") && Number(keyAlgorithm.slice(4)) < 3072) {
+    throw new BadRequestError({
+      message: "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
+    });
+  }
+};
 
 type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
@@ -479,3 +493,48 @@ export const assertHsmKeyMatchesCertificate = async (
   }
   return { hsmKeyId: signed.keyId };
 };
+
+export const IN_FLIGHT_ATTEMPT_MS = 5 * 60_000;
+
+export type TDigiCertLifecycle = {
+  mode: DigiCertLifecycleMode;
+  previousOrderId: number;
+  previousCertificateId?: string;
+};
+
+export type TDigiCertExternalOrderRef = {
+  digicert?: {
+    orderId?: number;
+    certificateId?: number | null;
+    lastStatus?: string;
+    lastCheckedAt?: string;
+    lifecycle?: TDigiCertLifecycle;
+    revocationRequestId?: number;
+  };
+};
+
+type TJobWithOrderRef = Pick<TPkiSignerCertificateIssuanceJobs, "externalOrderRef">;
+
+export const getJobDigiCertRef = (job: TJobWithOrderRef) =>
+  (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
+
+export const getSignerJobDigiCertOrderId = (job: TJobWithOrderRef) => {
+  const digicert = getJobDigiCertRef(job);
+  if (digicert?.orderId) return digicert.orderId;
+  return digicert?.lifecycle?.mode === DigiCertLifecycleMode.Reissue ? digicert.lifecycle.previousOrderId : undefined;
+};
+
+export const isAttemptInFlight = (lastAttemptAt: Date | null | undefined, now: number) =>
+  Boolean(lastAttemptAt) && now - new Date(lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
+
+export const isDigiCertPlacementInFlight = (
+  job: Pick<TPkiSignerCertificateIssuanceJobs, "externalOrderRef" | "caType" | "lastAttemptAt">,
+  now: number
+) => job.caType === CaType.DIGICERT && !getJobDigiCertRef(job)?.orderId && isAttemptInFlight(job.lastAttemptAt, now);
+
+export const buildAttachedCertificatePatch = (lockedStatus: string | undefined, certificateId: string) => ({
+  certificateId,
+  status: lockedStatus === SignerStatus.Disabled ? SignerStatus.Disabled : SignerStatus.Active,
+  certificateFailureReason: null,
+  nextAutoRenewalAt: null
+});

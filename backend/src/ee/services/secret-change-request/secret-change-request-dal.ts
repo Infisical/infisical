@@ -37,7 +37,6 @@ export type TSecretChangeRequestListRow = TApprovalRequests &
     secretChangeId: string;
     environment: string;
     environmentName: string;
-    requestFolderPath: string;
     policyName: string | null;
     policyEnforcementLevel: string | null;
     policyConstraints: unknown;
@@ -364,7 +363,6 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
           db.ref("statusChangedByUserId").withSchema(TableName.SecretChangeRequests),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("name").withSchema(TableName.Environment).as("environmentName"),
-          db.ref("name").withSchema(TableName.SecretFolder).as("requestFolderPath"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("policyName"),
           db.ref("enforcementLevel").withSchema(TableName.ApprovalPolicies).as("policyEnforcementLevel"),
           db.ref("constraints").withSchema(TableName.ApprovalPolicies).as("policyConstraints"),
@@ -381,6 +379,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
 
       if (search) {
         const pattern = `%${sanitizeSqlLikeString(search)}%`;
+        const folderPathPattern = `%${sanitizeSqlLikeString(search.replace(/\/+$/, "") || "/")}%`;
         void baseQuery.where((qb) => {
           void qb
             .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
@@ -394,7 +393,39 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
             .orWhereILike("environmentName", pattern)
             .orWhereILike("environment", pattern)
             .orWhereILike("policySecretPath", pattern)
-            .orWhereILike("requestFolderPath", pattern)
+            .orWhereExists((folderPath) => {
+              void folderPath
+                .withRecursive("request_folder_ancestors", ["parentId", "path"], (ancestors) => {
+                  void ancestors
+                    .select(
+                      "folder.parentId",
+                      dbInstance.raw(`CASE WHEN ?? IS NULL THEN '' ELSE '/' || ?? END`, [
+                        "folder.parentId",
+                        "folder.name"
+                      ])
+                    )
+                    .from({ folder: TableName.SecretFolder })
+                    .whereRaw("?? = ??", ["folder.id", "inner.folderId"])
+                    .unionAll((parents) => {
+                      void parents
+                        .select(
+                          "parent.parentId",
+                          dbInstance.raw(`CASE WHEN ?? IS NULL THEN ?? ELSE '/' || ?? || ?? END`, [
+                            "parent.parentId",
+                            "request_folder_ancestors.path",
+                            "parent.name",
+                            "request_folder_ancestors.path"
+                          ])
+                        )
+                        .from({ parent: TableName.SecretFolder })
+                        .join("request_folder_ancestors", "parent.id", "request_folder_ancestors.parentId");
+                    });
+                })
+                .select(dbInstance.raw("1"))
+                .from("request_folder_ancestors")
+                .whereNull("parentId")
+                .whereRaw(`COALESCE(NULLIF(??, ''), '/') ILIKE ?`, ["path", folderPathPattern]);
+            })
             .orWhereExists(
               dbInstance(TableName.SecretApprovalRequestSecretV2)
                 .select(dbInstance.raw("1"))

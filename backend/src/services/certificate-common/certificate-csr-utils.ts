@@ -68,6 +68,14 @@ const toCanonicalSpki = (publicKey: x509.PublicKey) =>
     .createPublicKey({ key: Buffer.from(publicKey.rawData), format: "der", type: "spki" })
     .export({ format: "der", type: "spki" });
 
+export const isCsrKeyOfCertificate = (csr: x509.Pkcs10CertificateRequest, certificate: x509.X509Certificate) => {
+  try {
+    return toCanonicalSpki(csr.publicKey).equals(toCanonicalSpki(certificate.publicKey));
+  } catch {
+    return false;
+  }
+};
+
 // Renewal resubmits a stored CSR as "reuse the existing key pair", so it must be signed by, and carry
 // the public key of, the certificate it is stored against.
 export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x509.X509Certificate) => {
@@ -81,14 +89,7 @@ export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x
     });
   }
 
-  let isSameKey: boolean;
-  try {
-    isSameKey = toCanonicalSpki(csr.publicKey).equals(toCanonicalSpki(certificate.publicKey));
-  } catch {
-    isSameKey = false;
-  }
-
-  if (!isSameKey) {
+  if (!isCsrKeyOfCertificate(csr, certificate)) {
     throw new BadRequestError({
       message:
         "The certificate signing request was generated from a different key than the certificate. Supply the CSR the certificate was issued from, or one generated from the same private key."

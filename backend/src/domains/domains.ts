@@ -5,7 +5,7 @@ import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 
-import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
+import { AgentVaultEeModule } from "./agent-vault/agent-vault/ee/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
@@ -110,7 +110,6 @@ export const createDomains = async (deps: TDomainDeps) => {
   const { organizationsProjectsService } = organizationsProjects;
   const secrets = new SecretsModule({ organizationsProjectsService });
   const pam = new PamModule({ organizationsProjectsService });
-  const agentVault = new AgentVaultModule({ organizationsProjectsService });
   const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
@@ -123,16 +122,18 @@ export const createDomains = async (deps: TDomainDeps) => {
     licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
     organizationsProjectsService,
-    usageCounters: [
-      ...secrets.usageCounters,
-      ...pam.usageCounters,
-      ...agentVault.usageCounters,
-      ...certManager.usageCounters
-    ]
+    usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
   });
 
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
+
+  const agentVault = new AgentVaultEeModule({
+    keyStore: deps.keyStore,
+    licenseService: license.licenseService,
+    usageMeteringService: license.usageMeteringService,
+    organizationsProjectsService
+  });
 
   // Before KMS Core, which writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot
   // before anything is wrapped with its FIPS-format key.
@@ -149,5 +150,5 @@ export const createDomains = async (deps: TDomainDeps) => {
   });
   kmsCore.start(deps.cronJob);
 
-  return { license, licenseBilling, kmsCoreEe, kmsCore, organizationsProjects, certManager };
+  return { license, licenseBilling, kmsCoreEe, kmsCore, organizationsProjects, certManager, agentVault };
 };

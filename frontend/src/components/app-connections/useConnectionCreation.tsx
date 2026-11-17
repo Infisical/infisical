@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { ComponentProps, useRef, useState } from "react";
 
 import { ComboboxDialogCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
@@ -9,12 +9,13 @@ import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConne
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
-export const useConnectionCreation = (
+// Shared by the project and organization pickers; each supplies its permission check and form scope
+export const useConnectionCreationDialog = <TOption,>(
   app: AppConnection | undefined,
+  canCreate: boolean,
+  formProps: Pick<ComponentProps<typeof AppConnectionForm>, "projectId" | "projectType">,
   onCreated: (connection: TAppConnection) => void
-): ComboboxDialogCreationConfig<TAvailableAppConnection> | undefined => {
-  const { currentProject } = useProject();
-  const { permission } = useProjectPermission();
+): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const cancelRef = useRef<VoidFunction>(() => {});
@@ -36,14 +37,7 @@ export const useConnectionCreation = (
     requestDiscard();
   };
 
-  if (
-    !app ||
-    !permission.can(
-      ProjectPermissionAppConnectionActions.Create,
-      ProjectPermissionSub.AppConnections
-    )
-  )
-    return undefined;
+  if (!app || !canCreate) return undefined;
 
   const label = `Create ${APP_CONNECTION_MAP[app].name} Connection`;
   const attempt = attemptRef.current;
@@ -61,8 +55,7 @@ export const useConnectionCreation = (
         <AppConnectionForm
           app={app}
           layout="dialog"
-          projectId={currentProject.id}
-          projectType={currentProject.type}
+          {...formProps}
           onDirtyChange={setIsDirty}
           onPendingChange={setIsPending}
           onComplete={(connection) => {
@@ -84,4 +77,21 @@ export const useConnectionCreation = (
       </>
     )
   };
+};
+
+export const useConnectionCreation = (
+  app: AppConnection | undefined,
+  onCreated: (connection: TAppConnection) => void
+) => {
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  return useConnectionCreationDialog<TAvailableAppConnection>(
+    app,
+    permission.can(
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionSub.AppConnections
+    ),
+    { projectId: currentProject.id, projectType: currentProject.type },
+    onCreated
+  );
 };

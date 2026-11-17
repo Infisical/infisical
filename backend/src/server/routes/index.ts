@@ -241,6 +241,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { aiServiceFactory } from "@app/services/ai/ai-service";
 import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
 import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -567,6 +568,7 @@ import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-
 import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
 import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
 import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
+import { signerRevocationDALFactory } from "@app/services/signer/signer-revocation-dal";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -592,7 +594,6 @@ import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
@@ -1786,8 +1787,7 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL,
-    usageMeteringService
+    projectMembershipDAL
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -1900,6 +1900,7 @@ export const registerRoutes = async (
   const signerRequestDAL = signerRequestDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
   const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
+  const signerRevocationDAL = signerRevocationDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -2068,6 +2069,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
+    resourceMetadataDAL,
     membershipDAL,
     userDAL,
     orgDAL,
@@ -2104,7 +2106,6 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2207,6 +2208,7 @@ export const registerRoutes = async (
     permissionService,
     kmsDataKeyService,
     licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -4097,10 +4099,19 @@ export const registerRoutes = async (
     }) as TApprovalResourceRegistry[ApprovalPolicyType]
   };
 
+  const aiService = aiServiceFactory({
+    orgDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsDataKeyService
+  });
+
   const autoApprovalService = autoApprovalServiceFactory({
     approvalPolicyAutoApprovalDAL,
     appConnectionDAL,
     appConnectionService,
+    aiService,
     kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService
@@ -4259,6 +4270,7 @@ export const registerRoutes = async (
     permissionService,
     kmsDataKeyService,
     gatewayV2Service,
+    gatewayV2DAL,
     gatewayPoolService,
     userDAL,
     pamSessionExpirationService,
@@ -4570,16 +4582,20 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     cronJob,
     hsmConnectorService,
-    certificateDAL
+    certificateDAL,
+    certificateService,
+    projectDAL
   });
 
   const signerService = signerServiceFactory({
     signerDAL,
+    signerRevocationDAL,
     signingOperationDAL,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
+    certificateService,
     signerIssuanceService,
     internalCertificateAuthorityService,
     digicertFns: digicertCaFns,
@@ -4596,7 +4612,12 @@ export const registerRoutes = async (
     membershipRoleDAL,
     hsmConnectorService,
     licenseService,
-    orgDAL
+    orgDAL,
+    keyStore,
+    userGroupMembershipDAL,
+    notificationService,
+    userDAL,
+    auditLogService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -4882,6 +4903,8 @@ export const registerRoutes = async (
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,
@@ -4982,6 +5005,7 @@ export const registerRoutes = async (
     approvalPolicy: approvalPolicyService,
     delegatedApproval: delegatedApprovalService,
     delegatedApprovalCallback: delegatedApprovalCallbackService,
+    ai: aiService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });
@@ -5160,12 +5184,6 @@ export const registerRoutes = async (
       { prefix: "/api/v3" }
     );
     await server.register(registerV4Routes, { prefix: "/api/v4" });
-
-    // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-    // This route should NEVER BE ENABLED IN PRODUCTION!
-    if (getConfig().isBddNockApiEnabled) {
-      await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
-    }
   }
 
   server.addHook("onClose", async () => {

@@ -35,7 +35,15 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
@@ -46,7 +54,6 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
@@ -128,10 +135,19 @@ type Props = {
 export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { user } = useUser();
   const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // The picker lists the project's machine identities, which takes Read on them.
+  const canPickIdentity = permission.can(
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionSub.Identity
+  );
+  // The no-proxy notice reads the proxy list, so without Read on proxies it stays hidden.
+  const canReadProxies = permission.can(
+    ProjectPermissionAgentVaultProxyActions.Read,
+    ProjectPermissionSub.AgentVaultProxies
+  );
 
   const [platform, setPlatform] = useState<TPlatformTab>(() => SandboxPlatform.Modal);
   const [tab, setTab] = useState<TCreateSessionTab>(() =>
@@ -158,7 +174,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     { limit: 1 },
     // The dialog stays mounted on the sessions page, so it must not poll while closed. Its notice
     // links to the proxies page in a new tab, so check again on return.
-    { enabled: isOpen, refetchOnWindowFocus: "always" }
+    { enabled: isOpen && canReadProxies, refetchOnWindowFocus: "always" }
   );
   // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
   const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
@@ -200,13 +216,14 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, ttl }: TDashboardSessionInput) => {
+  const onCreateNowSubmit = async ({ label, metadata, ttl }: TDashboardSessionInput) => {
     if (!accessBundle) return;
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle.name,
         ttl,
-        label
+        label,
+        metadata
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);
@@ -290,7 +307,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           </FieldContent>
         </Field>
       )}
-      {!isCreateNow && isAdmin && (
+      {!isCreateNow && canPickIdentity && (
         <SessionMachineIdentityField
           identity={identity}
           onIdentityChange={setIdentity}
@@ -299,7 +316,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           hasEnvCredentials={!isOwnSandbox}
         />
       )}
-      {!isCreateNow && !isAdmin && (
+      {!isCreateNow && !canPickIdentity && (
         // Labeled like the picker admins see here, so it lines up with the bundle field beside it.
         <Field>
           <FieldLabel>Machine Identity</FieldLabel>

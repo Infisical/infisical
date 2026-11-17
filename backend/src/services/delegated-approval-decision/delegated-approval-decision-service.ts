@@ -86,7 +86,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
             ...(metadata.decided
               ? {
                   decision: metadata.decided.decision,
-                  decidedBy: metadata.decided.decidedBy ?? undefined,
+                  approvedBy: metadata.decided.approvedBy,
                   decidedAt: metadata.decided.decidedAt ?? undefined,
                   decisionNotes: metadata.decided.notes ?? undefined
                 }

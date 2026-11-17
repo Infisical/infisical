@@ -42,6 +42,7 @@ describe("createDomains", () => {
     // Assert
     expect(domains.license.usageDimensions().sort()).toEqual(
       Meter.all()
+        .filter((meter) => meter.source === "count")
         .map((meter) => meter.key)
         .sort()
     );

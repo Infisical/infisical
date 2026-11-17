@@ -75,7 +75,8 @@ Rules:
 - **License knows no product.** It sits on `organizationsProjectsService` and builds the two seat meters
   (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other meter comes in as a
   `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
-  `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
+  `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Metering events
+  (`recordMeteringEvents`) follow the same rule, from their meter's scope. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
 - **The instance license lives in `InstanceEntitlementsCache`** (in memory, per process), not in a service.
   `LicenseService.refreshInstanceEntitlements` is its only writer, called by the module's background sync and by
