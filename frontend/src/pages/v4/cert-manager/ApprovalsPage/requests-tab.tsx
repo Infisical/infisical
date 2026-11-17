@@ -154,6 +154,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
         }
       />
       <DataTable
+        filtered={requests.length > 0}
         label="Certificate approval requests"
         rows={rows.slice((page - 1) * pageSize, page * pageSize)}
         loading={isPending}

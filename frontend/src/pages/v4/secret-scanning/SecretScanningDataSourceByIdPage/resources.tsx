@@ -431,6 +431,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
         }
       />
       <DataTable
+        filtered={Boolean(debounced)}
         label={resource.pluralTitle}
         rows={rows}
         columns={columns}

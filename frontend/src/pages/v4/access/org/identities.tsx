@@ -409,6 +409,7 @@ export const OrgIdentitiesTab = () => {
           }
         />
         <DataTable
+          filtered={searching}
           label="Organization machine identities"
           rows={rows}
           columns={columns}

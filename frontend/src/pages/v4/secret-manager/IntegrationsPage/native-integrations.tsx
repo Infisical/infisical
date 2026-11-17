@@ -197,6 +197,7 @@ export const NativeIntegrationsTab = ({
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         media="bare"
         icon="alert-c"
@@ -335,6 +336,7 @@ export const NativeIntegrationsTab = ({
         }
       />
       <DataTable
+        filtered={isFiltered && integrations.length > 0}
         label="Native integrations"
         rows={filtered.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

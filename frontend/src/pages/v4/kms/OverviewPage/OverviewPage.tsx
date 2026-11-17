@@ -501,6 +501,7 @@ export const OverviewPage = () => {
           }
         />
         <DataTable
+          filtered={filtered}
           label={`Keys in ${projectName}`}
           rows={rows}
           columns={columns}

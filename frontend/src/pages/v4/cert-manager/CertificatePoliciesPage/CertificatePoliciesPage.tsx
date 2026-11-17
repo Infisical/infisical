@@ -85,6 +85,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
 
   const empty = error ? (
     <EmptyState
+      ghost={false}
       size="sm"
       icon="alert-c"
       title="Couldn't load certificate policies"

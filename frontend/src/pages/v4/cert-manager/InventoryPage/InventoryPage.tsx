@@ -669,6 +669,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
           }
         />
         <DataTable
+          filtered
           label="Certificates"
           rows={rows}
           loading={isPending}

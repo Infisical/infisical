@@ -311,6 +311,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
           }}
         />
         <DataTable
+          filtered={isFiltered}
           label="Access bundles"
           rows={bundles}
           columns={columns}

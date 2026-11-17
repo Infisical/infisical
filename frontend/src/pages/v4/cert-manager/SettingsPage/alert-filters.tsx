@@ -217,6 +217,7 @@ const MatchedCertificatesPreview = ({
         />
       ) : (
         <DataTable
+          ghost={false}
           label="Matched certificates"
           rows={showRows ? (preview.data?.certificates ?? []) : []}
           columns={previewColumns}

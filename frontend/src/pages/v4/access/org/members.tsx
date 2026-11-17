@@ -484,6 +484,7 @@ export const OrgMembersTab = () => {
         }
       />
       <DataTable
+        filtered={searching}
         label="Organization users"
         rows={list.pageRows}
         columns={columns}

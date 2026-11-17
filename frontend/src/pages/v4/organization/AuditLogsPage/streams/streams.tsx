@@ -226,6 +226,7 @@ export const AuditLogStreamsTab = () => {
         }
       />
       <DataTable
+        filtered={isFiltered && streams.length > 0}
         label="Audit log streams"
         rows={filtered.slice((current - 1) * pageSize, current * pageSize)}
         columns={columns}

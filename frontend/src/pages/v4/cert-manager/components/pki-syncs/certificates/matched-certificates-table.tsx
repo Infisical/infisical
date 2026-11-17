@@ -87,6 +87,7 @@ export const PkiSyncMatchedCertificatesTable = ({
   status?: ReactNode;
 }) => (
   <DataTable
+    ghost={false}
     label="Matched certificates"
     rows={rows}
     columns={columns}

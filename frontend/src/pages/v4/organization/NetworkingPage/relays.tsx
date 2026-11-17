@@ -271,6 +271,7 @@ export const RelaysPanel = ({
         }
       />
       <DataTable
+        filtered={relays.length > 0}
         label="Relays"
         rows={list.pageRows}
         loading={isPending}

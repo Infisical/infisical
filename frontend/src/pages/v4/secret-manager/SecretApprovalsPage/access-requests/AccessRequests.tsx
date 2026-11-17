@@ -409,6 +409,7 @@ export const AccessRequests = ({
         }
       />
       <DataTable
+        filtered={isFiltered}
         label="Access requests"
         rows={sorted.slice((page - 1) * perPage, page * perPage)}
         columns={columns}

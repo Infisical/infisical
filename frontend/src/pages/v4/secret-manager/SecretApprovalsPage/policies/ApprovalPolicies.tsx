@@ -415,6 +415,7 @@ export const ApprovalPolicies = ({
         </Alert>
       )}
       <DataTable
+        filtered={searching && policies.length > 0}
         label="Approval policies"
         rows={list.pageRows}
         columns={columns}
@@ -449,6 +450,7 @@ export const ApprovalPolicies = ({
         empty={
           (isError && !policies.length && (
             <EmptyState
+              ghost={false}
               size="sm"
               icon="alert"
               title="Couldn't load approval policies"

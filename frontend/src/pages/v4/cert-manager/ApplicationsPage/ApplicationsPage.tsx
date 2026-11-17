@@ -123,6 +123,7 @@ const Page = () => {
   if (error)
     empty = (
       <EmptyState
+        ghost={false}
         size="sm"
         icon="alert-c"
         title="Couldn't load applications"
@@ -172,6 +173,7 @@ const Page = () => {
           }}
         />
         <DataTable
+          filtered={searching}
           label="Applications"
           rows={rows}
           columns={columns}
