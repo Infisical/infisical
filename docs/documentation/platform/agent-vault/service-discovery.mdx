@@ -135,13 +135,13 @@ The skill tells the agent to request the list first, and to ignore the skill if 
 
 ### Read the built-in skill
 
-To read the built-in skill, call the [Get built-in skill](/api-reference/endpoints/agent-vault-skills/get-builtin) endpoint. After `infisical agent-vault run` installs the skill, its files are also on the agent's host, in the [folder where the CLI installs skills](/documentation/platform/agent-vault/skills#where-the-cli-installs-skills).
+To read the built-in skill, call the [Get built-in skill](/api-reference/endpoints/agent-vault-skills/get-builtin) endpoint. After `infisical agent-vault run` installs the skill, its files are also on the agent's host, in the [folder where the CLI installs skills](/documentation/platform/agent-vault/skills#skill-folders).
 
 Infisical provides the built-in skill, so you can't edit it or delete it. To leave it out, [turn it off](#turn-off-the-built-in-skill).
 
 ### How agents get the built-in skill
 
-- `infisical agent-vault run` installs the built-in skill along with the session's [other skills](/documentation/platform/agent-vault/skills#how-agents-get-skills)
+- `infisical agent-vault run` installs the built-in skill along with the session's [other skills](/documentation/platform/agent-vault/skills#skill-installation)
 - If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and [set `INFISICAL_AGENT_VAULT_URL`](#how-an-agent-gets-the-list)
 
 ### Turn off the built-in skill

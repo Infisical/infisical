@@ -5,15 +5,11 @@ description: "Instructions you keep in an Agent Vault project and install for ag
 
 A skill is a folder of instructions that an AI agent loads when a task needs it, such as how your team reviews pull requests or how to cut a release. Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and other agents that support it.
 
-An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills unless your own code installs them, as the [E2B guide](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox) does.
-
-<Info>
-  [Members of an Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill in the access bundles granted to them.
-</Info>
+An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`.
 
 ## Prerequisites
 
-- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), to add, change, and delete skills, and to add them to access bundles
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project, to add, change, and delete skills, and to add them to access bundles
 - The [Infisical CLI](/cli/install) on each host where you start agents
 
 ## Skill format
@@ -35,27 +31,35 @@ description: Reviews a pull request against the team checklist. Use when asked t
 - `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens, not starting or ending with a hyphen (you can't use `infisical-agent-vault`, the name of Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill))
 - `description`: the text an agent reads to decide when to use the skill (up to 1,024 characters)
 
-The folder can also hold other files that the instructions refer to, such as scripts, templates, or reference documents. Each skill can hold:
-
-- Up to 50 files
-- Up to 256 KB per file
-- Up to 1 MB in total
-
-If you self-host Infisical behind your own proxy, allow request bodies of at least 2 MB.
-
-Each Agent Vault project can have up to 250 skills.
+The folder can also hold other files that the instructions refer to, such as scripts, templates, or reference documents.
 
 <Warning>
   Don't put API keys, tokens, or other secrets in a skill. Anyone with a session token can download the session's skills, and the CLI saves them as plain files on each agent's host. To let an agent use a credential, add the credential to a [service](/documentation/platform/agent-vault/services) instead.
 </Warning>
 
-### Scripts in a skill
+### Scripts
 
-If you push a skill with the CLI, its scripts stay executable, even after you edit the skill or upload a new version in Infisical. A zipped folder that you upload also keeps its executable files. To make a file executable in the editor, right-click it or select its three-dot button, then select **Make Executable**.
+An agent can run a script directly only if the script is executable. Infisical keeps a script executable in these cases:
 
-From Windows, push from WSL or CI, or have `SKILL.md` tell the agent to run each script with an interpreter, such as `bash scripts/check.sh`.
+- If you push the skill with the CLI, even after you edit the skill or upload a new version in Infisical
+- If you upload a zipped folder in which the script is executable
+- If you make the script executable in the editor: right-click the file or select its three-dot button, then select **Make Executable**
 
-## Add a skill
+Windows doesn't mark files as executable, so if you work on Windows, push from WSL or CI instead. Otherwise, have `SKILL.md` tell the agent to run each script with an interpreter, such as `bash scripts/check.sh`.
+
+### Limits
+
+- Up to 50 files in a skill
+- Up to 256 KB for each file
+- Up to 1 MB for all the files in a skill
+- Up to 250 skills in an Agent Vault project
+- Up to 25 skills in an access bundle
+
+If you self-host Infisical behind a reverse proxy or load balancer, set its request body limit to at least 2 MB so that skill uploads go through.
+
+## Manage skills
+
+### Add a skill
 
 You can push a skill folder with the CLI, or create the skill in Infisical.
 
@@ -105,100 +109,6 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
     </Steps>
   </Tab>
 </Tabs>
-
-## Add a skill to an access bundle
-
-To install skills for agents, add them to an access bundle:
-
-<Steps>
-  <Step>
-    In your Agent Vault project, go to **Access Bundles** and select the access bundle.
-  </Step>
-  <Step>
-    In the **Skills** section, select **Add Skills**.
-  </Step>
-  <Step>
-    Pick one or more skills from the list, then select the **Add** button. You can also create a skill from here with **Create New Skill** at the end of the list, and it's added to the access bundle.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/access-bundle-add-skills.png" alt="The Add Skills dialog of the code-review access bundle, with a list of the incident-triage and release-notes-writer skills and Create New Skill at the end" />
-    </Frame>
-  </Step>
-</Steps>
-
-An access bundle can have up to 25 skills. To add skills through the API, call the [Add skills to access bundle](/api-reference/endpoints/agent-vault-access-bundles/add-skills) endpoint.
-
-To remove a skill from an access bundle, open its actions menu in the **Skills** section and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
-
-## How agents get skills
-
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the latest version of each skill in the session's access bundle through the proxy, and installs the skills before the agent starts. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill):
-
-- To leave out only the built-in skill, pass [`--no-agent-vault-skill`](/cli/reference#agent-vault-run--flag-no-agent-vault-skill)
-- To start the agent without any skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills)
-
-If you publish a new version or add a skill to the access bundle, restart the agent to pick up the change. Starting another agent on the same host also updates the skills there, including for agents already running.
-
-To install a session's skills without the CLI, such as in a sandbox you create from code, get them from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint with the session's token. Also [set `INFISICAL_AGENT_VAULT_URL`](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) in the agent's environment, because without it, the agent ignores the built-in skill.
-
-### Where the CLI gets skills from
-
-The proxy asks Infisical for the skills with the session's token, so the agent's host only needs to reach the proxy.
-
-If the proxy runs an older version of the Infisical CLI that can't pass skills on, the CLI downloads the skills from Infisical directly. In that case:
-
-- The agent's host needs to reach your Infisical instance
-- If you start the agent with a session token and you use EU Cloud or self-host Infisical, pass your instance's URL to the CLI with [`--domain`](/cli/reference#global-flags--flag-domain)
-
-If the agent's host can't reach Infisical, the agent starts without skills, and the CLI warns you to update the Infisical CLI that runs the proxy.
-
-### Where the CLI installs skills
-
-The CLI installs each skill in `~/.agents/skills/<skill-name>`, where Codex, OpenCode, and OpenClaw look for skills.
-
-The CLI also links each skill into the `skills` folder of Claude Code and of Hermes, if that agent's folder exists on the host. If the agent's command is `claude`, the CLI links the skills for Claude Code even if its folder doesn't exist yet:
-
-- Claude Code: `$CLAUDE_CONFIG_DIR`, or `~/.claude` if `CLAUDE_CONFIG_DIR` isn't set
-- Hermes: `$HERMES_HOME`, or `~/.hermes` if `HERMES_HOME` isn't set
-
-If the CLI can't create links on the host, such as on Windows without permission to create symbolic links, it copies the skill's folder instead.
-
-To install the skills in a different folder, pass [`--skills-dir`](/cli/reference#agent-vault-run--flag-skills-dir) with the folder's path. The CLI then installs the skills only in that folder.
-
-### Hermes and OpenClaw profiles
-
-In some setups, Hermes and OpenClaw don't read the folders that the CLI installs skills in:
-
-- If you run Hermes with a profile, or on Windows, Hermes doesn't read `~/.hermes/skills`, so add `~/.agents/skills` to `skills.external_dirs` in the `config.yaml` that Hermes uses
-- If you run OpenClaw with `OPENCLAW_PROFILE` or `OPENCLAW_STATE_DIR` set, OpenClaw doesn't read `~/.agents/skills`, so pass `--skills-dir` with the `skills` folder in OpenClaw's state folder
-
-For Hermes, the setting in `config.yaml` looks like this:
-
-```yaml
-skills:
-  external_dirs:
-    - ~/.agents/skills
-```
-
-### Installed skills stay on the host
-
-The CLI doesn't delete the skills it installs when the agent exits, so later runs of any agent on the host can still use them.
-
-<Note>
-  The CLI only replaces skill folders it installed. If a folder with the same name as a skill in the access bundle already exists and the CLI didn't install it, the CLI leaves it alone and warns you.
-</Note>
-
-### Remove installed skills
-
-If you remove a skill from an access bundle, delete it, or rename it, the CLI doesn't delete the copies it already installed. On each host that ran an agent with the skill, delete the skill's folder from `~/.agents/skills`, or from the folder you passed to `--skills-dir`. Also delete the skill's link or copy from the Claude Code and Hermes `skills` folders, if the CLI created one there.
-
-If you renamed the skill, the installed folder has the skill's old name.
-
-### If an agent starts without skills
-
-The CLI always starts the agent, even if it can't install the skills. If it can't download or install them, it prints why the agent started without them.
-
-## Manage skills
 
 ### View a skill
 
@@ -315,8 +225,82 @@ To delete a skill and every version of it:
 
 Infisical removes the skill from every access bundle. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
 
+## Access bundles
+
+To install skills for agents, add them to an access bundle.
+
+### Add a skill to an access bundle
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Bundles** and select the access bundle.
+  </Step>
+  <Step>
+    In the **Skills** section, select **Add Skills**.
+  </Step>
+  <Step>
+    Pick one or more skills from the list, then select **Add Skill**, or **Add 2 Skills** if you picked two. To create a skill instead, select **Create New Skill** at the end of the list. Infisical adds the new skill to the access bundle when you create it.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-add-skills.png" alt="The Add Skills dialog of the code-review access bundle, with a list of the incident-triage and release-notes-writer skills and Create New Skill at the end" />
+    </Frame>
+  </Step>
+</Steps>
+
+To add skills through the API, call the [Add skills to access bundle](/api-reference/endpoints/agent-vault-access-bundles/add-skills) endpoint.
+
+### Remove a skill from an access bundle
+
+In the access bundle's **Skills** section, open the skill's actions menu and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
+
+## Skill installation
+
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the latest version of each skill in the session's access bundle through the proxy, and installs the skills before the agent starts. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill):
+
+- To leave out only the built-in skill, pass [`--no-agent-vault-skill`](/cli/reference#agent-vault-run--flag-no-agent-vault-skill)
+- To start the agent without any skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills)
+
+<Note>
+  If the CLI can't download or install the skills, it still starts the agent and prints the reason.
+</Note>
+
+If you publish a new version or add a skill to the access bundle, restart the agent to pick up the change. If you start another agent on the same host, the CLI also updates the skills there, including for agents that are already running.
+
+### Skill folders
+
+The CLI installs each skill in `~/.agents/skills/<skill-name>`, where Codex, OpenCode, and OpenClaw look for skills.
+
+The CLI also links each skill into the `skills` folder of these agents, if the agent's folder exists on the host:
+
+- Claude Code: `$CLAUDE_CONFIG_DIR`, or `~/.claude` if `CLAUDE_CONFIG_DIR` isn't set
+- Hermes: `$HERMES_HOME`, or `~/.hermes` if `HERMES_HOME` isn't set
+
+If the agent's command is `claude`, the CLI links the skills for Claude Code even if the Claude Code folder doesn't exist yet.
+
+If the CLI can't create links on the host, such as on Windows without permission to create symbolic links, it copies the skill's folder instead.
+
+To install the skills in a different folder, pass [`--skills-dir`](/cli/reference#agent-vault-run--flag-skills-dir) with the folder's path. The CLI then installs the skills only in that folder.
+
 ## Audit trail
 
-Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, adds a skill to an access bundle or removes it, or opens a version of a skill. When the CLI gets a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got. If the CLI got the skills through the proxy, the event shows the proxy's IP address, not the agent host's.
+Infisical writes an audit event when someone:
+
+- Creates, edits, renames, rolls back, or deletes a skill
+- Adds a skill to an access bundle or removes it from one
+- Opens a version of a skill
+
+When the CLI gets a session's skills, Infisical writes one event for the session that lists the version and SHA-256 checksum of each skill, so you can see which version each agent got. If the CLI got the skills through the proxy, the event shows the proxy's IP address, not the IP address of the agent's host.
 
 To review these events, open **Audit Logs** in your Agent Vault project, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+
+## Limitations
+
+- **Installed skills stay on the host:** The CLI doesn't delete the skills it installs, so agents on the host can keep using a skill after the agent exits, or after you remove the skill from the access bundle, delete it, or rename it (see [Remove installed skills](#remove-installed-skills))
+- **Folders the CLI didn't install:** If a folder with the same name as a skill already exists and the CLI didn't install it, the CLI leaves the folder alone and warns you
+- **Proxies on an older Infisical CLI:** If the proxy can't pass skills on, the CLI downloads them from Infisical directly, so the agent's host needs to reach your Infisical instance until you update the CLI that runs the proxy (if you use EU Cloud or self-host Infisical, also pass your instance's URL with [`--domain`](/cli/reference#global-flags--flag-domain) when you start the agent with a session token)
+
+### Remove installed skills
+
+On each host that ran an agent with the skill, delete the skill's folder from `~/.agents/skills`, or from the folder you passed to `--skills-dir`. Also delete the skill's link or copy from the Claude Code and Hermes `skills` folders, if the CLI created one there.
+
+If you renamed the skill, the installed folder has the skill's old name.
