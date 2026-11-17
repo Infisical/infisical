@@ -1590,7 +1590,7 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const decorated = await $decorateRequest({ ...request, steps }, actor);
-    return { request: decorated, canReview };
+    return { request: { ...decorated, canReview } };
   };
 
   const approveRequest = async (

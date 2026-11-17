@@ -211,7 +211,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(expected);
+    expect(result.request.canReview).toBe(expected);
   });
 
   it.each([
@@ -225,7 +225,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(expected);
+    expect(result.request.canReview).toBe(expected);
   });
 
   it("lets an approver whose regained role a lagging replica hasn't seen review, as approving would", async () => {
@@ -235,7 +235,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(true);
+    expect(result.request.canReview).toBe(true);
   });
 
   it("lets a group approver whose group link a lagging replica hasn't seen review, as approving would", async () => {
@@ -247,7 +247,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(true);
+    expect(result.request.canReview).toBe(true);
   });
 
   it("doesn't let an approver named only on a later step review while an earlier step is in progress", async () => {
@@ -260,7 +260,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(false);
+    expect(result.request.canReview).toBe(false);
     for (const decide of [ctx.service.approveRequest, ctx.service.rejectRequest]) {
       // eslint-disable-next-line no-await-in-loop
       await expect(decide("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)).rejects.toThrow(
@@ -276,7 +276,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(false);
+    expect(result.request.canReview).toBe(false);
   });
 
   it("doesn't let an approver review a request that's no longer pending", async () => {
@@ -286,7 +286,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(false);
+    expect(result.request.canReview).toBe(false);
   });
 
   it("doesn't let an approver review a pending request that has expired before the sweep closes it", async () => {
@@ -296,7 +296,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(false);
+    expect(result.request.canReview).toBe(false);
   });
 
   it("lets a saved approver review a request type with no current access check", async () => {
@@ -304,6 +304,6 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
-    expect(result.canReview).toBe(true);
+    expect(result.request.canReview).toBe(true);
   });
 });

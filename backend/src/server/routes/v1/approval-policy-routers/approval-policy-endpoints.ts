@@ -603,21 +603,19 @@ export const registerApprovalPolicyEndpoints = ({
       }),
       response: {
         200: z.object({
-          request: requestResponseSchema,
-          canReview: z
-            .boolean()
-            .describe(
-              "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. It doesn't say whether they've already acted on this step."
-            )
+          request: requestResponseSchema.extend({
+            canReview: z
+              .boolean()
+              .describe(
+                "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. It doesn't say whether they've already acted on this step."
+              )
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { request, canReview } = await server.services.approvalPolicy.getRequestById(
-        req.params.requestId,
-        req.permission
-      );
+      const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -636,7 +634,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      return { request, canReview };
+      return { request };
     }
   });
 

@@ -422,7 +422,7 @@ describe("Certificate revocation lifecycle per actor", () => {
         const detail = await getRevocationRequest({ requestId: toApprove.requestId, authToken: token }).raw();
         check(cell("3 GET detail status"), actor.sees ? 200 : 403, detail.statusCode);
         if (detail.statusCode === 200) {
-          check(cell("3 GET detail canReview"), actor.named, detail.json().canReview);
+          check(cell("3 GET detail canReview"), actor.named, detail.json().request.canReview);
         }
 
         // Stage 4: decide.
