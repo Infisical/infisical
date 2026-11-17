@@ -27,6 +27,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
@@ -158,10 +159,11 @@ export const assertClonedRepositoryWithinSizeLimit = async (resourceName: string
 };
 
 export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository): Promise<void> => {
-  // Validate that the constructed URL is structurally valid.
-  // This prevents malformed or tampered components from producing unexpected git behavior.
-  // eslint-disable-next-line no-new
-  new URL(cloneUrl);
+  // The userinfo in the clone URL is interpolated from provider-reported data, and a '/', '@' or ':'
+  // in it shifts the authority so git dials a host the upstream SSRF guard never validated. Re-check
+  // the credential-free effective host — the value git actually connects to — before cloning.
+  const parsedUrl = new URL(cloneUrl);
+  await blockLocalAndPrivateIpAddresses(`${parsedUrl.protocol}//${parsedUrl.host}`);
 
   await execFileBounded("git", [...getGitThreadLimitArgs(), "clone", cloneUrl, repoPath, "--bare"], {
     phase: SecretScanningExecPhase.Clone,
