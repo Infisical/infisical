@@ -607,7 +607,7 @@ export const registerApprovalPolicyEndpoints = ({
           canReview: z
             .boolean()
             .describe(
-              "Whether the caller can approve or reject this request now, checked against their current access."
+              "Whether the caller is an approver of the step in progress, directly or through a group, and still holds the access approving or rejecting needs. It doesn't say whether they've already acted on this step."
             )
         })
       }

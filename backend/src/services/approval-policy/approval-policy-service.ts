@@ -1482,17 +1482,18 @@ export const approvalPolicyServiceFactory = ({
 
     const isRequester = $isRequester(request, actor);
 
-    // Check if user is an eligible approver for any step
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    // Read from the primary, as approve and reject do, so canReview never hides a decision they would accept.
+    const primaryDb = approvalPolicyDAL.primaryNode();
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId, primaryDb);
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
-
-    const isSnapshotApprover = steps.some((step) =>
-      step.approvers.some(
+    const namesActor = (approvers: (typeof steps)[number]["approvers"]) =>
+      approvers.some(
         (approver) =>
           (approver.type === ApproverType.User && approver.id === actor.id) ||
           (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      )
-    );
+      );
+
+    const isSnapshotApprover = steps.some((step) => namesActor(step.approvers));
 
     const checkLiveApprover = resources[request.type as ApprovalPolicyType]?.isLiveApprover;
     const checkScopeRead = resources[request.type as ApprovalPolicyType]?.canReadScope;
@@ -1544,10 +1545,24 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
+    // The saved approver list outlives a removal or demotion, so canReview runs the same checks as approve and reject
+    // for the step in progress. It asks as a rejection: approving can also depend on the resource itself (self-approval,
+    // a moved PAM account), which the approve call reports.
+    const currentStep = steps.find((step) => step.stepNumber === request.currentStep);
+    let canReview =
+      request.status === ApprovalRequestStatus.Pending && Boolean(currentStep && namesActor(currentStep.approvers));
+    const assertCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
+    if (canReview && assertCanReview) {
+      try {
+        await assertCanReview({ request, decision: ApprovalRequestApprovalDecision.Rejected, actor, userGroupIds });
+      } catch (error) {
+        if (!(error instanceof ForbiddenRequestError || error instanceof BadRequestError)) throw error;
+        canReview = false;
+      }
+    }
+
     const decorated = await $decorateRequest({ ...request, steps }, actor);
-    // The request's saved approver list outlives a removal or demotion, so the page needs the live answer to decide
-    // whether to offer approve and reject.
-    return { request: decorated, canReview: isApprover };
+    return { request: decorated, canReview };
   };
 
   const approveRequest = async (
