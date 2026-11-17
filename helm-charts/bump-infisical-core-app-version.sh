@@ -4,10 +4,10 @@
 #
 # Usage: ./bump-infisical-core-app-version.sh v0.167.10
 #
-# The chart version must end up ahead of main's, as ct lint requires of every chart PR, and
-# a version range like ~1.12 must never pick up a breaking Infisical upgrade. So the chart
-# gets a minor bump when any release between main's appVersion and the new one has breaking
-# changes in upgrade-impact/data/releases/, or has no data there, and a patch bump otherwise.
+# The chart version must end up ahead of main's, as ct lint requires of every chart PR. It
+# follows Infisical's own versioning from main's appVersion to the new release: a new major
+# bumps the chart's major, a new minor bumps its minor, and a patch release bumps its patch.
+# Infisical has no other signal for breaking changes, so the chart cannot judge them either.
 # A version already at or above that bump (an open bump PR, or a hand-made bump) is kept and
 # the change joins its CHANGELOG section. Every version merged to main is published, so none
 # is skipped. The breaking changes of the releases this run adds are appended to the
@@ -63,25 +63,17 @@ if ! is_newer "${TAG#v}" "${CURRENT_APP_VERSION#v}"; then
   exit 0
 fi
 
-BUMP=patch
-for v in $(releases_between "$BASE_APP_VERSION" "$TAG"); do
-  DATA_FILE="$IMPACT_DIR/$v.yaml"
-  if [ ! -f "$DATA_FILE" ]; then
-    echo "$v has no upgrade impact data, so it counts as breaking."
-    BUMP=minor
-    continue
-  fi
-  BREAKING_COUNT="$(yq '.breakingChanges | length' "$DATA_FILE")"
-  if [ "$BREAKING_COUNT" != "0" ]; then
-    echo "$v has breaking changes."
-    BUMP=minor
-  fi
-done
-
+IFS=. read -r BASE_APP_MAJOR BASE_APP_MINOR _ <<< "${BASE_APP_VERSION#v}"
+IFS=. read -r TAG_MAJOR TAG_MINOR _ <<< "${TAG#v}"
 IFS=. read -r MAJOR MINOR PATCH <<< "$BASE_CHART_VERSION"
-if [ "$BUMP" = minor ]; then
+if [ "$TAG_MAJOR" != "$BASE_APP_MAJOR" ]; then
+  BUMP=major
+  TARGET_CHART_VERSION="$((MAJOR + 1)).0.0"
+elif [ "$TAG_MINOR" != "$BASE_APP_MINOR" ]; then
+  BUMP=minor
   TARGET_CHART_VERSION="$MAJOR.$((MINOR + 1)).0"
 else
+  BUMP=patch
   TARGET_CHART_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
 fi
 
@@ -93,7 +85,7 @@ fi
 
 TOP_HEADING="$(grep -m 1 '^## ' "$CHANGELOG_FILE")"
 
-# A patch bump this branch already made becomes the minor bump, keeping its section.
+# A smaller bump this branch already made becomes the larger one, keeping its section.
 if [ "$NEW_CHART_VERSION" != "$CHART_VERSION" ] && is_newer "$CHART_VERSION" "$BASE_CHART_VERSION" \
   && [ "$TOP_HEADING" = "## $CHART_VERSION" ]; then
   awk -v from="## $CHART_VERSION" -v to="## $NEW_CHART_VERSION" \

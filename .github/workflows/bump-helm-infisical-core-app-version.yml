@@ -94,7 +94,7 @@ jobs:
         run: npm test
         working-directory: upgrade-impact
 
-      # The chart version depends on this data, so the chart is never bumped without it.
+      # The chart's upgrade notes come from this data, so the chart is never bumped without it.
       - name: Generate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
@@ -215,14 +215,14 @@ jobs:
               SUMMARY="$(yq '.summary' "$DATA_FILE" | tr '\n' ' ')"
               echo "- [\`${v}\`](${BLOB_URL}/${DATA_FILE}): impact \`${IMPACT}\`, breaking changes: ${BREAKING}. ${SUMMARY}"
             else
-              echo "- \`${v}\`: no upgrade impact data, so it counts as breaking. To add it, run this workflow for \`${v}\`."
+              echo "- \`${v}\`: no upgrade impact data. To add it, run this workflow for \`${v}\`."
             fi
           done)"
 
           if [ "$CHART_VERSION" = "$MAIN_CHART_VERSION" ]; then
             CHART_LINE="This adds upgrade impact data only. The chart already defaults to \`${TAG_NAME}\`, so it is unchanged."
           else
-            CHART_LINE="Merging moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. The chart gets a minor bump when any release below has breaking changes or no data, and a patch bump otherwise, so a \`~\` range never picks up a breaking upgrade."
+            CHART_LINE="Merging moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. The chart version follows Infisical's: a new Infisical minor bumps the chart's minor, and a patch release bumps its patch."
           fi
 
           cat > "$RUNNER_TEMP/pr-body.md" <<EOF
@@ -233,7 +233,6 @@ jobs:
           Before merging:
           - Review each release's generated YAML for self-hosted upgrade accuracy.
           - Review the upgrade notes generated from those breaking changes in the chart \`${CHART_VERSION}\` CHANGELOG section.
-          - If review adds or removes a breaking change, check the chart version still follows the rule above.
 
           ### Releases in this PR
 
