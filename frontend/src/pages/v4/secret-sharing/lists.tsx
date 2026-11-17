@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { SecretSharingAccessType, type TSharedSecret } from "@app/hooks/api/secretSharing/types";
 
 import { failed, toast } from "../access/toast";
+import { NoExpiry } from "../components/no-expiry";
 import { useV4Adapter } from "../data/adapters";
 import { secretRequestLink, sharedSecretLink, writeLink } from "./links";
 
@@ -250,7 +251,7 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
       id: "expires",
       header: "Expires",
       width: 176,
-      render: (row) => (row.expiresAt ? formatDate(row.expiresAt) : muted("Never"))
+      render: (row) => (row.expiresAt ? formatDate(row.expiresAt) : <NoExpiry />)
     },
     { id: "status", header: "Status", width: 136, render: requestStatus }
   ];
