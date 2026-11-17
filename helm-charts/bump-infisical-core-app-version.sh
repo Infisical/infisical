@@ -69,7 +69,10 @@ for v in $(releases_between "$BASE_APP_VERSION" "$TAG"); do
   if [ ! -f "$DATA_FILE" ]; then
     echo "$v has no upgrade impact data, so it counts as breaking."
     BUMP=minor
-  elif [ "$(yq '.breakingChanges | length' "$DATA_FILE")" != "0" ]; then
+    continue
+  fi
+  BREAKING_COUNT="$(yq '.breakingChanges | length' "$DATA_FILE")"
+  if [ "$BREAKING_COUNT" != "0" ]; then
     echo "$v has breaking changes."
     BUMP=minor
   fi
