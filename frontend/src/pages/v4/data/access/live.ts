@@ -104,6 +104,7 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api/identityProjectAdditionalPrivilege/mutation";
 import {
+  identitiyProjectPrivilegeKeys,
   useGetIdentityProjectPrivilegeDetails,
   useListIdentityProjectPrivileges
 } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
@@ -379,7 +380,20 @@ export const accessLive: AccessAdapter = {
   useProjectUserPrivileges: useListProjectUserPrivileges,
   useProjectUserPrivilege: useGetProjectUserPrivilegeDetails,
   useCreateProjectUserPrivilege: useCreateProjectUserAdditionalPrivilege,
-  useUpdateProjectUserPrivilege: useUpdateProjectUserAdditionalPrivilege,
+  useUpdateProjectUserPrivilege: () => {
+    const queryClient = useQueryClient();
+    const update = useUpdateProjectUserAdditionalPrivilege();
+    return {
+      ...update,
+      mutateAsync: async (dto) => {
+        const result = await update.mutateAsync(dto);
+        await queryClient.invalidateQueries({
+          queryKey: projectUserPrivilegeKeys.details(dto.privilegeId)
+        });
+        return result;
+      }
+    };
+  },
   useDeleteProjectUserPrivilege: useDeleteProjectUserAdditionalPrivilege,
   useRevokeProjectUserPrivilegeRequest: () => {
     const queryClient = useQueryClient();
@@ -398,7 +412,24 @@ export const accessLive: AccessAdapter = {
   useIdentityProjectPrivileges: useListIdentityProjectPrivileges,
   useIdentityProjectPrivilege: useGetIdentityProjectPrivilegeDetails,
   useCreateIdentityProjectPrivilege: useCreateIdentityProjectAdditionalPrivilege,
-  useUpdateIdentityProjectPrivilege: useUpdateIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectPrivilege: () => {
+    const queryClient = useQueryClient();
+    const update = useUpdateIdentityProjectAdditionalPrivilege();
+    return {
+      ...update,
+      mutateAsync: async (dto) => {
+        const result = await update.mutateAsync(dto);
+        await queryClient.invalidateQueries({
+          queryKey: identitiyProjectPrivilegeKeys.details({
+            projectId: dto.projectId,
+            identityId: dto.identityId,
+            privilegeId: dto.privilegeId
+          })
+        });
+        return result;
+      }
+    };
+  },
   useDeleteIdentityProjectPrivilege: useDeleteIdentityProjectAdditionalPrivilege,
 
   useProjectIdentities: useListProjectIdentityMemberships,

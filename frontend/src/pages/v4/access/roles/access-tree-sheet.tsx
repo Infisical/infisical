@@ -70,7 +70,9 @@ export const AccessTreeSheet = ({
   const ability = useMemo(
     () =>
       evaluatePermissionsAbility(
-        permissions as RawRuleOf<MongoAbility<ProjectPermissionSet, MongoQuery>>[]
+        [...permissions].sort(
+          (a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted))
+        ) as RawRuleOf<MongoAbility<ProjectPermissionSet, MongoQuery>>[]
       ),
     [permissions]
   );

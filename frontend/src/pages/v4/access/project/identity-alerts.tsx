@@ -149,6 +149,8 @@ const AlertSheet = ({
     OrgPermissionSubjects.Member
   );
   const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: canReadMembers });
+  const projectUsers = useV4Adapter("access").useProjectUsers(projectId, true);
+  const projectUserIds = new Set(projectUsers.data?.map((membership) => membership.user.id));
   const firstFree = EVENT_TYPES.find((event) => !used.includes(event)) ?? EVENT_TYPES[0];
   const [initial] = useState((): TDraft => ({
     eventType: (alert?.eventType as AlertEventType) ?? firstFree,
@@ -336,7 +338,11 @@ const AlertSheet = ({
                 onErrorsChange={setChannelErrors}
                 projectId={projectId}
                 alertId={alert?.id}
-                members={toMemberEmails(orgUsers.data)}
+                members={toMemberEmails(
+                  projectUsers.data &&
+                    orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
+                )}
+                allowEmailAddresses={false}
                 hasEnterprise
                 resource={{
                   resourceType: AlertResourceType.IdentityAuthentication,
@@ -538,7 +544,7 @@ const IdentityAlertMenu = ({
         open={Boolean(deleting)}
         onOpenChange={(next) => !next && setDeleting(undefined)}
       >
-        <AlertDialogContent tone="danger" confirmText="delete">
+        <AlertDialogContent tone="danger" confirmText="delete" pending={deleteAlert.isPending}>
           <AlertDialogHeader>
             <AlertDialogTitle>{`Remove ${deleting?.name ?? "alert"}?`}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -549,7 +555,8 @@ const IdentityAlertMenu = ({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={async () => {
+              onClick={async (event) => {
+                event.preventDefault();
                 if (!deleting) return;
                 try {
                   await deleteAlert.mutateAsync({ alertId: deleting.id });

@@ -134,7 +134,8 @@ const EmailRecipientsField = ({
   error,
   members,
   projectId,
-  projectRecipients
+  projectRecipients,
+  allowEmailAddresses = true
 }: {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
@@ -142,6 +143,7 @@ const EmailRecipientsField = ({
   members: TMemberEmails;
   projectId: string;
   projectRecipients?: boolean;
+  allowEmailAddresses?: boolean;
 }) => {
   const projectValues = value
     .filter((recipient) => PROJECT_PRINCIPALS.includes(recipient.principalType))
@@ -194,9 +196,11 @@ const EmailRecipientsField = ({
       wide
       label="Recipients"
       error={error}
-      description={`Pick organization members or type an email address on a verified email domain.${
-        also.length ? ` Also sent to ${also.join(" and ")}.` : ""
-      }`}
+      description={`${
+        allowEmailAddresses
+          ? "Pick organization members or type an email address on a verified email domain."
+          : "Pick project members."
+      }${also.length ? ` Also sent to ${also.join(" and ")}.` : ""}`}
     >
       <Combobox
         multiple
@@ -204,14 +208,22 @@ const EmailRecipientsField = ({
         options={options}
         value={selected}
         onChange={setEmails}
-        placeholder="Select members or type an email"
-        emptyText="No matching members. Type a full email to add it."
+        placeholder={allowEmailAddresses ? "Select members or type an email" : "Select members"}
+        emptyText={
+          allowEmailAddresses
+            ? "No matching members. Type a full email to add it."
+            : "No matching project members."
+        }
         invalid={Boolean(error)}
-        onCreate={(query) => {
-          const email = normalizeEmail(query);
-          if (!isValidEmail(email)) throw new Error("Enter a full email address");
-          if (!selected.includes(email)) setEmails([...selected, email]);
-        }}
+        onCreate={
+          allowEmailAddresses
+            ? (query) => {
+                const email = normalizeEmail(query);
+                if (!isValidEmail(email)) throw new Error("Enter a full email address");
+                if (!selected.includes(email)) setEmails([...selected, email]);
+              }
+            : undefined
+        }
       />
     </Field>
   );
@@ -462,6 +474,7 @@ const ChannelCard = ({
   members,
   resource,
   projectRecipients,
+  allowEmailAddresses,
   onInvalid,
   onRemove
 }: TChannelFieldProps & {
@@ -470,6 +483,7 @@ const ChannelCard = ({
   members: TMemberEmails;
   resource: TChannelResource;
   projectRecipients?: boolean;
+  allowEmailAddresses?: boolean;
   onInvalid: (errors: TFieldErrors) => void;
   onRemove: () => void;
 }) => {
@@ -549,6 +563,7 @@ const ChannelCard = ({
             members={members}
             projectId={projectId}
             projectRecipients={projectRecipients}
+            allowEmailAddresses={allowEmailAddresses}
           />
         )}
         {channelType === AlertChannelType.Slack && (
@@ -602,7 +617,8 @@ export const ChannelsStep = ({
   hasEnterprise,
   resource,
   upgrade,
-  projectRecipients
+  projectRecipients,
+  allowEmailAddresses
 }: {
   channels: TDraftChannel[];
   errors: TFieldErrors;
@@ -615,6 +631,7 @@ export const ChannelsStep = ({
   resource: TChannelResource;
   upgrade?: TUpgradeGateRequest;
   projectRecipients?: boolean;
+  allowEmailAddresses?: boolean;
 }) => (
   <Stack gap={16}>
     <Inline gap={12} justify="between" align="center" wrap={false}>
@@ -679,6 +696,7 @@ export const ChannelsStep = ({
           members={members}
           resource={resource}
           projectRecipients={projectRecipients}
+          allowEmailAddresses={allowEmailAddresses}
           onRemove={() => {
             onChange(channels.filter(({ uid }) => uid !== channel.uid));
             onErrorsChange(removeIndexedErrors(errors, "", index));
