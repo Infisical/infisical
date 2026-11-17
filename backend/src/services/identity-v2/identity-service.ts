@@ -326,7 +326,6 @@ export const identityV2ServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities);
       usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities);
-      usageMeteringService.emit(dto.permission.orgId, Meter.AgentVaultIdentities);
     }
 
     return { identity };
@@ -453,7 +452,6 @@ export const identityV2ServiceFactory = ({
     usageMeteringService.emit(scopeData.orgId, Meter.Identities);
     usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
 
     return { identity: deletedIdentity };
   };

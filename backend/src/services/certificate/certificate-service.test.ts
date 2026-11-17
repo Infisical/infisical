@@ -405,6 +405,7 @@ describe("certificate revocation behind an approval policy", () => {
       pkiSyncQueue: { queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined) },
       pkiApplicationDAL,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
+      signerDAL: { findOne: vi.fn().mockResolvedValue(undefined) },
       userDAL: {
         findById: vi.fn().mockResolvedValue({ firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
       },

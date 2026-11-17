@@ -911,10 +911,7 @@ export const certificateServiceFactory = ({
     return { revokedAt, crlWarning };
   };
 
-  // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
-  // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).
-  const $performRevocation = async (args: TRevocationArgs) => {
-    await $revokeAtUpstreamCa(args);
+  const $completeRevocationOrThrow = async (args: TRevocationArgs) => {
     const completed = await $completeRevocation(args);
     if (!completed) {
       throw new BadRequestError({
@@ -922,6 +919,43 @@ export const certificateServiceFactory = ({
       });
     }
     return completed;
+  };
+
+  // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
+  // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).
+  const $performRevocation = async (args: TRevocationArgs) => {
+    await $revokeAtUpstreamCa(args);
+    return $completeRevocationOrThrow(args);
+  };
+
+  type TOwnedCertificateRevocationDTO = {
+    certificateId: string;
+    revocationReason: CrlReason;
+    orgId: string;
+  };
+
+  const $findOwnedCertificateWithCa = async (certificateId: string) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+    return { cert, ca: await $loadRevocationCa(cert) };
+  };
+
+  const revokeOwnedCertificate = async ({ certificateId, revocationReason, orgId }: TOwnedCertificateRevocationDTO) => {
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
+    await $assertCertificateRevocable(cert, ca);
+    const { revokedAt, crlWarning } = await $performRevocation({ cert, ca, revocationReason, orgId });
+    return { cert, revokedAt, crlWarning };
+  };
+
+  const completeOwnedCertificateRevocation = async ({
+    certificateId,
+    revocationReason,
+    orgId
+  }: TOwnedCertificateRevocationDTO) => {
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
+    return $completeRevocationOrThrow({ cert, ca, revocationReason, orgId });
   };
 
   const $matchRevocationApprovalPolicy = async (cert: TRevocableCertificate, projectId: string) => {
@@ -985,6 +1019,13 @@ export const certificateServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId: cert.id });
+    if (signerUsingCertificate) {
+      throw new BadRequestError({
+        message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
+      });
+    }
 
     const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
     if (!approval && !canRevokeDirectly) {
@@ -2337,6 +2378,8 @@ export const certificateServiceFactory = ({
     deleteCert,
     revokeCert,
     revokeApprovedCertificate,
+    revokeOwnedCertificate,
+    completeOwnedCertificateRevocation,
     getCertBody,
     importCert,
     getCertBundle,

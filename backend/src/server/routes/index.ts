@@ -584,6 +584,7 @@ import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-
 import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
 import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
 import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
+import { signerRevocationDALFactory } from "@app/services/signer/signer-revocation-dal";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -1833,8 +1834,7 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL,
-    usageMeteringService
+    projectMembershipDAL
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -1947,6 +1947,7 @@ export const registerRoutes = async (
   const signerRequestDAL = signerRequestDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
   const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
+  const signerRevocationDAL = signerRevocationDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -2115,6 +2116,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
+    resourceMetadataDAL,
     membershipDAL,
     userDAL,
     orgDAL,
@@ -2151,7 +2153,6 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2254,6 +2255,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -4621,16 +4623,19 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     cronJob,
     hsmConnectorService,
-    certificateDAL
+    certificateDAL,
+    certificateService
   });
 
   const signerService = signerServiceFactory({
     signerDAL,
+    signerRevocationDAL,
     signingOperationDAL,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
+    certificateService,
     signerIssuanceService,
     internalCertificateAuthorityService,
     digicertFns: digicertCaFns,
@@ -4646,7 +4651,12 @@ export const registerRoutes = async (
     membershipRoleDAL,
     hsmConnectorService,
     licenseService,
-    orgDAL
+    orgDAL,
+    keyStore,
+    userGroupMembershipDAL,
+    notificationService,
+    userDAL,
+    auditLogService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -4959,6 +4969,8 @@ export const registerRoutes = async (
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,

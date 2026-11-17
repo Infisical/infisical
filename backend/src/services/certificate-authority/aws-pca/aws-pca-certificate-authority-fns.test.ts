@@ -1,32 +1,31 @@
-import { RequestAlreadyProcessedException, ResourceNotFoundException } from "@aws-sdk/client-acm-pca";
+import { RequestAlreadyProcessedException } from "@aws-sdk/client-acm-pca";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca-certificate-authority-fns";
 
-const { pcaSend } = vi.hoisted(() => ({ pcaSend: vi.fn() }));
+const send = vi.fn();
 
-vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
-vi.mock("@app/lib/crypto/cryptography", () => ({ crypto: { isFipsModeEnabled: () => false } }));
-vi.mock("@app/lib/aws/hashing", () => ({ CustomAWSHasher: function CustomAWSHasher() {} }));
-vi.mock("@app/services/app-connection/app-connection-fns", () => ({ decryptAppConnection: vi.fn() }));
-vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
-  getAwsConnectionConfig: async () => ({ region: "us-east-1", credentials: { accessKeyId: "a", secretAccessKey: "b" } })
-}));
 vi.mock("@aws-sdk/client-acm-pca", async (importOriginal) => {
-  const actual = await importOriginal<object>();
+  const actual = await importOriginal<typeof import("@aws-sdk/client-acm-pca")>();
   return {
     ...actual,
-    ACMPCAClient: class {
-      send = pcaSend;
-    }
+    ACMPCAClient: vi.fn().mockImplementation(() => ({ send }))
   };
 });
 
+vi.mock("@app/lib/crypto/cryptography", () => ({ crypto: { isFipsModeEnabled: () => false } }));
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+vi.mock("@app/services/app-connection/app-connection-fns", () => ({
+  decryptAppConnection: vi.fn().mockResolvedValue({})
+}));
+vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
+  getAwsConnectionConfig: vi.fn().mockResolvedValue({ credentials: {}, region: "us-east-1" })
+}));
+
 const CA_ID = "ca-1";
-const SERIAL_NUMBER = "0a1b";
 
 const buildFns = () =>
   AwsPcaCertificateAuthorityFns({
@@ -34,44 +33,42 @@ const buildFns = () =>
     certificateAuthorityDAL: {
       findByIdWithAssociatedCa: vi.fn().mockResolvedValue({
         id: CA_ID,
-        name: "pca",
+        name: "private-aws",
         projectId: "project-1",
-        enableDirectIssuance: true,
         status: CaStatus.ACTIVE,
+        enableDirectIssuance: true,
         externalCa: {
           id: "external-1",
           type: CaType.AWS_PCA,
           appConnectionId: "connection-1",
           configuration: {
-            certificateAuthorityArn: "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca",
-            region: AWSRegion.US_EAST_1
+            certificateAuthorityArn: "arn:aws:acm-pca:us-east-1:111122223333:certificate-authority/example",
+            region: "us-east-1"
           }
         }
       })
-    },
-    kmsService: {}
+    }
   } as unknown as Parameters<typeof AwsPcaCertificateAuthorityFns>[0]);
-
-const revoke = () =>
-  buildFns().revokeCertificate({ caId: CA_ID, serialNumber: SERIAL_NUMBER, reason: CrlReason.KEY_COMPROMISE });
 
 describe("AWS PCA revokeCertificate", () => {
   beforeEach(() => {
-    pcaSend.mockReset();
+    send.mockReset();
   });
 
-  test("resolves when AWS PCA reports the certificate already revoked", async () => {
-    pcaSend.mockRejectedValue(
-      new RequestAlreadyProcessedException({ message: "Your request has already been completed.", $metadata: {} })
-    );
+  it("treats a certificate AWS already revoked as revoked, so a retry can finish", async () => {
+    send.mockRejectedValue(new RequestAlreadyProcessedException({ message: "already revoked", $metadata: {} }));
 
-    await expect(revoke()).resolves.toBeUndefined();
+    await expect(
+      buildFns().revokeCertificate({ caId: CA_ID, serialNumber: "0a1b", reason: CrlReason.KEY_COMPROMISE })
+    ).resolves.toBeUndefined();
   });
 
-  test("throws other AWS PCA errors unchanged", async () => {
-    const error = new ResourceNotFoundException({ message: "Certificate not found", $metadata: {} });
-    pcaSend.mockRejectedValue(error);
+  it("still surfaces any other AWS error", async () => {
+    const throttled = new Error("Rate exceeded");
+    send.mockRejectedValue(throttled);
 
-    await expect(revoke()).rejects.toBe(error);
+    await expect(
+      buildFns().revokeCertificate({ caId: CA_ID, serialNumber: "0a1b", reason: CrlReason.KEY_COMPROMISE })
+    ).rejects.toBe(throttled);
   });
 });

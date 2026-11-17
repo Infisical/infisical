@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -20,11 +21,28 @@ import {
   TListSigningOperationsResponse,
   TSigner,
   TSignerPolicy,
-  TSigningOperationDetail
+  TSigningOperationDetail,
+  getOpenCertificateRequest
 } from "./types";
 
 const SIGNER_LIST_POLL_MS = 4000;
 const SIGNER_DETAIL_POLL_MS = 3000;
+const SIGNER_FAST_POLL_WINDOW_MS = 60_000;
+const SIGNER_SLOW_POLL_MS = 30_000;
+
+const useBackoffPollInterval = (fastPollMs: number) => {
+  const pollingSince = useRef<number | null>(null);
+  return (shouldPoll: boolean) => {
+    if (!shouldPoll) {
+      pollingSince.current = null;
+      return false;
+    }
+    pollingSince.current ??= Date.now();
+    return Date.now() - pollingSince.current < SIGNER_FAST_POLL_WINDOW_MS
+      ? fastPollMs
+      : SIGNER_SLOW_POLL_MS;
+  };
+};
 
 export const signerKeys = {
   all: ["signers"] as const,
@@ -63,6 +81,7 @@ export const fetchUserSignerPermissions = async ({ signerId }: TGetUserSignerPer
 };
 
 export const useListSigners = (dto: TListSignersDTO) => {
+  const getPollInterval = useBackoffPollInterval(SIGNER_LIST_POLL_MS);
   return useQuery({
     queryKey: signerKeys.listWithOpts(dto),
     queryFn: async () => {
@@ -81,13 +100,21 @@ export const useListSigners = (dto: TListSignersDTO) => {
     enabled: Boolean(dto.projectId),
     placeholderData: (previousData) => previousData,
     refetchInterval: (query) =>
-      query.state.data?.signers?.some((s) => s.status === SignerStatus.Pending)
-        ? SIGNER_LIST_POLL_MS
-        : false
+      getPollInterval(
+        Boolean(
+          query.state.data?.signers?.some(
+            (s) =>
+              s.status === SignerStatus.Pending ||
+              s.hasOpenCertificateRequest ||
+              s.status === SignerStatus.RevocationPending
+          )
+        )
+      )
   });
 };
 
 export const useGetSigner = (signerId: string) => {
+  const getPollInterval = useBackoffPollInterval(SIGNER_DETAIL_POLL_MS);
   return useQuery({
     queryKey: signerKeys.byId(signerId),
     queryFn: async () => {
@@ -96,7 +123,11 @@ export const useGetSigner = (signerId: string) => {
     },
     enabled: Boolean(signerId),
     refetchInterval: (query) =>
-      query.state.data?.status === SignerStatus.Pending ? SIGNER_DETAIL_POLL_MS : false
+      getPollInterval(
+        query.state.data?.status === SignerStatus.Pending ||
+          Boolean(query.state.data && getOpenCertificateRequest(query.state.data)) ||
+          query.state.data?.status === SignerStatus.RevocationPending
+      )
   });
 };
 

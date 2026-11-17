@@ -20,6 +20,7 @@ import {
   VerificationCodeHeader,
   VerificationCodeResend
 } from "@app/components/v3";
+import { hasErrorName } from "@app/helpers/errors";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
@@ -271,13 +272,13 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
         mfaMethod: MfaMethod.WEBAUTHN
       });
       sessionToken = mfaResult.token;
-    } catch (error: any) {
+    } catch (error) {
       console.error("WebAuthn verification failed:", error);
 
       let errorMessage = "Failed to verify passkey";
-      if (error.name === "NotAllowedError") {
+      if (hasErrorName(error, "NotAllowedError")) {
         errorMessage = "Passkey verification was cancelled or timed out";
-      } else if (error.message) {
+      } else if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
 

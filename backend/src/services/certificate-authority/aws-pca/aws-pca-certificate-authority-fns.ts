@@ -936,8 +936,8 @@ export const AwsPcaCertificateAuthorityFns = ({
         })
       );
       logger.info(revokeResult, "AWS PCA RevokeCertificate result");
-    } catch (error) {
-      if (!(error instanceof RequestAlreadyProcessedException)) throw error;
+    } catch (err) {
+      if (!(err instanceof RequestAlreadyProcessedException)) throw err;
       logger.info(
         `AWS PCA certificate already revoked upstream, treating as success [caId=${caId}] [serialNumber=${serialNumber}]`
       );
