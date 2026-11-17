@@ -61,10 +61,11 @@ import {
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 import {
-  DECISION_PRESENTATION,
   hostPatternFor,
   SESSION_LOG_COLUMN_COUNT,
-  SessionLogRow
+  SESSION_LOG_OUTCOMES,
+  SessionLogRow,
+  sessionLogOutcome
 } from "./SessionLogRow";
 import {
   chunkIdTime,
@@ -244,7 +245,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const visible = useMemo(
     () =>
       records.filter((record) => {
-        if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
+        if (decisionFilter !== "all" && sessionLogOutcome(record.decision) !== decisionFilter)
+          return false;
         return matchesSessionLogSearch(record, search);
       }),
     [records, search, decisionFilter]
@@ -581,16 +583,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="all">All Outcomes</SelectItem>
-            {Object.entries(DECISION_PRESENTATION).map(
-              ([value, { label, icon: Icon, iconClassName }]) => (
-                <SelectItem key={value} value={value}>
-                  <span className="flex items-center gap-2">
-                    <Icon className={iconClassName} />
-                    {label}
-                  </span>
-                </SelectItem>
-              )
-            )}
+            {SESSION_LOG_OUTCOMES.map(({ decision, label, icon: Icon, iconClassName }) => (
+              <SelectItem key={decision} value={decision}>
+                <span className="flex items-center gap-2">
+                  <Icon className={iconClassName} />
+                  {label}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <DateRangeFilter
