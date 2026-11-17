@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
@@ -19,7 +19,7 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
-import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { useParams } from "@tanstack/react-router";
@@ -772,6 +772,11 @@ const GeneralTab = ({
   );
 };
 
+const TEMPLATE_TABS = [
+  { value: PamSheetTab.General, label: "General" },
+  { value: PamSheetTab.Configuration, label: "Configuration" }
+];
+
 export const TemplateSheet = ({
   templateId,
   tab,
@@ -804,15 +809,41 @@ export const TemplateSheet = ({
     });
   const meta = accountTypes.find((entry) => entry.type === template?.type);
   const cardProps = template ? { template, drafts, setDraft } : undefined;
+  const tabsId = useId();
 
   return (
     <>
       <Sheet open={Boolean(templateId)} onOpenChange={(open) => !open && guard.requestDiscard()}>
         <SheetContent size="lg">
-          <SheetHeader>
+          <SheetHeader
+            tabs={
+              cardProps && (
+                <Tabs value={tab} onChange={onTabChange}>
+                  <TabsList aria-label="Template sections">
+                    {TEMPLATE_TABS.map(({ value, label }) => (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        id={`${tabsId}-${value}`}
+                        aria-controls={`${tabsId}-panel`}
+                      >
+                        {label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )
+            }
+          >
             <SheetTitle>{template?.name ?? "Template"}</SheetTitle>
           </SheetHeader>
-          <SheetBody>
+          <SheetBody
+            {...(cardProps && {
+              role: "tabpanel",
+              id: `${tabsId}-panel`,
+              "aria-labelledby": `${tabsId}-${tab}`
+            })}
+          >
             {cardProps ? (
               <Stack gap={24}>
                 <DataList
@@ -821,15 +852,6 @@ export const TemplateSheet = ({
                     ["Type", meta?.name ?? cardProps.template.type],
                     ["Accounts", `${cardProps.template.accountCount} using this template`],
                     ["Created", format(new Date(cardProps.template.createdAt), "MMM d, yyyy")]
-                  ]}
-                />
-                <Tabs
-                  label="Template sections"
-                  value={tab}
-                  onChange={onTabChange}
-                  tabs={[
-                    { value: PamSheetTab.General, label: "General" },
-                    { value: PamSheetTab.Configuration, label: "Configuration" }
                   ]}
                 />
                 {tab === PamSheetTab.Configuration ? (

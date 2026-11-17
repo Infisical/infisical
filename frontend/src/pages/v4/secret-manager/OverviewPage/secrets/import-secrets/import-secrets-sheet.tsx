@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -197,6 +197,7 @@ function ImportSecretsContent({
   const initialParsedSecrets = request.parsed;
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [importMethod, setImportMethod] = useState(request.step);
+  const tabsId = useId();
   const [inputFocusVisible, setInputFocusVisible] = useState(false);
   const [pasteValue, setPasteValue] = useState("");
   const [pasteError, setPasteError] = useState<string>();
@@ -659,20 +660,39 @@ function ImportSecretsContent({
   if (!activeSecrets) {
     return (
       <SheetContent className={styles.sheet}>
-        <SheetHeader>
-          <SheetTitle className={styles.srOnly}>Upload secrets</SheetTitle>
-          <Tabs
-            value={importMethod}
-            onValueChange={(value) => setImportMethod(value as "upload" | "paste")}
-          >
-            <TabsList aria-label="Secret import method">
-              <TabsTrigger value="upload">Upload file</TabsTrigger>
-              <TabsTrigger value="paste">Paste secrets</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </SheetHeader>
+        <SheetHeader
+          tabs={
+            <Tabs
+              value={importMethod}
+              onValueChange={(value) => setImportMethod(value as "upload" | "paste")}
+            >
+              <TabsList aria-label="Secret import method">
+                <TabsTrigger
+                  value="upload"
+                  id={`${tabsId}-upload`}
+                  aria-controls={`${tabsId}-upload-panel`}
+                >
+                  Upload file
+                </TabsTrigger>
+                <TabsTrigger
+                  value="paste"
+                  id={`${tabsId}-paste`}
+                  aria-controls={PASTE_SECRETS_FORM_ID}
+                >
+                  Paste secrets
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          }
+        />
         <SheetBody>
-          <div hidden={importMethod !== "upload"}>
+          <SheetTitle className={styles.srOnly}>Upload secrets</SheetTitle>
+          <div
+            id={`${tabsId}-upload-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-upload`}
+            hidden={importMethod !== "upload"}
+          >
             <div
               className={styles.dropzone}
               data-dragging={isDragActive || undefined}
@@ -729,6 +749,8 @@ function ImportSecretsContent({
           </div>
           <form
             id={PASTE_SECRETS_FORM_ID}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-paste`}
             hidden={importMethod !== "paste"}
             className={styles.pasteForm}
             onSubmit={(event) => {

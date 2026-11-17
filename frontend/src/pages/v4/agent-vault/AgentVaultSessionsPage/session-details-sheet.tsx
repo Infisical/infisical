@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
@@ -16,7 +16,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
@@ -295,6 +295,7 @@ export const SessionDetailsSheet = ({
   );
   const session = fetched ?? loaded;
   const labelRef = useRef<HTMLInputElement>(null);
+  const tabsId = useId();
   const [tab, setTab] = useState<"logs" | "details">("logs");
   const [openedFor, setOpenedFor] = useState(sessionId);
   if (openedFor !== sessionId) {
@@ -311,39 +312,47 @@ export const SessionDetailsSheet = ({
           if (focusLabel) labelRef.current?.focus();
         }}
       >
-        <SheetHeader>
+        <SheetHeader
+          tabs={
+            session && (
+              <Tabs value={tab} onValueChange={(value) => setTab(value as "logs" | "details")}>
+                <TabsList aria-label="Session">
+                  <TabsTrigger value="logs" id={`${tabsId}-logs`} aria-controls={`${tabsId}-panel`}>
+                    Logs
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="details"
+                    id={`${tabsId}-details`}
+                    aria-controls={`${tabsId}-panel`}
+                  >
+                    Details
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )
+          }
+        >
           <SheetTitle>{session?.label ?? "Session"}</SheetTitle>
         </SheetHeader>
-        <SheetBody>
-          {session && (
-            <Stack gap={16}>
-              <Tabs
-                label="Session"
-                value={tab}
-                onValueChange={(value) => setTab(value as "logs" | "details")}
-                tabs={[
-                  { value: "logs", label: "Logs" },
-                  { value: "details", label: "Details" }
-                ]}
+        <SheetBody
+          {...(session && {
+            role: "tabpanel",
+            id: `${tabsId}-panel`,
+            "aria-labelledby": `${tabsId}-${tab}`
+          })}
+        >
+          {session &&
+            (tab === "logs" ? (
+              <SessionLogsPanel
+                key={session.id}
+                orgId={orgId}
+                projectId={projectId}
+                session={session}
+                isAdmin={isAdmin}
               />
-              {tab === "logs" ? (
-                <SessionLogsPanel
-                  key={session.id}
-                  orgId={orgId}
-                  projectId={projectId}
-                  session={session}
-                  isAdmin={isAdmin}
-                />
-              ) : (
-                <Details
-                  orgId={orgId}
-                  projectId={projectId}
-                  session={session}
-                  inputRef={labelRef}
-                />
-              )}
-            </Stack>
-          )}
+            ) : (
+              <Details orgId={orgId} projectId={projectId} session={session} inputRef={labelRef} />
+            ))}
           {!session && isPending && <Loader label="Loading session" />}
           {!session && !isPending && (
             <EmptyState

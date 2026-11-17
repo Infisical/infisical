@@ -4,7 +4,7 @@ import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { useAutosave } from "@infisical/cipher/ui/settings-card";
-import { SheetBody, SheetSections } from "@infisical/cipher/ui/sheet";
+import { SheetSections } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Switch } from "@infisical/cipher/ui/switch";
 
@@ -18,7 +18,7 @@ import {
   parseCount,
   withDraft
 } from "./enrollment-model";
-import { EnrollmentFooter } from "./enrollment-shared";
+import { EnrollmentBody, EnrollmentFooter } from "./enrollment-shared";
 
 const renewBeforeError = (raw: string) => {
   const days = parseCount(raw);
@@ -100,6 +100,7 @@ const ConfiguredApi = ({
   profileId,
   state,
   header,
+  body,
   busy,
   run,
   onCancel
@@ -136,7 +137,7 @@ const ConfiguredApi = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <ApiFields
           value={value}
           error={error}
@@ -161,7 +162,7 @@ const ConfiguredApi = ({
             if (!issue) save();
           }}
         />
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };
@@ -170,6 +171,7 @@ const NewApi = ({
   applicationId,
   profileId,
   header,
+  body,
   draft,
   onDraft,
   onSaved,
@@ -217,7 +219,7 @@ const NewApi = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <form
           id={formId}
           noValidate
@@ -236,7 +238,7 @@ const NewApi = ({
             }}
           />
         </form>
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };

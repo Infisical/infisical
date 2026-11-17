@@ -7,7 +7,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Grid, Stack } from "@infisical/cipher/ui/layout";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
-import { SheetBody, SheetSections } from "@infisical/cipher/ui/sheet";
+import { SheetSections } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Meta, SmallText } from "@infisical/cipher/ui/text";
@@ -33,7 +33,7 @@ import {
   type ScepDraft,
   withDraft
 } from "./enrollment-model";
-import { EnrollmentFooter } from "./enrollment-shared";
+import { EnrollmentBody, EnrollmentFooter } from "./enrollment-shared";
 
 const CHALLENGE_OPTIONS = [
   {
@@ -381,6 +381,7 @@ export const ScepEnrollmentPanel = ({
   projectId,
   state,
   header,
+  body,
   draft,
   onDraft,
   onSaved,
@@ -447,7 +448,7 @@ export const ScepEnrollmentPanel = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <form
           id={formId}
           noValidate
@@ -479,7 +480,7 @@ export const ScepEnrollmentPanel = ({
             <AdvancedOptions value={value} state={state} edit={edit} />
           </Stack>
         </form>
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };

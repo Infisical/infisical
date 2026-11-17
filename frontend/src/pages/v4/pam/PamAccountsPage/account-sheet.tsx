@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState, useRef } from "react";
+import { type HTMLAttributes, type ReactNode, useId, useMemo, useState, useRef } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -20,7 +20,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Link } from "@tanstack/react-router";
@@ -103,6 +103,7 @@ const AccountForm = ({
   account,
   metadata,
   lead,
+  panel,
   update,
   canCheckHealth,
   onDirtyChange
@@ -110,6 +111,7 @@ const AccountForm = ({
   account: TPamAccount;
   metadata: TPamAccountTypeMetadata;
   lead: ReactNode;
+  panel: HTMLAttributes<HTMLDivElement>;
   canCheckHealth: boolean;
   update: ReturnType<PamAdapter["useUpdateAccount"]>;
   onDirtyChange: (dirty: boolean) => void;
@@ -180,7 +182,7 @@ const AccountForm = ({
 
   return (
     <>
-      <SheetBody>
+      <SheetBody {...panel}>
         {lead}
         <form
           id="pam-account-configure"
@@ -354,6 +356,12 @@ export const AccountSheet = ({
       }))
     : [];
   const activeTab = tabs.find(({ value }) => value === tab)?.value ?? tabs[0]?.value;
+  const tabsId = useId();
+  const panel = {
+    role: "tabpanel",
+    id: `${tabsId}-panel`,
+    "aria-labelledby": `${tabsId}-${activeTab}`
+  };
 
   const summary: DataListItem[] = account
     ? [
@@ -394,21 +402,6 @@ export const AccountSheet = ({
     <Stack gap={16}>
       {account.description && <Text muted>{account.description}</Text>}
       <DataList variant="props" items={summary} />
-      {activeTab && (
-        <Tabs
-          label="Account sections"
-          value={activeTab}
-          tabs={tabs}
-          onChange={(next) => {
-            if (dirty) {
-              pendingTab.current = next;
-              guard.requestDiscard();
-              return;
-            }
-            setTab(next);
-          }}
-        />
-      )}
     </Stack>
   );
 
@@ -432,7 +425,7 @@ export const AccountSheet = ({
       </SheetBody>
     );
   if (!isPending && account && metadata) {
-    body = <SheetBody>{lead}</SheetBody>;
+    body = <SheetBody {...panel}>{lead}</SheetBody>;
     if (activeTab === PamSheetTab.Configuration)
       body = (
         <AccountForm
@@ -440,6 +433,7 @@ export const AccountSheet = ({
           account={account}
           metadata={metadata}
           lead={<Stack gap={24}>{lead}</Stack>}
+          panel={panel}
           update={update}
           canCheckHealth={can(PamResourcePermissionActions.ViewCredentials)}
           onDirtyChange={setDirty}
@@ -447,7 +441,7 @@ export const AccountSheet = ({
       );
     if (activeTab === PamSheetTab.Permissions)
       body = (
-        <SheetBody>
+        <SheetBody {...panel}>
           <Stack gap={24}>
             {lead}
             <MembersPanel
@@ -460,7 +454,7 @@ export const AccountSheet = ({
       );
     if (activeTab === PamSheetTab.Rotation)
       body = (
-        <SheetBody>
+        <SheetBody {...panel}>
           <Stack gap={24}>
             {lead}
             <RotationPanel accountId={account.id} metadata={metadata} />
@@ -469,7 +463,7 @@ export const AccountSheet = ({
       );
     if (activeTab === PamSheetTab.Advanced)
       body = (
-        <SheetBody>
+        <SheetBody {...panel}>
           <Stack gap={24}>
             {lead}
             <OverridesPanel
@@ -492,7 +486,36 @@ export const AccountSheet = ({
         }}
       >
         <SheetContent size="lg" pending={update.isPending}>
-          <SheetHeader>
+          <SheetHeader
+            tabs={
+              activeTab && (
+                <Tabs
+                  value={activeTab}
+                  onChange={(next) => {
+                    if (dirty) {
+                      pendingTab.current = next;
+                      guard.requestDiscard();
+                      return;
+                    }
+                    setTab(next);
+                  }}
+                >
+                  <TabsList aria-label="Account sections">
+                    {tabs.map(({ value, label }) => (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        id={`${tabsId}-${value}`}
+                        aria-controls={panel.id}
+                      >
+                        {label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )
+            }
+          >
             <Inline gap={12} align="center" wrap={false}>
               {metadata && <ProviderIcon icon={metadata.icon} alt={metadata.name} size="md" />}
               <Stack gap={4}>

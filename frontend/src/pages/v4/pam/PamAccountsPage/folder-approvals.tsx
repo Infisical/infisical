@@ -1,4 +1,11 @@
-import { type Dispatch, type ReactNode, type SetStateAction, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useRef,
+  useState
+} from "react";
 import { createPortal } from "react-dom";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge, Count } from "@infisical/cipher/ui/badge";
@@ -430,6 +437,7 @@ const draftChanges = (draft: Draft, current: Draft) => ({
 const ApprovalsEditor = ({
   folderId,
   lead,
+  panel,
   canRevoke,
   initialDraft: savedState,
   slugById,
@@ -438,6 +446,7 @@ const ApprovalsEditor = ({
 }: {
   folderId: string;
   lead: ReactNode;
+  panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   initialDraft: Draft;
   slugById: Record<string, string>;
@@ -540,7 +549,7 @@ const ApprovalsEditor = ({
 
   return (
     <>
-      <SheetBody ref={bodyRef}>
+      <SheetBody ref={bodyRef} {...panel}>
         <Stack gap={24}>
           {lead}
           <Stack gap={16}>
@@ -630,12 +639,14 @@ const ApprovalsEditor = ({
 export const FolderApprovals = ({
   folderId,
   lead,
+  panel,
   canRevoke,
   onDirtyChange,
   onOpenAlert
 }: {
   folderId: string;
   lead: ReactNode;
+  panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   onDirtyChange: (dirty: boolean) => void;
   onOpenAlert: (alert?: TAlert) => void;
@@ -643,7 +654,7 @@ export const FolderApprovals = ({
   const { data: config, error } = useV4Adapter("pamAccess").useApprovalConfig(folderId);
   if (!config && error)
     return (
-      <SheetBody>
+      <SheetBody {...panel}>
         <Stack gap={24}>
           {lead}
           <EmptyState
@@ -657,7 +668,7 @@ export const FolderApprovals = ({
     );
   if (!config)
     return (
-      <SheetBody>
+      <SheetBody {...panel}>
         <Stack gap={24}>
           {lead}
           <Stack gap={12}>
@@ -680,6 +691,7 @@ export const FolderApprovals = ({
       key={JSON.stringify(stored)}
       folderId={folderId}
       lead={lead}
+      panel={panel}
       canRevoke={canRevoke}
       initialDraft={stored}
       slugById={Object.fromEntries(

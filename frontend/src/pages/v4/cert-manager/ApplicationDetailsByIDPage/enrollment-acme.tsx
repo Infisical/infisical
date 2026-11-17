@@ -3,7 +3,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { useAutosave } from "@infisical/cipher/ui/settings-card";
-import { SheetBody, SheetSections } from "@infisical/cipher/ui/sheet";
+import { SheetSections } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
@@ -13,7 +13,7 @@ import type { TRevealAcmeEabSecretResponse } from "@app/hooks/api/pkiApplication
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { type AcmeDraft, type EnrollmentPanelProps, withDraft } from "./enrollment-model";
-import { EnrollmentFooter } from "./enrollment-shared";
+import { EnrollmentBody, EnrollmentFooter } from "./enrollment-shared";
 
 const AcmeOptions = ({
   value,
@@ -145,6 +145,7 @@ const ConfiguredAcme = ({
   profileId,
   state,
   header,
+  body,
   busy,
   run,
   onCancel
@@ -183,7 +184,7 @@ const ConfiguredAcme = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <Stack gap={24}>
           {state.acme?.directoryUrl && (
             <FieldSet legend="Endpoint">
@@ -202,7 +203,7 @@ const ConfiguredAcme = ({
           <EabCredentials applicationId={applicationId} profileId={profileId} />
           <AcmeOptions value={value} disabled={pending} onChange={(next) => save(next)} />
         </Stack>
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };
@@ -211,6 +212,7 @@ const NewAcme = ({
   applicationId,
   profileId,
   header,
+  body,
   draft,
   onDraft,
   onSaved,
@@ -254,7 +256,7 @@ const NewAcme = ({
         />
       }
     >
-      <SheetBody>
+      <EnrollmentBody {...body}>
         <form
           id={formId}
           noValidate
@@ -265,7 +267,7 @@ const NewAcme = ({
         >
           <AcmeOptions value={value} onChange={change} />
         </form>
-      </SheetBody>
+      </EnrollmentBody>
     </SheetSections>
   );
 };

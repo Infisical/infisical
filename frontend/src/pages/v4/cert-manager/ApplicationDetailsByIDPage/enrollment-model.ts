@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 import type { TPkiApplicationEnrollmentState } from "@app/hooks/api/pkiApplications/types";
 
@@ -56,6 +56,8 @@ export type EnrollmentDrafts = {
   scep?: ScepDraft;
 };
 
+export type EnrollmentBodyProps = HTMLAttributes<HTMLDivElement> & { lead?: ReactNode };
+
 export type EnrollmentPanelProps<M extends EnrollmentMethod> = {
   applicationId: string;
   profileId: string;
@@ -63,6 +65,7 @@ export type EnrollmentPanelProps<M extends EnrollmentMethod> = {
   projectId: string;
   state: TPkiApplicationEnrollmentState;
   header: ReactNode;
+  body: EnrollmentBodyProps;
   draft: EnrollmentDrafts[M];
   onDraft: (draft: EnrollmentDrafts[M]) => void;
   onSaved: () => void;
