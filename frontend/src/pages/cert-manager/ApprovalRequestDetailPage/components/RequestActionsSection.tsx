@@ -17,11 +17,10 @@ import {
   FieldLabel,
   TextArea
 } from "@app/components/v3";
-import { useProjectPermission, useUser } from "@app/context";
+import { useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
-  ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   TApprovalRequest,
   useApproveApprovalRequest,
@@ -35,17 +34,16 @@ type Props = {
 
 export const RequestActionsSection = ({ request, canReview }: Props) => {
   const { user } = useUser();
-  const { memberships } = useProjectPermission();
   const [comment, setComment] = useState("");
   const { handlePopUpOpen, handlePopUpToggle, popUp } = usePopUp(["approveModal", "rejectModal"]);
 
   const userId = user?.id || "";
-  const userGroups = memberships.map((el) => el.actorGroupId).filter(Boolean);
 
   const { mutateAsync: approveRequest, isPending: isApproving } = useApproveApprovalRequest();
   const { mutateAsync: rejectRequest, isPending: isRejecting } = useRejectApprovalRequest();
 
-  if (request.status !== ApprovalRequestStatus.Pending) {
+  // canReview comes from the same check the approve and reject calls run, on the step in progress.
+  if (!canReview) {
     return null;
   }
 
@@ -54,14 +52,6 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
   );
 
   if (!currentStep) {
-    return null;
-  }
-
-  const isApprover = currentStep.approvers.some((approver) =>
-    approver.type === ApproverType.User ? approver.id === userId : userGroups.includes(approver.id)
-  );
-
-  if (!isApprover || !canReview) {
     return null;
   }
 

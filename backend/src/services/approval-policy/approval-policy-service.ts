@@ -2581,13 +2581,6 @@ export const approvalPolicyServiceFactory = ({
     });
   };
 
-  const $namesActor = (entries: { type: string; id: string }[], userId: string, userGroupIds: Set<string>) =>
-    entries.some(
-      (entry) =>
-        (entry.type === ApproverType.User && entry.id === userId) ||
-        (entry.type === ApproverType.Group && userGroupIds.has(entry.id))
-    );
-
   const $userGroupIds = (actor: TApprovalActor) =>
     userGroupMembershipDAL
       .findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId)
@@ -2641,7 +2634,7 @@ export const approvalPolicyServiceFactory = ({
       if (scopeId && request.scopeId !== scopeId) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
-      return Boolean(currentStep && $namesActor(currentStep.approvers, actor.id, userGroupIds));
+      return Boolean(currentStep && $namesApprover(currentStep.approvers, actor.id, userGroupIds));
     });
 
     const resource = $resource(policyType);
