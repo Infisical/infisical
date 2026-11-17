@@ -38,6 +38,7 @@ import { secretPoliciesLive } from "./secret-policies/live";
 import { secretScanningLive } from "./secret-scanning/live";
 import { secretSharingLive } from "./secret-sharing/live";
 import { secretsLive } from "./secrets/live";
+import { shellLive } from "./shell/live";
 import { ssoLive } from "./sso/live";
 
 export const liveAdapters: V4Adapters = {
@@ -80,5 +81,6 @@ export const liveAdapters: V4Adapters = {
   agentVaultResources: agentVaultResourcesLive,
   appConnections: appConnectionsLive,
   secretInsights: secretInsightsLive,
-  pamAccess: pamAccessLive
+  pamAccess: pamAccessLive,
+  shell: shellLive
 };

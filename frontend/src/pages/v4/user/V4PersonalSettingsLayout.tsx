@@ -25,7 +25,7 @@ export const V4PersonalSettingsLayout = () => {
   }, [v4Mode]);
   return (
     <SessionProvider>
-      <V4Shell nav={{ crumbs: [{ label: "Personal settings" }] }}>
+      <V4Shell banners="personal" nav={{ crumbs: [{ label: "Personal settings" }] }}>
         <Outlet />
       </V4Shell>
     </SessionProvider>

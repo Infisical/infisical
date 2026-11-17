@@ -40,6 +40,7 @@ import type { SecretPoliciesAdapter } from "./secret-policies/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
 import type { SecretSharingAdapter } from "./secret-sharing/contract";
 import type { SecretsAdapter } from "./secrets/contract";
+import type { ShellAdapter } from "./shell/contract";
 import type { SsoAdapter } from "./sso/contract";
 
 export type V4Adapters = {
@@ -83,6 +84,7 @@ export type V4Adapters = {
   appConnections: AppConnectionsAdapter;
   secretInsights: SecretInsightsAdapter;
   pamAccess: PamAccessAdapter;
+  shell: ShellAdapter;
 };
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };

@@ -49,6 +49,7 @@ export const V4AdminShell = () => {
 
   return (
     <V4Shell
+      banners="admin"
       nav={{
         levels,
         current: at.item ? `${at.level}:${at.item.id}` : undefined,

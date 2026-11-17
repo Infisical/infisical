@@ -1,5 +1,42 @@
+.frame {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.app {
+  min-height: 0;
+  flex: 1;
+}
+
 .content {
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
+}
+
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-8);
+  padding: var(--cipher-space-12) var(--cipher-space-12) 0;
+}
+
+.banners:empty {
+  display: none;
+}
+
+.bannerToggle {
+  align-self: flex-start;
+}
+
+.pageFrame {
+  padding: var(--cipher-space-4) var(--cipher-space-12);
+  text-align: center;
+}
+
+.inbox {
+  width: 400px;
+  max-height: min(550px, var(--radix-popover-content-available-height));
+  overflow-y: auto;
 }
