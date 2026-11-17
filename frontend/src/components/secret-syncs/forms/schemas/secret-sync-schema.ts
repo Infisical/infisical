@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { channelFormSchema, TChannelForm, toChannelInput } from "@app/hooks/api/alerts";
+
 import { OnePassSyncDestinationSchema } from "./1password-sync-destination-schema";
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
 import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sync-destination-schema";
@@ -110,17 +112,60 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   JenkinsSyncDestinationSchema
 ]);
 
-export const SecretSyncFormSchema = SecretSyncUnionSchema;
+const FailureAlertChannelsSchema = z
+  .array(channelFormSchema)
+  .min(1, "At least one channel is required");
 
-export const UpdateSecretSyncFormSchema = SecretSyncUnionSchema;
+type TSavedFailureAlert = {
+  enabled: boolean;
+  channels: TChannelForm[];
+};
 
-export type TSecretSyncForm = z.infer<typeof SecretSyncFormSchema>;
+export const serializeFailureAlertChannels = (channels: TChannelForm[]) =>
+  JSON.stringify(channels.map(toChannelInput));
+
+// Channels are only checked while the alert is on, so a hidden, half-filled channel can't block
+// saving the sync. A saved alert the user left untouched isn't checked either: recipient cleanup
+// can leave it with an empty, disabled channel, and saving the sync doesn't send the alert again.
+const buildFailureAlertSchema = (savedAlert?: TSavedFailureAlert) => {
+  const savedChannels = savedAlert ? serializeFailureAlertChannels(savedAlert.channels) : undefined;
+
+  return z
+    .object({
+      isFailureAlertEnabled: z.boolean(),
+      channels: z.custom<TChannelForm[]>()
+    })
+    .superRefine(({ isFailureAlertEnabled, channels }, ctx) => {
+      if (!isFailureAlertEnabled) return;
+      if (savedAlert?.enabled && savedChannels === serializeFailureAlertChannels(channels)) {
+        return;
+      }
+
+      const result = FailureAlertChannelsSchema.safeParse(channels);
+      if (result.success) return;
+
+      result.error.issues.forEach((issue) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: issue.message,
+          path: ["channels", ...issue.path]
+        });
+      });
+    });
+};
+
+export const SecretSyncFormSchema = (savedFailureAlert?: TSavedFailureAlert) =>
+  z.intersection(SecretSyncUnionSchema, buildFailureAlertSchema(savedFailureAlert));
+
+export const UpdateSecretSyncFormSchema = SecretSyncFormSchema;
+
+export type TSecretSyncForm = z.infer<ReturnType<typeof SecretSyncFormSchema>>;
 
 export const getSecretSyncDestinationConfig = (
   destination: TSecretSyncForm["destination"],
   config: unknown
 ) => {
-  const schema = SecretSyncFormSchema.optionsMap.get(destination)?.shape.destinationConfig;
+  const schema = SecretSyncUnionSchema.optionsMap.get(destination)?.shape.destinationConfig;
   const result = schema?.safeParse(config);
   return result?.success ? result.data : undefined;
 };

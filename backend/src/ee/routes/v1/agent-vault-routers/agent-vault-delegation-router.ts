@@ -115,8 +115,8 @@ const telemetryDelegationFields = (delegation: z.infer<typeof DelegationSchema>)
   groupCount: delegation.groups.length
 });
 
-// None of these accept AuthMode.OAUTH. The admin check reads the role, which a delegated token's scopes don't narrow,
-// and a delegation lets an identity act as other users, which no third-party application should be able to grant.
+// None of these accept AuthMode.OAUTH: a delegation lets an identity act as other users, which no third-party application
+// should be able to grant.
 export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",

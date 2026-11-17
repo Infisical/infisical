@@ -917,7 +917,6 @@ export const userServiceFactory = ({
       usageMeteringService.emit(orgId, Meter.UserIdentities);
       usageMeteringService.emit(orgId, Meter.SecretIdentities);
       usageMeteringService.emit(orgId, Meter.PamIdentities);
-      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     });
 
     try {

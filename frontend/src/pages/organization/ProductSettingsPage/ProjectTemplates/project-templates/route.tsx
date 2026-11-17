@@ -24,6 +24,7 @@ export const Route = createFileRoute(
     </>
   ),
   context: ({ params }) => ({
+    productType: urlSlugToProjectType(params.type) ?? undefined,
     breadcrumbs: [
       {
         label: "Product Settings",

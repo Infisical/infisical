@@ -6,9 +6,15 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
+import { isOrphanedSession } from "./agent-vault-session-fns";
+import {
+  TAgentVaultSessionActor,
+  TAgentVaultSessionMetadataFilter,
+  TAgentVaultSessionOnBehalfOf
+} from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -178,6 +184,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor,
       statuses,
       search,
+      metadataFilter,
       limit,
       offset
     }: {
@@ -186,6 +193,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       statuses?: AgentVaultSessionStatus[];
       search?: string;
+      metadataFilter?: TAgentVaultSessionMetadataFilter;
       limit: number;
       offset: number;
     },
@@ -265,6 +273,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
                   ]);
               });
           });
+        }
+        if (metadataFilter?.length) {
+          void applyMetadataFilter(query, metadataFilter, "agentVaultSessionId", TableName.AgentVaultSession);
         }
         return query;
       };
@@ -464,6 +475,23 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // For an edit that leaves the label alone: locks the row on the primary and tells whether it may be written, under
+  // the same rule and for the same reason as updateLabel. No row back means no such session.
+  const lockForEdit = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const row = (await (tx || db)(TableName.AgentVaultSession)
+        .where({ id, projectId })
+        .forUpdate()
+        .first("label", "userId", "identityId", "onBehalfOfUserId", "onBehalfOfUserName")) as
+        | Pick<TAgentVaultSessions, "label" | "userId" | "identityId" | "onBehalfOfUserId" | "onBehalfOfUserName">
+        | undefined;
+      if (!row) return undefined;
+      return { previousLabel: row.label ?? null, isEditable: !isOrphanedSession(row) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault session for edit" });
+    }
+  };
+
   // Read after a write that didn't happen, so the answer reflects the row as it is, not as a replica last saw it.
   const findByIdOnPrimary = async (id: string, projectId: string, tx?: Knex) => {
     try {
@@ -494,6 +522,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     findForList,
     revokeIfActive,
     updateLabel,
+    lockForEdit,
     findByIdOnPrimary,
     createWithId
   };

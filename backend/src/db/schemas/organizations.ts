@@ -48,7 +48,9 @@ export const OrganizationsSchema = z.object({
   orgWideSecretValueTrackingEnabled: z.boolean().default(false),
   requireGatewayPools: z.boolean().default(false),
   ssoMfaTrust: z.string().default("none"),
-  allowedMfaMethods: z.string().array().nullable().optional()
+  allowedMfaMethods: z.string().array().nullable().optional(),
+  aiConnectionId: z.string().uuid().nullable().optional(),
+  aiModel: z.string().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

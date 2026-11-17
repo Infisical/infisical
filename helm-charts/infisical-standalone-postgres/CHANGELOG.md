@@ -1,3 +1,7 @@
+## 1.12.1
+Changes:
+* `infisical.image.tag` now defaults to `""`, which uses the chart's `appVersion`. Each chart release sets `appVersion` to the Infisical release it ships, so the default image no longer has to be bumped by hand. Setting `infisical.image.tag` still pins a specific version.
+
 ## 1.12.0
 Changes:
 * Added `infisical.rolloutOnEveryRender` (default `true`) to control the `updatedAt` annotation on the Infisical Deployment and pod template. The annotation is set to the render time, so every `helm upgrade`, and every Argo CD or Flux sync, rolls all pods even when nothing changed, and GitOps tools show the release as permanently out of sync. Set it to `false` to keep the pod spec stable between renders. After changing the `infisical.kubeSecretRef` secret, restart the pods with `kubectl rollout restart`.

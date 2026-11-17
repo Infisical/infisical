@@ -23,7 +23,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createDigiCertApiClient, DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } from "./digicert-api-client";
 import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import {
@@ -133,7 +133,10 @@ export const digiCertCodeSigningFns = ({
     }
   };
 
-  const loadDigiCertCsContext = async (caId: string, opts?: { requireCodeSigning?: boolean }) => {
+  const loadDigiCertCsContext = async (
+    caId: string,
+    opts?: { requireCodeSigning?: boolean; requestTimeoutMs?: number }
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -159,7 +162,11 @@ export const digiCertCodeSigningFns = ({
       appConnectionDAL,
       kmsService
     );
-    return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return {
+      ca,
+      digicertCa,
+      client: createDigiCertApiClient(apiKey, baseUrl, { requestTimeoutMs: opts?.requestTimeoutMs })
+    };
   };
 
   const $getOwnedCodeSigningOrder = async (caId: string, orderId: number) => {
@@ -300,7 +307,7 @@ export const digiCertCodeSigningFns = ({
   };
 
   const getCodeSigningOrderStatus = async (caId: string, orderId: number): Promise<TCodeSigningOrderInfo> => {
-    const { client } = await loadDigiCertCsContext(caId);
+    const { client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     const order = await client.getOrder(orderId);
     return {
       id: orderId,
@@ -356,7 +363,7 @@ export const digiCertCodeSigningFns = ({
     applicationId?: string | null;
     profileId?: string | null;
   }): Promise<TPreparedCodeSigningCertificate> => {
-    const { ca, client } = await loadDigiCertCsContext(caId);
+    const { ca, client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     if (!providedPemBundle && !digicertCertificateId) {
       throw new BadRequestError({ message: `DigiCert order ${orderId} has no certificate to download.` });
     }

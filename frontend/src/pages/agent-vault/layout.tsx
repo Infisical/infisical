@@ -28,6 +28,7 @@ export const Route = createFileRoute(
 
     return {
       project,
+      productType: ProjectType.AgentVault,
       breadcrumbs: []
     };
   }

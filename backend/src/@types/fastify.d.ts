@@ -3,6 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
+import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -88,6 +89,7 @@ import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { TAiServiceFactory } from "@app/services/ai/ai-service";
 import { TAlertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAnnouncementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -403,6 +405,8 @@ declare module "fastify" {
     agentVaultVariable: TAgentVaultVariableServiceFactory;
     agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
     agentVaultProxy: TAgentVaultProxyServiceFactory;
+    agentVaultAccessService: TAgentVaultAccessService;
+    agentVaultUsageService: TAgentVaultUsageService;
     agentVaultSession: TAgentVaultSessionServiceFactory;
     agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
@@ -509,6 +513,7 @@ declare module "fastify" {
     subOrganization: TSubOrgServiceFactory;
     pkiAlertV2: TPkiAlertV2ServiceFactory;
     approvalPolicy: TApprovalPolicyServiceFactory;
+    ai: TAiServiceFactory;
     delegatedApproval: TDelegatedApprovalServiceFactory;
     delegatedApprovalCallback: TDelegatedApprovalCallbackServiceFactory;
     appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;

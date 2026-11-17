@@ -304,7 +304,8 @@
                                 "pages": [
                                   "integrations/platforms/kubernetes/infisical-connection-crd",
                                   "integrations/platforms/kubernetes/infisical-auth-crd",
-                                  "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                                  "integrations/platforms/kubernetes/infisical-static-secret-crd",
+                                  "integrations/platforms/kubernetes/infisical-static-secret-push-crd"
                                 ]
                               },
                               {
@@ -4541,6 +4542,8 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/renew-certificate",
+                          "api-reference/endpoints/code-signing/signers/revoke-certificate",
                           "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]

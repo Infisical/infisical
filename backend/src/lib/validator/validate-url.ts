@@ -63,6 +63,24 @@ export const isValidAzureKeyVaultUrl = (url: string): boolean => {
   }
 };
 
+const AZURE_APP_CONFIGURATION_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.privatelink)?\.azconfig\.io$/);
+
+export const isValidAzureAppConfigurationUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port) return false;
+    // requests append paths to the raw string, so it has to be the bare origin
+    if (url.toLowerCase() !== parsed.origin) return false;
+
+    return AZURE_APP_CONFIGURATION_HOST_REGEX.test(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
 type FQDNOptions = {
   require_tld?: boolean;
   allow_underscores?: boolean;

@@ -59,12 +59,7 @@ export const pluralizeUnit = (noun: string): string => {
 export const unitForCount = (noun: string, count: number): string =>
   count === 1 ? noun : pluralizeUnit(noun);
 
-const IDENTITY_DIMENSIONS = new Set([
-  "identities",
-  "secret_identities",
-  "pam_identities",
-  "agent_vault_identities"
-]);
+const IDENTITY_DIMENSIONS = new Set(["identities", "secret_identities", "pam_identities"]);
 
 export const isIdentityDim = (dim: { key: string }): boolean => IDENTITY_DIMENSIONS.has(dim.key);
 
