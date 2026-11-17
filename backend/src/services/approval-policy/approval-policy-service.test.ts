@@ -136,7 +136,9 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
           }))
         )
       },
-      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+      orgDAL: { findMembership: vi.fn().mockResolvedValue([]), findActorsWithActiveOrgAccess: vi.fn() },
+      userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
@@ -363,7 +365,9 @@ describe("approvalPolicyService rechecks a revocation approver under the request
           rows(opts?.tx).map((m) => ({ membershipId: m.id, role: m.role ?? "operator" }))
         )
       },
-      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+      orgDAL: { findMembership: vi.fn().mockResolvedValue([]), findActorsWithActiveOrgAccess: vi.fn() },
+      userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,

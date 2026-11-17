@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import {
@@ -37,14 +38,56 @@ type TTestMembership = {
   role?: string;
 };
 
+type TOrgAccess = { deactivated?: string[]; invited?: string[]; viaLinkedGroupOnly?: string[] };
+
+// Every user has an active, accepted organization membership of their own, except those listed in the last argument:
+// `viaLinkedGroupOnly` users have no row of their own and reach the organization through a group linked into it.
 const setup = (
   policies: unknown[],
   memberships: TTestMembership[] = [],
-  groupLinks: { userId: string; groupId: string }[] = []
+  groupLinks: { userId: string; groupId: string }[] = [],
+  { deactivated = [], invited = [], viaLinkedGroupOnly = [] }: TOrgAccess = {}
 ) => {
-  const withIds = memberships.map((m, i) => ({ ...m, id: m.id ?? `membership-${i}` }));
+  const withIds = memberships.map((m, i) => ({ ...m, id: m.id ?? `membership-${i}`, scopeOrgId: "org-1" }));
+  const ownOrgRows = (userIds: string[]) =>
+    userIds
+      .filter((userId) => !viaLinkedGroupOnly.includes(userId))
+      .map((actorUserId) => ({
+        actorUserId,
+        isActive: !deactivated.includes(actorUserId),
+        status: invited.includes(actorUserId) ? OrgMembershipStatus.Invited : OrgMembershipStatus.Accepted
+      }));
   const deps = {
-    membershipDAL: { find: vi.fn().mockResolvedValue(withIds) },
+    membershipDAL: {
+      find: vi
+        .fn()
+        .mockImplementation(
+          async (filter: { scope: string; isActive?: boolean; status?: string; $in?: { actorUserId?: string[] } }) =>
+            filter.scope === AccessScope.Organization
+              ? ownOrgRows(filter.$in?.actorUserId ?? []).filter(
+                  (row) =>
+                    (filter.isActive === undefined || row.isActive === filter.isActive) &&
+                    (filter.status === undefined || row.status === filter.status)
+                )
+              : withIds
+        )
+    },
+    orgDAL: {
+      findMembership: vi
+        .fn()
+        .mockImplementation(async (filter: { $in: { actorUserId: string[] } }) => ownOrgRows(filter.$in.actorUserId)),
+      findActorsWithActiveOrgAccess: vi.fn().mockImplementation(async ({ userIds }: { userIds: string[] }) => ({
+        userIds: new Set(userIds.filter((userId) => viaLinkedGroupOnly.includes(userId))),
+        identityIds: new Set()
+      }))
+    },
+    userDAL: {
+      find: vi
+        .fn()
+        .mockImplementation(async ({ $in }: { $in: { id: string[] } }) =>
+          $in.id.map((id) => ({ id, isAccepted: true }))
+        )
+    },
     membershipRoleDAL: {
       find: vi
         .fn()
@@ -57,8 +100,8 @@ const setup = (
     userGroupMembershipDAL: {
       find: vi
         .fn()
-        .mockImplementation(async ({ $in }: { $in: { userId: string[]; groupId: string[] } }) =>
-          groupLinks.filter((l) => $in.userId.includes(l.userId) && $in.groupId.includes(l.groupId))
+        .mockImplementation(async ({ $in }: { $in: { userId?: string[]; groupId: string[] } }) =>
+          groupLinks.filter((l) => (!$in.userId || $in.userId.includes(l.userId)) && $in.groupId.includes(l.groupId))
         )
     },
     approvalPolicyDAL: {
@@ -138,6 +181,206 @@ describe("certRevocationApprovalResourceFactory.matchPolicy", () => {
       [{ type: ApproverType.User, id: "operator" }],
       [{ type: ApproverType.Group, id: "operator-group" }]
     ]);
+  });
+
+  it("counts each step's distinct people who can approve, expanding groups and skipping deactivated members", async () => {
+    const { deps, resource } = setup(
+      [
+        makePolicy({
+          id: "match",
+          steps: [
+            {
+              requiredApprovals: 1,
+              approvers: [
+                { type: ApproverType.User, id: "operator" },
+                { type: ApproverType.User, id: "operator" },
+                { type: ApproverType.Group, id: "operator-group" }
+              ]
+            },
+            { requiredApprovals: 1, approvers: [{ type: ApproverType.Group, id: "empty-group" }] },
+            { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "deactivated" }] }
+          ]
+        })
+      ],
+      [
+        { actorUserId: "operator", actorGroupId: null, isActive: true },
+        { actorUserId: "deactivated", actorGroupId: null, isActive: true },
+        { actorUserId: null, actorGroupId: "operator-group", isActive: true },
+        { actorUserId: null, actorGroupId: "empty-group", isActive: true }
+      ],
+      [
+        { userId: "operator", groupId: "operator-group" },
+        { userId: "member", groupId: "operator-group" },
+        { userId: "deactivated", groupId: "operator-group" }
+      ],
+      { deactivated: ["deactivated"] }
+    );
+
+    const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
+
+    expect(policy?.steps.map((step) => ("approverCount" in step ? step.approverCount : undefined))).toEqual([2, 0, 0]);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: AccessScope.Organization, scopeOrgId: "org-1", isActive: true }),
+      { tx: primaryDb }
+    );
+  });
+});
+
+describe("certRevocationApprovalResourceFactory organization access of approvers", () => {
+  const tx = { node: "tx" } as never;
+  const operatorGroup = { actorUserId: null, actorGroupId: "operator-group", isActive: true };
+
+  const evaluate = async (
+    approvers: { type: ApproverType; id: string }[],
+    memberships: TTestMembership[],
+    groupLinks: { userId: string; groupId: string }[],
+    orgAccess: TOrgAccess
+  ) => {
+    const { deps, resource } = setup(
+      [makePolicy({ id: "match", steps: [{ requiredApprovals: 1, approvers }] })],
+      memberships,
+      groupLinks,
+      orgAccess
+    );
+    const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
+    const undecidable = await resource.isRequestUndecidable?.({
+      request: { id: "request-1", projectId: "project", scopeId: applicationId, currentStep: 1 } as never,
+      steps: [{ stepNumber: 1, requiredApprovals: 1, approvers, approvals: [] }],
+      tx
+    });
+    const [step] = policy?.steps ?? [];
+    return {
+      approverCount: step && "approverCount" in step ? step.approverCount : undefined,
+      undecidable,
+      deps,
+      resource
+    };
+  };
+
+  it("counts a sub-org user named directly who reaches the organization only through a linked group", async () => {
+    const approvers = [{ type: ApproverType.User, id: "sub-org-user" }];
+    const { approverCount, undecidable, deps, resource } = await evaluate(
+      approvers,
+      [{ actorUserId: "sub-org-user", actorGroupId: null, isActive: true }],
+      [],
+      { viaLinkedGroupOnly: ["sub-org-user"] }
+    );
+
+    expect(approverCount).toBe(1);
+    expect(undecidable).toBe(false);
+    await expect(
+      resource.assertCanReview!({
+        request: {
+          projectId: "project",
+          scopeType: ApprovalPolicyScope.PkiApplication,
+          scopeId: applicationId
+        } as never,
+        decision: ApprovalRequestApprovalDecision.Approved,
+        actor: { id: "sub-org-user" } as never,
+        userGroupIds: new Set(),
+        stepApprovers: approvers
+      })
+    ).resolves.toBeUndefined();
+    expect(deps.orgDAL.findMembership).toHaveBeenCalledWith(expect.anything(), { tx: primaryDb });
+    expect(deps.orgDAL.findMembership).toHaveBeenCalledWith(expect.anything(), { tx });
+  });
+
+  it("doesn't count a user named directly who was invited and hasn't accepted", async () => {
+    const { approverCount, undecidable } = await evaluate(
+      [{ type: ApproverType.User, id: "invited" }],
+      [{ actorUserId: "invited", actorGroupId: null, isActive: true }],
+      [],
+      { invited: ["invited"] }
+    );
+
+    expect(approverCount).toBe(0);
+    expect(undecidable).toBe(true);
+  });
+
+  it("doesn't count a group entry's members who lack an accepted organization membership of their own", async () => {
+    const { approverCount, undecidable } = await evaluate(
+      [{ type: ApproverType.Group, id: "operator-group" }],
+      [operatorGroup],
+      [
+        { userId: "sub-org-user", groupId: "operator-group" },
+        { userId: "invited", groupId: "operator-group" }
+      ],
+      { viaLinkedGroupOnly: ["sub-org-user"], invited: ["invited"] }
+    );
+
+    expect(approverCount).toBe(0);
+    expect(undecidable).toBe(true);
+  });
+});
+
+describe("certRevocationApprovalResourceFactory.isRequestUndecidable", () => {
+  const tx = { node: "tx" } as never;
+  const operator = { actorUserId: "operator", actorGroupId: null, isActive: true };
+  const other = { actorUserId: "other", actorGroupId: null, isActive: true };
+  const demoted = { actorUserId: "demoted", actorGroupId: null, isActive: true, role: "auditor" };
+  const user = (id: string) => ({ type: ApproverType.User, id });
+
+  const step = (
+    stepNumber: number,
+    requiredApprovals: number,
+    approvers: { type: ApproverType; id: string }[],
+    approvedBy: string[] = []
+  ) => ({
+    stepNumber,
+    requiredApprovals,
+    approvers,
+    approvals: approvedBy.map((approverUserId) => ({ approverUserId }))
+  });
+
+  const check = async (
+    memberships: TTestMembership[],
+    steps: ReturnType<typeof step>[],
+    { currentStep = 1, groupLinks = [] as { userId: string; groupId: string }[] } = {}
+  ) => {
+    const { deps, resource } = setup([], memberships, groupLinks);
+    const request = { id: "request-1", projectId: "project", scopeId: applicationId, currentStep } as never;
+    const undecidable = await resource.isRequestUndecidable?.({ request, steps, tx });
+    return { undecidable, deps };
+  };
+
+  it("is undecidable once the step in progress's only approver is demoted to Auditor", async () => {
+    const { undecidable } = await check([demoted], [step(1, 1, [user("demoted")])]);
+    expect(undecidable).toBe(true);
+  });
+
+  it("is still decidable while another approver on the step in progress can approve", async () => {
+    const { undecidable, deps } = await check([demoted, other], [step(1, 1, [user("demoted"), user("other")])]);
+    expect(undecidable).toBe(false);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(expect.anything(), { tx });
+  });
+
+  it("is undecidable when the one approval still needed has nobody left who hasn't voted", async () => {
+    const { undecidable } = await check([other, demoted], [step(1, 2, [user("other"), user("demoted")], ["other"])]);
+    expect(undecidable).toBe(true);
+  });
+
+  it("is still decidable when someone who hasn't voted can give the approval still needed", async () => {
+    const { undecidable } = await check([other, operator], [step(1, 2, [user("other"), user("operator")], ["other"])]);
+    expect(undecidable).toBe(false);
+  });
+
+  it("is undecidable when a later step's only approver is a group with no members", async () => {
+    const { undecidable } = await check(
+      [other, { actorUserId: null, actorGroupId: "empty-group", isActive: true }],
+      [step(1, 1, [user("other")]), step(2, 1, [{ type: ApproverType.Group, id: "empty-group" }])]
+    );
+    expect(undecidable).toBe(true);
+  });
+
+  it("ignores a completed step whose approvers have since lost their role", async () => {
+    const { undecidable } = await check(
+      [demoted, other],
+      [step(1, 1, [user("demoted")], ["demoted"]), step(2, 1, [user("other")])],
+      {
+        currentStep: 2
+      }
+    );
+    expect(undecidable).toBe(false);
   });
 });
 

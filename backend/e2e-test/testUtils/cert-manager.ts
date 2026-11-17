@@ -365,7 +365,15 @@ export const getRevocationRequest = (dto: { requestId: string; authToken: string
       url: `${revocationPoliciesUrl}/requests/${dto.requestId}`,
       headers: auth(dto.authToken)
     },
-    (res) => ok<{ request: { id: string; status: string; canReview: boolean } }>(res).request
+    (res) =>
+      ok<{
+        request: {
+          id: string;
+          status: string;
+          canReview: boolean;
+          steps: { stepNumber: number; approvers: { type: ApproverType; id: string }[] }[];
+        };
+      }>(res).request
   );
 
 export const decideRevocationRequest = (dto: {

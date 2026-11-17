@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
+import { ApproverType } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -34,7 +35,13 @@ const CertRevocationPolicyStepsSchema = PolicyStepSchema.extend({
   .min(1, "A revocation approval policy needs at least one approval step")
   .superRefine((steps, ctx) => {
     steps.forEach((step, index) => {
-      const shortfall = getRevocationStepShortfall(step);
+      // A group's members can change after the policy is saved, so a step with a group is counted when a revocation
+      // is requested instead.
+      if (step.approvers.some((approver) => approver.type === ApproverType.Group)) return;
+      const shortfall = getRevocationStepShortfall({
+        requiredApprovals: step.requiredApprovals,
+        approverCount: new Set(step.approvers.map((approver) => approver.id)).size
+      });
       if (shortfall?.kind !== RevocationStepShortfallKind.TooFewApprovers) return;
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

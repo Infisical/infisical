@@ -16,3 +16,9 @@ export type TCertRevocationPolicyConstraints = z.infer<typeof CertRevocationPoli
 
 export type TCertRevocationRequest = z.infer<typeof CertRevocationRequestSchema>;
 export type TCertRevocationRequestData = z.infer<typeof CertRevocationPolicyRequestDataSchema>;
+
+// What matchPolicy returns: each step's approvers narrowed to those who can approve now, with the number of distinct
+// people who can approve it.
+export type TMatchedCertRevocationPolicy = Omit<TCertRevocationPolicy, "steps"> & {
+  steps: (TCertRevocationPolicy["steps"][number] & { approverCount: number })[];
+};

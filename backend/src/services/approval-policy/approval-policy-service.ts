@@ -2148,6 +2148,15 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
+  // Reads through the caller's transaction, which holds the lock that keeps a replacement request from racing this one.
+  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) => {
+    const request = await approvalRequestDAL.findById(requestId, tx);
+    const isUndecidable = request && resources[request.type as ApprovalPolicyType]?.isRequestUndecidable;
+    if (!isUndecidable) return false;
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId, tx);
+    return isUndecidable({ request, steps, tx });
+  };
+
   const listGrants = async (
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
@@ -2963,6 +2972,7 @@ export const approvalPolicyServiceFactory = ({
     buildTelemetryEvent,
     matchPolicy: (policyType: ApprovalPolicyType, projectId: string, inputs: TApprovalPolicyInputs) =>
       $resource(policyType).matchPolicy(projectId, inputs),
+    isPendingRequestUndecidable,
     getActiveGrant,
     getAccessStatuses,
     getRequestableScopes,

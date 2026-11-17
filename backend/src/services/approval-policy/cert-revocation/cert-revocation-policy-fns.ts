@@ -1,9 +1,6 @@
 import { ApproverType } from "../approval-policy-enums";
 
-export type TRevocationPolicyStep = {
-  requiredApprovals: number;
-  approvers: { type: ApproverType; id: string }[];
-};
+export type TApproverEntry = { type: ApproverType; id: string };
 
 export enum RevocationStepShortfallKind {
   NoApprovers = "no-approvers",
@@ -14,21 +11,50 @@ export type TRevocationStepShortfall =
   | { kind: RevocationStepShortfallKind.NoApprovers }
   | { kind: RevocationStepShortfallKind.TooFewApprovers; requiredApprovals: number; approverCount: number };
 
-// A group's size isn't known when the policy is saved or a request is opened, so a step with a group approver is
-// only refused when it has no approvers at all.
-export const getRevocationStepShortfall = (step: TRevocationPolicyStep): TRevocationStepShortfall | null => {
-  if (step.approvers.length === 0) return { kind: RevocationStepShortfallKind.NoApprovers };
-  if (step.approvers.some((approver) => approver.type === ApproverType.Group)) return null;
-
-  const approverCount = new Set(step.approvers.map((approver) => approver.id)).size;
-  if (step.requiredApprovals > approverCount) {
-    return {
-      kind: RevocationStepShortfallKind.TooFewApprovers,
-      requiredApprovals: step.requiredApprovals,
-      approverCount
-    };
+export const getRevocationStepShortfall = ({
+  requiredApprovals,
+  approverCount
+}: {
+  requiredApprovals: number;
+  approverCount: number;
+}): TRevocationStepShortfall | null => {
+  if (approverCount === 0) return { kind: RevocationStepShortfallKind.NoApprovers };
+  if (requiredApprovals > approverCount) {
+    return { kind: RevocationStepShortfallKind.TooFewApprovers, requiredApprovals, approverCount };
   }
   return null;
 };
 
 export const formatApproverCount = (count: number) => `${count} approver${count === 1 ? "" : "s"}`;
+
+export const approverKey = (approver: TApproverEntry) => `${approver.type}:${approver.id}`;
+
+// The users who can approve through each approver entry, keyed by approverKey.
+export type TApprovingPeople = Map<string, Set<string>>;
+
+export const findPeopleWhoCanApprove = (approvers: TApproverEntry[], people: TApprovingPeople) =>
+  new Set(approvers.flatMap((approver) => [...(people.get(approverKey(approver)) ?? [])]));
+
+export type TRevocationRequestStep = {
+  stepNumber: number;
+  requiredApprovals: number;
+  approvers: TApproverEntry[];
+  approvals: { approverUserId: string }[];
+};
+
+// A rejection ends a request, so every vote on the step in progress is an approval, and each person votes once. The
+// step can still pass while the people who can approve and haven't voted cover the approvals it still needs, and a
+// later step while it has as many people who can approve as it requires.
+export const isRevocationRequestUndecidable = (
+  { currentStep, steps }: { currentStep: number; steps: TRevocationRequestStep[] },
+  people: TApprovingPeople
+) =>
+  steps.some((step) => {
+    if (step.stepNumber < currentStep) return false;
+    const canApprove = findPeopleWhoCanApprove(step.approvers, people);
+    if (step.stepNumber > currentStep) return canApprove.size < step.requiredApprovals;
+
+    const voted = new Set(step.approvals.map((approval) => approval.approverUserId));
+    const yetToVote = [...canApprove].filter((userId) => !voted.has(userId)).length;
+    return yetToVote < step.requiredApprovals - voted.size;
+  });

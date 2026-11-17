@@ -7696,6 +7696,8 @@ interface ApprovalRequestCancelEvent {
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
+    // Set when Infisical cancelled the request rather than its requester.
+    reason?: string;
   } & TApprovalRequestSubjectMetadata;
 }
 

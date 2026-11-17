@@ -4396,7 +4396,9 @@ export const registerRoutes = async (
     certificateService,
     membershipDAL,
     membershipRoleDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    orgDAL,
+    userDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

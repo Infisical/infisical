@@ -2,7 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalRequests } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -31,14 +31,15 @@ import {
 } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   formatApproverCount,
   getRevocationStepShortfall,
   RevocationStepShortfallKind
 } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-fns";
 import {
-  TCertRevocationPolicy,
-  TCertRevocationRequestData
+  TCertRevocationRequestData,
+  TMatchedCertRevocationPolicy
 } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -217,7 +218,7 @@ type TCertificateServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
-    "matchPolicy" | "createRequestFromPolicy" | "notifyApprovedActionFailed"
+    "matchPolicy" | "isPendingRequestUndecidable" | "createRequestFromPolicy" | "notifyApprovedActionFailed"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -970,7 +971,7 @@ export const certificateServiceFactory = ({
     const policy = (await approvalPolicyService.matchPolicy(ApprovalPolicyType.CertRevocation, projectId, {
       profileName: profile.slug,
       applicationId: cert.applicationId
-    })) as TCertRevocationPolicy | null;
+    })) as TMatchedCertRevocationPolicy | null;
     if (!policy) return null;
 
     return { policy, profile };
@@ -1078,7 +1079,10 @@ export const certificateServiceFactory = ({
         revocationReason
       };
 
-      const { request: approvalRequest, notifyApprovers } = await certificateDAL.transaction(async (tx) => {
+      const {
+        created: { request: approvalRequest, notifyApprovers },
+        replaced
+      } = await certificateDAL.transaction(async (tx) => {
         // Locking the certificate serializes revocation requests for it, so two concurrent requests can't
         // both pass the pending check below.
         await certificateDAL.findByIdForUpdate(cert.id, tx);
@@ -1087,26 +1091,32 @@ export const certificateServiceFactory = ({
           { certificateId: cert.id, projectId: ca.projectId },
           tx
         );
+        let replacedRequest: TApprovalRequests | null = null;
         if (pending) {
-          if (!isApprovalRequestExpired(pending)) {
+          const expired = isApprovalRequestExpired(pending);
+          // A request keeps the approvers it was raised with. Once too few of them can approve, it would block every
+          // revocation of this certificate until it expires, which a policy with no maximum TTL never does.
+          const undecidable = !expired && (await approvalPolicyService.isPendingRequestUndecidable(pending.id, tx));
+          if (!expired && !undecidable) {
             throw new BadRequestError({
               message: `A revocation of certificate '${getCertificateDisplayName(cert)}' is already waiting for approval.`
             });
           }
           // Expiry is applied lazily, so a lapsed request still reads as pending until something marks it.
-          const [expired] = await approvalRequestDAL.update(
+          const [closed] = await approvalRequestDAL.update(
             { id: pending.id, status: ApprovalRequestStatus.Pending },
-            { status: ApprovalRequestStatus.Expired },
+            { status: expired ? ApprovalRequestStatus.Expired : ApprovalRequestStatus.Cancelled },
             tx
           );
-          if (!expired) {
+          if (!closed) {
             throw new BadRequestError({
               message: `An earlier revocation request for certificate '${getCertificateDisplayName(cert)}' was decided while you were making this one. Check the certificate's status and try again.`
             });
           }
+          if (undecidable) replacedRequest = closed;
         }
 
-        return approvalPolicyService.createRequestFromPolicy({
+        const created = await approvalPolicyService.createRequestFromPolicy({
           projectId: ca.projectId,
           organizationId: actorOrgId,
           policy,
@@ -1117,7 +1127,26 @@ export const certificateServiceFactory = ({
           deferApproverNotification: true,
           tx
         });
+        return { created, replaced: replacedRequest };
       });
+
+      if (replaced) {
+        await auditLogService.createAuditLog({
+          projectId: replaced.projectId,
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.APPROVAL_REQUEST_CANCEL,
+            metadata: {
+              policyType: replaced.type,
+              approvalRequestId: replaced.id,
+              requesterName: replaced.requesterName,
+              requesterEmail: replaced.requesterEmail,
+              reason: "The request's approvers can no longer approve it, so a new revocation request replaced it.",
+              ...getApprovalRequestSubjectMetadata(replaced)
+            }
+          }
+        });
+      }
 
       await notifyApprovers();
 
@@ -1183,7 +1212,7 @@ export const certificateServiceFactory = ({
       return {
         kind: ApprovedRevocationOutcomeKind.Failed,
         reason:
-          "Infisical couldn't confirm whether the certificate was revoked. Check its status, and request the revocation again if it is still active."
+          "Infisical couldn't confirm whether the certificate was revoked. Check its status, and if it is still active, request the revocation again with the same reason."
       };
     }
 
@@ -1221,7 +1250,7 @@ export const certificateServiceFactory = ({
         return {
           kind: ApprovedRevocationOutcomeKind.Failed,
           reason: current
-            ? `${cause} Infisical hasn't marked the certificate as revoked and couldn't confirm its state at the CA.`
+            ? `${cause} Infisical hasn't marked the certificate as revoked and couldn't confirm its state at the CA. Check its status, and if Infisical shows it as active, request the revocation again with the same reason.`
             : cause
         };
       }

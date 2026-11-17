@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { ApprovalRequestStatus, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  ApproverType
+} from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -325,7 +329,7 @@ describe("certificate revocation behind an approval policy", () => {
     id: "policy-1",
     name: "prod-revocations",
     maxRequestTtl: null,
-    steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }] }]
+    steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }], approverCount: 1 }]
   };
 
   const approvedRevocation = {
@@ -380,6 +384,7 @@ describe("certificate revocation behind an approval policy", () => {
     const auditLogService = { createAuditLog: vi.fn().mockResolvedValue(undefined) };
     const approvalPolicyService = {
       matchPolicy: vi.fn().mockResolvedValue(revocationPolicy),
+      isPendingRequestUndecidable: vi.fn().mockResolvedValue(false),
       createRequestFromPolicy: vi.fn().mockResolvedValue({
         request: { id: "approval-request-1", requesterName: "Ada Lovelace", requesterEmail: "ada@example.com" },
         notifyApprovers: vi.fn().mockResolvedValue(undefined)
@@ -470,9 +475,87 @@ describe("certificate revocation behind an approval policy", () => {
       });
 
       await expect(ctx.service.revokeCert(revokeRequest)).rejects.toBeInstanceOf(BadRequestError);
+      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).toHaveBeenCalledWith("approval-request-0", tx);
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    describe("when the pending request's approvers can no longer approve it", () => {
+      const stuckRequest = {
+        ...approvedRevocation,
+        id: "approval-request-0",
+        type: ApprovalPolicyType.CertRevocation,
+        status: ApprovalRequestStatus.Cancelled
+      };
+
+      const buildStuck = () => {
+        const ctx = buildRevocationService();
+        ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
+          id: "approval-request-0",
+          expiresAt: null
+        });
+        ctx.approvalPolicyService.isPendingRequestUndecidable.mockResolvedValue(true);
+        ctx.approvalRequestDAL.update.mockResolvedValue([stuckRequest]);
+        return ctx;
+      };
+
+      it("cancels it and opens a new request from the current policy", async () => {
+        const ctx = buildStuck();
+
+        const result = await ctx.service.revokeCert(revokeRequest);
+
+        expect(ctx.approvalRequestDAL.update).toHaveBeenCalledWith(
+          { id: "approval-request-0", status: ApprovalRequestStatus.Pending },
+          { status: ApprovalRequestStatus.Cancelled },
+          tx
+        );
+        expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+          expect.objectContaining({ policy: revocationPolicy, tx })
+        );
+        expect(result).toMatchObject({
+          status: CertificateRevocationStatus.PendingApproval,
+          approvalRequestId: "approval-request-1"
+        });
+        expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      });
+
+      it("records the cancellation as Infisical's, with the reason and the original requester", async () => {
+        const ctx = buildStuck();
+
+        await ctx.service.revokeCert(revokeRequest);
+
+        expect(ctx.auditLogService.createAuditLog).toHaveBeenCalledWith({
+          projectId: "project-1",
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.APPROVAL_REQUEST_CANCEL,
+            metadata: {
+              policyType: ApprovalPolicyType.CertRevocation,
+              approvalRequestId: "approval-request-0",
+              requesterName: "Ada Lovelace",
+              requesterEmail: "requester@example.com",
+              reason: "The request's approvers can no longer approve it, so a new revocation request replaced it.",
+              certificateId: "cert-1",
+              commonName: applicationCertificate.commonName,
+              profileName: "web-servers"
+            }
+          }
+        });
+      });
+
+      it("tells the requester it was decided meanwhile when cancelling finds it no longer pending", async () => {
+        const ctx = buildStuck();
+        ctx.approvalRequestDAL.update.mockResolvedValue([]);
+
+        await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+          new BadRequestError({
+            message: `An earlier revocation request for certificate '${applicationCertificate.friendlyName}' was decided while you were making this one. Check the certificate's status and try again.`
+          })
+        );
+        expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+        expect(ctx.auditLogService.createAuditLog).not.toHaveBeenCalled();
+      });
     });
 
     it("refuses a thumbprint that matches more than one certificate in the organization", async () => {
@@ -493,31 +576,17 @@ describe("certificate revocation behind an approval policy", () => {
 
     it.each([
       [
-        "a step has no approvers",
-        [{ requiredApprovals: 1, approvers: [] }],
+        "a step has nobody who can approve",
+        [{ requiredApprovals: 1, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 0 }],
         "Revocation approval policy 'prod-revocations' has no approvers who can approve on step 1, so nobody could approve this request. Ask an Application Admin to add approvers with an Admin or Operator role to the policy."
       ],
       [
-        "a step requires more approvals than it has user approvers",
+        "a step requires more approvals than people who can approve it",
         [
-          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }] },
-          { requiredApprovals: 2, approvers: [{ type: ApproverType.User, id: "user-3" }] }
+          { requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: "user-2" }], approverCount: 1 },
+          { requiredApprovals: 2, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 1 }
         ],
         "Revocation approval policy 'prod-revocations' requires 2 approvals on step 2 but has only 1 approver who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
-      ],
-      [
-        "a step lists the same user twice to reach its required approvals",
-        [
-          {
-            requiredApprovals: 3,
-            approvers: [
-              { type: ApproverType.User, id: "user-2" },
-              { type: ApproverType.User, id: "user-2" },
-              { type: ApproverType.User, id: "user-3" }
-            ]
-          }
-        ],
-        "Revocation approval policy 'prod-revocations' requires 3 approvals on step 1 but has only 2 approvers who can approve, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals."
       ]
     ])("refuses to open a request nobody could approve when %s", async (_label, steps, message) => {
       const ctx = buildRevocationService();
@@ -529,11 +598,11 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
     });
 
-    it("opens a request when a step's required approvals could come from a group", async () => {
+    it("opens a request when a group's members cover a step's required approvals", async () => {
       const ctx = buildRevocationService();
       ctx.approvalPolicyService.matchPolicy.mockResolvedValue({
         ...revocationPolicy,
-        steps: [{ requiredApprovals: 3, approvers: [{ type: ApproverType.Group, id: "group-1" }] }]
+        steps: [{ requiredApprovals: 3, approvers: [{ type: ApproverType.Group, id: "group-1" }], approverCount: 3 }]
       });
 
       await expect(ctx.service.revokeCert(revokeRequest)).resolves.toMatchObject({
@@ -586,6 +655,8 @@ describe("certificate revocation behind an approval policy", () => {
         { status: ApprovalRequestStatus.Expired },
         tx
       );
+      expect(ctx.approvalPolicyService.isPendingRequestUndecidable).not.toHaveBeenCalled();
+      expect(ctx.auditLogService.createAuditLog).not.toHaveBeenCalled();
       expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
       expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
     });
@@ -763,7 +834,7 @@ describe("certificate revocation behind an approval policy", () => {
             requesterName: "Ada Lovelace",
             requesterEmail: "requester@example.com",
             error:
-              "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error. Infisical hasn't marked the certificate as revoked and couldn't confirm its state at the CA."
+              "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error. Infisical hasn't marked the certificate as revoked and couldn't confirm its state at the CA. Check its status, and if Infisical shows it as active, request the revocation again with the same reason."
           }) as unknown
         })
       ]);
@@ -901,7 +972,7 @@ describe("certificate revocation behind an approval policy", () => {
         .mockResolvedValueOnce(applicationCertificate)
         .mockRejectedValueOnce(new Error("Connection terminated unexpectedly"));
       const reason =
-        "Infisical couldn't confirm whether the certificate was revoked. Check its status, and request the revocation again if it is still active.";
+        "Infisical couldn't confirm whether the certificate was revoked. Check its status, and if it is still active, request the revocation again with the same reason.";
 
       await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
 
