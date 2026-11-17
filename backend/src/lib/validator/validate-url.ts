@@ -72,9 +72,8 @@ export const isValidAzureAppConfigurationUrl = (url: string): boolean => {
     if (parsed.protocol !== "https:") return false;
     if (parsed.username || parsed.password) return false;
     if (parsed.port) return false;
-    // checks the raw string: `search` and `hash` are empty for a bare "?" or "#"
-    if (url.includes("?") || url.includes("#")) return false;
-    if (parsed.pathname !== "/" && parsed.pathname !== "") return false;
+    // requests append paths to the raw string, so it has to be the bare origin
+    if (url.toLowerCase() !== parsed.origin) return false;
 
     return AZURE_APP_CONFIGURATION_HOST_REGEX.test(parsed.hostname.toLowerCase());
   } catch {

@@ -56,7 +56,6 @@ describe("isValidAzureKeyVaultUrl", () => {
 describe("isValidAzureAppConfigurationUrl", () => {
   test.each([
     "https://my-store.azconfig.io",
-    "https://my-store.azconfig.io/",
     "https://My-Store.AZCONFIG.IO",
     "https://my-store.privatelink.azconfig.io"
   ])("accepts an App Configuration store endpoint: %s", (url) => {
@@ -71,6 +70,7 @@ describe("isValidAzureAppConfigurationUrl", () => {
     "https://my-store.azconfig.io@evil.com",
     "https://user:pass@my-store.azconfig.io",
     "https://my-store.azconfig.io:8443",
+    "https://my-store.azconfig.io/",
     "https://my-store.azconfig.io/kv",
     "https://my-store.azconfig.io?label=.azconfig.io",
     "https://my-store.azconfig.io?",

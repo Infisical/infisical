@@ -3548,7 +3548,7 @@ export const SecretSyncs = {
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
-        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io",
       label: "An optional label to assign to secrets created in Azure App Configuration.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
