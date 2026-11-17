@@ -110,7 +110,10 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
       approvalPolicyDAL,
-      permissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
+      permissionService: {
+        getOrgPermission: vi.fn().mockResolvedValue({}),
+        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      },
       userGroupMembershipDAL,
       resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
     } as unknown as TDeps);
@@ -165,5 +168,16 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     );
     expect(ctx.approvalRequestDAL.transaction).not.toHaveBeenCalled();
     expect(ctx.certificateService.revokeApprovedCertificate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["still holds an approving role", "operator", true],
+    ["was demoted to Auditor", "auditor", false]
+  ] as const)("tells a saved approver who %s whether they can review it", async (_label, role, canReview) => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true, role }]);
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(canReview);
   });
 });
