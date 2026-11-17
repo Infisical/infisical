@@ -110,6 +110,15 @@ const scimTokens = createFixtureStore<ScimTokenData[]>([
     orgId: V4_DEMO_ORG_ID,
     createdAt: at,
     updatedAt: at
+  },
+  {
+    id: "scim-token-entra",
+    ttlDays: 0,
+    description: "Entra ID provisioning",
+    tokenSuffix: "m4Rt",
+    orgId: V4_DEMO_ORG_ID,
+    createdAt: at,
+    updatedAt: at
   }
 ]);
 

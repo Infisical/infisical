@@ -10,7 +10,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
@@ -383,8 +383,12 @@ const MemberCard = ({
       secondary: (row) => row.subtitle || undefined,
       render: (row) => (
         <Inline gap={8} align="center" wrap={false}>
-          <span>{row.name}</span>
-          {row.pendingInvite && <Badge tone="soft">Pending invite</Badge>}
+          <InlineItem truncate>{row.name}</InlineItem>
+          {row.pendingInvite && (
+            <InlineItem shrink={false}>
+              <Badge tone="soft">Pending invite</Badge>
+            </InlineItem>
+          )}
         </Inline>
       )
     },

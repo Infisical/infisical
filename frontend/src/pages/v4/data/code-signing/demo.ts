@@ -275,6 +275,15 @@ const requests = createFixtureStore<TSignerRequest[]>([
     expiresAt: daysFromNow(0.6),
     createdAt: hoursAgo(9)
   }),
+  request("5b0e7c41-9d26-4f83-a1c5-2e8f6d3b9a17", {
+    status: SignerRequestStatus.Approved,
+    accessStatus: SignerRequestStatus.Approved,
+    grantStatus: "active",
+    requesterName: "Diego Alvarez",
+    requesterEmail: "diego.alvarez@acme.dev",
+    justification: "Standing grant for the build farm",
+    createdAt: hoursAgo(20)
+  }),
   request("c7d2a95e-3f18-4b6c-8e0a-5d9b1f4c2e73", {
     status: SignerRequestStatus.Approved,
     accessStatus: SignerRequestStatus.Expired,
