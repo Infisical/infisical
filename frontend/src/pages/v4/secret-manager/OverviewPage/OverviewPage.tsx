@@ -43,7 +43,6 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
@@ -117,6 +116,7 @@ import {
   type Secret,
   setEnvironmentOptions
 } from "./secrets-model";
+import { SecretsActivationNudge, useSecretsActivationNudge } from "./secrets/activation-nudge";
 import {
   type PendingChange,
   pendingIn,
@@ -131,7 +131,12 @@ import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/cop
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
 import { createdSecretsShare } from "./secrets/created-share";
-import { EnvironmentPicker } from "./secrets/environment-picker";
+import { AddEnvironmentDialog, EnvironmentPicker } from "./secrets/environment-picker";
+import {
+  type ExternalImportSource,
+  useExternalImports
+} from "./secrets/external-import/external-import";
+import { ExternalImportOverlay } from "./secrets/external-import/external-import-overlay";
 import { addFlows, type ApplyFeedback, type FlowFeedback, type NewResource } from "./secrets/flows";
 import { childPath, environmentLabel } from "./secrets/flows/shared";
 import {
@@ -140,24 +145,26 @@ import {
 } from "./secrets/import-secrets/import-secrets-sheet";
 import { SecretDropzone } from "./secrets/import-secrets/secret-dropzone";
 import {
-  NEXT_PHASE,
   ROW_ACTION_SLOTS,
   type RowContext,
   selectableKinds,
   TruncatedLabel,
   useStableHandlers
 } from "./secrets/overview-cells";
+import { usePlanGateHost } from "./secrets/plan-gates";
+import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
 import { FolderActions } from "./secrets/row-actions/folder-actions";
 import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
 import { ImportActions } from "./secrets/row-actions/import-actions";
-import { useFolderAccessPlanBlock, useManagedBlock } from "./secrets/row-actions/permissions";
+import { useManagedBlock } from "./secrets/row-actions/permissions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import { ShareSecretSheet } from "./secrets/row-actions/share-secret-sheet";
 import type { RowAction } from "./secrets/row-actions/types";
+import { ResourceSearchInput, SearchAllFoldersSheet } from "./secrets/search/search-all-folders";
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
@@ -219,7 +226,7 @@ const fieldErrorText = (error: unknown) =>
   isAxiosError(error) && error.response?.status === 400 ? errorMessage(error) : undefined;
 
 export const OverviewPage = () => {
-  const { projectId } = useParams({ from: ROUTE });
+  const { orgId, projectId } = useParams({ from: ROUTE });
   const search = useSearch({ from: ROUTE });
   const routerNavigate = useNavigate({ from: ROUTE });
   const adapter = useV4Adapter("secrets");
@@ -227,7 +234,6 @@ export const OverviewPage = () => {
   const projectQuery = adapter.useProject(projectId);
   const blockFor = useManagedBlock(projectId);
   const { permission } = useProjectPermission(projectId);
-  const folderAccessPlanBlock = useFolderAccessPlanBlock();
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
@@ -240,6 +246,8 @@ export const OverviewPage = () => {
   const tags = parseList(search.tags);
   const [query, setQuery] = useState(search.search);
   const [debounced, setDebounced] = useState(search.search);
+  const [searchAllOpen, setSearchAllOpen] = useState(false);
+  const [carriedQuery, setCarriedQuery] = useState<{ path: string; search: string }>();
   const [sort, setSort] = useState<Sort>({ field: "name", direction: "asc" });
   const [paging, setPaging] = useState({ scope: "", page: 1 });
   const [perPage, setPerPage] = useState(100);
@@ -278,6 +286,8 @@ export const OverviewPage = () => {
   const [moving, setMoving] = useState<Resource[]>();
   const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
   const [syncOpen, setSyncOpen] = useState(false);
+  const [addingEnvironment, setAddingEnvironment] = useState(false);
+  const [externalImport, setExternalImport] = useState<ExternalImportSource>();
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
@@ -291,6 +301,14 @@ export const OverviewPage = () => {
     label: environment.name
   }));
   setEnvironmentOptions(projectEnvironments);
+  const planGates = usePlanGateHost(projectId, projectEnvironments.length);
+  const activationNudge = useSecretsActivationNudge();
+  const startRowAction = (next: RowAction) =>
+    next.kind === "folder" && next.action === "access"
+      ? planGates.guard("folderAccess", () => setRowAction(next))
+      : setRowAction(next);
+  const viewCommits = (environment: { value: string; label: string }) =>
+    planGates.guard("commits", () => setCommitEnvironment(environment));
   const environmentIds = search.environments.filter((slug) =>
     projectEnvironments.some((environment) => environment.value === slug)
   );
@@ -299,6 +317,11 @@ export const OverviewPage = () => {
   );
   const single = visibleEnvironments.length === 1;
   const activeEnvironment = visibleEnvironments[0]?.value ?? "";
+  const externalImports = useExternalImports(
+    projectId,
+    visibleEnvironments.map((environment) => environment.value),
+    path
+  );
   const pageScope = JSON.stringify([path, environmentIds, debounced, types, tags, sort, perPage]);
   const page = paging.scope === pageScope ? paging.page : 1;
   const setPage = (next: number) => setPaging({ scope: pageScope, page: next });
@@ -596,6 +619,14 @@ export const OverviewPage = () => {
                 .join(". ")
             }
           : resolved;
+        const existing = new Set(before.map((resource) => resource.id));
+        const createdSecrets = after.filter(
+          (resource): resource is Secret =>
+            resource.kind === "secret" &&
+            !existing.has(resource.id) &&
+            !isHeld(resource.environment, resource.path)
+        );
+        if (createdSecrets.length) activationNudge.checkActivation();
         if (!result.share) {
           toast({
             tone: result.tone ?? "ok",
@@ -604,16 +635,7 @@ export const OverviewPage = () => {
           });
           return true;
         }
-        const existing = new Set(before.map((resource) => resource.id));
-        pushCreatedToast(
-          result,
-          after.filter(
-            (resource): resource is Secret =>
-              resource.kind === "secret" &&
-              !existing.has(resource.id) &&
-              !isHeld(resource.environment, resource.path)
-          )
-        );
+        pushCreatedToast(result, createdSecrets);
         return true;
       },
       (error: unknown) => {
@@ -649,6 +671,18 @@ export const OverviewPage = () => {
     syncOptions: sync.syncOptions as Record<string, unknown>
   }));
   const createSecretSync = adapter.useCreateSecretSync();
+  const refetchProjectRef = useRef(projectQuery.refetch);
+  const refetchOverviewRef = useRef(overview.refetch);
+  useLayoutEffect(() => {
+    refetchProjectRef.current = projectQuery.refetch;
+    refetchOverviewRef.current = overview.refetch;
+  });
+  const refetchProject = useCallback(async () => {
+    const result = (await refetchProjectRef.current?.()) as
+      | { data?: { version?: ProjectVersion } }
+      | undefined;
+    if (result?.data?.version === ProjectVersion.V3) refetchOverviewRef.current();
+  }, []);
   const noEnvironments = projectQuery.isPending ? false : !projectEnvironments.length;
   const legacy = Boolean(projectQuery.data) && projectQuery.data?.version !== ProjectVersion.V3;
   const failed = Boolean(overview.error);
@@ -685,8 +719,10 @@ export const OverviewPage = () => {
   const [shownPath, setShownPath] = useState(path);
   if (shownPath !== path) {
     setShownPath(path);
-    setQuery("");
-    setDebounced("");
+    const kept = carriedQuery?.path === path ? carriedQuery.search : "";
+    setCarriedQuery(undefined);
+    setQuery(kept);
+    setDebounced(kept);
     resetView();
   }
   const navigate = (nextPath: string) => updateSearch({ secretPath: nextPath, search: "" });
@@ -822,6 +858,11 @@ export const OverviewPage = () => {
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
           setReviewOpen(false);
+          if (
+            !response.approval &&
+            changes.some((change) => change.type === "create" && change.next?.kind === "secret")
+          )
+            activationNudge.checkActivation();
           toast(
             response.approval
               ? {
@@ -869,7 +910,7 @@ export const OverviewPage = () => {
           : [...new Set([...selected, ...keys])]
       ),
     report,
-    onAction: setRowAction,
+    onAction: startRowAction,
     onSavePending: (id) =>
       commitChanges(
         pendingHere.filter((change) => pendingTarget(change).id === id),
@@ -1254,7 +1295,7 @@ export const OverviewPage = () => {
       node
     );
   const secretEvents = useStableHandlers<
-    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions">
+    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize">
   >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
@@ -1293,13 +1334,26 @@ export const OverviewPage = () => {
       setQuery(key);
     },
     onRefresh: () => overview.refetch(),
+    onRename: (secrets, name, onFieldError) => {
+      const ids = new Set(secrets.map((secret) => secret.id));
+      return setResources(
+        (current) =>
+          current.map((resource): Resource =>
+            resource.kind === "secret" && ids.has(resource.id) ? { ...resource, name } : resource
+          ),
+        { title: `Renamed ${secrets[0]?.name ?? "secret"} to ${name}` },
+        undefined,
+        onFieldError
+      );
+    },
     importedFrom
   });
   const handlers: SecretRowHandlers = {
     ...secretEvents,
     copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
-    tagOptions
+    tagOptions,
+    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization)
   };
   const allOnPage =
     selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
@@ -1390,6 +1444,31 @@ export const OverviewPage = () => {
     updateSearch({ filterBy: undefined, tags: undefined, search: "" });
     resetView();
   };
+  const addNewMenu = (trigger?: ReactNode) => (
+    <AddNewMenu
+      writeBlock={writeBlock}
+      accessBlocks={addBlocks}
+      single={single}
+      copyBlock={pendingHere.length ? "Commit or discard pending changes first" : undefined}
+      onAdd={(kind) =>
+        kind === "dynamic" || kind === "rotation" || kind === "honey"
+          ? planGates.guard(kind, () => openFlow(kind))
+          : openFlow(kind)
+      }
+      onUpload={() => setImportRequest({ step: "upload" })}
+      onCopySecrets={() =>
+        setCopyInvocation({
+          origin: "toolbar",
+          sourcePath: path,
+          sourceEnvironmentSlug: single ? activeEnvironment : ""
+        })
+      }
+      onAddSync={() => setSyncOpen(true)}
+      importSources={externalImports.sources}
+      onImportFrom={setExternalImport}
+      trigger={trigger}
+    />
+  );
   const emptyState = (() => {
     if (query.trim())
       return (
@@ -1401,12 +1480,9 @@ export const OverviewPage = () => {
               <Button variant="outline" onClick={clearFilters}>
                 Clear search
               </Button>
-              {gate(
-                NEXT_PHASE,
-                <Button variant="outline" disabled>
-                  Search all folders
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => setSearchAllOpen(true)}>
+                Search all folders
+              </Button>
             </>
           }
         />
@@ -1481,21 +1557,27 @@ export const OverviewPage = () => {
         <EmptyState
           icon="folder"
           title="No environments yet"
-          actions={gate(
-            NEXT_PHASE,
-            <Button icon="plus" disabled>
+          actions={
+            <Button
+              icon="plus"
+              disabledReason={
+                permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments)
+                  ? undefined
+                  : "You don't have permission to add environments"
+              }
+              onClick={() => planGates.guard("environment", () => setAddingEnvironment(true))}
+            >
               Add environment
             </Button>
-          )}
+          }
         />
       );
     if (legacy)
       return (
-        <EmptyState
-          icon="lock"
-          title="Secrets engine upgrade required"
-          description="This project uses the legacy secrets engine."
-          actions={gate(NEXT_PHASE, <Button disabled>Upgrade project</Button>)}
+        <ProjectUpgradeState
+          projectId={projectId}
+          upgradeStatus={projectQuery.data?.upgradeStatus}
+          onRefetch={refetchProject}
         />
       );
     if (failed)
@@ -1599,7 +1681,7 @@ export const OverviewPage = () => {
           <Icon name="download" />
           Download as .env
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setCommitEnvironment(environment)}>
+        <DropdownMenuItem onSelect={() => viewCommits(environment)}>
           <Icon icon={GitCommitIcon} />
           View commit history
         </DropdownMenuItem>
@@ -1628,7 +1710,8 @@ export const OverviewPage = () => {
     },
     report: (message) => toast({ tone: "bad", title: message })
   };
-  return valueStore.provider(
+  const provide = (children: ReactNode) => valueStore.provider(planGates.provider(children));
+  return provide(
     <BreadthContext value={holdBreadth}>
       <ReferenceSourceProvider value={referenceSource}>
         <div ref={root}>
@@ -1661,18 +1744,15 @@ export const OverviewPage = () => {
                     />
                   </div>
                   <div className={styles.search}>
-                    <Input
-                      aria-label="Search resources"
-                      icon="search"
-                      placeholder="Search by secret or folder name..."
-                      slashShortcut
+                    <ResourceSearchInput
                       value={query}
                       disabled={unavailable}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
+                      onChange={(value) => {
+                        setQuery(value);
                         setPage(1);
                         setSelected([]);
                       }}
+                      onSearchAllFolders={() => setSearchAllOpen(true)}
                     />
                   </div>
                   <ResourceFilterMenu
@@ -1703,40 +1783,18 @@ export const OverviewPage = () => {
                     secretCount={single ? envSecrets(activeEnvironment).length : 0}
                     onExport={(action) => exportEnv(activeEnvironment, action)}
                   />
-                  <AddNewMenu
-                    writeBlock={writeBlock}
-                    accessBlocks={addBlocks}
-                    single={single}
-                    available={Object.fromEntries(
-                      Object.keys(addFlows).map((kind) => [kind, true])
-                    )}
-                    copyBlock={
-                      pendingHere.length ? "Commit or discard pending changes first" : undefined
-                    }
-                    onAdd={(kind) => openFlow(kind)}
-                    onUpload={() => setImportRequest({ step: "upload" })}
-                    onCopySecrets={() =>
-                      setCopyInvocation({
-                        origin: "toolbar",
-                        sourcePath: path,
-                        sourceEnvironmentSlug: single ? activeEnvironment : ""
-                      })
-                    }
-                    onAddSync={() => setSyncOpen(true)}
-                  />
+                  {addNewMenu()}
                 </div>
                 <div className={styles.tableBlock}>
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
-                      accessBlock={
-                        blockFor(
-                          ProjectPermissionSub.SecretFolders,
-                          ProjectPermissionSecretFolderActions.ManageAccess,
-                          { environment: activeEnvironment, secretPath: path },
-                          "manage access to this folder"
-                        ) ?? folderAccessPlanBlock
-                      }
+                      accessBlock={blockFor(
+                        ProjectPermissionSub.SecretFolders,
+                        ProjectPermissionSecretFolderActions.ManageAccess,
+                        { environment: activeEnvironment, secretPath: path },
+                        "manage access to this folder"
+                      )}
                       onManageAccess={
                         single
                           ? () => {
@@ -1752,7 +1810,7 @@ export const OverviewPage = () => {
                                 createdAt: "",
                                 updatedAt: ""
                               };
-                              setRowAction({
+                              startRowAction({
                                 kind: "folder",
                                 action: "access",
                                 entry: folder,
@@ -1869,10 +1927,12 @@ export const OverviewPage = () => {
                                       variant="ghost"
                                       size="xs"
                                       icon="git"
-                                      onClick={() => setCommitEnvironment(visibleEnvironments[0])}
+                                      onClick={() => viewCommits(visibleEnvironments[0])}
                                     >
                                       <span className={styles.headLabel}>
-                                        {`${commitCount} commit${commitCount === 1 ? "" : "s"}`}
+                                        {planGates.plan && !planGates.plan.pitRecovery
+                                          ? "Commit history"
+                                          : `${commitCount} commit${commitCount === 1 ? "" : "s"}`}
                                       </span>
                                     </Button>
                                     <SecretSyncStatusBadge
@@ -1927,6 +1987,11 @@ export const OverviewPage = () => {
                           )}
                           {canQuickAdd && (
                             <QuickAddRow
+                              typeMenu={addNewMenu(
+                                <Button variant="ghost" size="icon-row" iconOnly icon="plus">
+                                  Add another resource type
+                                </Button>
+                              )}
                               scope={{ project, environment: activeEnvironment, path }}
                               multiple={!single}
                               colSpan={(single ? 1 : visibleEnvironments.length) + 1}
@@ -2282,6 +2347,16 @@ export const OverviewPage = () => {
               </>
             );
           })()}
+          {single && (
+            <ExternalImportOverlay
+              source={externalImport}
+              connections={externalImports.connections}
+              projectId={projectId}
+              environment={visibleEnvironments[0]}
+              path={path}
+              onClose={() => setExternalImport(undefined)}
+            />
+          )}
           <CreateSecretSyncSheet
             open={syncOpen}
             onOpenChange={setSyncOpen}
@@ -2317,6 +2392,32 @@ export const OverviewPage = () => {
                 )
             }
             onToast={(tone, feedback) => toast({ tone, ...feedback })}
+          />
+          <AddEnvironmentDialog
+            projectId={projectId}
+            open={addingEnvironment}
+            onOpenChange={setAddingEnvironment}
+            report={report}
+            onCreated={(slug) => {
+              projectQuery.refetch?.();
+              setEnvironmentIds([slug]);
+            }}
+          />
+          <SearchAllFoldersSheet
+            open={searchAllOpen}
+            onOpenChange={setSearchAllOpen}
+            projectId={projectId}
+            orgId={orgId}
+            environments={projectQuery.data?.environments ?? []}
+            tags={tagList}
+            folderTree={folderTree}
+            initialQuery={query}
+            onSelect={(selection) => {
+              setCarriedQuery(selection);
+              setQuery(selection.search);
+              setDebounced(selection.search);
+              resetView();
+            }}
           />
           <ReviewSheet
             open={reviewOpen}
@@ -2386,6 +2487,12 @@ export const OverviewPage = () => {
             }}
           />
           {breadth.fetchers}
+          <SecretsActivationNudge
+            projectId={projectId}
+            open={activationNudge.open}
+            onOpenChange={activationNudge.setOpen}
+            lifted={selected.length > 0 || (pendingHere.length > 0 && !reviewOpen)}
+          />
         </div>
       </ReferenceSourceProvider>
     </BreadthContext>

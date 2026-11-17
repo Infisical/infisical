@@ -69,6 +69,7 @@ import type {
 } from "@app/hooks/api/identities/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { notPorted } from "../../not-ported";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { failed, saved } from "../toast";
@@ -562,12 +563,7 @@ export const AuthMethodFormSheet = ({
     );
   else if (method)
     body = (
-      <EmptyState
-        size="sm"
-        icon="lock"
-        title={`${authMethodName(method)} can't be configured here yet`}
-        description="Only Universal Auth can be added or edited here."
-      />
+      <EmptyState size="sm" icon="lock" title={notPorted(`${authMethodName(method)} setup`)} />
     );
 
   return (
@@ -1256,8 +1252,7 @@ export const AuthMethodViewSheet = ({
             <EmptyState
               size="sm"
               icon="lock"
-              title={`${authMethodName(method)} details aren't available here yet`}
-              description="Only Universal, Token, Kubernetes, AWS and OIDC Auth can be viewed here."
+              title={notPorted(`${authMethodName(method)} details`)}
             />
           )}
         </SheetBody>

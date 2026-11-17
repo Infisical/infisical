@@ -15,14 +15,21 @@ import {
 } from "@app/hooks/api/secrets/types";
 
 import type { SecretsAdapter } from "./contract";
+import { secretsAccessInsightsDemo } from "./demo-access-insights";
+import { secretsActivationDemo } from "./demo-activation";
 import { secretsChangeRequestsDemo } from "./demo-change-requests";
+import { secretsExternalImportDemo } from "./demo-external-import";
 import { secretsFlowsDemo } from "./demo-flows";
+import { secretsPlanDemo } from "./demo-plan";
+import { secretsQuickSearchDemo } from "./demo-quick-search";
+import { secretsReminderChannelsDemo } from "./demo-reminder-channels";
 import {
   childPath,
   demoMutation,
   now,
   recordVersion,
   recovered,
+  upgraded,
   sanitize,
   secretAt,
   updateSecrets,
@@ -30,6 +37,7 @@ import {
   useStore,
   within
 } from "./demo-store";
+import { secretsUpgradeDemo } from "./demo-upgrade";
 import type { DemoSecret, SecretsFixtures } from "./fixtures";
 
 const overviewOf = (
@@ -289,8 +297,16 @@ const dependentsOf = (
 export const secretsDemo: SecretsAdapter = {
   ...secretsFlowsDemo,
   ...secretsChangeRequestsDemo,
+  ...secretsUpgradeDemo,
+  ...secretsAccessInsightsDemo,
+  ...secretsReminderChannelsDemo,
+  ...secretsQuickSearchDemo,
+  ...secretsExternalImportDemo,
+  ...secretsPlanDemo,
+  ...secretsActivationDemo,
   useProject: (projectId) => {
     const scenario = useScenario();
+    const isUpgraded = upgraded.use();
     const project = useStore()
       .use()
       .projects.find((entry) => entry.id === projectId);
@@ -300,7 +316,7 @@ export const secretsDemo: SecretsAdapter = {
       data: {
         ...project,
         environments: scenario === "no-environments" ? [] : project.environments,
-        version: scenario === "legacy" ? ProjectVersion.V2 : project.version
+        version: scenario === "legacy" && !isUpgraded ? ProjectVersion.V2 : project.version
       },
       isPending: false,
       error: null

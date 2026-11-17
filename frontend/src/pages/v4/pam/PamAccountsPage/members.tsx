@@ -527,7 +527,7 @@ export const MembersPanel = ({
                 )
               )}
             >
-              {`Manage on ${inheritFrom.folderName ?? "folder"}`}
+              Manage in folder
             </Link>
           }
           empty={null}

@@ -36,9 +36,14 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
+import { ProviderIcon } from "../../../components/provider-icon";
 import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
-import { KindIcon, NEXT_PHASE } from "./overview-cells";
+import {
+  type ExternalImportSource,
+  externalImportSources
+} from "./external-import/external-import";
+import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
 import { ReferenceEditor } from "./secret-references";
 import { Annotations } from "./secret-row";
@@ -179,25 +184,28 @@ export function AddNewMenu({
   writeBlock,
   accessBlocks = {},
   single,
-  available,
   copyBlock,
   onAdd,
   onUpload,
   onCopySecrets,
-  onAddSync
+  onAddSync,
+  trigger,
+  importSources = [],
+  onImportFrom
 }: {
   writeBlock?: string;
   accessBlocks?: AddNewBlocks;
   single: boolean;
-  available: Partial<Record<ResourceKind, boolean>>;
   copyBlock?: string;
   onAdd: (kind: ResourceKind) => void;
   onUpload: () => void;
   onCopySecrets: () => void;
   onAddSync: () => void;
+  trigger?: ReactNode;
+  importSources?: ExternalImportSource[];
+  onImportFrom?: (source: ExternalImportSource) => void;
 }) {
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
-    if (!available[kind]) return NEXT_PHASE;
     if (writeBlock) return writeBlock;
     if (accessBlocks[kind]) return accessBlocks[kind];
     return singleReason && !single ? singleReason : undefined;
@@ -218,11 +226,13 @@ export function AddNewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button layout="trigger" variant="accent">
-          Add new
-        </Button>
+        {trigger ?? (
+          <Button layout="trigger" variant="accent">
+            Add new
+          </Button>
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={trigger ? "start" : "end"}>
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {item("secret", "New secret", <KindIcon kind="secret" />)}
         {item("folder", "New folder", <KindIcon kind="folder" />)}
@@ -271,6 +281,25 @@ export function AddNewMenu({
               <Icon name="sync" />
               New secret sync
             </DropdownMenuItem>
+            {importSources.length > 0 && <DropdownMenuSeparator />}
+            {importSources.map((source) => {
+              const { label, name, icon } = externalImportSources[source];
+              const reason =
+                writeBlock ??
+                accessBlocks.secret ??
+                (single ? undefined : `Select a single environment to import from ${name}`);
+              return (
+                <DropdownMenuItem
+                  key={source}
+                  disabled={Boolean(reason)}
+                  description={reason}
+                  onSelect={() => onImportFrom?.(source)}
+                >
+                  <ProviderIcon icon={icon} alt="" data-menu-icon="" />
+                  {label}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>
@@ -418,7 +447,8 @@ export function QuickAddRow({
   canCreateTags,
   onCreate,
   onQueue,
-  onPasteSecrets
+  onPasteSecrets,
+  typeMenu
 }: {
   scope: Scope;
   multiple: boolean;
@@ -435,6 +465,7 @@ export function QuickAddRow({
   ) => Promise<boolean>;
   onQueue?: (key: string, value: string, annotations: QuickAddAnnotations) => void;
   onPasteSecrets: (parsed: ReturnType<typeof parsePastedEnv>) => void;
+  typeMenu: ReactNode;
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
@@ -510,9 +541,19 @@ export function QuickAddRow({
     >
       <TableCell pin="start" selection divider={false}>
         <span className={styles.iconSlot}>
-          <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabledReason={NEXT_PHASE}>
-            Add another resource type
-          </Button>
+          {dirty ? (
+            <Button
+              variant="ghost"
+              size="icon-row"
+              iconOnly
+              icon="plus"
+              disabledReason="Finish or clear this secret first"
+            >
+              Add another resource type
+            </Button>
+          ) : (
+            typeMenu
+          )}
         </span>
       </TableCell>
       <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>

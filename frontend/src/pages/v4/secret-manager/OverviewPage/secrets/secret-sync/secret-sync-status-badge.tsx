@@ -3,6 +3,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Spinner } from "@infisical/cipher/ui/spinner";
 import {
   Table,
@@ -12,15 +13,16 @@ import {
   TableHeader,
   TableRow
 } from "@infisical/cipher/ui/table";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
 import { HourglassIcon } from "lucide-react";
 
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
+import { useV4Session } from "../../../../data/session/contract";
+import { useGo } from "../../../../links";
+import { syncHref } from "../../../IntegrationsPage/secret-syncs/model";
 import { ProviderLogo } from "../flows/wizard-sheet";
-import { NEXT_PHASE } from "../overview-cells";
 import type { LocalSecretSync } from "./sync-model";
 
 import styles from "./secret-sync.module.css";
@@ -114,6 +116,8 @@ export function SecretSyncStatusBadge({
   path: string;
 }) {
   const [open, setOpen] = useState(false);
+  const go = useGo();
+  const { organization } = useV4Session();
   const filtered = syncs.filter(
     (sync) =>
       sync.project === project && (!environments.length || environments.includes(sync.environment))
@@ -173,9 +177,17 @@ export function SecretSyncStatusBadge({
                       <ProviderLogo image={meta?.image} size={20} />
                     </TableCell>
                     <TableCell className={styles.nameCell}>
-                      <Tooltip content={`Sync details are ${NEXT_PHASE.toLowerCase()}`}>
+                      <RowLink
+                        link={go.link(
+                          syncHref(organization.id, sync.project, {
+                            destination: sync.destination as SecretSync,
+                            id: sync.id
+                          })
+                        )}
+                        title={sync.name}
+                      >
                         <span className={styles.truncate}>{sync.name}</span>
-                      </Tooltip>
+                      </RowLink>
                     </TableCell>
                     <TableCell>
                       <SecretSyncRowStatusBadge sync={sync} />

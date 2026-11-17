@@ -81,7 +81,7 @@ import {
   stopRowClick,
   sameRow
 } from "./overview-cells";
-import { type PermissionScope, useFolderAccessPlanBlock } from "./row-actions/permissions";
+import type { PermissionScope } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
 
 import styles from "./overview.module.css";
@@ -712,7 +712,6 @@ function FolderRowView({
   onDelete: (folder: Of<"folder">) => void;
 }) {
   const first = entries[0];
-  const planBlock = useFolderAccessPlanBlock();
   const folderScopes = entries.map((entry) => ({
     environment: entry.environment,
     secretPath: `${entry.path.replace(/\/$/, "")}/${entry.name}`
@@ -722,10 +721,7 @@ function FolderRowView({
   const editBlock = folderGate(ProjectPermissionActions.Edit, "edit this folder");
   const deleteBlock = folderGate(ProjectPermissionActions.Delete, "delete this folder");
   const accessBlock = ctx.single
-    ? (folderGate(
-        ProjectPermissionSecretFolderActions.ManageAccess,
-        "manage access to this folder"
-      ) ?? planBlock)
+    ? folderGate(ProjectPermissionSecretFolderActions.ManageAccess, "manage access to this folder")
     : "Select a single environment to manage folder access.";
   const rowActions: RowActionProps = {
     label: first.name,

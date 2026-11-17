@@ -119,35 +119,66 @@ export const AddChannelMenu = ({
   );
 };
 
+const PROJECT_PRINCIPALS: string[] = [
+  AlertPrincipalType.ProjectMembers,
+  AlertPrincipalType.ProjectAdmins
+];
+const PROJECT_RECIPIENT_LABELS: Record<string, string> = {
+  [AlertPrincipalType.ProjectMembers]: "All project members",
+  [AlertPrincipalType.ProjectAdmins]: "Project admins"
+};
+
 const EmailRecipientsField = ({
   value,
   onChange,
   error,
-  members
+  members,
+  projectId,
+  projectRecipients
 }: {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
   error?: string;
   members: TMemberEmails;
+  projectId: string;
+  projectRecipients?: boolean;
 }) => {
+  const projectValues = value
+    .filter((recipient) => PROJECT_PRINCIPALS.includes(recipient.principalType))
+    .map((recipient) => recipient.principalType as string);
   const emails = toRecipientEmails(value, members);
+  const selected = [...projectValues, ...emails];
   const groups = value.filter((recipient) => recipient.principalType === AlertPrincipalType.Group);
   const unlistedUsers = value.filter(
     (recipient) =>
       recipient.principalType === AlertPrincipalType.User &&
       !members.emailByUserId.has(recipient.principalId)
   );
-  const options = [...new Set([...members.memberIdByEmail.keys(), ...emails])]
-    .sort()
-    .map((email) => ({ value: email, label: email }));
+  const projectOptions = (projectRecipients ? PROJECT_PRINCIPALS : projectValues).map(
+    (principalType) => ({
+      value: principalType,
+      label: PROJECT_RECIPIENT_LABELS[principalType],
+      group: "Project"
+    })
+  );
+  const options = [
+    ...projectOptions,
+    ...[...new Set([...members.memberIdByEmail.keys(), ...emails])].sort().map((email) => ({
+      value: email,
+      label: email,
+      ...(projectOptions.length && { group: "Members" })
+    }))
+  ];
 
-  const setEmails = (nextEmails: string[]) =>
+  const setEmails = (nextValues: string[]) =>
     onChange([
-      ...nextEmails.map((email) => {
-        const userId = members.memberIdByEmail.get(email);
+      ...nextValues.map((entry) => {
+        if (PROJECT_PRINCIPALS.includes(entry))
+          return { principalType: entry as AlertPrincipalType, principalId: projectId };
+        const userId = members.memberIdByEmail.get(entry);
         return userId
           ? { principalType: AlertPrincipalType.User, principalId: userId }
-          : { principalType: AlertPrincipalType.Email, principalId: email };
+          : { principalType: AlertPrincipalType.Email, principalId: entry };
       }),
       ...unlistedUsers,
       ...groups
@@ -171,7 +202,7 @@ const EmailRecipientsField = ({
         multiple
         label="Recipients"
         options={options}
-        value={emails}
+        value={selected}
         onChange={setEmails}
         placeholder="Select members or type an email"
         emptyText="No matching members. Type a full email to add it."
@@ -179,7 +210,7 @@ const EmailRecipientsField = ({
         onCreate={(query) => {
           const email = normalizeEmail(query);
           if (!isValidEmail(email)) throw new Error("Enter a full email address");
-          if (!emails.includes(email)) setEmails([...emails, email]);
+          if (!selected.includes(email)) setEmails([...selected, email]);
         }}
       />
     </Field>
@@ -430,6 +461,7 @@ const ChannelCard = ({
   alertId,
   members,
   resource,
+  projectRecipients,
   onInvalid,
   onRemove
 }: TChannelFieldProps & {
@@ -437,6 +469,7 @@ const ChannelCard = ({
   alertId?: string;
   members: TMemberEmails;
   resource: TChannelResource;
+  projectRecipients?: boolean;
   onInvalid: (errors: TFieldErrors) => void;
   onRemove: () => void;
 }) => {
@@ -514,6 +547,8 @@ const ChannelCard = ({
             onChange={(recipients) => onChange({ recipients })}
             error={error("recipients")}
             members={members}
+            projectId={projectId}
+            projectRecipients={projectRecipients}
           />
         )}
         {channelType === AlertChannelType.Slack && (
@@ -566,7 +601,8 @@ export const ChannelsStep = ({
   members,
   hasEnterprise,
   resource,
-  upgrade
+  upgrade,
+  projectRecipients
 }: {
   channels: TDraftChannel[];
   errors: TFieldErrors;
@@ -578,6 +614,7 @@ export const ChannelsStep = ({
   hasEnterprise: boolean;
   resource: TChannelResource;
   upgrade?: TUpgradeGateRequest;
+  projectRecipients?: boolean;
 }) => (
   <Stack gap={16}>
     <Inline gap={12} justify="between" align="center" wrap={false}>
@@ -641,6 +678,7 @@ export const ChannelsStep = ({
           alertId={alertId}
           members={members}
           resource={resource}
+          projectRecipients={projectRecipients}
           onRemove={() => {
             onChange(channels.filter(({ uid }) => uid !== channel.uid));
             onErrorsChange(removeIndexedErrors(errors, "", index));

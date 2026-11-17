@@ -34,6 +34,7 @@ import { useProjectPermission } from "../../../access/permissions";
 import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { EnvironmentOption } from "./overview-cells";
+import { usePlanGates } from "./plan-gates";
 
 import styles from "./overview.module.css";
 
@@ -43,7 +44,7 @@ const slugOf = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-function AddEnvironmentDialog({
+export function AddEnvironmentDialog({
   projectId,
   open,
   onOpenChange,
@@ -177,6 +178,7 @@ export function EnvironmentPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
+  const { guard } = usePlanGates();
   const { permission } = useProjectPermission(projectId);
   const canCreate = permission.can(
     ProjectPermissionActions.Create,
@@ -284,7 +286,7 @@ export function EnvironmentPicker({
                 disabled={!canCreate}
                 onSelect={() => {
                   changeOpen(false);
-                  setAdding(true);
+                  guard("environment", () => setAdding(true));
                 }}
               >
                 <Icon name="plus" />

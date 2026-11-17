@@ -4,8 +4,7 @@ import type { TAppConnection } from "@app/hooks/api/appConnections/types";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 
 import { CONNECTION_PRESETS } from "../data/integrations/connection-presets";
-
-export const NOT_IN_V4 = "Not in v4 yet";
+import { notPorted } from "../not-ported";
 
 export const appName = (app: AppConnection) => APP_CONNECTION_MAP[app].name;
 export const methodName = (row: TAppConnection) => getAppConnectionMethodDetails(row.method).name;
@@ -15,7 +14,9 @@ export const methodPreset = (row: TAppConnection) =>
 
 /** Why the credentials sheet can't open for this connection in v4, or undefined when it can. */
 export const credentialsBlock = (row: TAppConnection) =>
-  row.isPlatformManagedCredentials || methodPreset(row) ? undefined : NOT_IN_V4;
+  row.isPlatformManagedCredentials || methodPreset(row)
+    ? undefined
+    : notPorted("Editing these credentials");
 
 export const isManagedIdentity = (connection: Pick<TAppConnection, "app" | "method">) =>
   connection.app === AppConnection.AzureKeyVault &&

@@ -45,6 +45,7 @@ const stores = {
   empty: createFixtureStore(emptied(createSecretsFixtures(false)))
 };
 export const recovered = createFixtureStore(false);
+export const upgraded = createFixtureStore(false);
 
 const storeOf = (scenario: Scenario) => {
   if (scenario === "large") return stores.large;

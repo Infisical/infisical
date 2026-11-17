@@ -35,7 +35,6 @@ import type { RowAction } from "./row-actions/types";
 
 import styles from "./overview.module.css";
 
-export const NEXT_PHASE = "Ported in the next phase";
 export const ROW_ACTION_SLOTS = 2;
 export const stopRowClick = (event: MouseEvent) => event.stopPropagation();
 export type RowActionProps = Omit<ComponentProps<typeof RowContextMenu>, "children">;

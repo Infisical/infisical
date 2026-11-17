@@ -19,6 +19,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
 import type { AddFlowProps } from "./types";
@@ -51,10 +52,15 @@ export function CreateImportFlow({
   const [secretPath, setSecretPath] = useState("/");
   const [replication, setReplication] = useState(false);
   const [error, setError] = useState<string>();
+  const { plan, guard } = usePlanGates();
 
   const submit = () => {
     if (!environment) {
       setError("Required");
+      return;
+    }
+    if (replication && plan && !plan.secretApproval) {
+      guard("replication", () => undefined);
       return;
     }
     const trimmed = secretPath.trim();
