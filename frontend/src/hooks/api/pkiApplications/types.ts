@@ -79,6 +79,12 @@ export type TPkiApplicationMemberDetails = {
   slug?: string | null;
 };
 
+export enum PkiApplicationMemberRole {
+  Admin = "admin",
+  Operator = "operator",
+  Auditor = "auditor"
+}
+
 export type TPkiApplicationMember = {
   membershipId: string;
   applicationId: string;

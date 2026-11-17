@@ -17,7 +17,10 @@ import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
-import { useListPkiApplicationMembers } from "@app/hooks/api/pkiApplications";
+import {
+  PkiApplicationMemberRole,
+  useListPkiApplicationMembers
+} from "@app/hooks/api/pkiApplications";
 
 import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
@@ -38,7 +41,10 @@ export const PolicyApprovalSteps = ({ applicationId, excludeAuditors = false }: 
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
   const { data: allAppMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
   const appMembers = useMemo(
-    () => (excludeAuditors ? allAppMembers.filter((m) => m.role !== "auditor") : allAppMembers),
+    () =>
+      excludeAuditors
+        ? allAppMembers.filter((m) => m.role !== PkiApplicationMemberRole.Auditor)
+        : allAppMembers,
     [allAppMembers, excludeAuditors]
   );
 
