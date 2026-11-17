@@ -241,7 +241,7 @@ export const getApprovalRequestAuditLabel = (
   approvalRequestId: request.id,
   approvalPolicyName: policy?.name,
   requesterName: request.requesterName,
-  requesterEmail: request.requesterEmail
+  requesterEmail: request.requesterEmail || undefined
 });
 
 export const getApprovalRequestSubjectMetadata = (

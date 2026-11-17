@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ApprovalPolicyType, ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
 import {
+  getApprovalRequestAuditLabel,
   getApprovalRequestSubjectMetadata,
   isEligibleStepApprover,
   upsertApprovalRequestStepDecision
@@ -109,6 +110,33 @@ describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
       certificateRequestId: "cert-req-1",
       commonName: "a.example.com",
       profileName: "web-servers"
+    });
+  });
+});
+
+describe("getApprovalRequestAuditLabel", () => {
+  test("names the requester's email when the requester has one", () => {
+    expect(
+      getApprovalRequestAuditLabel(
+        { id: "approval-1", requesterName: "Dana", requesterEmail: "dana@example.com" },
+        { name: "renewals" }
+      )
+    ).toEqual({
+      approvalRequestId: "approval-1",
+      approvalPolicyName: "renewals",
+      requesterName: "Dana",
+      requesterEmail: "dana@example.com"
+    });
+  });
+
+  test("leaves the email out for an automatic renewal and the policy name out once the policy is deleted", () => {
+    const label = getApprovalRequestAuditLabel(
+      { id: "approval-1", requesterName: "Automatic Renewal", requesterEmail: "" },
+      null
+    );
+    expect(JSON.parse(JSON.stringify(label))).toEqual({
+      approvalRequestId: "approval-1",
+      requesterName: "Automatic Renewal"
     });
   });
 });
