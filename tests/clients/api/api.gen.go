@@ -33723,6 +33723,42 @@ func (e CreateDynamicSecretJSONBodyProvider28Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateDynamicSecretJSONBodyProvider29InputsLimitReset.
+const (
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetDaily   CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "daily"
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetMonthly CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "monthly"
+	CreateDynamicSecretJSONBodyProvider29InputsLimitResetWeekly  CreateDynamicSecretJSONBodyProvider29InputsLimitReset = "weekly"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider29InputsLimitReset enum.
+func (e CreateDynamicSecretJSONBodyProvider29InputsLimitReset) Valid() bool {
+	switch e {
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetDaily:
+		return true
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetMonthly:
+		return true
+	case CreateDynamicSecretJSONBodyProvider29InputsLimitResetWeekly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDynamicSecretJSONBodyProvider29Type.
+const (
+	Openrouter CreateDynamicSecretJSONBodyProvider29Type = "openrouter"
+)
+
+// Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider29Type enum.
+func (e CreateDynamicSecretJSONBodyProvider29Type) Valid() bool {
+	switch e {
+	case Openrouter:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateDynamicSecret400JSONResponseBodyStatusCode.
 const (
 	CreateDynamicSecret400JSONResponseBodyStatusCodeN400 CreateDynamicSecret400JSONResponseBodyStatusCode = 400
@@ -52200,6 +52236,27 @@ const (
 func (e GetOrganizationById500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetOrganizationById500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationJSONBodyAllowedMfaMethods.
+const (
+	UpdateOrganizationJSONBodyAllowedMfaMethodsEmail    UpdateOrganizationJSONBodyAllowedMfaMethods = "email"
+	UpdateOrganizationJSONBodyAllowedMfaMethodsTotp     UpdateOrganizationJSONBodyAllowedMfaMethods = "totp"
+	UpdateOrganizationJSONBodyAllowedMfaMethodsWebauthn UpdateOrganizationJSONBodyAllowedMfaMethods = "webauthn"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodyAllowedMfaMethods enum.
+func (e UpdateOrganizationJSONBodyAllowedMfaMethods) Valid() bool {
+	switch e {
+	case UpdateOrganizationJSONBodyAllowedMfaMethodsEmail:
+		return true
+	case UpdateOrganizationJSONBodyAllowedMfaMethodsTotp:
+		return true
+	case UpdateOrganizationJSONBodyAllowedMfaMethodsWebauthn:
 		return true
 	default:
 		return false
@@ -118284,6 +118341,33 @@ type CreateDynamicSecretJSONBodyProvider28InputsSaslMechanism string
 // CreateDynamicSecretJSONBodyProvider28Type defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBodyProvider28Type string
 
+// CreateDynamicSecretJSONBodyProvider29 defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29 struct {
+	Inputs struct {
+		// IncludeByokInLimit Whether bring-your-own-key usage counts toward the spending limit.
+		IncludeByokInLimit *bool `json:"includeByokInLimit,omitempty"`
+
+		// Limit Spending limit in USD applied to each created API key, as a decimal string such as "2.5".
+		Limit *string `json:"limit,omitempty"`
+
+		// LimitReset How often the spending limit resets. Leave unset for a limit that never resets.
+		LimitReset *CreateDynamicSecretJSONBodyProvider29InputsLimitReset `json:"limitReset,omitempty"`
+
+		// ManagementKey OpenRouter management API key used to create and delete the API keys issued for each lease.
+		ManagementKey string `json:"managementKey"`
+
+		// WorkspaceId ID of the OpenRouter workspace to create keys in. Defaults to the management key's default workspace.
+		WorkspaceId *string `json:"workspaceId,omitempty"`
+	} `json:"inputs"`
+	Type CreateDynamicSecretJSONBodyProvider29Type `json:"type"`
+}
+
+// CreateDynamicSecretJSONBodyProvider29InputsLimitReset defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29InputsLimitReset string
+
+// CreateDynamicSecretJSONBodyProvider29Type defines parameters for CreateDynamicSecret.
+type CreateDynamicSecretJSONBodyProvider29Type string
+
 // CreateDynamicSecretJSONBody_Provider defines parameters for CreateDynamicSecret.
 type CreateDynamicSecretJSONBody_Provider struct {
 	union json.RawMessage
@@ -124377,7 +124461,10 @@ type UpdateOrganizationJSONBody struct {
 	// AllowCrossProjectSecretSharing Allow secret imports and references to target secrets in other projects within the organization
 	AllowCrossProjectSecretSharing        *bool `json:"allowCrossProjectSecretSharing,omitempty"`
 	AllowSecretSharingOutsideOrganization *bool `json:"allowSecretSharingOutsideOrganization,omitempty"`
-	AuthEnforced                          *bool `json:"authEnforced,omitempty"`
+
+	// AllowedMfaMethods Methods members may use to satisfy MFA while it is enforced
+	AllowedMfaMethods *[]UpdateOrganizationJSONBodyAllowedMfaMethods `json:"allowedMfaMethods,omitempty"`
+	AuthEnforced      *bool                                          `json:"authEnforced,omitempty"`
 
 	// BlockDuplicateSecretSyncDestinations Block duplicate secret sync destinations across the organization
 	BlockDuplicateSecretSyncDestinations *bool    `json:"blockDuplicateSecretSyncDestinations,omitempty"`
@@ -124401,13 +124488,18 @@ type UpdateOrganizationJSONBody struct {
 		PrimaryColor   *UpdateOrganizationJSONBody_SecretShareBrandConfig_PrimaryColor   `json:"primaryColor,omitempty"`
 		SecondaryColor *UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor `json:"secondaryColor,omitempty"`
 	} `json:"secretShareBrandConfig,omitempty"`
-	SecretsProductEnabled      *bool                                        `json:"secretsProductEnabled,omitempty"`
+	SecretsProductEnabled *bool `json:"secretsProductEnabled,omitempty"`
+
+	// SelectedMfaMethod Deprecated: use allowedMfaMethods. Sets the allowed MFA methods to this one method.
 	SelectedMfaMethod          *UpdateOrganizationJSONBodySelectedMfaMethod `json:"selectedMfaMethod,omitempty"`
 	ShareSecretsProductEnabled *bool                                        `json:"shareSecretsProductEnabled,omitempty"`
 	Slug                       *string                                      `json:"slug,omitempty"`
 	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust       `json:"ssoMfaTrust,omitempty"`
 	UserTokenExpiration        *string                                      `json:"userTokenExpiration,omitempty"`
 }
+
+// UpdateOrganizationJSONBodyAllowedMfaMethods defines parameters for UpdateOrganization.
+type UpdateOrganizationJSONBodyAllowedMfaMethods string
 
 // UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor0 defines parameters for UpdateOrganization.
 type UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor0 struct {
@@ -134962,6 +135054,7 @@ type GatewayHeartbeatJSONBody1 struct {
 	Capabilities *struct {
 		CertificateScan                   *bool     `json:"certificateScan,omitempty"`
 		ClickhouseNativeProtocol          *bool     `json:"clickhouseNativeProtocol,omitempty"`
+		OutputMasking                     *bool     `json:"outputMasking,omitempty"`
 		Pkcs11                            *bool     `json:"pkcs11,omitempty"`
 		Pkcs11MlDsa                       *bool     `json:"pkcs11MlDsa,omitempty"`
 		SessionLogMaskingBuiltInDetection *bool     `json:"sessionLogMaskingBuiltInDetection,omitempty"`
@@ -154540,6 +154633,32 @@ func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyPr
 
 // MergeCreateDynamicSecretJSONBodyProvider28 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider28
 func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider28(v CreateDynamicSecretJSONBodyProvider28) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDynamicSecretJSONBodyProvider29 returns the union data inside the CreateDynamicSecretJSONBody_Provider as a CreateDynamicSecretJSONBodyProvider29
+func (t CreateDynamicSecretJSONBody_Provider) AsCreateDynamicSecretJSONBodyProvider29() (CreateDynamicSecretJSONBodyProvider29, error) {
+	var body CreateDynamicSecretJSONBodyProvider29
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDynamicSecretJSONBodyProvider29 overwrites any union data inside the CreateDynamicSecretJSONBody_Provider as the provided CreateDynamicSecretJSONBodyProvider29
+func (t *CreateDynamicSecretJSONBody_Provider) FromCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDynamicSecretJSONBodyProvider29 performs a merge with any union data inside the CreateDynamicSecretJSONBody_Provider, using the provided CreateDynamicSecretJSONBodyProvider29
+func (t *CreateDynamicSecretJSONBody_Provider) MergeCreateDynamicSecretJSONBodyProvider29(v CreateDynamicSecretJSONBodyProvider29) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -240210,6 +240329,7 @@ type ListAdminOrganizationsResponse struct {
 		Organizations []struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -240319,6 +240439,7 @@ func (r ListAdminOrganizationsResponse) GetJSON200() *struct {
 	Organizations []struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -240479,6 +240600,7 @@ type CreateAdminOrganizationResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -240568,6 +240690,7 @@ func (r CreateAdminOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -240708,6 +240831,7 @@ type DeleteAdminOrganizationResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -240797,6 +240921,7 @@ func (r DeleteAdminOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -241482,6 +241607,7 @@ type AdminSignUpResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -241584,6 +241710,7 @@ func (r AdminSignUpResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -295157,6 +295284,7 @@ type ListOrganizationsResponse struct {
 		Organizations []struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -295244,6 +295372,7 @@ func (r ListOrganizationsResponse) GetJSON200() *struct {
 	Organizations []struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -295746,6 +295875,7 @@ type ListAccessibleOrganizationsWithSubOrgsResponse struct {
 		Organizations []struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -295838,6 +295968,7 @@ func (r ListAccessibleOrganizationsWithSubOrgsResponse) GetJSON200() *struct {
 	Organizations []struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -300634,6 +300765,7 @@ type GetOrganizationByIdResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -300719,6 +300851,7 @@ func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -300856,6 +300989,7 @@ type UpdateOrganizationResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -300941,6 +301075,7 @@ func (r UpdateOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -353895,6 +354030,7 @@ type CreateOrganizationResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -353979,6 +354115,7 @@ func (r CreateOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -354114,6 +354251,7 @@ type UpgradePrivilegeSystemResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -354198,6 +354336,7 @@ func (r UpgradePrivilegeSystemResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -354533,6 +354672,7 @@ type DeleteOrganizationResponse struct {
 		Organization struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -354618,6 +354758,7 @@ func (r DeleteOrganizationResponse) GetJSON200() *struct {
 	Organization struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -368022,6 +368163,7 @@ type ListUserOrganizationsResponse struct {
 		Organizations []struct {
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -368106,6 +368248,7 @@ func (r ListUserOrganizationsResponse) GetJSON200() *struct {
 	Organizations []struct {
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -391405,6 +391548,7 @@ func ParseListAdminOrganizationsResponse(rsp *http.Response) (*ListAdminOrganiza
 			Organizations []struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -391566,6 +391710,7 @@ func ParseCreateAdminOrganizationResponse(rsp *http.Response) (*CreateAdminOrgan
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -391707,6 +391852,7 @@ func ParseDeleteAdminOrganizationResponse(rsp *http.Response) (*DeleteAdminOrgan
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -392201,6 +392347,7 @@ func ParseAdminSignUpResponse(rsp *http.Response) (*AdminSignUpResponse, error) 
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -427065,6 +427212,7 @@ func ParseListOrganizationsResponse(rsp *http.Response) (*ListOrganizationsRespo
 			Organizations []struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -427439,6 +427587,7 @@ func ParseListAccessibleOrganizationsWithSubOrgsResponse(rsp *http.Response) (*L
 			Organizations []struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -430625,6 +430774,7 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -430763,6 +430913,7 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -464435,6 +464586,7 @@ func ParseCreateOrganizationResponse(rsp *http.Response) (*CreateOrganizationRes
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -464571,6 +464723,7 @@ func ParseUpgradePrivilegeSystemResponse(rsp *http.Response) (*UpgradePrivilegeS
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -464834,6 +464987,7 @@ func ParseDeleteOrganizationResponse(rsp *http.Response) (*DeleteOrganizationRes
 			Organization struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
@@ -473325,6 +473479,7 @@ func ParseListUserOrganizationsResponse(rsp *http.Response) (*ListUserOrganizati
 			Organizations []struct {
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AllowedMfaMethods                     *[]string           `json:"allowedMfaMethods,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
 				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
 				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`

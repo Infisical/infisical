@@ -77,10 +77,10 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
-    
+
     if (!decodedToken.allowedMfaMethods?.length)
       throw new UnauthorizedError({ message: "Your sign-in session expired. Sign in again." });
-    
+
     req.mfa = {
       userId: user.id,
       user,
@@ -199,8 +199,8 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      // Recovery codes are account-level; pass the method the challenge required
-      // so users on any MFA method (email, TOTP or WebAuthn) can fall back to them.
+      // A recovery code stands in for any factor. The session records an allowed method so switching orgs
+      // doesn't treat it as a changed method and ask for MFA again.
       return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.allowedMfaMethods[0], true);
     }
   });
@@ -269,7 +269,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         : req.mfa.allowedMfaMethods.filter((method) => method !== MfaMethod.EMAIL);
 
       return {
-        challengeMethod: challengeMethod ?? enrollableMethods[0] ?? req.mfa.allowedMfaMethods[0],
+        challengeMethod: challengeMethod ?? enrollableMethods[0] ?? MfaMethod.EMAIL,
         usableMethods,
         enrollableMethods
       };

@@ -140,7 +140,7 @@ export type AuthModeMfaJwtTokenPayload = {
   userId: string;
   organizationId?: string;
   issuingRootOrgId?: string;
-  allowedMfaMethods?: MfaMethod[];
+  allowedMfaMethods: MfaMethod[];
   idpMfaOrgId?: string;
 };
 

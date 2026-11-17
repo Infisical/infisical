@@ -118,7 +118,7 @@ type TPamAccountServiceFactoryDep = {
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
   userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "findRootOrgDetails">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findRootOrgDetails">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"

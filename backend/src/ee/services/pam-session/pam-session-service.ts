@@ -119,7 +119,7 @@ type TPamSessionServiceFactoryDep = {
   >;
   orgDAL: Pick<
     TOrgDALFactory,
-    "findOrgById" | "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
+    "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
   >;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,

@@ -60,13 +60,13 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { MfaMethod } from "../auth/auth-type";
 import {
   ActorAuthMethod,
   ActorType,
   AuthMethod,
   AuthModeJwtTokenPayload,
   AuthTokenType,
+  MfaMethod,
   SsoMfaTrust
 } from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";

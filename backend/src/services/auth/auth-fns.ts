@@ -57,16 +57,16 @@ export const MFA_METHOD_PRIORITY = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMetho
 type TMfaPolicyOrg = {
   enforceMfa?: boolean | null;
   allowedMfaMethods?: string[] | null;
-}
-type TMfaPolicyUser = { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null}
+};
+type TMfaPolicyUser = { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null };
 
 export const isMfaRequired = (org: TMfaPolicyOrg, user: TMfaPolicyUser) =>
-  Boolean(org.enforceMfa) || Boolean(user.isMfaEnabled)
+  Boolean(org.enforceMfa) || Boolean(user.isMfaEnabled);
 
 export const getOrgAllowedMfaMethods = (org: TMfaPolicyOrg): MfaMethod[] => {
   const allowed = MFA_METHOD_PRIORITY.filter((method) => org.allowedMfaMethods?.includes(method));
-  return allowed.length ? allowed: [MfaMethod.EMAIL]
-}
+  return allowed.length ? allowed : [MfaMethod.EMAIL];
+};
 
 export const getUserAllowedMfaMethods = (org: TMfaPolicyOrg, user: TMfaPolicyUser): MfaMethod[] =>
   org.enforceMfa ? getOrgAllowedMfaMethods(org) : [(user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL];
@@ -84,13 +84,13 @@ export const resolveMfaChallenge = ({
   allowedMethods: MfaMethod[];
   enrolledMethods: MfaMethod[];
   preferredMethod?: string | null;
-}) : { usableMethods: MfaMethod[]; challengeMethod: MfaMethod | null } => {
+}): { usableMethods: MfaMethod[]; challengeMethod: MfaMethod | null } => {
   const usableMethods = MFA_METHOD_PRIORITY.filter(
     (method) => allowedMethods.includes(method) && enrolledMethods.includes(method)
   );
   const challengeMethod = usableMethods.find((method) => method === preferredMethod) ?? usableMethods[0] ?? null;
   return { usableMethods, challengeMethod };
-}
+};
 
 export const isSsoAuthMethod = (authMethod: AuthMethod) =>
   isAuthMethodSaml(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;

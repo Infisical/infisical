@@ -357,6 +357,85 @@ describe("getStepUpMfaMethod", () => {
       accepted: [MfaMethod.TOTP]
     });
   });
+
+  test("accepts any method the org allows and the user has set up, challenging the preferred one", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.WEBAUTHN] }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+  });
+
+  test("challenges the strongest allowed method when the preferred one is not allowed", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL, MfaMethod.TOTP] }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP, MfaMethod.EMAIL]
+    });
+  });
+
+  test("substitutes another allowed factor, not a stronger one the org does not allow, for the one being removed", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.EMAIL] }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID, MfaMethod.TOTP)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.TOTP, MfaMethod.EMAIL]
+    });
+  });
+
+  test("challenges the factor being removed when no other allowed one is set up", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.WEBAUTHN] }],
+      hasTotp: true
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID, MfaMethod.TOTP)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
+    });
+  });
+});
+
+describe("getEnrolledMfaMethods", () => {
+  test("lists the set-up methods strongest first", async () => {
+    const service = buildMfaService({ hasTotp: true, passkeyCount: 2 });
+
+    await expect(service.getEnrolledMfaMethods({ id: USER_ID, email: "user@example.com" })).resolves.toEqual([
+      MfaMethod.WEBAUTHN,
+      MfaMethod.TOTP,
+      MfaMethod.EMAIL
+    ]);
+  });
+
+  test("leaves out email without SMTP or without an address", async () => {
+    const withoutSmtp = buildMfaService({ hasTotp: true, smtp: false });
+    await expect(withoutSmtp.getEnrolledMfaMethods({ id: USER_ID, email: "user@example.com" })).resolves.toEqual([
+      MfaMethod.TOTP
+    ]);
+
+    const withoutAddress = buildMfaService({ hasTotp: true });
+    await expect(withoutAddress.getEnrolledMfaMethods({ id: USER_ID, email: null })).resolves.toEqual([MfaMethod.TOTP]);
+  });
 });
 
 describe("getFactorEnrollmentStepUpMfaMethods", () => {

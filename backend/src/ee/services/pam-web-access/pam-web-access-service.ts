@@ -96,7 +96,7 @@ type TPamWebAccessServiceFactoryDep = {
   >;
   orgDAL: Pick<
     TOrgDALFactory,
-    "findOrgById" | "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
+    "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
   >;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };

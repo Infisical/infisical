@@ -197,7 +197,7 @@ export const authLoginServiceFactory = ({
     authMethod,
     organizationId,
     issuingRootOrgId,
-    requiredMfaMethod,
+    initialMfaMethod,
     allowedMfaMethods,
     idpMfaOrgId
   }: {
@@ -206,7 +206,8 @@ export const authLoginServiceFactory = ({
     authMethod: AuthMethod;
     organizationId?: string;
     issuingRootOrgId?: string;
-    requiredMfaMethod: MfaMethod;
+    // The method the login page opens on; an email code is sent up front only for that.
+    initialMfaMethod: MfaMethod;
     allowedMfaMethods: MfaMethod[];
     idpMfaOrgId?: string;
   }) => {
@@ -227,7 +228,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
     );
 
-    if (requiredMfaMethod === MfaMethod.EMAIL && email) {
+    if (initialMfaMethod === MfaMethod.EMAIL && email) {
       await sendUserMfaCode({ userId, email });
     }
 
@@ -1402,7 +1403,7 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         email: user.email,
         authMethod: userAuthMethod,
-        requiredMfaMethod,
+        initialMfaMethod: requiredMfaMethod,
         allowedMfaMethods,
         organizationId: rootOrg.id,
         issuingRootOrgId,
