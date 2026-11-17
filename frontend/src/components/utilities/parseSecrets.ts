@@ -51,10 +51,13 @@ export function parseDotEnv(src: ArrayBuffer | string) {
           // Remove surrounding quotes
           value = value.replace(/^(['"`])([\s\S]*)\1$/gm, "$2");
 
-          // Expand newlines if double quoted
+          // Decode only escapes emitted by the .env exporter; other backslashes remain literal.
           if (maybeQuote === '"') {
-            value = value.replace(/\\n/g, "\n");
-            value = value.replace(/\\r/g, "\r");
+            value = value.replace(/\\[\\nr"]/g, (escaped) => {
+              if (escaped === "\\n") return "\n";
+              if (escaped === "\\r") return "\r";
+              return escaped[1];
+            });
           }
           item = [key, value, comments];
         }

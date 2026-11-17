@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
+import { formatSecretEnvFile } from "@app/helpers/download";
+
 import { parseDotEnv, parsePastedSecrets, parseYaml } from "./parseSecrets";
 
 describe("parseYaml", () => {
@@ -98,6 +100,42 @@ describe("parseYaml", () => {
 });
 
 describe("parseDotEnv", () => {
+  it("round-trips exported values through upload and paste parsing", () => {
+    const secrets = [
+      { secretKey: "MULTILINE", secretValue: "first\nsecond\r\nthird" },
+      { secretKey: "LITERAL_ESCAPES", secretValue: "literal \\n and \\r" },
+      { secretKey: "QUOTES", secretValue: 'a "quoted" value' },
+      { secretKey: "BACKSLASH", secretValue: "C:\\path\\to\\file\\" },
+      { secretKey: "SLASH_QUOTE", secretValue: 'a\\"b' },
+      { secretKey: "SLASH_NEWLINE", secretValue: "before\\\nafter" },
+      { secretKey: "DOUBLE_SLASH_QUOTE", secretValue: '\\\\"' },
+      { secretKey: "DOLLAR", secretValue: "$HOME and $NAME" },
+      { secretKey: "EMPTY", secretValue: "" },
+      { secretKey: "HASH", secretValue: "one#two # three" },
+      { secretKey: "SPACES", secretValue: " leading and trailing " }
+    ];
+    const exported = formatSecretEnvFile(secrets, []);
+    const expected = Object.fromEntries(
+      secrets.map(({ secretKey, secretValue }) => [secretKey, secretValue])
+    );
+    const values = (parsed: ReturnType<typeof parseDotEnv>) =>
+      Object.fromEntries(Object.entries(parsed).map(([key, { value }]) => [key, value]));
+
+    assert.equal(exported.split("\n").length, secrets.length + 1);
+    assert.deepEqual(values(parseDotEnv(exported)), expected);
+    assert.deepEqual(values(parsePastedSecrets(exported)), expected);
+  });
+
+  it("keeps unknown escapes and unquoted or single-quoted backslashes literal", () => {
+    const env = parseDotEnv(
+      ['UNKNOWN="one\\t two"', "SINGLE='one\\n two'", "BARE=one\\n"].join("\n")
+    );
+
+    assert.equal(env.UNKNOWN.value, "one\\t two");
+    assert.equal(env.SINGLE.value, "one\\n two");
+    assert.equal(env.BARE.value, "one\\n");
+  });
+
   it("parses assignments, exports and quoted values", () => {
     const env = parseDotEnv(
       [
