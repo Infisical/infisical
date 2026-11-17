@@ -1,6 +1,6 @@
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { hasSecretReadValueOrDescribePermission, isFolderPathBelow } from "@app/ee/services/permission/permission-fns";
 import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
@@ -147,9 +147,9 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
 // add up together), the newest source date is used. Restrictions that ended can have given access back, so access
 // dates no earlier than an expired folder grant in its folder (folderReopenedAt, by "<actorId>:<folderId>") or, for a
 // recursive one, anywhere in its environment (environmentReopenedAt, by "<actorId>:<environment slug>"), an edited
-// folder grant within its reach, or an expired temporary role or privilege anywhere (accessReopenedAt, by actor,
-// since what it held back is not worked out). Sources are checked once per secret, shared ones (a role, a group)
-// once for every actor holding them, and only the current secret's checks are kept.
+// folder grant in its folder and every folder below it, or an expired temporary role or privilege anywhere
+// (accessReopenedAt, by actor, since what it held back is not worked out). Sources are checked once per secret,
+// shared ones (a role, a group) once for every actor holding them, and only the current secret's checks are kept.
 export const createAccessDating = (
   sourcesByActorId: Record<string, TAccessSource[]>,
   {
@@ -183,9 +183,14 @@ export const createAccessDating = (
       checks = new Map();
     }
     const subject = subjectOf(activity);
-    const reaches = (reach?: TAccessReach) =>
-      !reach ||
-      ("folderId" in reach ? reach.folderId === activity.secret.folderId : reach.environment === activity.environment);
+    const reaches = (reach?: TAccessReach) => {
+      if (!reach) return true;
+      if ("folderId" in reach) return reach.folderId === activity.secret.folderId;
+      return (
+        reach.environment === activity.environment &&
+        (activity.secretPath === reach.secretPath || isFolderPathBelow(activity.secretPath, reach.secretPath))
+      );
+    };
     const grants = (source: TAccessSource) => {
       if (!reaches(source.reach)) return false;
       const permission = source.permission();

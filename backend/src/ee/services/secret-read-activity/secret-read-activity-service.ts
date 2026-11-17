@@ -437,16 +437,14 @@ export const secretReadActivityServiceFactory = ({
       }),
       ...[...folderAccessByActorId].flatMap(([actorId, grants]) =>
         grants.map((grant) => {
-          const environmentReach = { environment: grant.environmentSlug };
-          const reach = grant.appliesToSubfolders ? environmentReach : { folderId: grant.folderId };
-          // An edit can turn recursion off, and nothing records the reach the grant had before it, so an edited root
-          // grant restarts its whole environment.
-          const restartReach = grant.secretPath === "/" ? environmentReach : reach;
+          const subtreeReach = { environment: grant.environmentSlug, secretPath: grant.secretPath };
           return {
             actorId,
             date: sourceDates.privilegeDates.get(grant.id),
-            reach,
-            restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? restartReach : undefined,
+            reach: grant.appliesToSubfolders ? subtreeReach : { folderId: grant.folderId },
+            // An edit can turn recursion off, and nothing records the reach the grant had before it, so an edited
+            // grant restarts its folder and every folder below it.
+            restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? subtreeReach : undefined,
             permission: once(() =>
               createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), { conditionsMatcher })
             )

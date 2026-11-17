@@ -316,10 +316,35 @@ describe("createAccessDating", () => {
   test("lets a recursive folder grant reach every secret of its environment", () => {
     const { accessSinceOf } = dating([
       { date: oct, permission: () => readsProd },
-      { date: sept, reach: { environment: "dev" }, permission: () => readsAll }
+      { date: sept, reach: { environment: "dev", secretPath: "/" }, permission: () => readsAll }
     ]);
     expect(accessSinceOf(actor, secretIn("dev", "deep"))).toEqual(sept);
     expect(accessSinceOf(actor, secretIn("prod", "deep"))).toEqual(oct);
+  });
+
+  test("lets a recursive grant on a nested folder reach and restart only its folder and the folders below it", () => {
+    const secretAt = (secretPath: string) => activity({ secretPath });
+    const { accessSinceOf } = dating([
+      { date: oct, permission: () => readsAll },
+      { date: sept, reach: { environment: "prod", secretPath: "/apps" }, permission: () => readsAll }
+    ]);
+    expect(accessSinceOf(actor, secretAt("/apps"))).toEqual(sept);
+    expect(accessSinceOf(actor, secretAt("/apps/payments"))).toEqual(sept);
+    expect(accessSinceOf(actor, secretAt("/"))).toEqual(oct);
+    expect(accessSinceOf(actor, secretAt("/apps-internal"))).toEqual(oct);
+    expect(accessSinceOf(actor, activity({ environment: "dev", secretPath: "/apps" }))).toEqual(oct);
+
+    const recursionTurnedOff = dating([
+      { date: sept, permission: () => readsAll },
+      {
+        date: oct,
+        reach: { folderId: "apps" },
+        restartsReach: { environment: "prod", secretPath: "/apps" },
+        permission: () => readsAll
+      }
+    ]);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretAt("/apps/payments"))).toEqual(oct);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretAt("/infra"))).toEqual(sept);
   });
 
   test("restarts the whole environment for an edited recursive grant and floors it for an expired one", () => {
@@ -327,8 +352,8 @@ describe("createAccessDating", () => {
       { date: sept, permission: () => readsAll },
       {
         date: oct,
-        reach: { environment: "prod" },
-        restartsReach: { environment: "prod" },
+        reach: { environment: "prod", secretPath: "/" },
+        restartsReach: { environment: "prod", secretPath: "/" },
         permission: () => readsAll
       }
     ]);
@@ -362,7 +387,12 @@ describe("createAccessDating", () => {
 
     const recursionTurnedOff = dating([
       { date: sept, permission: () => readsAll },
-      { date: oct, reach: { folderId: "root" }, restartsReach: { environment: "prod" }, permission: () => readsAll }
+      {
+        date: oct,
+        reach: { folderId: "root" },
+        restartsReach: { environment: "prod", secretPath: "/" },
+        permission: () => readsAll
+      }
     ]);
     expect(recursionTurnedOff.accessSinceOf(actor, secretIn("prod", "nested"))).toEqual(oct);
     expect(recursionTurnedOff.accessSinceOf(actor, secretIn("dev", "nested"))).toEqual(sept);
