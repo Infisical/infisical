@@ -163,6 +163,36 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		require.Equal(t, "old", secretmanager.GetSecret(t, proj, "dev", "RENAMED_KEY", secretmanager.WithPath("/guarded")).Value)
 	})
 
+	t.Run("should refuse a held rename from a user who can edit only the new name", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		proj.NewRole(t, "renamer", fixture.Permission{
+			Subject:    "secrets",
+			Action:     []string{"describeSecret", "readValue", "create", "edit"},
+			Conditions: map[string]any{"secretName": map[string]any{"$eq": "RENAMED_KEY"}},
+		})
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"), fixture.WithRoles("renamer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "old", secretmanager.WithPath("/guarded"))
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/guarded")}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].NewSecretName = "API_KEY", new("RENAMED_KEY")
+
+		// Action
+		res, err := committer.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "batch returned %s", apierr.Body(res.Body))
+		require.Zero(t, openRequestCount(t, proj))
+	})
+
 	t.Run("should refuse a batch update that mixes the protected folder with another folder and change nothing", func(t *testing.T) {
 		t.Parallel()
 

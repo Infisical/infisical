@@ -340,7 +340,7 @@ export const secretReplicationServiceFactory = ({
       );
 
       const lock = await keyStore.acquireLock(
-        [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+        [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
         5000
       );
 
@@ -671,7 +671,7 @@ export const secretReplicationServiceFactory = ({
     const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
 
     const lock = await keyStore.acquireLock(
-      [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+      [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
       5000
     );
 

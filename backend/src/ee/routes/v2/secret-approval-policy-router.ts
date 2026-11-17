@@ -30,6 +30,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
+            .max(1000)
             .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
@@ -137,6 +138,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1000)
           .optional()
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),

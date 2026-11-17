@@ -44,7 +44,7 @@ const canonicalizePathValue = (value: unknown): unknown =>
 
 // Rules saved before paths were canonicalized can name a folder as "//prod", so plain path values in a rule are
 // canonicalized too. Glob patterns are left as they are.
-const canonicalizeSecretPathCondition = (condition: unknown): unknown => {
+export const canonicalizeSecretPathCondition = (condition: unknown): unknown => {
   if (!condition || typeof condition !== "object" || Array.isArray(condition)) return canonicalizePathValue(condition);
   const operators: Record<string, unknown> = { ...condition };
   if ("$eq" in operators) operators.$eq = canonicalizePathValue(operators.$eq);

@@ -32,11 +32,22 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         projectId: z.string().trim().describe(SECRET_IMPORTS.CREATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.environment),
-        path: z.string().trim().default("/").transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.CREATE.path),
+        path: z
+          .string()
+          .trim()
+          .max(1000)
+          .default("/")
+          .transform(canonicalizeSecretPath)
+          .describe(SECRET_IMPORTS.CREATE.path),
         import: z.object({
           sourceProjectId: z.string().trim().optional().describe(SECRET_IMPORTS.CREATE.import.projectId),
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
-          path: z.string().trim().transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.CREATE.import.path)
+          path: z
+            .string()
+            .trim()
+            .max(1000)
+            .transform(canonicalizeSecretPath)
+            .describe(SECRET_IMPORTS.CREATE.import.path)
         }),
         isReplication: z.boolean().default(false).describe(SECRET_IMPORTS.CREATE.isReplication)
       }),
@@ -124,12 +135,19 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         projectId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
-        path: z.string().trim().default("/").transform(canonicalizeSecretPath).describe(SECRET_IMPORTS.UPDATE.path),
+        path: z
+          .string()
+          .trim()
+          .max(1000)
+          .default("/")
+          .transform(canonicalizeSecretPath)
+          .describe(SECRET_IMPORTS.UPDATE.path),
         import: z.object({
           environment: z.string().trim().optional().describe(SECRET_IMPORTS.UPDATE.import.environment),
           path: z
             .string()
             .trim()
+            .max(1000)
             .optional()
             .transform((val) => (val ? canonicalizeSecretPath(val) : val))
             .describe(SECRET_IMPORTS.UPDATE.import.path),

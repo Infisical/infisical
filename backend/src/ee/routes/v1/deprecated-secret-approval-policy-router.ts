@@ -26,6 +26,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
+            .max(1000)
             .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
@@ -112,6 +113,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1000)
           .optional()
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
