@@ -28,13 +28,31 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
 
 const primaryDb = { node: "primary" };
 
+type TTestMembership = {
+  id?: string;
+  actorUserId: string | null;
+  actorGroupId: string | null;
+  isActive: boolean;
+  role?: string;
+};
+
 const setup = (
   policies: unknown[],
-  memberships: unknown[] = [],
+  memberships: TTestMembership[] = [],
   groupLinks: { userId: string; groupId: string }[] = []
 ) => {
+  const withIds = memberships.map((m, i) => ({ ...m, id: m.id ?? `membership-${i}` }));
   const deps = {
-    membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
+    membershipDAL: { find: vi.fn().mockResolvedValue(withIds) },
+    membershipRoleDAL: {
+      find: vi
+        .fn()
+        .mockImplementation(async ({ $in }: { $in: { membershipId: string[] } }) =>
+          withIds
+            .filter((m) => $in.membershipId.includes(m.id))
+            .map((m) => ({ membershipId: m.id, role: m.role ?? "operator" }))
+        )
+    },
     userGroupMembershipDAL: {
       find: vi
         .fn()
@@ -239,6 +257,46 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
       resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
     ).resolves.toBe(false);
   });
+
+  describe("for a member demoted to Auditor", () => {
+    const demoted = { ...directMember, role: "auditor" };
+    const message = "You can't review this request because you no longer have a role in its Application that can approve requests.";
+
+    it.each([ApprovalRequestApprovalDecision.Approved, ApprovalRequestApprovalDecision.Rejected])(
+      "refuses their %s decision",
+      async (auditorDecision) => {
+        const { resource } = setup([], [demoted]);
+
+        await expect(
+          resource.assertCanReview!({ request, decision: auditorDecision, actor, userGroupIds: new Set() })
+        ).rejects.toThrow(message);
+      }
+    );
+
+    it("refuses a member whose only membership is an Auditor group", async () => {
+      const { resource } = setup([], [{ ...groupMember, role: "auditor" }]);
+
+      await expect(
+        resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-1"]) })
+      ).rejects.toThrow(message);
+    });
+
+    it("still lets them review through a group that holds an approving role", async () => {
+      const { resource } = setup([], [demoted, groupMember]);
+
+      await expect(
+        resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-1"]) })
+      ).resolves.toBeUndefined();
+    });
+
+    it("stops treating them as an approver", async () => {
+      const { resource } = setup([], [demoted]);
+
+      await expect(
+        resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
+      ).resolves.toBe(false);
+    });
+  });
 });
 
 describe("certRevocationApprovalResourceFactory.filterActiveApprovers", () => {
@@ -275,6 +333,27 @@ describe("certRevocationApprovalResourceFactory.filterActiveApprovers", () => {
       expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId }),
       { tx: primaryDb }
     );
+  });
+
+  it("doesn't notify approvers whose Application role is Auditor, directly or through a group", async () => {
+    const { resource } = setup(
+      [],
+      [
+        { actorUserId: "operator", actorGroupId: null, isActive: true },
+        { actorUserId: "demoted", actorGroupId: null, isActive: true, role: "auditor" },
+        { actorUserId: null, actorGroupId: "auditor-group", isActive: true, role: "auditor" }
+      ],
+      [{ userId: "via-auditor-group", groupId: "auditor-group" }]
+    );
+
+    const eligible = await resource.filterActiveApprovers!({ projectId: "project", scopeId: applicationId } as never, [
+      { type: ApproverType.User, id: "operator" },
+      { type: ApproverType.User, id: "demoted" },
+      { type: ApproverType.User, id: "via-auditor-group" },
+      { type: ApproverType.Group, id: "auditor-group" }
+    ]);
+
+    expect(eligible).toEqual([{ type: ApproverType.User, id: "operator" }]);
   });
 
   it("notifies no approver when the request names no Application", async () => {

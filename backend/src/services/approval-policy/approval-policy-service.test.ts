@@ -71,7 +71,8 @@ describe("approvalPolicyService.notifyApprovedActionFailed", () => {
 describe("approvalPolicyService review of a revocation by an approver removed from its Application", () => {
   const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
 
-  const buildReviewingService = (applicationMemberships: unknown[]) => {
+  const buildReviewingService = (applicationMemberships: { actorUserId: string; isActive: boolean; role?: string }[]) => {
+    const memberships = applicationMemberships.map((m, i) => ({ ...m, id: `membership-${i}` }));
     const request = {
       id: "revocation-1",
       type: ApprovalPolicyType.CertRevocation,
@@ -98,7 +99,10 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const revocationResource = certRevocationApprovalResourceFactory({
       approvalPolicyDAL,
       certificateService,
-      membershipDAL: { find: vi.fn().mockResolvedValue(applicationMemberships) },
+      membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
+      membershipRoleDAL: {
+        find: vi.fn().mockResolvedValue(memberships.map((m) => ({ membershipId: m.id, role: m.role ?? "operator" })))
+      },
       userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
     const service = approvalPolicyServiceFactory({
@@ -146,5 +150,18 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     await expect(
       ctx.service.approveRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)
     ).rejects.toThrow("reached the decision");
+  });
+
+  it.each([
+    ["approval", "approveRequest"],
+    ["rejection", "rejectRequest"]
+  ] as const)("refuses the %s from an approver demoted to Auditor", async (_label, method) => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true, role: "auditor" }]);
+
+    await expect(ctx.service[method]("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)).rejects.toThrow(
+      "You can't review this request because you no longer have a role in its Application that can approve requests."
+    );
+    expect(ctx.approvalRequestDAL.transaction).not.toHaveBeenCalled();
+    expect(ctx.certificateService.revokeApprovedCertificate).not.toHaveBeenCalled();
   });
 });
