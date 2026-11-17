@@ -1,6 +1,12 @@
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { CertStatus, CrlReason, PlatformRevocationOutcome } from "@app/services/certificate/certificate-types";
+import { ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateRevocationSource,
+  CertStatus,
+  CrlReason,
+  PlatformRevocationOutcome
+} from "@app/services/certificate/certificate-types";
 
 import { scepIntuneRevocationSyncQueueFactory } from "./pki-scep-intune-revocation-sync-queue";
 
@@ -56,7 +62,7 @@ vi.mock("@app/services/app-connection/microsoft-intune", () => ({
 }));
 
 const ISSUER = "CN=Test";
-const connection = (id: string, tenantId: string) => ({ id, tenantId, orgId: `org-${id}`, projectId: null });
+const connection = (id: string, tenantId: string, orgId = "org-1") => ({ id, tenantId, orgId, projectId: null });
 const matched = (id: string, serialNumber: string, status: string = CertStatus.ACTIVE): TMatched => ({
   id,
   serialNumber,
@@ -97,6 +103,7 @@ const runSync = async ({
   let handler: (() => Promise<void>) | undefined;
   decryptAppConnectionCredentials.mockImplementation(({ encryptedCredentials }) => {
     const [tenantId, connectionId] = encryptedCredentials.split("|");
+    if (tenantId === "unreadable") return Promise.reject(new Error("KMS key unavailable"));
     return Promise.resolve({ tenantId, clientId: `client-${connectionId}`, clientSecret: "secret" });
   });
   batches.forEach((batch) => downloadRevocationRequests.mockResolvedValueOnce(batch));
@@ -181,10 +188,12 @@ describe("Intune SCEP revocation sync", () => {
   });
 
   test("revokes a matched certificate, rebuilds its CA's CRL and reports success", async () => {
+    const createAuditLog = vi.fn();
     const { revokeCertAsPlatform, certificateService } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "AA", issuerName: ISSUER }]],
-      certificates: [matched("cert-1", "aa")]
+      certificates: [matched("cert-1", "aa")],
+      createAuditLog
     });
 
     expect(revokeCertAsPlatform).toHaveBeenCalledWith({
@@ -195,6 +204,11 @@ describe("Intune SCEP revocation sync", () => {
     expect(uploadedResults()).toEqual([
       { requestContext: "ctx-1", succeeded: true, errorCode: "0", errorMessage: null }
     ]);
+    const [auditLog] = createAuditLog.mock.calls[0] as [
+      { actor: { type: ActorType }; event: { metadata: { source?: CertificateRevocationSource } } }
+    ];
+    expect(auditLog.actor.type).toBe(ActorType.PLATFORM);
+    expect(auditLog.event.metadata.source).toBe(CertificateRevocationSource.MicrosoftIntune);
   });
 
   test("rebuilds the CRLs once for a batch with several revocations", async () => {
@@ -213,7 +227,7 @@ describe("Intune SCEP revocation sync", () => {
     expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1", "ca-1"]);
   });
 
-  test("leaves a request whose issuer differs from the stored certificate's issuer in the queue", async () => {
+  test("answers a request whose issuer differs from the stored certificate's issuer as not revocable", async () => {
     const { revokeCertAsPlatform } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: "CN=Other CA" }]],
@@ -221,7 +235,9 @@ describe("Intune SCEP revocation sync", () => {
     });
 
     expect(revokeCertAsPlatform).not.toHaveBeenCalled();
-    expect(uploadRevocationResults).not.toHaveBeenCalled();
+    expect(uploadedResults()).toEqual([
+      expect.objectContaining({ requestContext: "ctx-1", succeeded: false, errorCode: "4000" })
+    ]);
   });
 
   test("checks a deleted certificate's issuer against its CA certificate", async () => {
@@ -243,7 +259,10 @@ describe("Intune SCEP revocation sync", () => {
 
     expect(revokeCertAsPlatform).toHaveBeenCalledTimes(1);
     expect(revokeCertAsPlatform).toHaveBeenCalledWith(expect.objectContaining({ certificateId: "cert-1" }));
-    expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ours", succeeded: true })]);
+    expect(uploadedResults()).toEqual([
+      expect.objectContaining({ requestContext: "ours", succeeded: true }),
+      expect.objectContaining({ requestContext: "other-ca", succeeded: false, errorCode: "4000" })
+    ]);
   });
 
   test("matches by serial when a deleted certificate's issuer can't be read", async () => {
@@ -258,13 +277,36 @@ describe("Intune SCEP revocation sync", () => {
     expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ctx-1", succeeded: true })]);
   });
 
-  test("leaves requests for certificates it did not issue in the queue", async () => {
+  test("answers a request with no matching certificate as not revocable so Intune stops redelivering it", async () => {
     await runSync({
       connections: [connection("conn-1", "tenant-a")],
       batches: [
         [
           { requestContext: "ours", serialNumber: "aa", issuerName: ISSUER },
-          { requestContext: "other-ca", serialNumber: "bb", issuerName: ISSUER }
+          { requestContext: "detached", serialNumber: "bb", issuerName: ISSUER }
+        ]
+      ],
+      certificates: [matched("cert-1", "aa")]
+    });
+
+    expect(uploadedResults()).toEqual([
+      expect.objectContaining({ requestContext: "ours", succeeded: true }),
+      expect.objectContaining({
+        requestContext: "detached",
+        succeeded: false,
+        errorCode: "4000",
+        errorMessage: "No certificate issued through an Intune SCEP enrollment in Infisical matches this serial number."
+      })
+    ]);
+  });
+
+  test("leaves unmatched requests queued while one of the org's Intune connections can't be read", async () => {
+    await runSync({
+      connections: [connection("conn-1", "tenant-a"), connection("conn-2", "unreadable")],
+      batches: [
+        [
+          { requestContext: "ours", serialNumber: "aa", issuerName: ISSUER },
+          { requestContext: "unknown", serialNumber: "bb", issuerName: ISSUER }
         ]
       ],
       certificates: [matched("cert-1", "aa")]
@@ -273,7 +315,7 @@ describe("Intune SCEP revocation sync", () => {
     expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ours", succeeded: true })]);
   });
 
-  test("reads one queue per tenant and matches certificates from every enrollment connection to it", async () => {
+  test("downloads only the org's requests and matches certificates from every enrollment connection of that org in the tenant", async () => {
     const { certificateDAL } = await runSync({
       connections: [connection("conn-1", "tenant-a"), connection("conn-2", "TENANT-A")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
@@ -281,10 +323,30 @@ describe("Intune SCEP revocation sync", () => {
     });
 
     expect(downloadRevocationRequests).toHaveBeenCalledTimes(1);
+    expect(downloadRevocationRequests).toHaveBeenCalledWith(expect.objectContaining({ caConfiguration: "org-1" }));
     expect(certificateDAL.findScepCertsByValidationConnectionsAndSerials).toHaveBeenCalledWith(
       ["conn-1", "conn-2"],
       ["aa"]
     );
+  });
+
+  test("downloads each org's requests separately when two orgs share a tenant", async () => {
+    const { certificateDAL } = await runSync({
+      connections: [connection("conn-1", "tenant-a", "org-1"), connection("conn-2", "tenant-a", "org-2")],
+      batches: [
+        [{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }],
+        [{ requestContext: "ctx-2", serialNumber: "bb", issuerName: ISSUER }]
+      ],
+      certificates: [matched("cert-1", "aa"), matched("cert-2", "bb")]
+    });
+
+    expect(
+      downloadRevocationRequests.mock.calls.map(([args]) => (args as { caConfiguration: string }).caConfiguration)
+    ).toEqual(["org-1", "org-2"]);
+    expect(certificateDAL.findScepCertsByValidationConnectionsAndSerials.mock.calls).toEqual([
+      [["conn-1"], ["aa"]],
+      [["conn-2"], ["bb"]]
+    ]);
   });
 
   test("ignores Intune connections that no SCEP enrollment uses", async () => {
@@ -424,7 +486,7 @@ describe("Intune SCEP revocation sync", () => {
     expect(revokeCertAsPlatform).not.toHaveBeenCalled();
   });
 
-  test("keeps paging past a full batch that holds no request of ours", async () => {
+  test("keeps paging past a full batch of unmatched requests", async () => {
     const foreignBatch = Array.from({ length: 500 }, (_, index) => ({
       requestContext: `foreign-${index}`,
       serialNumber: `f${index}`,
@@ -438,7 +500,7 @@ describe("Intune SCEP revocation sync", () => {
     });
 
     expect(downloadRevocationRequests).toHaveBeenCalledTimes(2);
-    expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ours", succeeded: true })]);
+    expect(uploadedResults(1)).toEqual([expect.objectContaining({ requestContext: "ours", succeeded: true })]);
   });
 
   test("still reports the revocation and rebuilds the CRL when the audit log write fails", async () => {

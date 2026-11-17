@@ -187,7 +187,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     if (serialNumbers.length === 0 || validationConnectionIds.length === 0) return [];
     try {
       const certs = await db
-        .replicaNode()(TableName.Certificate)
+        .primaryNode()(TableName.Certificate)
         .join(
           TableName.CertificateRequests,
           `${TableName.CertificateRequests}.certificateId`,

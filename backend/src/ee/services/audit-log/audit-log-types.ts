@@ -51,6 +51,7 @@ import {
 } from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
+  CertificateRevocationSource,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
@@ -3397,6 +3398,7 @@ interface RevokeCert {
     applicationId?: string | null;
     applicationName?: string | null;
     revocationReason?: CrlReason;
+    source?: CertificateRevocationSource;
   };
 }
 

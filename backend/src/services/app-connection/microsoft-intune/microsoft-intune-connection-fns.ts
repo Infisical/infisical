@@ -1,15 +1,16 @@
 import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
 import { MicrosoftIntuneConnectionMethod } from "./microsoft-intune-connection-enums";
 import {
-  TIntuneRevocationRequestsResponse,
   TIntuneRevocationResult,
   TIntuneScepValidationResponse,
   TMicrosoftEntraTokenResponse,
@@ -157,11 +158,11 @@ export const discoverPkiConnectorServiceUri = (graphAccessToken: string) =>
     notFoundMessage: "Could not locate the Intune certificate revocation service for this tenant."
   });
 
-const intuneScepActionHeaders = (intuneAccessToken: string) => ({
+const intuneScepActionHeaders = (intuneAccessToken: string, apiVersion = INTUNE_API_VERSION) => ({
   Authorization: `Bearer ${intuneAccessToken}`,
   "Content-Type": "application/json",
   Accept: "application/json",
-  "api-version": INTUNE_API_VERSION,
+  "api-version": apiVersion,
   "client-request-id": randomUUID()
 });
 
@@ -228,6 +229,7 @@ export const intuneSendSuccessNotification = async ({
     certificateSerialNumber: string;
     certificateExpirationDateUtc: string;
     issuingCertificateAuthority: string;
+    caConfiguration: string;
   };
 }) => {
   const { data } = await safeRequest.post<TIntuneScepValidationResponse>(
@@ -262,32 +264,53 @@ export const intuneSendFailureNotification = async ({
   assertIntuneNotificationAccepted(data, "failure notification");
 };
 
+const IntuneRevocationRequestsResponseSchema = z.object({ value: z.array(z.unknown()) });
+
+const IntuneRevocationRequestSchema = z.object({
+  requestContext: z.string().min(1),
+  serialNumber: z.string().min(1),
+  issuerName: z.string().nullish()
+});
+
 const intunePkiConnectorRequestConfig = (intuneAccessToken: string) => ({
   timeout: INTUNE_PKI_CONNECTOR_TIMEOUT_MS,
   headers: {
-    Authorization: `Bearer ${intuneAccessToken}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "api-version": INTUNE_PKI_CONNECTOR_API_VERSION,
-    "client-request-id": randomUUID(),
+    ...intuneScepActionHeaders(intuneAccessToken, INTUNE_PKI_CONNECTOR_API_VERSION),
     UserAgent: INTUNE_CALLER_INFO
   }
 });
 
 export const intuneDownloadRevocationRequests = async ({
   intuneAccessToken,
-  serviceUri
+  serviceUri,
+  caConfiguration
 }: {
   intuneAccessToken: string;
   serviceUri: string;
+  caConfiguration: string;
 }) => {
-  const { data } = await safeRequest.post<TIntuneRevocationRequestsResponse>(
+  const { data } = await safeRequest.post<unknown>(
     `${serviceUri}/CertificateAuthorityRequests/downloadRevocationRequests`,
-    { downloadParameters: { maxRequests: INTUNE_MAX_REVOCATION_REQUESTS, issuerName: null } },
+    { downloadParameters: { maxRequests: INTUNE_MAX_REVOCATION_REQUESTS, issuerName: caConfiguration } },
     { ...intunePkiConnectorRequestConfig(intuneAccessToken), "axios-retry": { retries: 0 } }
   );
 
-  return data?.value ?? [];
+  if (data === undefined || data === null || data === "") return [];
+
+  const response = IntuneRevocationRequestsResponseSchema.safeParse(data);
+  if (!response.success) {
+    throw new BadRequestError({ message: "Intune returned revocation requests in an unexpected format." });
+  }
+
+  return response.data.value.flatMap((entry) => {
+    const revocationRequest = IntuneRevocationRequestSchema.safeParse(entry);
+    if (revocationRequest.success) return [revocationRequest.data];
+    const { requestContext, serialNumber } = (entry ?? {}) as { requestContext?: unknown; serialNumber?: unknown };
+    logger.warn(
+      `Skipping a malformed Intune revocation request [requestContext=${String(requestContext)}] [serial=${String(serialNumber)}]`
+    );
+    return [];
+  });
 };
 
 export const intuneUploadRevocationResults = async ({

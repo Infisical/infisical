@@ -25,7 +25,12 @@ import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-a
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
-import { CertStatus, CrlReason, PlatformRevocationOutcome } from "@app/services/certificate/certificate-types";
+import {
+  CertificateRevocationSource,
+  CertStatus,
+  CrlReason,
+  PlatformRevocationOutcome
+} from "@app/services/certificate/certificate-types";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -35,9 +40,16 @@ import { ScepChallengeType } from "./challenge/scep-challenge-types";
 
 const REVOCATION_SYNC_CRON_SCHEDULE = "*/15 * * * *";
 const HANDLER_TIMEOUT_MS = 10 * 60 * 1000;
-const MAX_BATCHES_PER_TENANT = 10;
+const MAX_BATCHES_PER_ORG_TENANT = 10;
 
 type TTenantConnection = { id: string; credentials: TMicrosoftIntuneConnectionCredentials };
+
+type TOrgTenant = {
+  tenantId: string;
+  orgId: string;
+  connections: TTenantConnection[];
+  answersUnmatchedRequests: boolean;
+};
 
 type TMatchedCertificate = Awaited<
   ReturnType<TCertificateDALFactory["findScepCertsByValidationConnectionsAndSerials"]>
@@ -174,7 +186,8 @@ export const scepIntuneRevocationSyncQueueFactory = ({
             serialNumber: cert.serialNumber,
             applicationId: cert.applicationId,
             applicationName,
-            revocationReason: CrlReason.UNSPECIFIED
+            revocationReason: CrlReason.UNSPECIFIED,
+            source: CertificateRevocationSource.MicrosoftIntune
           }
         }
       });
@@ -188,18 +201,22 @@ export const scepIntuneRevocationSyncQueueFactory = ({
 
   const handleRevocationRequest = async ({
     tenantId,
+    orgId,
     request,
     candidates,
     readIssuer,
-    crlCaIds
+    crlCaIds,
+    answersUnmatchedRequests
   }: {
     tenantId: string;
+    orgId: string;
     request: TIntuneRevocationRequest;
     candidates: TMatchedCertificate[];
     readIssuer: (certificate: TMatchedCertificate) => Promise<string | null>;
     crlCaIds: string[];
+    answersUnmatchedRequests: boolean;
   }): Promise<TIntuneRevocationResult | null> => {
-    const logContext = `[tenantId=${tenantId}] [serial=${request.serialNumber}] [issuer=${request.issuerName ?? ""}]`;
+    const logContext = `[tenantId=${tenantId}] [orgId=${orgId}] [serial=${request.serialNumber}] [issuer=${request.issuerName ?? ""}]`;
 
     try {
       const matches: TMatchedCertificate[] = [];
@@ -212,18 +229,29 @@ export const scepIntuneRevocationSyncQueueFactory = ({
           matches.push(candidate);
         } else {
           logger.warn(
-            `scep-intune-revocation-sync: serial matches but the issuer differs, leaving the request for its issuer ${logContext} [certificateIssuer=${issuer}]`
+            `scep-intune-revocation-sync: serial matches but the issuer differs ${logContext} [certificateIssuer=${issuer}]`
           );
         }
       }
 
       if (matches.length === 0) {
-        if (candidates.length === 0) {
-          logger.info(
-            `scep-intune-revocation-sync: no matching certificate, leaving the request for its issuer ${logContext}`
+        if (!answersUnmatchedRequests) {
+          logger.warn(
+            `scep-intune-revocation-sync: no matching certificate, leaving the request queued because an Intune connection in this organization could not be read ${logContext}`
           );
+          return null;
         }
-        return null;
+        const unmatchedReason =
+          candidates.length === 0
+            ? "No certificate issued through an Intune SCEP enrollment in Infisical matches this serial number."
+            : "The certificate with this serial number was issued by a different CA.";
+        logger.info(`scep-intune-revocation-sync: ${unmatchedReason} ${logContext}`);
+        return {
+          requestContext: request.requestContext,
+          succeeded: false,
+          errorCode: IntuneRevocationErrorCode.NonRetryableServiceException,
+          errorMessage: unmatchedReason
+        };
       }
 
       let notRevocableReason: string | undefined;
@@ -261,12 +289,16 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     }
   };
 
-  const syncTenant = async (tenantId: string, connections: TTenantConnection[]) => {
+  const syncOrgTenant = async ({ tenantId, orgId, connections, answersUnmatchedRequests }: TOrgTenant) => {
     const { serviceUri, intuneAccessToken } = await getTenantAccess(connections);
     const readIssuer = createIssuerReader();
 
-    for (let batch = 0; batch < MAX_BATCHES_PER_TENANT; batch += 1) {
-      const revocationRequests = await intuneDownloadRevocationRequests({ intuneAccessToken, serviceUri });
+    for (let batch = 0; batch < MAX_BATCHES_PER_ORG_TENANT; batch += 1) {
+      const revocationRequests = await intuneDownloadRevocationRequests({
+        intuneAccessToken,
+        serviceUri,
+        caConfiguration: orgId
+      });
       if (revocationRequests.length === 0) return;
 
       const serialNumbers = [...new Set(revocationRequests.map((request) => request.serialNumber.toLowerCase()))];
@@ -280,41 +312,37 @@ export const scepIntuneRevocationSyncQueueFactory = ({
       for (const request of revocationRequests) {
         const result = await handleRevocationRequest({
           tenantId,
+          orgId,
           request,
           candidates: certificates.filter(
             (certificate) => certificate.serialNumber.toLowerCase() === request.serialNumber.toLowerCase()
           ),
           readIssuer,
-          crlCaIds
+          crlCaIds,
+          answersUnmatchedRequests
         });
         if (result) results.push(result);
       }
 
-      try {
-        await certificateService.rebuildCrlsAfterPlatformRevocations(crlCaIds);
-      } catch (err) {
-        logger.error(
-          `scep-intune-revocation-sync: failed to rebuild CRLs, the hourly CRL rebuild job will retry [tenantId=${tenantId}] [error=${errorMessageOf(err)}]`
-        );
-      }
+      await certificateService.rebuildCrlsAfterPlatformRevocations(crlCaIds);
 
       if (results.length > 0) {
         await intuneUploadRevocationResults({ intuneAccessToken, serviceUri, results });
       }
 
       logger.info(
-        `scep-intune-revocation-sync: batch done [tenantId=${tenantId}] [requests=${revocationRequests.length}] [answered=${results.length}] [crlCas=${new Set(crlCaIds).size}]`
+        `scep-intune-revocation-sync: batch done [tenantId=${tenantId}] [orgId=${orgId}] [requests=${revocationRequests.length}] [answered=${results.length}] [crlCas=${new Set(crlCaIds).size}]`
       );
 
       if (revocationRequests.length < INTUNE_MAX_REVOCATION_REQUESTS) return;
     }
 
     logger.warn(
-      `scep-intune-revocation-sync: stopped at the batch limit, the remaining requests are processed on the next run [tenantId=${tenantId}] [maxBatches=${MAX_BATCHES_PER_TENANT}]`
+      `scep-intune-revocation-sync: stopped at the batch limit, the remaining requests are processed on the next run [tenantId=${tenantId}] [orgId=${orgId}] [maxBatches=${MAX_BATCHES_PER_ORG_TENANT}]`
     );
   };
 
-  const groupConnectionsByTenant = async () => {
+  const groupConnectionsByOrgTenant = async () => {
     const intuneScepConfigs = await scepEnrollmentConfigDAL.find({ challengeType: ScepChallengeType.MICROSOFT_INTUNE });
     const connectionIds = [
       ...new Set(
@@ -323,14 +351,15 @@ export const scepIntuneRevocationSyncQueueFactory = ({
           .filter((connectionId): connectionId is string => !!connectionId)
       )
     ];
-    if (connectionIds.length === 0) return new Map<string, TTenantConnection[]>();
+    if (connectionIds.length === 0) return [];
 
     const connections = await appConnectionDAL.find({
       $in: { id: connectionIds },
       app: AppConnection.MicrosoftIntune
     });
 
-    const connectionsByTenant = new Map<string, TTenantConnection[]>();
+    const orgTenants = new Map<string, TOrgTenant>();
+    const orgIdsWithUnreadableConnections = new Set<string>();
     for (const connection of connections) {
       try {
         const credentials = (await decryptAppConnectionCredentials({
@@ -341,18 +370,27 @@ export const scepIntuneRevocationSyncQueueFactory = ({
         })) as TMicrosoftIntuneConnectionCredentials;
 
         const tenantId = credentials.tenantId.toLowerCase();
-        connectionsByTenant.set(tenantId, [
-          ...(connectionsByTenant.get(tenantId) ?? []),
-          { id: connection.id, credentials }
-        ]);
+        const key = `${tenantId}:${connection.orgId}`;
+        const orgTenant = orgTenants.get(key) ?? {
+          tenantId,
+          orgId: connection.orgId,
+          connections: [],
+          answersUnmatchedRequests: true
+        };
+        orgTenant.connections.push({ id: connection.id, credentials });
+        orgTenants.set(key, orgTenant);
       } catch (err) {
+        orgIdsWithUnreadableConnections.add(connection.orgId);
         logger.error(
           `scep-intune-revocation-sync: failed to read connection credentials [connectionId=${connection.id}] [error=${errorMessageOf(err)}]`
         );
       }
     }
 
-    return connectionsByTenant;
+    return [...orgTenants.values()].map((orgTenant) => ({
+      ...orgTenant,
+      answersUnmatchedRequests: !orgIdsWithUnreadableConnections.has(orgTenant.orgId)
+    }));
   };
 
   const init = () => {
@@ -364,13 +402,13 @@ export const scepIntuneRevocationSyncQueueFactory = ({
       handlerTimeoutMs: HANDLER_TIMEOUT_MS,
       leaseDurationMs: HANDLER_TIMEOUT_MS,
       handler: async () => {
-        const connectionsByTenant = await groupConnectionsByTenant();
-        for (const [tenantId, connections] of connectionsByTenant) {
+        const orgTenants = await groupConnectionsByOrgTenant();
+        for (const orgTenant of orgTenants) {
           try {
-            await syncTenant(tenantId, connections);
+            await syncOrgTenant(orgTenant);
           } catch (err) {
             logger.error(
-              `scep-intune-revocation-sync: tenant failed [tenantId=${tenantId}] [error=${errorMessageOf(err)}]`
+              `scep-intune-revocation-sync: tenant failed [tenantId=${orgTenant.tenantId}] [orgId=${orgTenant.orgId}] [error=${errorMessageOf(err)}]`
             );
           }
         }

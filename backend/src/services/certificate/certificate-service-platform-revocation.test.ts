@@ -6,6 +6,15 @@ import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/cer
 import { certificateServiceFactory } from "./certificate-service";
 import { CertStatus, CrlReason, PlatformRevocationOutcome } from "./certificate-types";
 
+const mlDsaCa = {
+  id: "ca-1",
+  projectId: "project-1",
+  internalCa: { id: "internal-ca-1", keyAlgorithm: "ML-DSA-65", notAfter: new Date("2099-01-01T00:00:00.000Z") },
+  externalCa: undefined
+};
+
+const planWithoutPqc = () => ({ getPlan: vi.fn().mockResolvedValue({ has: () => false }) });
+
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/services/certificate-authority/certificate-authority-fns")>()),
@@ -45,7 +54,7 @@ const buildService = (
 ) => {
   const certificateDAL = {
     findById: vi.fn().mockResolvedValue(certificate ?? undefined),
-    update: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue([{ id: "cert-1" }]),
     transaction: vi.fn().mockImplementation(async (run: (trx: unknown) => Promise<unknown>) => run({}))
   };
   const internalCertificateAuthorityDAL = { update: vi.fn().mockResolvedValue([]) };
@@ -83,7 +92,7 @@ describe("certificateService.revokeCertAsPlatform", () => {
 
     expect(result.outcome).toBe(PlatformRevocationOutcome.Revoked);
     expect(certificateDAL.update).toHaveBeenCalledWith(
-      { id: "cert-1" },
+      { id: "cert-1", $notEqual: { status: CertStatus.REVOKED } },
       expect.objectContaining({ status: CertStatus.REVOKED }),
       expect.anything()
     );
@@ -93,6 +102,36 @@ describe("certificateService.revokeCertAsPlatform", () => {
       expect.anything()
     );
     expect(rebuildCaCrlAfterChange).not.toHaveBeenCalled();
+  });
+
+  it("reports a revocation that committed after the certificate was read as already revoked without overwriting it", async () => {
+    const { service, certificateDAL, internalCertificateAuthorityDAL } = buildService();
+    certificateDAL.update.mockResolvedValueOnce([]);
+
+    const result = await service.revokeCertAsPlatform({
+      certificateId: "cert-1",
+      revocationReason: CrlReason.UNSPECIFIED
+    });
+
+    expect(result.outcome).toBe(PlatformRevocationOutcome.AlreadyRevoked);
+    expect(internalCertificateAuthorityDAL.update).not.toHaveBeenCalled();
+  });
+
+  it("revokes a certificate from an ML-DSA CA even when the license no longer includes PQC", async () => {
+    const licenseService = planWithoutPqc();
+    const { service, certificateDAL } = buildService(activeCertificate, {
+      certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(mlDsaCa) },
+      licenseService
+    });
+
+    const result = await service.revokeCertAsPlatform({
+      certificateId: "cert-1",
+      revocationReason: CrlReason.UNSPECIFIED
+    });
+
+    expect(result.outcome).toBe(PlatformRevocationOutcome.Revoked);
+    expect(certificateDAL.update).toHaveBeenCalled();
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
   });
 
   it("reports an already revoked certificate without writing to it", async () => {
@@ -187,6 +226,25 @@ describe("certificateService.revokeCert", () => {
 
     expect(certificateDAL.update).toHaveBeenCalled();
     expect(rebuildCaCrlAfterChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the user the certificate is already revoked when another revocation committed first", async () => {
+    const { service, certificateDAL } = buildService();
+    certificateDAL.update.mockResolvedValueOnce([]);
+
+    await expect(revokeAsUser(service)).rejects.toThrow("is already revoked");
+    expect(rebuildCaCrlAfterChange).not.toHaveBeenCalled();
+  });
+
+  it("still checks the PQC license when a user revokes a certificate from an ML-DSA CA", async () => {
+    const { service, certificateDAL } = buildService(activeCertificate, {
+      certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(mlDsaCa) },
+      licenseService: planWithoutPqc()
+    });
+
+    await expect(revokeAsUser(service)).rejects.toThrow("Your license does not include PQC algorithms");
+
+    expect(certificateDAL.update).not.toHaveBeenCalled();
   });
 
   it("resolves the application name before committing, so a failed lookup revokes nothing", async () => {

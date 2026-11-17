@@ -128,6 +128,10 @@ export type TDeleteCertDTO = {
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
+export enum CertificateRevocationSource {
+  MicrosoftIntune = "microsoft-intune"
+}
+
 export enum PlatformRevocationOutcome {
   Revoked = "revoked",
   AlreadyRevoked = "already-revoked",

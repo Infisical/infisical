@@ -59,10 +59,6 @@ export type TIntuneRevocationRequest = {
   issuerName?: string | null;
 };
 
-export type TIntuneRevocationRequestsResponse = {
-  value?: TIntuneRevocationRequest[];
-};
-
 export type TIntuneRevocationResult = {
   requestContext: string;
   succeeded: boolean;
