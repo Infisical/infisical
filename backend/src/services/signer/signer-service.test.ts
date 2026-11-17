@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResourceMembershipRole, TPkiSignerCertificateRevocations } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import {
   ResourcePermissionSet,
   ResourcePermissionSignerActions,
@@ -584,6 +585,19 @@ describe("signerService.revokeCertificate", () => {
       expect(notifications[0].body).toContain("canceled");
     }
   );
+
+  it.each([
+    ["RuleViolationError", new RuleViolationError({ message: "The project's certificate key is disabled." })],
+    ["EntityNotFoundError", new EntityNotFoundError({ message: "The project's certificate key was not found." })]
+  ])("treats a KMS %s during the revoke as a refusal", async (_name, kmsError) => {
+    const { service, deps, signer, revocation } = buildService();
+    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(kmsError);
+
+    await expect(revoke(service)).rejects.toBe(kmsError);
+
+    expect(signer().status).toBe(SignerStatus.Active);
+    expect(revocation()).toMatchObject({ status: SignerRevocationStatus.Rejected, failureReason: kmsError.message });
+  });
 
   it("leaves the signer RevocationPending with a failed row on an unknown outcome, and revoking again reuses the row", async () => {
     const { service, deps, signer, revocation, revocationRows } = buildService();

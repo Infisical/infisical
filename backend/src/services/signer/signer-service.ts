@@ -15,6 +15,7 @@ import {
   TPkiSignerCertificateRevocations,
   TPkiSigners
 } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -2418,7 +2419,11 @@ export const signerServiceFactory = ({
         await $settleRevocation(revocation, { status: SignerRevocationStatus.Completed });
         return $buildRevokeResponse(signer, certificate);
       }
-      const isRefusal = err instanceof BadRequestError || err instanceof NotFoundError;
+      const isRefusal =
+        err instanceof BadRequestError ||
+        err instanceof NotFoundError ||
+        err instanceof RuleViolationError ||
+        err instanceof EntityNotFoundError;
       const refusalMessage = (err as Error).message;
       if (isRefusal && isRetryOfUnknownOutcome) {
         await $settleRevocation(revocation, {
