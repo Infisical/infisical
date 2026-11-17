@@ -71,7 +71,9 @@ describe("approvalPolicyService.notifyApprovedActionFailed", () => {
 describe("approvalPolicyService review of a revocation by an approver removed from its Application", () => {
   const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
 
-  const buildReviewingService = (applicationMemberships: { actorUserId: string; isActive: boolean; role?: string }[]) => {
+  const buildReviewingService = (
+    applicationMemberships: { actorUserId: string; isActive: boolean; role?: string }[]
+  ) => {
     const memberships = applicationMemberships.map((m, i) => ({ ...m, id: `membership-${i}` }));
     const request = {
       id: "revocation-1",

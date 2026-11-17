@@ -260,7 +260,8 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
 
   describe("for a member demoted to Auditor", () => {
     const demoted = { ...directMember, role: "auditor" };
-    const message = "You can't review this request because you no longer have a role in its Application that can approve requests.";
+    const message =
+      "You can't review this request because you no longer have a role in its Application that can approve requests.";
 
     it.each([ApprovalRequestApprovalDecision.Approved, ApprovalRequestApprovalDecision.Rejected])(
       "refuses their %s decision",
