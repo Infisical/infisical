@@ -1,3 +1,4 @@
+import { utc } from "@date-fns/utc";
 import { format } from "date-fns";
 import ms from "ms";
 
@@ -18,8 +19,7 @@ export const formatDateTime = ({
   const date = new Date(timestamp);
 
   if (timezone === Timezone.UTC) {
-    const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-    return `${format(utcDate, dateFormat)}`;
+    return format(date, dateFormat, { in: utc });
   }
   return format(date, dateFormat);
 };

@@ -55,6 +55,7 @@
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.41.0",
     "@dagrejs/dagre": "^1.1.4",
+    "@date-fns/utc": "^2.1.1",
     "@devolutions/iron-remote-desktop": "^0.10.1",
     "@devolutions/iron-remote-desktop-rdp": "^0.6.1",
     "@dnd-kit/core": "^6.3.1",
