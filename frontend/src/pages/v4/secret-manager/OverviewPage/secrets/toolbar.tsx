@@ -189,6 +189,7 @@ export function AddNewMenu({
   onUpload,
   onCopySecrets,
   onAddSync,
+  onAddProxiedService,
   trigger,
   importSources = [],
   onImportFrom
@@ -201,6 +202,7 @@ export function AddNewMenu({
   onUpload: () => void;
   onCopySecrets: () => void;
   onAddSync: () => void;
+  onAddProxiedService: () => void;
   trigger?: ReactNode;
   importSources?: ExternalImportSource[];
   onImportFrom?: (source: ExternalImportSource) => void;
@@ -254,6 +256,10 @@ export function AddNewMenu({
         )}
         {item("dynamic", "Add dynamic secret", <Icon icon={FingerprintIcon} />)}
         {item("rotation", "Add secret rotation", <Icon name="sync" />)}
+        <DropdownMenuItem onSelect={onAddProxiedService}>
+          <KindIcon kind="proxy" />
+          Add proxied service
+        </DropdownMenuItem>
         {item("honey", "Add honey token", <Icon icon={HexagonIcon} />)}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>

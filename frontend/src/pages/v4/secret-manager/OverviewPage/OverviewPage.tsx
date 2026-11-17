@@ -117,6 +117,7 @@ import {
   setEnvironmentOptions
 } from "./secrets-model";
 import { SecretsActivationNudge, useSecretsActivationNudge } from "./secrets/activation-nudge";
+import { AgentProxyMovedDialog } from "./secrets/agent-proxy-moved-dialog";
 import {
   type PendingChange,
   pendingIn,
@@ -286,6 +287,7 @@ export const OverviewPage = () => {
   const [moving, setMoving] = useState<Resource[]>();
   const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
   const [syncOpen, setSyncOpen] = useState(false);
+  const [proxyMovedOpen, setProxyMovedOpen] = useState(false);
   const [addingEnvironment, setAddingEnvironment] = useState(false);
   const [externalImport, setExternalImport] = useState<ExternalImportSource>();
   const [pending, setPending] = useState<PendingChange[]>([]);
@@ -1464,6 +1466,7 @@ export const OverviewPage = () => {
         })
       }
       onAddSync={() => setSyncOpen(true)}
+      onAddProxiedService={() => setProxyMovedOpen(true)}
       importSources={externalImports.sources}
       onImportFrom={setExternalImport}
       trigger={trigger}
@@ -2479,6 +2482,13 @@ export const OverviewPage = () => {
                 )
               );
             })()}
+          {proxyMovedOpen && (
+            <AgentProxyMovedDialog
+              orgId={orgId}
+              projectId={projectId}
+              onOpenChange={setProxyMovedOpen}
+            />
+          )}
           <ShareSecretSheet
             open={sharing !== undefined}
             value={sharing ?? ""}
