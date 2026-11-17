@@ -96,7 +96,12 @@ export const getPolicyScore = (policy: { secretPath?: string | null }) =>
   // eslint-disable-next-line
   policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
 
+const isStoredAsAlias = (policy: { secretPath?: string | null }) =>
+  Boolean(policy.secretPath) && policy.secretPath !== canonicalizeSecretPathPattern(policy.secretPath as string);
+
 // picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
+// A policy stored with a non-canonical path ("prod") only governs where no canonically stored policy matches, so it can
+// never take precedence over the policy that already governed the folder.
 export const resolvePolicyForPath = <T extends { secretPath?: string | null; createdAt: Date; id: string }>(
   policies: T[],
   secretPath: string
@@ -111,6 +116,7 @@ export const resolvePolicyForPath = <T extends { secretPath?: string | null; cre
     )
     .sort(
       (a, b) =>
+        Number(isStoredAsAlias(a)) - Number(isStoredAsAlias(b)) ||
         getPolicyScore(b) - getPolicyScore(a) ||
         a.createdAt.getTime() - b.createdAt.getTime() ||
         a.id.localeCompare(b.id)

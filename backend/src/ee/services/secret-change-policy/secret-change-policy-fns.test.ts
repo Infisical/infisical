@@ -158,6 +158,16 @@ describe("resolvePolicyForPath", () => {
     expect(resolvePolicyForPath([exact, glob], "/db")).toBeUndefined();
   });
 
+  test("never lets a policy stored with a non-canonical path win over a canonically stored one", () => {
+    const olderAlias = makePathPolicy("older-alias", "prod", "2025-01-01");
+    const canonical = makePathPolicy("canonical", "/prod", "2026-02-01");
+    const canonicalGlob = makePathPolicy("canonical-glob", "/**", "2026-03-01");
+
+    expect(resolvePolicyForPath([olderAlias, canonical], "/prod")).toBe(canonical);
+    expect(resolvePolicyForPath([olderAlias, canonicalGlob], "/prod")).toBe(canonicalGlob);
+    expect(resolvePolicyForPath([olderAlias], "/prod")).toBe(olderAlias);
+  });
+
   test("keeps glob patterns that start with a glob character or group paths in braces", () => {
     const braces = makePathPolicy("braces", "{/a,/b}");
     const star = makePathPolicy("star", "*");
