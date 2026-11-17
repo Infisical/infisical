@@ -173,8 +173,9 @@ export const SOURCE_LABEL: Record<TPermissionAuditSourceType, string> = {
   additional_privilege: "Additional privilege"
 };
 
-const csvField = (value: string | undefined) => {
-  if (!value) return "";
+const csvField = (raw: string | undefined) => {
+  if (!raw) return "";
+  const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 };
 

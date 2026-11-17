@@ -364,20 +364,92 @@ const channelSummary = (alert: TAlert) =>
     .map((type) => ALERT_CHANNEL_TYPE_LABELS[type])
     .join(", ");
 
-export const IdentityAlertAction = ({
-  identityId,
-  projectId,
+const AlertRow = ({
+  alert,
+  editable,
   canEdit,
-  readOnly = false
+  onEdit,
+  onRemove
 }: {
+  alert: TAlert;
+  editable: boolean;
+  canEdit: boolean;
+  onEdit: () => void;
+  onRemove: () => void;
+}) => {
+  const updateAlert = useV4Adapter("certManagerSettings").useUpdateAlert();
+  return (
+    <Inline gap={12} justify="between" wrap={false}>
+      <Stack gap={2} style={{ minWidth: 0 }}>
+        <SmallText truncate>{alert.name}</SmallText>
+        <SmallText muted truncate>
+          {channelSummary(alert)
+            ? `${eventLabel(alert)} via ${channelSummary(alert)}`
+            : eventLabel(alert)}
+        </SmallText>
+      </Stack>
+      {editable ? (
+        <Inline gap={4} wrap={false}>
+          <Switch
+            size="sm"
+            aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
+            checked={alert.enabled}
+            disabledReason={canEdit ? undefined : "Access restricted"}
+            onCheckedChange={(enabled) =>
+              updateAlert
+                .mutateAsync({ alertId: alert.id, enabled })
+                .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
+                .catch((error) => failed("Failed to update the alert", error))
+            }
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                icon="more"
+                iconOnly
+                disabledReason={canEdit ? undefined : "Access restricted"}
+              >
+                {`Options for ${alert.name}`}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onEdit}>
+                <Icon name="settings" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                <Icon name="trash" />
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Inline>
+      ) : (
+        <Badge tone={alert.enabled ? "ok" : "outline"}>
+          {alert.enabled ? "Active" : "Disabled"}
+        </Badge>
+      )}
+    </Inline>
+  );
+};
+
+type AlertActionProps = {
   identityId: string;
   projectId?: string;
   canEdit: boolean;
   readOnly?: boolean;
-}) => {
+};
+
+const IdentityAlertMenu = ({
+  identityId,
+  projectId,
+  canEdit,
+  readOnly = false,
+  alerts
+}: AlertActionProps & { alerts: TAlert[] }) => {
   const settings = useV4Adapter("certManagerSettings");
-  const { data: alerts = [] } = useIdentityAlerts(identityId, projectId);
-  const updateAlert = settings.useUpdateAlert();
   const deleteAlert = settings.useDeleteAlert();
   const [listOpen, setListOpen] = useState(false);
   const [editing, setEditing] = useState<{ alert?: TAlert }>();
@@ -386,8 +458,6 @@ export const IdentityAlertAction = ({
   const enabledCount = alerts.filter(({ enabled }) => enabled).length;
   const canAdd = EVENT_TYPES.some((event) => !used.includes(event));
   const editable = !readOnly && Boolean(projectId);
-
-  if (!alerts.length && readOnly) return null;
 
   const open = (alert?: TAlert) => {
     setListOpen(false);
@@ -418,65 +488,17 @@ export const IdentityAlertAction = ({
             </PopoverHeader>
             <Stack gap={12}>
               {alerts.map((alert) => (
-                <Inline key={alert.id} gap={12} justify="between" wrap={false}>
-                  <Stack gap={2} style={{ minWidth: 0 }}>
-                    <SmallText truncate>{alert.name}</SmallText>
-                    <SmallText muted truncate>
-                      {channelSummary(alert)
-                        ? `${eventLabel(alert)} via ${channelSummary(alert)}`
-                        : eventLabel(alert)}
-                    </SmallText>
-                  </Stack>
-                  {editable ? (
-                    <Inline gap={4} wrap={false}>
-                      <Switch
-                        size="sm"
-                        aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
-                        checked={alert.enabled}
-                        disabledReason={canEdit ? undefined : "Access restricted"}
-                        onCheckedChange={(enabled) =>
-                          updateAlert
-                            .mutateAsync({ alertId: alert.id, enabled })
-                            .then(() => saved(`Alert ${enabled ? "enabled" : "disabled"}`))
-                            .catch((error) => failed("Failed to update the alert", error))
-                        }
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            icon="more"
-                            iconOnly
-                            disabledReason={canEdit ? undefined : "Access restricted"}
-                          >
-                            {`Options for ${alert.name}`}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => open(alert)}>
-                            <Icon name="settings" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={() => {
-                              setListOpen(false);
-                              setDeleting(alert);
-                            }}
-                          >
-                            <Icon name="trash" />
-                            Remove
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Inline>
-                  ) : (
-                    <Badge tone={alert.enabled ? "ok" : "outline"}>
-                      {alert.enabled ? "Active" : "Disabled"}
-                    </Badge>
-                  )}
-                </Inline>
+                <AlertRow
+                  key={alert.id}
+                  alert={alert}
+                  editable={editable}
+                  canEdit={canEdit}
+                  onEdit={() => open(alert)}
+                  onRemove={() => {
+                    setListOpen(false);
+                    setDeleting(alert);
+                  }}
+                />
               ))}
               {editable && canAdd && (
                 <div>
@@ -545,4 +567,23 @@ export const IdentityAlertAction = ({
       </AlertDialog>
     </>
   );
+};
+
+export const IdentityAlertAction = (props: AlertActionProps) => {
+  const query = useIdentityAlerts(props.identityId, props.projectId);
+  if (query.error || query.isPending)
+    return (
+      <Button
+        variant="outline"
+        icon="bell"
+        loading={query.isPending}
+        disabledReason={
+          query.error ? "Couldn't load alerts. Reload the page to try again." : undefined
+        }
+      >
+        Alerts
+      </Button>
+    );
+  if (!query.data?.length && props.readOnly) return null;
+  return <IdentityAlertMenu {...props} alerts={query.data ?? []} />;
 };

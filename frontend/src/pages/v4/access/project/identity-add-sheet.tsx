@@ -174,8 +174,6 @@ const AddIdentityForm = ({
           identityId: created.id,
           ...UNIVERSAL_AUTH_DEFAULTS
         });
-        if (await grantTemplates(created.id)) saved("Successfully created machine identity");
-        else grantFailed("created");
       } catch {
         toast({
           tone: "bad",
@@ -183,6 +181,8 @@ const AddIdentityForm = ({
           description: "Add an auth method from the identity page."
         });
       }
+      if (await grantTemplates(created.id)) saved("Successfully created machine identity");
+      else grantFailed("created");
       onClose();
       go(accessLinks.projectIdentity(scope, created.id));
     } catch (error) {

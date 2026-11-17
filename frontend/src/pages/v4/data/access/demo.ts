@@ -777,6 +777,11 @@ const environmentFolders = (
 const packed = (permissions: readonly TProjectPermission[] = []) =>
   packRules(permissions as RawRuleOf<MongoAbility>[]) as unknown[];
 
+const isExpired = (grant: { isTemporary: boolean; temporaryAccessEndTime?: string | null }) =>
+  grant.isTemporary &&
+  Boolean(grant.temporaryAccessEndTime) &&
+  new Date(grant.temporaryAccessEndTime ?? "").getTime() <= Date.now();
+
 const roleSources = (
   state: AccessState,
   grants: readonly DemoRoleGrant[],
@@ -784,7 +789,7 @@ const roleSources = (
 ): TPermissionAuditSource[] =>
   grants.flatMap((grant) => {
     const role = state.projectRoles.find((entry) => entry.slug === grant.role);
-    if (!role) return [];
+    if (!role || isExpired(grant)) return [];
     return [
       {
         id: group ? `${group.id}:${grant.id}` : grant.id,
@@ -828,14 +833,16 @@ const privilegeSources = (
     permissions?: TProjectPermission[];
   }[]
 ): TPermissionAuditSource[] =>
-  privileges.map((privilege) => ({
-    id: privilege.id,
-    type: "additional_privilege",
-    name: privilege.slug,
-    isTemporary: privilege.isTemporary,
-    temporaryAccessEndTime: privilege.temporaryAccessEndTime ?? undefined,
-    permissions: packed(privilege.permissions)
-  }));
+  privileges
+    .filter((privilege) => !isExpired(privilege))
+    .map((privilege) => ({
+      id: privilege.id,
+      type: "additional_privilege",
+      name: privilege.slug,
+      isTemporary: privilege.isTemporary,
+      temporaryAccessEndTime: privilege.temporaryAccessEndTime ?? undefined,
+      permissions: packed(privilege.permissions)
+    }));
 
 const privilegeWindow = (
   type:

@@ -92,24 +92,37 @@ export const seedFolderAccess = (): DemoFolderAccess => ({
   actors: [
     {
       type: "user",
-      id: "demo-user-sarah",
+      id: "u-sarah",
       name: "Sarah Lin",
       email: "sarah@acme.dev",
       membership: { id: "membership-sarah", isProjectAdmin: true, roles: [role("Admin")] }
     },
     {
       type: "user",
-      id: "demo-user-marcus",
+      id: "u-marcus",
       name: "Marcus Webb",
       email: "marcus@acme.dev",
       membership: { id: "membership-marcus", isProjectAdmin: false, roles: [role("Developer")] }
     },
     {
       type: "user",
-      id: "demo-user-priya",
-      name: "Priya Natarajan",
+      id: "u-priya",
+      name: "Priya Raman",
       email: "priya@acme.dev",
       membership: { id: "membership-priya", isProjectAdmin: false, roles: [role("No access")] }
+    },
+    {
+      type: "user",
+      id: "u-diego",
+      name: "Diego Alvarez",
+      email: "diego@acme.dev",
+      membership: { id: "membership-diego", isProjectAdmin: false, roles: [role("Viewer")] }
+    },
+    {
+      type: "identity",
+      id: "9d27a4f1-0c3b-4e8a-b5f2-6a1d7c4e2b90",
+      name: "k8s-payments-api",
+      membership: { id: "membership-k8s", isProjectAdmin: false, roles: [role("Viewer")] }
     },
     {
       type: "user",
@@ -120,8 +133,8 @@ export const seedFolderAccess = (): DemoFolderAccess => ({
     },
     {
       type: "identity",
-      id: "demo-identity-ci",
-      name: "payments-ci",
+      id: "4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11",
+      name: "ci-deployer",
       membership: { id: "membership-ci", isProjectAdmin: false, roles: [role("No access")] }
     }
   ],

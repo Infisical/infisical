@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { subject } from "@casl/ability";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -9,7 +10,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -18,13 +20,6 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@infisical/cipher/ui/data-table";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -32,6 +27,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { SecretPathInput } from "@infisical/cipher/ui/secret-path-input";
 import { Select } from "@infisical/cipher/ui/select";
@@ -52,7 +48,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useUpgradeGate } from "../../license";
 import { useProjectPermission } from "../permissions";
-import { errorMessage, failed, saved } from "../toast";
+import { errorMessage, failed, readableFailure, saved } from "../toast";
 import { RESTRICTED } from "../ui";
 import { DurationBadge, DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 
@@ -115,6 +111,8 @@ const grantType = (draft: GrantDraft) =>
       } as const)
     : ({ isTemporary: false } as const);
 
+type FolderAccessChange = { permission?: SecretFolderRole; draft?: GrantDraft };
+
 const useFolderAccessMutations = (actor: FolderAccessActor) => {
   const secrets = useV4Adapter("secrets");
   const createUser = secrets.useCreateUserFolderAccess();
@@ -140,20 +138,12 @@ const useFolderAccessMutations = (actor: FolderAccessActor) => {
             permission,
             type: grantType(draft)
           }),
-    update: (target: Target, permission: SecretFolderRole, draft: GrantDraft) =>
-      isUser
-        ? updateUser.mutateAsync({
-            ...target,
-            userId: actor.id,
-            permission,
-            type: grantType(draft)
-          })
-        : updateIdentity.mutateAsync({
-            ...target,
-            identityId: actor.id,
-            permission,
-            type: grantType(draft)
-          }),
+    update: (target: Target, { permission, draft }: FolderAccessChange) => {
+      const type = draft ? grantType(draft) : undefined;
+      return isUser
+        ? updateUser.mutateAsync({ ...target, userId: actor.id, permission, type })
+        : updateIdentity.mutateAsync({ ...target, identityId: actor.id, permission, type });
+    },
     remove: (target: Target) =>
       isUser
         ? deleteUser.mutateAsync({ ...target, userId: actor.id })
@@ -184,7 +174,15 @@ const GrantFolderAccessDialog = ({
   const [parent, setParent] = useState("/");
   const [tier, setTier] = useState(SecretFolderRole.Read);
   const [draft, setDraft] = useState<GrantDraft>(() => permanent(SecretFolderRole.Read));
-  const [pending, setPending] = useState(false);
+  const completed = useRef(false);
+  const guard = useDiscardChangesGuard({
+    isDirty:
+      Boolean(environment) ||
+      path !== "/" ||
+      tier !== SecretFolderRole.Read ||
+      JSON.stringify(draft) !== JSON.stringify(permanent(SecretFolderRole.Read)),
+    onDiscard: () => onOpenChange(false)
+  });
   const env = environment || environments[0]?.slug || "";
   const folders = folderTree?.[env]?.folders ?? [];
   const parentOf = (value: string) =>
@@ -215,82 +213,84 @@ const GrantFolderAccessDialog = ({
     tier === SecretFolderRole.FullAccess && draft.isTemporary ? FULL_ACCESS_TEMPORARY : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>{`Grant folder access to ${actor.name}`}</DialogTitle>
-        </DialogHeader>
-        <Stack gap={16}>
-          <Field label="Folder" error={targetError}>
-            <Inline gap={8} wrap={false}>
-              <Select
-                aria-label="Environment"
-                width="sm"
-                value={env}
-                onChange={(value) => {
-                  setEnvironment(value);
-                  setPath("/");
-                }}
-                options={environments.map((item) => ({ value: item.slug, label: item.name }))}
-              />
-              <SecretPathInput
-                aria-label="Folder path"
-                value={path}
-                invalid={Boolean(targetError)}
-                onChange={setPath}
-                onParentPathChange={setParent}
-                folders={folders
-                  .filter((folder) => folder.path !== "/" && parentOf(folder.path) === parent)
-                  .map((folder) => folder.name)}
-              />
-            </Inline>
-          </Field>
-          <Field label="Access">
-            <RadioGroup value={tier} onValueChange={(value) => setTier(value as SecretFolderRole)}>
-              {TIERS.map((option) => (
-                <RadioGroupItem
-                  key={option.value}
-                  value={option.value}
-                  label={option.label}
-                  description={option.description}
-                />
-              ))}
-            </RadioGroup>
-          </Field>
-          <Field label="Duration" error={temporaryError}>
-            <DurationPicker grant={draft} label="Duration" onChange={setDraft} />
-          </Field>
-        </Stack>
-        <DialogFooter>
-          <Button variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            loading={pending}
-            disabled={Boolean(targetError || temporaryError)}
-            onClick={async () => {
-              setPending(true);
-              try {
-                await mutations.create(
-                  { projectId, environmentSlug: env, secretPath: normalized },
-                  tier,
-                  draft
-                );
-                saved("Folder access granted");
-                onOpenChange(false);
-              } catch (error) {
-                failed("Failed to grant folder access", error);
-              } finally {
-                setPending(false);
-              }
-            }}
-          >
-            Grant access
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <MultiStep
+        variant="dialog"
+        open={open}
+        onOpenChange={(next) => {
+          if (next || completed.current) {
+            onOpenChange(next);
+            return;
+          }
+          guard.requestDiscard();
+        }}
+        title={`Grant folder access to ${actor.name}`}
+        completeLabel="Grant access"
+        onComplete={async () => {
+          await mutations
+            .create({ projectId, environmentSlug: env, secretPath: normalized }, tier, draft)
+            .catch(readableFailure("Couldn't grant folder access."));
+          saved("Folder access granted");
+          completed.current = true;
+        }}
+        steps={[
+          {
+            title: "Folder access",
+            disabledReason: targetError ?? temporaryError,
+            content: (
+              <Stack gap={16}>
+                <Field label="Folder" error={targetError}>
+                  <Inline gap={8} wrap={false}>
+                    <Select
+                      aria-label="Environment"
+                      width="sm"
+                      value={env}
+                      onChange={(value) => {
+                        setEnvironment(value);
+                        setPath("/");
+                      }}
+                      options={environments.map((item) => ({ value: item.slug, label: item.name }))}
+                    />
+                    <SecretPathInput
+                      aria-label="Folder path"
+                      value={path}
+                      invalid={Boolean(targetError)}
+                      onChange={setPath}
+                      onParentPathChange={setParent}
+                      folders={folders
+                        .filter((folder) => folder.path !== "/" && parentOf(folder.path) === parent)
+                        .map((folder) => folder.name)}
+                    />
+                  </Inline>
+                </Field>
+                <Field label="Access">
+                  <RadioGroup
+                    value={tier}
+                    onValueChange={(value) => setTier(value as SecretFolderRole)}
+                  >
+                    {TIERS.map((option) => (
+                      <RadioGroupItem
+                        key={option.value}
+                        value={option.value}
+                        label={option.label}
+                        description={option.description}
+                      />
+                    ))}
+                  </RadioGroup>
+                </Field>
+                <Field label="Duration" error={temporaryError}>
+                  <DurationPicker grant={draft} label="Duration" onChange={setDraft} />
+                </Field>
+              </Stack>
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...guard.discardDialogProps}
+        description="The folder access you started granting will be lost."
+      />
+    </>
   );
 };
 
@@ -310,7 +310,7 @@ const useActorFolderAccess = (projectId: string, actor: FolderAccessActor, enabl
   return isUser ? userAccess : identityAccess;
 };
 
-type Change = (row: TFolderAccess, tier: SecretFolderRole, draft: GrantDraft) => void;
+type Change = (row: TFolderAccess, change: FolderAccessChange) => void;
 
 const TierCell = ({
   row,
@@ -327,7 +327,7 @@ const TierCell = ({
       aria-label={`Access to ${row.secretPath}`}
       size="sm"
       value={row.permission}
-      onChange={(value) => onChange(row, value as SecretFolderRole, draftOf(row))}
+      onChange={(value) => onChange(row, { permission: value as SecretFolderRole })}
       options={TIERS.map((option) => ({
         value: option.value,
         label: option.label,
@@ -355,7 +355,7 @@ const DurationCell = ({
       disabledReason={
         row.permission === SecretFolderRole.FullAccess ? FULL_ACCESS_TEMPORARY : undefined
       }
-      onChange={(draft) => onChange(row, row.permission, draft)}
+      onChange={(draft) => onChange(row, { draft })}
     />
   );
 };
@@ -442,9 +442,9 @@ export const FolderAccessSection = ({
     environmentSlug: row.environment,
     secretPath: row.secretPath
   });
-  const change = async (row: TFolderAccess, tier: SecretFolderRole, draft: GrantDraft) => {
+  const change = async (row: TFolderAccess, next: FolderAccessChange) => {
     try {
-      await mutations.update(targetOf(row), tier, draft);
+      await mutations.update(targetOf(row), next);
       saved("Folder access updated");
     } catch (error) {
       failed("Failed to update folder access", error);
