@@ -4,13 +4,16 @@
 #
 # Usage: ./bump-infisical-core-app-version.sh v0.167.10
 #
-# The chart version must end up ahead of main's, as ct lint requires of every chart PR.
-# A version already ahead of main (an open bump PR, or a hand-made bump) is kept and the
-# change joins its CHANGELOG section; otherwise main's version gets a patch bump and a
-# new section. Every version merged to main is published, so none is skipped. Compares
-# against BASE_REF (default origin/main), so fetch it first. Never moves appVersion
-# backwards, so a patch release tagged on an older line after a newer release leaves the
-# chart alone.
+# The chart version must end up ahead of main's, as ct lint requires of every chart PR, and
+# a version range like ~1.12 must never pick up a breaking Infisical upgrade. So the chart
+# gets a minor bump when any release between main's appVersion and the new one has breaking
+# changes in upgrade-impact/data/releases/, or has no data there, and a patch bump otherwise.
+# A version already at or above that bump (an open bump PR, or a hand-made bump) is kept and
+# the change joins its CHANGELOG section. Every version merged to main is published, so none
+# is skipped. The breaking changes of the releases this run adds are appended to the
+# section's upgrade notes for review. Compares against BASE_REF (default origin/main), so
+# fetch it and the release tags first. Needs yq v4. Never moves appVersion backwards, so a
+# patch release tagged on an older line after a newer release leaves the chart alone.
 set -euo pipefail
 
 TAG="${1:-}"
@@ -22,6 +25,7 @@ fi
 CHART_DIR="$(cd "$(dirname "$0")/infisical-standalone-postgres" && pwd)"
 CHART_FILE="$CHART_DIR/Chart.yaml"
 CHANGELOG_FILE="$CHART_DIR/CHANGELOG.md"
+IMPACT_DIR="$(cd "$(dirname "$0")/.." && pwd)/upgrade-impact/data/releases"
 OUTPUT_FILE="${GITHUB_OUTPUT:-/dev/null}"
 BASE_REF="${BASE_REF:-origin/main}"
 
@@ -33,12 +37,23 @@ is_newer() {
   [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]
 }
 
+# Stable release tags newer than $1 and no newer than $2, oldest first.
+releases_between() {
+  git -C "$CHART_DIR" tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | while read -r v; do
+    if is_newer "${v#v}" "${1#v}" && ! is_newer "${v#v}" "${2#v}"; then
+      echo "$v"
+    fi
+  done
+}
+
 CURRENT_APP_VERSION="$(read_field appVersion < "$CHART_FILE")"
 CHART_VERSION="$(read_field version < "$CHART_FILE")"
-BASE_CHART_VERSION="$(git -C "$CHART_DIR" show "$BASE_REF:./Chart.yaml" | read_field version)"
+BASE_CHART_FILE="$(git -C "$CHART_DIR" show "$BASE_REF:./Chart.yaml")"
+BASE_CHART_VERSION="$(read_field version <<< "$BASE_CHART_FILE")"
+BASE_APP_VERSION="$(read_field appVersion <<< "$BASE_CHART_FILE")"
 
-if [ -z "$CURRENT_APP_VERSION" ] || [ -z "$CHART_VERSION" ] || [ -z "$BASE_CHART_VERSION" ]; then
-  echo "Could not read version and appVersion from $CHART_FILE, or version from $BASE_REF" >&2
+if [ -z "$CURRENT_APP_VERSION" ] || [ -z "$CHART_VERSION" ] || [ -z "$BASE_CHART_VERSION" ] || [ -z "$BASE_APP_VERSION" ]; then
+  echo "Could not read version and appVersion from $CHART_FILE or from $BASE_REF" >&2
   exit 1
 fi
 
@@ -52,15 +67,43 @@ if ! is_newer "${TAG#v}" "${CURRENT_APP_VERSION#v}"; then
   exit 0
 fi
 
-if is_newer "$CHART_VERSION" "$BASE_CHART_VERSION"; then
+BUMP=patch
+for v in $(releases_between "$BASE_APP_VERSION" "$TAG"); do
+  DATA_FILE="$IMPACT_DIR/$v.yaml"
+  if [ ! -f "$DATA_FILE" ]; then
+    echo "$v has no upgrade impact data, so it counts as breaking."
+    BUMP=minor
+  elif [ "$(yq '.breakingChanges | length' "$DATA_FILE")" != "0" ]; then
+    echo "$v has breaking changes."
+    BUMP=minor
+  fi
+done
+
+IFS=. read -r MAJOR MINOR PATCH <<< "$BASE_CHART_VERSION"
+if [ "$BUMP" = minor ]; then
+  TARGET_CHART_VERSION="$MAJOR.$((MINOR + 1)).0"
+else
+  TARGET_CHART_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+fi
+
+if [ "$CHART_VERSION" = "$TARGET_CHART_VERSION" ] || is_newer "$CHART_VERSION" "$TARGET_CHART_VERSION"; then
   NEW_CHART_VERSION="$CHART_VERSION"
 else
-  IFS=. read -r MAJOR MINOR PATCH <<< "$BASE_CHART_VERSION"
-  NEW_CHART_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+  NEW_CHART_VERSION="$TARGET_CHART_VERSION"
+fi
+
+TOP_HEADING="$(grep -m 1 '^## ' "$CHANGELOG_FILE")"
+
+# A patch bump this branch already made becomes the minor bump, keeping its section.
+if [ "$NEW_CHART_VERSION" != "$CHART_VERSION" ] && is_newer "$CHART_VERSION" "$BASE_CHART_VERSION" \
+  && [ "$TOP_HEADING" = "## $CHART_VERSION" ]; then
+  awk -v from="## $CHART_VERSION" -v to="## $NEW_CHART_VERSION" \
+    '!done && $0 == from { print to; done=1; next } { print }' "$CHANGELOG_FILE" > "$CHANGELOG_FILE.tmp"
+  mv "$CHANGELOG_FILE.tmp" "$CHANGELOG_FILE"
+  TOP_HEADING="## $NEW_CHART_VERSION"
 fi
 
 BULLET_PREFIX='* Updated the default Infisical image (`appVersion`) from '
-TOP_HEADING="$(grep -m 1 '^## ' "$CHANGELOG_FILE")"
 
 if [ "$TOP_HEADING" = "## $NEW_CHART_VERSION" ]; then
   if awk '/^## /{n++} n==1' "$CHANGELOG_FILE" | grep -qF "$BULLET_PREFIX"; then
@@ -86,14 +129,44 @@ else
 fi
 mv "$CHANGELOG_FILE.tmp" "$CHANGELOG_FILE"
 
+NOTES=""
+for v in $(releases_between "$CURRENT_APP_VERSION" "$TAG"); do
+  DATA_FILE="$IMPACT_DIR/$v.yaml"
+  if [ -f "$DATA_FILE" ]; then
+    NOTES+="$(V="$v" yq '.breakingChanges[] | "* " + .title + " (`" + strenv(V) + "`): " + ((.description + " " + .action) | sub("\s*\n\s*"; " "))' "$DATA_FILE")"$'\n'
+  fi
+done
+NOTES="$(sed '/^$/d' <<< "$NOTES")"
+
+if [ -n "$NOTES" ]; then
+  # Appends to the top section's upgrade notes, so notes a reviewer already edited are kept.
+  NOTES="$NOTES" awk '
+    BEGIN { notes = ENVIRON["NOTES"] }
+    function flush() {
+      if (!has_notes) { buf = buf "\nUpgrade notes:\n" }
+      printf "%s%s\n", buf, notes
+      if (pending_blank) { print "" }
+      flushed = 1
+    }
+    /^## / { n++ }
+    n == 1 && /^Upgrade notes:$/ { has_notes = 1 }
+    n == 1 { if ($0 == "") { pending_blank++ } else { while (pending_blank > 0) { buf = buf "\n"; pending_blank-- } buf = buf $0 "\n" } next }
+    n == 2 && !flushed { flush() }
+    { print }
+    END { if (!flushed) { pending_blank = 0; flush() } }
+  ' "$CHANGELOG_FILE" > "$CHANGELOG_FILE.tmp"
+  mv "$CHANGELOG_FILE.tmp" "$CHANGELOG_FILE"
+fi
+
 sed -e "s/^appVersion:.*/appVersion: \"$TAG\"/" \
     -e "s/^version:.*/version: $NEW_CHART_VERSION/" \
     "$CHART_FILE" > "$CHART_FILE.tmp"
 mv "$CHART_FILE.tmp" "$CHART_FILE"
 
-echo "Chart $CHART_VERSION -> $NEW_CHART_VERSION, appVersion $CURRENT_APP_VERSION -> $TAG"
+echo "Chart $CHART_VERSION -> $NEW_CHART_VERSION ($BUMP), appVersion $CURRENT_APP_VERSION -> $TAG"
 {
   echo "changed=true"
   echo "app_version=$TAG"
   echo "chart_version=$NEW_CHART_VERSION"
+  echo "bump=$BUMP"
 } >> "$OUTPUT_FILE"

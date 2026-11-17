@@ -1,16 +1,16 @@
-name: Bump Infisical Core Helm chart app version
+name: Upgrade impact and Helm chart release PR
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Stable release tag the chart should default to, for example v0.167.10"
+        description: "Stable release tag to add upgrade impact data for and point the chart at, for example v0.167.10"
         required: true
         type: string
   workflow_call:
     inputs:
       tag:
-        description: "Stable release tag the chart should default to, for example v0.167.10"
+        description: "Stable release tag to add upgrade impact data for and point the chart at, for example v0.167.10"
         required: true
         type: string
 
@@ -43,7 +43,7 @@ jobs:
           echo "stable=true" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Look for an open bump PR
+      - name: Look for an open release PR
         id: existing
         if: steps.release.outputs.stable == 'true'
         env:
@@ -60,6 +60,59 @@ jobs:
         with:
           ref: ${{ steps.existing.outputs.pr != '' && env.BRANCH_NAME || 'main' }}
           fetch-depth: 0
+          fetch-tags: true
+
+      # Data already on the branch or main was generated before, and may have been reviewed since,
+      # so it is never regenerated. Delete the file to generate it again.
+      - name: Look for upgrade impact data
+        id: impact
+        if: steps.release.outputs.stable == 'true'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          if [ -f "upgrade-impact/data/releases/${TAG_NAME}.yaml" ]; then
+            echo "Upgrade impact data for ${TAG_NAME} already exists."
+            echo "generate=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "generate=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.impact.outputs.generate == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Install upgrade impact dependencies
+        if: steps.impact.outputs.generate == 'true'
+        run: npm ci
+        working-directory: upgrade-impact
+
+      - name: Type check upgrade impact tooling
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run type:check
+        working-directory: upgrade-impact
+
+      - name: Test upgrade impact tooling
+        if: steps.impact.outputs.generate == 'true'
+        run: npm test
+        working-directory: upgrade-impact
+
+      # The chart version depends on this data, so the chart is never bumped without it.
+      - name: Generate upgrade impact data
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
+        working-directory: upgrade-impact
+        env:
+          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Validate upgrade impact data
+        if: steps.impact.outputs.generate == 'true'
+        run: npm run validate
+        working-directory: upgrade-impact
 
       - name: Bump chart app version
         id: bump
@@ -68,8 +121,10 @@ jobs:
           TAG_NAME: ${{ steps.release.outputs.tag }}
         run: ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
 
-      - name: Push bump branch
-        if: steps.bump.outputs.changed == 'true'
+      # A release tagged on an older line leaves the chart alone but still adds its data.
+      - name: Push release branch
+        id: push
+        if: steps.release.outputs.stable == 'true'
         env:
           TAG_NAME: ${{ steps.release.outputs.tag }}
           EXISTING_PR: ${{ steps.existing.outputs.pr }}
@@ -77,12 +132,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git add helm-charts/infisical-standalone-postgres upgrade-impact/data
+          if git diff --cached --quiet; then
+            echo "Nothing to commit for ${TAG_NAME}."
+            exit 0
+          fi
+
           if [ -z "$EXISTING_PR" ]; then
             git switch -C "$BRANCH_NAME"
           fi
 
-          git add helm-charts/infisical-standalone-postgres
-          git commit -m "chore(helm): update infisical-standalone appVersion to ${TAG_NAME}"
+          git commit -m "chore(release): upgrade impact and Helm chart for ${TAG_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
 
           if [ -n "$EXISTING_PR" ]; then
             git push origin "HEAD:refs/heads/${BRANCH_NAME}"
@@ -97,46 +158,64 @@ jobs:
             git push --force-with-lease="refs/heads/${BRANCH_NAME}:${REMOTE_SHA}" origin "$BRANCH_NAME"
           fi
 
-      # A rerun after the push finds the branch already bumped (changed=false), so the PR steps
-      # also run for an open PR, describing the version the branch is at rather than this tag.
+      # A rerun after the push finds nothing to commit, so the PR steps also run for an open PR,
+      # describing the version the branch is at rather than this tag.
       - name: Write PR body
-        if: steps.bump.outputs.changed == 'true' || steps.existing.outputs.pr != ''
+        if: steps.push.outputs.pushed == 'true' || steps.existing.outputs.pr != ''
         env:
           TAG_NAME: ${{ steps.bump.outputs.app_version }}
           CHART_VERSION: ${{ steps.bump.outputs.chart_version }}
-          BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
-          MAIN_APP_VERSION="$(git show origin/main:helm-charts/infisical-standalone-postgres/Chart.yaml | yq '.appVersion')"
+          MAIN_CHART="$(git show origin/main:helm-charts/infisical-standalone-postgres/Chart.yaml)"
+          MAIN_APP_VERSION="$(echo "$MAIN_CHART" | yq '.appVersion')"
+          MAIN_CHART_VERSION="$(echo "$MAIN_CHART" | yq '.version')"
           is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
 
-          RELEASES="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | while read -r v; do
-            if is_newer "${v#v}" "${MAIN_APP_VERSION#v}" && ! is_newer "${v#v}" "${TAG_NAME#v}"; then
-              DATA_FILE="upgrade-impact/data/releases/${v}.yaml"
-              if DATA="$(git show "origin/main:${DATA_FILE}" 2>/dev/null)"; then
-                IMPACT="$(echo "$DATA" | yq '.impactLevel')"
-                BREAKING="$(echo "$DATA" | yq '.breakingChanges | length')"
-                SUMMARY="$(echo "$DATA" | yq '.summary')"
-                echo "- [\`${v}\`](${BLOB_URL}/${DATA_FILE}): impact \`${IMPACT}\`, breaking changes: ${BREAKING}. ${SUMMARY}"
-              else
-                echo "- \`${v}\`: no upgrade impact data on \`main\`. If its upgrade impact PR is still open, read it there."
-              fi
+          # Releases the chart moves across, plus any whose data this branch adds, such as a
+          # release tagged on an older line.
+          IN_RANGE="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | while read -r v; do
+            if is_newer "${v#v}" "${MAIN_APP_VERSION#v}" && ! is_newer "${v#v}" "${TAG_NAME#v}"; then echo "$v"; fi
+          done)"
+          ADDED="$(git diff --name-only --diff-filter=AM origin/main...HEAD -- upgrade-impact/data/releases \
+            | sed -n 's#.*/\(v[0-9.]*\)\.yaml$#\1#p')"
+          BLOB_URL="${REPO_URL}/blob/$(git rev-parse HEAD)"
+
+          RELEASES="$(printf '%s\n%s\n' "$IN_RANGE" "$ADDED" | sed '/^$/d' | sort -uV | while read -r v; do
+            DATA_FILE="upgrade-impact/data/releases/${v}.yaml"
+            if [ -f "$DATA_FILE" ]; then
+              IMPACT="$(yq '.impactLevel' "$DATA_FILE")"
+              BREAKING="$(yq '.breakingChanges | length' "$DATA_FILE")"
+              SUMMARY="$(yq '.summary' "$DATA_FILE" | tr '\n' ' ')"
+              echo "- [\`${v}\`](${BLOB_URL}/${DATA_FILE}): impact \`${IMPACT}\`, breaking changes: ${BREAKING}. ${SUMMARY}"
+            else
+              echo "- \`${v}\`: no upgrade impact data, so it counts as breaking. To add it, run this workflow for \`${v}\`."
             fi
           done)"
+
+          if [ "$CHART_VERSION" = "$MAIN_CHART_VERSION" ]; then
+            CHART_LINE="This adds upgrade impact data only. The chart already defaults to \`${TAG_NAME}\`, so it is unchanged."
+          else
+            CHART_LINE="Merging moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. The chart gets a minor bump when any release below has breaking changes or no data, and a patch bump otherwise, so a \`~\` range never picks up a breaking upgrade."
+          fi
 
           cat > "$RUNNER_TEMP/pr-body.md" <<EOF
           ## Context
 
-          Points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. The chart's \`appVersion\` is the default \`infisical.image.tag\`, so merging this moves the default image from \`${MAIN_APP_VERSION}\` to \`${TAG_NAME}\` in chart \`${CHART_VERSION}\`. If a newer release ships before this merges, this PR is updated in place.
+          Adds the generated upgrade impact data for each Infisical release below and points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. ${CHART_LINE} If a newer release ships before this merges, this PR is updated in place.
 
-          Before merging, add upgrade notes to the chart \`${CHART_VERSION}\` CHANGELOG section for every release below with breaking changes, as chart 1.11.1 does.
+          Before merging:
+          - Review each release's generated YAML for self-hosted upgrade accuracy.
+          - Review the upgrade notes generated from those breaking changes in the chart \`${CHART_VERSION}\` CHANGELOG section.
+          - If review adds or removes a breaking change, check the chart version still follows the rule above.
 
-          ### Releases in this bump
+          ### Releases in this PR
 
           ${RELEASES}
 
           ## Steps to verify the change
 
-          Checks don't run on pull requests opened by GitHub Actions. Close and reopen this PR to run the Helm chart tests, which install the chart's \`appVersion\`.
+          Checks don't run on pull requests opened by GitHub Actions. Close and reopen this PR to run the Helm chart tests, which install the chart's \`appVersion\`, and the upgrade impact data validation.
 
           Merging publishes chart \`${CHART_VERSION}\` through the **Release Infisical Core Helm chart** workflow.
 
@@ -152,14 +231,14 @@ jobs:
 
       - name: Open or update PR
         id: pr
-        if: steps.bump.outputs.changed == 'true' || steps.existing.outputs.pr != ''
+        if: steps.push.outputs.pushed == 'true' || steps.existing.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ steps.bump.outputs.app_version }}
           EXISTING_PR: ${{ steps.existing.outputs.pr }}
         run: |
-          PR_TITLE="chore(helm): update infisical-standalone appVersion to ${TAG_NAME}"
+          PR_TITLE="chore(release): upgrade impact and Helm chart for ${TAG_NAME}"
 
           if [ -n "$EXISTING_PR" ]; then
             gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
@@ -176,7 +255,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ steps.bump.outputs.app_version }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
@@ -195,3 +274,50 @@ jobs:
           fi
 
           echo "Requested review from release author: $RELEASE_AUTHOR"
+
+  notify:
+    name: Notify incident.io if the release PR is blocked
+    runs-on: ubuntu-latest
+    needs: [bump]
+    if: always() && needs.bump.result == 'failure'
+    steps:
+      - name: Send blocked alert to incident.io
+        env:
+          ALERT_URL: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_URL }}
+          ALERT_TOKEN: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          # Guard against a misconfigured/rotated secret redirecting the POST (and the
+          # bearer token) to an unintended host: only allow the incident.io API origin.
+          case "$ALERT_URL" in
+            https://api.incident.io/*) ;;
+            *)
+              echo "::error::ALERT_URL does not point at https://api.incident.io/ — refusing to send alert."
+              exit 1
+              ;;
+          esac
+
+          jq -n \
+            --arg title "[${REPO}] Upgrade impact and Helm chart PR blocked for ${RELEASE_TAG}" \
+            --arg description "Upgrade impact data for ${RELEASE_TAG} was not generated, the Helm chart was not pointed at it, or the pull request has no reviewer." \
+            --arg dedup "upgrade-impact-${RELEASE_TAG}" \
+            --arg url "$RUN_URL" \
+            --arg tag "${RELEASE_TAG:-unknown}" \
+            --arg actor "$ACTOR" \
+            '{
+              title: $title,
+              description: $description,
+              deduplication_key: $dedup,
+              status: "firing",
+              source_url: $url,
+              metadata: { release_tag: $tag, actor: $actor }
+            }' \
+          | curl -sS --fail-with-body --connect-timeout 10 --max-time 30 -X POST "$ALERT_URL" \
+              -H "Authorization: Bearer $ALERT_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @-
