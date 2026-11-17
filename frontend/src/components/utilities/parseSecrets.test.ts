@@ -5,6 +5,36 @@ import { parseCsvToMatrix, parseDotEnv, parsePastedSecrets, parseYaml } from "./
 
 describe("parseCsvToMatrix", () => {
   it.each([",", ";", "\t", "|"])(
+    "trims padding outside quoted fields with the %j delimiter",
+    (delimiter) => {
+      const csv = [
+        ["key", ' "value" ', ' "comment" '].join(delimiter),
+        ["API_KEY", ' " leading\n" ', ' "a ""quote"" " '].join(delimiter),
+        ["EMPTY", ' "" ', ' "   " '].join(delimiter)
+      ].join("\r\n");
+
+      assert.deepEqual(parseCsvToMatrix(csv), {
+        delimiter,
+        matrix: [
+          ["key", "value", "comment"],
+          ["API_KEY", " leading\n", 'a "quote" '],
+          ["EMPTY", "", "   "]
+        ]
+      });
+    }
+  );
+
+  it("preserves interior whitespace between quoted and unquoted content", () => {
+    const csv = 'key,value\nMIXED,  prefix " middle " suffix  \nNEXT, "quoted" , unquoted ';
+
+    assert.deepEqual(parseCsvToMatrix(csv).matrix, [
+      ["key", "value"],
+      ["MIXED", "prefix  middle  suffix"],
+      ["NEXT", "quoted", "unquoted"]
+    ]);
+  });
+
+  it.each([",", ";", "\t", "|"])(
     "preserves quoted whitespace with the %j delimiter",
     (delimiter) => {
       const csv = [
