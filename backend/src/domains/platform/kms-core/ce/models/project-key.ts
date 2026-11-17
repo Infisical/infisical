@@ -1,5 +1,6 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
+import { DataKeyOwner } from "./data-key-owner";
 import { EncryptedDataKey } from "./encrypted-data-key";
 import { ProjectKeyBackup } from "./project-key-backup";
 
@@ -16,15 +17,17 @@ export type TProjectKeyRecord = {
 
 const BACKUP_FOREIGN = "Backup does not belong to project";
 
-// The key columns a project carries. KMS Core is the only writer of these columns.
-export class ProjectKey {
+// The key columns a project carries: its data key pair, plus the certificate key.
+export class ProjectKey extends DataKeyOwner {
   private constructor(
     readonly projectId: string,
-    readonly orgId: string,
-    private kmsKeyId: string | null,
-    private dataKey: Buffer | null,
+    orgId: string,
+    kmsKeyId: string | null,
+    dataKey: Buffer | null,
     private certificateKeyId: string | null
-  ) {}
+  ) {
+    super("project", projectId, orgId, kmsKeyId, dataKey);
+  }
 
   static restore(record: TProjectKeyRecord): ProjectKey {
     return new ProjectKey(
@@ -36,30 +39,8 @@ export class ProjectKey {
     );
   }
 
-  hasDataKey(): boolean {
-    return this.dataKey !== null;
-  }
-
-  // For the caller that reads the KMS key and has no data key yet; once both exist, `material()` carries the id.
-  get currentKmsKeyId(): string | null {
-    return this.kmsKeyId;
-  }
-
   get certificateKmsKeyId(): string | null {
     return this.certificateKeyId;
-  }
-
-  assignKmsKey(kmsKeyId: string): void {
-    if (this.kmsKeyId) throw new RuleViolationError({ message: `Project '${this.projectId}' already has a KMS key` });
-    this.kmsKeyId = kmsKeyId;
-  }
-
-  assignDataKey(encryptedDataKey: Buffer): void {
-    if (!this.kmsKeyId) {
-      throw new RuleViolationError({ message: `Project '${this.projectId}' has no KMS key to encrypt a data key` });
-    }
-    if (this.dataKey) throw new RuleViolationError({ message: `Project '${this.projectId}' already has a data key` });
-    this.dataKey = encryptedDataKey;
   }
 
   assignCertificateKey(kmsKeyId: string): void {
@@ -104,11 +85,6 @@ export class ProjectKey {
     if (restored.orgId !== this.orgId) throw new RuleViolationError({ message: BACKUP_FOREIGN });
     this.kmsKeyId = restored.kmsKeyId;
     this.dataKey = restored.encryptedDataKey;
-  }
-
-  material(): EncryptedDataKey {
-    if (!this.kmsKeyId || !this.dataKey) throw new RuleViolationError({ message: "Invalid project KMS" });
-    return EncryptedDataKey.restore({ kmsKeyId: this.kmsKeyId, encryptedDataKey: this.dataKey, orgId: this.orgId });
   }
 
   toJSON(): TProjectKeyRecord {
