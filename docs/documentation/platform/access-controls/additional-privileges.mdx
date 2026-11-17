@@ -15,6 +15,10 @@ Infisical's [role-based access controls](./role-based-access-controls) let you d
   If you find yourself assigning the same additional privileges repeatedly, consider creating a [custom role](./role-based-access-controls) instead.
 </Info>
 
+## Prerequisites
+
+- A project that has additional privileges enabled. Newer projects don't have them, and requests to create additional privileges there are rejected. If a member's or machine identity's details page doesn't offer to add additional privileges, your project doesn't have them enabled. In that case, use [project roles](./role-based-access-controls) or [folder-level access](./folder-rbac) instead.
+
 ## Adding additional privileges
 
 Additional privileges can be configured through the Infisical Dashboard or the API. The steps below apply to both users and machine identities.
