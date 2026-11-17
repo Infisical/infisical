@@ -56,7 +56,7 @@ const InviteSheetHeader = ({
 }) =>
   subOrg ? (
     <SheetHeader>
-      <SheetTitle>Add member from your organization</SheetTitle>
+      <SheetTitle>Add members</SheetTitle>
     </SheetHeader>
   ) : (
     <SheetHeader>
@@ -76,7 +76,7 @@ const RootUserPicker = ({ open, ...props }: PickerProps & { open: boolean }) => 
   return (
     <Combobox
       multiple
-      label="Emails"
+      label="Users"
       placeholder="Add one or more users..."
       emptyText={
         isPending
@@ -256,7 +256,7 @@ export const InviteUsersSheet = ({
               }}
             >
               <Stack gap={16}>
-                <Field label="Emails" error={error}>
+                <Field label={subOrg ? "Users" : "Emails"} error={error}>
                   {subOrg ? (
                     <RootUserPicker
                       open={open}
@@ -354,7 +354,7 @@ export const InviteUsersSheet = ({
                   Cancel
                 </Button>
                 <Button variant="primary" type="submit" form="invite-users" loading={pending}>
-                  Add member
+                  Add members
                 </Button>
               </>
             )}

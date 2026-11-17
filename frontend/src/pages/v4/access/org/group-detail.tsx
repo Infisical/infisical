@@ -166,8 +166,8 @@ const AddMembersDialog = ({
         </DialogHeader>
         {oidcManaged && (
           <Alert tone="info">
-            User membership for this group is managed through your OIDC provider. Assign users
-            there; only machine identities can be added here.
+            Users in this group come from your OIDC provider. Only machine identities can be added
+            here.
           </Alert>
         )}
         <Field label={oidcManaged ? "Machine identities" : "Members"}>
@@ -198,8 +198,7 @@ const AddMembersDialog = ({
   );
 };
 
-const OIDC_MANAGED =
-  "OIDC group membership mapping is on. Remove this user from the group in your OIDC provider.";
+const OIDC_MANAGED = "Managed by your OIDC provider";
 
 const removeReason = (member: TGroupMember, canEdit: boolean, oidcManaged: boolean) => {
   if (!canEdit) return RESTRICTED;
