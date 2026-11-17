@@ -173,8 +173,10 @@ export const buildSyncPayload = async (
     })
   );
 
+  const folderPaths = folders.map(({ path }) => path);
+
   if (!includeImports) {
-    return createSecretSyncPayload(entries, { environment, keySchema, sourcePath });
+    return createSecretSyncPayload(entries, { environment, keySchema, sourcePath, folderPaths });
   }
 
   const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
@@ -217,5 +219,5 @@ export const buildSyncPayload = async (
     );
   }
 
-  return createSecretSyncPayload(allEntries, { environment, keySchema, sourcePath });
+  return createSecretSyncPayload(allEntries, { environment, keySchema, sourcePath, folderPaths });
 };

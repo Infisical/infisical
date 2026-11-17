@@ -140,6 +140,29 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 		}, secretValues(t, cp))
 	})
 
+	t.Run("should leave a secret matching its key schema alone when it is outside the folders it mirrors", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The key schema names only the last part of a mirrored name, so another sync's
+			"team-a/INF_DB_PASS" matches "INF_{{secretKey}}". Secrets Manager deletes without
+			recovery, so deleting it would lose that secret for good.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		secretmanager.CreateFolder(t, proj, "dev", "/team-a")
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "a", secretmanager.WithPath("/team-a"))
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		other := newAWSSync(t, proj, conn, oneToOne(), fromPath("/team-a"), keySchema("team-a/INF_{{secretKey}}"))
+		other.trigger(t)
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders(), keySchema("INF_{{secretKey}}"))
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"api/INF_KEEP": "v", "team-a/INF_DB_PASS": "a"}, secretValues(t, cp))
+	})
+
 	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one over a duplicate key", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The update carries no syncOptions, so the stored option stays on. Many-to-one

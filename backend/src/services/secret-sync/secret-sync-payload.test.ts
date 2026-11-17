@@ -243,4 +243,52 @@ describe("mirror", () => {
 
     expect(Object.keys(payload.mirror())).toEqual(["api/B"]);
   });
+
+  test("throws naming both folders when a name containing / lands on another folder's secret", () => {
+    const payload = createSecretSyncPayload([secret("b/X", "/a"), secret("X", "/a/b")], { environment: "dev" });
+
+    expect(() => payload.mirror()).toThrow(/"a\/b\/X" in \/a and \/a\/b/);
+  });
+
+  test("keeps the first secret for a colliding name once conflicts are tolerated", () => {
+    const payload = createSecretSyncPayload([secret("b/X", "/a", "one"), secret("X", "/a/b", "two")], {
+      environment: "dev"
+    }).tolerateConflicts();
+
+    expect(payload.mirror()).toEqual({
+      "a/b/X": { value: "one", id: undefined, comment: undefined, secretMetadata: undefined }
+    });
+  });
+});
+
+describe("mirroredFolders", () => {
+  test("includes every synced folder relative to the source path, even one without secrets", () => {
+    const payload = createSecretSyncPayload([secret("A", "/backend/api")], {
+      environment: "dev",
+      sourcePath: "/backend",
+      folderPaths: ["/backend", "/backend/api", "/backend/api/empty"]
+    });
+
+    expect([...payload.mirroredFolders()].sort()).toEqual(["", "api", "api/empty"]);
+  });
+
+  test("includes the folder a secret name containing / writes into", () => {
+    const payload = createSecretSyncPayload([secret("legacy/X", "/backend/api")], {
+      environment: "dev",
+      sourcePath: "/backend",
+      folderPaths: ["/backend", "/backend/api"]
+    });
+
+    expect([...payload.mirroredFolders()].sort()).toEqual(["", "api", "api/legacy"]);
+  });
+
+  test("is still passed on once conflicts are tolerated", () => {
+    const payload = createSecretSyncPayload([], {
+      environment: "dev",
+      sourcePath: "/backend",
+      folderPaths: ["/backend", "/backend/api"]
+    }).tolerateConflicts();
+
+    expect([...payload.mirroredFolders()].sort()).toEqual(["", "api"]);
+  });
 });

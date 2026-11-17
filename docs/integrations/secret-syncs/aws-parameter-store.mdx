@@ -42,7 +42,9 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
             - **Mirror folder structure**: If you turned on **Include nested folders**, keeps each secret's folder in its parameter path so that secrets with the same name in different folders don't collide (for example, `/backend/api/API_KEY` synced from `/backend` to `/prod/` becomes `/prod/api/API_KEY`)
 
             <Warning>
-                With **Mirror folder structure** on, Infisical deletes any parameter below the path, at any depth, that has no matching secret in Infisical. To keep parameters you manage outside Infisical, turn on **Disable Secret Deletion**. If you turn **Mirror folder structure** off later, Infisical leaves the nested parameters in place, and you'll need to delete them in AWS.
+                With **Mirror folder structure** on, Infisical deletes any parameter that has no matching secret in Infisical, but only at the path and at each path that matches a synced folder (for example, `/prod/api/` for `/backend/api`). Infisical doesn't delete parameters at any other path below the path, such as a path another sync writes to. To keep parameters you manage outside Infisical, turn on **Disable Secret Deletion**.
+
+                If you rename or delete a folder in Infisical, Infisical leaves the folder's old parameters in AWS, and you'll need to delete them there. If you turn **Mirror folder structure** off later, Infisical leaves every nested parameter in AWS too.
             </Warning>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.

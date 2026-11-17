@@ -93,7 +93,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { TSecretSyncPayload } from "./secret-sync-payload";
+import { getMirroredFolder, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -265,13 +265,18 @@ export const matchesSchema = (
   key: string,
   environment: string,
   schema?: string,
-  { preserveFolderStructure = false }: { preserveFolderStructure?: boolean } = {}
+  { mirroredFolders }: { mirroredFolders?: Set<string> } = {}
 ): boolean => {
-  if (!schema) return true;
+  // With folders preserved, a name belongs to the sync only in a folder it mirrors (see
+  // mirroredFolders() in secret-sync-payload.ts), and the key schema only names the last segment.
+  if (mirroredFolders) {
+    return (
+      mirroredFolders.has(getMirroredFolder(key)) &&
+      matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema)
+    );
+  }
 
-  // With folders preserved, the key schema only names the last path segment (see mirror() in
-  // secret-sync-payload.ts); the folders before it are not part of the schema.
-  if (preserveFolderStructure) return matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema);
+  if (!schema) return true;
 
   const compiledSchemaPattern = handlebars.compile(schema)({
     secretKey: "{{secretKey}}", // Keep secretKey

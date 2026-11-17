@@ -65,7 +65,7 @@ const getSecretsRecord = async (
   client: SecretsManagerClient,
   environment: string,
   keySchema?: string,
-  preserveFolderStructure = false
+  mirroredFolders?: Set<string>
 ): Promise<TAwsSecretsRecord> => {
   const awsSecretsRecord: TAwsSecretsRecord = {};
   let hasNext = true;
@@ -81,10 +81,7 @@ const getSecretsRecord = async (
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          if (
-            secretEntry.Name &&
-            matchesSchema(secretEntry.Name, environment, keySchema, { preserveFolderStructure })
-          ) {
+          if (secretEntry.Name && matchesSchema(secretEntry.Name, environment, keySchema, { mirroredFolders })) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
@@ -365,6 +362,7 @@ export const AwsSecretsManagerSyncFns = {
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+    const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
     const client = await getSecretsManagerClient(secretSync);
 
@@ -381,7 +379,7 @@ export const AwsSecretsManagerSyncFns = {
         client,
         environment?.slug || "",
         syncOptions.keySchema,
-        preserveFolderStructure
+        mirroredFolders
       );
 
       const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
@@ -470,8 +468,7 @@ export const AwsSecretsManagerSyncFns = {
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
-        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema, { preserveFolderStructure }))
-          continue;
+        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema, { mirroredFolders })) continue;
 
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
@@ -609,6 +606,7 @@ export const AwsSecretsManagerSyncFns = {
     const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+    const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
     const client = await getSecretsManagerClient(secretSync);
 
@@ -617,7 +615,7 @@ export const AwsSecretsManagerSyncFns = {
         client,
         environment?.slug || "",
         syncOptions.keySchema,
-        preserveFolderStructure
+        mirroredFolders
       );
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {

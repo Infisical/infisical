@@ -105,7 +105,7 @@ const getParametersByPath = async (
   path: string,
   keySchema: string | undefined,
   environment: string,
-  recursive = false
+  { recursive = false }: { recursive?: boolean } = {}
 ): Promise<TAWSParameterStoreRecord> => {
   const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
   let hasNext = true;
@@ -160,7 +160,7 @@ const getParameterMetadataByPath = async (
   path: string,
   keySchema: string | undefined,
   environment: string,
-  recursive = false
+  { recursive = false }: { recursive?: boolean } = {}
 ): Promise<TAWSParameterStoreMetadataRecord> => {
   const awsParameterStoreMetadataRecord: TAWSParameterStoreMetadataRecord = {};
   let hasNext = true;
@@ -377,19 +377,20 @@ export const AwsParameterStoreSyncFns = {
     const { destinationConfig, syncOptions, environment } = secretSync;
     const preserveFolderStructure = preservesFolderStructure(secretSync);
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+    const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
     if (preserveFolderStructure) assertWithinHierarchyLimit(destinationConfig.path, secretMap);
 
     const ssm = await getSSM(secretSync);
 
-    // A sync that preserves folder structure owns every level below its path, so it reads them all:
-    // that's how the parameters of a folder deleted in Infisical get found and deleted here.
+    // A sync that preserves folder structure writes to every level below its path, so it reads them
+    // all. That can include parameters of folders it doesn't mirror, which deletion leaves alone.
     const awsParameterStoreSecretsRecord = await getParametersByPath(
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
       environment!.slug,
-      preserveFolderStructure
+      { recursive: preserveFolderStructure }
     );
 
     const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(
@@ -397,7 +398,7 @@ export const AwsParameterStoreSyncFns = {
       destinationConfig.path,
       syncOptions.keySchema,
       environment!.slug,
-      preserveFolderStructure
+      { recursive: preserveFolderStructure }
     );
 
     // Tags are only read back for the parameters this sync writes. The listing can hold many more,
@@ -496,7 +497,7 @@ export const AwsParameterStoreSyncFns = {
       const [key, parameter] = entry;
 
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema, { preserveFolderStructure })) continue;
+      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema, { mirroredFolders })) continue;
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
@@ -536,7 +537,7 @@ export const AwsParameterStoreSyncFns = {
       destinationConfig.path,
       syncOptions.keySchema,
       environment!.slug,
-      preserveFolderStructure
+      { recursive: preserveFolderStructure }
     );
 
     const parametersToDelete: Parameter[] = [];

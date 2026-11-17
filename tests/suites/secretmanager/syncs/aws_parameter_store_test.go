@@ -220,15 +220,21 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 		}, parameterValues(t, cp))
 	})
 
-	t.Run("should delete parameters at any depth below the path that Infisical no longer holds", func(t *testing.T) {
+	t.Run("should delete parameters in each folder it mirrors that Infisical no longer holds, including an empty folder", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `This is how a folder deleted in Infisical leaves the destination: its
-			parameters sit below the path, where a flattened sync never looks.`)
+		spec.Why(t, `A folder's parameters sit below the path, where a flattened sync never looks.
+			An empty folder still counts, or the copy of its last secret would stay behind.`)
 
 		// Setup
 		proj, conn, cp := setupAWS(t)
-		cp.Seed(t, aws.SeedParameter("/app/gone/deeper/STALE", "old"), aws.SeedParameter("/elsewhere/OTHER", "theirs"))
+		cp.Seed(t,
+			aws.SeedParameter("/app/STALE", "old"),
+			aws.SeedParameter("/app/api/STALE", "old"),
+			aws.SeedParameter("/app/empty/STALE", "old"),
+			aws.SeedParameter("/elsewhere/OTHER", "theirs"),
+		)
 		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/empty")
 		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
 		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
 
@@ -237,6 +243,33 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 
 		// Assert
 		require.Equal(t, map[string]string{"/app/api/KEEP": "v", "/elsewhere/OTHER": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should leave parameters below its path alone when they are outside the folders it mirrors", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `They belong to something else, such as another sync writing to a deeper path.
+			Deleting them would remove that sync's parameters on every run.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		secretmanager.CreateFolder(t, proj, "dev", "/team-a")
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "a", secretmanager.WithPath("/team-a"))
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		other := newAWSSync(t, proj, conn, parameterStorePath("/app/team-a/"), fromPath("/team-a"))
+		other.trigger(t)
+		cp.Seed(t, aws.SeedParameter("/app/api/nested/MANUAL", "theirs"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{
+			"/app/api/KEEP":          "v",
+			"/app/api/nested/MANUAL": "theirs",
+			"/app/team-a/DB_PASS":    "a",
+		}, parameterValues(t, cp))
 	})
 
 	t.Run("should delete every parameter it wrote, including both copies of a shared key, when its secrets are removed", func(t *testing.T) {
