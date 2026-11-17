@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type ReactNode, useId, useMemo, useState, useRef } from "react";
+import { type HTMLAttributes, useId, useMemo, useState, useRef } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -8,20 +8,17 @@ import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
-import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
+  SheetAside,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SheetHeader
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
-import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -96,13 +93,52 @@ const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b
 const fieldValue = (field: TPamFieldDescriptor, value: unknown) => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
   if (field.widget === PamFieldWidget.Textarea) return <Badge tone="ok">Configured</Badge>;
-  return <MiddleTruncate text={String(value)} mono />;
+  return String(value);
+};
+
+const AccountSummary = ({
+  account,
+  metadata
+}: {
+  account: TPamAccount;
+  metadata?: TPamAccountTypeMetadata;
+}) => {
+  const orgId = useOrgId();
+  const go = useGo();
+  const items: DataListItem[] = [
+    ...(account.description ? [["Description", account.description] as DataListItem] : []),
+    [
+      "Template",
+      <Link
+        key="template"
+        {...go.link(orgHref(orgId, `/pam/templates?templateId=${account.templateId}`))}
+      >
+        {account.templateName}
+      </Link>
+    ],
+    ...(metadata?.connectionFields ?? [])
+      .filter(
+        (field) =>
+          !field.secret &&
+          account.connectionDetails[field.key] !== undefined &&
+          account.connectionDetails[field.key] !== null &&
+          account.connectionDetails[field.key] !== ""
+      )
+      .map((field): DataListItem => [
+        field.label,
+        fieldValue(field, account.connectionDetails[field.key])
+      ]),
+    ...(account.credentials.username
+      ? [["Username", String(account.credentials.username)] as DataListItem]
+      : []),
+    ["Created", format(new Date(account.createdAt), "MMMM do, yyyy")]
+  ];
+  return <DataList variant="props" items={items} />;
 };
 
 const AccountForm = ({
   account,
   metadata,
-  lead,
   panel,
   update,
   canCheckHealth,
@@ -110,7 +146,6 @@ const AccountForm = ({
 }: {
   account: TPamAccount;
   metadata: TPamAccountTypeMetadata;
-  lead: ReactNode;
   panel: HTMLAttributes<HTMLDivElement>;
   canCheckHealth: boolean;
   update: ReturnType<PamAdapter["useUpdateAccount"]>;
@@ -183,7 +218,6 @@ const AccountForm = ({
   return (
     <>
       <SheetBody {...panel}>
-        {lead}
         <form
           id="pam-account-configure"
           onSubmit={(event) => {
@@ -299,6 +333,85 @@ const AccountForm = ({
   );
 };
 
+const AccountTabBody = ({
+  account,
+  metadata,
+  error,
+  activeTab,
+  panel,
+  update,
+  canCheckHealth,
+  onDirtyChange
+}: {
+  account?: TPamAccount;
+  metadata?: TPamAccountTypeMetadata;
+  error: unknown;
+  activeTab?: string;
+  panel: HTMLAttributes<HTMLDivElement>;
+  update: ReturnType<PamAdapter["useUpdateAccount"]>;
+  canCheckHealth: boolean;
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
+  if (!account || !metadata)
+    return (
+      <SheetBody>
+        {!account && error ? (
+          <EmptyState
+            size="sm"
+            icon="alert"
+            title="Could not load this account"
+            description={errorMessage(error) || "Please try again."}
+          />
+        ) : (
+          <Stack gap={12}>
+            <Skeleton height={24} />
+            <Skeleton height={120} />
+          </Stack>
+        )}
+      </SheetBody>
+    );
+  if (activeTab === PamSheetTab.Configuration)
+    return (
+      <AccountForm
+        key={`${account.id}-${account.updatedAt}`}
+        account={account}
+        metadata={metadata}
+        panel={panel}
+        update={update}
+        canCheckHealth={canCheckHealth}
+        onDirtyChange={onDirtyChange}
+      />
+    );
+  if (activeTab === PamSheetTab.Permissions)
+    return (
+      <SheetBody {...panel}>
+        <MembersPanel
+          scope="account"
+          resourceId={account.id}
+          inheritFrom={{ folderId: account.folderId, folderName: account.folderName }}
+        />
+      </SheetBody>
+    );
+  if (activeTab === PamSheetTab.Rotation)
+    return (
+      <SheetBody {...panel}>
+        <RotationPanel accountId={account.id} metadata={metadata} />
+      </SheetBody>
+    );
+  if (activeTab === PamSheetTab.Advanced)
+    return (
+      <SheetBody {...panel}>
+        <OverridesPanel
+          key={account.id}
+          account={account}
+          metadata={metadata}
+          onDirtyChange={onDirtyChange}
+        />
+      </SheetBody>
+    );
+  return <SheetBody {...(activeTab ? panel : {})} />;
+};
+
 export const AccountSheet = ({
   accountId,
   onOpenChange
@@ -306,8 +419,6 @@ export const AccountSheet = ({
   accountId?: string;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const orgId = useOrgId();
-  const go = useGo();
   const pam = useV4Adapter("pam");
   const { tab, setTab } = usePamSheetState("accountId");
   const { data: account, isPending, error } = pam.useAccount(accountId);
@@ -363,120 +474,6 @@ export const AccountSheet = ({
     "aria-labelledby": `${tabsId}-${activeTab}`
   };
 
-  const summary: DataListItem[] = account
-    ? [
-        [
-          "Template",
-          <Link
-            key="template"
-            {...go.link(orgHref(orgId, `/pam/templates?templateId=${account.templateId}`))}
-          >
-            {account.templateName}
-          </Link>
-        ],
-        ...(metadata?.connectionFields ?? [])
-          .filter(
-            (field) =>
-              !field.secret &&
-              account.connectionDetails[field.key] !== undefined &&
-              account.connectionDetails[field.key] !== null &&
-              account.connectionDetails[field.key] !== ""
-          )
-          .map((field): DataListItem => [
-            field.label,
-            fieldValue(field, account.connectionDetails[field.key])
-          ]),
-        ...(account.credentials.username
-          ? [
-              [
-                "Username",
-                <MiddleTruncate key="username" text={String(account.credentials.username)} mono />
-              ] as DataListItem
-            ]
-          : []),
-        ["Created", format(new Date(account.createdAt), "MMMM do, yyyy")]
-      ]
-    : [];
-
-  const lead = account && (
-    <Stack gap={16}>
-      {account.description && <Text muted>{account.description}</Text>}
-      <DataList variant="props" items={summary} />
-    </Stack>
-  );
-
-  let body = (
-    <SheetBody>
-      <Stack gap={12}>
-        <Skeleton height={24} />
-        <Skeleton height={120} />
-      </Stack>
-    </SheetBody>
-  );
-  if (!account && error)
-    body = (
-      <SheetBody>
-        <EmptyState
-          size="sm"
-          icon="alert"
-          title="Could not load this account"
-          description={errorMessage(error) || "Please try again."}
-        />
-      </SheetBody>
-    );
-  if (!isPending && account && metadata) {
-    body = <SheetBody {...(activeTab ? panel : {})}>{lead}</SheetBody>;
-    if (activeTab === PamSheetTab.Configuration)
-      body = (
-        <AccountForm
-          key={`${account.id}-${account.updatedAt}`}
-          account={account}
-          metadata={metadata}
-          lead={<Stack gap={24}>{lead}</Stack>}
-          panel={panel}
-          update={update}
-          canCheckHealth={can(PamResourcePermissionActions.ViewCredentials)}
-          onDirtyChange={setDirty}
-        />
-      );
-    if (activeTab === PamSheetTab.Permissions)
-      body = (
-        <SheetBody {...panel}>
-          <Stack gap={24}>
-            {lead}
-            <MembersPanel
-              scope="account"
-              resourceId={account.id}
-              inheritFrom={{ folderId: account.folderId, folderName: account.folderName }}
-            />
-          </Stack>
-        </SheetBody>
-      );
-    if (activeTab === PamSheetTab.Rotation)
-      body = (
-        <SheetBody {...panel}>
-          <Stack gap={24}>
-            {lead}
-            <RotationPanel accountId={account.id} metadata={metadata} />
-          </Stack>
-        </SheetBody>
-      );
-    if (activeTab === PamSheetTab.Advanced)
-      body = (
-        <SheetBody {...panel}>
-          <Stack gap={24}>
-            {lead}
-            <OverridesPanel
-              key={account.id}
-              account={account}
-              metadata={metadata}
-              onDirtyChange={setDirty}
-            />
-          </Stack>
-        </SheetBody>
-      );
-  }
-
   return (
     <>
       <Sheet
@@ -485,7 +482,27 @@ export const AccountSheet = ({
           if (!next) requestClose();
         }}
       >
-        <SheetContent size="lg" pending={update.isPending}>
+        <SheetContent size="xl" pending={update.isPending}>
+          <SheetAside
+            mainLabel="Account"
+            media={metadata && <ProviderIcon icon={metadata.icon} alt={metadata.name} size="md" />}
+            title={account?.name ?? "Account"}
+            description={account?.folderName}
+            badges={
+              metadata && (
+                <>
+                  <Badge tone="outline">{metadata.name}</Badge>
+                  {account?.isStale && <Badge tone="soft">Stale</Badge>}
+                </>
+              )
+            }
+          >
+            {account ? (
+              <AccountSummary account={account} metadata={metadata} />
+            ) : (
+              <Skeleton lines={6} />
+            )}
+          </SheetAside>
           <SheetHeader
             tabs={
               activeTab && (
@@ -515,20 +532,17 @@ export const AccountSheet = ({
                 </Tabs>
               )
             }
-          >
-            <Inline gap={12} align="center" wrap={false}>
-              {metadata && <ProviderIcon icon={metadata.icon} alt={metadata.name} size="md" />}
-              <Stack gap={4}>
-                <Inline gap={8} align="center">
-                  <SheetTitle>{account?.name ?? "Account"}</SheetTitle>
-                  {metadata && <Badge tone="outline">{metadata.name}</Badge>}
-                  {account?.isStale && <Badge tone="soft">Stale</Badge>}
-                </Inline>
-                {account?.folderName && <SheetDescription>{account.folderName}</SheetDescription>}
-              </Stack>
-            </Inline>
-          </SheetHeader>
-          {body}
+          />
+          <AccountTabBody
+            account={isPending ? undefined : account}
+            metadata={metadata}
+            error={error}
+            activeTab={activeTab}
+            panel={panel}
+            update={update}
+            canCheckHealth={can(PamResourcePermissionActions.ViewCredentials)}
+            onDirtyChange={setDirty}
+          />
         </SheetContent>
       </Sheet>
       <DiscardChangesAlertDialog

@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type ReactNode, useId, useRef, useState } from "react";
+import { type HTMLAttributes, useId, useRef, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
@@ -26,15 +26,14 @@ import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import {
   Sheet,
   SheetBody,
+  SheetAside,
   SheetContent,
   SheetHeader,
-  SheetTitle,
   SheetView,
   SheetViews
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
-import { Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { format } from "date-fns";
 
@@ -378,7 +377,6 @@ const FolderSettings = ({ folder }: { folder: TPamFolderWithCount }) => {
 const FolderSheetBody = ({
   folder,
   activeTab,
-  lead,
   panel,
   canRevoke,
   onDirtyChange,
@@ -386,7 +384,6 @@ const FolderSheetBody = ({
 }: {
   folder?: TPamFolderWithCount;
   activeTab?: string;
-  lead: ReactNode;
   panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   onDirtyChange: (dirty: boolean) => void;
@@ -396,7 +393,6 @@ const FolderSheetBody = ({
     return (
       <FolderApprovals
         folderId={folder.id}
-        lead={lead}
         panel={panel}
         canRevoke={canRevoke}
         onDirtyChange={onDirtyChange}
@@ -413,14 +409,7 @@ const FolderSheetBody = ({
     content = <MembersPanel scope="folder" resourceId={folder.id} />;
   if (folder && activeTab === PamSheetTab.Configuration)
     content = <FolderSettings key={folder.id} folder={folder} />;
-  return (
-    <SheetBody {...(folder && activeTab ? panel : {})}>
-      <Stack gap={24}>
-        {lead}
-        {content}
-      </Stack>
-    </SheetBody>
-  );
+  return <SheetBody {...(folder && activeTab ? panel : {})}>{content}</SheetBody>;
 };
 
 const FOLDER_VIEW = "folder";
@@ -484,67 +473,64 @@ export const FolderSheet = ({
     "aria-labelledby": `${tabsId}-${activeTab}`
   };
 
-  const lead = folder && (
-    <Stack gap={16}>
-      {folder.description && <Text muted>{folder.description}</Text>}
-      <DataList
-        variant="props"
-        items={[
-          ["Accounts", String(folder.accountCount)],
-          ["Created", format(new Date(folder.createdAt), "MMMM do, yyyy")]
-        ]}
-      />
-    </Stack>
-  );
-
   return (
     <>
       <Sheet open={Boolean(folderId)} onOpenChange={(open) => !open && requestClose()}>
-        <SheetContent size="lg">
-          <SheetViews view={view} onViewChange={setView}>
-            <SheetView
-              id={FOLDER_VIEW}
-              title={folder?.name ?? "Folder"}
-              header={
-                <SheetHeader
-                  tabs={
-                    folder &&
-                    activeTab && (
-                      <Tabs
-                        value={activeTab}
-                        onChange={(next) => {
-                          if (dirty) {
-                            pendingTab.current = next;
-                            guard.requestDiscard();
-                            return;
-                          }
-                          setTab(next);
-                        }}
-                      >
-                        <TabsList aria-label="Folder sections">
-                          {tabs.map(({ value, label }) => (
-                            <TabsTrigger
-                              key={value}
-                              value={value}
-                              id={`${tabsId}-${value}`}
-                              aria-controls={panel.id}
-                            >
-                              {label}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
-                    )
-                  }
-                >
-                  <SheetTitle>{folder?.name ?? "Folder"}</SheetTitle>
-                </SheetHeader>
+        <SheetContent size="xl">
+          <SheetAside mainLabel="Folder" title={folder?.name ?? "Folder"}>
+            {folder ? (
+              <DataList
+                variant="props"
+                items={[
+                  ...(folder.description
+                    ? [["Description", folder.description] as [string, string]]
+                    : []),
+                  ["Accounts", String(folder.accountCount)],
+                  ["Created", format(new Date(folder.createdAt), "MMMM do, yyyy")]
+                ]}
+              />
+            ) : (
+              <Skeleton lines={4} />
+            )}
+          </SheetAside>
+          {view === FOLDER_VIEW && (
+            <SheetHeader
+              tabs={
+                folder &&
+                activeTab && (
+                  <Tabs
+                    value={activeTab}
+                    onChange={(next) => {
+                      if (dirty) {
+                        pendingTab.current = next;
+                        guard.requestDiscard();
+                        return;
+                      }
+                      setTab(next);
+                    }}
+                  >
+                    <TabsList aria-label="Folder sections">
+                      {tabs.map(({ value, label }) => (
+                        <TabsTrigger
+                          key={value}
+                          value={value}
+                          id={`${tabsId}-${value}`}
+                          aria-controls={panel.id}
+                        >
+                          {label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                )
               }
-            >
+            />
+          )}
+          <SheetViews view={view} onViewChange={setView}>
+            <SheetView id={FOLDER_VIEW} title={folder?.name ?? "Folder"}>
               <FolderSheetBody
                 folder={folder}
                 activeTab={activeTab}
-                lead={lead}
                 panel={panel}
                 canRevoke={can(PamResourcePermissionActions.RevokeGrants)}
                 onDirtyChange={setDirty}
@@ -554,7 +540,6 @@ export const FolderSheet = ({
             <SheetView
               id={ALERT_VIEW}
               title={alertView.alert ? "Edit alert" : "New alert"}
-              size="lg"
               dirty={alertDirty}
               discardDescription="Your unsaved changes to this alert will be lost."
             >
