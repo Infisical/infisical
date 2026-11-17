@@ -261,6 +261,43 @@ export const createRevocationApprovalPolicy = (dto: {
     (res) => ok<{ policy: { id: string; name: string } }>(res).policy
   );
 
+export const updateRevocationApprovalPolicy = (dto: {
+  policyId: string;
+  steps: TRevocationPolicyStep[];
+  authToken: string;
+}) =>
+  request(
+    {
+      method: "PATCH",
+      url: `${revocationPoliciesUrl}/${dto.policyId}`,
+      headers: auth(dto.authToken),
+      body: { steps: dto.steps }
+    },
+    (res) => ok<{ policy: { id: string } }>(res).policy
+  );
+
+export const getRevocationApprovalPolicy = (dto: { policyId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `${revocationPoliciesUrl}/${dto.policyId}`,
+      headers: auth(dto.authToken)
+    },
+    (res) => ok<{ policy: { id: string; steps: TRevocationPolicyStep[] } }>(res).policy
+  );
+
+// The query the Certificate Manager requests page and its sidebar count send.
+export const listProjectRevocationRequests = (dto: { projectId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `${revocationPoliciesUrl}/requests`,
+      headers: auth(dto.authToken),
+      query: { scope: ApprovalPolicyScope.Project, id: dto.projectId }
+    },
+    (res) => ok<{ requests: { id: string }[] }>(res).requests
+  );
+
 export const getRevocationRequest = (dto: { requestId: string; authToken: string }) =>
   request(
     {

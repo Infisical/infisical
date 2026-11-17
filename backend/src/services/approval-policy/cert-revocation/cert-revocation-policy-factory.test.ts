@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import {
   ApprovalNotificationEvent,
@@ -23,6 +23,7 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
   scopeType: ApprovalPolicyScope.PkiApplication,
   scopeId: applicationId,
   conditions: { version: 1, conditions: [{ profileNames: ["prod-tls"] }] },
+  steps: [],
   ...overrides
 });
 
@@ -102,6 +103,41 @@ describe("certRevocationApprovalResourceFactory.matchPolicy", () => {
     const policy = await resource.matchPolicy("project", { profileName: "dev-tls", applicationId });
 
     expect(policy).toBeNull();
+  });
+
+  it("keeps only the approvers who can approve now on each step", async () => {
+    const { resource } = setup(
+      [
+        makePolicy({
+          id: "match",
+          steps: [
+            {
+              requiredApprovals: 1,
+              approvers: [
+                { type: ApproverType.User, id: "operator" },
+                { type: ApproverType.User, id: "auditor" },
+                { type: ApproverType.Group, id: "auditor-group" },
+                { type: ApproverType.User, id: "removed" }
+              ]
+            },
+            { requiredApprovals: 1, approvers: [{ type: ApproverType.Group, id: "operator-group" }] }
+          ]
+        })
+      ],
+      [
+        { actorUserId: "operator", actorGroupId: null, isActive: true },
+        { actorUserId: "auditor", actorGroupId: null, isActive: true, role: "auditor" },
+        { actorUserId: null, actorGroupId: "auditor-group", isActive: true, role: "auditor" },
+        { actorUserId: null, actorGroupId: "operator-group", isActive: true }
+      ]
+    );
+
+    const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
+
+    expect(policy?.steps.map((step) => step.approvers)).toEqual([
+      [{ type: ApproverType.User, id: "operator" }],
+      [{ type: ApproverType.Group, id: "operator-group" }]
+    ]);
   });
 });
 
@@ -204,50 +240,106 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
     scopeId: applicationId
   } as never;
   const decision = ApprovalRequestApprovalDecision.Approved;
+  const namedUser = [{ type: ApproverType.User, id: "approver-1" }];
+  const namedGroup = [{ type: ApproverType.Group, id: "group-1" }];
 
   const directMember = { actorUserId: "approver-1", actorGroupId: null, isActive: true };
   const groupMember = { actorUserId: null, actorGroupId: "group-1", isActive: true };
   const otherMember = { actorUserId: "someone-else", actorGroupId: null, isActive: true };
+  const noRoleMessage =
+    "You can't review this request because you no longer have a role in its Application that can approve requests.";
 
-  it("lets a direct member of the request's Application review it", async () => {
+  it("lets a direct member of the request's Application review it, reading the primary", async () => {
     const { deps, resource } = setup([], [directMember]);
 
     await expect(
-      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set() })
+      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(), stepApprovers: namedUser })
     ).resolves.toBeUndefined();
-    await expect(
-      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
-    ).resolves.toBe(true);
-    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+    expect(deps.membershipDAL.find).toHaveBeenLastCalledWith(
       expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId }),
       { tx: primaryDb }
     );
   });
 
-  it("lets a member through one of their groups review it", async () => {
+  it("lets a member named through their group review it", async () => {
     const { resource } = setup([], [groupMember]);
-    const userGroupIds = new Set(["group-1"]);
 
-    await expect(resource.assertCanReview!({ request, decision, actor, userGroupIds })).resolves.toBeUndefined();
     await expect(
-      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds })
-    ).resolves.toBe(true);
+      resource.assertCanReview!({
+        request,
+        decision,
+        actor,
+        userGroupIds: new Set(["group-1"]),
+        stepApprovers: namedGroup
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("lets a user named directly review it while their approving role comes through a group", async () => {
+    const { resource } = setup([], [groupMember], [{ userId: "approver-1", groupId: "group-1" }]);
+
+    await expect(
+      resource.assertCanReview!({
+        request,
+        decision,
+        actor,
+        userGroupIds: new Set(["group-1"]),
+        stepApprovers: namedUser
+      })
+    ).resolves.toBeUndefined();
   });
 
   it("refuses a user removed from the Application", async () => {
     const { resource } = setup([], [otherMember, groupMember]);
 
     await expect(
-      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-2"]) })
-    ).rejects.toBeInstanceOf(ForbiddenRequestError);
+      resource.assertCanReview!({
+        request,
+        decision,
+        actor,
+        userGroupIds: new Set(["group-2"]),
+        stepApprovers: namedUser
+      })
+    ).rejects.toThrow(noRoleMessage);
   });
 
   it("refuses a user whose Application membership is inactive", async () => {
     const { resource } = setup([], [{ ...directMember, isActive: false }]);
 
     await expect(
-      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set() })
+      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(), stepApprovers: namedUser })
     ).rejects.toBeInstanceOf(ForbiddenRequestError);
+  });
+
+  it.each([
+    ["removed from the Application", [directMember]],
+    ["demoted to Auditor", [directMember, { ...groupMember, role: "auditor" }]]
+  ])(
+    "refuses a user named only through a group that was %s, even though they hold their own approving role",
+    async (_, memberships) => {
+      const { resource } = setup([], memberships);
+
+      await expect(
+        resource.assertCanReview!({
+          request,
+          decision,
+          actor,
+          userGroupIds: new Set(["group-1"]),
+          stepApprovers: namedGroup
+        })
+      ).rejects.toThrow(
+        "You can't review this request because the group that names you as an approver no longer has a role in its Application that can approve requests."
+      );
+    }
+  );
+
+  it("reads the primary when deciding whether the actor is still an approver", async () => {
+    const { deps, resource } = setup([], [directMember]);
+
+    await expect(
+      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
+    ).resolves.toBe(true);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: primaryDb });
   });
 
   it("stops treating a user removed from the Application as an approver", async () => {
@@ -260,8 +352,6 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
 
   describe("for a member demoted to Auditor", () => {
     const demoted = { ...directMember, role: "auditor" };
-    const message =
-      "You can't review this request because you no longer have a role in its Application that can approve requests.";
 
     it.each([ApprovalRequestApprovalDecision.Approved, ApprovalRequestApprovalDecision.Rejected])(
       "refuses their %s decision",
@@ -269,8 +359,14 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
         const { resource } = setup([], [demoted]);
 
         await expect(
-          resource.assertCanReview!({ request, decision: auditorDecision, actor, userGroupIds: new Set() })
-        ).rejects.toThrow(message);
+          resource.assertCanReview!({
+            request,
+            decision: auditorDecision,
+            actor,
+            userGroupIds: new Set(),
+            stepApprovers: namedUser
+          })
+        ).rejects.toThrow(noRoleMessage);
       }
     );
 
@@ -278,15 +374,27 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
       const { resource } = setup([], [{ ...groupMember, role: "auditor" }]);
 
       await expect(
-        resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-1"]) })
-      ).rejects.toThrow(message);
+        resource.assertCanReview!({
+          request,
+          decision,
+          actor,
+          userGroupIds: new Set(["group-1"]),
+          stepApprovers: namedGroup
+        })
+      ).rejects.toThrow(noRoleMessage);
     });
 
     it("still lets them review through a group that holds an approving role", async () => {
-      const { resource } = setup([], [demoted, groupMember]);
+      const { resource } = setup([], [demoted, groupMember], [{ userId: "approver-1", groupId: "group-1" }]);
 
       await expect(
-        resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-1"]) })
+        resource.assertCanReview!({
+          request,
+          decision,
+          actor,
+          userGroupIds: new Set(["group-1"]),
+          stepApprovers: namedUser
+        })
       ).resolves.toBeUndefined();
     });
 
@@ -297,6 +405,51 @@ describe("certRevocationApprovalResourceFactory live approver checks", () => {
         resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
       ).resolves.toBe(false);
     });
+  });
+});
+
+describe("certRevocationApprovalResourceFactory.verifyPolicyActors", () => {
+  const verify = (resource: ReturnType<typeof setup>["resource"], approvers: { type: ApproverType; id: string }[]) =>
+    resource.verifyPolicyActors!({ projectId: "project", scopeId: applicationId, approvers, bypassers: [] });
+
+  it("accepts approvers who hold an approving role directly or through a group", async () => {
+    const { resource } = setup(
+      [],
+      [
+        { actorUserId: "operator", actorGroupId: null, isActive: true },
+        { actorUserId: null, actorGroupId: "operator-group", isActive: true }
+      ],
+      [{ userId: "via-group", groupId: "operator-group" }]
+    );
+
+    await expect(
+      verify(resource, [
+        { type: ApproverType.User, id: "operator" },
+        { type: ApproverType.User, id: "via-group" },
+        { type: ApproverType.Group, id: "operator-group" }
+      ])
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses Auditors and non-members, naming each", async () => {
+    const { resource } = setup(
+      [],
+      [
+        { actorUserId: "auditor", actorGroupId: null, isActive: true, role: "auditor" },
+        { actorUserId: null, actorGroupId: "auditor-group", isActive: true, role: "auditor" }
+      ]
+    );
+
+    const result = verify(resource, [
+      { type: ApproverType.User, id: "auditor" },
+      { type: ApproverType.User, id: "outsider" },
+      { type: ApproverType.Group, id: "auditor-group" }
+    ]);
+
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow(
+      "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users auditor, outsider; groups auditor-group."
+    );
   });
 });
 

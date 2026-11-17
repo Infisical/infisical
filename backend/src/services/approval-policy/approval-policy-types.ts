@@ -334,11 +334,13 @@ export type TApprovalResource<
     hasAutoApprovalRules: boolean;
     skipsAutoApproval: boolean;
   }) => Promise<void>;
+  // stepApprovers are the saved approver entries of the step being decided.
   assertCanReview?: (args: {
     request: TApprovalRequests;
     decision: ApprovalRequestApprovalDecision;
     actor: TApprovalActor;
     userGroupIds: Set<string>;
+    stepApprovers: { type: ApproverType; id: string }[];
   }) => Promise<void>;
   // The default treats an empty bypasser list as everybody; a type reading it the other way says so here.
   isBreakGlassEligible?: (args: {

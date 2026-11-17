@@ -249,7 +249,7 @@ export const approvalPolicyServiceFactory = ({
     decision
   }: {
     request: TApprovalRequests;
-    step: { approvers: { type: string; id: string }[] };
+    step: { approvers: { type: ApproverType; id: string }[] };
     actor: TApprovalActor;
     userGroupIds: Set<string>;
     decision: ApprovalRequestApprovalDecision;
@@ -259,7 +259,7 @@ export const approvalPolicyServiceFactory = ({
     }
     const assertDomainCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
     if (assertDomainCanReview) {
-      await assertDomainCanReview({ request, decision, actor, userGroupIds });
+      await assertDomainCanReview({ request, decision, actor, userGroupIds, stepApprovers: step.approvers });
     }
   };
 
@@ -1974,20 +1974,29 @@ export const approvalPolicyServiceFactory = ({
       if (hasReadPermission) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
+      const named = requests.filter(
+        (request) =>
+          !$isRequester(request, actor) &&
+          request.steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds))
+      );
 
+      // A Project-scope list spans Applications, so each request's own scope decides whether its saved approver
+      // still counts.
       const checkLiveApprover = resources[policyType]?.isLiveApprover;
-      if (
-        checkLiveApprover &&
-        dbScopeId &&
-        !(await checkLiveApprover({ projectId, scopeId: dbScopeId, actor, userGroupIds }))
-      ) {
-        return requests.filter((request) => $isRequester(request, actor));
+      const liveScopeIds = new Set<string>();
+      if (checkLiveApprover) {
+        const scopeIds = [...new Set(named.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))];
+        const liveness = await Promise.all(
+          scopeIds.map((id) => checkLiveApprover({ projectId, scopeId: id, actor, userGroupIds }))
+        );
+        scopeIds.forEach((id, index) => {
+          if (liveness[index]) liveScopeIds.add(id);
+        });
       }
+      const isLive = (request: (typeof requests)[number]) =>
+        !checkLiveApprover || !request.scopeId || liveScopeIds.has(request.scopeId);
 
-      return requests.filter((request) => {
-        if ($isRequester(request, actor)) return true;
-        return request.steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds));
-      });
+      return requests.filter((request) => $isRequester(request, actor) || (named.includes(request) && isLive(request)));
     })();
 
     if (visibleRequests.length > 0) {

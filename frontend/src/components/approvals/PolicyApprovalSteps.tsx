@@ -23,9 +23,11 @@ import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
 type Props = {
   applicationId?: string;
+  // Revocation approvers must be able to approve, and Auditors can't.
+  excludeAuditors?: boolean;
 };
 
-export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
+export const PolicyApprovalSteps = ({ applicationId, excludeAuditors = false }: Props = {}) => {
   const { control } = useFormContext<TFormWithApprovalSteps>();
   const fieldIdPrefix = useId();
 
@@ -34,7 +36,11 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
 
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
-  const { data: appMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
+  const { data: allAppMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
+  const appMembers = useMemo(
+    () => (excludeAuditors ? allAppMembers.filter((m) => m.role !== "auditor") : allAppMembers),
+    [allAppMembers, excludeAuditors]
+  );
 
   const {
     fields: stepFields,
@@ -73,7 +79,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
 
   const userLabel = (userId: string) => {
     if (applicationId) {
-      const m = appMembers.find((member) => member.actorUserId === userId);
+      const m = allAppMembers.find((member) => member.actorUserId === userId);
       return m?.details?.name || m?.details?.username || m?.details?.email || userId;
     }
     const member = members.find((m) => m.user.id === userId);
@@ -81,7 +87,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
   };
   const groupLabel = (groupId: string) => {
     if (applicationId) {
-      const m = appMembers.find((member) => member.actorGroupId === groupId);
+      const m = allAppMembers.find((member) => member.actorGroupId === groupId);
       return m?.details?.name || groupId;
     }
     return groups?.find(({ group }) => group.id === groupId)?.group.name ?? groupId;

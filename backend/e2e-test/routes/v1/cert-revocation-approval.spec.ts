@@ -23,12 +23,15 @@ import {
   deleteCertificateProfile,
   deleteInternalCa,
   detachApplicationProfile,
+  getRevocationApprovalPolicy,
   getRevocationRequest,
   issueApplicationCertificate,
+  listProjectRevocationRequests,
   removeApplicationMember,
   revokeCertificate,
   TRevocationPolicyStep,
-  updateApplicationMemberRole
+  updateApplicationMemberRole,
+  updateRevocationApprovalPolicy
 } from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createProjectGroup, deleteGroups, removeUserFromGroup } from "../../testUtils/groups";
@@ -161,7 +164,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       await deleteInternalCa({ caId, authToken: adminToken });
     };
 
-    return { approver, other, application, groupId, policy, issue, raiseRequest, deleteCa };
+    return { approver, other, application, profile, groupId, policy, issue, raiseRequest, deleteCa };
   };
 
   type TFixture = TApprovers & { deleteCa: () => Promise<void> };
@@ -174,12 +177,16 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   const certificateStatus = async (certificateId: string) =>
     (await testDb(TableName.Certificate).where({ id: certificateId }).first<{ status: string }>())?.status;
 
-  const expectRefused = async (requestId: string, token: string, expected: { statusCode: number; message: string }) => {
+  const expectRefused = async (
+    requestId: string,
+    token: string,
+    expected: { statusCode: number; message?: string }
+  ) => {
     for (const decision of ["approve", "reject"] as const) {
       // eslint-disable-next-line no-await-in-loop
       await decideRevocationRequest({ requestId, decision, authToken: token }).expect((res) => {
         expect(res.statusCode, `${decision}: ${res.payload}`).toBe(expected.statusCode);
-        expect(res.json().message, decision).toBe(expected.message);
+        if (expected.message) expect(res.json().message, decision).toBe(expected.message);
       });
     }
   };
@@ -446,5 +453,166 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     );
     expect(requests).toHaveLength(0);
     expect(await certificateStatus(certificateId)).toBe(CertStatus.ACTIVE);
+  });
+
+  // No route lists approval requests by certificate, so the table is read to prove none was created.
+  const revocationRequestCount = async (certificateId: string) =>
+    (
+      await testDb(TableName.ApprovalRequests).whereRaw(`"requestData"->'requestData'->>'certificateId' = ?`, [
+        certificateId
+      ])
+    ).length;
+
+  test.each(["user", "group"] as const)(
+    "a revocation policy can't be created or updated to name an Auditor %s approver",
+    async (kind) => {
+      const fixture = await setUp({ approverVia: "user", steps: oneStep });
+      const auditor = await createApprover("auditor");
+      let auditorEntry: { type: ApproverType; id: string };
+      if (kind === "user") {
+        await addApplicationUsers({
+          applicationId: fixture.application.id,
+          userIds: [auditor.userId],
+          role: ResourceMembershipRole.Auditor,
+          authToken: adminToken
+        });
+        auditorEntry = { type: ApproverType.User, id: auditor.userId };
+      } else {
+        const { id: groupId } = await createProjectGroup({ orgId, projectId, userIds: [auditor.userId] });
+        createdGroupIds.push(groupId);
+        await addApplicationGroup({
+          applicationId: fixture.application.id,
+          groupId,
+          role: ResourceMembershipRole.Auditor,
+          authToken: adminToken
+        });
+        auditorEntry = { type: ApproverType.Group, id: groupId };
+      }
+
+      // The same body naming an Operator is accepted, so the refusal below is about the Auditor.
+      await createRevocationApprovalPolicy({
+        applicationId: fixture.application.id,
+        profileSlug: fixture.profile.slug,
+        steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: fixture.other.userId }] }],
+        authToken: adminToken
+      });
+      // Policies are counted in the table because a refused create returns nothing that shows none was saved.
+      const policyCount = async () =>
+        (await testDb(TableName.ApprovalPolicies).where({ scopeId: fixture.application.id })).length;
+      const policiesBefore = await policyCount();
+
+      const auditorRefusal = `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${kind}s ${auditorEntry.id}.`;
+      await createRevocationApprovalPolicy({
+        applicationId: fixture.application.id,
+        profileSlug: fixture.profile.slug,
+        steps: [{ requiredApprovals: 1, approvers: [auditorEntry] }],
+        authToken: adminToken
+      }).expect((res) => {
+        expect(res.statusCode, res.payload).toBe(400);
+        expect(JSON.parse(res.payload).message).toBe(auditorRefusal);
+      });
+      expect(await policyCount()).toBe(policiesBefore);
+
+      await updateRevocationApprovalPolicy({
+        policyId: fixture.policy.id,
+        steps: [{ requiredApprovals: 1, approvers: [auditorEntry] }],
+        authToken: adminToken
+      }).expect((res) => {
+        expect(res.statusCode, res.payload).toBe(400);
+        expect(JSON.parse(res.payload).message).toBe(auditorRefusal);
+      });
+      const { steps } = await getRevocationApprovalPolicy({ policyId: fixture.policy.id, authToken: adminToken });
+      expect(steps).toHaveLength(1);
+      expect(steps[0].approvers).toHaveLength(2);
+      expect(steps[0].approvers).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: ApproverType.User, id: fixture.approver.userId }),
+          expect.objectContaining({ type: ApproverType.User, id: fixture.other.userId })
+        ])
+      );
+    }
+  );
+
+  test("a covered certificate can't be revoked once one of a 2-approval step's two approvers is demoted to Auditor", async () => {
+    const fixture = await setUp({
+      approverVia: "user",
+      steps: ({ approver, otherId }) => [
+        { requiredApprovals: 2, approvers: [approver, { type: ApproverType.User, id: otherId }] }
+      ]
+    });
+    const certificateId = await fixture.issue();
+
+    await updateApplicationMemberRole({
+      applicationId: fixture.application.id,
+      kind: "users",
+      memberId: fixture.approver.userId,
+      role: ResourceMembershipRole.Auditor,
+      authToken: adminToken
+    });
+
+    await revokeCertificate({ certificateId, authToken: adminToken }).expect((res) => {
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("requires 2 approvals on step 1 but has only 1 approver,");
+    });
+    expect(await revocationRequestCount(certificateId)).toBe(0);
+    expect(await certificateStatus(certificateId)).toBe(CertStatus.ACTIVE);
+  });
+
+  test.each([
+    {
+      writer: "removed from the Application",
+      apply: (applicationId: string, groupId: string) =>
+        removeApplicationMember({ applicationId, kind: "groups", memberId: groupId, authToken: adminToken })
+    },
+    {
+      writer: "demoted to Auditor",
+      apply: (applicationId: string, groupId: string) =>
+        updateApplicationMemberRole({
+          applicationId,
+          kind: "groups",
+          memberId: groupId,
+          role: ResourceMembershipRole.Auditor,
+          authToken: adminToken
+        })
+    }
+  ])(
+    "an approver named only through a group that was $writer can't decide, even with a direct Operator role",
+    async ({ apply }) => {
+      const fixture = await setUp({ approverVia: "group", steps: oneStep });
+      await addApplicationUsers({
+        applicationId: fixture.application.id,
+        userIds: [fixture.approver.userId],
+        role: ResourceMembershipRole.Operator,
+        authToken: adminToken
+      });
+      const { certificateId, requestId } = await fixture.raiseRequest();
+
+      await apply(fixture.application.id, fixture.groupId);
+
+      await expectRefused(requestId, fixture.approver.token, {
+        statusCode: 403,
+        message:
+          "You can't review this request because the group that names you as an approver no longer has a role in its Application that can approve requests."
+      });
+      expect((await getRevocationRequest({ requestId, authToken: fixture.approver.token })).canReview).toBe(false);
+      expect(await certificateStatus(certificateId)).toBe(CertStatus.ACTIVE);
+    }
+  );
+
+  test("an approver removed from the Application no longer sees the request in the project's request list", async () => {
+    const fixture = await setUp({ approverVia: "user", steps: oneStep });
+    const { requestId } = await fixture.raiseRequest();
+    const listedIds = async () =>
+      (await listProjectRevocationRequests({ projectId, authToken: fixture.approver.token })).map(({ id }) => id);
+    expect(await listedIds()).toContain(requestId);
+
+    await removeApplicationMember({
+      applicationId: fixture.application.id,
+      kind: "users",
+      memberId: fixture.approver.userId,
+      authToken: adminToken
+    });
+
+    expect(await listedIds()).not.toContain(requestId);
   });
 });

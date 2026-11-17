@@ -270,7 +270,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                   />
                 </TabsContent>
                 <TabsContent value="approvals">
-                  <PolicyApprovalSteps applicationId={applicationId} />
+                  <PolicyApprovalSteps
+                    applicationId={applicationId}
+                    excludeAuditors={selectedPolicyType === ApprovalPolicyType.CertRevocation}
+                  />
                 </TabsContent>
                 <TabsContent value="review">
                   <PolicyReviewStep />
