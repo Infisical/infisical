@@ -44,7 +44,11 @@ import {
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  ENROLLMENT_TYPE_NAME_MAP,
+  EnrollmentType,
+  IssuerType
+} from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -52,7 +56,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -72,7 +76,6 @@ import {
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
 } from "../certificate-common/certificate-constants";
 import {
-  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
@@ -125,7 +128,14 @@ import {
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
+import {
+  applyIssuerNameOverride,
+  formatIssuerAltNames,
+  applyProfileDefaults,
+  buildIssuanceSubject,
+  mergeIssuerAddedExtensions,
+  resolveEffectiveTtl
+} from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TIssueCertificateFromProfileDTO,
@@ -470,12 +480,15 @@ export const certificateV3ServiceFactory = ({
           case EnrollmentType.SCEP:
             junctionConfigId = junction.scepConfigId;
             break;
+          case EnrollmentType.MICROSOFT_AUTOENROLLMENT:
+            junctionConfigId = junction.microsoftAutoenrollmentConfigId;
+            break;
           default:
             junctionConfigId = null;
         }
         if (!junctionConfigId) {
           throw new BadRequestError({
-            message: `${requiredEnrollmentType.toUpperCase()} enrollment is not configured for this profile on the Application.`
+            message: `${ENROLLMENT_TYPE_NAME_MAP[requiredEnrollmentType]} enrollment is not configured for this profile on the Application.`
           });
         }
       }
@@ -486,6 +499,7 @@ export const certificateV3ServiceFactory = ({
         actorContext.actor !== ActorType.ACME_PROFILE &&
         actorContext.actor !== ActorType.EST_ACCOUNT &&
         actorContext.actor !== ActorType.SCEP_ACCOUNT &&
+        actorContext.actor !== ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT &&
         actorContext.actorId &&
         actorContext.actorOrgId
       ) {
@@ -549,6 +563,8 @@ export const certificateV3ServiceFactory = ({
       return { requesterName: "EST Client", requesterEmail: "" };
     } else if (actor === ActorType.SCEP_ACCOUNT) {
       return { requesterName: "SCEP Client", requesterEmail: "" };
+    } else if (actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT) {
+      return { requesterName: "Microsoft Autoenrollment", requesterEmail: "" };
     } else if (actor === ActorType.PLATFORM) {
       return { requesterName: "Automatic Renewal", requesterEmail: "" };
     }
@@ -638,7 +654,10 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal:
+        actor === ActorType.EST_ACCOUNT ||
+        actor === ActorType.SCEP_ACCOUNT ||
+        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
       applicationId: explicitApplicationId
     });
 
@@ -1356,7 +1375,10 @@ export const certificateV3ServiceFactory = ({
     removeRootsFromChain,
     basicConstraints,
     applicationId: explicitApplicationId,
-    acmeOrderId
+    acmeOrderId,
+    issuerNameOverride,
+    additionalExtensions,
+    originalCertificateId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1368,7 +1390,10 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal:
+        actor === ActorType.EST_ACCOUNT ||
+        actor === ActorType.SCEP_ACCOUNT ||
+        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
@@ -1408,7 +1433,16 @@ export const certificateV3ServiceFactory = ({
     }
 
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
-    const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
+    const additionalExtensionOids = (additionalExtensions ?? []).map((extension) => extension.oid);
+    const requestedCertificate: TCertificateRequest = {
+      ...applyIssuerNameOverride(csrCertificateRequest, issuerNameOverride, profile.defaults),
+      ...(csrCertificateRequest.customExtensions && {
+        customExtensions: csrCertificateRequest.customExtensions.filter(
+          (extension) => !additionalExtensionOids.includes(extension.oid)
+        )
+      })
+    };
+    const certificateRequest = applyProfileDefaults(requestedCertificate, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
@@ -1474,7 +1508,17 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const { resolvedCustomExtensions } = validationResult;
+    const resolvedCustomExtensions = additionalExtensions
+      ? mergeIssuerAddedExtensions(
+          validationResult.resolvedCustomExtensions,
+          additionalExtensions.map((extension) => ({
+            oid: extension.oid,
+            critical: extension.critical,
+            value: extension.value.toString("base64"),
+            issuerAdded: true
+          }))
+        )
+      : validationResult.resolvedCustomExtensions;
 
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1627,15 +1671,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const subjectOverride = buildSubjectOverrideForCsr(csr, {
-      commonName: certificateRequest.commonName,
-      organization: certificateRequest.organization,
-      organizationalUnit: certificateRequest.organizationalUnit,
-      country: certificateRequest.country,
-      state: certificateRequest.state,
-      locality: certificateRequest.locality,
-      domainComponents: certificateRequest.domainComponents
-    });
+    const subjectOverride = buildIssuanceSubject(csr, certificateRequest, issuerNameOverride);
 
     // Record intent before the irreversible act. Signing is an external side effect that no database
     // rollback can undo, so the only way to stay accountable for it is to have a row on disk that
@@ -1696,7 +1732,7 @@ export const certificateV3ServiceFactory = ({
         basicConstraints: caBasicConstraints,
         pathLength: effectiveBasicConstraints?.pathLength,
         ttl: effectiveTtl,
-        altNames: undefined,
+        altNames: formatIssuerAltNames(issuerNameOverride),
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         keyUsages: certificateRequest.keyUsages
@@ -1716,7 +1752,12 @@ export const certificateV3ServiceFactory = ({
             new Date(newCert.notAfter)
           );
 
-          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          const updateData: {
+            profileId: string;
+            renewBeforeDays?: number;
+            applicationId?: string;
+            renewedFromCertificateId?: string;
+          } = {
             profileId
           };
           if (finalRenewBeforeDays !== undefined) {
@@ -1725,7 +1766,15 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
+          const linkedOriginalCertificateId =
+            enrollmentType === EnrollmentType.MICROSOFT_AUTOENROLLMENT ? originalCertificateId : undefined;
+          if (linkedOriginalCertificateId) {
+            updateData.renewedFromCertificateId = linkedOriginalCertificateId;
+          }
           await certificateDAL.updateById(newCert.id, updateData, tx);
+          if (linkedOriginalCertificateId) {
+            await linkRenewedCertificate(certificateDAL, linkedOriginalCertificateId, newCert.id, tx);
+          }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
           // Returns null when the request is no longer attachable, meaning it left a pending status
@@ -1854,7 +1903,10 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      isInternal:
+        actor === ActorType.EST_ACCOUNT ||
+        actor === ActorType.SCEP_ACCOUNT ||
+        actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(

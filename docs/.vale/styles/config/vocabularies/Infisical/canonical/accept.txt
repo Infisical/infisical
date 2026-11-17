@@ -165,6 +165,8 @@ Entra ID
 Microsoft Teams
 Microsoft SQL Server
 Microsoft Intune
+Microsoft Autoenrollment
+Group Policy
 Jamf Pro
 Ivanti
 WinRM

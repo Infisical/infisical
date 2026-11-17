@@ -1,14 +1,20 @@
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
+import { createDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
+import { buildSubjectOverrideForCsr } from "../certificate-common/certificate-csr-utils";
+import { TResolvedCustomExtension } from "../certificate-common/certificate-extension-fns";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import { TIssuerNameOverride } from "./certificate-v3-types";
 
 export const calculateRenewalThreshold = (
   profileRenewBeforeDays: number | undefined,
@@ -136,6 +142,55 @@ export const applyProfileDefaults = <
     altNames
   };
 };
+
+export const applyIssuerNameOverride = (
+  csrRequest: TCertificateRequest,
+  issuerNameOverride: TIssuerNameOverride | undefined,
+  profileDefaults: Pick<TCertificateProfileDefaults, "keyUsages" | "extendedKeyUsages"> | null | undefined
+): TCertificateRequest =>
+  issuerNameOverride
+    ? {
+        ...pick(csrRequest, ["basicConstraints"]),
+        keyUsages: profileDefaults?.keyUsages?.length ? undefined : csrRequest.keyUsages,
+        extendedKeyUsages: profileDefaults?.extendedKeyUsages?.length ? undefined : csrRequest.extendedKeyUsages,
+        commonName: issuerNameOverride.commonName,
+        subjectAlternativeNames: issuerNameOverride.altNames
+      }
+    : csrRequest;
+
+export const mergeIssuerAddedExtensions = (
+  resolvedExtensions: TResolvedCustomExtension[] | undefined,
+  issuerAddedExtensions: TResolvedCustomExtension[]
+): TResolvedCustomExtension[] => {
+  const issuerAddedOids = issuerAddedExtensions.map((extension) => extension.oid);
+  return [
+    ...(resolvedExtensions ?? []).filter((extension) => !issuerAddedOids.includes(extension.oid)),
+    ...issuerAddedExtensions
+  ];
+};
+
+export const formatIssuerAltNames = (issuerNameOverride: TIssuerNameOverride | undefined) =>
+  issuerNameOverride?.altNames.map((altName) => altName.value).join(",");
+
+export const buildIssuanceSubject = (
+  csr: string,
+  request: Pick<
+    TCertificateRequest,
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
+  >,
+  issuerNameOverride: TIssuerNameOverride | undefined
+) =>
+  issuerNameOverride
+    ? createDistinguishedName({
+        commonName: request.commonName,
+        organization: request.organization,
+        ou: request.organizationalUnit,
+        country: request.country,
+        province: request.state,
+        locality: request.locality,
+        domainComponents: request.domainComponents
+      })
+    : buildSubjectOverrideForCsr(csr, request);
 
 export const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
   if (!keyUsages) return [];

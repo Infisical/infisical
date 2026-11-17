@@ -1,0 +1,167 @@
+import * as x509 from "@peculiar/x509";
+import * as asn1js from "asn1js";
+import { describe, expect, test } from "vitest";
+
+import { CertExtendedKeyUsageType, CertKeyUsageType } from "@app/services/certificate-common/certificate-constants";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+
+import {
+  buildPolicyId,
+  buildProfileUsageExtensions,
+  buildSidSecurityExtension,
+  buildTemplateInfoExtension,
+  buildTemplateOid,
+  readSidSecurityExtension,
+  resolveTemplatePrivateKey
+} from "./microsoft-autoenrollment-template-fns";
+
+const APPLICATION_PROFILE_ID = "0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0";
+const MAX_OID_ARC = 0xffff;
+
+describe("buildTemplateOid", () => {
+  test("encodes the application profile id as eight 16-bit arcs that Windows accepts", () => {
+    const oid = buildTemplateOid(APPLICATION_PROFILE_ID);
+    const arcs = oid.split(".").slice(8).map(Number);
+
+    expect(oid.startsWith("1.3.6.1.4.1.")).toBe(true);
+    expect(arcs).toHaveLength(8);
+    expect(arcs.every((arc) => Number.isInteger(arc) && arc >= 0 && arc <= MAX_OID_ARC)).toBe(true);
+    expect(arcs[0]).toBe(0x0f1e);
+  });
+
+  test("is stable for one application profile and differs between profiles", () => {
+    expect(buildTemplateOid(APPLICATION_PROFILE_ID)).toBe(buildTemplateOid(APPLICATION_PROFILE_ID));
+    expect(buildTemplateOid(APPLICATION_PROFILE_ID)).not.toBe(buildTemplateOid("1f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0"));
+  });
+});
+
+describe("buildPolicyId", () => {
+  test("is an uppercase GUID in braces, stable per application profile", () => {
+    const policyId = buildPolicyId(APPLICATION_PROFILE_ID);
+
+    expect(policyId).toMatch(/^\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}$/);
+    expect(buildPolicyId(APPLICATION_PROFILE_ID)).toBe(policyId);
+    expect(buildPolicyId("1f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0")).not.toBe(policyId);
+  });
+});
+
+describe("buildSidSecurityExtension", () => {
+  test("encodes the SID as the NTDS CA security extension Windows uses for strong certificate mapping", () => {
+    const sid = "S-1-5-21-1111111111-2222222222-3333333333-1104";
+    const extension = buildSidSecurityExtension(sid);
+
+    expect(extension.oid).toBe("1.3.6.1.4.1.311.25.2");
+    expect(extension.critical).toBe(false);
+    expect(extension.value).toEqual(
+      Buffer.concat([Buffer.from("3040a03e060a2b060104018237190201a030042e", "hex"), Buffer.from(sid, "ascii")])
+    );
+  });
+});
+
+describe("buildTemplateInfoExtension", () => {
+  test("encodes the template OID and revision as a non-critical template information extension", () => {
+    const templateOid = buildTemplateOid(APPLICATION_PROFILE_ID);
+    const extension = buildTemplateInfoExtension(templateOid, 101, 4);
+    const [oid, majorRevision, minorRevision] = (asn1js.fromBER(extension.value).result as asn1js.Sequence).valueBlock
+      .value;
+
+    expect(extension.oid).toBe("1.3.6.1.4.1.311.21.7");
+    expect(extension.critical).toBe(false);
+    expect((oid as asn1js.ObjectIdentifier).getValue()).toBe(templateOid);
+    expect((majorRevision as asn1js.Integer).valueBlock.valueDec).toBe(101);
+    expect((minorRevision as asn1js.Integer).valueBlock.valueDec).toBe(4);
+    expect(extension.value).toEqual(
+      Buffer.from(
+        new asn1js.Sequence({
+          value: [
+            new asn1js.ObjectIdentifier({ value: templateOid }),
+            new asn1js.Integer({ value: 101 }),
+            new asn1js.Integer({ value: 4 })
+          ]
+        }).toBER(false)
+      )
+    );
+  });
+});
+
+describe("resolveTemplatePrivateKey", () => {
+  test.each([
+    [CertKeyAlgorithm.RSA_4096, 4096],
+    [CertKeyAlgorithm.RSA_3072, 3072],
+    [undefined, 2048]
+  ])("%s asks Windows for a %d-bit RSA key", (keyAlgorithm, expected) => {
+    expect(resolveTemplatePrivateKey(keyAlgorithm)).toEqual({ minimalKeyLength: expected, ellipticCurve: null });
+  });
+
+  test.each([
+    [CertKeyAlgorithm.ECDSA_P256, 256, "1.2.840.10045.3.1.7", "ECDSA_P256"],
+    [CertKeyAlgorithm.ECDSA_P384, 384, "1.3.132.0.34", "ECDSA_P384"],
+    [CertKeyAlgorithm.ECDSA_P521, 521, "1.3.132.0.35", "ECDSA_P521"]
+  ])("%s asks Windows for a %d-bit key on the curve Windows names %s", (keyAlgorithm, keyLength, oid, name) => {
+    expect(resolveTemplatePrivateKey(keyAlgorithm)).toEqual({
+      minimalKeyLength: keyLength,
+      ellipticCurve: { oid, name }
+    });
+  });
+});
+
+describe("buildProfileUsageExtensions", () => {
+  test("encodes the profile's key usages and extended key usages", () => {
+    const extensions = buildProfileUsageExtensions({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH, CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+    const toX509Extension = (oid: string) => {
+      const extension = extensions.find((candidate) => candidate.oid === oid);
+      if (!extension) throw new Error(`Missing extension ${oid}`);
+      return new x509.Extension(extension.oid, extension.critical, new Uint8Array(extension.value)).rawData;
+    };
+    const extendedKeyUsage = new x509.ExtendedKeyUsageExtension(toX509Extension("2.5.29.37"));
+    const keyUsage = new x509.KeyUsagesExtension(toX509Extension("2.5.29.15"));
+
+    expect(extendedKeyUsage.usages).toEqual(expect.arrayContaining(["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"]));
+    expect(keyUsage.critical).toBe(true);
+    expect(keyUsage.usages).toBe(x509.KeyUsageFlags.digitalSignature + x509.KeyUsageFlags.keyEncipherment);
+  });
+
+  test("adds nothing for a profile with no usages", () => {
+    expect(buildProfileUsageExtensions({})).toEqual([]);
+  });
+});
+
+describe("readSidSecurityExtension", () => {
+  const SID = "S-1-5-21-1004336348-1177238915-682003330-1105";
+
+  const certificateWith = async (extensions: x509.Extension[]) => {
+    const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const keys = await crypto.subtle.generateKey(algorithm, false, ["sign", "verify"]);
+    return x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=laptop01.corp.example.com",
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 60_000),
+      signingAlgorithm: algorithm,
+      keys,
+      extensions
+    });
+  };
+
+  test("reads back the SID the issuer wrote", async () => {
+    const extension = buildSidSecurityExtension(SID);
+    const certificate = await certificateWith([
+      new x509.Extension(extension.oid, extension.critical, new Uint8Array(extension.value))
+    ]);
+
+    expect(readSidSecurityExtension(certificate)).toBe(SID);
+  });
+
+  test.each([
+    ["has no SID extension", []],
+    [
+      "has a malformed SID extension",
+      [new x509.Extension("1.3.6.1.4.1.311.25.2", false, new asn1js.Utf8String({ value: SID }).toBER())]
+    ]
+  ])("returns undefined when the certificate %s", async (_name, extensions) => {
+    expect(readSidSecurityExtension(await certificateWith(extensions))).toBeUndefined();
+  });
+});

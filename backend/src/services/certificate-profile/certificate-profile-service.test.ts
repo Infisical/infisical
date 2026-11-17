@@ -15,7 +15,7 @@ import type { TExternalCertificateAuthorityDALFactory } from "../certificate-aut
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
@@ -237,6 +237,13 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TCertificateSecretDALFactory;
 
+  const mockPkiApplicationProfileDAL = {
+    findOneByApplicationAndProfile: vi.fn(),
+    findByApplicationId: vi.fn(),
+    findAllByProfileId: vi.fn(),
+    primaryNode: vi.fn()
+  };
+
   const mockCertificateAuthorityDAL = {
     create: vi.fn(),
     findById: vi.fn(),
@@ -279,6 +286,8 @@ describe("CertificateProfileService", () => {
       projectId: "project-123"
     });
 
+    mockPkiApplicationProfileDAL.findAllByProfileId.mockResolvedValue([]);
+
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
@@ -298,7 +307,8 @@ describe("CertificateProfileService", () => {
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
       projectDAL: mockProjectDAL,
-      resourceMetadataDAL: mockResourceMetadataDAL
+      resourceMetadataDAL: mockResourceMetadataDAL,
+      pkiApplicationProfileDAL: mockPkiApplicationProfileDAL
     });
   });
 
@@ -554,6 +564,44 @@ describe("CertificateProfileService", () => {
   });
 
   describe("updateProfile", () => {
+    describe("on a profile with Microsoft Autoenrollment turned on", () => {
+      beforeEach(() => {
+        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.updateById as any).mockResolvedValue(sampleProfile);
+        mockPkiApplicationProfileDAL.findAllByProfileId.mockResolvedValue([
+          {
+            applicationId: "application-123",
+            applicationName: "Windows fleet",
+            profileId: "profile-123",
+            microsoftAutoenrollmentConfigId: "msae-123"
+          }
+        ]);
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: "ca-123",
+          externalCa: null,
+          internalCa: { keyAlgorithm: "RSA_2048" }
+        });
+      });
+
+      it("refuses an elliptic curve default key on its RSA certificate authority", async () => {
+        await expect(
+          service.updateProfile({
+            ...mockActor,
+            profileId: "profile-123",
+            data: { defaults: { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256 } }
+          })
+        ).rejects.toThrow(/on for profile 'test-profile' in application 'Windows fleet'.*elliptic curve key/);
+        expect(mockCertificateProfileDAL.updateById).not.toHaveBeenCalled();
+      });
+
+      it("allows edits that keep the certificate authority and key algorithm", async () => {
+        await service.updateProfile({ ...mockActor, profileId: "profile-123", data: { description: "New" } });
+
+        expect(mockPkiApplicationProfileDAL.findAllByProfileId).not.toHaveBeenCalled();
+        expect(mockCertificateProfileDAL.updateById).toHaveBeenCalled();
+      });
+    });
+
     const updateData = {
       slug: "updated-profile",
       description: "Updated description"

@@ -70,6 +70,7 @@ export enum ActorType {
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
   SCEP_ACCOUNT = "scepAccount",
+  MICROSOFT_AUTOENROLLMENT_ACCOUNT = "microsoftAutoenrollmentAccount",
   UNKNOWN_USER = "unknownUser",
   GATEWAY = "gateway",
   RELAY = "relay",

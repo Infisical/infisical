@@ -4,6 +4,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { isValidSid, SID_PATTERN } from "@app/lib/windows-sid/windows-sid-fns";
 
 import { matchesNormalizedPattern } from "../certificate-policy/certificate-policy-fns";
 import {
@@ -57,7 +58,6 @@ type TCustomExtensionPreset = {
   describe: (der: Buffer) => string | null;
 };
 
-const SID_PATTERN = new RE2("^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$");
 const TEMPLATE_INFORMATION_PATTERN = new RE2(
   `^(${CERT_EXTENSION_OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
 );
@@ -178,9 +178,9 @@ export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPre
   [CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID]: {
     critical: false,
     validateInput: (value) =>
-      SID_PATTERN.test(value)
+      isValidSid(value)
         ? null
-        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103",
+        : "Value must be a security identifier as Active Directory shows it, with no leading zeros and each sub-authority at most 4294967295, for example S-1-5-21-1004336348-1177238915-682003330-1103",
     encode: encodeNtdsSid,
     describe: describeNtdsSid
   },

@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { assertProfileCaSupportsMicrosoftAutoenrollment } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -345,7 +346,7 @@ type TCertificateProfileServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
     TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId"
+    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId" | "primaryNode"
   >;
 };
 
@@ -833,6 +834,30 @@ export const certificateProfileServiceFactory = ({
     validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
 
     await validateAcmEnrollmentType(finalCaId, finalEnrollmentType, externalCertificateAuthorityDAL);
+
+    const existingKeyAlgorithm = (existingProfile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm;
+    const finalKeyAlgorithm = data.defaults !== undefined ? data.defaults?.keyAlgorithm : existingKeyAlgorithm;
+    if (
+      pkiApplicationProfileDAL &&
+      (finalCaId !== existingProfile.caId || finalKeyAlgorithm !== existingKeyAlgorithm)
+    ) {
+      const enabledInApplicationNames = (
+        await pkiApplicationProfileDAL.findAllByProfileId(profileId, pkiApplicationProfileDAL.primaryNode())
+      )
+        .filter((attachment) => attachment.microsoftAutoenrollmentConfigId)
+        .map((attachment) => attachment.applicationName);
+      if (enabledInApplicationNames.length) {
+        await assertProfileCaSupportsMicrosoftAutoenrollment(
+          {
+            profileSlug: data.slug ?? existingProfile.slug,
+            caId: finalCaId,
+            keyAlgorithm: finalKeyAlgorithm,
+            enabledInApplicationNames
+          },
+          certificateAuthorityDAL
+        );
+      }
+    }
 
     // Validate external configs only if they are provided in the update
     if (data.externalConfigs !== undefined) {

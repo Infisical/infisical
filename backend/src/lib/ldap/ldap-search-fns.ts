@@ -1,6 +1,8 @@
 import ldap from "@infisical/ldapjs";
 import RE2 from "re2";
 
+import { sidStringToBuffer } from "@app/lib/windows-sid/windows-sid-fns";
+
 const LDAP_SIZE_LIMIT_EXCEEDED = 4;
 
 type TLdapAttribute = { type: string; values: string[]; buffers: Buffer[] };
@@ -39,7 +41,7 @@ export const netbiosFromDomainFqdn = (domainFqdn: string): string => domainFqdn.
 
 export type TLdapSearchOptions = {
   baseDN: string;
-  filter: string;
+  filter: string | ldap.Filter;
   attributes: string[];
   timeLimitSeconds: number;
   scope?: "base" | "one" | "sub";
@@ -88,3 +90,6 @@ export const searchLdap = (client: ldap.Client, options: TLdapSearchOptions): Pr
       }
     );
   });
+
+export const buildSidEqualityFilter = (sid: string) =>
+  new ldap.EqualityFilter({ attribute: "objectSid", value: sidStringToBuffer(sid) });

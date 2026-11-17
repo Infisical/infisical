@@ -66,6 +66,8 @@ export type TPkiApplicationProfile = {
   apiConfigId?: string | null;
   acmeConfigId?: string | null;
   scepConfigId?: string | null;
+  microsoftAutoenrollmentConfigId?: string | null;
+  microsoftAutoenrollmentKeytabMismatch?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -92,6 +94,36 @@ export type TPkiApplicationMember = {
 };
 
 export { ScepChallengeType };
+
+export type TMicrosoftAutoenrollmentGroup = {
+  sid: string;
+  name: string | null;
+};
+
+export type TMicrosoftAutoenrollmentEnrollment = {
+  policyUrl: string;
+  policyId: string;
+  templateName: string;
+  templateOid: string;
+  allowedGroups: TMicrosoftAutoenrollmentGroup[];
+  renewBeforeDays: number;
+  servicePrincipalName: string;
+  keyVersion: number;
+  connectionId: string;
+  keytabMismatch: {
+    servicePrincipalName: string;
+    firstSeenAt: string;
+    requestCount: number;
+  } | null;
+};
+
+export type TMicrosoftAutoenrollmentOtherProfile = {
+  profileId: string;
+  profileName: string;
+  servicePrincipalName: string;
+  keyVersion: number;
+  connectionId: string;
+};
 
 export type TPkiApplicationEnrollmentState = {
   applicationId: string;
@@ -122,10 +154,13 @@ export type TPkiApplicationEnrollmentState = {
     validationConnectionId: string | null;
     signRaWithCa: boolean;
   } | null;
+  microsoftAutoenrollment: TMicrosoftAutoenrollmentEnrollment | null;
+  microsoftAutoenrollmentOtherProfiles: TMicrosoftAutoenrollmentOtherProfile[];
   caType: CaType;
   estConfigured: boolean;
   acmeConfigured: boolean;
   scepConfigured: boolean;
+  microsoftAutoenrollmentConfigured: boolean;
 };
 
 export type TCreatePkiApplicationDTO = {
@@ -237,4 +272,28 @@ export type TSetScepEnrollmentDTO = {
   dynamicChallengeMaxPending?: number;
   validationConnectionId?: string;
   signRaWithCa?: boolean;
+};
+
+export type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  connectionId?: string;
+  allowedGroupSids?: string[] | null;
+  renewBeforeDays?: number;
+  keytab?: string;
+  reuseKeytab?: {
+    servicePrincipalName: string;
+    keyVersion: number;
+  };
+};
+
+export type TListMicrosoftAutoenrollmentGroupsDTO = {
+  applicationId: string;
+  profileId: string;
+  connectionId?: string;
+  search?: string;
+};
+
+export type TMicrosoftAutoenrollmentServicePrincipal = {
+  servicePrincipalName: string;
 };

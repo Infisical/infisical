@@ -96,3 +96,5 @@ backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-pa
 backend/src/ee/services/agent-vault/agent-vault-service-type-fns.test.ts:private-key:351
 frontend/src/components/agent-vault/service-sheet/serviceRequest.test.ts:private-key:691
 frontend/src/components/agent-vault/service-sheet/serviceSchema.test.ts:private-key:576
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:258
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:263

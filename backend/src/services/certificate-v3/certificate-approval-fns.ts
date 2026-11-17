@@ -25,12 +25,12 @@ import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-auth
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
-  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
 import {
   parseIssuedCustomExtensions,
+  readStoredCustomExtensions,
   toRequestCustomExtensions,
   TRequestCustomExtension,
   TResolvedCustomExtension
@@ -38,7 +38,11 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateRequest, TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  EnrollmentType,
+  ISSUER_NAMED_ENROLLMENT_TYPES,
+  IssuerType
+} from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -89,8 +93,14 @@ import {
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { applyProfileDefaults } from "./certificate-v3-fns";
-import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-types";
+import {
+  applyIssuerNameOverride,
+  applyProfileDefaults,
+  buildIssuanceSubject,
+  formatIssuerAltNames,
+  mergeIssuerAddedExtensions
+} from "./certificate-v3-fns";
+import { TAltNameEntry, TCertificateIssuanceResponse, TIssuerNameOverride } from "./certificate-v3-types";
 
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
@@ -570,7 +580,18 @@ export const certificateApprovalServiceFactory = (
       }
     }
 
-    const reconstructedRequest = applyProfileDefaults(extractCertificateRequestFromCSR(csr || ""), profile.defaults);
+    const csrRequest = extractCertificateRequestFromCSR(csr || "");
+    const issuerNameOverride: TIssuerNameOverride | undefined =
+      certRequest.enrollmentType && ISSUER_NAMED_ENROLLMENT_TYPES.has(certRequest.enrollmentType)
+        ? {
+            commonName: certRequest.commonName ?? undefined,
+            altNames: (certRequest.altNames as TAltNameEntry[] | null) ?? []
+          }
+        : undefined;
+    const reconstructedRequest = applyProfileDefaults(
+      applyIssuerNameOverride(csrRequest, issuerNameOverride, profile.defaults),
+      profile.defaults
+    );
     const { keyAlgorithm: reconstructedKeyAlg, signatureAlgorithm: reconstructedSigAlg } = extractAlgorithmsFromCSR(
       csr || ""
     );
@@ -615,15 +636,10 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
-    const subjectOverride = buildSubjectOverrideForCsr(csr || "", {
-      commonName: reconstructedRequest.commonName,
-      organization: reconstructedRequest.organization,
-      organizationalUnit: reconstructedRequest.organizationalUnit,
-      country: reconstructedRequest.country,
-      state: reconstructedRequest.state,
-      locality: reconstructedRequest.locality,
-      domainComponents: reconstructedRequest.domainComponents
-    });
+    const issuerAddedExtensions = readStoredCustomExtensions(certRequest.customExtensions).filter(
+      (extension) => extension.issuerAdded
+    );
+    const subjectOverride = buildIssuanceSubject(csr || "", reconstructedRequest, issuerNameOverride);
 
     // This path is already intent-first: the certificate request exists (it was created when the
     // approval was requested), so it only needs the same treatment as direct issuance — no
@@ -643,7 +659,7 @@ export const certificateApprovalServiceFactory = (
       csr: csr || "",
       ttl,
       subjectOverride,
-      altNames: undefined,
+      altNames: formatIssuerAltNames(issuerNameOverride),
       keyUsages: reconstructedRequest.keyUsages
         ? convertKeyUsageArrayToLegacy(reconstructedRequest.keyUsages)
         : undefined,
@@ -654,7 +670,7 @@ export const certificateApprovalServiceFactory = (
       notAfter: normalizeDateForApi(certRequest.notAfter || undefined),
       signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
       keyAlgorithm: certRequest.keyAlgorithm || undefined,
-      customExtensions: revalidationResult.resolvedCustomExtensions,
+      customExtensions: mergeIssuerAddedExtensions(revalidationResult.resolvedCustomExtensions, issuerAddedExtensions),
       isFromProfile: true,
       basicConstraints: effectiveBasicConstraints,
       pathLength: effectivePathLength,

@@ -275,6 +275,10 @@ export const injectIdentity = fp(
         return;
       }
 
+      if (pathname.startsWith("/cep/applications/") || pathname.startsWith("/ces/applications/")) {
+        return;
+      }
+
       if (pathname === "/api/v1/oauth/token") {
         return;
       }

@@ -20,6 +20,11 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(
+          TableName.PkiMicrosoftAutoenrollmentConfig,
+          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
+          `${TableName.PkiMicrosoftAutoenrollmentConfig}.id`
+        )
         .where(`${TableName.PkiApplicationProfile}.applicationId`, applicationId)
         .select(
           `${TableName.PkiApplicationProfile}.applicationId`,
@@ -30,6 +35,11 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.apiConfigId`,
           `${TableName.PkiApplicationProfile}.acmeConfigId`,
           `${TableName.PkiApplicationProfile}.scepConfigId`,
+          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
+          db.raw(`?? IS NOT NULL AS ??`, [
+            `${TableName.PkiMicrosoftAutoenrollmentConfig}.mismatchedServicePrincipalName`,
+            "microsoftAutoenrollmentKeytabMismatch"
+          ]),
           `${TableName.PkiApplicationProfile}.createdAt`,
           `${TableName.PkiApplicationProfile}.updatedAt`
         )
@@ -79,6 +89,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.estConfigId`,
           `${TableName.PkiApplicationProfile}.acmeConfigId`,
           `${TableName.PkiApplicationProfile}.scepConfigId`,
+          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
           `${TableName.PkiApplication}.name as applicationName`
         );
       return rows as Array<{
@@ -88,6 +99,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
         estConfigId?: string | null;
         acmeConfigId?: string | null;
         scepConfigId?: string | null;
+        microsoftAutoenrollmentConfigId?: string | null;
         applicationName: string;
       }>;
     } catch (error) {
@@ -95,8 +107,11 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...orm,
+    primaryNode,
     findAllByProfileId,
     findByApplicationId,
     findOneByApplicationAndProfile,

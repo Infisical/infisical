@@ -597,7 +597,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   <Accordion title="Why a certificate failed to issue" id="certificate-issuance-failures">
     Find every certificate that Infisical couldn't issue, and the reason for each failure.
 
-    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval.
+    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, SCEP, and Microsoft Autoenrollment, including renewals and certificates issued after an approval.
 
     <Note>
       If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials).

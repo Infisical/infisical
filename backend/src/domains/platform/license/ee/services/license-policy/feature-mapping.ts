@@ -262,6 +262,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiScep"
   },
   {
+    v2Key: "pki_microsoft_autoenrollment",
+    v1Field: "pkiMicrosoftAutoenrollment"
+  },
+  {
     v2Key: "pki_pqc",
     v1Field: "pkiPqc"
   },

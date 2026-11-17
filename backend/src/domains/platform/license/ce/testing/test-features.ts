@@ -68,6 +68,7 @@ export const testFeatures = (): TInstanceFeatures => ({
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
+  pkiMicrosoftAutoenrollment: false,
   pkiPqc: false,
   caCrl: true,
   pkiOcsp: false,

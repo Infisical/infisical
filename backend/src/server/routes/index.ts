@@ -9,6 +9,7 @@ import { z } from "zod";
 import { createDomains } from "@app/domains/domains";
 import { InstanceFeature, PlanFeature } from "@app/domains/platform/license/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
+import { registerMicrosoftAutoenrollmentRouter } from "@app/ee/routes/microsoft-autoenrollment/microsoft-autoenrollment-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
@@ -126,6 +127,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
+import { microsoftAutoenrollmentRequestDALFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-request-dal";
+import { microsoftAutoenrollmentServiceFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccessApprovalResourceFactory } from "@app/ee/services/pam-access-request/pam-access-approval-resource";
@@ -374,6 +377,7 @@ import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-ke
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
+import { microsoftAutoenrollmentEnrollmentConfigDALFactory } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
 import { eventOutboxQueueFactory } from "@app/services/event-outbox/event-outbox-queue";
@@ -1913,7 +1917,9 @@ export const registerRoutes = async (
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
   const scepEnrollmentConfigDAL = scepEnrollmentConfigDALFactory(db);
+  const microsoftAutoenrollmentEnrollmentConfigDAL = microsoftAutoenrollmentEnrollmentConfigDALFactory(db);
   const scepTransactionDAL = scepTransactionDALFactory(db);
+  const microsoftAutoenrollmentRequestDAL = microsoftAutoenrollmentRequestDALFactory(db);
   const scepDynamicChallengeDAL = scepDynamicChallengeDALFactory(db);
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
@@ -4174,7 +4180,11 @@ export const registerRoutes = async (
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
+    microsoftAutoenrollmentEnrollmentConfigDAL,
     appConnectionService,
+    appConnectionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
     licenseService,
     approvalPolicyService,
     certificateProfileDAL,
@@ -4468,6 +4478,30 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     approvalPolicyService,
     approvalPolicyDAL
+  });
+
+  const microsoftAutoenrollmentService = microsoftAutoenrollmentServiceFactory({
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL,
+    microsoftAutoenrollmentEnrollmentConfigDAL,
+    microsoftAutoenrollmentRequestDAL,
+    certificateProfileDAL,
+    certificatePolicyDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateDAL,
+    certificateRequestDAL,
+    certificateBodyDAL,
+    resourceMetadataDAL,
+    certificateV3Service,
+    projectDAL,
+    kmsService,
+    appConnectionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore,
+    licenseService,
+    auditLogService
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -4960,6 +4994,7 @@ export const registerRoutes = async (
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,
     pkiScep: pkiScepService,
+    microsoftAutoenrollment: microsoftAutoenrollmentService,
     pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
@@ -5193,6 +5228,7 @@ export const registerRoutes = async (
     // register special routes
     await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
     await server.register(registerPkiScepRouter, { prefix: "/scep" });
+    await server.register(registerMicrosoftAutoenrollmentRouter);
 
     // register routes for v1
     await server.register(

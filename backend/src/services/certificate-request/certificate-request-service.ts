@@ -191,7 +191,8 @@ export const certificateRequestServiceFactory = ({
       actor !== ActorType.ACME_ACCOUNT &&
       actor !== ActorType.PLATFORM &&
       actor !== ActorType.EST_ACCOUNT &&
-      actor !== ActorType.SCEP_ACCOUNT
+      actor !== ActorType.SCEP_ACCOUNT &&
+      actor !== ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT
     ) {
       const { permission } = await permissionService.getProjectPermission({
         actor,

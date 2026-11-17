@@ -57,6 +57,7 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
       { value: "acme", label: "ACME" },
       { value: "api", label: "API" },
       { value: "est", label: "EST" },
+      { value: "microsoft-autoenrollment", label: "Microsoft Autoenrollment" },
       { value: "scep", label: "SCEP" }
     ]
   },

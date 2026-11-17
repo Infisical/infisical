@@ -2787,6 +2787,25 @@ export const PKI_SUBSCRIBERS = {
   }
 };
 
+export const MICROSOFT_AUTOENROLLMENT = {
+  SET: {
+    connectionId:
+      "The ID of the Active Directory LDAP connection used to look up computers. Required when turning Microsoft Autoenrollment on; when updating, leave it out to keep the current connection.",
+    allowedGroupSids:
+      "The security identifiers (SIDs) of the Active Directory groups whose computers may enroll. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
+    renewBeforeDays:
+      "How many days before expiry Windows renews the certificate. Values of the certificate's validity or more are capped at the validity minus one day. Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
+    keytab:
+      "The keytab file created with ktpass, base64 encoded. When turning Microsoft Autoenrollment on, send this or reuseKeytab. Send a new one to replace the stored keytab.",
+    reuseKeytab:
+      "Copy the keytab another profile in this application already has, named by its service principal name (with the realm) and key version. Cannot be sent together with keytab."
+  },
+  LIST_GROUPS: {
+    connectionId: "The ID of the Active Directory LDAP connection to search.",
+    search: "Text the group name contains. Up to 50 groups are returned."
+  }
+};
+
 export const PKI_COLLECTIONS = {
   CREATE: {
     projectId: "The ID of the project to create the PKI collection in.",

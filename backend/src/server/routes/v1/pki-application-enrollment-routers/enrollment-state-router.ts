@@ -5,6 +5,7 @@ import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { MicrosoftAutoenrollmentStateSchema } from "@app/server/routes/v1/pki-application-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
@@ -42,6 +43,14 @@ const ScepEnrollmentStateSchema = z.object({
   signRaWithCa: z.boolean()
 });
 
+const MicrosoftAutoenrollmentOtherProfileSchema = z.object({
+  profileId: z.string().uuid(),
+  profileName: z.string(),
+  servicePrincipalName: z.string(),
+  keyVersion: z.number().int(),
+  connectionId: z.string().uuid()
+});
+
 const EnrollmentStateSchema = z.object({
   applicationId: z.string().uuid(),
   profileId: z.string().uuid(),
@@ -49,10 +58,13 @@ const EnrollmentStateSchema = z.object({
   est: EstEnrollmentStateSchema.nullable(),
   acme: AcmeEnrollmentStateSchema.nullable(),
   scep: ScepEnrollmentStateSchema.nullable(),
+  microsoftAutoenrollment: MicrosoftAutoenrollmentStateSchema.nullable(),
+  microsoftAutoenrollmentOtherProfiles: z.array(MicrosoftAutoenrollmentOtherProfileSchema),
   caType: z.nativeEnum(CaType),
   estConfigured: z.boolean(),
   acmeConfigured: z.boolean(),
-  scepConfigured: z.boolean()
+  scepConfigured: z.boolean(),
+  microsoftAutoenrollmentConfigured: z.boolean()
 });
 
 export const registerPkiApplicationEnrollmentStateRouter = async (server: FastifyZodProvider) => {
