@@ -105,6 +105,8 @@ jobs:
             --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
             --namespace infisical-standalone-postgres
 
+  # Nothing retriggers a release this blocks, so run this workflow by hand after the unfreeze.
+  # check-version makes that safe: it publishes only a version that is still unpublished.
   freeze-check:
     name: Release freeze check
     needs: [test-helm]
