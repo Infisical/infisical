@@ -16,16 +16,17 @@ const ROOT_ORG_ID = "org-root";
 const build = (isCloud = true, agentVault: boolean | null = false) => {
   const usageMeteringService = { recordMeteringEvents: vi.fn() };
   const freeUsageCache = new FreeUsageCache(new InMemoryKeyStore());
+  const planState = { agentVault };
   const service = new AgentVaultUsageService(
     {
       getInstanceEntitlements: () => ({ isCloud: () => isCloud }) as never,
-      getPlan: async () => Plan.restore({ ...testFeatures(), agentVault })
+      getPlan: async () => Plan.restore({ ...testFeatures(), agentVault: planState.agentVault })
     },
     usageMeteringService,
     { resolveRootOrgId: async () => ROOT_ORG_ID },
     freeUsageCache
   );
-  return { service, usageMeteringService, freeUsageCache };
+  return { service, usageMeteringService, freeUsageCache, planState };
 };
 
 const report = { orgId: "org-sub", reportId: "report-1", endedAt: new Date(), brokered: 100 };
@@ -151,20 +152,23 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     ]);
   });
 
-  test("should return a warning once when the count passes 75%, and nothing for later reports", async () => {
+  test("should return a warning with its percent when the count passes 75%", async () => {
     // Setup
     const { service } = build();
     await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_700 });
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 100 });
-    const after = await service.recordProxyUsage({ ...report, reportId: "r-3", brokered: 100 });
+    const due = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 100 });
 
     // Assert
-    expect(crossing).toEqual([
-      expect.objectContaining({ rootOrgId: ROOT_ORG_ID, threshold: AgentVaultFreeUsageThreshold.Warning, limit: 5_000 })
+    expect(due).toEqual([
+      expect.objectContaining({
+        rootOrgId: ROOT_ORG_ID,
+        threshold: AgentVaultFreeUsageThreshold.Warning,
+        percent: 75,
+        limit: 5_000
+      })
     ]);
-    expect(after).toEqual([]);
   });
 
   test("should return nothing below 75%", async () => {
@@ -172,10 +176,10 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const { service } = build();
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, brokered: 3_749 });
+    const due = await service.recordProxyUsage({ ...report, brokered: 3_749 });
 
     // Assert
-    expect(crossing).toEqual([]);
+    expect(due).toEqual([]);
   });
 
   test("should return both thresholds when one report passes both", async () => {
@@ -183,25 +187,82 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const { service } = build();
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+    const due = await service.recordProxyUsage({ ...report, brokered: 5_200 });
 
     // Assert
-    expect(crossing.map((c) => c.threshold)).toEqual([
-      AgentVaultFreeUsageThreshold.Warning,
-      AgentVaultFreeUsageThreshold.Limit
+    expect(due.map((d) => [d.threshold, d.percent])).toEqual([
+      [AgentVaultFreeUsageThreshold.Warning, 75],
+      [AgentVaultFreeUsageThreshold.Limit, 100]
     ]);
   });
 
-  test("should return a threshold once even when two reports cross it at the same time", async () => {
+  test("should not return a notice again while it's being sent", async () => {
     // Setup
-    const { service, freeUsageCache } = build();
-    await freeUsageCache.claimNotice(ROOT_ORG_ID, new Date(), AgentVaultFreeUsageThreshold.Limit);
+    const { service } = build();
+    await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 });
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_000 });
+    const again = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 });
 
     // Assert
-    expect(crossing.map((c) => c.threshold)).toEqual([AgentVaultFreeUsageThreshold.Warning]);
+    expect(again).toEqual([]);
+  });
+
+  test("should return a notice to only one of two reports at the same time", async () => {
+    // Setup
+    const { service } = build();
+
+    // Action
+    const [first, second] = await Promise.all([
+      service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 }),
+      service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 })
+    ]);
+
+    // Assert
+    expect([...first, ...second].map((d) => d.threshold)).toEqual([AgentVaultFreeUsageThreshold.Warning]);
+  });
+
+  test("should never return a notice again this month once it was marked sent", async () => {
+    // Setup
+    const { service } = build();
+    const [due] = await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 });
+    await service.completeNotice(due);
+
+    // Action
+    const again = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 });
+
+    // Assert
+    expect(again).toEqual([]);
+  });
+
+  test("should return a notice again on the next report when sending it failed", async () => {
+    // Setup
+    const { service } = build();
+    const [due] = await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 });
+    await service.releaseNotice(due);
+
+    // Action
+    const retry = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 });
+
+    // Assert
+    expect(retry.map((d) => d.threshold)).toEqual([AgentVaultFreeUsageThreshold.Warning]);
+  });
+
+  test("should return the notices on a later report when the org becomes limited after passing them", async () => {
+    // Setup: a trial passes both thresholds while its plan includes Agent Vault, then ends.
+    const { service, planState } = build(true, true);
+    const duringTrial = await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 5_100 });
+    planState.agentVault = false;
+
+    // Action
+    const afterTrial = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 });
+
+    // Assert
+    expect(duringTrial).toEqual([]);
+    expect(afterTrial.map((d) => d.threshold)).toEqual([
+      AgentVaultFreeUsageThreshold.Warning,
+      AgentVaultFreeUsageThreshold.Limit
+    ]);
   });
 
   test.each([
@@ -212,10 +273,10 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const { service } = build(true, agentVault);
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+    const due = await service.recordProxyUsage({ ...report, brokered: 5_200 });
 
     // Assert
-    expect(crossing).toEqual([]);
+    expect(due).toEqual([]);
   });
 
   test("should return nothing on self-hosted", async () => {
@@ -223,9 +284,9 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const { service } = build(false);
 
     // Action
-    const crossing = await service.recordProxyUsage({ ...report, brokered: 5_200 });
+    const due = await service.recordProxyUsage({ ...report, brokered: 5_200 });
 
     // Assert
-    expect(crossing).toEqual([]);
+    expect(due).toEqual([]);
   });
 });

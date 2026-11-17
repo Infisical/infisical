@@ -9,12 +9,14 @@ interface AgentVaultFreeUsageWarningTemplateProps extends Omit<
   "title" | "preview" | "children"
 > {
   orgName: string;
+  percent: number;
   url: string;
 }
 
 export const AgentVaultFreeUsageWarningTemplate = ({
   siteUrl,
   orgName,
+  percent,
   url
 }: AgentVaultFreeUsageWarningTemplateProps) => {
   return (
@@ -28,7 +30,7 @@ export const AgentVaultFreeUsageWarningTemplate = ({
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          <strong>{orgName}</strong> has used 75% of its free Agent Vault requests this month.
+          <strong>{orgName}</strong> has used {percent}% of its free Agent Vault requests this month.
         </Text>
         <Text>Add a payment method to keep your agents running without disruption.</Text>
       </Section>
@@ -43,6 +45,7 @@ export default AgentVaultFreeUsageWarningTemplate;
 
 AgentVaultFreeUsageWarningTemplate.PreviewProps = {
   orgName: "Example Organization",
+  percent: 75,
   siteUrl: "https://infisical.com",
   url: "https://infisical.com"
 } as AgentVaultFreeUsageWarningTemplateProps;

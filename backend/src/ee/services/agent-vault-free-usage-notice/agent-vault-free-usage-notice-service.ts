@@ -1,7 +1,8 @@
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import {
   AgentVaultFreeUsageThreshold,
-  TAgentVaultFreeUsageCrossing
+  TAgentVaultFreeUsageCrossing,
+  TAgentVaultUsageService
 } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -11,6 +12,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TAgentVaultFreeUsageNoticeServiceFactoryDep = {
+  agentVaultUsageService: Pick<TAgentVaultUsageService, "completeNotice" | "releaseNotice">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findOrgMembersByRole">;
   smtpService: Pick<TSmtpService, "sendMail">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -37,6 +39,7 @@ const NOTICE_EVENT = {
 // Tells a free-tier org's admins, and PostHog, when its Agent Vault count passes 75% or the limit. Best effort: a
 // notice that fails is logged and never affects the usage report that triggered it.
 export const agentVaultFreeUsageNoticeServiceFactory = ({
+  agentVaultUsageService,
   orgDAL,
   smtpService,
   telemetryService
@@ -64,18 +67,45 @@ export const agentVaultFreeUsageNoticeServiceFactory = ({
       substitutions: {
         orgName: org.name,
         resetsAt: crossing.resetsAt,
+        percent: crossing.percent,
         url: `${SITE_URL}/organizations/${crossing.rootOrgId}/billing?upgradeProduct=agent_vault`
       }
     });
   };
 
+  // Each crossing holds a short lock: it's marked sent only after the email went out, and released on failure so a
+  // later report retries. The event is sent only once the notice is marked sent, so a retry never counts it twice.
   const notify = async (crossings: TAgentVaultFreeUsageCrossing[]) => {
     if (!crossings.length) return;
 
+    // When both are due at once only the limit email goes out, since the warning is already out of date; the warning
+    // is marked sent with it so it isn't sent on the next report.
+    const emailed =
+      crossings.find((crossing) => crossing.threshold === AgentVaultFreeUsageThreshold.Limit) ?? crossings[0];
+    try {
+      await sendEmail(emailed);
+    } catch (error) {
+      logger.error(error, `agentVaultFreeUsageNotice: failed to send email [rootOrgId=${emailed.rootOrgId}]`);
+      await Promise.all(
+        crossings.map((crossing) =>
+          agentVaultUsageService
+            .releaseNotice(crossing)
+            .catch((releaseError) =>
+              logger.error(
+                releaseError,
+                `agentVaultFreeUsageNotice: failed to release notice [rootOrgId=${crossing.rootOrgId}]`
+              )
+            )
+        )
+      );
+      return;
+    }
+
     await Promise.all(
-      crossings.map((crossing) =>
-        telemetryService
-          .sendPostHogEvents({
+      crossings.map(async (crossing) => {
+        try {
+          await agentVaultUsageService.completeNotice(crossing);
+          await telemetryService.sendPostHogEvents({
             event: NOTICE_EVENT[crossing.threshold],
             distinctId: `agent-vault-org-${crossing.rootOrgId}`,
             organizationId: crossing.rootOrgId,
@@ -85,18 +115,11 @@ export const agentVaultFreeUsageNoticeServiceFactory = ({
               limit: crossing.limit,
               threshold: crossing.threshold
             }
-          })
-          .catch((error) =>
-            logger.error(error, `agentVaultFreeUsageNotice: failed to send event [rootOrgId=${crossing.rootOrgId}]`)
-          )
-      )
-    );
-
-    // A report that passes both thresholds at once only needs the limit email: the warning is already out of date.
-    const emailed =
-      crossings.find((crossing) => crossing.threshold === AgentVaultFreeUsageThreshold.Limit) ?? crossings[0];
-    await sendEmail(emailed).catch((error) =>
-      logger.error(error, `agentVaultFreeUsageNotice: failed to send email [rootOrgId=${emailed.rootOrgId}]`)
+          });
+        } catch (error) {
+          logger.error(error, `agentVaultFreeUsageNotice: failed to complete notice [rootOrgId=${crossing.rootOrgId}]`);
+        }
+      })
     );
   };
 

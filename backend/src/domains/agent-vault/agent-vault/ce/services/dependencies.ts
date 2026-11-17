@@ -30,11 +30,14 @@ export type TRecordProxyUsageInput = {
   brokered: number;
 };
 
-// A free-tier root org's count passing a notice threshold this month. Each is returned once per org, month and
-// threshold, so whoever sends the notice never has to dedupe.
+// A free-tier root org's count at or past a notice threshold this month, with no notice sent yet. Whoever is handed
+// one holds a short lock on it and must call `completeNotice` once the notice is delivered, or `releaseNotice` if it
+// failed, so a later report retries.
 export type TAgentVaultFreeUsageCrossing = {
   rootOrgId: string;
   threshold: AgentVaultFreeUsageThreshold;
+  // The threshold as a whole percent of the free requests.
+  percent: number;
   // YYYY-MM, UTC.
   month: string;
   limit: number;
@@ -43,4 +46,6 @@ export type TAgentVaultFreeUsageCrossing = {
 
 export type TAgentVaultUsageService = {
   recordProxyUsage(input: TRecordProxyUsageInput): Promise<TAgentVaultFreeUsageCrossing[]>;
+  completeNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void>;
+  releaseNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void>;
 };

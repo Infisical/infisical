@@ -3460,6 +3460,7 @@ export const registerRoutes = async (
   }
 
   const agentVaultFreeUsageNoticeService = agentVaultFreeUsageNoticeServiceFactory({
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
     orgDAL,
     smtpService,
     telemetryService

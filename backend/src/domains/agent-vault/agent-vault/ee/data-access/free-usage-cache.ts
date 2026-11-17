@@ -8,13 +8,17 @@ const FreeUsageKeys = {
   report: (reportId: string) => `agent-vault-usage-report-${reportId}`,
   month: (rootOrgId: string, month: UsageMonth) => `agent-vault-free-usage-${rootOrgId}-${month.key}`,
   notice: (rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold) =>
-    `agent-vault-free-usage-notice-${rootOrgId}-${month.key}-${threshold}`
+    `agent-vault-free-usage-notice-${rootOrgId}-${month.key}-${threshold}`,
+  noticeLock: (rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold) =>
+    `agent-vault-free-usage-notice-${rootOrgId}-${month.key}-${threshold}-sending`
 };
 
 // A proxy resends an unacknowledged report within minutes.
 const REPORT_CLAIM_TTL_IN_SECONDS = 600;
 // A day past the month's end, so pods whose clocks disagree near midnight UTC still find the month's count.
 const MONTH_GRACE_IN_SECONDS = 86400;
+// Long enough to send one email. The sender deletes it either way, so it only lapses if a pod dies mid-send.
+const NOTICE_LOCK_TTL_IN_SECONDS = 600;
 
 export class FreeUsageCache implements TAgentVaultFreeUsageCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
@@ -37,14 +41,30 @@ export class FreeUsageCache implements TAgentVaultFreeUsageCache {
     );
   }
 
-  async claimNotice(rootOrgId: string, at: Date, threshold: AgentVaultFreeUsageThreshold): Promise<boolean> {
-    const month = UsageMonth.of(at);
-    const claimed = await this.keyStore.setItemWithExpiryNX(
-      FreeUsageKeys.notice(rootOrgId, month, threshold),
-      month.secondsUntilReset(at) + MONTH_GRACE_IN_SECONDS,
+  async isNoticeSent(rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold): Promise<boolean> {
+    return (await this.keyStore.getItem(FreeUsageKeys.notice(rootOrgId, month, threshold))) !== null;
+  }
+
+  async lockNotice(rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold): Promise<boolean> {
+    const locked = await this.keyStore.setItemWithExpiryNX(
+      FreeUsageKeys.noticeLock(rootOrgId, month, threshold),
+      NOTICE_LOCK_TTL_IN_SECONDS,
       "1"
     );
-    return claimed === "OK";
+    return locked === "OK";
+  }
+
+  async markNoticeSent(rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold): Promise<void> {
+    await this.keyStore.setItemWithExpiry(
+      FreeUsageKeys.notice(rootOrgId, month, threshold),
+      month.secondsUntilReset(new Date()) + MONTH_GRACE_IN_SECONDS,
+      "1"
+    );
+    await this.keyStore.deleteItem(FreeUsageKeys.noticeLock(rootOrgId, month, threshold));
+  }
+
+  async releaseNotice(rootOrgId: string, month: UsageMonth, threshold: AgentVaultFreeUsageThreshold): Promise<void> {
+    await this.keyStore.deleteItem(FreeUsageKeys.noticeLock(rootOrgId, month, threshold));
   }
 
   async read(rootOrgId: string, at: Date): Promise<number> {

@@ -105,17 +105,22 @@ describe("AgentVaultAccess.isLimited", () => {
   });
 });
 
-describe("AgentVaultAccess.thresholdsCrossed", () => {
+describe("AgentVaultAccess.thresholdsReached", () => {
   test.each([
-    // before, after, crossed
-    [0, 3_749, []],
-    [3_700, 3_750, [AgentVaultFreeUsageThreshold.Warning]],
-    [3_750, 4_000, []],
-    [4_900, 5_000, [AgentVaultFreeUsageThreshold.Limit]],
-    [5_000, 6_000, []],
-    [3_000, 5_200, [AgentVaultFreeUsageThreshold.Warning, AgentVaultFreeUsageThreshold.Limit]]
-  ] as const)("from %s to %s crosses %j", (before, after, crossed) => {
+    // used, reached
+    [3_749, []],
+    [3_750, [AgentVaultFreeUsageThreshold.Warning]],
+    [4_999, [AgentVaultFreeUsageThreshold.Warning]],
+    [5_000, [AgentVaultFreeUsageThreshold.Warning, AgentVaultFreeUsageThreshold.Limit]],
+    [9_000, [AgentVaultFreeUsageThreshold.Warning, AgentVaultFreeUsageThreshold.Limit]]
+  ] as const)("at %s reaches %j", (used, reached) => {
     // Action, Assert
-    expect(AgentVaultAccess.thresholdsCrossed(before, after)).toEqual(crossed);
+    expect(AgentVaultAccess.thresholdsReached(used)).toEqual(reached);
+  });
+
+  test("should state each threshold as the percent that triggers it", () => {
+    // Action, Assert
+    expect(AgentVaultAccess.thresholdPercent(AgentVaultFreeUsageThreshold.Warning)).toBe(75);
+    expect(AgentVaultAccess.thresholdPercent(AgentVaultFreeUsageThreshold.Limit)).toBe(100);
   });
 });

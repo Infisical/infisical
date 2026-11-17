@@ -24,7 +24,10 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     private readonly licenseService: Pick<TLicenseService, "getInstanceEntitlements" | "getPlan">,
     private readonly usageMeteringService: Pick<TUsageMeteringService, "recordMeteringEvents">,
     private readonly organizationsProjectsService: Pick<TOrganizationsProjectsService, "resolveRootOrgId">,
-    private readonly freeUsageCache: Pick<TAgentVaultFreeUsageCache, "claimReport" | "add" | "claimNotice">
+    private readonly freeUsageCache: Pick<
+      TAgentVaultFreeUsageCache,
+      "claimReport" | "add" | "isNoticeSent" | "lockNotice" | "markNoticeSent" | "releaseNotice"
+    >
   ) {}
 
   async recordProxyUsage({
@@ -53,7 +56,7 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
       const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
       const receivedAt = new Date();
       const used = await this.freeUsageCache.add(rootOrgId, receivedAt, brokered);
-      crossings = await this.claimCrossings(rootOrgId, receivedAt, used - brokered, used).catch((error) => {
+      crossings = await this.claimPendingNotices(rootOrgId, receivedAt, used).catch((error) => {
         // A missed notice never blocks counting or billing.
         logger.error(error, `Failed to check Agent Vault free usage notices [rootOrgId=${rootOrgId}]`);
         return [];
@@ -72,31 +75,52 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     return crossings;
   }
 
-  // Every request is counted whatever the plan, so only an org the free tier limits gets a crossing. The plan is read
-  // only when a threshold is passed, which is at most twice a month per org.
-  private async claimCrossings(
+  async completeNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void> {
+    await this.freeUsageCache.markNoticeSent(
+      crossing.rootOrgId,
+      UsageMonth.fromKey(crossing.month),
+      crossing.threshold
+    );
+  }
+
+  async releaseNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void> {
+    await this.freeUsageCache.releaseNotice(crossing.rootOrgId, UsageMonth.fromKey(crossing.month), crossing.threshold);
+  }
+
+  // Every request is counted whatever the plan, so only an org the free tier limits gets a notice. A notice is due
+  // whenever the count is past a threshold and that notice wasn't delivered yet this month, not only on the report
+  // that crossed it, so one missed while the plan allowed (a trial, a License Server outage) or while delivery failed
+  // goes out on a later report. Below the warning nothing is read; past it, one key read per threshold, and the plan
+  // only while a notice is still due.
+  private async claimPendingNotices(
     rootOrgId: string,
     at: Date,
-    before: number,
-    after: number
+    used: number
   ): Promise<TAgentVaultFreeUsageCrossing[]> {
-    const thresholds = AgentVaultAccess.thresholdsCrossed(before, after);
-    if (!thresholds.length) return [];
+    const reached = AgentVaultAccess.thresholdsReached(used);
+    if (!reached.length) return [];
+
+    const month = UsageMonth.of(at);
+    const sent = await Promise.all(
+      reached.map((threshold) => this.freeUsageCache.isNoticeSent(rootOrgId, month, threshold))
+    );
+    const due = reached.filter((_, index) => !sent[index]);
+    if (!due.length) return [];
 
     const plan = await this.licenseService.getPlan(rootOrgId);
     if (!AgentVaultAccess.isLimited({ isCloud: true, plan })) return [];
 
-    const month = UsageMonth.of(at);
-    const claimed = await Promise.all(
-      thresholds.map(async (threshold) =>
-        (await this.freeUsageCache.claimNotice(rootOrgId, at, threshold)) ? threshold : null
+    const locked = await Promise.all(
+      due.map(async (threshold) =>
+        (await this.freeUsageCache.lockNotice(rootOrgId, month, threshold)) ? threshold : null
       )
     );
-    return claimed
+    return locked
       .filter((threshold) => threshold !== null)
       .map((threshold) => ({
         rootOrgId,
         threshold,
+        percent: AgentVaultAccess.thresholdPercent(threshold),
         month: month.key,
         limit: AgentVaultAccess.freeMonthlyLimit,
         resetsAt: month.resetsAt

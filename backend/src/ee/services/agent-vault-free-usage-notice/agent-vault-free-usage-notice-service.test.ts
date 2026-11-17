@@ -20,6 +20,7 @@ const admin = (email: string, status = OrgMembershipStatus.Accepted, isActive = 
 const crossing = (threshold: AgentVaultFreeUsageThreshold) => ({
   rootOrgId: ROOT_ORG_ID,
   threshold,
+  percent: threshold === AgentVaultFreeUsageThreshold.Warning ? 75 : 100,
   month: "2026-11",
   limit: 5_000,
   resetsAt: new Date("2026-12-01T00:00:00Z")
@@ -32,18 +33,20 @@ const build = (admins = [admin("a@acme.com"), admin("b@acme.com")]) => {
   };
   const smtpService = { sendMail: vi.fn<(mail: TSmtpSendMail) => Promise<void>>(async () => {}) };
   const telemetryService = { sendPostHogEvents: vi.fn(async () => {}) };
+  const agentVaultUsageService = { completeNotice: vi.fn(async () => {}), releaseNotice: vi.fn(async () => {}) };
   const service = agentVaultFreeUsageNoticeServiceFactory({
+    agentVaultUsageService,
     orgDAL: orgDAL as never,
     smtpService,
     telemetryService
   });
-  return { service, smtpService, telemetryService };
+  return { service, smtpService, telemetryService, agentVaultUsageService };
 };
 
 describe("agentVaultFreeUsageNoticeService.notify", () => {
-  test("should email the root org's active admins and send the event for a warning", async () => {
+  test("should email the root org's active admins, mark the notice sent and send the event for a warning", async () => {
     // Setup
-    const { service, smtpService, telemetryService } = build([
+    const { service, smtpService, telemetryService, agentVaultUsageService } = build([
       admin("a@acme.com"),
       admin("invited@acme.com", OrgMembershipStatus.Invited),
       admin("off@acme.com", OrgMembershipStatus.Accepted, false)
@@ -59,6 +62,7 @@ describe("agentVaultFreeUsageNoticeService.notify", () => {
     expect(mail.recipients).toEqual(["a@acme.com"]);
     expect(mail.substitutions).toMatchObject({
       orgName: "Acme",
+      percent: 75,
       url: `https://app.infisical.com/organizations/${ROOT_ORG_ID}/billing?upgradeProduct=agent_vault`
     });
     expect(telemetryService.sendPostHogEvents).toHaveBeenCalledWith(
@@ -68,11 +72,13 @@ describe("agentVaultFreeUsageNoticeService.notify", () => {
         properties: { orgId: ROOT_ORG_ID, month: "2026-11", limit: 5_000, threshold: "warning" }
       })
     );
+    expect(agentVaultUsageService.completeNotice).toHaveBeenCalledWith(crossing(AgentVaultFreeUsageThreshold.Warning));
+    expect(agentVaultUsageService.releaseNotice).not.toHaveBeenCalled();
   });
 
-  test("should send both events but only the limit email when both thresholds pass at once", async () => {
+  test("should send both events and mark both sent, but send only the limit email, when both are due", async () => {
     // Setup
-    const { service, smtpService, telemetryService } = build();
+    const { service, smtpService, telemetryService, agentVaultUsageService } = build();
 
     // Action
     await service.notify([
@@ -86,6 +92,7 @@ describe("agentVaultFreeUsageNoticeService.notify", () => {
     expect(smtpService.sendMail).toHaveBeenCalledWith(
       expect.objectContaining({ template: SmtpTemplates.AgentVaultFreeUsageLimit })
     );
+    expect(agentVaultUsageService.completeNotice).toHaveBeenCalledTimes(2);
   });
 
   test("should do nothing without crossings", async () => {
@@ -100,13 +107,27 @@ describe("agentVaultFreeUsageNoticeService.notify", () => {
     expect(telemetryService.sendPostHogEvents).not.toHaveBeenCalled();
   });
 
-  test("should not throw when sending fails", async () => {
+  test("should release the notice and send no event when the email fails, so a later report retries", async () => {
     // Setup
-    const { service, smtpService, telemetryService } = build();
+    const { service, smtpService, telemetryService, agentVaultUsageService } = build();
     smtpService.sendMail.mockRejectedValue(new Error("smtp down"));
+
+    // Action
+    await expect(service.notify([crossing(AgentVaultFreeUsageThreshold.Limit)])).resolves.toBeUndefined();
+
+    // Assert
+    expect(agentVaultUsageService.releaseNotice).toHaveBeenCalledWith(crossing(AgentVaultFreeUsageThreshold.Limit));
+    expect(agentVaultUsageService.completeNotice).not.toHaveBeenCalled();
+    expect(telemetryService.sendPostHogEvents).not.toHaveBeenCalled();
+  });
+
+  test("should not throw when the event fails after the notice was marked sent", async () => {
+    // Setup
+    const { service, telemetryService, agentVaultUsageService } = build();
     telemetryService.sendPostHogEvents.mockRejectedValue(new Error("posthog down"));
 
     // Action, Assert
     await expect(service.notify([crossing(AgentVaultFreeUsageThreshold.Limit)])).resolves.toBeUndefined();
+    expect(agentVaultUsageService.completeNotice).toHaveBeenCalled();
   });
 });
