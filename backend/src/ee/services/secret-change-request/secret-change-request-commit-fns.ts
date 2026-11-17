@@ -10,6 +10,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -146,6 +147,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
         message: `Folder not found for the environment slug '${environment}' & secret path '${secretPath}'`,
         name: "GenSecretApproval"
       });
+    assertFolderNotReserved({ path: secretPath, ...folder });
     const folderId = folder.id;
 
     if (hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata")) {

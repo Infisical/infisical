@@ -42,6 +42,12 @@ This guide shows you how to create approval policies that require changes to sec
 
     A bypass can only be performed by the person who created the change request. Bypassers cannot bypass requests submitted by others.
 
+    #### Require approval for imported secrets
+
+    By default, a [secret import](/documentation/platform/secret-reference#secret-imports) into a folder the policy covers can read the source folder directly, so a change in the source skips approval.
+
+    Enable the **Require Approval for Imported Secrets** toggle to make every change that reaches the covered folders through an import from the same project go through a change request. When you save the policy, Infisical converts the existing imports in those folders and keeps their current values. For what changes and what still takes effect without approval, see [Require approval for imported secrets](/documentation/platform/secret-reference#require-approval-for-imported-secrets).
+
   </Step>
   <Step title="Submit a change request">
     When a user modifies secrets in an environment that has an active change policy, a change request is automatically created and sent to the assigned approvers.

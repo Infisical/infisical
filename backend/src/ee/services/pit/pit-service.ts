@@ -23,6 +23,7 @@ import {
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -391,6 +392,7 @@ export const pitServiceFactory = ({
     if (!folderWithPath) {
       throw new NotFoundError({ message: `Folder with ID ${folderId} not found` });
     }
+    assertFolderNotReserved(folderWithPath);
 
     const { permission: userPermission } = await permissionService.getProjectPermission({
       actor,
@@ -718,6 +720,7 @@ export const pitServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
           name: "CreateManySecret"
         });
+      assertFolderNotReserved(targetFolder);
       environmentName = targetFolder.environment.name;
       const commitChanges: TCommitResourceChangeDTO[] = [];
       const folders: { created: TSecretFolders[]; updated: TSecretFolders[]; deleted: TSecretFolders[] } = {

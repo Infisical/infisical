@@ -89,6 +89,7 @@ import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { previousSecretLocation } from "@app/services/secret-folder/secret-folder-events";
+import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
@@ -623,6 +624,7 @@ export const secretRotationV2ServiceFactory = ({
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
+    assertFolderNotReserved(folder);
 
     // validates permission to connect and app is valid for rotation type
     const connection = await appConnectionService.validateAppConnectionUsageById(
@@ -1133,6 +1135,7 @@ export const secretRotationV2ServiceFactory = ({
       throw new NotFoundError({
         message: `Destination folder with path "${destinationSecretPath}" in environment "${destinationEnvironment}" not found`
       });
+    assertFolderNotReserved(destinationFolder);
 
     if (destinationFolder.id === sourceFolderId)
       throw new BadRequestError({

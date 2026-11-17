@@ -13,12 +13,15 @@ import {
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretChangePolicyDALFactory, TSecretChangePolicyRow } from "./secret-change-policy-dal";
+import { SecretChangePolicyModifiedEventV1, TSecretChangePolicyModifiedEventData } from "./secret-change-policy-events";
 import {
   TCreateSapDTO,
   TSecretChangePolicy,
@@ -38,11 +41,18 @@ type TSecretChangePolicyFnsFactoryDep = {
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
+  eventEmitter: TEventEmitter;
 };
 
 type TUpdatePolicyInput = Pick<
   TUpdateSapDTO,
-  "name" | "approvals" | "secretPath" | "enforcementLevel" | "allowedSelfApprovals" | "bypassForMachineIdentities"
+  | "name"
+  | "approvals"
+  | "secretPath"
+  | "enforcementLevel"
+  | "allowedSelfApprovals"
+  | "enforceImportReplication"
+  | "bypassForMachineIdentities"
 > & {
   policy: Pick<TApprovalPolicies, "id">;
   requestedEnvs?: TSecretChangePolicyEnvironment[];
@@ -53,15 +63,26 @@ type TUpdatePolicyInput = Pick<
   groupBypassers: string[];
 };
 
+type TSecretChangePolicyConstraints = { allowedSelfApprovals?: boolean; enforceImportReplication?: boolean };
+
 const SecretChangePolicyConstraintsSchema = z
-  .object({
-    constraints: z.object({ allowedSelfApprovals: z.boolean().optional() }).passthrough().optional()
-  })
+  .object({ constraints: z.record(z.string(), z.unknown()).optional() })
   .passthrough();
 
-export const readSecretChangePolicyConstraints = (constraints: unknown): { allowedSelfApprovals?: boolean } => {
+const readStoredConstraints = (constraints: unknown) => {
   const parsed = SecretChangePolicyConstraintsSchema.safeParse(constraints);
   return parsed.success ? (parsed.data.constraints ?? {}) : {};
+};
+
+// Each field is read on its own, so one malformed key cannot silently reset the others to their defaults.
+export const readSecretChangePolicyConstraints = (constraints: unknown): TSecretChangePolicyConstraints => {
+  const raw = readStoredConstraints(constraints);
+  const result: TSecretChangePolicyConstraints = {};
+  if (typeof raw.allowedSelfApprovals === "boolean") result.allowedSelfApprovals = raw.allowedSelfApprovals;
+  if (typeof raw.enforceImportReplication === "boolean") {
+    result.enforceImportReplication = raw.enforceImportReplication;
+  }
+  return result;
 };
 
 // The global approval system stores what the legacy policy row carried inline: the path per environment row,
@@ -69,6 +90,7 @@ export const readSecretChangePolicyConstraints = (constraints: unknown): { allow
 export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChangePolicy => {
   const [firstStep] = row.steps;
   const [environment] = row.environments;
+  const constraints = readSecretChangePolicyConstraints(row.constraints);
   return {
     id: row.id,
     name: row.name,
@@ -80,7 +102,8 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
     deletedAt: null,
     secretPath: row.secretPath,
     approvals: firstStep?.requiredApprovals ?? 1,
-    allowedSelfApprovals: readSecretChangePolicyConstraints(row.constraints).allowedSelfApprovals ?? true,
+    allowedSelfApprovals: constraints.allowedSelfApprovals ?? true,
+    enforceImportReplication: constraints.enforceImportReplication ?? false,
     envId: environment.id,
     environment,
     environments: row.environments,
@@ -88,6 +111,48 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
     bypassers: row.bypassers,
     userApprovers: row.userApprovers
   };
+};
+
+export const emitSecretChangePolicyModified = ({
+  eventEmitter,
+  policy,
+  modificationType,
+  previous,
+  tx
+}: {
+  eventEmitter: TEventEmitter;
+  policy: Pick<TSecretChangePolicy, "id" | "projectId" | "environments" | "secretPath" | "enforceImportReplication">;
+  modificationType: EventModificationType;
+  previous?: { environmentIds: string[]; secretPath?: string | null; enforceImportReplication?: boolean };
+  tx: Knex;
+}) => {
+  const environmentIds = policy.environments.map((env) => env.id);
+  const secretPath = policy.secretPath ?? "";
+  const changed: TSecretChangePolicyModifiedEventData["previous"] = {};
+  if (previous) {
+    const previousEnvIds = new Set(previous.environmentIds);
+    if (previousEnvIds.size !== environmentIds.length || environmentIds.some((id) => !previousEnvIds.has(id))) {
+      changed.environmentIds = previous.environmentIds;
+    }
+    if ((previous.secretPath ?? "") !== secretPath) changed.secretPath = previous.secretPath ?? "";
+    if ((previous.enforceImportReplication ?? false) !== policy.enforceImportReplication) {
+      changed.enforceImportReplication = previous.enforceImportReplication ?? false;
+    }
+  }
+
+  return SecretChangePolicyModifiedEventV1.emit(
+    eventEmitter,
+    {
+      policyId: policy.id,
+      projectId: policy.projectId,
+      environmentIds,
+      secretPath,
+      enforceImportReplication: policy.enforceImportReplication,
+      modificationType,
+      ...(Object.keys(changed).length ? { previous: changed } : {})
+    },
+    tx
+  );
 };
 
 export const getPolicyScore = (policy: { secretPath?: string | null }) =>
@@ -164,7 +229,8 @@ export const secretChangePolicyFnsFactory = ({
   approvalPolicySecretEnvironmentDAL,
   secretChangePolicyDAL,
   projectDAL,
-  userDAL
+  userDAL,
+  eventEmitter
 }: TSecretChangePolicyFnsFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -343,6 +409,7 @@ export const secretChangePolicyFnsFactory = ({
     secretPath,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceImportReplication,
     bypassForMachineIdentities,
     requestedEnvs,
     approverCount,
@@ -372,11 +439,11 @@ export const secretChangePolicyFnsFactory = ({
       if (name !== undefined) updateDoc.name = name;
       if (enforcementLevel !== undefined) updateDoc.enforcementLevel = enforcementLevel;
       if (bypassForMachineIdentities !== undefined) updateDoc.bypassForMachineIdentities = bypassForMachineIdentities;
-      if (allowedSelfApprovals !== undefined) {
-        updateDoc.constraints = {
-          version: 1,
-          constraints: { ...readSecretChangePolicyConstraints(lockedPolicy.constraints), allowedSelfApprovals }
-        };
+      if (allowedSelfApprovals !== undefined || enforceImportReplication !== undefined) {
+        const constraints = readStoredConstraints(lockedPolicy.constraints);
+        if (allowedSelfApprovals !== undefined) constraints.allowedSelfApprovals = allowedSelfApprovals;
+        if (enforceImportReplication !== undefined) constraints.enforceImportReplication = enforceImportReplication;
+        updateDoc.constraints = { version: 1, constraints };
       }
       if (Object.keys(updateDoc).length) await approvalPolicyDAL.updateById(policy.id, updateDoc, tx);
 
@@ -417,7 +484,19 @@ export const secretChangePolicyFnsFactory = ({
       );
 
       const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
-      return toSecretChangePolicy(row);
+      const updatedPolicy = toSecretChangePolicy(row);
+      await emitSecretChangePolicyModified({
+        eventEmitter,
+        policy: updatedPolicy,
+        modificationType: EventModificationType.Updated,
+        previous: {
+          environmentIds: current.envs.map((env) => env.id),
+          secretPath: current.secretPath,
+          enforceImportReplication: readSecretChangePolicyConstraints(lockedPolicy.constraints).enforceImportReplication
+        },
+        tx
+      });
+      return updatedPolicy;
     });
 
   return {

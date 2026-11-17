@@ -8,9 +8,11 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { assertPolicyTypeSupportsDelegatedApproval } from "@app/services/delegated-approval/delegated-approval-fns";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
 
 import { RequestState } from "../secret-change-request/secret-change-request-types";
 import {
+  emitSecretChangePolicyModified,
   resolvePolicyForPath,
   secretChangePolicyFnsFactory,
   splitApprovers,
@@ -37,7 +39,8 @@ export const secretChangePolicyServiceFactory = ({
   projectDAL,
   userDAL,
   permissionService,
-  licenseService
+  licenseService,
+  eventEmitter
 }: TSecretChangePolicyServiceFactoryDep) => {
   const {
     findSecretChangePolicyById,
@@ -56,7 +59,8 @@ export const secretChangePolicyServiceFactory = ({
     approvalPolicySecretEnvironmentDAL,
     secretChangePolicyDAL,
     projectDAL,
-    userDAL
+    userDAL,
+    eventEmitter
   });
 
   // Scoped to the actor's org so an id from another tenant reads as not found rather than forbidden.
@@ -86,6 +90,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceImportReplication = false,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -162,7 +167,7 @@ export const secretChangePolicyServiceFactory = ({
           enforcementLevel,
           bypassForMachineIdentities,
           conditions: { version: 1, conditions: [] },
-          constraints: { version: 1, constraints: { allowedSelfApprovals } },
+          constraints: { version: 1, constraints: { allowedSelfApprovals, enforceImportReplication } },
           scopeType: null,
           scopeId: null
         },
@@ -200,7 +205,14 @@ export const secretChangePolicyServiceFactory = ({
       );
 
       const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId: doc.id }, tx);
-      return toSecretChangePolicy(row);
+      const policy = toSecretChangePolicy(row);
+      await emitSecretChangePolicyModified({
+        eventEmitter,
+        policy,
+        modificationType: EventModificationType.Created,
+        tx
+      });
+      return policy;
     });
   };
 
@@ -218,6 +230,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceImportReplication,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -278,6 +291,7 @@ export const secretChangePolicyServiceFactory = ({
       secretPath,
       enforcementLevel,
       allowedSelfApprovals,
+      enforceImportReplication,
       bypassForMachineIdentities,
       requestedEnvs,
       approverCount: approvers.length,
@@ -321,6 +335,12 @@ export const secretChangePolicyServiceFactory = ({
         tx
       );
       await approvalPolicyDAL.deleteById(policy.id, tx);
+      await emitSecretChangePolicyModified({
+        eventEmitter,
+        policy,
+        modificationType: EventModificationType.Deleted,
+        tx
+      });
     });
 
     return { ...policy, deletedAt: new Date() };

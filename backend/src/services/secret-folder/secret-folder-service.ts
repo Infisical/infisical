@@ -67,6 +67,11 @@ import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/s
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { emitFoldersModified, FolderModifiedEventV1 } from "./secret-folder-events";
 import {
+  assertFolderNameNotReserved,
+  assertFolderNotReserved,
+  rewriteReservedImportPaths
+} from "./secret-folder-reserved-fns";
+import {
   TCreateFolderDTO,
   TCreateManyFoldersDTO,
   TDeleteFolderDTO,
@@ -128,7 +133,10 @@ type TSecretFolderServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports" | "findImportByFolderIds">;
+  secretImportDAL: Pick<
+    TSecretImportDALFactory,
+    "findFolderIdsWithImports" | "findImportByFolderIds" | "find" | "updateById"
+  >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
@@ -189,6 +197,9 @@ export const secretFolderServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
     );
+
+    assertFolderNotReserved({ path: secretPath });
+    assertFolderNameNotReserved(name);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) {
@@ -535,7 +546,10 @@ export const secretFolderServiceFactory = ({
         entries.map(async ({ newFolder, parentFolder, env, folder }) => {
           const { environment, id, name, description } = newFolder;
 
+          assertFolderNotReserved(parentFolder);
+          assertFolderNotReserved(folder);
           if (name !== folder.name) {
+            assertFolderNameNotReserved(name);
             // ensure that new folder name is unique
             const folderToCheck = await folderDAL.findOne(
               {
@@ -615,6 +629,15 @@ export const secretFolderServiceFactory = ({
           }
 
           if (doc.name !== folder.name) {
+            await rewriteReservedImportPaths(
+              {
+                envId: env.id,
+                oldPath: path.posix.join(parentFolder.path, folder.name),
+                newPath: path.posix.join(parentFolder.path, doc.name)
+              },
+              secretImportDAL,
+              tx
+            );
             await FolderModifiedEventV1.emit(
               eventEmitter,
               {
@@ -678,6 +701,7 @@ export const secretFolderServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "UpdateFolder"
       });
+    assertFolderNotReserved(parentFolder);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) {
@@ -690,8 +714,10 @@ export const secretFolderServiceFactory = ({
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found`, name: "UpdateFolder" });
+    assertFolderNotReserved(folder);
     const rename = name !== folder.name;
     if (rename) {
+      assertFolderNameNotReserved(name);
       // ensure that new folder name is unique
       const folderToCheck = await folderDAL.findOne({
         name,
@@ -776,6 +802,11 @@ export const secretFolderServiceFactory = ({
       }
 
       if (newFolderWithPath.path !== oldFolderWithPath.path) {
+        await rewriteReservedImportPaths(
+          { envId: env.id, oldPath: oldFolderWithPath.path, newPath: newFolderWithPath.path },
+          secretImportDAL,
+          tx
+        );
         await FolderModifiedEventV1.emit(
           eventEmitter,
           {
@@ -935,6 +966,7 @@ export const secretFolderServiceFactory = ({
         throw new NotFoundError({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
+      assertFolderNotReserved(parentFolder);
 
       await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
 
@@ -1390,11 +1422,13 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    folders.forEach(({ environment, path: secretPath }) => {
+    folders.forEach(({ environment, path: secretPath, name }) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
       );
+      assertFolderNotReserved({ path: secretPath });
+      assertFolderNameNotReserved(name);
     });
 
     const foldersByEnv = folders.reduce(
@@ -1649,6 +1683,7 @@ export const secretFolderServiceFactory = ({
               message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
             });
           }
+          assertFolderNotReserved(parentFolder);
 
           let folderToDelete = await folderDAL
             .findOne(
@@ -1964,6 +1999,8 @@ export const secretFolderServiceFactory = ({
     const sourceFolderPath = sourceFolder.path;
     const folderName = sourceFolder.name;
     const sourceParentPath = path.dirname(sourceFolderPath);
+    assertFolderNotReserved(sourceFolder);
+    assertFolderNotReserved({ path: destinationPath });
 
     // check if the folder is in the same project
     if (projectId !== sourceFolder.projectId) {
@@ -2027,6 +2064,7 @@ export const secretFolderServiceFactory = ({
           message: `Destination folder with path '${destinationPath}' in environment '${destinationEnvironment}' not found`
         });
       }
+      assertFolderNotReserved(destinationParentFolder);
       const finalDestinationPath = path.join(destinationPath, folderName);
       const existingDestinationFolder = await folderDAL.findBySecretPath(
         projectId,

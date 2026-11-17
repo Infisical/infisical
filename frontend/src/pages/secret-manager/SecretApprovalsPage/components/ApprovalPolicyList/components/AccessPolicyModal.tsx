@@ -18,6 +18,14 @@ import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   AlertTitle,
   Badge,
   Button,
@@ -174,6 +182,8 @@ const Form = ({
   onRequestClose: () => void;
 }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [isEnforceImportReplicationConfirmOpen, setIsEnforceImportReplicationConfirmOpen] =
+    useState(false);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
     () =>
@@ -209,6 +219,7 @@ const Form = ({
             approvals: editValues.approvals,
             allowedSelfApprovals: editValues.allowedSelfApprovals,
             bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
+            enforceImportReplication: editValues.enforceImportReplication ?? false,
             maxTimePeriod: editValues.maxTimePeriod,
             requestExpirationTime: editValues.requestExpirationTime,
             sequenceApprovers: withFallbackApprovalStep(
@@ -314,6 +325,7 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
+    enforceImportReplication,
     ...data
   }: TApprovalPolicyFormSchema) => {
     if (!projectId) return;
@@ -323,6 +335,7 @@ const Form = ({
     if (data.policyType === PolicyType.ChangePolicy) {
       await createSecretApprovalPolicy({
         ...data,
+        enforceImportReplication,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
@@ -370,6 +383,7 @@ const Form = ({
     sequenceApprovers,
     isDelegated,
     delegatedApproval,
+    enforceImportReplication,
     ...data
   }: TApprovalPolicyFormSchema) => {
     if (!projectId || !projectSlug) return;
@@ -381,6 +395,7 @@ const Form = ({
       await updateSecretApprovalPolicy({
         id: editValues?.id,
         ...data,
+        enforceImportReplication,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         projectId: currentProject?.id || "",
@@ -1154,6 +1169,38 @@ const Form = ({
             {!isAccessPolicyType && (
               <Controller
                 control={control}
+                name="enforceImportReplication"
+                render={({ field: { value, onChange } }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>Require Approval for Imported Secrets</FieldTitle>
+                      <FieldDescription>
+                        Imports from this project into this path become replication imports, so
+                        changes to imported values need approval. Existing imports keep their
+                        current values. Imports from other projects are not affected, and turning
+                        this off does not revert converted imports.
+                      </FieldDescription>
+                    </FieldContent>
+                    <Toggle
+                      id="enforce-import-replication"
+                      aria-label="Require approval for imported secrets"
+                      variant="project"
+                      checked={value}
+                      onCheckedChange={(checked) => {
+                        if (checked && !editValues?.enforceImportReplication) {
+                          setIsEnforceImportReplicationConfirmOpen(true);
+                          return;
+                        }
+                        onChange(checked);
+                      }}
+                    />
+                  </Field>
+                )}
+              />
+            )}
+            {!isAccessPolicyType && (
+              <Controller
+                control={control}
                 name="bypassForMachineIdentities"
                 render={({ field: { value, onChange } }) => (
                   <Field orientation="horizontal">
@@ -1255,6 +1302,36 @@ const Form = ({
           </>
         )}
       </div>
+      <AlertDialog
+        open={isEnforceImportReplicationConfirmOpen}
+        onOpenChange={setIsEnforceImportReplicationConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Require approval for imported secrets?</AlertDialogTitle>
+            <AlertDialogDescription>
+              When you save this policy, existing imports from this project into the paths it covers
+              become replication imports. They keep their current values, but every later change to
+              those values goes through a change request. Turning this off later does not convert
+              them back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="project"
+              onClick={() =>
+                setValue("enforceImportReplication", true, {
+                  shouldDirty: true,
+                  shouldValidate: true
+                })
+              }
+            >
+              Require Approval
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <SheetFooter className="justify-end border-t">
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close

@@ -20,6 +20,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { assertFolderNotReserved } from "../secret-folder/secret-folder-reserved-fns";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
@@ -111,6 +112,7 @@ export const integrationServiceFactory = ({
         message: `Folder with path '${newSecretPath}' not found in environment with slug '${newEnvironment}'`
       });
     }
+    assertFolderNotReserved(folder);
 
     const updatedIntegration = await integrationDAL.updateById(id, {
       envId: folder.envId,

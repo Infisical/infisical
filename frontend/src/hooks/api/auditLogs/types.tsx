@@ -534,6 +534,8 @@ interface CreateSecretImportEvent {
     importFromSecretPath: string;
     importToEnvironment: string;
     importToSecretPath: string;
+    isReplication?: boolean;
+    enforcedBySecretChangePolicyId?: string;
   };
 }
 
@@ -544,6 +546,8 @@ interface UpdateSecretImportEvent {
     folderId: string;
     importToEnvironment: string;
     importToSecretPath: string;
+    isReplication?: boolean;
+    enforcedBySecretChangePolicyId?: string;
     orderBefore: {
       environment: string;
       secretPath: string;
@@ -564,6 +568,20 @@ interface DeleteSecretImportEvent {
     importFromSecretPath: string;
     importToEnvironment: string;
     importToSecretPath: string;
+  };
+}
+
+interface SecretImportReplicationEnforcedEvent {
+  type: EventType.SECRET_IMPORT_REPLICATION_ENFORCED;
+  metadata: {
+    secretChangePolicyId: string;
+    secretImportId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    outcome: "converted" | "failed";
+    reason?: string;
   };
 }
 
@@ -1117,6 +1135,7 @@ export type Event =
   | WebhookTriggeredEvent
   | GetSecretImportsEvent
   | CreateSecretImportEvent
+  | SecretImportReplicationEnforcedEvent
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent
   | UpdateUserRole

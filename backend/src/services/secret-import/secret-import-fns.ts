@@ -1,6 +1,10 @@
+import { posix as posixPath } from "node:path";
+
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -63,6 +67,32 @@ type TSecretImportSecretsV2 = {
     secretComment: string;
     secretMetadata?: ResourceMetadataWithEncryptionDTO;
   })[];
+};
+
+// Readers pair a replication import with the reserved row that points at its copy, so the row goes right after
+// the import. The caller holds the folder's import position lock.
+export const insertReservedImportRow = async (
+  secretImportDAL: Pick<TSecretImportDALFactory, "shiftPositionsAfter" | "create">,
+  {
+    folderId,
+    envId,
+    folderPath,
+    importId,
+    position
+  }: { folderId: string; envId: string; folderPath: string; importId: string; position: number },
+  tx: Knex
+) => {
+  await secretImportDAL.shiftPositionsAfter(folderId, position, 1, tx);
+  return secretImportDAL.create(
+    {
+      folderId,
+      position: position + 1,
+      isReserved: true,
+      importEnv: envId,
+      importPath: posixPath.join(folderPath, getReplicationFolderName(importId))
+    },
+    tx
+  );
 };
 
 export const LEVEL_BREAK = 10;

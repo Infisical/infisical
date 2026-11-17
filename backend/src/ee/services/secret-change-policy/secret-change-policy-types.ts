@@ -13,6 +13,7 @@ import {
 } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -34,6 +35,7 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  enforceImportReplication?: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
@@ -50,6 +52,7 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
+  enforceImportReplication?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
@@ -76,6 +79,7 @@ export type TSecretChangePolicyBypasser = { type: BypasserType; id: string; user
 
 export type TSecretChangePolicy = TSecretApprovalPolicies & {
   projectId: string;
+  enforceImportReplication: boolean;
   environments: TSecretChangePolicyEnvironment[];
   environment: TSecretChangePolicyEnvironment;
   approvers: TSecretChangePolicyApprover[];
@@ -124,4 +128,5 @@ export type TSecretChangePolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
+  eventEmitter: TEventEmitter;
 };

@@ -6,7 +6,7 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
+import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDeprecatedSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
@@ -54,12 +54,18 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
+          enforceImportReplication: z
+            .boolean()
+            .default(false)
+            .describe(
+              "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+            ),
           bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -116,12 +122,18 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        enforceImportReplication: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+          ),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -151,7 +163,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -180,7 +192,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: secretChangePolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -224,7 +236,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: secretChangePolicyPubSchema.extend({
             approvers: z
               .object({
                 id: z.string().nullable().optional(),
@@ -271,7 +283,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema
+          policy: secretChangePolicyPubSchema
             .extend({
               userApprovers: z.object({ userId: z.string().nullable().optional() }).array()
             })

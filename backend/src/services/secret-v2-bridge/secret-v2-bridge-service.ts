@@ -60,6 +60,7 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { assertFolderNotReserved } from "../secret-folder/secret-folder-reserved-fns";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
@@ -386,6 +387,7 @@ export const secretV2BridgeServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "CreateSecret"
       });
+    assertFolderNotReserved(folder);
     const folderId = folder.id;
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
@@ -614,6 +616,7 @@ export const secretV2BridgeServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "UpdateSecret"
       });
+    assertFolderNotReserved(folder);
     const folderId = folder.id;
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
@@ -950,6 +953,7 @@ export const secretV2BridgeServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "DeleteSecret"
       });
+    assertFolderNotReserved(folder);
     const folderId = folder.id;
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
@@ -2334,6 +2338,7 @@ export const secretV2BridgeServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "CreateManySecret"
       });
+    assertFolderNotReserved({ path: secretPath, ...folder });
     const folderId = folder.id;
 
     const secrets = await secretDAL.find(
@@ -2583,6 +2588,9 @@ export const secretV2BridgeServiceFactory = ({
       Object.keys(secretsToUpdateGroupByPath).map((el) => ({ envId: projectEnvironment.id, secretPath: el })),
       providedTx
     );
+    folders.forEach((folder) => {
+      if (folder) assertFolderNotReserved(folder);
+    });
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
@@ -3073,6 +3081,7 @@ export const secretV2BridgeServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
         name: "DeleteManySecret"
       });
+    assertFolderNotReserved(folder);
     const folderId = folder.id;
 
     const secretsToDelete = await secretDAL.find({

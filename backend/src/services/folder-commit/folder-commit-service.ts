@@ -33,7 +33,13 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
+import {
+  assertFolderNotReserved,
+  isReservedFolderName,
+  rewriteReservedImportPaths
+} from "../secret-folder/secret-folder-reserved-fns";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
@@ -171,6 +177,7 @@ type TFolderCommitServiceFactoryDep = {
   userDAL: TUserDALFactory;
   identityDAL: TIdentityDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById">;
   eventEmitter: TEventEmitter;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
@@ -238,6 +245,7 @@ export const folderCommitServiceFactory = ({
   userDAL,
   identityDAL,
   folderDAL,
+  secretImportDAL,
   folderVersionDAL,
   secretVersionV2BridgeDAL,
   projectDAL,
@@ -1365,7 +1373,7 @@ export const folderCommitServiceFactory = ({
 
         switch (change.changeType) {
           case "create":
-            if (folderVersion) {
+            if (folderVersion && !isReservedFolderName(folderVersion.name)) {
               const newFolder = {
                 id: change.id,
                 parentId: folderId,
@@ -1439,14 +1447,14 @@ export const folderCommitServiceFactory = ({
                 [change.versionId],
                 tx
               );
-              if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
-                const versionDetails = Object.values(latestVersionDetails)[0];
+              const versionDetails = latestVersionDetails ? Object.values(latestVersionDetails)[0] : undefined;
+              if (versionDetails && !isReservedFolderName(versionDetails.name)) {
+                const before = existingLocationById.get(change.id);
                 if (parentLocation) {
                   const location = {
                     environment: parentLocation.environmentSlug,
                     secretPath: posixPath.join(parentLocation.path, versionDetails.name)
                   };
-                  const before = existingLocationById.get(change.id);
                   folderEvents.push(
                     FolderModifiedEventV1.build({
                       folderId: change.id,
@@ -1473,6 +1481,17 @@ export const folderCommitServiceFactory = ({
                   },
                   tx
                 );
+                if (before && parentLocation) {
+                  await rewriteReservedImportPaths(
+                    {
+                      envId: versionDetails.envId,
+                      oldPath: before.path,
+                      newPath: posixPath.join(parentLocation.path, versionDetails.name)
+                    },
+                    secretImportDAL,
+                    tx
+                  );
+                }
 
                 const newFolderVersion = await folderVersionDAL.create(
                   {
@@ -1495,8 +1514,9 @@ export const folderCommitServiceFactory = ({
             break;
 
           case "delete": {
-            await folderDAL.deleteById(change.id, tx);
             const before = existingLocationById.get(change.id);
+            if (before && before.path.split("/").some((segment) => isReservedFolderName(segment))) break;
+            await folderDAL.deleteById(change.id, tx);
             if (before) {
               folderEvents.push(
                 FolderModifiedEventV1.build({
@@ -2258,7 +2278,11 @@ export const folderCommitServiceFactory = ({
       // Apply changes in hierarchical order
       const folderIds = Array.from(folderDiffs.keys());
       const folders = await folderDAL.findFoldersByRootAndIds({ rootId: targetCommit.folderId, folderIds }, tx);
-      const sortedFolders = sortFoldersByHierarchy(folders);
+      const sortedFolders = sortFoldersByHierarchy(
+        folders.filter(
+          (folder) => !folder.isReserved && !folder.path.split("/").some((segment) => isReservedFolderName(segment))
+        )
+      );
 
       for (const folder of sortedFolders) {
         const diff = folderDiffs.get(folder.id);
@@ -2351,6 +2375,7 @@ export const folderCommitServiceFactory = ({
     if (!folderWithPath) {
       throw new NotFoundError({ message: `Folder for commit ${commitId} not found` });
     }
+    assertFolderNotReserved(folderWithPath);
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

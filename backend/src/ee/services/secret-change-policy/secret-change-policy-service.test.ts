@@ -156,7 +156,8 @@ const buildService = ({
       )
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    licenseService
+    licenseService,
+    eventEmitter: { emit: vi.fn().mockResolvedValue(undefined) }
   };
 
   const service = secretChangePolicyServiceFactory(
@@ -372,7 +373,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
         enforcementLevel: EnforcementLevel.Hard,
         bypassForMachineIdentities: false,
         conditions: { version: 1, conditions: [] },
-        constraints: { version: 1, constraints: { allowedSelfApprovals: true } },
+        constraints: { version: 1, constraints: { allowedSelfApprovals: true, enforceImportReplication: false } },
         scopeType: null,
         scopeId: null
       },
@@ -433,6 +434,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
       enforcementLevel: EnforcementLevel.Hard,
       deletedAt: null,
       allowedSelfApprovals: true,
+      enforceImportReplication: false,
       bypassForMachineIdentities: false,
       projectId: PROJECT_ID,
       environments: [toPolicyEnv(ENV_DEV), toPolicyEnv(ENV_PROD)],
@@ -590,6 +592,25 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
       approvals: 1,
       environments: [toPolicyEnv(ENV_DEV)]
     });
+  });
+
+  test("turns on import replication without touching self-approval, and records the change", async () => {
+    const { service, deps } = buildService({
+      permission: allowEdit,
+      rows: [buildRow({ constraints: { version: 1, constraints: { allowedSelfApprovals: false } } })]
+    });
+
+    await update(service, { enforceImportReplication: true });
+
+    expect(deps.approvalPolicyDAL.updateById).toHaveBeenCalledWith(
+      "policy-1",
+      { constraints: { version: 1, constraints: { allowedSelfApprovals: false, enforceImportReplication: true } } },
+      TX
+    );
+    const [[events, tx]] = deps.eventEmitter.emit.mock.calls as [[{ type: string; data: unknown }[], unknown]];
+    expect(tx).toBe(TX);
+    expect(events.map((event) => event.type)).toEqual(["com.infisical.secrets.secret-change-policy.modified.v1"]);
+    expect(events[0].data).toMatchObject({ policyId: "policy-1", modificationType: "updated" });
   });
 
   test("rewrites the policy, step, approvers, environments and bypassers in one transaction", async () => {

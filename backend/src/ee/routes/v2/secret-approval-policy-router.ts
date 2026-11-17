@@ -7,7 +7,7 @@ import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
+import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -58,6 +58,12 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
+          enforceImportReplication: z
+            .boolean()
+            .default(false)
+            .describe(
+              "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+            ),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
@@ -66,7 +72,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -94,6 +100,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             secretPath: req.body.secretPath,
             approvals: req.body.approvals,
             enforcementLevel: req.body.enforcementLevel,
+            enforceImportReplication: approval.enforceImportReplication,
             ...req.auditLogInfo
           }
         })
@@ -141,6 +148,12 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        enforceImportReplication: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+          ),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
         delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -149,7 +162,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -169,7 +182,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { policyId: req.params.sapId }
+          properties: { policyId: req.params.sapId, enforceImportReplication: approval.enforceImportReplication }
         })
         .catch(() => {});
 
@@ -190,7 +203,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
@@ -234,7 +247,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: secretChangePolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -279,7 +292,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: secretChangePolicyPubSchema.extend({
             approvers: z
               .object({
                 id: z.string().nullable().optional(),
@@ -327,7 +340,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema
+          policy: secretChangePolicyPubSchema
             .extend({
               userApprovers: z.object({ userId: z.string().nullable().optional() }).array()
             })

@@ -22,6 +22,8 @@ export const PgSqlLock = {
   OrgInviteSeats: (orgId: string) => pgAdvisoryLockHashText(`org-invite-seats:${orgId}`),
   CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
+  // Taken first by every write that changes a folder's import positions, which are unique per folder.
+  SecretImportPositions: (folderId: string) => pgAdvisoryLockHashText(`secret-import-positions:${folderId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
