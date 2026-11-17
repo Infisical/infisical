@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { encodeCustomExtensionValue } from "../certificate-common/certificate-extension-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import {
@@ -147,6 +148,52 @@ describe("certificateApprovalService issuing an approved request", () => {
       expect.objectContaining({ value: "issuer-copy" })
     ]);
     expect(extensions.filter((extension) => extension.oid === SID_OID)).toHaveLength(1);
+  });
+
+  test("tells policy validation which extensions the issuer adds, so a required SID rule can pass", async () => {
+    await issue(
+      storedRequest({
+        enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+        csr: await buildCsrPem(),
+        commonName: AD_NAME,
+        altNames: [{ type: "dns_name", value: AD_NAME }],
+        customExtensions: [{ oid: SID_OID, critical: false, value: "sid", issuerAdded: true }]
+      })
+    );
+
+    expect(deps.certificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
+      "policy-id",
+      expect.anything(),
+      { issuerAddedOids: [SID_OID] }
+    );
+  });
+
+  test("refuses an approved request whose computer SID the policy now denies", async () => {
+    deps.certificatePolicyService.getPolicyById.mockResolvedValue({
+      id: "policy-id",
+      basicConstraints: null,
+      customExtensions: [{ oid: SID_OID, denied: ["S-1-5-21-*"] }]
+    });
+    deps.certificateRequestDAL.findById.mockResolvedValue(
+      storedRequest({
+        enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+        csr: await buildCsrPem(),
+        commonName: AD_NAME,
+        altNames: [{ type: "dns_name", value: AD_NAME }],
+        customExtensions: [
+          {
+            oid: SID_OID,
+            critical: false,
+            value: encodeCustomExtensionValue(SID_OID, "S-1-5-21-1111111111-2222222222-3333333333-1105"),
+            issuerAdded: true
+          }
+        ]
+      })
+    );
+    const service = certificateApprovalServiceFactory(deps as unknown as TIssueCertificateFromApprovedRequestDeps);
+
+    await expect(service.issueCertificate("request-id")).rejects.toThrow(/is denied by this policy/);
+    expect(deps.internalCaService.signCertFromCa).not.toHaveBeenCalled();
   });
 
   test("keeps the request's own subject for an approved request from another enrollment method", async () => {

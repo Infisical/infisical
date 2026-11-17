@@ -132,6 +132,7 @@ import {
   applyIssuerNameOverride,
   formatIssuerAltNames,
   applyProfileDefaults,
+  assertIssuerAddedExtensionsAllowedByPolicy,
   buildIssuanceSubject,
   mergeIssuerAddedExtensions,
   resolveEffectiveTtl
@@ -1499,7 +1500,7 @@ export const certificateV3ServiceFactory = ({
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions }
+      { profileCustomExtensions: profile.defaults?.customExtensions, issuerAddedOids: additionalExtensionOids }
     );
 
     if (!validationResult.isValid) {
@@ -1508,16 +1509,17 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const resolvedCustomExtensions = additionalExtensions
-      ? mergeIssuerAddedExtensions(
-          validationResult.resolvedCustomExtensions,
-          additionalExtensions.map((extension) => ({
-            oid: extension.oid,
-            critical: extension.critical,
-            value: extension.value.toString("base64"),
-            issuerAdded: true
-          }))
-        )
+    const issuerAddedExtensions = additionalExtensions?.map((extension) => ({
+      oid: extension.oid,
+      critical: extension.critical,
+      value: extension.value.toString("base64"),
+      issuerAdded: true
+    }));
+    if (issuerAddedExtensions) {
+      assertIssuerAddedExtensionsAllowedByPolicy(issuerAddedExtensions, policy.customExtensions);
+    }
+    const resolvedCustomExtensions = issuerAddedExtensions
+      ? mergeIssuerAddedExtensions(validationResult.resolvedCustomExtensions, issuerAddedExtensions)
       : validationResult.resolvedCustomExtensions;
 
     validateAlgorithmCompatibility(ca, policy);

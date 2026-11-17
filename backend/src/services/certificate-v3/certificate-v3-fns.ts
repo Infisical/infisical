@@ -8,10 +8,16 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   mapLegacyExtendedKeyUsageToStandard,
-  mapLegacyKeyUsageToStandard
+  mapLegacyKeyUsageToStandard,
+  CUSTOM_EXTENSION_PRESET_OIDS
 } from "../certificate-common/certificate-constants";
 import { buildSubjectOverrideForCsr } from "../certificate-common/certificate-csr-utils";
-import { TResolvedCustomExtension } from "../certificate-common/certificate-extension-fns";
+import {
+  describeCustomExtensionValue,
+  findCustomExtensionRuleValueError,
+  TCustomExtensionRule,
+  TResolvedCustomExtension
+} from "../certificate-common/certificate-extension-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
 import { TIssuerNameOverride } from "./certificate-v3-types";
@@ -157,6 +163,27 @@ export const applyIssuerNameOverride = (
         subjectAlternativeNames: issuerNameOverride.altNames
       }
     : csrRequest;
+
+const POLICY_EXEMPT_ISSUER_ADDED_OIDS: string[] = [CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION];
+
+export const assertIssuerAddedExtensionsAllowedByPolicy = (
+  issuerAddedExtensions: TResolvedCustomExtension[],
+  rules: TCustomExtensionRule[] | null | undefined
+) => {
+  const errors = issuerAddedExtensions.flatMap((extension) => {
+    const rule = rules?.find((candidate) => candidate.oid === extension.oid);
+    if (!rule || POLICY_EXEMPT_ISSUER_ADDED_OIDS.includes(extension.oid)) return [];
+    const displayValue = describeCustomExtensionValue(extension.oid, extension.value);
+    if (displayValue === null) {
+      return [`Custom extension '${extension.oid}' added by the issuer cannot be checked against this policy.`];
+    }
+    const error = findCustomExtensionRuleValueError(extension.oid, displayValue, rule);
+    return error ? [error] : [];
+  });
+  if (errors.length) {
+    throw new BadRequestError({ message: `Certificate request validation failed: ${errors.join(", ")}` });
+  }
+};
 
 export const mergeIssuerAddedExtensions = (
   resolvedExtensions: TResolvedCustomExtension[] | undefined,

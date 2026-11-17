@@ -96,6 +96,7 @@ import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import {
   applyIssuerNameOverride,
   applyProfileDefaults,
+  assertIssuerAddedExtensionsAllowedByPolicy,
   buildIssuanceSubject,
   formatIssuerAltNames,
   mergeIssuerAddedExtensions
@@ -626,9 +627,13 @@ export const certificateApprovalServiceFactory = (
       isApprovedRequest: true
     });
 
+    const issuerAddedExtensions = readStoredCustomExtensions(certRequest.customExtensions).filter(
+      (extension) => extension.issuerAdded
+    );
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest
+      mappedReconstructedRequest,
+      { issuerAddedOids: issuerAddedExtensions.map((extension) => extension.oid) }
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -636,9 +641,7 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
-    const issuerAddedExtensions = readStoredCustomExtensions(certRequest.customExtensions).filter(
-      (extension) => extension.issuerAdded
-    );
+    assertIssuerAddedExtensionsAllowedByPolicy(issuerAddedExtensions, certPolicy.customExtensions);
     const subjectOverride = buildIssuanceSubject(csr || "", reconstructedRequest, issuerNameOverride);
 
     // This path is already intent-first: the certificate request exists (it was created when the
