@@ -30,13 +30,15 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
-  getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
+  SignerStatus,
   SigningActorType,
-  signingAlgorithmLabels,
-  signingOperationStatusLabels,
   TSigner,
   TSigningOperation,
+  getSignerRevocationNote,
+  getSigningOperationStatusBadgeVariant,
+  signingAlgorithmLabels,
+  signingOperationStatusLabels,
   useListSigningOperations
 } from "@app/hooks/api/signers";
 
@@ -109,11 +111,14 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
         <CardHeader>
           <CardTitle>Signing History</CardTitle>
           <CardDescription>Trail of signing operations on this signer.</CardDescription>
-          <CardAction>
-            <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
-              Set up signing
-            </Button>
-          </CardAction>
+          {signer.status !== SignerStatus.Revoked &&
+            signer.status !== SignerStatus.RevocationPending && (
+              <CardAction>
+                <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
+                  Set up signing
+                </Button>
+              </CardAction>
+            )}
         </CardHeader>
         <CardContent>
           {(isLoading || operations.length > 0) && (
@@ -193,7 +198,8 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No signing activity yet</EmptyTitle>
                 <EmptyDescription>
-                  Set up a signing tool on your machine to start signing with this Signer.
+                  {getSignerRevocationNote(signer, { isDetailed: true }) ??
+                    "Set up a signing tool on your machine to start signing with this Signer."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

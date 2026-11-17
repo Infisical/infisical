@@ -55,11 +55,8 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -71,11 +68,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
-const countAgentVaultSeats = (orgId: string) => {
-  const { organizationsProjectsService } = new OrganizationsProjectsModule({ db: testDb });
-  const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
-  return usageCounter(usageCounters, Meter.AgentVaultIdentities).count(orgId);
-};
+// These specs exercise resolve itself; the Agent Vault free limit has its own unit tests.
+const allowAgentVault = { assertCanBroker: async () => {} };
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -3037,6 +3031,9 @@ describe("Agent Vault V1 Router", async () => {
         // By id, a global variable reads to a member like one that does not exist, as another member's personal one does.
         expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(404);
         expect((await member.asIdentity("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(404);
+        const edited = await member.asIdentity("PATCH", `${variablesUrl}/${variable.id}`, { value: "smuggled" });
+        expect(edited.statusCode).toBe(404);
+        expect(edited.json().message).toBe(`Variable with ID '${variable.id}' not found`);
         expect(
           (await member.asIdentity("POST", variablesUrl, { scope: "global", key: "MINE", value: "x" })).statusCode
         ).toBe(403);
@@ -5583,6 +5580,31 @@ describe("Agent Vault V1 Router", async () => {
       const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
     });
+
+    test("a member can't add, re-role or remove members, or list who could be added", async () => {
+      const member = await createMemberIdentity(`av-member-writes-${Date.now()}`);
+      const bystander = await createOrgIdentity(`av-member-writes-bystander-${Date.now()}`);
+      try {
+        const refused = await Promise.all([
+          member.as("GET", `${membersUrl}/available`),
+          member.as("POST", membersUrl, { machineIdentityIds: [bystander.id], role: "member" }),
+          member.as("PATCH", membersUrl, { machineIdentityIds: [member.id], role: "admin" }),
+          member.as("DELETE", membersUrl, { userIds: [seedData1.id] })
+        ]);
+        expect(refused.map((res) => res.statusCode)).toEqual([403, 403, 403, 403]);
+        refused.forEach((res) => {
+          expect(res.json().error).toBe("PermissionDenied");
+          expect(res.json().message).toMatch(/^You are not allowed to (read|create|edit|delete) on (member|groups|identity)$/);
+        });
+
+        const listed = await listMembers("actorType=machineIdentity");
+        expect(listed.members.find((row) => row.id === bystander.id)).toBeUndefined();
+        expect(listed.members.find((row) => row.id === member.id)?.role).toBe("member");
+      } finally {
+        await member.cleanup();
+        await deleteOrgIdentity(bystander.id);
+      }
+    });
   });
 
   describe("cross-org ids and foreign resources", async () => {
@@ -5701,6 +5723,63 @@ describe("Agent Vault V1 Router", async () => {
         expect(somebodyElses.json().message).toBe(`Session with ID '${session.id}' not found`);
         expect(neverExisted.json().message).toBe(`Session with ID '${missingId}' not found`);
         expect(somebodyElses.json().error).toBe(neverExisted.json().error);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("only an admin lists everyone's sessions or revokes one that belongs to someone else", async () => {
+      const bundle = await createAccessBundle(`session-others-${Date.now()}`);
+      const adminMint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(adminMint.statusCode).toBe(200);
+      const adminSession = adminMint.json().session as { id: string };
+
+      const member = await createMemberIdentity(`session-others-member-${Date.now()}`);
+      try {
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
+        const memberMint = await member.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h"
+        });
+        expect(memberMint.statusCode).toBe(200);
+        const memberSession = memberMint.json().session as { id: string };
+
+        const everyone = await member.as("GET", "/api/v1/agent-vault/sessions?scope=all");
+        expect(everyone.statusCode).toBe(403);
+        expect(everyone.json().message).toBe("You are not allowed to read-any on agent-vault-sessions");
+        const own = await member.as("GET", "/api/v1/agent-vault/sessions?limit=100");
+        expect(own.statusCode).toBe(200);
+        expect((own.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([memberSession.id]);
+
+        const listedByAdmin = await inject("GET", "/api/v1/agent-vault/sessions?scope=all&limit=2");
+        expect(listedByAdmin.statusCode).toBe(200);
+        expect((listedByAdmin.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([
+          memberSession.id,
+          adminSession.id
+        ]);
+
+        const revokeTheirs = await member.as("POST", `/api/v1/agent-vault/sessions/${adminSession.id}/revoke`);
+        expect(revokeTheirs.statusCode).toBe(404);
+        expect(revokeTheirs.json().message).toBe(`Session with ID '${adminSession.id}' not found`);
+        const stillActive = await inject("GET", `/api/v1/agent-vault/sessions/${adminSession.id}`);
+        expect(stillActive.json().session.status).toBe("active");
+
+        const readByAdmin = await inject("GET", `/api/v1/agent-vault/sessions/${memberSession.id}`);
+        expect(readByAdmin.statusCode).toBe(200);
+        const relabelledByAdmin = await inject("PATCH", `/api/v1/agent-vault/sessions/${memberSession.id}`, {
+          label: "checked by admin"
+        });
+        expect(relabelledByAdmin.statusCode).toBe(200);
+        expect(relabelledByAdmin.json().session).toMatchObject({ id: memberSession.id, label: "checked by admin" });
+        const revokedByAdmin = await inject("POST", `/api/v1/agent-vault/sessions/${memberSession.id}/revoke`);
+        expect(revokedByAdmin.statusCode).toBe(200);
+        expect(revokedByAdmin.json().session).toMatchObject({ id: memberSession.id, status: "revoked" });
       } finally {
         await member.cleanup();
       }
@@ -7814,7 +7893,7 @@ describe("Agent Vault V1 Router", async () => {
         const refused = await member.as("POST", sessionsUrl, { ttl: "1h", services: [openai] });
         expect(refused.statusCode).toBe(403);
         expect(refused.json().message).toBe(
-          "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
+          "You are not allowed to create-with-inline-services on agent-vault-sessions. Name an access bundle instead."
         );
       } finally {
         await member.cleanup();
@@ -7912,12 +7991,26 @@ describe("Agent Vault V1 Router", async () => {
         const resolve = await createResolver(`inline-demote-${Date.now()}`);
         const serviceNames = async () =>
           ((await resolve(token)).json().services as TResolvedService[]).map((entry) => entry.name);
+        // The services list the agent reads follows the same rule as resolve.
+        const listedNames = async () =>
+          (
+            (
+              await testServer.inject({
+                method: "GET",
+                url: "/api/v1/agent-vault/session/services",
+                headers: { authorization: `Bearer ${token}` }
+              })
+            ).json().services as { name: string }[]
+          ).map((entry) => entry.name);
         expect(await serviceNames()).toEqual(["github", "openai"]);
+        expect(await listedNames()).toEqual(["github", "openai"]);
 
         await setRole("member");
         expect(await serviceNames()).toEqual(["github"]);
+        expect(await listedNames()).toEqual(["github"]);
         await setRole("admin");
         expect(await serviceNames()).toEqual(["github", "openai"]);
+        expect(await listedNames()).toEqual(["github", "openai"]);
       } finally {
         await owner.cleanup();
       }
@@ -8092,6 +8185,7 @@ describe("Agent Vault V1 Router", async () => {
     ) =>
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8230,6 +8324,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8491,6 +8586,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -9545,6 +9641,31 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxy.pollInterval).toBe(60);
     });
 
+    test("a member's proxy list leaves out the settings an admin's shows", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: `member-view-${Date.now()}` });
+      expect(created.statusCode).toBe(200);
+      const proxyId = created.json().proxy.id as string;
+
+      const member = await createMemberIdentity(`proxy-member-view-${Date.now()}`);
+      try {
+        const asMember = await member.as("GET", "/api/v1/agent-vault/proxies");
+        expect(asMember.statusCode).toBe(200);
+        const seen = (asMember.json().proxies as Record<string, unknown>[]).find((row) => row.id === proxyId);
+        expect(seen).toMatchObject({ id: proxyId });
+        expect(seen).toHaveProperty("isHealthy");
+        ["trafficPolicy", "allowedHosts", "pollInterval", "createdAt"].forEach((field) =>
+          expect(seen).not.toHaveProperty(field)
+        );
+
+        const asAdmin = await inject("GET", "/api/v1/agent-vault/proxies");
+        const full = (asAdmin.json().proxies as Record<string, unknown>[]).find((row) => row.id === proxyId);
+        expect(full).toMatchObject({ id: proxyId, trafficPolicy: "any-host", allowedHosts: null, pollInterval: 60 });
+        expect(full).toHaveProperty("createdAt");
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("a proxy's description is stored, searchable, and can be cleared", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", {
         name: "described-proxy",
@@ -10015,6 +10136,48 @@ describe("Agent Vault V1 Router", async () => {
         body: { method: "token", token: "avp_x" }
       });
       expect(login.statusCode).toBe(404);
+    });
+  });
+
+  describe("billing", async () => {
+    const reportUsage = (accessToken: string, body: Record<string, unknown>) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/usage",
+        headers: { authorization: `Bearer ${accessToken}` },
+        body
+      });
+
+    const usageReport = () => ({ reportId: crypto.randomUUID(), endedAt: new Date().toISOString(), brokered: 3 });
+
+    test("a proxy reports its usage with its proxy token and gets a 204", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-report" });
+      expect(created.statusCode).toBe(200);
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      const res = await reportUsage(proxyToken, usageReport());
+      expect(res.statusCode).toBe(204);
+      expect(res.payload).toBe("");
+    });
+
+    test("a usage report with a bad body is a 422", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-bad-body" });
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      expect((await reportUsage(proxyToken, { ...usageReport(), reportId: "not-a-uuid" })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: -1 })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: 1.5 })).statusCode).toBe(422);
+    });
+
+    test("a user's token can't report usage", async () => {
+      const res = await reportUsage(jwtAuthToken, usageReport());
+      expect(res.statusCode).toBe(403);
+    });
+
+    test("the access route wraps the org's access in `access`", async () => {
+      const res = await injectRaw("GET", "/api/v1/agent-vault/settings/access");
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ access: { state: "self-hosted", allowed: true, freeUsage: null, warn: false } });
     });
   });
 
@@ -10540,6 +10703,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10647,6 +10811,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10885,7 +11050,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a revoke reaches only this bundle's grant for this actor, and grants are not seats", async () => {
+    test("a revoke reaches only this bundle's grant for this actor", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle("scoped-member-ids");
       const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
@@ -10893,8 +11058,6 @@ describe("Agent Vault V1 Router", async () => {
         (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
           .statusCode
       ).toBe(200);
-
-      const seatsBefore = await countAgentVaultSeats(seedData1.organization.id);
 
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
@@ -10933,10 +11096,6 @@ describe("Agent Vault V1 Router", async () => {
         members: [],
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
-
-      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
-        seatsBefore
-      );
 
       await deleteOrgIdentity(identity.id);
     });

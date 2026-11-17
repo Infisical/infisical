@@ -200,7 +200,7 @@ export const agentVaultSessionServiceFactory = ({
     const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
 
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionSub.AgentVaultSessions
@@ -211,10 +211,16 @@ export const agentVaultSessionServiceFactory = ({
         message: "Name the access bundle this session should carry, or send the services it should reach."
       });
     }
-    // An inline service names its own hosts and credentials, which is an admin's call, as it is for a bundle's services.
-    if (services.length && !isAdmin) {
+    // An inline service names its own hosts and credentials, the same call as writing a bundle's services.
+    if (
+      services.length &&
+      permission.cannot(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ) {
       throw new ForbiddenRequestError({
-        message: "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
+        message: `You are not allowed to ${ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices} on ${ProjectPermissionSub.AgentVaultSessions}. Name an access bundle instead.`
       });
     }
 
@@ -416,15 +422,17 @@ export const agentVaultSessionServiceFactory = ({
     limit,
     offset
   }: TListSessionsDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    // The CASL read action alone would let any member list everyone's sessions.
-    if (scope === AgentVaultSessionScope.All && !isAdmin) {
-      throw new ForbiddenRequestError({ message: "Only an Agent Vault administrator can list everyone's sessions" });
+    if (scope === AgentVaultSessionScope.All) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultSessionActions.ReadAny,
+        ProjectPermissionSub.AgentVaultSessions
+      );
     }
 
     const actor = scope === AgentVaultSessionScope.All ? undefined : requireSessionActor(ctx);
@@ -446,14 +454,14 @@ export const agentVaultSessionServiceFactory = ({
     projectId,
     ctx,
     sessionId,
-    isAdmin
-  }: TGetSessionByIdDTO & { isAdmin: boolean }) => {
+    reachesAnySession
+  }: TGetSessionByIdDTO & { reachesAnySession: boolean }) => {
     const {
       sessions: [session]
     } = await agentVaultSessionDAL.findForList({
       projectId,
       sessionId,
-      actor: isAdmin ? undefined : requireSessionActor(ctx),
+      actor: reachesAnySession ? undefined : requireSessionActor(ctx),
       limit: 1,
       offset: 0
     });
@@ -462,26 +470,34 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
     );
+    const reachesAnySession = permission.can(
+      ProjectPermissionAgentVaultSessionActions.ReadAny,
+      ProjectPermissionSub.AgentVaultSessions
+    );
 
     const [session] = await withServicesAndMetadata([
-      toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin }))
+      toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))
     ]);
     return { session };
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Revoke,
       ProjectPermissionSub.AgentVaultSessions
     );
+    const reachesAnySession = permission.can(
+      ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      ProjectPermissionSub.AgentVaultSessions
+    );
 
-    const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
+    const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
 
     const metadata = (await findSessionMetadata([session.id])).get(session.id) ?? {};
 
@@ -527,13 +543,17 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const updateSession = async ({ projectId, ctx, sessionId, label, metadata }: TUpdateSessionDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionSub.AgentVaultSessions
     );
+    const reachesAnySession = permission.can(
+      ProjectPermissionAgentVaultSessionActions.EditAny,
+      ProjectPermissionSub.AgentVaultSessions
+    );
 
-    const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
+    const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
     // The visible session can come from a replica that lags, so the owner check, the previous label and the previous
     // metadata come from the write itself, which holds the session's row lock until the metadata is written too.
     type TEditResult = {

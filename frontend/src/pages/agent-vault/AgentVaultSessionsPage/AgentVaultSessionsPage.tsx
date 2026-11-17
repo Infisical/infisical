@@ -66,7 +66,18 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useOrganization, useProjectPermission, useSubscription, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useSubscription,
+  useProject,
+  useUser
+} from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -86,7 +97,6 @@ import {
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
@@ -130,8 +140,20 @@ const accessItemHoverCard = (item: TSessionAccessItem) =>
 export const AgentVaultSessionsPage = () => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
+  const canReadAnySession = permission.can(
+    ProjectPermissionAgentVaultSessionActions.ReadAny,
+    ProjectPermissionSub.AgentVaultSessions
+  );
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canCreateBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Create,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -176,7 +198,7 @@ export const AgentVaultSessionsPage = () => {
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions(projectId, {
-    scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
+    scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
     metadata: metadataFilter,
@@ -184,8 +206,14 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
-  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
+    projectId,
+    canReadSessionLogSettings
+  );
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(
+    projectId,
+    canReadSessionLogSettings
+  );
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const sessionLogSettings = sessionLogState?.settings ?? null;
@@ -221,8 +249,8 @@ export const AgentVaultSessionsPage = () => {
     emptyTitle = "No sessions match these filters";
     emptyDescription = "Try a different search term, status or metadata.";
   } else if (!hasReachableBundles) {
-    emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
-    emptyDescription = isAdmin
+    emptyTitle = canCreateBundles ? "No sessions yet" : "No access bundles granted to you";
+    emptyDescription = canCreateBundles
       ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   } else {
@@ -237,7 +265,7 @@ export const AgentVaultSessionsPage = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !hasReachableBundles && isAdmin && (
+        {!isFiltered && !hasReachableBundles && canCreateBundles && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
@@ -325,7 +353,9 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-        {isAdmin && !sessionLogHealth?.connectionError && <SessionLogReadAccessAlert />}
+        {canReadSessionLogSettings && !sessionLogHealth?.connectionError && (
+          <SessionLogReadAccessAlert />
+        )}
 
         <Card>
           <CardHeader>
@@ -434,7 +464,7 @@ export const AgentVaultSessionsPage = () => {
                 </Button>
               </PopoverContent>
             </Popover>
-            {isAdmin && (
+            {canReadAnySession && (
               <Tabs
                 value={scope}
                 onValueChange={(value) => {
@@ -592,20 +622,29 @@ export const AgentVaultSessionsPage = () => {
                                 View Session Logs
                               </DropdownMenuItem>
                               {/* The API refuses edits once the session's owner, or the user it acts on behalf of, is deleted */}
-                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
-                                <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
-                                  <PencilIcon />
-                                  Edit Session
+                              {session.actor.id !== null &&
+                                session.onBehalfOf?.id !== null &&
+                                canActOnAgentVaultSession(permission, user.id, session, "edit") && (
+                                  <DropdownMenuItem onClick={() => setSessionToEdit(session)}>
+                                    <PencilIcon />
+                                    Edit Session
+                                  </DropdownMenuItem>
+                                )}
+                              {canActOnAgentVaultSession(
+                                permission,
+                                user.id,
+                                session,
+                                "revoke"
+                              ) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={session.status !== AgentVaultSessionStatus.Active}
+                                  onClick={() => setSessionToRevoke(session)}
+                                >
+                                  <BanIcon />
+                                  Revoke Session
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem
-                                variant="danger"
-                                isDisabled={session.status !== AgentVaultSessionStatus.Active}
-                                onClick={() => setSessionToRevoke(session)}
-                              >
-                                <BanIcon />
-                                Revoke Session
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
