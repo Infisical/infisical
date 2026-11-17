@@ -30,6 +30,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
   SheetFooter,
@@ -47,6 +48,7 @@ import { isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
+import { useCreateProjectRole } from "@app/pages/project/RoleDetailsBySlugPage/components/useCreateProjectRole";
 
 import {
   getIdentityRoleDurationDisplay,
@@ -117,6 +119,8 @@ const DurationEditor = ({
   );
 };
 
+const CREATE_ROLE_OPTION = "__create-custom-role__";
+
 type RoleAssignmentRowProps = {
   control: Control<TIdentityRoleForm>;
   setValue: UseFormSetValue<TIdentityRoleForm>;
@@ -147,16 +151,28 @@ export const IdentityRoleAssignmentRow = ({
   const temporaryAccess = useWatch({ control, name: `roles.${index}.temporaryAccess` });
   const isTemporary = Boolean(temporaryAccess?.isTemporary);
   const { variant, text, tooltip, isExpired } = getIdentityRoleDurationDisplay(temporaryAccess);
+  const { canCreateRole, openCreateRole, createRoleDialogs } = useCreateProjectRole();
 
   return (
     <div className="flex flex-wrap items-end gap-2">
+      {createRoleDialogs}
       <Controller
         control={control}
         name={`roles.${index}.slug`}
         render={({ field }) => (
           <Field className="min-w-48 flex-1">
             {showLabels && <FieldLabel htmlFor={selectId}>Role</FieldLabel>}
-            <Select value={field.value} onValueChange={field.onChange} disabled={isEditDisabled}>
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                if (value === CREATE_ROLE_OPTION) {
+                  openCreateRole();
+                  return;
+                }
+                field.onChange(value);
+              }}
+              disabled={isEditDisabled}
+            >
               <SelectTrigger id={selectId} className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -176,6 +192,17 @@ export const IdentityRoleAssignmentRow = ({
                     </SelectItem>
                   );
                 })}
+                {canCreateRole && (
+                  <>
+                    <SelectSeparator />
+                    <SelectItem value={CREATE_ROLE_OPTION}>
+                      <span className="flex items-center gap-2">
+                        <PlusIcon className="size-4" />
+                        Create Custom Role
+                      </span>
+                    </SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </Field>

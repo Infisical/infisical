@@ -22,7 +22,7 @@ export const ApplyToSubfoldersToggle = ({ checked, onCheckedChange, isDisabled }
       <FieldContent>
         <FieldTitle>
           <FolderTreeIcon />
-          Apply to Subfolders
+          {isDisabled ? "Apply to Subfolders" : "Apply to Environment"}
         </FieldTitle>
         <FieldDescription>
           {isDisabled
