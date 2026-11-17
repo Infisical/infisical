@@ -166,6 +166,34 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		require.Zero(t, openRequestCount(t, proj))
 	})
 
+	t.Run("should refuse a mixed batch from a user outside the project without revealing the policy", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		outsider := tn.NewUser(t, harness.WithName("outsider"))
+		secretmanager.CreateFolder(t, proj, "dev", "/guarded")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/guarded"
+		})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretPath: new("/")}
+		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "GUARDED_KEY", new("new")
+		body.Secrets[0].SecretPath = new("/guarded")
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "OPEN_KEY", new("new")
+
+		// Action
+		res, err := outsider.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "batch returned %s", apierr.Body(res.Body))
+		require.NotContains(t, string(res.Body), "change policy")
+		require.NotContains(t, string(res.Body), "/guarded")
+	})
+
 	t.Run("should govern a path with its exact policy over a glob that also matches", func(t *testing.T) {
 		t.Parallel()
 

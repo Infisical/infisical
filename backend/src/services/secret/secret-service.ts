@@ -2343,6 +2343,15 @@ export const secretServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
+
       // Entries can name their own folder, so the policy has to be resolved for every folder the batch writes to.
       const targetSecretPaths = [
         ...new Set(inputSecrets.map((el) => canonicalizeSecretPath(el.secretPath || secretPath)))
@@ -2375,6 +2384,10 @@ export const secretServiceFactory = ({
 
       if (governedSecretPath && shouldApplyPolicy(policy, actor)) {
         if (targetSecretPaths.length > 1) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.Edit,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath: governedSecretPath })
+          );
           throw new BadRequestError({
             message: `Secrets in '${governedSecretPath}' need approval under change policy '${policy.name}', so they can't be updated in the same request as secrets in other folders. Send the secrets in '${governedSecretPath}' in a request of their own.`
           });
