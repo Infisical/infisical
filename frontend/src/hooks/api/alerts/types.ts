@@ -214,19 +214,6 @@ export const ADD_MENU_CHANNEL_TYPES = Object.values(AlertChannelType).filter(
 
 export type TAlertSlackChannel = { id: string; name: string };
 
-export type TAlertSlackIntegration = {
-  id: string;
-  slug: string;
-  description: string | null;
-  teamName: string;
-};
-
-export type TAlertSlackScope = {
-  resourceType: string;
-  resourceId?: string | null;
-  projectId?: string | null;
-};
-
 export type TAlertChannelRecipient = {
   principalType: AlertPrincipalType;
   principalId: string;

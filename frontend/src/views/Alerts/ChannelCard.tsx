@@ -209,12 +209,7 @@ export const ChannelCard = ({
 
       {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch index={index} />}
 
-      {channelType === AlertChannelType.SlackApp && (
-        <SlackAppChannelFields
-          index={index}
-          scope={{ resourceType, resourceId, projectId: projectId ?? null }}
-        />
-      )}
+      {channelType === AlertChannelType.SlackApp && <SlackAppChannelFields index={index} />}
 
       {channelType === AlertChannelType.Slack && (
         <Field>

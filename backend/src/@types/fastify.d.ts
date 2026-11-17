@@ -91,7 +91,6 @@ import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-pri
 import { TAiServiceFactory } from "@app/services/ai/ai-service";
 import { TAlertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
-import { TAlertSlackAppServiceFactory } from "@app/services/alert/alert-slack-app-service";
 import { TAnnouncementServiceFactory } from "@app/services/announcement/announcement-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
@@ -486,7 +485,6 @@ declare module "fastify" {
     notification: TNotificationServiceFactory;
     alert: TAlertServiceFactory;
     alertChannelTest: TAlertChannelTestServiceFactory;
-    alertSlackApp: TAlertSlackAppServiceFactory;
     announcement: TAnnouncementServiceFactory;
     offlineUsageReport: TOfflineUsageReportServiceFactory;
     orgProductStats: TOrgProductStatsServiceFactory;

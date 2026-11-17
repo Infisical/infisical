@@ -10,26 +10,50 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 import {
-  MAX_SLACK_APP_CHANNELS,
-  TAlertSlackChannel,
-  TAlertSlackIntegration,
-  TAlertSlackScope,
-  TChannelsForm,
-  useListAlertSlackChannels,
-  useListAlertSlackIntegrations
-} from "@app/hooks/api/alerts";
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission
+} from "@app/context";
+import { MAX_SLACK_APP_CHANNELS, TAlertSlackChannel, TChannelsForm } from "@app/hooks/api/alerts";
+import {
+  useGetSlackIntegrationChannels,
+  useGetWorkflowIntegrations
+} from "@app/hooks/api/workflowIntegrations/queries";
+import {
+  WorkflowIntegration,
+  WorkflowIntegrationPlatform,
+  WorkflowIntegrationStatus
+} from "@app/hooks/api/workflowIntegrations/types";
 
 type Props = {
   index: number;
-  scope: TAlertSlackScope;
 };
 
-const integrationLabel = (integration: TAlertSlackIntegration) =>
-  `${integration.slug} (${integration.teamName})`;
+const SlackChannelsWithoutAccess = ({ index }: Props) => {
+  const { control } = useFormContext<TChannelsForm>();
+  const savedChannels = useWatch({ control, name: `channels.${index}.slackChannels` }) ?? [];
 
-export const SlackAppChannelFields = ({ index, scope }: Props) => {
+  return (
+    <Field>
+      <FieldLabel>Slack channels</FieldLabel>
+      <FieldContent>
+        {savedChannels.length > 0 && (
+          <p className="text-sm text-foreground">
+            {savedChannels.map((channel) => `#${channel.name}`).join(", ")}
+          </p>
+        )}
+        <FieldDescription>
+          Picking a Slack integration and channels needs permission to read organization settings.
+          Ask an organization admin, or select Webhook URL instead.
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+};
+
+const SlackChannelPickers = ({ index }: Props) => {
   const { currentOrg } = useOrganization();
   const {
     control,
@@ -44,9 +68,13 @@ export const SlackAppChannelFields = ({ index, scope }: Props) => {
     name: `channels.${index}.workflowIntegrationId`
   });
 
-  const integrationsQuery = useListAlertSlackIntegrations(scope);
-  const integrations = integrationsQuery.data ?? [];
-  const channelsQuery = useListAlertSlackChannels(workflowIntegrationId || undefined, scope);
+  const integrationsQuery = useGetWorkflowIntegrations(currentOrg.id);
+  const integrations = (integrationsQuery.data ?? []).filter(
+    (integration) =>
+      integration.integration === WorkflowIntegrationPlatform.SLACK &&
+      integration.status === WorkflowIntegrationStatus.Installed
+  );
+  const channelsQuery = useGetSlackIntegrationChannels(workflowIntegrationId || undefined);
   const slackChannels = channelsQuery.data ?? [];
 
   // Clear an id whose integration was deleted, so the form asks for a new one instead of saving it.
@@ -107,8 +135,8 @@ export const SlackAppChannelFields = ({ index, scope }: Props) => {
                     )
                   }
                   getOptionValue={(integration) => integration.id}
-                  getOptionLabel={integrationLabel}
-                  onValueChange={(integration: TAlertSlackIntegration | null) => {
+                  getOptionLabel={(integration) => integration.slug}
+                  onValueChange={(integration: WorkflowIntegration | null) => {
                     if ((integration?.id ?? "") === field.value) return;
                     setIsSavedIntegrationDeleted(false);
                     field.onChange(integration?.id ?? "");
@@ -191,4 +219,12 @@ export const SlackAppChannelFields = ({ index, scope }: Props) => {
       </Field>
     </>
   );
+};
+
+export const SlackAppChannelFields = ({ index }: Props) => {
+  const { permission } = useOrgPermission();
+  if (!permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings)) {
+    return <SlackChannelsWithoutAccess index={index} />;
+  }
+  return <SlackChannelPickers index={index} />;
 };

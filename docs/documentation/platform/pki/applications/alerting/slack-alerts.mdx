@@ -21,7 +21,7 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
 ## Prerequisites
 
 - The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
-- To post through the Slack integration, a [Slack integration](/documentation/platform/workflow-integrations/slack-integration) in your organization
+- To post through the Slack integration, a [Slack integration](/documentation/platform/workflow-integrations/slack-integration) in your organization, and permission to read organization settings
 - To post through an incoming webhook, a Slack workspace where you can create apps
 
 ## Post through the Slack integration
@@ -54,10 +54,20 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
   <Tab title="API">
     <Steps>
       <Step>
-        Call the [List Slack integrations for alerts](/api-reference/endpoints/alerts/list-slack-integrations) endpoint and copy the `id` of the integration to post through.
+        List your organization's workflow integrations, and copy the `id` of the Slack integration to post through:
+
+        ```bash
+        curl --url https://app.infisical.com/api/v1/workflow-integrations \
+          --header 'Authorization: Bearer <access-token>'
+        ```
       </Step>
       <Step>
-        Call the [List Slack channels for alerts](/api-reference/endpoints/alerts/list-slack-channels) endpoint with that integration ID, and copy the `id` and `name` of each channel to post to.
+        List that integration's Slack channels, and copy the `id` and `name` of each channel to post to:
+
+        ```bash
+        curl --url https://app.infisical.com/api/v1/workflow-integrations/slack/<slack-integration-id>/channels \
+          --header 'Authorization: Bearer <access-token>'
+        ```
       </Step>
       <Step>
         Call the [Create alert](/api-reference/endpoints/alerts/create) endpoint with a `slack-app` channel. In the channel's `config`, set `workflowIntegrationId` to the integration ID and `channels` to the channels from the previous step.

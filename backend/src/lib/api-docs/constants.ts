@@ -2658,7 +2658,7 @@ export const ALERTING = {
     enabled: "Whether the alert is enabled. Defaults to true.",
     projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
     channels:
-      "The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` from the List Slack integrations for alerts and List Slack channels for alerts endpoints), `slack` (incoming webhook), `webhook`, or `pagerduty`."
+      "The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`."
   },
   TEST_CHANNEL: {
     resourceType: "The type of resource the alert watches.",
@@ -2666,21 +2666,6 @@ export const ALERTING = {
     projectId: "The ID of the project the alert belongs to.",
     alertId: "The ID of the saved alert the channel belongs to.",
     channelId: "The ID of the saved channel to test."
-  },
-  LIST_SLACK_INTEGRATIONS: {
-    resourceType:
-      "The type of resource the alert will watch. You need permission to create or edit alerts on this resource type; the Slack integrations returned are the organization's, whatever the value.",
-    resourceId:
-      "The ID of the resource the alert will watch. Omit it for alerts that cover every resource of the type, such as `cert-manager`.",
-    projectId: "The ID of the project the alert will belong to."
-  },
-  LIST_SLACK_CHANNELS: {
-    workflowIntegrationId: "The ID of the Slack integration to list channels for.",
-    resourceType:
-      "The type of resource the alert will watch. You need permission to create or edit alerts on this resource type.",
-    resourceId:
-      "The ID of the resource the alert will watch. Omit it for alerts that cover every resource of the type, such as `cert-manager`.",
-    projectId: "The ID of the project the alert will belong to."
   },
   LIST: {
     resourceType: "The type of resource to list alerts for.",
