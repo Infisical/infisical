@@ -113,16 +113,23 @@ import {
   useGetVaultNamespaces,
   useGetVaultPolicies
 } from "@app/hooks/api/migration/queries";
+import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api/oidcConfig/queries";
 import {
+  useGetAvailableOrgUsers,
   useGetOrganizationById,
   useSearchOrganizationGroups,
-  useUpdateOrg
+  useUpdateOrg,
+  useUpgradePrivilegeSystem
 } from "@app/hooks/api/organization/queries";
+import { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership/mutation";
+import { orgGroupMembershipQuery } from "@app/hooks/api/orgGroupMembership/queries";
 import {
   useCreateOrgIdentity,
   useDeleteOrgIdentity,
   useUpdateOrgIdentity
 } from "@app/hooks/api/orgIdentity/mutations";
+import { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership/mutation";
+import { orgIdentityMembershipQuery } from "@app/hooks/api/orgIdentityMembership/queries";
 import { pamKeys, resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import {
@@ -230,6 +237,7 @@ export const accessLive: AccessAdapter = {
   useProjectPermission: useGetUserProjectPermissions,
   useOrganization: useGetOrganizationById,
   useUpdateOrganization: useUpdateOrg,
+  useUpgradePrivilegeSystem,
   useProject: useProjectById,
   usePamProjectId: (orgId) => {
     const { data: organization } = useGetOrganizationById(orgId);
@@ -249,6 +257,7 @@ export const accessLive: AccessAdapter = {
   useDeleteOrgMembership,
   useDeleteOrgMemberships: useDeleteOrgMembershipBatch,
   useResendOrgInvite: useResendOrgMemberInvitation,
+  useAvailableOrgUsers: useGetAvailableOrgUsers,
 
   useOrgRoles: useGetOrgRoles,
   useOrgRole: useGetOrgRole,
@@ -263,6 +272,9 @@ export const accessLive: AccessAdapter = {
   useCreateOrgIdentity,
   useUpdateOrgIdentity,
   useDeleteOrgIdentity,
+  useAvailableOrgIdentities: (options) =>
+    useQuery({ ...orgIdentityMembershipQuery.listAvailable(), enabled: options?.enabled }),
+  useCreateOrgIdentityMembership,
   useIdentityUniversalAuth: useGetIdentityUniversalAuth,
   useIdentityUniversalAuthClientSecrets: useGetIdentityUniversalAuthClientSecrets,
   useAddIdentityUniversalAuth: withIdentitySearchRefresh(useAddIdentityUniversalAuth),
@@ -367,6 +379,10 @@ export const accessLive: AccessAdapter = {
   useRemoveUserFromGroup,
   useAddIdentityToGroup,
   useRemoveIdentityFromGroup,
+  useAvailableOrgGroups: (options) =>
+    useQuery({ ...orgGroupMembershipQuery.listAvailable(), enabled: options?.enabled }),
+  useCreateOrgGroupMembership,
+  useOidcManageGroupMemberships: useOidcManageGroupMembershipsEnabled,
 
   useProjectUsers: useGetWorkspaceUsers,
   useProjectUser: useGetWorkspaceUserDetails,

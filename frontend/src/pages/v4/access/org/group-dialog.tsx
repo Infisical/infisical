@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +12,18 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 
 import { findOrgMembershipRole } from "@app/helpers/roles";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
+import { accessLinks } from "../links";
+import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { roleOptions, slugify } from "../roles";
 import { failed, saved } from "../toast";
+import { Muted } from "../ui";
 
 export type GroupDraft = { id: string; name: string; slug: string; roleSlug: string };
 
@@ -52,7 +58,16 @@ export const GroupDialog = ({
   const { data: organization } = access.useOrganization(orgId);
   const create = access.useCreateGroup();
   const update = access.useUpdateGroup();
+  const link = access.useCreateOrgGroupMembership();
+  const go = useGo();
   const isCreate = !group;
+  const canAssign = useV4Session().organization.isSubOrganization && isCreate;
+  const [mode, setMode] = useState<"create" | "assign">("create");
+  const [linkedId, setLinkedId] = useState("");
+  const [linkError, setLinkError] = useState<string>();
+  const { data: available = [], isPending: availablePending } = access.useAvailableOrgGroups({
+    enabled: open && canAssign
+  });
   const defaultRole =
     (organization && findOrgMembershipRole(roles, organization.defaultMembershipRole)?.slug) ??
     "member";
@@ -67,12 +82,37 @@ export const GroupDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent pending={pending}>
         <DialogHeader>
-          <DialogTitle>{isCreate ? "Create group" : "Update group"}</DialogTitle>
+          <DialogTitle>
+            {canAssign && "Add group to sub-organization"}
+            {!canAssign && (isCreate ? "Create group" : "Update group")}
+          </DialogTitle>
         </DialogHeader>
         <form
           id="org-group"
           onSubmit={async (event) => {
             event.preventDefault();
+            if (mode === "assign") {
+              if (!linkedId) {
+                setLinkError("Select a group");
+                return;
+              }
+              setPending(true);
+              try {
+                await link.mutateAsync({
+                  groupId: linkedId,
+                  roles: [{ role: role ?? defaultRole, isTemporary: false }],
+                  organizationId: orgId
+                });
+                saved("Successfully linked group");
+                onOpenChange(false);
+                go(accessLinks.orgGroup(orgId, linkedId));
+              } catch (error) {
+                failed("Failed to link group", error);
+              } finally {
+                setPending(false);
+              }
+              return;
+            }
             const next = { name: nameError(name), slug: slugError(slug) };
             setErrors(next);
             if (next.name || next.slug) return;
@@ -103,6 +143,46 @@ export const GroupDialog = ({
           }}
         >
           <Stack gap={16}>
+            {canAssign && (
+              <Stack gap={8}>
+                <Tabs
+                  variant="segmented"
+                  label="Group assignment mode"
+                  value={mode}
+                  onChange={(next) => setMode(next as "create" | "assign")}
+                  tabs={[
+                    { value: "create", label: "Create new" },
+                    { value: "assign", label: "Assign existing" }
+                  ]}
+                />
+                <Muted>
+                  {mode === "assign"
+                    ? "Reuse an existing group from your parent organization."
+                    : "Creates a group managed by this sub-organization."}
+                </Muted>
+              </Stack>
+            )}
+            {mode === "assign" ? (
+              <Field label="Group" error={linkError}>
+                <Combobox
+                  label="Group"
+                  placeholder="Select group..."
+                  emptyText={
+                    availablePending
+                      ? "Loading groups..."
+                      : "Every parent organization group is already here"
+                  }
+                  options={available.map((entry) => ({ value: entry.id, label: entry.name }))}
+                  value={linkedId}
+                  invalid={Boolean(linkError)}
+                  onChange={(value) => {
+                    setLinkedId(value);
+                    setLinkError(undefined);
+                  }}
+                />
+              </Field>
+            ) : (
+              <>
             <Field label="Name" error={errors.name}>
               <Input
                 autoComplete="off"
@@ -126,6 +206,8 @@ export const GroupDialog = ({
                 }}
               />
             </Field>
+              </>
+            )}
             <Field label={label}>
               <Select
                 label={label}
@@ -142,7 +224,8 @@ export const GroupDialog = ({
             Cancel
           </Button>
           <Button variant="primary" type="submit" form="org-group" loading={pending}>
-            {isCreate ? "Create" : "Update"}
+            {mode === "assign" && "Link"}
+            {mode === "create" && (isCreate ? "Create" : "Update")}
           </Button>
         </DialogFooter>
       </DialogContent>

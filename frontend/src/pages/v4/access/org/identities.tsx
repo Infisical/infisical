@@ -51,6 +51,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
 import { projectBase } from "../../shell/navigation";
 import { accessLinks } from "../links";
@@ -125,6 +126,7 @@ export const OrgIdentitiesTab = () => {
   const orgId = useOrgId();
   const go = useGo();
   const { permission } = useOrgPermission();
+  const isSubOrg = useV4Session().organization.isSubOrganization;
   const can = (action: OrgPermissionIdentityActions) =>
     permission.can(action, OrgPermissionSubjects.Identity);
   const canCreate = can(OrgPermissionIdentityActions.Create);
@@ -190,6 +192,7 @@ export const OrgIdentitiesTab = () => {
     );
   };
   const isProjectScoped = (row: Row) => row.scope === SearchIdentitiesScope.ProjectScope;
+  const isOwned = (row: Row) => row.identity.orgId === orgId;
   const openDetail = (row: Row) =>
     go(isProjectScoped(row) ? projectHref(row) : accessLinks.orgIdentity(orgId, row.identity.id));
 
@@ -241,7 +244,8 @@ export const OrgIdentitiesTab = () => {
         ) : (
           <Badge tone="outline">
             <Icon name="building" size={12} />
-            Organization
+            {isSubOrg && (isOwned(row) ? "Sub-organization" : "Root organization")}
+            {!isSubOrg && "Organization"}
           </Badge>
         )
     },
@@ -303,8 +307,9 @@ export const OrgIdentitiesTab = () => {
             onSelect={() => openDetail(row)}
           >
             <Icon icon={PencilIcon} />
-            Edit machine identity
+            {isOwned(row) ? "Edit machine identity" : "Edit machine identity membership"}
           </DropdownMenuItem>
+          {isOwned(row) && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Icon name="key" />
@@ -330,6 +335,7 @@ export const OrgIdentitiesTab = () => {
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
@@ -338,9 +344,9 @@ export const OrgIdentitiesTab = () => {
             onSelect={() => setDeleting(row)}
           >
             <Icon name="trash" />
-            {row.identity.hasDeleteProtection
-              ? "Delete is blocked by delete protection"
-              : "Delete machine identity"}
+            {row.identity.hasDeleteProtection && "Delete is blocked by delete protection"}
+            {!row.identity.hasDeleteProtection &&
+              (isOwned(row) ? "Delete machine identity" : "Remove from sub-organization")}
           </DropdownMenuItem>
         </>
       )
@@ -402,7 +408,7 @@ export const OrgIdentitiesTab = () => {
                   disabled={!canCreate}
                   onClick={() => setCreating(true)}
                 >
-                  Create
+                  {isSubOrg ? "Add" : "Create"}
                 </Button>
               </Gate>
             </>
@@ -496,7 +502,11 @@ export const OrgIdentitiesTab = () => {
       >
         <AlertDialogContent tone="danger" confirmText="confirm">
           <AlertDialogHeader>
-            <AlertDialogTitle>{`Delete ${deleting?.identity.name ?? "machine identity"}?`}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleting && !isOwned(deleting)
+                ? `Remove ${deleting.identity.name} from this sub-organization?`
+                : `Delete ${deleting?.identity.name ?? "machine identity"}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -508,13 +518,17 @@ export const OrgIdentitiesTab = () => {
                 setDeleting(undefined);
                 try {
                   await deleteIdentity.mutateAsync({ identityId: deleting.identity.id, orgId });
-                  saved("Successfully deleted machine identity");
+                  saved(
+                    isOwned(deleting)
+                      ? "Successfully deleted machine identity"
+                      : "Successfully removed machine identity from sub-organization"
+                  );
                 } catch (error) {
                   failed("Failed to delete machine identity", error);
                 }
               }}
             >
-              Delete
+              {deleting && !isOwned(deleting) ? "Remove" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

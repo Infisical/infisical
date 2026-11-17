@@ -48,11 +48,13 @@ const InviteLinks = ({ links }: { links: readonly InviteLink[] }) => (
 export const InviteUsersSheet = ({
   open,
   onOpenChange,
-  links: initialLinks
+  links: initialLinks,
+  subOrg = false
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   links?: readonly InviteLink[];
+  subOrg?: boolean;
 }) => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -60,6 +62,9 @@ export const InviteUsersSheet = ({
   const { data: orgRoles = [] } = access.useOrgRoles(orgId);
   const { data: organization } = access.useOrganization(orgId);
   const invite = access.useInviteOrgUsers();
+  const { data: available = [], isPending: availablePending } = access.useAvailableOrgUsers(
+    open && subOrg
+  );
   const addToProject = access.useAddProjectUsers();
   const defaultRole =
     (organization && findOrgMembershipRole(orgRoles, organization.defaultMembershipRole)?.slug) ??
@@ -106,7 +111,7 @@ export const InviteUsersSheet = ({
 
   const submit = async () => {
     if (!emails.length) {
-      setError("Enter at least one email");
+      setError(subOrg ? "Select at least one user" : "Enter at least one email");
       return;
     }
     if (emails.length > MAX_INVITE_EMAILS) {
@@ -161,11 +166,17 @@ export const InviteUsersSheet = ({
     >
       <SheetContent pending={pending} onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
-          <SheetTitle>{`Invite others to ${session.organization.name}`}</SheetTitle>
+          <SheetTitle>
+            {subOrg
+              ? "Add member from your organization"
+              : `Invite others to ${session.organization.name}`}
+          </SheetTitle>
           <SheetDescription>
-            {links
-              ? "No email provider is set up. Share these invite links manually."
-              : "Invites are tied to one email address and expire after 1 day."}
+            {links && "No email provider is set up. Share these invite links manually."}
+            {!links &&
+              (subOrg
+                ? "Add existing users from your root organization to this sub-organization."
+                : "Invites are tied to one email address and expire after 1 day.")}
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
@@ -181,6 +192,28 @@ export const InviteUsersSheet = ({
             >
               <Stack gap={16}>
                 <Field label="Emails" error={error}>
+                  {subOrg ? (
+                    <Combobox
+                      multiple
+                      label="Emails"
+                      placeholder="Add one or more users..."
+                      emptyText={
+                        availablePending
+                          ? "Loading users..."
+                          : "All root organization users are already in this sub-organization"
+                      }
+                      options={available.map((candidate) => ({
+                        value: candidate.username,
+                        label: candidate.username
+                      }))}
+                      value={emails}
+                      invalid={Boolean(error)}
+                      onChange={(next) => {
+                        setEmails(next);
+                        setError(undefined);
+                      }}
+                    />
+                  ) : (
                   <Combobox
                     multiple
                     label="Emails"
@@ -204,6 +237,7 @@ export const InviteUsersSheet = ({
                       setError(undefined);
                     }}
                   />
+                  )}
                 </Field>
                 <Field label="Assign organization role">
                   <Select

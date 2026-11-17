@@ -23,6 +23,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Select } from "@infisical/cipher/ui/select";
 import { PencilIcon } from "lucide-react";
 
@@ -33,6 +34,7 @@ import {
 import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -58,6 +60,9 @@ export const OrgGroupsTab = () => {
   const orgId = useOrgId();
   const go = useGo();
   const { permission } = useOrgPermission();
+  const isSubOrg = useV4Session().organization.isSubOrganization;
+  const orgWord = isSubOrg ? "sub-organization" : "organization";
+  const isLinked = (group: TGroupOrgMembership) => group.orgId !== orgId;
   const can = (action: OrgPermissionGroupActions) =>
     permission.can(action, OrgPermissionSubjects.Groups);
   const { data: roles = [] } = access.useOrgRoles(orgId);
@@ -137,7 +142,21 @@ export const OrgGroupsTab = () => {
           </Gate>
         </span>
       )
-    }
+    },
+    ...(isSubOrg
+      ? [
+          {
+            id: "managedBy",
+            header: "Managed by",
+            render: (group: TGroupOrgMembership) => (
+              <Badge tone="outline">
+                <Icon name="building" size={12} />
+                {isLinked(group) ? "Root organization" : "Sub-organization"}
+              </Badge>
+            )
+          }
+        ]
+      : [])
   ];
 
   const rowActions: DataTableRowActions<TGroupOrgMembership> = {
@@ -145,7 +164,10 @@ export const OrgGroupsTab = () => {
       {
         label: "Edit group",
         icon: PencilIcon,
-        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        disabledReason: (group) => {
+          if (isLinked(group)) return "Managed by the root organization";
+          return canEdit ? undefined : RESTRICTED;
+        },
         onSelect: (group) => setDialog({ group: draftOf(group) })
       }
     ],
@@ -160,14 +182,16 @@ export const OrgGroupsTab = () => {
           <Icon name="copy" />
           Copy group ID
         </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!canEdit}
-          description={canEdit ? undefined : RESTRICTED}
-          onSelect={() => openDetail(group)}
-        >
-          <Icon name="user" />
-          Manage members
-        </DropdownMenuItem>
+        {!isLinked(group) && (
+          <DropdownMenuItem
+            disabled={!canEdit}
+            description={canEdit ? undefined : RESTRICTED}
+            onSelect={() => openDetail(group)}
+          >
+            <Icon name="user" />
+            Manage members
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
@@ -176,7 +200,7 @@ export const OrgGroupsTab = () => {
           onSelect={() => setDeleting(group)}
         >
           <Icon name="trash" />
-          Delete group
+          {isLinked(group) ? "Unlink group" : "Delete group"}
         </DropdownMenuItem>
       </>
     )
@@ -204,8 +228,8 @@ export const OrgGroupsTab = () => {
         search={
           <Input
             icon="search"
-            aria-label="Search organization groups..."
-            placeholder="Search organization groups..."
+            aria-label={`Search ${orgWord} groups...`}
+            placeholder={`Search ${orgWord} groups...`}
             slashShortcut
             value={search}
             onChange={(event) => {
@@ -222,7 +246,7 @@ export const OrgGroupsTab = () => {
               disabled={!canCreate}
               onClick={() => setDialog({})}
             >
-              Create
+              {isSubOrg ? "Add" : "Create"}
             </Button>
           </Gate>
         }
@@ -247,10 +271,10 @@ export const OrgGroupsTab = () => {
             <EmptyState
               size="sm"
               icon="search"
-              title={`No organization groups match ${searching ? "search" : "filter criteria"}`}
+              title={`No ${orgWord} groups match ${searching ? "search" : "filter criteria"}`}
             />
           ) : (
-            <EmptyState size="sm" icon="user" title="No organization groups found" />
+            <EmptyState size="sm" icon="user" title={`No ${orgWord} groups found`} />
           )
         }
         pagination={
@@ -286,7 +310,9 @@ export const OrgGroupsTab = () => {
         <AlertDialogContent tone="danger" confirmText="confirm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {`Are you sure you want to delete the group named ${deleting?.name ?? ""}?`}
+              {deleting && isLinked(deleting)
+                ? `Are you sure you want to unlink the group "${deleting.name}" from this sub-organization?`
+                : `Are you sure you want to delete the group named ${deleting?.name ?? ""}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
           </AlertDialogHeader>
@@ -298,14 +324,18 @@ export const OrgGroupsTab = () => {
                 if (!deleting) return;
                 try {
                   await remove.mutateAsync({ id: deleting.id, organizationId: orgId });
-                  saved(`Successfully deleted the group named ${deleting.name}`);
+                  saved(
+                    isLinked(deleting)
+                      ? "Successfully unlinked group from sub-organization"
+                      : `Successfully deleted the group named ${deleting.name}`
+                  );
                 } catch (error) {
                   failed("Failed to delete group", error);
                 }
                 setDeleting(undefined);
               }}
             >
-              Delete
+              {deleting && isLinked(deleting) ? "Unlink" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

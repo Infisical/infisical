@@ -21,7 +21,9 @@ export const useOrgId = () => {
 export const useOrgPermission = () => {
   const orgId = useOrgId();
   const { data, isPending } = useV4Adapter("access").useOrgPermission({ orgId });
-  return { permission: data?.permission ?? noOrgAccess, isPending };
+  const hasOrgRole = (role: string) =>
+    Boolean(data?.memberships.some((membership) => membership.roles.some((el) => el.role === role)));
+  return { permission: data?.permission ?? noOrgAccess, isPending, hasOrgRole };
 };
 
 export const useProjectPermission = (projectId: string) => {

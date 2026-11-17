@@ -1,3 +1,5 @@
+import { useRouterState } from "@tanstack/react-router";
+
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
@@ -25,3 +27,16 @@ export const demoSession: V4Session = {
     { id: "internal-pki", name: "internal-pki", type: ProjectType.CertificateManager }
   ]
 };
+
+const demoSubOrgSession: V4Session = {
+  ...demoSession,
+  organization: { id: V4_DEMO_ORG_ID, name: "acme-eu", isSubOrganization: true }
+};
+
+export const useDemoSession = () =>
+  useRouterState({
+    select: (state) =>
+      (state.location.search as { scenario?: unknown }).scenario === "sub-org"
+        ? demoSubOrgSession
+        : demoSession
+  });

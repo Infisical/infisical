@@ -249,7 +249,7 @@ export type AuditLogsProject = { id: string; type: ProjectType };
 
 const productsWithoutSecrets = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 
-const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
+const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?: string }) => {
   const { projects } = useV4Session();
   const org = useV4Adapter("org");
   const access = useV4Adapter("access");
@@ -306,7 +306,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
     eventType: everyEvent ? [] : (value("event") as EventType[]),
     eventClass: value("class") as AuditLogEventClass[],
     actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
-    actor: pickedActor || undefined,
+    actor: actorId ?? (pickedActor || undefined),
     userAgentType: value("source")[0] as UserAgentType | undefined,
     environment: (hasSecrets && value("environment")[0]) || undefined,
     secretPath: (hasSecrets && projectId && value("secret-path")[0]) || undefined,
@@ -340,16 +340,20 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
         label: auditLogEventClassToNameMap[eventClass]
       }))
     },
-    {
-      key: "actor-type",
-      label: "Actor type",
-      type: "select",
-      options: [ActorType.USER, ActorType.IDENTITY, ActorType.PLATFORM].map((type) => ({
-        value: type,
-        label: actorTypeLabel[type] ?? type
-      }))
-    },
-    ...(projectId
+    ...(actorId
+      ? []
+      : [
+          {
+            key: "actor-type",
+            label: "Actor type",
+            type: "select" as const,
+            options: [ActorType.USER, ActorType.IDENTITY, ActorType.PLATFORM].map((type) => ({
+              value: type,
+              label: actorTypeLabel[type] ?? type
+            }))
+          }
+        ]),
+    ...(projectId && !actorId
       ? [
           {
             key: "actor",
@@ -572,7 +576,13 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   );
 };
 
-export const AuditLogsTab = ({ project }: { project?: AuditLogsProject }) => {
+export const AuditLogsTab = ({
+  project,
+  actorId
+}: {
+  project?: AuditLogsProject;
+  actorId?: string;
+}) => {
   const { organization } = useV4Session();
   const { data: plan } = useV4Adapter("auditLogs").usePlan(organization.id);
   if (plan && !plan.auditLogs)
@@ -587,7 +597,7 @@ export const AuditLogsTab = ({ project }: { project?: AuditLogsProject }) => {
         }
       />
     );
-  return <LogsTable project={project} />;
+  return <LogsTable project={project} actorId={actorId} />;
 };
 
 const OrgAuditLogSettings = () => {

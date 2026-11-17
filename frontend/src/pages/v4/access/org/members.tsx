@@ -40,12 +40,14 @@ import type { TOrgRole } from "@app/hooks/api/roles/types";
 import type { TOrgUserAccess } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, Muted, usePagedList, RESTRICTED } from "../ui";
+import { useCustomRoleGate } from "./custom-role-gate";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { displayName, useIsSelf } from "./users";
 
@@ -122,6 +124,9 @@ export const OrgMembersTab = () => {
   const orgId = useOrgId();
   const go = useGo();
   const isSelf = useIsSelf();
+  const isSubOrg = useV4Session().organization.isSubOrganization;
+  const orgWord = isSubOrg ? "sub-organization" : "organization";
+  const customRoleGate = useCustomRoleGate("organization.org-members");
   const { permission } = useOrgPermission();
   const can = (action: OrgPermissionMemberActions) =>
     permission.can(action, OrgPermissionSubjects.Member);
@@ -345,6 +350,7 @@ export const OrgMembersTab = () => {
                 disabled={self || !canEdit}
                 options={roles.map((role) => ({ value: role.slug, label: role.name }))}
                 onChange={(role) =>
+                  !customRoleGate.blocked(role) &&
                   updateMember(membership.id, { role }, "Successfully updated user role")
                 }
               />
@@ -371,7 +377,7 @@ export const OrgMembersTab = () => {
             onSelect={() => setRemoving(member)}
           >
             <Icon name="trash" />
-            Remove user
+            {isSubOrg ? "Remove from sub-organization" : "Remove user"}
           </DropdownMenuItem>
         </>
       );
@@ -463,8 +469,8 @@ export const OrgMembersTab = () => {
         search={
           <Input
             icon="search"
-            aria-label="Search organization users..."
-            placeholder="Search organization users..."
+            aria-label={`Search ${orgWord} users...`}
+            placeholder={`Search ${orgWord} users...`}
             slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
@@ -478,7 +484,7 @@ export const OrgMembersTab = () => {
               disabled={!canCreate}
               onClick={() => setInviting({})}
             >
-              Invite
+              {isSubOrg ? "Add" : "Invite"}
             </Button>
           </Gate>
         }
@@ -520,18 +526,20 @@ export const OrgMembersTab = () => {
         selectionDisabledReason={(member) => (member.membership ? undefined : GROUP_ONLY)}
         empty={
           searching ? (
-            <EmptyState size="sm" icon="search" title="No organization users match search" />
+            <EmptyState size="sm" icon="search" title={`No ${orgWord} users match search`} />
           ) : (
-            <EmptyState size="sm" icon="user" title="No organization users found" />
+            <EmptyState size="sm" icon="user" title={`No ${orgWord} users found`} />
           )
         }
         pagination={loading ? undefined : list.pagination}
       />
 
+      {customRoleGate.upgradeGate}
       <InviteUsersSheet
         key={inviting?.links ? "links" : "form"}
         open={Boolean(inviting)}
         links={inviting?.links}
+        subOrg={isSubOrg}
         onOpenChange={(open) => !open && setInviting(undefined)}
       />
       <AlertDialog

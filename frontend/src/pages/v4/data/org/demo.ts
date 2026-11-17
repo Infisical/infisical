@@ -148,9 +148,9 @@ const total = 2316;
 const window30d = 30 * 24 * 3600 * 1000;
 const now = Date.now();
 const people = ["sarah", "marcus", "priya", "diego", "hana", "tom", "lena"].map(
-  (name, index): Actor => ({
+  (name): Actor => ({
     type: ActorType.USER,
-    metadata: { userId: `user-${index + 1}`, email: `${name}@acme.dev` }
+    metadata: { userId: `u-${name}`, email: `${name}@acme.dev` }
   })
 );
 const machines = [
@@ -270,7 +270,7 @@ const auditLog = (index: number): AuditLog => {
           }
         : {
             type: EventType.ADD_PROJECT_MEMBER,
-            metadata: { userId: "user-5", email: "hana@acme.dev" }
+            metadata: { userId: "u-hana", email: "hana@acme.dev" }
           };
     eventClass = AuditLogEventClass.Management;
     userAgentType = UserAgentType.WEB;
