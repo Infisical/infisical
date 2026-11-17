@@ -3,7 +3,7 @@ title: "MySQL"
 description: "Let an AI agent query a MySQL database without holding its password."
 ---
 
-A MySQL service lets an agent reach a MySQL database during a [session](/documentation/platform/agent-vault/sessions), with clients such as `mysql`. The agent never holds the password: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the database with the service's account. The agent reaches the service through `infisical agent-vault connect`, as [Databases and SSH](/documentation/platform/agent-vault/databases-and-ssh) describes.
+A MySQL service lets an agent reach a MySQL database during a [session](/documentation/platform/agent-vault/sessions), with clients such as `mysql`. The agent never holds the password: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the database with the service's account. The agent reaches the service through [`infisical agent-vault connect`](/cli/reference#agent-vault-connect).
 
 ## Prerequisites
 
@@ -49,8 +49,8 @@ A MySQL service starts in its database, but the agent can switch to any other da
 TLS applies only to the connection between the proxy and the database. The connection between the agent's machine and the proxy always uses TLS.
 
 - **Use TLS** (on by default): The proxy connects to the database over TLS
-- **Verify Certificate** (on by default): The proxy checks the database's certificate, against the system's trusted certificate authorities or the CA certificate you add
-- **CA Certificate (optional):** The PEM certificate of the authority that signed the database's certificate, for a database with a private certificate (such as your region's bundle for AWS RDS, like [`us-east-1-bundle.pem`](https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem)). Only used while **Verify Certificate** is on
+- **Verify Certificate** (on by default): The proxy checks the database's certificate against the system's trusted certificate authorities, or against the CA certificate you add
+- **CA Certificate (optional):** The PEM certificate of the authority that signed the database's certificate, if the database uses a private certificate (for AWS RDS, your region's bundle, such as [`us-east-1-bundle.pem`](https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem))
 
 If you turn **Use TLS** off, a MySQL service connects without TLS.
 

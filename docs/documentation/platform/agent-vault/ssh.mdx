@@ -3,7 +3,7 @@ title: "SSH"
 description: "Let an AI agent run commands on an SSH server without holding its password or key."
 ---
 
-An SSH service lets an agent reach an SSH server during a [session](/documentation/platform/agent-vault/sessions), with clients such as `ssh`. The agent never holds the password or key: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the server with the service's account. The agent reaches the service through `infisical agent-vault connect`, as [Databases and SSH](/documentation/platform/agent-vault/databases-and-ssh) describes.
+An SSH service lets an agent reach an SSH server during a [session](/documentation/platform/agent-vault/sessions), with clients such as `ssh`. The agent never holds the password or key: the [proxy](/documentation/platform/agent-vault/proxies) logs in to the server with the service's account. The agent reaches the service through [`infisical agent-vault connect`](/cli/reference#agent-vault-connect).
 
 ## Prerequisites
 
@@ -51,7 +51,8 @@ Enter the account's **Username** and **Password**. To give each member their own
 An SSH service can log in with a key instead of a password. Under **Credential Type**, select **SSH Key**, then enter the **Username**, paste the **Private Key**, and optionally paste an SSH certificate for the key in **Certificate (optional)**.
 
 - The key must not have a passphrase
-- You set the key and its username on the service; members can't each provide their own, and a key can't use a variable
+- Members can't each provide their own key or username
+- The key can't use a variable
 
 If the proxy can't use the key, such as a key with a passphrase or a certificate that doesn't match the key, `infisical agent-vault connect` [refuses the service](/documentation/platform/agent-vault/databases-and-ssh#services-the-proxy-refuses) and says why.
 
