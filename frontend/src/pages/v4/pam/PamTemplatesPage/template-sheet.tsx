@@ -12,10 +12,10 @@ import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import {
   Sheet,
+  SheetAside,
   SheetBody,
   SheetContent,
-  SheetHeader,
-  SheetTitle
+  SheetHeader
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -39,6 +39,7 @@ import {
   type TUpdatePamAccountTemplateDTO
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { errorMessage, failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -772,6 +773,47 @@ const GeneralTab = ({
   );
 };
 
+const TemplateSummary = ({ template }: { template: TPamAccountTemplateDetail }) => (
+  <DataList
+    variant="props"
+    items={[
+      ...(template.description ? [["Description", template.description] as [string, string]] : []),
+      ["Accounts", `${template.accountCount} using this template`],
+      ["Created", format(new Date(template.createdAt), "MMM d, yyyy")]
+    ]}
+  />
+);
+
+const TemplateTabContent = ({
+  cardProps,
+  tab,
+  meta,
+  error
+}: {
+  cardProps?: CardProps;
+  tab: PamSheetTab;
+  meta?: TPamAccountTypeMetadata;
+  error: unknown;
+}) => {
+  if (cardProps && tab === PamSheetTab.Configuration) return <DetailsCard {...cardProps} />;
+  if (cardProps) return <GeneralTab {...cardProps} meta={meta} />;
+  if (error)
+    return (
+      <EmptyState
+        size="sm"
+        icon="alert"
+        title="Could not load this template"
+        description={errorMessage(error) || "Please try again."}
+      />
+    );
+  return (
+    <Stack gap={16}>
+      <Skeleton height={32} width={240} />
+      <Skeleton lines={6} />
+    </Stack>
+  );
+};
+
 const TEMPLATE_TABS = [
   { value: PamSheetTab.General, label: "General" },
   { value: PamSheetTab.Configuration, label: "Configuration" }
@@ -814,7 +856,15 @@ export const TemplateSheet = ({
   return (
     <>
       <Sheet open={Boolean(templateId)} onOpenChange={(open) => !open && guard.requestDiscard()}>
-        <SheetContent size="lg">
+        <SheetContent size="xl">
+          <SheetAside
+            mainLabel="Template"
+            media={meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="md" />}
+            title={template?.name ?? "Template"}
+            badges={template && <Badge tone="outline">{meta?.name ?? template.type}</Badge>}
+          >
+            {template ? <TemplateSummary template={template} /> : <Skeleton lines={4} />}
+          </SheetAside>
           <SheetHeader
             tabs={
               cardProps && (
@@ -834,9 +884,7 @@ export const TemplateSheet = ({
                 </Tabs>
               )
             }
-          >
-            <SheetTitle>{template?.name ?? "Template"}</SheetTitle>
-          </SheetHeader>
+          />
           <SheetBody
             {...(cardProps && {
               role: "tabpanel",
@@ -844,37 +892,7 @@ export const TemplateSheet = ({
               "aria-labelledby": `${tabsId}-${tab}`
             })}
           >
-            {cardProps ? (
-              <Stack gap={24}>
-                <DataList
-                  variant="meta"
-                  items={[
-                    ["Type", meta?.name ?? cardProps.template.type],
-                    ["Accounts", `${cardProps.template.accountCount} using this template`],
-                    ["Created", format(new Date(cardProps.template.createdAt), "MMM d, yyyy")]
-                  ]}
-                />
-                {tab === PamSheetTab.Configuration ? (
-                  <DetailsCard {...cardProps} />
-                ) : (
-                  <GeneralTab {...cardProps} meta={meta} />
-                )}
-              </Stack>
-            ) : null}
-            {!cardProps && error ? (
-              <EmptyState
-                size="sm"
-                icon="alert"
-                title="Could not load this template"
-                description={errorMessage(error) || "Please try again."}
-              />
-            ) : null}
-            {!cardProps && !error && (
-              <Stack gap={16}>
-                <Skeleton height={32} width={240} />
-                <Skeleton lines={6} />
-              </Stack>
-            )}
+            <TemplateTabContent cardProps={cardProps} tab={tab} meta={meta} error={error} />
           </SheetBody>
         </SheetContent>
       </Sheet>

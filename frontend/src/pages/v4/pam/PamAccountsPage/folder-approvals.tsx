@@ -436,7 +436,6 @@ const draftChanges = (draft: Draft, current: Draft) => ({
 
 const ApprovalsEditor = ({
   folderId,
-  lead,
   panel,
   canRevoke,
   initialDraft: savedState,
@@ -445,7 +444,6 @@ const ApprovalsEditor = ({
   onOpenAlert
 }: {
   folderId: string;
-  lead: ReactNode;
   panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   initialDraft: Draft;
@@ -550,64 +548,61 @@ const ApprovalsEditor = ({
   return (
     <>
       <SheetBody ref={bodyRef} {...panel}>
-        <Stack gap={24}>
-          {lead}
-          <Stack gap={16}>
-            <AutoApprovalCard
-              scope={scope}
-              draft={autoApproval}
-              onChange={setAutoApproval}
-              showErrors={showErrors}
-              hasApprovers={approvers.length > 0}
-            />
-            <ApproverCard
-              title="Approvers"
-              label="approver"
-              rows={toRows(approvers)}
-              options={optionsExcluding(approvers)}
-              empty={
-                <EmptyState
-                  size="sm"
-                  media="bare"
-                  icon="users"
-                  title="No approvers"
-                  description="Only folder members can approve requests."
-                />
-              }
-              onAdd={(approver) => change({ approvers: [...latest.current.approvers, approver] })}
-              onRemove={(approver) =>
-                change({ approvers: without(latest.current.approvers, approver) })
-              }
-            />
-            <ApproverCard
-              title="Break-glass users"
-              label="break-glass user"
-              rows={toRows(breakGlass)}
-              options={optionsExcluding(breakGlass)}
-              empty={
-                <EmptyState
-                  size="sm"
-                  media="bare"
-                  icon="shield"
-                  title="No break-glass users"
-                  description="Nobody can bypass approval in this folder. Every use is audited and emailed to the skipped approvers."
-                />
-              }
-              onAdd={(approver) => change({ breakGlass: [...latest.current.breakGlass, approver] })}
-              onRemove={(approver) =>
-                change({ breakGlass: without(latest.current.breakGlass, approver) })
-              }
-            />
-            <FolderAlerts folderId={folderId} onOpen={onOpenAlert} />
-            {savedState.notifications.length > 0 && (
-              <LegacyNotifications
-                configs={notifications}
-                slugById={slugById}
-                onChange={(next) => change({ notifications: next })}
+        <Stack gap={16}>
+          <AutoApprovalCard
+            scope={scope}
+            draft={autoApproval}
+            onChange={setAutoApproval}
+            showErrors={showErrors}
+            hasApprovers={approvers.length > 0}
+          />
+          <ApproverCard
+            title="Approvers"
+            label="approver"
+            rows={toRows(approvers)}
+            options={optionsExcluding(approvers)}
+            empty={
+              <EmptyState
+                size="sm"
+                media="bare"
+                icon="users"
+                title="No approvers"
+                description="Only folder members can approve requests."
               />
-            )}
-            <FolderRequests folderId={folderId} canRevoke={canRevoke} />
-          </Stack>
+            }
+            onAdd={(approver) => change({ approvers: [...latest.current.approvers, approver] })}
+            onRemove={(approver) =>
+              change({ approvers: without(latest.current.approvers, approver) })
+            }
+          />
+          <ApproverCard
+            title="Break-glass users"
+            label="break-glass user"
+            rows={toRows(breakGlass)}
+            options={optionsExcluding(breakGlass)}
+            empty={
+              <EmptyState
+                size="sm"
+                media="bare"
+                icon="shield"
+                title="No break-glass users"
+                description="Nobody can bypass approval in this folder. Every use is audited and emailed to the skipped approvers."
+              />
+            }
+            onAdd={(approver) => change({ breakGlass: [...latest.current.breakGlass, approver] })}
+            onRemove={(approver) =>
+              change({ breakGlass: without(latest.current.breakGlass, approver) })
+            }
+          />
+          <FolderAlerts folderId={folderId} onOpen={onOpenAlert} />
+          {savedState.notifications.length > 0 && (
+            <LegacyNotifications
+              configs={notifications}
+              slugById={slugById}
+              onChange={(next) => change({ notifications: next })}
+            />
+          )}
+          <FolderRequests folderId={folderId} canRevoke={canRevoke} />
         </Stack>
       </SheetBody>
       {view?.footer &&
@@ -638,14 +633,12 @@ const ApprovalsEditor = ({
 
 export const FolderApprovals = ({
   folderId,
-  lead,
   panel,
   canRevoke,
   onDirtyChange,
   onOpenAlert
 }: {
   folderId: string;
-  lead: ReactNode;
   panel: HTMLAttributes<HTMLDivElement>;
   canRevoke: boolean;
   onDirtyChange: (dirty: boolean) => void;
@@ -655,26 +648,20 @@ export const FolderApprovals = ({
   if (!config && error)
     return (
       <SheetBody {...panel}>
-        <Stack gap={24}>
-          {lead}
-          <EmptyState
-            size="sm"
-            icon="alert"
-            title="Could not load approvals"
-            description={errorMessage(error) || "Close the sheet and try again."}
-          />
-        </Stack>
+        <EmptyState
+          size="sm"
+          icon="alert"
+          title="Could not load approvals"
+          description={errorMessage(error) || "Close the sheet and try again."}
+        />
       </SheetBody>
     );
   if (!config)
     return (
       <SheetBody {...panel}>
-        <Stack gap={24}>
-          {lead}
-          <Stack gap={12}>
-            <Skeleton height={32} width={240} />
-            <Skeleton height={160} />
-          </Stack>
+        <Stack gap={12}>
+          <Skeleton height={32} width={240} />
+          <Skeleton height={160} />
         </Stack>
       </SheetBody>
     );
@@ -690,7 +677,6 @@ export const FolderApprovals = ({
     <ApprovalsEditor
       key={JSON.stringify(stored)}
       folderId={folderId}
-      lead={lead}
       panel={panel}
       canRevoke={canRevoke}
       initialDraft={stored}
