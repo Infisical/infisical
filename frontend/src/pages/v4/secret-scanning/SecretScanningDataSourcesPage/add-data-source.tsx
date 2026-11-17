@@ -6,8 +6,9 @@ import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
-import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { Media, Tile } from "@infisical/cipher/ui/item";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -387,18 +388,21 @@ export const AddDataSourceSheet = ({
               optionsPending ? (
                 <Loader label="Loading platforms" />
               ) : (
-                <List label="Platform" variant="bare" size="sm">
+                <Grid min="tile" gap={12}>
                   {options?.map(({ type }) => {
                     const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
                     return (
-                      <ListRow
+                      <Tile
                         key={type}
-                        value={type}
-                        label={name}
+                        layout="stacked"
                         title={name}
-                        description={`Scan ${RESOURCE_DESCRIPTION_HELPER[type].pluralNoun} on ${name}.`}
-                        media={<ProviderIcon icon={image} alt="" size="sm" />}
-                        current={draft.type === type}
+                        eyebrow="Version Control"
+                        media={
+                          <Media>
+                            <ProviderIcon icon={image} alt="" size="md" />
+                          </Media>
+                        }
+                        selected={draft.type === type}
                         onClick={() => {
                           if (type !== draft.type) {
                             const defaults = initialDraft(type);
@@ -417,7 +421,7 @@ export const AddDataSourceSheet = ({
                       />
                     );
                   })}
-                </List>
+                </Grid>
               )
           },
           {

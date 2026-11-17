@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -15,8 +16,7 @@ import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inset } from "@infisical/cipher/ui/inset";
-import { Tile } from "@infisical/cipher/ui/item";
-import { Grid, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
@@ -38,8 +38,7 @@ import {
 import {
   POPULAR_PROXIED_SERVICE_TEMPLATES,
   PROXIED_SERVICE_TEMPLATES,
-  type ProxiedServiceTemplate,
-  ProxiedServiceTemplateCategory
+  type ProxiedServiceTemplate
 } from "./managed-proxy-templates";
 import { ProviderLogo } from "./wizard-sheet";
 
@@ -90,70 +89,29 @@ export function TemplatePicker({
 }: {
   onSelect: (template: ProxiedServiceTemplate | null) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const query = search.trim().toLowerCase();
-  const filtered = useMemo(
-    () =>
-      PROXIED_SERVICE_TEMPLATES.filter((template) =>
-        [template.name, template.category, template.key, ...(template.aliases ?? [])].some((term) =>
-          term.toLowerCase().includes(query)
-        )
-      ),
-    [query]
-  );
-  const card = (template: ProxiedServiceTemplate) => (
-    <Tile
-      key={template.key}
-      media={<ProviderLogo image={template.image} />}
-      title={template.name}
-      onClick={() => onSelect(template)}
-    />
-  );
-  const custom = (
-    <Tile key="custom" media={<Icon name="plus" />} title="Custom" onClick={() => onSelect(null)} />
-  );
-  const popular = POPULAR_PROXIED_SERVICE_TEMPLATES.map((key) =>
-    PROXIED_SERVICE_TEMPLATES.find((template) => template.key === key)
-  ).filter((template): template is ProxiedServiceTemplate => Boolean(template));
+  const items = [
+    { value: "custom", title: "Custom", icon: "plus" as const, popular: true },
+    ...PROXIED_SERVICE_TEMPLATES.map((template) => ({
+      value: template.key,
+      title: template.name,
+      eyebrow: template.category,
+      media: <ProviderLogo image={template.image} />,
+      popular: POPULAR_PROXIED_SERVICE_TEMPLATES.includes(template.key),
+      keywords: [template.key, ...(template.aliases ?? [])]
+    }))
+  ];
   return (
     <Stack gap={24}>
-      <Input
-        icon="search"
-        aria-label="Search services"
-        value={search}
-        placeholder="Search services, such as OpenAI, Stripe, Telegram, GitHub..."
-        onChange={(event) => setSearch(event.target.value)}
+      <TilePicker
+        items={items}
+        onSelect={(key) =>
+          onSelect(PROXIED_SERVICE_TEMPLATES.find((template) => template.key === key) ?? null)
+        }
+        searchLabel="Search services"
+        searchPlaceholder="Search services, such as OpenAI, Stripe, Telegram, GitHub..."
+        allLabel="All services"
+        noun="services"
       />
-      {query ? (
-        <Grid gap={12} columns={3}>
-          {custom}
-          {filtered.map(card)}
-        </Grid>
-      ) : (
-        <>
-          <section className={styles.templateSection}>
-            <p className={styles.eyebrow}>Popular</p>
-            <Grid gap={12} columns={3}>
-              {custom}
-              {popular.map(card)}
-            </Grid>
-          </section>
-          {Object.values(ProxiedServiceTemplateCategory).map((category) => {
-            const templates = PROXIED_SERVICE_TEMPLATES.filter(
-              (template) => template.category === category
-            );
-            if (!templates.length) return null;
-            return (
-              <section key={category} className={styles.templateSection}>
-                <p className={styles.eyebrow}>{category}</p>
-                <Grid gap={12} columns={3}>
-                  {templates.map(card)}
-                </Grid>
-              </section>
-            );
-          })}
-        </>
-      )}
       <SmallText muted>
         Don&apos;t see the service you&apos;re looking for, or using a protocol other than HTTP?{" "}
         <a

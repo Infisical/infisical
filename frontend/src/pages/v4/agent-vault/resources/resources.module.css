@@ -55,20 +55,6 @@
   white-space: nowrap;
 }
 
-.templateSection {
-  min-width: 0;
-}
-
-.eyebrow {
-  margin: 0 0 var(--cipher-space-12);
-  color: var(--cipher-muted);
-  font-family: var(--cipher-type-eyebrow-font-family);
-  font-size: var(--cipher-type-eyebrow-font-size);
-  line-height: var(--cipher-type-eyebrow-line-height);
-  font-weight: var(--cipher-type-eyebrow-font-weight);
-  letter-spacing: var(--cipher-type-eyebrow-letter-spacing);
-  text-transform: uppercase;
-}
 .fieldRow {
   display: flex;
   align-items: flex-start;
