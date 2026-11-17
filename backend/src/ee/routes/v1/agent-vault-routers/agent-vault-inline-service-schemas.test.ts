@@ -205,3 +205,36 @@ describe("hooks in the inline request schema", () => {
     ]);
   });
 });
+
+describe("OAuth sent with a session", () => {
+  const oauth = (credential: Record<string, unknown>) => [
+    { type: "http", hostPattern: "www.googleapis.com", credential: { type: "oauth", ...credential } }
+  ];
+
+  test("takes an OAuth variable's key, or tokens with the provider's details", () => {
+    expect(issuesOf(oauth({ variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(
+      issuesOf(
+        oauth({
+          accessToken: "ya29.access",
+          refreshToken: "1//refresh",
+          expiresAt: "2026-11-18T12:00:00Z",
+          authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+          tokenEndpoint: "https://oauth2.googleapis.com/token",
+          clientId: "client-1",
+          clientSecret: "secret-1",
+          scopes: ["https://www.googleapis.com/auth/drive"]
+        })
+      )
+    ).toEqual([]);
+  });
+
+  test("refuses a token endpoint that isn't https, and a token with a line break", () => {
+    expect(issuesOf(oauth({ accessToken: "a", tokenEndpoint: "http://oauth2.example.com/token" }))[0].path).toEqual([
+      0,
+      "credential",
+      "tokenEndpoint"
+    ]);
+    expect(issuesOf(oauth({ accessToken: "a\nb" }))[0].path).toEqual([0, "credential", "accessToken"]);
+  });
+});

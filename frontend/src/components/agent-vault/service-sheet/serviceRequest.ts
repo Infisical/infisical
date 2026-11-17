@@ -25,10 +25,13 @@ import {
   isAllMethods,
   isCredentialMemberProvided,
   isMemberProvidedOAuthService,
+  isOAuthVariableCredential,
+  isOAuthVariableService,
   McpToolScope,
   newOAuthAuthorizationId,
   serverUrlOf,
   storedMemberFields,
+  storedOAuthVariableKey,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -80,8 +83,29 @@ const buildBearerCredential = (data: TServiceForm) => {
   };
 };
 
+// Left out on edit unless the variable changes, so the stored one stays: naming a variable needs permission to read
+// its value, which keeping it doesn't. An empty key is one the caller can't see.
+const oauthVariableCredential = (
+  data: TServiceForm,
+  service?: TAgentVaultService | null
+): TAgentVaultOauthCredentialInput | undefined => {
+  if (!data.oauthVariableKey) return undefined;
+  if (
+    isOAuthVariableService(service) &&
+    data.oauthVariableKey === storedOAuthVariableKey(service)
+  ) {
+    return undefined;
+  }
+  return { type: AgentVaultCredentialType.OAuth, variable: data.oauthVariableKey };
+};
+
 // A member-provided field is sent without a value: each member sets their own.
-const buildHttpCredential = (data: TServiceForm): TAgentVaultCredentialInput => {
+const buildHttpCredential = (
+  data: TServiceForm
+): TAgentVaultCredentialInput | TAgentVaultOauthCredentialInput => {
+  if (data.credentialType === AgentVaultCredentialType.OAuth) {
+    return { type: AgentVaultCredentialType.OAuth, variable: data.oauthVariableKey };
+  }
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
@@ -149,6 +173,9 @@ const isMemberOAuthClientChanged = (data: TServiceForm, service?: TAgentVaultSer
 
 const buildMcpCredential = (data: TServiceForm) => {
   if (data.credentialType !== AgentVaultCredentialType.OAuth) return buildBearerCredential(data);
+  if (isOAuthVariableCredential(data)) {
+    return { type: AgentVaultCredentialType.OAuth as const, variable: data.oauthVariableKey };
+  }
   if (isCredentialMemberProvided(data)) return { ...MEMBER_OAUTH, ...memberOAuthClient(data) };
   return {
     type: AgentVaultCredentialType.OAuth as const,
@@ -164,6 +191,7 @@ const buildMcpCredentialPatch = (
   service: TAgentVaultService | null
 ): TAgentVaultCredentialUpdate | undefined => {
   if (data.credentialType !== AgentVaultCredentialType.OAuth) return buildHttpCredentialPatch(data);
+  if (isOAuthVariableCredential(data)) return oauthVariableCredential(data, service);
   const wasMemberProvided = isMemberProvidedOAuthService(service);
   if (isCredentialMemberProvided(data)) {
     if (!wasMemberProvided) return { ...MEMBER_OAUTH, ...memberOAuthClient(data) };
@@ -380,7 +408,11 @@ export const buildUpdateServiceRequest = (
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         description,
-        credential: buildHttpCredentialPatch(data),
+        ...withCredential(
+          data.credentialType === AgentVaultCredentialType.OAuth
+            ? oauthVariableCredential(data, service)
+            : buildHttpCredentialPatch(data)
+        ),
         ...buildHookPatch(service, data)
       };
 };
@@ -402,18 +434,23 @@ const ownToolsCredential = (
         memberProvidedFields: []
       };
 
+const listToolsCredential = (data: TServiceForm, service?: TAgentVaultService | null) =>
+  isOAuthVariableCredential(data)
+    ? oauthVariableCredential(data, service)
+    : buildMcpCredentialPatch(data, null);
+
 // The credential and headers go as an update sends them, so on edit a value left untouched falls back to
 // the saved service's.
 export const buildListMcpToolsRequest = (
   projectId: string,
-  serviceId: string | undefined,
+  service: TAgentVaultService | null | undefined,
   data: TServiceForm,
   own?: TMcpToolsOwnCredential
 ): TListAgentVaultMcpToolsDTO => ({
   projectId,
-  ...(serviceId ? { serviceId } : {}),
+  ...(service ? { serviceId: service.id } : {}),
   ...buildMcpConnection(data),
-  ...withCredential(own ? ownToolsCredential(data, own) : buildMcpCredentialPatch(data, null))
+  ...withCredential(own ? ownToolsCredential(data, own) : listToolsCredential(data, service))
 });
 
 const typedValuesNoun = (
@@ -429,6 +466,11 @@ const typedValuesNoun = (
 
 const nextCredentialTail = (data: TServiceForm) => {
   const nextFields = data.memberProvidedFields;
+  if (isOAuthVariableCredential(data)) {
+    return data.oauthVariableKey
+      ? `, and sessions will use the sign-in of the ${data.oauthVariableKey} variable.`
+      : ", and sessions will use the sign-in of an OAuth variable.";
+  }
   if (data.credentialType === AgentVaultCredentialType.OAuth) {
     return isCredentialMemberProvided(data)
       ? ". Each member has to connect their own account."
@@ -473,7 +515,7 @@ export const membersClearedNotice = (
     if (!isCredentialMemberProvided(data)) {
       return {
         title: connectionsRemoved,
-        description: `Every member's connection to ${storedHost} will be removed, and sessions will use your account.`
+        description: `Every member's connection to ${storedHost} will be removed${nextCredentialTail(data)}`
       };
     }
     const isServerChanged = isMcp && data.serverUrl.trim() !== storedServerUrl;
@@ -488,6 +530,7 @@ export const membersClearedNotice = (
 
   if (
     storedType === AgentVaultCredentialType.OAuth &&
+    !isOAuthVariableService(service) &&
     data.credentialType === AgentVaultCredentialType.OAuth &&
     isCredentialMemberProvided(data)
   ) {

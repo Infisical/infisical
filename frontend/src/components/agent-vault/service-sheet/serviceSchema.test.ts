@@ -4,6 +4,7 @@ import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/helpers/agentVaultCon
 import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE } from "@app/helpers/agentVaultDescription";
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
@@ -62,6 +63,8 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [],
   pathPrefixes: [],
@@ -782,5 +785,64 @@ describe("buildServiceSchema with a hook", () => {
         })
       )
     ).toEqual([]);
+  });
+});
+
+describe("buildServiceSchema with an OAuth variable", () => {
+  const httpOAuthForm = (overrides: Partial<TServiceForm> = {}) =>
+    mcpForm({
+      serviceType: AgentVaultServiceType.Http,
+      serverUrl: "",
+      hosts: ["www.googleapis.com"],
+      methods: [AgentVaultHttpMethod.Get],
+      credentialType: AgentVaultCredentialType.OAuth,
+      ...overrides
+    });
+
+  it("asks an HTTP API with OAuth for a variable", () => {
+    expect(issuesOf(httpOAuthForm())).toEqual(["oauthVariableKey"]);
+    expect(issuesOf(httpOAuthForm({ oauthVariableKey: "GDRIVE" }))).toEqual([]);
+  });
+
+  it("needs no sign-in for an MCP server that uses a variable", () => {
+    expect(issuesOf(mcpForm({ oauthUsesVariable: true }))).toEqual(["oauthVariableKey"]);
+    expect(issuesOf(mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }))).toEqual([]);
+    expect(isOAuthAuthorizationMissing(mcpForm({ oauthUsesVariable: true }))).toBe(false);
+  });
+
+  it("names the variable on review", () => {
+    expect(oauthStatusLabel(mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }))).toBe(
+      "Uses the LINEAR variable"
+    );
+  });
+
+  it("refuses an OAuth variable's key in text", () => {
+    const result = buildServiceSchema(
+      null,
+      () => new Set(),
+      () => new Set(["GDRIVE"])
+    ).safeParse(
+      httpOAuthForm({ credentialType: AgentVaultCredentialType.Bearer, secret: "{{GDRIVE}}" })
+    );
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.message)).toEqual([
+      "'GDRIVE' is an OAuth variable, which can't be used in text. Set the service's credential to OAuth and choose the variable there."
+    ]);
+  });
+
+  it("doesn't count a variable's sign-in as the service's own", () => {
+    const service = storedOAuthService();
+    expect(
+      storedOAuthCredential(
+        {
+          ...service,
+          credential: {
+            ...service.credential,
+            source: "variable",
+            variable: { id: "variable-1", key: "LINEAR" }
+          }
+        },
+        SERVER_URL
+      )
+    ).toBeNull();
   });
 });

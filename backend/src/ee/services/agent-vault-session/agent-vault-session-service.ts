@@ -5,6 +5,7 @@ import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -24,9 +25,14 @@ import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  getAgentVaultPermission,
+  getAgentVaultReachability,
+  TAgentVaultPermission
+} from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import {
@@ -41,7 +47,10 @@ import {
 } from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
+  bindInlineOauthVariables,
+  inlineOauthVariableIdsOf,
   prepareInlineServices,
+  TInlineOauthVariableKeys,
   toInlineServiceSummary
 } from "./agent-vault-session-inline-service-fns";
 import {
@@ -71,6 +80,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   >;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByAccessBundleId">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "findOauthForResolve">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -89,6 +99,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionInlineServiceDAL,
   agentVaultAccessBundleDAL,
   agentVaultServiceDAL,
+  agentVaultVariableDAL,
   agentVaultDelegationDAL,
   resourceMetadataDAL,
   membershipDAL,
@@ -159,22 +170,46 @@ export const agentVaultSessionServiceFactory = ({
     );
   };
 
-  const withInlineServices = async <T extends { id: string }>(sessions: T[]) => {
+  // A deleted variable is left out, and its service then names none.
+  const findInlineOauthVariableKeys = async (
+    rows: { projectId: string; credentialType: string; credentialConfig?: unknown }[]
+  ): Promise<TInlineOauthVariableKeys> => {
+    const variableIds = inlineOauthVariableIdsOf(rows);
+    if (!variableIds.length) return new Map();
+    const variables = await agentVaultVariableDAL.findOauthForResolve({ variableIds, projectId: rows[0].projectId });
+    return new Map(variables.map((variable) => [variable.id, { id: variable.id, key: variable.key }]));
+  };
+
+  // An OAuth variable's key is a variable read, as on a bundle's services.
+  const withInlineServices = async <T extends { id: string }>(
+    sessions: T[],
+    permission: TAgentVaultPermission["permission"]
+  ) => {
     const rows = await agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(
       sessions.map((session) => session.id)
     );
+    const oauthVariables = permission.can(
+      ProjectPermissionAgentVaultVariableActions.Read,
+      ProjectPermissionSub.AgentVaultVariables
+    )
+      ? await findInlineOauthVariableKeys(rows)
+      : new Map();
     const bySession = new Map<string, TAgentVaultInlineServiceSummary[]>();
     rows.forEach((row) => {
+      const summary = toInlineServiceSummary(row, oauthVariables);
       const summaries = bySession.get(row.sessionId);
-      if (summaries) summaries.push(toInlineServiceSummary(row));
-      else bySession.set(row.sessionId, [toInlineServiceSummary(row)]);
+      if (summaries) summaries.push(summary);
+      else bySession.set(row.sessionId, [summary]);
     });
     return sessions.map((session) => ({ ...session, services: bySession.get(session.id) ?? [] }));
   };
 
-  const withServicesAndMetadata = async <T extends { id: string }>(sessions: T[]) => {
+  const withServicesAndMetadata = async <T extends { id: string }>(
+    sessions: T[],
+    permission: TAgentVaultPermission["permission"]
+  ) => {
     const [withServices, metadataBySession] = await Promise.all([
-      withInlineServices(sessions),
+      withInlineServices(sessions, permission),
       findSessionMetadata(sessions.map((session) => session.id))
     ]);
     return withServices.map((session) => ({ ...session, metadata: metadataBySession.get(session.id) ?? {} }));
@@ -224,7 +259,20 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    const preparedInlineServices = prepareInlineServices(services);
+    let preparedInlineServices = prepareInlineServices(services);
+    // An OAuth variable's tokens go to the hosts this session's service names, as a typed {{KEY}} would send a value, so
+    // naming one takes ReadValue too, checked before the lookup so a missing key can't be told from one the caller may
+    // not read.
+    if (preparedInlineServices.some((service) => service.oauthVariableKey)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultVariableActions.ReadValue,
+        ProjectPermissionSub.AgentVaultVariables
+      );
+      preparedInlineServices = bindInlineOauthVariables(
+        preparedInlineServices,
+        await agentVaultVariableDAL.findKeys({ projectId, owner: null })
+      );
+    }
     if (preparedInlineServices.some((service) => service.hookUrl)) {
       await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
@@ -310,7 +358,7 @@ export const agentVaultSessionServiceFactory = ({
       seal = (value) => encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
     }
     const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
-      ({ secrets, customHeaders, substitutions, ...service }) => ({
+      ({ secrets, customHeaders, substitutions, oauthVariableKey, ...service }) => ({
         ...service,
         projectId,
         credentialType: service.credentialConfig.type,
@@ -391,6 +439,7 @@ export const agentVaultSessionServiceFactory = ({
 
       return { session: created, insertedInlineServices: inserted };
     });
+    const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
 
     return {
       session: {
@@ -402,7 +451,7 @@ export const agentVaultSessionServiceFactory = ({
         accessBundle: accessBundle ? { id: bundlesByName.get(accessBundle)!.id, name: accessBundle } : null,
         services: insertedInlineServices
           .sort((a, b) => a.position - b.position)
-          .map((row) => toInlineServiceSummary(row))
+          .map((row) => toInlineServiceSummary(row, oauthVariables))
       },
       token,
       ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
@@ -446,7 +495,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: await withServicesAndMetadata(sessions.map(toSessionView)), totalCount };
+    return { sessions: await withServicesAndMetadata(sessions.map(toSessionView), permission), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -480,9 +529,10 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const [session] = await withServicesAndMetadata([
-      toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))
-    ]);
+    const [session] = await withServicesAndMetadata(
+      [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
+      permission
+    );
     return { session };
   };
 
@@ -590,7 +640,7 @@ export const agentVaultSessionServiceFactory = ({
 
     const { previousLabel } = result.written;
     const currentLabel = label === undefined ? previousLabel : label;
-    const [view] = await withInlineServices([toSessionView({ ...session, label: currentLabel })]);
+    const [view] = await withInlineServices([toSessionView({ ...session, label: currentLabel })], permission);
     return {
       session: { ...view, metadata: result.currentMetadata },
       previousLabel,

@@ -382,6 +382,31 @@ describe("a bundle service's facts", () => {
     ).toEqual({ type: "none" });
   });
 
+  test("an OAuth variable's sign-in counts though the service seals nothing, and the agent is told the proxy adds it", () => {
+    const variableRow = row({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "variable-1" },
+      encryptedCredential: null
+    });
+    const httpFacts = toBundleServiceFacts(variableRow, context());
+    expect(httpFacts.credential).toEqual({ type: "oauth" });
+    expect(describeSessionService(httpFacts).howToUse).toMatch(
+      /^Call https:\/\/api\.github\.com directly\. The proxy sets the Authorization header/
+    );
+
+    const mcpFacts = toBundleServiceFacts(
+      { ...variableRow, type: AgentVaultServiceType.Mcp, config: { serverUrl: "https://mcp.example.com/mcp" } },
+      context()
+    );
+    // `run` gives an MCP client a placeholder Authorization header only for a credential the proxy adds.
+    expect(describeSessionService(mcpFacts).credential).toEqual({
+      type: "oauth",
+      header: "Authorization",
+      addedByProxy: true,
+      memberProvided: false
+    });
+  });
+
   test("a field left to members counts only once the member has set every one of them", () => {
     const memberRow = row({
       encryptedCredential: null,

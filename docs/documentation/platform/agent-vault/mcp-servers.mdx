@@ -100,6 +100,12 @@ With OAuth, you sign in to the provider from Infisical, and Infisical stores the
   Every session that uses the access bundle calls tools as the account you signed in with. Sign in with an account that has only the access your agents need, or [leave the sign-in to each member](#leave-the-credential-to-each-member).
 </Warning>
 
+### OAuth variable
+
+If several services share one sign-in, or you already signed in to the provider in an [OAuth variable](/documentation/platform/agent-vault/oauth-variables), the service can use the variable's sign-in instead of its own. Under **Credential Type**, select **OAuth**, then select **Use an OAuth Variable** and pick the variable. To create one without leaving the service, select **Create OAuth Variable** at the end of the list.
+
+To renew the sign-in, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) on the **Variables** page instead of the service.
+
 ### Bearer token
 
 With a Bearer token, you paste a token the MCP server accepts into **Token**, such as a [GitHub personal access token](https://github.com/settings/tokens) for GitHub MCP. The proxy sends the token as `Authorization: Bearer <token>`.
@@ -248,7 +254,7 @@ To allow or refuse each call with your own rules, such as rules based on the too
   <Accordion title="The agent gets a 502 response from the MCP server">
     If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
-    **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
+    **The sign-in used by the X service has expired and has to be connected again:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. If the service uses an [OAuth variable](#oauth-variable), [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) instead.
 
     <Frame>
       <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />

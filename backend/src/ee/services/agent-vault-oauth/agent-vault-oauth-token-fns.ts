@@ -31,6 +31,7 @@ import {
   AgentVaultOauthClientAuthMethod,
   AgentVaultOauthCompatibility,
   TAgentVaultOauthConfig,
+  TAgentVaultOauthVariableCredentialConfig,
   TResolvedOauthCredential
 } from "./agent-vault-oauth-types";
 
@@ -151,7 +152,7 @@ const parseTokenBody = (contentType: string, body: string): Record<string, unkno
 // lone surrogate and send a different secret.
 export const OAUTH_VSCHAR_PATTERN = new RE2(/^[\x20-\x7e]+$/);
 
-const MAX_TOKEN_LENGTH = 16_384;
+export const MAX_TOKEN_LENGTH = 16_384;
 const isUsableToken = (value: unknown): value is string =>
   typeof value === "string" && value.length <= MAX_TOKEN_LENGTH && OAUTH_VSCHAR_PATTERN.test(value);
 
@@ -474,6 +475,28 @@ export const toResolvedOauthCredential = (
   expiresAt: config.expiresAt ?? null
 });
 
+// The OAuth variable whose sign-in the service sends, or null when the service holds its own tokens or has none.
+export const oauthVariableIdOf = (service: { credentialType: string; credentialConfig?: unknown }) => {
+  const config = service.credentialConfig as Partial<TAgentVaultOauthVariableCredentialConfig> | null | undefined;
+  return service.credentialType === AgentVaultCredentialType.OAuth &&
+    config?.source === "variable" &&
+    typeof config.variableId === "string"
+    ? config.variableId
+    : null;
+};
+
+export const isVariableOauth = (service: { credentialType: string; credentialConfig?: unknown }) =>
+  oauthVariableIdOf(service) !== null;
+
+// A session's own service whose tokens were sent with the session. They live on its row, which only the inline service
+// DAL writes, and go with the session's other secrets.
+export const isInlineTokensOauth = (service: {
+  credentialType: string;
+  credentialConfig?: unknown;
+  sessionId?: string | null;
+}) =>
+  service.credentialType === AgentVaultCredentialType.OAuth && Boolean(service.sessionId) && !isVariableOauth(service);
+
 // Each member signs in for themselves, so the service row holds no tokens, only what their sign-ins share.
 export const isMemberProvidedOauth = (service: { credentialType: string; memberProvidedFields?: string[] | null }) =>
   service.credentialType === AgentVaultCredentialType.OAuth &&
@@ -538,7 +561,8 @@ export type TRefreshDecision =
   | { action: "needs-reauthorization"; reason: string };
 
 // One decision for both callers. Resolve passes `expiresWithinSeconds`; the proxy, after a 401, passes the hash
-// of the token it sent.
+// of the token it sent. `server` names what issued the token in a reason: an OAuth variable's sign-in can be for any
+// provider, not only an MCP server.
 export const decideRefresh = ({
   status,
   expiresAt,
@@ -546,7 +570,8 @@ export const decideRefresh = ({
   hasRefreshToken,
   rejectedTokenHash,
   expiresWithinSeconds,
-  now
+  now,
+  server = "MCP server"
 }: {
   status: AgentVaultOauthStatus;
   expiresAt: string | null;
@@ -555,6 +580,7 @@ export const decideRefresh = ({
   rejectedTokenHash?: string;
   expiresWithinSeconds?: number;
   now: Date;
+  server?: string;
 }): TRefreshDecision => {
   if (status === AgentVaultOauthStatus.NeedsReauthorization) return { action: "return-current" };
 
@@ -564,7 +590,7 @@ export const decideRefresh = ({
     if (!hasRefreshToken) {
       return {
         action: "needs-reauthorization",
-        reason: "The MCP server rejected the access token and issued no refresh token."
+        reason: `The ${server} rejected the access token and issued no refresh token.`
       };
     }
     return { action: "refresh" };
@@ -578,7 +604,7 @@ export const decideRefresh = ({
     return expiresAtMs <= now.getTime()
       ? {
           action: "needs-reauthorization",
-          reason: "The access token expired and the MCP server issued no refresh token."
+          reason: `The access token expired and the ${server} issued no refresh token.`
         }
       : { action: "return-current" };
   }

@@ -438,6 +438,22 @@ describe("discovering an MCP server's authorization server", () => {
     await expect(discoverOauthServer(http, "https://mcp.example.com/mcp")).rejects.toThrow(/different issuer/);
   });
 
+  test("asked to allow it, an issuer mismatch is reported with the issuer named instead of thrown", async () => {
+    const { http } = stubHttp({
+      json: {
+        "https://mcp.example.com/.well-known/oauth-authorization-server": {
+          ...LINEAR_AS,
+          issuer: "https://evil.example"
+        }
+      }
+    });
+    const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp", undefined, {
+      allowIssuerMismatch: true
+    });
+    expect(discovery.issuerMismatch).toEqual({ advertisedIssuer: "https://evil.example" });
+    expect(discovery.issuer).toBe("https://mcp.example.com");
+  });
+
   test("an issuer differing by a trailing slash is accepted", async () => {
     const { http } = stubHttp({
       json: {

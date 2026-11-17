@@ -5,24 +5,34 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
+import { toOauthVariableSettings } from "../agent-vault-variable/agent-vault-oauth-variable-fns";
+import {
+  TAgentVaultOauthVariableConfig,
+  TAgentVaultOauthVariableSettingsInput
+} from "../agent-vault-variable/agent-vault-variable-types";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthAuthorizationStatus,
   AgentVaultOauthStatus,
-  AgentVaultServiceType
+  AgentVaultOauthVariableConnectMethod,
+  AgentVaultServiceType,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { MAX_OAUTH_SCOPES } from "./agent-vault-oauth-discovery-fns";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import {
+  AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE,
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
+  AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE,
   agentVaultOauthServiceFactory,
   checkOauthClaimUnderLock,
   checkOauthServerUnderLock
@@ -83,10 +93,24 @@ type TRow = {
   memberProvidedFields?: string[] | null;
   hostPattern?: string;
   config?: unknown;
+  // Set on a session's own service.
+  sessionId?: string | null;
+  secretsDeletedAt?: Date | null;
 };
 
 // A member's connection: their personal value for `credential-value` on a service that leaves sign-in to members.
 type TPersonalRow = { id: string; serviceId: string; userId: string; encryptedValue: Buffer; oauthConfig: unknown };
+
+type TVariableRow = {
+  id: string;
+  projectId: string;
+  key: string;
+  type: string;
+  userId: string | null;
+  identityId: string | null;
+  encryptedValue: Buffer | null;
+  oauthConfig: TAgentVaultOauthVariableConfig | null;
+};
 
 const LINEAR_JSON: Record<string, unknown> = {
   "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
@@ -109,10 +133,12 @@ const setup = ({
   canEditBundles = true,
   challenge = `Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"`,
   isAdmin = true,
-  grantedBundleIds = [BUNDLE_ID]
+  grantedBundleIds = [BUNDLE_ID],
+  canEditVariables = true
 }: {
   metadata?: Record<string, unknown>;
   canEditBundles?: boolean;
+  canEditVariables?: boolean;
   challenge?: string | null;
   // A member reaches only the bundles they hold a grant on; an admin reaches every one.
   isAdmin?: boolean;
@@ -122,6 +148,13 @@ const setup = ({
   const ttls = new Map<string, number>();
   const rows = new Map<string, TRow>();
   const personalRows = new Map<string, TPersonalRow>();
+  const variableRows = new Map<string, TVariableRow>();
+  // structuredClone turns a Buffer into a plain Uint8Array, so the sealed value is copied on its own.
+  const cloneVariable = (row: TVariableRow) => ({
+    ...structuredClone({ ...row, encryptedValue: null }),
+    encryptedValue: row.encryptedValue ? Buffer.from(row.encryptedValue) : null
+  });
+  const permissions = { canEditVariables };
   const tokenRequests: URLSearchParams[] = [];
   const registrations: unknown[] = [];
   const lockKeys: string[][] = [];
@@ -337,10 +370,126 @@ const setup = ({
         return { id, oauthConfig: row.oauthConfig } as never;
       }
     },
+    agentVaultVariableDAL: {
+      findByIdInProject: async ({ id, projectId }: { id: string; projectId: string }) => {
+        const row = variableRows.get(id);
+        return (row && row.projectId === projectId ? cloneVariable(row) : undefined) as never;
+      },
+      lockByIdInProject: async ({ id, projectId }: { id: string; projectId: string }) => {
+        const row = variableRows.get(id);
+        return (row && row.projectId === projectId ? cloneVariable(row) : undefined) as never;
+      },
+      updateById: (async (id: string, data: Partial<TVariableRow>) => {
+        const row = variableRows.get(id)!;
+        Object.assign(row, { ...data, oauthConfig: structuredClone(data.oauthConfig ?? row.oauthConfig) });
+        return row;
+      }) as never,
+      transaction: (async (fn: (tx: unknown) => Promise<unknown>) => fn({})) as never,
+      findOauthByIdPrimary: async (id: string) => {
+        const row = variableRows.get(id);
+        return (
+          row && row.type === AgentVaultVariableType.OAuth && !row.userId && !row.identityId
+            ? cloneVariable(row)
+            : undefined
+        ) as never;
+      },
+      // Mirrors the SQL: the compare is on the sealed tokens only, and the patch merges into `connection`.
+      compareAndSwapOauthConnection: async ({
+        id,
+        expectedEncryptedValue,
+        encryptedValue,
+        connectionPatch,
+        keepAdditionalScopesStatus
+      }: {
+        id: string;
+        expectedEncryptedValue: Buffer;
+        encryptedValue?: Buffer;
+        connectionPatch: Record<string, unknown>;
+        keepAdditionalScopesStatus?: boolean;
+      }) => {
+        const row = variableRows.get(id);
+        if (!row?.encryptedValue?.equals(expectedEncryptedValue) || !row.oauthConfig) return undefined;
+        if (encryptedValue) row.encryptedValue = encryptedValue;
+        const stored = (row.oauthConfig.connection ?? {}) as Record<string, unknown>;
+        const patch =
+          keepAdditionalScopesStatus && stored.status === AgentVaultOauthStatus.NeedsAdditionalScopes
+            ? Object.fromEntries(Object.entries(connectionPatch).filter(([key]) => key !== "status"))
+            : connectionPatch;
+        row.oauthConfig = { ...row.oauthConfig, connection: { ...stored, ...patch } as never };
+        return { id, key: row.key, oauthConfig: structuredClone(row.oauthConfig) } as never;
+      },
+      addOauthRequiredScopesToConnection: async ({
+        id,
+        expectedEncryptedValue,
+        rejectedTokenHash,
+        requiredScopes
+      }: {
+        id: string;
+        expectedEncryptedValue: Buffer;
+        rejectedTokenHash: string;
+        requiredScopes: string[];
+      }) => {
+        const row = variableRows.get(id);
+        const connection = row?.oauthConfig?.connection;
+        if (!row?.encryptedValue?.equals(expectedEncryptedValue) || connection?.accessTokenHash !== rejectedTokenHash) {
+          return undefined;
+        }
+        row.oauthConfig = {
+          ...row.oauthConfig!,
+          connection: { ...connection, status: AgentVaultOauthStatus.NeedsAdditionalScopes, requiredScopes }
+        };
+        return { id, oauthConfig: structuredClone(row.oauthConfig) } as never;
+      }
+    },
+    // Mirrors the SQL: a session's own service only, and nothing once its secrets are deleted.
+    agentVaultSessionInlineServiceDAL: {
+      findOauthTokensByIdPrimary: async (id: string) => {
+        const row = rows.get(id);
+        return (
+          row?.sessionId && !row.secretsDeletedAt && row.encryptedCredential
+            ? { ...row, projectId: PROJECT_ID, credentialConfig: structuredClone(row.credentialConfig) }
+            : undefined
+        ) as never;
+      },
+      compareAndSwapOauthTokens: async ({
+        id,
+        expectedEncryptedCredential,
+        encryptedCredential,
+        credentialConfigPatch
+      }: {
+        id: string;
+        expectedEncryptedCredential: Buffer;
+        encryptedCredential?: Buffer;
+        credentialConfigPatch: Record<string, unknown>;
+      }) => {
+        const row = rows.get(id);
+        if (!row?.sessionId || row.secretsDeletedAt || !row.encryptedCredential?.equals(expectedEncryptedCredential)) {
+          return undefined;
+        }
+        if (encryptedCredential) row.encryptedCredential = encryptedCredential;
+        row.credentialConfig = { ...(row.credentialConfig as object), ...credentialConfigPatch };
+        return {
+          id,
+          hostPattern: row.hostPattern ?? "",
+          config: row.config ?? null,
+          credentialConfig: structuredClone(row.credentialConfig)
+        } as never;
+      },
+      addOauthRequiredScopes: async () => undefined
+    },
+    projectDAL: { findById: async () => ({ name: "Acme Support" }) as never },
     permissionService: {
       getProjectPermission: async () =>
         ({
           permission: createMongoAbility([
+            ...(permissions.canEditVariables
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultVariableActions.Edit,
+                    subject: ProjectPermissionSub.AgentVaultVariables
+                  }
+                ]
+              : []),
             {
               action: ProjectPermissionAgentVaultAccessBundleActions.Read,
               subject: ProjectPermissionSub.AgentVaultAccessBundles
@@ -370,6 +519,8 @@ const setup = ({
     ttls,
     rows,
     personalRows,
+    variableRows,
+    permissions,
     tokenRequests,
     registrations,
     lockKeys,
@@ -2156,5 +2307,664 @@ describe("setting up a service whose members sign in", () => {
     const refusal = env.service.prepareMemberOauth({ serverUrl: SERVER_URL });
     await expect(refusal).rejects.toThrow(/doesn't advertise OAuth/);
     await expect(refusal).rejects.toMatchObject({ details: { registrationRequired: true } });
+  });
+});
+
+const VARIABLE_ID = "66666666-6666-4666-8666-666666666666";
+const OTHER_VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
+const IDENTITY_ID = "88888888-8888-4888-8888-888888888888";
+const API_REDIRECT_URI = "https://app.acme.test/oauth/callback";
+const AUTHORIZATION_KEY = (id: string) => `agent-vault-oauth-authorization:${id}`;
+
+const identityCtx = {
+  actor: ActorType.IDENTITY,
+  actorId: IDENTITY_ID,
+  actorOrgId: "org-1",
+  actorAuthMethod: null
+};
+
+const addVariable = (
+  env: ReturnType<typeof setup>,
+  input: TAgentVaultOauthVariableSettingsInput,
+  overrides: Partial<TVariableRow> = {}
+) => {
+  const row: TVariableRow = {
+    id: VARIABLE_ID,
+    projectId: PROJECT_ID,
+    key: "LINEAR_U123",
+    type: AgentVaultVariableType.OAuth,
+    userId: null,
+    identityId: null,
+    encryptedValue: null,
+    oauthConfig: { settings: toOauthVariableSettings(input), connection: null },
+    ...overrides
+  };
+  env.variableRows.set(row.id, row);
+  return row;
+};
+
+const startVariableSignIn = (
+  env: ReturnType<typeof setup>,
+  ctx: typeof identityCtx | ReturnType<typeof ctxOf> = identityCtx,
+  extra: { clientSecret?: string; variableId?: string } = {}
+) => env.service.startVariableAuthorization({ projectId: PROJECT_ID, ctx, variableId: VARIABLE_ID, ...extra });
+
+const stateOf = (authorizeUrl: string) => new URL(authorizeUrl).searchParams.get("state")!;
+
+const completeVariableSignIn = (
+  env: ReturnType<typeof setup>,
+  state: string,
+  {
+    ctx = identityCtx,
+    variableId = VARIABLE_ID,
+    ...rest
+  }: {
+    ctx?: typeof identityCtx | ReturnType<typeof ctxOf>;
+    variableId?: string;
+    code?: string;
+    error?: string;
+    iss?: string;
+  } = {}
+) =>
+  env.service.completeVariableAuthorization({
+    projectId: PROJECT_ID,
+    ctx,
+    variableId,
+    state,
+    ...("error" in rest ? {} : { code: "code-1", iss: "https://mcp.linear.app" }),
+    ...rest
+  });
+
+describe("starting an OAuth variable's sign-in", () => {
+  test("a machine identity gets a link to the variable's own callback, registered under the project's name", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+
+    const start = await startVariableSignIn(env);
+
+    expect(start).toMatchObject({
+      registrationRequired: false,
+      manualSetupRequired: false,
+      prefill: null,
+      redirectUri: API_REDIRECT_URI
+    });
+    const url = new URL(start.authorization!.authorizeUrl);
+    expect(url.searchParams.get("redirect_uri")).toBe(API_REDIRECT_URI);
+    expect(env.registrations[0]).toMatchObject({ client_name: "Acme Support", redirect_uris: [API_REDIRECT_URI] });
+    expect(new Date(start.authorization!.expiresAt).getTime()).toBeGreaterThan(Date.now());
+    const record = storedAuthorization(env, start.authorization!.id);
+    expect(record).toMatchObject({
+      variableId: VARIABLE_ID,
+      serviceId: null,
+      actor: { type: ActorType.IDENTITY, id: IDENTITY_ID },
+      clientName: "Acme Support",
+      redirectUri: API_REDIRECT_URI
+    });
+    expect(record.actorUserId).toBeUndefined();
+    expect(record.variableSettingsFingerprint).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  test("the variable's client name is sent at registration, and Infisical's callback when it has no redirect URI", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, clientName: "Acme Helpdesk" });
+
+    const start = await startVariableSignIn(env, ctxOf(USER_ID));
+
+    expect(start.redirectUri).toBe(REDIRECT_URI);
+    expect(env.registrations[0]).toMatchObject({ client_name: "Acme Helpdesk", redirect_uris: [REDIRECT_URI] });
+  });
+
+  test("endpoints discovery only guessed get no registration and no link, only a prefill", async () => {
+    const env = setup({ metadata: {}, challenge: null });
+    addVariable(env, { serverUrl: SERVER_URL });
+
+    const start = await startVariableSignIn(env, ctxOf(USER_ID));
+
+    expect(start).toEqual({
+      authorization: null,
+      registrationRequired: false,
+      manualSetupRequired: true,
+      prefill: {
+        authorizationEndpoint: "https://mcp.linear.app/authorize",
+        tokenEndpoint: "https://mcp.linear.app/token",
+        issuer: "https://mcp.linear.app",
+        scopes: []
+      },
+      redirectUri: REDIRECT_URI
+    });
+    expect(env.registrations).toHaveLength(0);
+    expect([...env.store.keys()]).toEqual([]);
+  });
+
+  test("metadata naming another issuer gets no registration and no link, only a prefill", async () => {
+    const env = setup({
+      metadata: {
+        ...LINEAR_JSON,
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+          ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+          issuer: "https://linear.app"
+        }
+      }
+    });
+    addVariable(env, { serverUrl: SERVER_URL });
+
+    const start = await startVariableSignIn(env, ctxOf(USER_ID));
+
+    expect(start.authorization).toBeNull();
+    expect(start.manualSetupRequired).toBe(true);
+    expect(start.prefill).toEqual({
+      authorizationEndpoint: "https://mcp.linear.app/authorize",
+      tokenEndpoint: "https://mcp.linear.app/token",
+      issuer: "https://linear.app",
+      scopes: ["read", "write"]
+    });
+    expect(env.registrations).toHaveLength(0);
+  });
+
+  test("a service's own sign-in still refuses metadata naming another issuer", async () => {
+    const env = setup({
+      metadata: {
+        ...LINEAR_JSON,
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+          ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+          issuer: "https://linear.app"
+        }
+      }
+    });
+    await expect(createAuthorization(env)).rejects.toThrow(/different issuer/);
+  });
+
+  test("a sign-in needs a scope: the variable's, or one the server lists", async () => {
+    const withoutScopes = {
+      ...LINEAR_JSON,
+      "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
+        resource: SERVER_URL,
+        authorization_servers: ["https://mcp.linear.app"]
+      }
+    };
+    const env = setup({ metadata: withoutScopes });
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    await expect(startVariableSignIn(env)).rejects.toThrow(/Add at least one scope/);
+    expect(env.registrations).toHaveLength(0);
+
+    const scoped = setup({ metadata: withoutScopes });
+    addVariable(scoped, { serverUrl: SERVER_URL, scopes: ["issues:read"], redirectUri: API_REDIRECT_URI });
+    const start = await startVariableSignIn(scoped);
+    expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("issues:read");
+  });
+
+  test("a variable set up by hand discovers nothing, and a reconnect keeps the stored client secret", async () => {
+    const env = setup();
+    addVariable(
+      env,
+      {
+        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+        tokenEndpoint: "https://oauth2.googleapis.com/token",
+        clientId: "google-client",
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+        redirectUri: API_REDIRECT_URI
+      },
+      { encryptedValue: sealBytes({ accessToken: "old-access", clientSecret: "stored-secret" }) }
+    );
+
+    const start = await startVariableSignIn(env);
+
+    const url = new URL(start.authorization!.authorizeUrl);
+    expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    expect(url.searchParams.get("access_type")).toBe("offline");
+    expect(env.registrations).toHaveLength(0);
+    const record = storedAuthorization(env, start.authorization!.id);
+    expect(record).toMatchObject({
+      issuer: "https://accounts.google.com",
+      tokenEndpoint: "https://oauth2.googleapis.com/token",
+      clientId: "google-client",
+      registration: AgentVaultOauthRegistration.Manual,
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
+    });
+    expect(openBytes<{ clientSecret?: string }>(Buffer.from(record.sealedPending, "base64")).clientSecret).toBe(
+      "stored-secret"
+    );
+  });
+
+  test("a machine identity can't sign in a variable without its own redirect URI", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL });
+
+    await expect(startVariableSignIn(env)).rejects.toMatchObject({
+      name: "BadRequest",
+      details: { field: "oauth.redirectUri" }
+    });
+    expect(env.registrations).toHaveLength(0);
+  });
+
+  test("a client secret for a variable that registers its client is refused", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL });
+    await expect(startVariableSignIn(env, ctxOf(USER_ID), { clientSecret: "secret" })).rejects.toThrow(
+      /takes no client secret/
+    );
+  });
+
+  test("a caller who can't edit variables gets a 404, and a text variable a 400", async () => {
+    const env = setup({ canEditVariables: false });
+    addVariable(env, { serverUrl: SERVER_URL });
+    await expect(startVariableSignIn(env)).rejects.toThrow(NotFoundError);
+
+    const text = setup();
+    addVariable(text, { serverUrl: SERVER_URL }, { type: AgentVaultVariableType.Text, oauthConfig: null });
+    await expect(startVariableSignIn(text)).rejects.toThrow(BadRequestError);
+  });
+});
+
+describe("completing an OAuth variable's sign-in", () => {
+  test("an identity's sign-in is written into the variable, and completing it again changes nothing", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    const state = stateOf(authorization!.authorizeUrl);
+
+    const result = await completeVariableSignIn(env, state);
+
+    expect(result.variableConnected).toEqual({
+      variableId: VARIABLE_ID,
+      key: "LINEAR_U123",
+      method: AgentVaultOauthVariableConnectMethod.SignIn,
+      issuer: "https://mcp.linear.app",
+      scopes: ["read"]
+    });
+    expect(env.tokenRequests[0].get("redirect_uri")).toBe(API_REDIRECT_URI);
+    const row = env.variableRows.get(VARIABLE_ID)!;
+    expect(openBytes<TAgentVaultOauthSecret>(row.encryptedValue!)).toEqual({
+      accessToken: "at-1",
+      refreshToken: "rt-1"
+    });
+    expect(row.oauthConfig!.connection).toMatchObject({
+      serverUrl: SERVER_URL,
+      issuer: "https://mcp.linear.app",
+      clientId: "registered-client",
+      status: AgentVaultOauthStatus.Connected,
+      accessTokenHash: hashAccessToken("at-1")
+    });
+    expect(row.oauthConfig!.settings.redirectUri).toBe(API_REDIRECT_URI);
+    // The tokens live on the variable now, so the record keeps none.
+    expect(storedAuthorization(env, authorization!.id)).toMatchObject({
+      status: AgentVaultOauthAuthorizationStatus.Authorized,
+      sealedCredential: null,
+      sealedPending: ""
+    });
+
+    await expect(completeVariableSignIn(env, state)).resolves.toEqual({ variableConnected: null });
+    expect(env.tokenRequests).toHaveLength(1);
+  });
+
+  test("a second sign-in replaces the tokens as a reconnect", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const first = await startVariableSignIn(env);
+    await completeVariableSignIn(env, stateOf(first.authorization!.authorizeUrl));
+
+    const second = await startVariableSignIn(env);
+    const result = await completeVariableSignIn(env, stateOf(second.authorization!.authorizeUrl));
+
+    expect(result.variableConnected?.method).toBe(AgentVaultOauthVariableConnectMethod.Reconnect);
+  });
+
+  test("a sign-in started for another variable is a 400, and the code is never used", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    addVariable(env, { serverUrl: SERVER_URL }, { id: OTHER_VARIABLE_ID, key: "LINEAR_U456" });
+    const { authorization } = await startVariableSignIn(env);
+
+    await expect(
+      completeVariableSignIn(env, stateOf(authorization!.authorizeUrl), { variableId: OTHER_VARIABLE_ID })
+    ).rejects.toThrow(/started for a different variable/);
+    expect(env.tokenRequests).toHaveLength(0);
+    expect(env.variableRows.get(OTHER_VARIABLE_ID)!.encryptedValue).toBeNull();
+  });
+
+  test("a service's authorization can't complete a variable", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL });
+    const { authorization } = await createAuthorization(env);
+
+    await expect(
+      completeVariableSignIn(env, stateOf(authorization!.authorizeUrl), { ctx: ctxOf(USER_ID) })
+    ).rejects.toThrow(/started for a service/);
+  });
+
+  test("anyone but the actor who started it, or a state that names nothing, gets a 404", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    const state = stateOf(authorization!.authorizeUrl);
+
+    await expect(completeVariableSignIn(env, state, { ctx: ctxOf(USER_ID) })).rejects.toThrow(NotFoundError);
+    await expect(
+      completeVariableSignIn(env, state, { ctx: { ...identityCtx, actorId: "99999999-9999-4999-8999-999999999999" } })
+    ).rejects.toThrow(NotFoundError);
+    await expect(completeVariableSignIn(env, "not-a-sign-in.abc")).rejects.toThrow(NotFoundError);
+    await expect(completeVariableSignIn(env, `${authorization!.id}.forged`)).rejects.toThrow(BadRequestError);
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
+  test("settings changed since the sign-in started are a 409, and the tokens are never written", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    const row = env.variableRows.get(VARIABLE_ID)!;
+    row.oauthConfig = { ...row.oauthConfig!, settings: toOauthVariableSettings({ serverUrl: `${SERVER_URL}/v2` }) };
+    const state = stateOf(authorization!.authorizeUrl);
+
+    await expect(completeVariableSignIn(env, state)).rejects.toThrow(AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE);
+    expect(row.encryptedValue).toBeNull();
+    expect(row.oauthConfig!.connection).toBeNull();
+    // The code is spent, so the sign-in stays failed.
+    await expect(completeVariableSignIn(env, state)).rejects.toThrow(AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE);
+    expect(env.tokenRequests).toHaveLength(1);
+  });
+
+  test("a scope change since the sign-in started doesn't block it", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    const row = env.variableRows.get(VARIABLE_ID)!;
+    row.oauthConfig = {
+      ...row.oauthConfig!,
+      settings: toOauthVariableSettings({ serverUrl: SERVER_URL, scopes: ["read"], redirectUri: API_REDIRECT_URI })
+    };
+
+    const result = await completeVariableSignIn(env, stateOf(authorization!.authorizeUrl));
+    expect(result.variableConnected).not.toBeNull();
+  });
+
+  test("an actor who can no longer edit variables is refused, and nothing is written", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    env.permissions.canEditVariables = false;
+
+    await expect(completeVariableSignIn(env, stateOf(authorization!.authorizeUrl))).rejects.toThrow(
+      ForbiddenRequestError
+    );
+    expect(env.variableRows.get(VARIABLE_ID)!.encryptedValue).toBeNull();
+  });
+
+  test("the provider's refusal is a 400 with its reason", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+
+    await expect(
+      completeVariableSignIn(env, stateOf(authorization!.authorizeUrl), {
+        error: "access_denied",
+        iss: "https://mcp.linear.app"
+      })
+    ).rejects.toThrow(/was denied/);
+    expect(storedAuthorization(env, authorization!.id).status).toBe(AgentVaultOauthAuthorizationStatus.Failed);
+  });
+
+  test("a sign-in already being completed is a 409", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    env.store.set(`${AUTHORIZATION_KEY(authorization!.id)}:complete`, "1");
+
+    await expect(completeVariableSignIn(env, stateOf(authorization!.authorizeUrl))).rejects.toThrow(ConflictError);
+  });
+
+  test("the dashboard's callback writes the sign-in into the variable, and a service save can't claim it", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL });
+    const { authorization } = await startVariableSignIn(env, ctxOf(USER_ID));
+
+    const result = await env.service.completeAuthorization({
+      projectId: PROJECT_ID,
+      ctx: ctxOf(USER_ID),
+      authorizationId: authorization!.id,
+      state: stateOf(authorization!.authorizeUrl),
+      code: "code-1",
+      iss: "https://mcp.linear.app"
+    });
+
+    expect(result.authorization.status).toBe(AgentVaultOauthAuthorizationStatus.Authorized);
+    expect(result.variableConnected?.method).toBe(AgentVaultOauthVariableConnectMethod.SignIn);
+    expect(env.variableRows.get(VARIABLE_ID)!.encryptedValue).not.toBeNull();
+    await expect(
+      env.service.claimAuthorization({
+        authorizationId: authorization!.id,
+        projectId: PROJECT_ID,
+        ctx: ctxOf(USER_ID),
+        serverUrl: SERVER_URL
+      })
+    ).rejects.toThrow(/signs in an OAuth variable/);
+  });
+
+  test("the dashboard's callback reports a variable that changed as a failed authorization, with a 200", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL });
+    const { authorization } = await startVariableSignIn(env, ctxOf(USER_ID));
+    const row = env.variableRows.get(VARIABLE_ID)!;
+    row.oauthConfig = { ...row.oauthConfig!, settings: toOauthVariableSettings({ serverUrl: `${SERVER_URL}/v2` }) };
+
+    const result = await env.service.completeAuthorization({
+      projectId: PROJECT_ID,
+      ctx: ctxOf(USER_ID),
+      authorizationId: authorization!.id,
+      state: stateOf(authorization!.authorizeUrl),
+      code: "code-1",
+      iss: "https://mcp.linear.app"
+    });
+
+    expect(result.authorization).toMatchObject({
+      status: AgentVaultOauthAuthorizationStatus.Failed,
+      error: AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE
+    });
+    expect(result.variableConnected).toBeUndefined();
+    expect(row.encryptedValue).toBeNull();
+    expect(storedAuthorization(env, authorization!.id).sealedCredential).toBeNull();
+  });
+
+  test("a record from before identities could sign in is read as its user's", async () => {
+    const env = setup();
+    const { authorization } = await createAuthorization(env);
+    const record = storedAuthorization(env, authorization!.id);
+    delete record.actor;
+    env.store.set(AUTHORIZATION_KEY(authorization!.id), JSON.stringify(record));
+
+    await expect(
+      env.service.getAuthorization({ projectId: PROJECT_ID, ctx: ctxOf(USER_ID), authorizationId: authorization!.id })
+    ).resolves.toMatchObject({ authorization: { id: authorization!.id } });
+    await expect(
+      env.service.getAuthorization({
+        projectId: PROJECT_ID,
+        ctx: { ...identityCtx, actorId: USER_ID },
+        authorizationId: authorization!.id
+      })
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("refreshing a token held by an OAuth variable", () => {
+  let env: ReturnType<typeof setup>;
+  const variable = () => env.variableRows.get(VARIABLE_ID)!;
+  const connection = () => variable().oauthConfig!.connection!;
+  const refresh = (extra: Partial<Parameters<typeof env.service.refreshServiceToken>[0]> = {}) =>
+    env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      variableId: VARIABLE_ID,
+      destination: DESTINATION,
+      rejectedTokenHash: hashAccessToken("old-access"),
+      ...extra
+    });
+
+  beforeEach(() => {
+    env = setup();
+    env.rows.set(SERVICE_ID, {
+      id: SERVICE_ID,
+      name: "linear",
+      type: AgentVaultServiceType.Mcp,
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID },
+      encryptedCredential: null,
+      hostPattern: "mcp.linear.app",
+      config: { serverUrl: SERVER_URL, transport: "streamable-http" }
+    });
+    (env.rows.get(SERVICE_ID) as TRow & { projectId: string }).projectId = PROJECT_ID;
+    addVariable(
+      env,
+      { serverUrl: SERVER_URL },
+      {
+        encryptedValue: sealBytes({ accessToken: "old-access", refreshToken: "old-refresh" }),
+        oauthConfig: {
+          settings: toOauthVariableSettings({ serverUrl: SERVER_URL }),
+          connection: oauthConfig()
+        }
+      }
+    );
+  });
+
+  test("writes the new tokens into the variable, under one lock for the variable", async () => {
+    env.onToken(() => json(200, { access_token: "new-access", token_type: "Bearer", expires_in: 600 }));
+
+    const result = await refresh();
+
+    expect(result.credential.value).toBe("new-access");
+    expect(env.lockKeys).toEqual([[`agent-vault-oauth-refresh-lock:variable:${VARIABLE_ID}`]]);
+    expect(openBytes<TAgentVaultOauthSecret>(variable().encryptedValue!)).toEqual({
+      accessToken: "new-access",
+      refreshToken: "old-refresh"
+    });
+    expect(connection().accessTokenHash).toBe(hashAccessToken("new-access"));
+    expect(variable().oauthConfig!.settings.serverUrl).toBe(SERVER_URL);
+  });
+
+  test("a dead login names the variable to authorize again", async () => {
+    env.onToken(() => json(400, { error: "invalid_grant" }));
+
+    const result = await refresh();
+
+    expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    expect(connection().lastError).toMatch(
+      /^The sign-in stored in the OAuth variable 'LINEAR_U123' is no longer accepted \(.+\)\. Authorize LINEAR_U123 again on the Variables page\.$/
+    );
+  });
+
+  test("a rejected token with no refresh token says the server rejected it, not an MCP server", async () => {
+    variable().encryptedValue = sealBytes({ accessToken: "old-access" });
+
+    await refresh();
+
+    expect(connection().lastError).toBe(
+      "The server rejected the access token and issued no refresh token. Authorize LINEAR_U123 again on the Variables page."
+    );
+  });
+
+  test("a service that now uses another variable is a 409, with no provider call", async () => {
+    env.rows.get(SERVICE_ID)!.credentialConfig = {
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variableId: OTHER_VARIABLE_ID
+    };
+
+    await expect(refresh()).rejects.toThrow(AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE);
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
+  test("a service that moved to another host is a 409, with no provider call", async () => {
+    env.rows.get(SERVICE_ID)!.hostPattern = "mcp.example.com";
+
+    await expect(refresh()).rejects.toThrow(AGENT_VAULT_SERVICE_MOVED_MESSAGE);
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
+  test("a variable that isn't connected is a 404", async () => {
+    Object.assign(variable(), {
+      encryptedValue: null,
+      oauthConfig: { ...variable().oauthConfig!, connection: null }
+    });
+
+    await expect(refresh()).rejects.toThrow(NotFoundError);
+  });
+
+  test("required scopes are reported on the variable's sign-in", async () => {
+    await env.service.reportMissingScopes({
+      serviceId: SERVICE_ID,
+      variableId: VARIABLE_ID,
+      rejectedTokenHash: hashAccessToken("old-access"),
+      requiredScopes: ["admin"],
+      hostPattern: "mcp.linear.app"
+    });
+
+    expect(connection()).toMatchObject({
+      status: AgentVaultOauthStatus.NeedsAdditionalScopes,
+      requiredScopes: ["admin"]
+    });
+  });
+});
+
+describe("refreshing tokens sent with a session", () => {
+  let env: ReturnType<typeof setup>;
+  const INLINE_ID = "66666666-6666-4666-8666-666666666666";
+  const inline = () => env.rows.get(INLINE_ID)!;
+  const refresh = (extra: Partial<Parameters<typeof env.service.refreshServiceToken>[0]> = {}) =>
+    env.service.refreshServiceToken({
+      serviceId: INLINE_ID,
+      projectId: PROJECT_ID,
+      inline: true,
+      destination: { hostPattern: "www.googleapis.com", serverUrl: null },
+      rejectedTokenHash: hashAccessToken("old-access"),
+      ...extra
+    });
+
+  beforeEach(() => {
+    env = setup();
+    env.rows.set(INLINE_ID, {
+      id: INLINE_ID,
+      name: "gdrive",
+      type: AgentVaultServiceType.Http,
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { ...oauthConfig(), serverUrl: null },
+      encryptedCredential: sealBytes({ accessToken: "old-access", refreshToken: "old-refresh" }),
+      hostPattern: "www.googleapis.com",
+      config: {},
+      sessionId: "session-1"
+    });
+  });
+
+  test("writes the new tokens into the session's service, under its own lock", async () => {
+    env.onToken(() => json(200, { access_token: "new-access", token_type: "Bearer", expires_in: 600 }));
+
+    const result = await refresh();
+
+    expect(result.credential.value).toBe("new-access");
+    expect(env.lockKeys).toEqual([[`agent-vault-oauth-refresh-lock:${INLINE_ID}`]]);
+    expect(openBytes<TAgentVaultOauthSecret>(inline().encryptedCredential!)).toEqual({
+      accessToken: "new-access",
+      refreshToken: "old-refresh"
+    });
+  });
+
+  test("a dead login asks for a new session", async () => {
+    env.onToken(() => json(400, { error: "invalid_grant" }));
+
+    const result = await refresh();
+
+    expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    expect((inline().credentialConfig as TAgentVaultOauthConfig).lastError).toMatch(
+      /^The OAuth tokens sent with this session are no longer accepted \(.+\)\. Start a new session with new tokens\.$/
+    );
+  });
+
+  test("tokens of a session that ended are a 404, with no provider call", async () => {
+    inline().secretsDeletedAt = new Date();
+
+    await expect(refresh()).rejects.toThrow(NotFoundError);
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
+  test("a session's own service is never refreshed as a project's service", async () => {
+    await expect(refresh({ inline: undefined })).rejects.toThrow(NotFoundError);
+    expect(env.tokenRequests).toHaveLength(0);
   });
 });

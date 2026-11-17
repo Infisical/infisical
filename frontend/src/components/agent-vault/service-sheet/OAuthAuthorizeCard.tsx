@@ -1,6 +1,13 @@
 import { ReactNode, useEffect, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CircleAlertIcon,
+  CircleDashedIcon,
+  CircleXIcon,
+  InfoIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -48,19 +55,30 @@ const CALLBACK_PATH = "/agent-vault/oauth/callback";
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
   [AgentVaultOauthStatus.NeedsReauthorization]: "danger",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warning"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warning",
+  [AgentVaultOauthStatus.NotConnected]: "neutral"
 } as const;
 
-export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => (
-  <Badge variant={OAUTH_STATUS_VARIANTS[status]}>
-    {status === AgentVaultOauthStatus.Connected ? <CheckIcon /> : <CircleAlertIcon />}
-    {OAUTH_STATUS_LABELS[status]}
-  </Badge>
-);
+const OAUTH_STATUS_ICONS = {
+  [AgentVaultOauthStatus.Connected]: CheckIcon,
+  [AgentVaultOauthStatus.NeedsReauthorization]: CircleAlertIcon,
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: CircleAlertIcon,
+  [AgentVaultOauthStatus.NotConnected]: CircleDashedIcon
+} as const;
+
+export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => {
+  const Icon = OAUTH_STATUS_ICONS[status];
+  return (
+    <Badge variant={OAUTH_STATUS_VARIANTS[status]}>
+      <Icon />
+      {OAUTH_STATUS_LABELS[status]}
+    </Badge>
+  );
+};
 
 const TONE_CLASS = { danger: "[&>svg]:text-danger", warning: "[&>svg]:text-warning" } as const;
 
-const Status = ({
+export const Status = ({
   icon,
   tone,
   title,

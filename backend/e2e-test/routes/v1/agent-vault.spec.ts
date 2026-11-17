@@ -1927,6 +1927,7 @@ describe("Agent Vault V1 Router", async () => {
         const { credential } = (JSON.parse(reached.payload) as TBundleRead).accessBundle.services[0];
         expect(credential).toEqual({
           type: "oauth",
+          source: "service",
           memberProvidedFields: [],
           status: "connected",
           issuer: "https://mcp.linear.app",
@@ -7871,7 +7872,7 @@ describe("Agent Vault V1 Router", async () => {
         services: [{ ...openai, credential: { type: "oauth" } }]
       });
       expect(oauth.statusCode).toBe(400);
-      expect(oauth.json().message).toMatch(/^Service 'openai': Services sent with a session can't use OAuth/);
+      expect(oauth.json().message).toMatch(/^Service 'openai': An OAuth credential sent with a session needs 'variable'/);
 
       const memberField = await inject("POST", sessionsUrl, {
         ttl: "1h",

@@ -5,28 +5,44 @@ import { ForbiddenError } from "@casl/ability";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
+import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
+import {
+  isManualOauthVariable,
+  oauthVariableIssuerOf,
+  oauthVariableSettingsFingerprintOf
+} from "../agent-vault-variable/agent-vault-oauth-variable-fns";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+import {
+  TAgentVaultOauthVariableConfig,
+  TAgentVaultOauthVariableConnection,
+  TAgentVaultOauthVariableSettings
+} from "../agent-vault-variable/agent-vault-variable-types";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthAuthorizationStatus,
   AgentVaultOauthStatus,
-  AgentVaultServiceType
+  AgentVaultOauthVariableConnectMethod,
+  AgentVaultServiceType,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   manualOauthClient,
@@ -40,7 +56,8 @@ import {
   describeServer,
   discoverOauthServer,
   oauthSetupError,
-  OFFLINE_ACCESS_SCOPE
+  OFFLINE_ACCESS_SCOPE,
+  TOauthDiscovery
 } from "./agent-vault-oauth-discovery-fns";
 import { agentVaultOauthHttpClient, TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
@@ -55,8 +72,10 @@ import {
   isDeadLoginError,
   isMemberProvidedOauth,
   isSameState,
+  isVariableOauth,
   memberOauthSetupOf,
   normalizeProviderText,
+  oauthVariableIdOf,
   refreshAccessToken,
   TOKEN_REQUEST_BUDGET_MS,
   toResolvedOauthCredential,
@@ -64,19 +83,23 @@ import {
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
 import {
+  AgentVaultOauthClientAuthMethod,
   AgentVaultOauthRegistration,
   TAgentVaultOauthAuthorization,
+  TAgentVaultOauthAuthorizationActor,
   TAgentVaultOauthAuthorizationView,
   TAgentVaultOauthConfig,
   TAgentVaultOauthMemberConfig,
   TAgentVaultOauthSecret,
   TClaimAuthorizationDTO,
   TCompleteAuthorizationDTO,
+  TCompleteVariableAuthorizationDTO,
   TCreateAuthorizationDTO,
   TGetAuthorizationDTO,
   TRefreshServiceTokenDTO,
   TReportMissingScopesDTO,
-  TResolvedOauthCredential
+  TResolvedOauthCredential,
+  TStartVariableAuthorizationDTO
 } from "./agent-vault-oauth-types";
 
 const AGENT_VAULT_OAUTH_AUTHORIZATION_TTL_SECONDS = 10 * 60;
@@ -114,6 +137,21 @@ type TAgentVaultOauthServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultVariableDAL: Pick<
+    TAgentVaultVariableDALFactory,
+    | "findByIdInProject"
+    | "lockByIdInProject"
+    | "updateById"
+    | "transaction"
+    | "findOauthByIdPrimary"
+    | "compareAndSwapOauthConnection"
+    | "addOauthRequiredScopesToConnection"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  agentVaultSessionInlineServiceDAL: Pick<
+    TAgentVaultSessionInlineServiceDALFactory,
+    "findOauthTokensByIdPrimary" | "compareAndSwapOauthTokens" | "addOauthRequiredScopes"
+  >;
   http?: TOauthHttpClient;
 };
 
@@ -135,14 +173,17 @@ type TLoadedOauthService = {
 // What a write is compared against: the row and sealed tokens a load returned, and where that row pointed.
 type TOauthTokenSnapshot = Omit<TLoadedOauthService, "secret" | "config">;
 
-// Where a refresh or scope report reads and writes the tokens: the service row, or the personal value row of the member
-// whose session asked.
+// Where a refresh or scope report reads and writes the tokens: the service row, the personal value row of the member
+// whose session asked, or the OAuth variable the service uses.
 type TOauthTokenHolder = {
   lockKey: string;
   logLabel: string;
+  // What issued the tokens, as a refresh's reason names it.
+  server?: string;
   deadLoginMessage: (reason: string, refusal: { clientRefused: boolean; config: TAgentVaultOauthConfig }) => string;
-  // Appended to a reason that names no recovery step, since the step differs for the service and for a member.
-  reauthorizeStep: string;
+  // Appended to a reason that names no recovery step, since the step differs for the service, a member and a variable.
+  // Called after a load, so it can name what was loaded.
+  reauthorizeStep: () => string;
   load: () => Promise<Omit<TLoadedOauthService, "secret"> | undefined>;
   swap: (args: {
     from: TOauthTokenSnapshot;
@@ -155,6 +196,47 @@ type TOauthTokenHolder = {
     rejectedTokenHash: string;
     requiredScopes: string[];
   }) => Promise<unknown>;
+};
+
+export const AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE =
+  "This service's OAuth variable changed after the proxy last fetched it, so Infisical won't send the previous variable's token. The proxy picks up the change on its next poll.";
+
+export const AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE =
+  "The variable's sign-in settings changed after this sign-in started, so its tokens weren't saved. Start a new sign-in.";
+
+// Endpoints discovery found but can't vouch for: guessed at the server's origin, or published under another issuer.
+// Nothing is sent to them; they only prefill the variable's own endpoints, which someone checks first.
+export type TOauthVariablePrefill = {
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  issuer: string | null;
+  scopes: string[];
+};
+
+// A variable sign-in made ready to start, before the variable it is for is saved with it.
+type TPreparedVariableSignIn = {
+  record: Omit<TAgentVaultOauthAuthorization, "variableId">;
+  authorizeUrl: string;
+};
+
+export type TVariableSignInStart = {
+  // The server has no client registration (or refused one): set the variable's 'clientId' to your own OAuth app.
+  registrationRequired: boolean;
+  // Discovery found no endpoints it can trust: set the variable's endpoints by hand, starting from `prefill`.
+  manualSetupRequired: boolean;
+  prefill: TOauthVariablePrefill | null;
+  // Where the provider sends the user back, to register with your OAuth app.
+  redirectUri: string;
+  prepared: TPreparedVariableSignIn | null;
+};
+
+// What a finished sign-in wrote into a variable, for the audit log and analytics.
+export type TOauthVariableConnected = {
+  variableId: string;
+  key: string;
+  method: AgentVaultOauthVariableConnectMethod;
+  issuer: string;
+  scopes: string[];
 };
 
 export const AGENT_VAULT_SERVICE_MOVED_MESSAGE =
@@ -238,6 +320,18 @@ export const checkOauthServerUnderLock = ({
   });
 };
 
+// Records written before identities could start a sign-in name only a user.
+const actorOfRecord = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthAuthorizationActor =>
+  record.actor ?? { type: ActorType.USER, id: record.actorUserId ?? "" };
+
+const isOwnRecord = (record: TAgentVaultOauthAuthorization, ctx: TGetAuthorizationDTO["ctx"], projectId: string) => {
+  const actor = actorOfRecord(record);
+  return record.projectId === projectId && ctx.actor === actor.type && ctx.actorId === actor.id;
+};
+
+const VARIABLE_SIGN_IN_NOT_FOUND_MESSAGE =
+  "This sign-in wasn't found. It may have expired (sign-in links last 10 minutes), been started by someone else, or already been used. Start a new sign-in.";
+
 const toView = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthAuthorizationView => ({
   id: record.id,
   status: record.status,
@@ -253,6 +347,9 @@ export const agentVaultOauthServiceFactory = ({
   agentVaultPersonalValueDAL,
   permissionService,
   membershipDAL,
+  agentVaultVariableDAL,
+  projectDAL,
+  agentVaultSessionInlineServiceDAL,
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
@@ -300,12 +397,7 @@ export const agentVaultOauthServiceFactory = ({
     projectId: string
   ) => {
     const stored = await loadAuthorization(authorizationId);
-    if (
-      !stored ||
-      stored.record.projectId !== projectId ||
-      ctx.actor !== ActorType.USER ||
-      stored.record.actorUserId !== ctx.actorId
-    ) {
+    if (!stored || !isOwnRecord(stored.record, ctx, projectId)) {
       throw new NotFoundError({
         message: `Authorization with ID '${authorizationId}' not found. It may have expired or was already used. Authorize the service again.`
       });
@@ -530,6 +622,7 @@ export const agentVaultOauthServiceFactory = ({
       projectId,
       serviceId: serviceId ?? null,
       ...(personal ? { personal: true, memberSetup } : {}),
+      actor: { type: ActorType.USER, id: ctx.actorId },
       actorUserId: ctx.actorId,
       serverUrl,
       state,
@@ -573,6 +666,196 @@ export const agentVaultOauthServiceFactory = ({
     };
   };
 
+  // The non-secret half goes to credentialConfig and the record's sealed blob becomes encryptedCredential as is:
+  // both are the project cipher over the same JSON shape, so nothing is opened to move it.
+  const buildCredentialFromAuthorization = (
+    record: TAgentVaultOauthAuthorization,
+    { previousRequiredScopes = [] }: { previousRequiredScopes?: string[] } = {}
+  ): { config: TAgentVaultOauthConfig; encryptedCredential: Buffer } => {
+    const now = new Date().toISOString();
+    // A provider may grant less than was asked, so a scope the upstream demanded stays missing until it's granted.
+    const requiredScopes = [...new Set(previousRequiredScopes)].filter(
+      (scope) => !record.grantedScopes.includes(scope)
+    );
+    return {
+      config: {
+        type: AgentVaultCredentialType.OAuth,
+        grantType: OauthGrantType.AuthorizationCode,
+        serverUrl: record.serverUrl,
+        issuer: record.issuer,
+        authorizationEndpoint: record.authorizationEndpoint,
+        tokenEndpoint: record.tokenEndpoint,
+        resource: record.resource,
+        clientId: record.clientId,
+        registration: record.registration,
+        tokenEndpointAuthMethod: record.tokenEndpointAuthMethod,
+        compatibility: record.compatibility,
+        requestedScopes: record.requestedScopes,
+        grantedScopes: record.grantedScopes,
+        requiredScopes,
+        status: requiredScopes.length ? AgentVaultOauthStatus.NeedsAdditionalScopes : AgentVaultOauthStatus.Connected,
+        expiresAt: record.expiresAt,
+        accessTokenHash: record.accessTokenHash ?? "",
+        authorizedAt: now,
+        lastRefreshedAt: null,
+        lastError: null
+      },
+      encryptedCredential: Buffer.from(record.sealedCredential!, "base64")
+    };
+  };
+
+  // RFC 9207 section 2.4 first: a response from the wrong issuer is not trusted, its error text included. Then the
+  // provider's own refusal, then the code exchange, a network call made outside any transaction.
+  const exchangeCallback = async (
+    record: TAgentVaultOauthAuthorization,
+    {
+      state,
+      code,
+      iss,
+      error,
+      errorDescription
+    }: Pick<TCompleteAuthorizationDTO, "state" | "code" | "iss" | "error" | "errorDescription">
+  ): Promise<
+    | { ok: false; message: string }
+    | {
+        ok: true;
+        result: Extract<Awaited<ReturnType<typeof exchangeAuthorizationCode>>, { ok: true }>;
+        clientSecret?: string;
+      }
+  > => {
+    const host = describeServer(record.serverUrl);
+    const issuerProblem = validateCallbackIssuer({
+      iss,
+      expectedIssuer: record.issuer,
+      issParameterSupported: record.issParameterSupported,
+      serverUrl: record.serverUrl
+    });
+    if (issuerProblem) return { ok: false, message: issuerProblem };
+    if (error) {
+      const providerError = normalizeProviderText(error, undefined, [code, state]);
+      const detail =
+        normalizeProviderText(errorDescription, undefined, [code, state]) || providerError || "no reason given";
+      return {
+        ok: false,
+        message:
+          providerError === "access_denied"
+            ? `Access to '${host}' was denied, so nothing was connected.`
+            : `'${host}' didn't authorize Infisical: ${detail}`
+      };
+    }
+    if (!code) return { ok: false, message: `'${host}' sent no authorization code. Authorize again.` };
+
+    const pending = await open<{ codeVerifier: string; clientSecret?: string }>(
+      record.projectId,
+      Buffer.from(record.sealedPending, "base64")
+    );
+    const result = await exchangeAuthorizationCode({
+      http,
+      issuer: record.issuer,
+      tokenEndpoint: record.tokenEndpoint,
+      clientId: record.clientId,
+      clientSecret: pending.clientSecret,
+      tokenEndpointAuthMethod: record.tokenEndpointAuthMethod,
+      resource: record.resource,
+      code,
+      codeVerifier: pending.codeVerifier,
+      redirectUri: record.redirectUri,
+      requestedScopes: record.requestedScopes
+    });
+    if (!result.ok) return { ok: false, message: result.message };
+    return { ok: true, result, clientSecret: pending.clientSecret };
+  };
+
+  const applyExchange = async (
+    record: TAgentVaultOauthAuthorization,
+    { result, clientSecret }: Extract<Awaited<ReturnType<typeof exchangeCallback>>, { ok: true }>
+  ) => {
+    const secret: TAgentVaultOauthSecret = {
+      accessToken: result.tokens.accessToken,
+      refreshToken: result.tokens.refreshToken,
+      clientSecret
+    };
+    Object.assign(record, {
+      sealedCredential: (await seal(record.projectId, secret)).toString("base64"),
+      status: AgentVaultOauthAuthorizationStatus.Authorized,
+      grantedScopes: result.tokens.scopes ?? record.requestedScopes,
+      expiresAt: expiresAtFrom(result.tokens.expiresIn, new Date()),
+      accessTokenHash: hashAccessToken(result.tokens.accessToken),
+      compatibility: withTokenCompatibility(record.compatibility, {
+        resourceDropped: result.resourceDropped,
+        scopesCommaSeparated: result.tokens.scopesCommaSeparated
+      }),
+      ...(result.resourceDropped ? { resource: null } : {})
+    });
+  };
+
+  const failRecord = (record: TAgentVaultOauthAuthorization, message: string) => {
+    Object.assign(record, {
+      status: AgentVaultOauthAuthorizationStatus.Failed,
+      error: normalizeProviderText(message),
+      sealedCredential: null
+    });
+    logger.warn(
+      `agentVaultOauth: authorization failed [authorizationId=${record.id}] [projectId=${record.projectId}] [server=${describeServer(record.serverUrl)}] [error=${record.error}]`
+    );
+  };
+
+  /**
+   * Writes an authorized variable sign-in into its variable. The caller must still be allowed to edit variables, and
+   * the variable's sign-in settings must be the ones the sign-in started with (checked on the locked row), or the
+   * tokens could belong to a provider or client an edit has since replaced. Nothing here calls the provider.
+   */
+  const writeVariableSignIn = async (
+    record: TAgentVaultOauthAuthorization,
+    ctx: TCompleteAuthorizationDTO["ctx"]
+  ): Promise<TOauthVariableConnected> => {
+    const variableId = record.variableId!;
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId: record.projectId, ctx });
+    if (permission.cannot(ProjectPermissionAgentVaultVariableActions.Edit, ProjectPermissionSub.AgentVaultVariables)) {
+      throw new ForbiddenRequestError({
+        message: "You can no longer edit variables in this project, so this sign-in wasn't saved."
+      });
+    }
+
+    return agentVaultVariableDAL.transaction(async (tx) => {
+      const locked = await agentVaultVariableDAL.lockByIdInProject({ id: variableId, projectId: record.projectId }, tx);
+      if (!locked || locked.type !== AgentVaultVariableType.OAuth || locked.userId || locked.identityId) {
+        throw new NotFoundError({
+          message: `Variable with ID '${variableId}' not found. It may have been deleted after this sign-in started.`
+        });
+      }
+      const { settings, connection: previous } = locked.oauthConfig as TAgentVaultOauthVariableConfig;
+      if (oauthVariableSettingsFingerprintOf(settings) !== record.variableSettingsFingerprint) {
+        throw new ConflictError({ message: AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE });
+      }
+      const { config, encryptedCredential } = buildCredentialFromAuthorization(record, {
+        previousRequiredScopes: previous?.issuer === record.issuer ? previous.requiredScopes : []
+      });
+      const connection: TAgentVaultOauthVariableConnection = { ...config, serverUrl: settings.serverUrl };
+      await agentVaultVariableDAL.updateById(
+        locked.id,
+        { encryptedValue: encryptedCredential, oauthConfig: { settings, connection } },
+        tx
+      );
+      return {
+        variableId: locked.id,
+        key: locked.key,
+        method: previous ? AgentVaultOauthVariableConnectMethod.Reconnect : AgentVaultOauthVariableConnectMethod.SignIn,
+        issuer: connection.issuer,
+        scopes: connection.grantedScopes
+      };
+    });
+  };
+
+  // What a variable write refuses with is worded for the user, so a dashboard sign-in shows it as its failure.
+  const isVariableWriteRefusal = (error: unknown) =>
+    error instanceof NotFoundError || error instanceof ConflictError || error instanceof ForbiddenRequestError;
+
+  // The tokens now live on the variable, so the record keeps only its outcome, for a repeated completion to read.
+  const settleVariableRecord = (record: TAgentVaultOauthAuthorization) => {
+    Object.assign(record, { sealedCredential: null, sealedPending: "" });
+  };
+
   const completeAuthorization = async ({
     projectId,
     ctx,
@@ -582,7 +865,10 @@ export const agentVaultOauthServiceFactory = ({
     iss,
     error,
     errorDescription
-  }: TCompleteAuthorizationDTO) => {
+  }: TCompleteAuthorizationDTO): Promise<{
+    authorization: TAgentVaultOauthAuthorizationView;
+    variableConnected?: TOauthVariableConnected;
+  }> => {
     const initial = await loadOwnAuthorization(authorizationId, ctx, projectId);
     if (!isSameState(initial.state, state)) {
       throw new BadRequestError({
@@ -605,82 +891,380 @@ export const agentVaultOauthServiceFactory = ({
       const record = await loadOwnAuthorization(authorizationId, ctx, projectId);
       if (record.status !== AgentVaultOauthAuthorizationStatus.Pending) return { authorization: toView(record) };
 
-      const host = describeServer(record.serverUrl);
-      const fail = (message: string) => {
-        record.status = AgentVaultOauthAuthorizationStatus.Failed;
-        record.error = normalizeProviderText(message);
-        logger.warn(
-          `agentVaultOauth: authorization failed [authorizationId=${record.id}] [projectId=${record.projectId}] [server=${host}] [error=${record.error}]`
-        );
-      };
-
-      const issuerProblem = validateCallbackIssuer({
-        iss,
-        expectedIssuer: record.issuer,
-        issParameterSupported: record.issParameterSupported,
-        serverUrl: record.serverUrl
-      });
-
-      // RFC 9207 section 2.4: a response from the wrong issuer is not trusted, its error text included.
-      if (issuerProblem) {
-        fail(issuerProblem);
-      } else if (error) {
-        const providerError = normalizeProviderText(error, undefined, [code, state]);
-        const detail =
-          normalizeProviderText(errorDescription, undefined, [code, state]) || providerError || "no reason given";
-        fail(
-          providerError === "access_denied"
-            ? `Access to '${host}' was denied, so nothing was connected.`
-            : `'${host}' didn't authorize Infisical: ${detail}`
-        );
-      } else if (!code) {
-        fail(`'${host}' sent no authorization code. Authorize again.`);
+      let variableConnected: TOauthVariableConnected | undefined;
+      const exchanged = await exchangeCallback(record, { state, code, iss, error, errorDescription });
+      if (!exchanged.ok) {
+        failRecord(record, exchanged.message);
       } else {
-        const pending = await open<{ codeVerifier: string; clientSecret?: string }>(
-          record.projectId,
-          Buffer.from(record.sealedPending, "base64")
-        );
-        // Outside any transaction: this is a network call to the provider.
-        const result = await exchangeAuthorizationCode({
-          http,
-          issuer: record.issuer,
-          tokenEndpoint: record.tokenEndpoint,
-          clientId: record.clientId,
-          clientSecret: pending.clientSecret,
-          tokenEndpointAuthMethod: record.tokenEndpointAuthMethod,
-          resource: record.resource,
-          code,
-          codeVerifier: pending.codeVerifier,
-          redirectUri: record.redirectUri,
-          requestedScopes: record.requestedScopes
-        });
-
-        if (!result.ok) {
-          fail(result.message);
-        } else {
-          const secret: TAgentVaultOauthSecret = {
-            accessToken: result.tokens.accessToken,
-            refreshToken: result.tokens.refreshToken,
-            clientSecret: pending.clientSecret
-          };
-          record.sealedCredential = (await seal(record.projectId, secret)).toString("base64");
-          record.status = AgentVaultOauthAuthorizationStatus.Authorized;
-          record.grantedScopes = result.tokens.scopes ?? record.requestedScopes;
-          record.expiresAt = expiresAtFrom(result.tokens.expiresIn, new Date());
-          record.accessTokenHash = hashAccessToken(result.tokens.accessToken);
-          record.compatibility = withTokenCompatibility(record.compatibility, {
-            resourceDropped: result.resourceDropped,
-            scopesCommaSeparated: result.tokens.scopesCommaSeparated
-          });
-          if (result.resourceDropped) record.resource = null;
+        await applyExchange(record, exchanged);
+        // A variable's sign-in goes straight into the variable. This route answers 200 either way, so a refusal is
+        // the authorization's failure, which the callback page shows.
+        if (record.variableId) {
+          try {
+            variableConnected = await writeVariableSignIn(record, ctx);
+            settleVariableRecord(record);
+          } catch (err) {
+            if (!isVariableWriteRefusal(err)) throw err;
+            failRecord(record, (err as Error).message);
+          }
         }
       }
 
       await saveAuthorization(record);
-      return { authorization: toView(record) };
+      return { authorization: toView(record), ...(variableConnected ? { variableConnected } : {}) };
     } finally {
       await keyStore.deleteItem(lockKey);
     }
+  };
+
+  // The variable's own routes, for an API caller whose callback forwards the provider's redirect. Unlike the
+  // dashboard's route, a refusal is an error status, and the state names the authorization.
+  const completeVariableAuthorization = async ({
+    projectId,
+    ctx,
+    variableId,
+    state,
+    code,
+    iss,
+    error,
+    errorDescription
+  }: TCompleteVariableAuthorizationDTO): Promise<{ variableConnected: TOauthVariableConnected | null }> => {
+    const [authorizationId] = state.split(".");
+    const loadForVariable = async () => {
+      const stored = await loadAuthorization(authorizationId);
+      if (!stored || !isOwnRecord(stored.record, ctx, projectId)) {
+        throw new NotFoundError({ message: VARIABLE_SIGN_IN_NOT_FOUND_MESSAGE });
+      }
+      const { record } = stored;
+      if (record.variableId?.toLowerCase() !== variableId.toLowerCase()) {
+        throw new BadRequestError({
+          message: record.variableId
+            ? "This sign-in was started for a different variable. Send it to the variable it was started for."
+            : "This sign-in was started for a service, not a variable. Start a new sign-in for the variable."
+        });
+      }
+      if (!isSameState(record.state, state)) {
+        throw new BadRequestError({
+          message: "The sign-in response doesn't belong to this sign-in. Start a new sign-in."
+        });
+      }
+      return record;
+    };
+    // An authorized record was written into the variable already, so completing it again changes nothing.
+    const settled = (record: TAgentVaultOauthAuthorization) => {
+      if (record.status === AgentVaultOauthAuthorizationStatus.Authorized) return { variableConnected: null };
+      if (record.status === AgentVaultOauthAuthorizationStatus.Failed) {
+        throw new BadRequestError({ message: record.error ?? "This sign-in failed. Start a new sign-in." });
+      }
+      return null;
+    };
+
+    const initial = await loadForVariable();
+    const initiallySettled = settled(initial);
+    if (initiallySettled) return initiallySettled;
+
+    const lockKey = KeyStorePrefixes.AgentVaultOauthAuthorizationCompleteLock(authorizationId);
+    if (!(await keyStore.setItemWithExpiryNX(lockKey, COMPLETE_LOCK_TTL_SECONDS, "1"))) {
+      throw new ConflictError({
+        message: "This sign-in is already being completed. Wait a moment, then check the variable's status."
+      });
+    }
+
+    try {
+      const record = await loadForVariable();
+      const alreadySettled = settled(record);
+      if (alreadySettled) return alreadySettled;
+
+      const exchanged = await exchangeCallback(record, { state, code, iss, error, errorDescription });
+      if (!exchanged.ok) {
+        failRecord(record, exchanged.message);
+        await saveAuthorization(record);
+        throw new BadRequestError({ message: record.error ?? exchanged.message });
+      }
+      await applyExchange(record, exchanged);
+      let variableConnected: TOauthVariableConnected;
+      try {
+        variableConnected = await writeVariableSignIn(record, ctx);
+      } catch (err) {
+        if (isVariableWriteRefusal(err)) {
+          failRecord(record, (err as Error).message);
+          await saveAuthorization(record);
+        }
+        throw err;
+      }
+      settleVariableRecord(record);
+      await saveAuthorization(record);
+      return { variableConnected };
+    } finally {
+      await keyStore.deleteItem(lockKey);
+    }
+  };
+
+  // Who a variable sign-in belongs to. A machine identity can start one: the link is for an end user, who signs in
+  // through the identity's own callback.
+  const authorizationActorOf = (ctx: TStartVariableAuthorizationDTO["ctx"]): TAgentVaultOauthAuthorizationActor => {
+    if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
+      throw new BadRequestError({ message: "Only a user or a machine identity can start a sign-in." });
+    }
+    return { type: ctx.actor, id: ctx.actorId };
+  };
+
+  /**
+   * Everything a variable sign-in needs before its variable is saved with it: the provider's endpoints (from the
+   * variable, or from discovery), a client, and the scopes to ask for. Endpoints discovery only guessed, or found under
+   * another issuer, are never sent anything: no registration and no authorize URL. They come back as `prefill` for
+   * someone to check and save on the variable. Network calls only; nothing is written.
+   */
+  const prepareVariableSignIn = async ({
+    projectId,
+    ctx,
+    settings,
+    connection,
+    encryptedValue,
+    clientSecret: requestedClientSecret
+  }: {
+    projectId: string;
+    ctx: TStartVariableAuthorizationDTO["ctx"];
+    settings: TAgentVaultOauthVariableSettings;
+    connection: TAgentVaultOauthVariableConnection | null;
+    encryptedValue: Buffer | null;
+    clientSecret?: string;
+  }): Promise<TVariableSignInStart> => {
+    const actor = authorizationActorOf(ctx);
+    if (actor.type === ActorType.IDENTITY && !settings.redirectUri) {
+      throw new BadRequestError({
+        message:
+          "A machine identity's sign-in finishes at its own callback, so set 'oauth.redirectUri' on the variable before signing in.",
+        details: { field: "oauth.redirectUri" }
+      });
+    }
+    const callbackUri = settings.redirectUri ?? redirectUri();
+    const notReady = (outcome: Partial<TVariableSignInStart>): TVariableSignInStart => ({
+      registrationRequired: false,
+      manualSetupRequired: false,
+      prefill: null,
+      redirectUri: callbackUri,
+      prepared: null,
+      ...outcome
+    });
+
+    if (requestedClientSecret && !settings.clientId) {
+      throw new BadRequestError({
+        message:
+          "This variable registers a new client at each sign-in, so it takes no client secret. Set 'clientId' on the variable to sign in with your own OAuth app.",
+        details: { field: "clientSecret" }
+      });
+    }
+    // A reconnect keeps the secret stored with the tokens it replaces. A change of client disconnects the variable,
+    // which deletes that secret, so a stored one always belongs to the variable's current client.
+    const clientSecret =
+      requestedClientSecret ??
+      (settings.clientId && encryptedValue
+        ? (await open<TAgentVaultOauthSecret>(projectId, encryptedValue)).clientSecret
+        : undefined);
+
+    const manual = isManualOauthVariable(settings);
+    // Only names the host in messages when the variable is set up by hand.
+    const serverUrl = settings.serverUrl ?? settings.authorizationEndpoint!;
+    let provider: Pick<
+      TOauthDiscovery,
+      | "issuer"
+      | "issParameterSupported"
+      | "authorizationEndpoint"
+      | "tokenEndpoint"
+      | "registrationEndpoint"
+      | "scopes"
+      | "tokenEndpointAuthMethodsSupported"
+      | "grantTypesSupported"
+      | "compatibility"
+    > & { resource: string | null };
+    if (manual) {
+      provider = {
+        issuer: oauthVariableIssuerOf(settings)!,
+        issParameterSupported: false,
+        authorizationEndpoint: settings.authorizationEndpoint!,
+        tokenEndpoint: settings.tokenEndpoint!,
+        registrationEndpoint: null,
+        resource: settings.resource,
+        scopes: [],
+        tokenEndpointAuthMethodsSupported: null,
+        grantTypesSupported: null,
+        compatibility: []
+      };
+    } else {
+      const discovery = await discoverOauthServer(http, serverUrl, undefined, { allowIssuerMismatch: true });
+      if (discovery.endpointsGuessed || discovery.issuerMismatch) {
+        return notReady({
+          manualSetupRequired: true,
+          prefill: {
+            authorizationEndpoint: discovery.authorizationEndpoint,
+            tokenEndpoint: discovery.tokenEndpoint,
+            issuer: discovery.issuerMismatch ? discovery.issuerMismatch.advertisedIssuer : discovery.issuer,
+            scopes: discovery.scopes
+          }
+        });
+      }
+      provider = discovery;
+    }
+
+    const scopes = settings.scopes.length ? settings.scopes : provider.scopes;
+    if (!scopes.length) {
+      throw new BadRequestError({
+        message: `'${describeServer(serverUrl)}' doesn't list the scopes a sign-in can ask for. Add at least one scope to the variable's settings.`,
+        details: { field: "oauth.scopes" }
+      });
+    }
+    // Scopes a service reported missing are asked for again, at the issuer they were reported for.
+    const requestedScopes = [
+      ...new Set([
+        ...scopes,
+        ...(connection && connection.issuer === provider.issuer ? connection.requiredScopes : []),
+        ...(provider.scopes.includes(OFFLINE_ACCESS_SCOPE) ? [OFFLINE_ACCESS_SCOPE] : [])
+      ])
+    ];
+
+    let client: TOauthClient;
+    let registration: AgentVaultOauthRegistration;
+    let clientName: string | undefined;
+    const compatibility = [...provider.compatibility];
+    if (settings.clientId) {
+      const method = settings.tokenEndpointAuthMethod;
+      if (method && method !== AgentVaultOauthClientAuthMethod.None && !clientSecret) {
+        throw new BadRequestError({
+          message: `The variable's 'tokenEndpointAuthMethod' is '${method}', which needs your OAuth app's client secret. Send 'clientSecret' to start the sign-in.`,
+          details: { field: "clientSecret" }
+        });
+      }
+      client = method
+        ? {
+            clientId: settings.clientId,
+            ...(method === AgentVaultOauthClientAuthMethod.None ? {} : { clientSecret }),
+            tokenEndpointAuthMethod: method
+          }
+        : manualOauthClient({
+            clientId: settings.clientId,
+            clientSecret,
+            tokenEndpointAuthMethodsSupported: provider.tokenEndpointAuthMethodsSupported
+          });
+      registration = AgentVaultOauthRegistration.Manual;
+    } else {
+      if (!provider.registrationEndpoint) return notReady({ registrationRequired: true });
+      clientName = settings.clientName ?? (await projectDAL.findById(projectId))?.name ?? undefined;
+      try {
+        const registered = await registerOauthClient({
+          http,
+          serverUrl,
+          registrationEndpoint: provider.registrationEndpoint,
+          redirectUri: callbackUri,
+          grantTypesSupported: provider.grantTypesSupported,
+          tokenEndpointAuthMethodsSupported: provider.tokenEndpointAuthMethodsSupported,
+          clientName
+        });
+        client = registered.client;
+        compatibility.push(...registered.compatibility);
+        registration = AgentVaultOauthRegistration.Dynamic;
+      } catch (error) {
+        if (!(error instanceof OauthRegistrationError)) throw error;
+        logger.warn(
+          `agentVaultOauth: client registration failed [projectId=${projectId}] [server=${describeServer(serverUrl)}] [error=${error.message}]`
+        );
+        if (error.status === null || error.status === 429 || error.status >= 500) {
+          throw oauthSetupError(serverUrl, `${error.message} Try again in a few minutes.`);
+        }
+        return notReady({ registrationRequired: true });
+      }
+    }
+
+    const id = crypto.randomUUID();
+    const state = generateState(id);
+    const { codeVerifier, codeChallenge } = generatePkce();
+    const sealedPending = await seal(projectId, { codeVerifier, clientSecret: client.clientSecret });
+    const record: TPreparedVariableSignIn["record"] = {
+      id,
+      projectId,
+      serviceId: null,
+      variableSettingsFingerprint: oauthVariableSettingsFingerprintOf(settings),
+      ...(clientName ? { clientName } : {}),
+      actor,
+      ...(actor.type === ActorType.USER ? { actorUserId: actor.id } : {}),
+      serverUrl,
+      state,
+      redirectUri: callbackUri,
+      status: AgentVaultOauthAuthorizationStatus.Pending,
+      error: null,
+      issuer: provider.issuer,
+      issParameterSupported: provider.issParameterSupported,
+      authorizationEndpoint: provider.authorizationEndpoint,
+      tokenEndpoint: provider.tokenEndpoint,
+      resource: provider.resource,
+      clientId: client.clientId,
+      registration,
+      tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
+      compatibility: [...new Set(compatibility)],
+      requestedScopes,
+      grantedScopes: [],
+      expiresAt: null,
+      accessTokenHash: null,
+      sealedPending: sealedPending.toString("base64"),
+      sealedCredential: null
+    };
+    return notReady({
+      prepared: {
+        record,
+        authorizeUrl: buildAuthorizeUrl({
+          authorizationEndpoint: record.authorizationEndpoint,
+          clientId: client.clientId,
+          redirectUri: callbackUri,
+          codeChallenge,
+          state,
+          resource: record.resource,
+          scopes: requestedScopes
+        })
+      }
+    });
+  };
+
+  const saveVariableSignIn = async ({ record, authorizeUrl }: TPreparedVariableSignIn, variableId: string) => {
+    await saveAuthorization({ ...record, variableId });
+    return {
+      id: record.id,
+      authorizeUrl,
+      expiresAt: new Date(Date.now() + AGENT_VAULT_OAUTH_AUTHORIZATION_TTL_SECONDS * 1000).toISOString()
+    };
+  };
+
+  // Needs edit on global variables, and a refusal reads like a variable that isn't there, as in the variable service.
+  const startVariableAuthorization = async ({
+    projectId,
+    ctx,
+    variableId,
+    clientSecret
+  }: TStartVariableAuthorizationDTO) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId });
+    if (
+      !variable ||
+      variable.userId ||
+      variable.identityId ||
+      permission.cannot(ProjectPermissionAgentVaultVariableActions.Edit, ProjectPermissionSub.AgentVaultVariables)
+    ) {
+      throw new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
+    }
+    if (variable.type !== AgentVaultVariableType.OAuth) {
+      throw new BadRequestError({
+        message: `The variable '${variable.key}' is a text variable. Only an OAuth variable can be signed in to.`
+      });
+    }
+    const { settings, connection } = variable.oauthConfig as TAgentVaultOauthVariableConfig;
+    const { prepared, ...start } = await prepareVariableSignIn({
+      projectId,
+      ctx,
+      settings,
+      connection,
+      encryptedValue: variable.encryptedValue ?? null,
+      clientSecret
+    });
+    return { ...start, authorization: prepared ? await saveVariableSignIn(prepared, variable.id) : null };
   };
 
   const getAuthorization = async ({ ctx, projectId, authorizationId }: TGetAuthorizationDTO) => ({
@@ -694,6 +1278,13 @@ export const agentVaultOauthServiceFactory = ({
   ) => {
     const stored = await loadOwnStoredAuthorization(authorizationId, ctx, projectId);
     const { record } = stored;
+    // A variable's sign-in is written into the variable when it completes, and nowhere else.
+    if (record.variableId) {
+      throw new BadRequestError({
+        message:
+          "This authorization signs in an OAuth variable, so it can't be used for a service. Authorize the service again."
+      });
+    }
     // A member's sign-in only ever becomes their own personal value, and an admin's only the service's credential.
     if (!anyIntent && Boolean(record.personal) !== Boolean(personal)) {
       throw new BadRequestError({
@@ -763,53 +1354,17 @@ export const agentVaultOauthServiceFactory = ({
     return secret.accessToken;
   };
 
-  // The non-secret half goes to credentialConfig and the record's sealed blob becomes encryptedCredential as is:
-  // both are the project cipher over the same JSON shape, so nothing is opened to move it.
-  const buildCredentialFromAuthorization = (
-    record: TAgentVaultOauthAuthorization,
-    { previousRequiredScopes = [] }: { previousRequiredScopes?: string[] } = {}
-  ): { config: TAgentVaultOauthConfig; encryptedCredential: Buffer } => {
-    const now = new Date().toISOString();
-    // A provider may grant less than was asked, so a scope the upstream demanded stays missing until it's granted.
-    const requiredScopes = [...new Set(previousRequiredScopes)].filter(
-      (scope) => !record.grantedScopes.includes(scope)
-    );
-    return {
-      config: {
-        type: AgentVaultCredentialType.OAuth,
-        grantType: OauthGrantType.AuthorizationCode,
-        serverUrl: record.serverUrl,
-        issuer: record.issuer,
-        authorizationEndpoint: record.authorizationEndpoint,
-        tokenEndpoint: record.tokenEndpoint,
-        resource: record.resource,
-        clientId: record.clientId,
-        registration: record.registration,
-        tokenEndpointAuthMethod: record.tokenEndpointAuthMethod,
-        compatibility: record.compatibility,
-        requestedScopes: record.requestedScopes,
-        grantedScopes: record.grantedScopes,
-        requiredScopes,
-        status: requiredScopes.length ? AgentVaultOauthStatus.NeedsAdditionalScopes : AgentVaultOauthStatus.Connected,
-        expiresAt: record.expiresAt,
-        accessTokenHash: record.accessTokenHash ?? "",
-        authorizedAt: now,
-        lastRefreshedAt: null,
-        lastError: null
-      },
-      encryptedCredential: Buffer.from(record.sealedCredential!, "base64")
-    };
-  };
-
   const serviceTokenHolder = (serviceId: string): TOauthTokenHolder => ({
     lockKey: KeyStorePrefixes.AgentVaultOauthRefreshLock(serviceId),
     logLabel: `serviceId=${serviceId}`,
     deadLoginMessage: (reason) => `This service's login is no longer accepted (${reason}). Reauthorize this service.`,
-    reauthorizeStep: "Reauthorize this service.",
+    reauthorizeStep: () => "Reauthorize this service.",
     load: async () => {
       const service = await agentVaultServiceDAL.findByIdPrimary(serviceId);
+      // A session's own service is written only through its DAL, by the inline holder.
       if (
         !service ||
+        service.sessionId ||
         service.credentialType !== AgentVaultCredentialType.OAuth ||
         !service.encryptedCredential ||
         isMemberProvidedOauth(service)
@@ -863,7 +1418,7 @@ export const agentVaultOauthServiceFactory = ({
         clientRefused && config.registration === AgentVaultOauthRegistration.Manual
           ? `The provider refused the OAuth app this service signs in with (${reason}). Reconnecting won't fix this. Ask a project admin to update the OAuth app on the service.`
           : `Your login to this service is no longer accepted (${reason}). Connect your account again.`,
-      reauthorizeStep: "Connect your account again.",
+      reauthorizeStep: () => "Connect your account again.",
       load: async () => {
         const row = await agentVaultPersonalValueDAL.findOauthForOwner({ serviceId, owner });
         if (!row) return undefined;
@@ -903,15 +1458,144 @@ export const agentVaultOauthServiceFactory = ({
     };
   };
 
-  const tokenHolderOf = (serviceId: string, owner?: TAgentVaultOwner) =>
-    owner ? personalTokenHolder(serviceId, owner) : serviceTokenHolder(serviceId);
+  /**
+   * For a service whose credential is an OAuth variable: the tokens are the variable's, and a refresh writes them back
+   * there (into `oauthConfig.connection`, compare-and-swap on `encryptedValue`), so every service using the variable
+   * gets them. Where they may go is the service's: its host and server URL, and only while it still uses this
+   * variable. Both rows are read on the primary on every load. One lock per variable, so services sharing it refresh
+   * once.
+   */
+  const variableTokenHolder = (variableId: string, serviceId: string): TOauthTokenHolder => {
+    let key = "this variable";
+    const loadDestination = async (projectId: string) => {
+      const service = await agentVaultServiceDAL.findByIdPrimary(serviceId);
+      if (!service || service.projectId !== projectId) return undefined;
+      if (oauthVariableIdOf(service) !== variableId) {
+        throw new ConflictError({ message: AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE });
+      }
+      return { hostPattern: service.hostPattern ?? null, serverUrl: getServiceServerUrl(service.config) };
+    };
+    return {
+      lockKey: KeyStorePrefixes.AgentVaultOauthVariableRefreshLock(variableId),
+      logLabel: `variableId=${variableId}] [serviceId=${serviceId}`,
+      server: "server",
+      deadLoginMessage: (reason) =>
+        `The sign-in stored in the OAuth variable '${key}' is no longer accepted (${reason}). Authorize ${key} again on the Variables page.`,
+      reauthorizeStep: () => `Authorize ${key} again on the Variables page.`,
+      load: async () => {
+        const variable = await agentVaultVariableDAL.findOauthByIdPrimary(variableId);
+        if (!variable) return undefined;
+        key = variable.key;
+        const destination = await loadDestination(variable.projectId);
+        const { connection } = variable.oauthConfig as TAgentVaultOauthVariableConfig;
+        if (!destination || !variable.encryptedValue || !connection) return undefined;
+        return {
+          rowId: variable.id,
+          config: connection as TAgentVaultOauthConfig,
+          encryptedCredential: variable.encryptedValue,
+          ...destination
+        };
+      },
+      swap: async ({ from, secret, patch, keepAdditionalScopesStatus }) => {
+        const row = await agentVaultVariableDAL.compareAndSwapOauthConnection({
+          id: from.rowId,
+          expectedEncryptedValue: from.encryptedCredential,
+          encryptedValue: secret,
+          connectionPatch: patch,
+          keepAdditionalScopesStatus
+        });
+        if (!row) return undefined;
+        const { connection } = row.oauthConfig as TAgentVaultOauthVariableConfig;
+        // Re-read, since the service may have moved, or switched to another variable, while the provider answered.
+        const destination = await agentVaultServiceDAL
+          .findByIdPrimary(serviceId)
+          .then((service) => (service && oauthVariableIdOf(service) === variableId ? service : undefined));
+        return {
+          rowId: row.id,
+          config: connection as TAgentVaultOauthConfig,
+          hostPattern: destination?.hostPattern ?? null,
+          serverUrl: destination ? getServiceServerUrl(destination.config) : null
+        };
+      },
+      addRequiredScopes: ({ from, rejectedTokenHash, requiredScopes }) =>
+        agentVaultVariableDAL.addOauthRequiredScopesToConnection({
+          id: from.rowId,
+          expectedEncryptedValue: from.encryptedCredential,
+          rejectedTokenHash,
+          requiredScopes
+        })
+    };
+  };
 
-  const tokensNotFound = (serviceId: string, owner?: TAgentVaultOwner) =>
-    new NotFoundError({
+  // Tokens sent with a session, on the row of the session's own service. They go once the session ends, and every load
+  // and write refuses a row whose secrets were deleted.
+  const inlineTokenHolder = (serviceId: string): TOauthTokenHolder => ({
+    lockKey: KeyStorePrefixes.AgentVaultOauthRefreshLock(serviceId),
+    logLabel: `inlineServiceId=${serviceId}`,
+    server: "server",
+    deadLoginMessage: (reason) =>
+      `The OAuth tokens sent with this session are no longer accepted (${reason}). Start a new session with new tokens.`,
+    reauthorizeStep: () => "Start a new session with new tokens.",
+    load: async () => {
+      const row = await agentVaultSessionInlineServiceDAL.findOauthTokensByIdPrimary(serviceId);
+      if (!row?.encryptedCredential || isVariableOauth(row)) return undefined;
+      return {
+        rowId: row.id,
+        config: row.credentialConfig as TAgentVaultOauthConfig,
+        encryptedCredential: row.encryptedCredential,
+        hostPattern: row.hostPattern ?? null,
+        serverUrl: getServiceServerUrl(row.config)
+      };
+    },
+    swap: async ({ from, secret, patch, keepAdditionalScopesStatus }) => {
+      const row = await agentVaultSessionInlineServiceDAL.compareAndSwapOauthTokens({
+        id: from.rowId,
+        expectedEncryptedCredential: from.encryptedCredential,
+        encryptedCredential: secret,
+        credentialConfigPatch: patch,
+        keepAdditionalScopesStatus
+      });
+      return row
+        ? {
+            rowId: row.id,
+            config: row.credentialConfig as TAgentVaultOauthConfig,
+            hostPattern: row.hostPattern ?? null,
+            serverUrl: getServiceServerUrl(row.config)
+          }
+        : undefined;
+    },
+    addRequiredScopes: ({ from, rejectedTokenHash, requiredScopes }) =>
+      agentVaultSessionInlineServiceDAL.addOauthRequiredScopes({
+        id: from.rowId,
+        expectedEncryptedCredential: from.encryptedCredential,
+        rejectedTokenHash,
+        requiredScopes
+      })
+  });
+
+  const tokenHolderOf = (serviceId: string, owner?: TAgentVaultOwner, variableId?: string, inline?: boolean) => {
+    if (variableId) return variableTokenHolder(variableId, serviceId);
+    if (inline) return inlineTokenHolder(serviceId);
+    return owner ? personalTokenHolder(serviceId, owner) : serviceTokenHolder(serviceId);
+  };
+
+  const tokensNotFound = (serviceId: string, owner?: TAgentVaultOwner, variableId?: string, inline?: boolean) => {
+    if (inline) {
+      return new NotFoundError({
+        message: `The session's service with ID '${serviceId}' has no OAuth tokens: the session ended, or they were never sent.`
+      });
+    }
+    if (variableId) {
+      return new NotFoundError({
+        message: `The OAuth variable used by the service with ID '${serviceId}' isn't connected, or the service no longer exists. Authorize the variable again on the Variables page.`
+      });
+    }
+    return new NotFoundError({
       message: owner
         ? `No connected account was found for the service with ID '${serviceId}'. Connect your account again.`
         : `OAuth service with ID '${serviceId}' not found`
     });
+  };
 
   // An unchanged blob holds the same tokens, so a re-read only opens the blob when it changed.
   const loadOauthTokens = async (
@@ -955,12 +1639,14 @@ export const agentVaultOauthServiceFactory = ({
     serviceId,
     projectId,
     owner,
+    variableId,
+    inline,
     rejectedTokenHash,
     expiresWithinSeconds,
     destination
   }: TRefreshServiceTokenDTO): Promise<{ credential: TResolvedOauthCredential; status: AgentVaultOauthStatus }> => {
     const deadline = Date.now() + REFRESH_ANSWER_DEADLINE_MS;
-    const holder = tokenHolderOf(serviceId, owner);
+    const holder = tokenHolderOf(serviceId, owner, variableId, inline);
     let cipherPair: Promise<TProjectCipher> | null = null;
     const cipher = () => {
       cipherPair ??= getProjectCipher(projectId);
@@ -979,7 +1665,9 @@ export const agentVaultOauthServiceFactory = ({
       return loaded;
     };
     const load = async (previous?: TLoadedOauthService) =>
-      assertSameDestination(await loadOauthTokens(holder, () => tokensNotFound(serviceId, owner), cipher, previous));
+      assertSameDestination(
+        await loadOauthTokens(holder, () => tokensNotFound(serviceId, owner, variableId, inline), cipher, previous)
+      );
 
     let current = await load();
     const answer = () => {
@@ -1010,7 +1698,8 @@ export const agentVaultOauthServiceFactory = ({
         hasRefreshToken: Boolean(current.secret.refreshToken),
         rejectedTokenHash,
         expiresWithinSeconds,
-        now: new Date()
+        now: new Date(),
+        server: holder.server
       });
 
     const markNeedsReauthorization = (reason: string) =>
@@ -1019,7 +1708,7 @@ export const agentVaultOauthServiceFactory = ({
     const first = decide();
     if (first.action === "return-current") return answer();
     if (first.action === "needs-reauthorization") {
-      await markNeedsReauthorization(`${first.reason} ${holder.reauthorizeStep}`);
+      await markNeedsReauthorization(`${first.reason} ${holder.reauthorizeStep()}`);
       return answer();
     }
 
@@ -1041,7 +1730,7 @@ export const agentVaultOauthServiceFactory = ({
       const second = decide();
       if (second.action === "return-current") return answer();
       if (second.action === "needs-reauthorization") {
-        await markNeedsReauthorization(`${second.reason} ${holder.reauthorizeStep}`);
+        await markNeedsReauthorization(`${second.reason} ${holder.reauthorizeStep()}`);
         return answer();
       }
 
@@ -1130,13 +1819,15 @@ export const agentVaultOauthServiceFactory = ({
   const reportMissingScopes = async ({
     serviceId,
     owner,
+    variableId,
+    inline,
     rejectedTokenHash,
     requiredScopes,
     hostPattern
   }: TReportMissingScopesDTO) => {
-    const holder = tokenHolderOf(serviceId, owner);
+    const holder = tokenHolderOf(serviceId, owner, variableId, inline);
     const loaded = await holder.load();
-    if (!loaded) throw tokensNotFound(serviceId, owner);
+    if (!loaded) throw tokensNotFound(serviceId, owner, variableId, inline);
     if (loaded.hostPattern !== hostPattern) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
 
     const previousStatus = loaded.config.status;
@@ -1219,6 +1910,10 @@ export const agentVaultOauthServiceFactory = ({
   return {
     createAuthorization,
     completeAuthorization,
+    prepareVariableSignIn,
+    saveVariableSignIn,
+    startVariableAuthorization,
+    completeVariableAuthorization,
     getAuthorization,
     claimAuthorization,
     readAuthorizationAccessToken,

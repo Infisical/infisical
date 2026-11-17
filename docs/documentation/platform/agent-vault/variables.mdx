@@ -7,6 +7,13 @@ A global variable is a value that you can use in any [service](/documentation/pl
 
 When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) replaces each reference with the variable's value.
 
+A global variable has one of two types, which you pick when you create it:
+
+- **Text:** A value, such as an API key, that services reference as `{{KEY}}`
+- **OAuth:** A sign-in with an OAuth provider, which services use as their credential (see [OAuth variables](/documentation/platform/agent-vault/oauth-variables))
+
+This page covers text variables.
+
 <Info>
   Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update global variables.
 </Info>
@@ -47,7 +54,7 @@ To add a variable:
 </Steps>
 
 <Note>
-Each Agent Vault project can hold up to 500 global variables.
+Each Agent Vault project can hold up to 500 global variables, including OAuth variables.
 </Note>
 
 ## Use a variable in a service
@@ -58,6 +65,8 @@ You can use a variable in the following fields when [configuring a service](/doc
 - **Username** and **Password** in a [Basic](/documentation/platform/agent-vault/http-apis#basic) credential
 - **Value** in a custom header, for an [HTTP API](/documentation/platform/agent-vault/http-apis#custom-headers) or an [MCP server](/documentation/platform/agent-vault/mcp-servers#custom-headers)
 - **With** in a [substitution](/documentation/platform/agent-vault/http-apis#substitutions)
+
+These fields take only text variables. To use an OAuth variable, set the service's credential type to OAuth and pick the variable, as [Use an OAuth variable in a service](/documentation/platform/agent-vault/oauth-variables#use-an-oauth-variable-in-a-service) describes.
 
 To use a variable:
 

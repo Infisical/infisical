@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
@@ -23,7 +23,12 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput
+  InputGroupInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
@@ -37,91 +42,208 @@ import {
 } from "@app/helpers/agentVaultVariables";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultOauthClientAuthMethod,
   AgentVaultVariableScope,
+  AgentVaultVariableType,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultOauthVariableSignInStart,
+  TAgentVaultVariable
+} from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
+
+import { OAuthVariableFields } from "./OAuthVariableFields";
+import {
+  BLANK_OAUTH_VARIABLE_FORM,
+  buildOAuthVariableSettings,
+  buildOAuthVariableSettingsUpdate,
+  oauthVariableFormIssues,
+  oauthVariableFormValuesOf,
+  TVariableFormValues
+} from "./oauthVariableForm";
 
 // zod reports a refine as "custom", and the taken-key check is the key's only one, so this tells a taken key apart
 // from the key's other errors. The API's duplicate is flagged with it too.
 const TAKEN_KEY_ERROR_TYPE = "custom";
 
+const TYPE_LABELS: Record<AgentVaultVariableType, string> = {
+  [AgentVaultVariableType.Text]: "Text",
+  [AgentVaultVariableType.OAuth]: "OAuth"
+};
+
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
-// when the form validates, as the lookup of the typed key answers after it was typed.
+// when the form validates, as the lookup of the typed key answers after it was typed. A duplicate takes its
+// settings from the variable it copies, so only its key is checked.
 const buildSchema = (
   getTakenKeys: () => ReadonlySet<string>,
   isValueRequired: boolean,
-  isPersonal: boolean
+  isPersonal: boolean,
+  isDuplicate: boolean
 ) =>
-  z.object({
-    key: z
-      .string()
-      .min(1, "Required")
-      .max(VARIABLE_KEY_MAX_LENGTH, `A key can be at most ${VARIABLE_KEY_MAX_LENGTH} characters.`)
-      .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
-      .refine(
-        (key) => !getTakenKeys().has(key),
-        (key) => ({
-          message: isPersonal
-            ? `You already have a variable named '${key}'.`
-            : `A variable named '${key}' already exists.`
-        })
-      ),
-    value: z
-      .string()
-      .max(
-        VARIABLE_VALUE_MAX_LENGTH,
-        `A value can be at most ${VARIABLE_VALUE_MAX_LENGTH} characters.`
-      )
-      .regex(
-        AGENT_VAULT_NO_CONTROL_CHARS_RE,
-        "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
-      )
-      .refine((value) => !isValueRequired || value.length > 0, "Required")
-      .refine((value) => !value || value.trim().length > 0, "A value can't be only spaces.")
-  });
+  z
+    .object({
+      type: z.nativeEnum(AgentVaultVariableType),
+      key: z
+        .string()
+        .min(1, "Required")
+        .max(VARIABLE_KEY_MAX_LENGTH, `A key can be at most ${VARIABLE_KEY_MAX_LENGTH} characters.`)
+        .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
+        .refine(
+          (key) => !getTakenKeys().has(key),
+          (key) => ({
+            message: isPersonal
+              ? `You already have a variable named '${key}'.`
+              : `A variable named '${key}' already exists.`
+          })
+        ),
+      value: z.string(),
+      serverUrl: z.string(),
+      scopes: z.string(),
+      clientId: z.string(),
+      clientSecret: z.string(),
+      authorizationEndpoint: z.string(),
+      tokenEndpoint: z.string(),
+      issuer: z.string(),
+      tokenEndpointAuthMethod: z.union([
+        z.nativeEnum(AgentVaultOauthClientAuthMethod),
+        z.literal("")
+      ]),
+      clientName: z.string(),
+      redirectUri: z.string()
+    })
+    .superRefine((data, ctx) => {
+      const issue = (path: keyof TVariableFormValues, message: string) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+      if (data.type === AgentVaultVariableType.OAuth) {
+        if (!isDuplicate) {
+          oauthVariableFormIssues(data).forEach(({ field, message }) => issue(field, message));
+        }
+        return;
+      }
+      const { value } = data;
+      if (value.length > VARIABLE_VALUE_MAX_LENGTH) {
+        issue("value", `A value can be at most ${VARIABLE_VALUE_MAX_LENGTH} characters.`);
+      } else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(value)) {
+        issue(
+          "value",
+          "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
+        );
+      } else if (isValueRequired && value.length === 0) {
+        issue("value", "Required");
+      } else if (value && value.trim().length === 0) {
+        issue("value", "A value can't be only spaces.");
+      }
+    });
 
 type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
-type Props = {
+export type TVariableFormProps = {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
   variable?: TAgentVaultVariable | null;
   /** A key to start a new variable from, as when it was named in a service before it existed. */
   initialKey?: string;
+  /** Fixes the type of a new variable, as for a picker that lists only OAuth variables. */
+  type?: AgentVaultVariableType;
+  /** An OAuth variable whose provider settings a new one copies. Its sign-in is never copied. */
+  duplicateOf?: TAgentVaultVariable | null;
+  /** A sign-in started from the variables list that needs more settings before it can go ahead. */
+  signInStart?: TAgentVaultOauthVariableSignInStart | null;
   onCreated?: (variable: TAgentVaultVariable) => void;
-  onCloseAutoFocus?: (event: Event) => void;
+  /** Called once the form has saved, or finished. */
+  onClose: () => void;
+  /** Cancel and Close, which leave without saving. Defaults to onClose. */
+  onCancel?: () => void;
+  /** True while a sign-in is in progress, when closing would drop it. */
+  onPendingChange?: (isPending: boolean) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
   /** Personal for one of the caller's own variables, which only their personal values use. */
   scope?: AgentVaultVariableScope;
+  /** Renders the dialog's title and description, which follow the type chosen. Off where the overlay has its own. */
+  showHeader?: boolean;
 };
 
-// Mounted with the dialog's content, which unmounts while the dialog is closed, so every open starts from a fresh
+export const variableFormTitle = ({
+  variable,
+  duplicateOf,
+  type,
+  scope = AgentVaultVariableScope.Global
+}: Pick<TVariableFormProps, "variable" | "duplicateOf" | "type" | "scope">) => {
+  if (duplicateOf) return "Duplicate OAuth Variable";
+  if (type === AgentVaultVariableType.OAuth && !variable) return "Create OAuth Variable";
+  const scopeLabel = scope === AgentVaultVariableScope.Personal ? "Personal" : "Global";
+  return `${variable ? "Edit" : "Add"} ${scopeLabel} Variable`;
+};
+
+export const variableFormDescription = ({
+  variable,
+  duplicateOf,
+  type,
+  scope = AgentVaultVariableScope.Global
+}: Pick<TVariableFormProps, "variable" | "duplicateOf" | "type" | "scope">) => {
+  if (duplicateOf) {
+    return `Copies the provider settings of ${duplicateOf.key}. The copy has its own sign-in, so it starts out not connected.`;
+  }
+  if ((variable?.type ?? type) === AgentVaultVariableType.OAuth) {
+    return "Sign in once and use the sign-in as the credential of any HTTP API or MCP server.";
+  }
+  return scope === AgentVaultVariableScope.Personal
+    ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
+    : "Store a value once and use it from any service in any access bundle. Managing it and seeing its value each take their own permission.";
+};
+
+// Mounted with the overlay's content, which unmounts while the overlay is closed, so every open starts from a fresh
 // form: no key, lookup or error is carried over from the last one.
-const VariableForm = ({
+export const VariableForm = ({
   isOpen,
-  onOpenChange,
   variable,
   initialKey,
+  type: fixedType,
+  duplicateOf,
+  signInStart,
   onCreated,
-  scope = AgentVaultVariableScope.Global
-}: Omit<Props, "onCloseAutoFocus">) => {
+  onClose,
+  onCancel = onClose,
+  onPendingChange,
+  onDirtyChange,
+  scope = AgentVaultVariableScope.Global,
+  showHeader = false
+}: TVariableFormProps) => {
   const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
   const createVariable = useCreateAgentVaultVariable(projectId);
   const updateVariable = useUpdateAgentVaultVariable(projectId);
-  const isUpdate = Boolean(variable);
-  const usedByCount = variable?.usedByServices.length ?? 0;
+  const typeLabelId = useId();
   const [isValueVisible, setIsValueVisible] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  // The variable as last saved: an OAuth sign-in saves it first, so a new one can exist before the dialog closes.
+  const [saved, setSaved] = useState<TAgentVaultVariable | null>(variable ?? null);
+  const isCreatedHere = !variable && Boolean(saved);
+  const isUpdate = Boolean(saved);
+  const usedByCount = saved?.usedByServices.length ?? 0;
+  // A text variable created from a reference, or a personal one, can only be text.
+  const canChooseType = !variable && !duplicateOf && !fixedType && !isPersonal && !initialKey;
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
   const schema = useMemo(
-    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal),
-    [variable, isPersonal]
+    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal, Boolean(duplicateOf)),
+    [variable, isPersonal, duplicateOf]
   );
 
+  const formMethods = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      type:
+        variable?.type ??
+        (duplicateOf ? AgentVaultVariableType.OAuth : fixedType) ??
+        AgentVaultVariableType.Text,
+      key: variable?.key ?? initialKey ?? "",
+      value: "",
+      ...(variable ? oauthVariableFormValuesOf(variable.oauth) : BLANK_OAUTH_VARIABLE_FORM)
+    }
+  });
   const {
     control,
     handleSubmit,
@@ -130,13 +252,26 @@ const VariableForm = ({
     setFocus,
     trigger,
     getFieldState,
+    getValues,
+    reset,
     formState: { isDirty, isSubmitting }
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { key: variable?.key ?? initialKey ?? "", value: "" }
-  });
+  } = formMethods;
 
-  const key = useWatch({ control, name: "key" });
+  const [key, type, clientSecret] = useWatch({ control, name: ["key", "type", "clientSecret"] });
+  const isOAuth = type === AgentVaultVariableType.OAuth;
+  // The API takes a client secret only with a sign-in, so saving one typed here would drop it.
+  const isSecretUnsent = isOAuth && !duplicateOf && Boolean(clientSecret);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+  const changeSigningIn = useCallback(
+    (isPending: boolean) => {
+      setIsSigningIn(isPending);
+      onPendingChange?.(isPending);
+    },
+    [onPendingChange]
+  );
 
   // Asked of the server each time typing pauses, never from a cache, since another admin can add or delete the key
   // at any time. A duplicate saved before the answer arrives is refused by the API and flagged under the field.
@@ -146,7 +281,7 @@ const VariableForm = ({
     !isSubmitting &&
     debouncedKey === key &&
     VARIABLE_KEY_RE.test(key) &&
-    key !== variable?.key
+    key !== saved?.key
       ? key
       : null;
   const { existing } = useAgentVaultVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
@@ -176,16 +311,80 @@ const VariableForm = ({
     getFieldState,
     clearErrors
   ]);
-  const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
+  const isRenaming = Boolean(saved) && Boolean(key) && key !== saved?.key;
 
   // A key that arrives filled in leaves the value as the one thing left to type.
   useEffect(() => {
     if (initialKey) setFocus("value");
   }, [initialKey, setFocus]);
 
+  const flagServerKeyError = (error: unknown) => {
+    // The global request handler toasts every failure. A duplicate key is also shown on the field it concerns.
+    const serverResponse = axios.isAxiosError(error)
+      ? (error.response?.data as TApiErrors | undefined)
+      : undefined;
+    if (
+      serverResponse?.error === ApiErrorTypes.BadRequestError &&
+      (serverResponse.details as { field?: string } | undefined)?.field === "key"
+    ) {
+      setError("key", { type: TAKEN_KEY_ERROR_TYPE, message: serverResponse.message });
+    }
+  };
+
+  const saveOAuth = async (data: FormData): Promise<TAgentVaultVariable> => {
+    if (!saved) {
+      const created = await createVariable.mutateAsync({
+        scope: AgentVaultVariableScope.Global,
+        type: AgentVaultVariableType.OAuth,
+        key: data.key,
+        ...(duplicateOf
+          ? { sourceVariableId: duplicateOf.id }
+          : { oauth: buildOAuthVariableSettings(data) })
+      });
+      onCreated?.(created);
+      return created;
+    }
+    const oauth = saved.oauth ? buildOAuthVariableSettingsUpdate(saved.oauth, data) : undefined;
+    const keyChange = data.key === saved.key ? undefined : data.key;
+    if (!oauth && !keyChange) return saved;
+    return updateVariable.mutateAsync({ variableId: saved.id, key: keyChange, oauth });
+  };
+
+  // An OAuth sign-in saves first, then signs in, so what is saved becomes the form's new starting point.
+  const persistOAuth = async (data: FormData) => {
+    try {
+      const result = await saveOAuth(data);
+      setSaved(result);
+      reset(getValues());
+      return result;
+    } catch (error) {
+      flagServerKeyError(error);
+      throw error;
+    }
+  };
+
+  const getValidValues = () => {
+    const values = getValues();
+    const result = schema.safeParse(values);
+    clearErrors();
+    if (result.success) return values;
+    result.error.issues.forEach((issue) => {
+      const field = issue.path[0] as keyof FormData;
+      if (!getFieldState(field).error)
+        setError(field, { type: issue.code, message: issue.message });
+    });
+    return null;
+  };
+
   const onSubmit = async (data: FormData) => {
     try {
-      if (variable) {
+      if (isOAuth) {
+        const result = await persistOAuth(data);
+        createNotification({
+          text: `Variable "${result.key}" ${isUpdate ? "updated" : "created"}`,
+          type: "success"
+        });
+      } else if (variable) {
         await updateVariable.mutateAsync({
           variableId: variable.id,
           key: data.key === variable.key ? undefined : data.key,
@@ -201,35 +400,62 @@ const VariableForm = ({
         onCreated?.(created);
         createNotification({ text: `Variable "${data.key}" created`, type: "success" });
       }
-      onOpenChange(false);
+      onClose();
     } catch (error) {
-      // The global request handler toasts every failure. A duplicate key is also shown on the field it concerns.
-      const serverResponse = axios.isAxiosError(error)
-        ? (error.response?.data as TApiErrors | undefined)
-        : undefined;
-      if (
-        serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        (serverResponse.details as { field?: string } | undefined)?.field === "key"
-      ) {
-        setError("key", { type: TAKEN_KEY_ERROR_TYPE, message: serverResponse.message });
-      }
+      if (!isOAuth) flagServerKeyError(error);
     }
   };
 
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>
-          {isUpdate ? "Edit" : "Add"} {isPersonal ? "Personal" : "Global"} Variable
-        </DialogTitle>
-        <DialogDescription>
-          {isPersonal
-            ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
-            : "Store a value once and use it from any service in any access bundle. Managing it and seeing its value each take their own permission."}
-        </DialogDescription>
-      </DialogHeader>
+  let submitLabel = `Add ${isPersonal ? "Personal" : "Global"} Variable`;
+  if (duplicateOf) submitLabel = "Duplicate Variable";
+  else if (isUpdate) submitLabel = "Save";
+  else if (fixedType === AgentVaultVariableType.OAuth) submitLabel = "Create OAuth Variable";
+  // A variable an OAuth sign-in already created has nothing left to add unless it was changed since.
+  const isDone = isCreatedHere && !isDirty;
 
+  const headerProps = { variable, duplicateOf, scope };
+
+  return (
+    <FormProvider {...formMethods}>
+      {showHeader && (
+        <DialogHeader>
+          <DialogTitle>{variableFormTitle({ ...headerProps, type: fixedType })}</DialogTitle>
+          <DialogDescription>{variableFormDescription({ ...headerProps, type })}</DialogDescription>
+        </DialogHeader>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        {canChooseType && !isCreatedHere && (
+          <Controller
+            control={control}
+            name="type"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel id={typeLabelId}>Type</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      clearErrors();
+                    }}
+                    disabled={isSigningIn}
+                  >
+                    <SelectTrigger aria-labelledby={typeLabelId} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {Object.values(AgentVaultVariableType).map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {TYPE_LABELS[value]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        )}
         <Controller
           control={control}
           name="key"
@@ -240,82 +466,122 @@ const VariableForm = ({
                 <Input
                   {...field}
                   onChange={(event) => field.onChange(normalizeVariableKey(event.target.value))}
-                  placeholder="GITHUB_TOKEN"
+                  placeholder={isOAuth ? "GOOGLE_DRIVE" : "GITHUB_TOKEN"}
                   autoComplete="off"
                   spellCheck={false}
                   className="font-mono"
                   isError={Boolean(fieldState.error)}
                 />
                 <FieldDescription>
-                  {isRenaming && usedByCount > 0 ? (
+                  {isRenaming && usedByCount > 0 && (
                     <>
                       {usedByCount === 1
                         ? "The service that uses it keeps working"
                         : `The ${usedByCount} services that use it keep working`}{" "}
                       under the new key.
                     </>
-                  ) : (
-                    <>
-                      {isPersonal ? "Your personal values use" : "Services use"} it as{" "}
-                      <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
-                    </>
                   )}
+                  {!(isRenaming && usedByCount > 0) &&
+                    (isOAuth ? (
+                      "Services choose it by this key as their OAuth credential."
+                    ) : (
+                      <>
+                        {isPersonal ? "Your personal values use" : "Services use"} it as{" "}
+                        <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
+                      </>
+                    ))}
                 </FieldDescription>
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>
           )}
         />
-        <Controller
-          control={control}
-          name="value"
-          render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel>Value</FieldLabel>
-              <FieldContent>
-                <InputGroup>
-                  <InputGroupInput
-                    {...field}
-                    type={isValueVisible ? "text" : "password"}
-                    placeholder={
-                      variable ? "Leave blank to keep the current value" : "Enter the value"
-                    }
-                    autoComplete="off"
-                    spellCheck={false}
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupButton
-                      isDisabled={!field.value}
-                      aria-label={isValueVisible ? "Hide value" : "Show value"}
-                      onClick={() => setIsValueVisible((prev) => !prev)}
-                    >
-                      {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            </Field>
-          )}
-        />
+        {!isOAuth && (
+          <Controller
+            control={control}
+            name="value"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Value</FieldLabel>
+                <FieldContent>
+                  <InputGroup>
+                    <InputGroupInput
+                      {...field}
+                      type={isValueVisible ? "text" : "password"}
+                      placeholder={
+                        variable ? "Leave blank to keep the current value" : "Enter the value"
+                      }
+                      autoComplete="off"
+                      spellCheck={false}
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        isDisabled={!field.value}
+                        aria-label={isValueVisible ? "Hide value" : "Show value"}
+                        onClick={() => setIsValueVisible((prev) => !prev)}
+                      >
+                        {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        )}
+        {isOAuth && !duplicateOf && (
+          <OAuthVariableFields
+            variable={saved}
+            getValidValues={getValidValues}
+            persist={persistOAuth}
+            projectId={projectId}
+            onSignInChange={changeSigningIn}
+            initialSignInStart={signInStart}
+          />
+        )}
 
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="av"
-            isPending={isSubmitting}
-            isDisabled={isUpdate && !isDirty}
-          >
-            {isUpdate ? "Save" : `Add ${isPersonal ? "Personal" : "Global"} Variable`}
-          </Button>
+        <DialogFooter className="items-center justify-between">
+          <span className="text-xs text-muted">
+            {isSigningIn && "Finish or cancel signing in first."}
+            {!isSigningIn && isSecretUnsent && "Authorize to save the client secret."}
+          </span>
+          <div className="flex items-center gap-2">
+            {isDone ? (
+              <Button
+                type="button"
+                variant="av"
+                onClick={onClose}
+                isDisabled={isSigningIn || isSecretUnsent}
+              >
+                Done
+              </Button>
+            ) : (
+              <>
+                <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSigningIn}>
+                  {isCreatedHere ? "Close" : "Cancel"}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="av"
+                  isPending={isSubmitting}
+                  isDisabled={(isUpdate && !isDirty) || isSigningIn || isSecretUnsent}
+                >
+                  {submitLabel}
+                </Button>
+              </>
+            )}
+          </div>
         </DialogFooter>
       </form>
-    </>
+    </FormProvider>
   );
+};
+
+type DialogProps = Omit<TVariableFormProps, "onClose" | "onPendingChange" | "onDirtyChange"> & {
+  onOpenChange: (isOpen: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 export const VariableFormDialog = ({
@@ -323,16 +589,29 @@ export const VariableFormDialog = ({
   onOpenChange,
   onCloseAutoFocus,
   ...formProps
-}: Props) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogContent
-      // The form focuses the value itself when the key arrives filled in.
-      onOpenAutoFocus={(event) => {
-        if (formProps.initialKey) event.preventDefault();
-      }}
-      onCloseAutoFocus={onCloseAutoFocus}
-    >
-      <VariableForm isOpen={isOpen} onOpenChange={onOpenChange} {...formProps} />
-    </DialogContent>
-  </Dialog>
-);
+}: DialogProps) => {
+  const [isPending, setIsPending] = useState(false);
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
+        isPending={isPending}
+        // The form focuses the value itself when the key arrives filled in.
+        onOpenAutoFocus={(event) => {
+          if (formProps.initialKey) event.preventDefault();
+        }}
+        onCloseAutoFocus={(event) => {
+          setIsPending(false);
+          onCloseAutoFocus?.(event);
+        }}
+      >
+        <VariableForm
+          showHeader
+          isOpen={isOpen}
+          onClose={() => onOpenChange(false)}
+          onPendingChange={setIsPending}
+          {...formProps}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+};

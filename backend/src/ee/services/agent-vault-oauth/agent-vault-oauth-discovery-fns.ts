@@ -39,7 +39,12 @@ export type TOauthDiscovery = {
   // False when the server answered but sent no Bearer challenge and serves no OAuth metadata, which usually
   // means the URL is wrong. Old servers can still work with an admin-entered client, so it only warns.
   oauthAdvertised: boolean;
+  // Set only with `allowIssuerMismatch`, when the metadata names another issuer than the one it was fetched for. Its
+  // endpoints are then untrusted, and good only to prefill a form someone checks.
+  issuerMismatch?: { advertisedIssuer: string | null };
 };
+
+export type TOauthDiscoveryOptions = { allowIssuerMismatch?: boolean };
 
 export const describeServer = (serverUrl: string) => {
   try {
@@ -66,7 +71,7 @@ const BEARER_PREFIX_RE = new RE2(/^[\s\v\p{Z}\ufeff,]*Bearer[\s\v\p{Z}\ufeff]*/i
 const CHALLENGE_SEPARATOR_RE = new RE2(/[\s\v\p{Z}\ufeff,]/u);
 const QUOTED_ESCAPE_RE = new RE2(/\\(.)/g);
 
-const isHttpsUrl = (value: unknown): value is string => {
+export const isHttpsUrl = (value: unknown): value is string => {
   if (typeof value !== "string" || value.length > 2048 || !URL_PATTERN.test(value)) return false;
   try {
     const url = new URL(value);
@@ -250,7 +255,11 @@ export const selectScopes = ({
   return [...new Set([...scopes, ...offline])];
 };
 
-const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOauthDiscovery> => {
+const discover = async (
+  http: TOauthHttpClient,
+  serverUrl: string,
+  { allowIssuerMismatch = false }: TOauthDiscoveryOptions
+): Promise<TOauthDiscovery> => {
   const compatibility = new Set<AgentVaultOauthCompatibility>();
   let answered = false;
   let isPrivateAddress = false;
@@ -354,8 +363,14 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
     };
   }
 
-  const issuerCompatibility = checkIssuer(serverUrl, issuer, metadata.issuer);
-  if (issuerCompatibility) compatibility.add(issuerCompatibility);
+  let issuerMismatch: TOauthDiscovery["issuerMismatch"];
+  try {
+    const issuerCompatibility = checkIssuer(serverUrl, issuer, metadata.issuer);
+    if (issuerCompatibility) compatibility.add(issuerCompatibility);
+  } catch (error) {
+    if (!allowIssuerMismatch) throw error;
+    issuerMismatch = { advertisedIssuer: isHttpsUrl(metadata.issuer) ? metadata.issuer : null };
+  }
 
   const authorizationEndpoint = metadata.authorization_endpoint;
   const tokenEndpoint = metadata.token_endpoint;
@@ -397,14 +412,16 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
       ? grantTypes.filter((grantType): grantType is string => typeof grantType === "string")
       : null,
     compatibility: [...compatibility],
-    oauthAdvertised
+    oauthAdvertised,
+    ...(issuerMismatch ? { issuerMismatch } : {})
   };
 };
 
 export const discoverOauthServer = async (
   http: TOauthHttpClient,
   serverUrl: string,
-  budgetMs = DISCOVERY_BUDGET_MS
+  budgetMs = DISCOVERY_BUDGET_MS,
+  options: TOauthDiscoveryOptions = {}
 ): Promise<TOauthDiscovery> => {
   let timer: NodeJS.Timeout | undefined;
   const deadline = new Promise<never>((_, reject) => {
@@ -416,7 +433,7 @@ export const discoverOauthServer = async (
     }, budgetMs);
   });
   try {
-    return await Promise.race([discover(http, serverUrl), deadline]);
+    return await Promise.race([discover(http, serverUrl, options), deadline]);
   } finally {
     clearTimeout(timer);
   }

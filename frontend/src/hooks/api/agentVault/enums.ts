@@ -63,7 +63,9 @@ export enum AgentVaultCredentialType {
 export enum AgentVaultOauthStatus {
   Connected = "connected",
   NeedsReauthorization = "needs-reauthorization",
-  NeedsAdditionalScopes = "needs-additional-scopes"
+  NeedsAdditionalScopes = "needs-additional-scopes",
+  // An OAuth variable with no sign-in yet, or one an edit disconnected.
+  NotConnected = "not-connected"
 }
 
 export enum AgentVaultOauthAuthorizationStatus {
@@ -109,6 +111,18 @@ export enum AgentVaultDelegationScope {
 export enum AgentVaultVariableScope {
   Global = "global",
   Personal = "personal"
+}
+
+/** A text variable holds a value. An OAuth variable holds a sign-in that services use as their credential. */
+export enum AgentVaultVariableType {
+  Text = "text",
+  OAuth = "oauth"
+}
+
+export enum AgentVaultOauthClientAuthMethod {
+  None = "none",
+  ClientSecretBasic = "client_secret_basic",
+  ClientSecretPost = "client_secret_post"
 }
 
 export enum AgentVaultSessionLogDecision {

@@ -64,6 +64,14 @@ The proxy attaches no credential. Unless the service adds [custom headers](#cust
 
 Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
 
+### OAuth
+
+The proxy attaches the access token of an [OAuth variable](/documentation/platform/agent-vault/oauth-variables) as `Authorization: Bearer <access-token>`. Infisical renews the token before it expires.
+
+OAuth is the right choice for APIs that take a user's sign-in, such as Google Drive. Under **Credential Type**, select **OAuth**, then pick the variable, or select **Create OAuth Variable** to create one. Several services can use the same variable.
+
+If the provider stops accepting the sign-in, the proxy answers the agent's requests with a `401` response that says the sign-in has expired. If the API needs scopes that the sign-in didn't grant, the proxy answers with a `403` response instead. In either case, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable).
+
 <Note>
 For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.
 </Note>
@@ -148,6 +156,8 @@ If you don't name the port, the host will only match [port `443`](#default-port)
 <Warning>
 The proxy sends the credential to a plaintext host unencrypted, so anyone who can read traffic between the proxy and the API can read the credential. Only use plaintext hosts on a network you trust.
 </Warning>
+
+The proxy refuses plain HTTP requests to a service with an [OAuth](#oauth) credential, so an OAuth service needs a host that serves HTTPS.
 
 ### Wildcards
 

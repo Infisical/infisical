@@ -1,4 +1,8 @@
-import { isMemberOauthConnectionUsable, isMemberProvidedOauth } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  isMemberOauthConnectionUsable,
+  isMemberProvidedOauth,
+  isVariableOauth
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -381,7 +385,8 @@ export const toBundleServiceFacts = (
   const memberFields = row.memberProvidedFields ?? [];
   const personalValuesMissing = memberFields.some((field) => !context.setPersonalFields.has(field));
   const config = (row.credentialConfig ?? {}) as Record<string, string | undefined>;
-  const hasCredential = Boolean(row.encryptedCredential) || memberFields.length > 0;
+  // An OAuth variable's tokens live on the variable, so the service row seals nothing.
+  const hasCredential = Boolean(row.encryptedCredential) || memberFields.length > 0 || isVariableOauth(row);
 
   let credential: TSessionServiceCredential = { type: "none" };
   if (!personalValuesMissing && hasCredential) {
@@ -389,7 +394,7 @@ export const toBundleServiceFacts = (
       credential = { type: "bearer", headerName: config.headerName ?? null };
     } else if (
       row.credentialType === AgentVaultCredentialType.OAuth &&
-      (row.encryptedCredential || isMemberProvidedOauth(row))
+      (row.encryptedCredential || isMemberProvidedOauth(row) || isVariableOauth(row))
     ) {
       // A service whose members sign in seals at most its client's secret, so the token is the member's.
       credential = { type: "oauth" };

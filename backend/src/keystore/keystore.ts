@@ -209,6 +209,9 @@ export const KeyStorePrefixes = {
   // By service and owner, not row id: a reconnect replaces the member's row.
   AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
     `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
+  // By variable, not service: every service using an OAuth variable refreshes the same tokens.
+  AgentVaultOauthVariableRefreshLock: (variableId: string) =>
+    `agent-vault-oauth-refresh-lock:variable:${variableId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
   // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).

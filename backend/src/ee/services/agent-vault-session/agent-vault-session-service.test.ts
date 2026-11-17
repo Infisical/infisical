@@ -22,7 +22,19 @@ const ctx = {
   actorAuthMethod: null
 } as unknown as TMintSessionDTO["ctx"];
 
-const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
+const VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
+
+const buildService = ({
+  hooksOnPlan,
+  rules = [{ action: "manage", subject: "all" }]
+}: {
+  hooksOnPlan: boolean;
+  rules?: { action: string; subject: string; inverted?: boolean }[];
+}) => {
+  const findKeys = vi.fn().mockResolvedValue([{ id: VARIABLE_ID, key: "GDRIVE_U123", type: "oauth" }]);
+  const findOauthForResolve = vi
+    .fn()
+    .mockResolvedValue([{ id: VARIABLE_ID, key: "GDRIVE_U123", encryptedValue: null, oauthConfig: {} }]);
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
     services.map((row) => ({
       ...row,
@@ -56,10 +68,11 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     agentVaultSessionInlineServiceDAL: { insertForSession },
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
+    agentVaultVariableDAL: { findKeys, findOauthForResolve },
     membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+        permission: createMongoAbility(rules),
         hasRole: () => true,
         memberships: []
       })
@@ -67,7 +80,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     kmsService,
     licenseService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
-  return { service, transaction, insertForSession, licenseService, resourceMetadataDAL };
+  return { service, transaction, insertForSession, licenseService, resourceMetadataDAL, findKeys };
 };
 
 const mint = (service: ReturnType<typeof buildService>["service"]) =>
@@ -183,7 +196,12 @@ describe("updateSession", () => {
     stats: null
   };
 
-  const buildUpdateService = ({ storedMetadata = [] as { key: string; value: string }[], isEditable = true } = {}) => {
+  const buildUpdateService = ({
+    storedMetadata = [] as { key: string; value: string }[],
+    isEditable = true,
+    rules = [{ action: "manage", subject: "all" }] as { action: string; subject: string; inverted?: boolean }[],
+    inlineRows = [] as Record<string, unknown>[]
+  } = {}) => {
     const tx = { marker: "tx" };
     const agentVaultSessionDAL = {
       transaction: vi.fn(async (fn: (t: unknown) => Promise<unknown>) => fn(tx)),
@@ -203,10 +221,13 @@ describe("updateSession", () => {
     const service = agentVaultSessionServiceFactory({
       agentVaultSessionDAL,
       resourceMetadataDAL,
-      agentVaultSessionInlineServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
+      agentVaultSessionInlineServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue(inlineRows) },
+      agentVaultVariableDAL: {
+        findOauthForResolve: vi.fn().mockResolvedValue([{ id: VARIABLE_ID, key: "GDRIVE_U123" }])
+      },
       permissionService: {
         getProjectPermission: vi.fn().mockResolvedValue({
-          permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+          permission: createMongoAbility(rules),
           hasRole: () => true,
           memberships: []
         })
@@ -214,6 +235,43 @@ describe("updateSession", () => {
     } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
     return { service, agentVaultSessionDAL, resourceMetadataDAL, tx };
   };
+
+  test("a session's service names its OAuth variable only to a caller who can read variables", async () => {
+    const inlineRows = [
+      {
+        id: "inline-0",
+        sessionId: SESSION_ID,
+        projectId: PROJECT_ID,
+        name: "gdrive",
+        description: null,
+        hookUrl: null,
+        type: AgentVaultServiceType.Http,
+        hostPattern: "www.googleapis.com",
+        config: null,
+        allowedMethods: null,
+        allowedPathPrefixes: null,
+        allowedTools: null,
+        credentialType: AgentVaultCredentialType.OAuth,
+        credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID },
+        customHeaders: [],
+        substitutions: []
+      }
+    ];
+    const reader = buildUpdateService({ inlineRows });
+    const withoutRead = buildUpdateService({
+      inlineRows,
+      rules: [
+        { action: "manage", subject: "all" },
+        { action: "read", subject: "agent-vault-variables", inverted: true }
+      ]
+    });
+
+    const read = await reader.service.getSessionById({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
+    const hidden = await withoutRead.service.getSessionById({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
+
+    expect(read.session.services[0].credential).toMatchObject({ variable: { id: VARIABLE_ID, key: "GDRIVE_U123" } });
+    expect(hidden.session.services[0].credential).toEqual({ type: AgentVaultCredentialType.OAuth, source: "variable" });
+  });
 
   const update = (service: ReturnType<typeof buildUpdateService>["service"], fields: object) =>
     service.updateSession({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID, ...fields });
@@ -274,5 +332,56 @@ describe("updateSession", () => {
     await expect(update(service, { metadata: { runId: "1" } })).rejects.toThrow("label and metadata can't be changed");
     expect(resourceMetadataDAL.delete).not.toHaveBeenCalled();
     expect(resourceMetadataDAL.insertMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("mintSession, an inline service using an OAuth variable", () => {
+  const mintWithVariable = (service: ReturnType<typeof buildService>["service"]) =>
+    service.mintSession({
+      projectId: PROJECT_ID,
+      ctx,
+      services: [
+        {
+          type: AgentVaultServiceType.Http,
+          name: "gdrive",
+          hostPattern: "www.googleapis.com",
+          credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_U123" }
+        }
+      ],
+      actorName: "Ana Silva",
+      actorEmail: "ana@acme.com",
+      label: null
+    });
+
+  test("needs read-value on variables, checked before the key is looked up", async () => {
+    const { service, findKeys, transaction } = buildService({
+      hooksOnPlan: true,
+      rules: [
+        { action: "manage", subject: "all" },
+        { action: "read-value", subject: "agent-vault-variables", inverted: true }
+      ]
+    });
+
+    await expect(mintWithVariable(service)).rejects.toThrow(/read-value/);
+    expect(findKeys).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  test("stores the variable's id with nothing sealed, and the session names the variable", async () => {
+    const { service, insertForSession } = buildService({ hooksOnPlan: true });
+
+    const result = await mintWithVariable(service);
+
+    const [row] = insertForSession.mock.calls[0][0].services;
+    expect(row).toMatchObject({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID },
+      encryptedCredential: null
+    });
+    expect(result.session.services[0].credential).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variable: { id: VARIABLE_ID, key: "GDRIVE_U123" }
+    });
   });
 });

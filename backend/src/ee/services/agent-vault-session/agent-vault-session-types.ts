@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -47,7 +48,24 @@ export type TAgentVaultInlineServiceInput = {
         memberProvidedFields?: string[];
       }
     | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string }
+    | {
+        type: AgentVaultCredentialType.OAuth;
+        // Accepted only so a sign-in is refused by name.
+        authorizationId?: string;
+        // A global OAuth variable's key, or the tokens and the provider's details below, never both.
+        variable?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresAt?: string;
+        authorizationEndpoint?: string;
+        tokenEndpoint?: string;
+        issuer?: string;
+        clientId?: string;
+        clientSecret?: string;
+        tokenEndpointAuthMethod?: AgentVaultOauthClientAuthMethod;
+        scopes?: string[];
+        resource?: string;
+      }
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
@@ -60,11 +78,22 @@ export type TAgentVaultInlineBearerCredentialSummary = {
   headerPrefix: string;
 };
 
+export type TAgentVaultInlineOauthCredentialSummary = {
+  type: AgentVaultCredentialType.OAuth;
+  source: "variable" | "inline";
+  // Absent once the variable is deleted, and for a caller who can't read variables.
+  variable?: { id: string; key: string };
+  // Tokens sent with the session only.
+  issuer?: string;
+  grantedScopes?: string[];
+};
+
 export type TAgentVaultInlineCredentialSummary =
   | TAgentVaultInlineBearerCredentialSummary
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | TAgentVaultInlineOauthCredentialSummary;
 
 export type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
 
@@ -84,7 +113,7 @@ export type TAgentVaultInlineServiceSummary = {
       substitutions: TAgentVaultInlineSubstitutionSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
-      credential: TAgentVaultInlineBearerCredentialSummary;
+      credential: TAgentVaultInlineBearerCredentialSummary | TAgentVaultInlineOauthCredentialSummary;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {

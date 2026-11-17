@@ -22,6 +22,7 @@ import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls
 
 import { MemberProvidedInput, MemberProvidedToggle, SecretInput } from "./CredentialFields";
 import { OAuthAuthorizeCard } from "./OAuthAuthorizeCard";
+import { OAuthVariableField } from "./OAuthVariableField";
 import { SendsPreview } from "./SendsPreview";
 import {
   isCredentialMemberProvided,
@@ -36,6 +37,16 @@ const AUTH_METHOD_LABELS = {
   [AgentVaultCredentialType.OAuth]: "OAuth",
   [AgentVaultCredentialType.Bearer]: "Bearer Token"
 } as const;
+
+enum OAuthSource {
+  ConnectHere = "connect-here",
+  Variable = "variable"
+}
+
+const OAUTH_SOURCE_LABELS: Record<OAuthSource, string> = {
+  [OAuthSource.ConnectHere]: "Connect Here",
+  [OAuthSource.Variable]: "Use an OAuth Variable"
+};
 
 const DEFAULT_HEADER_NAME = "Authorization";
 const DEFAULT_HEADER_PREFIX = "Bearer";
@@ -63,9 +74,11 @@ export const McpCredentialFields = ({
   const headerPrefix = watch("headerPrefix");
   const customHeaders = watch("customHeaders");
   const memberProvidedFields = watch("memberProvidedFields");
+  const oauthUsesVariable = watch("oauthUsesVariable");
   const isOAuth = credentialType === AgentVaultCredentialType.OAuth;
   const isMemberProvided = isCredentialMemberProvided({ memberProvidedFields });
   const authMethodLabelId = useId();
+  const oauthSourceLabelId = useId();
   const headerNameInputId = useId();
   const headerPrefixInputId = useId();
   const storedType = service?.credential.type;
@@ -96,6 +109,15 @@ export const McpCredentialFields = ({
     }
     clearErrors(["secret", "oauthAuthorizationId", "oauthClientId", "oauthClientSecret"]);
   };
+  // An OAuth variable's sign-in is shared, so choosing one turns member-provided off.
+  const selectOAuthSource = (source: OAuthSource) => {
+    const usesVariable = source === OAuthSource.Variable;
+    if (usesVariable === oauthUsesVariable) return;
+    setValue("oauthUsesVariable", usesVariable, { shouldDirty: true });
+    if (usesVariable) setValue("memberProvidedFields", [], { shouldDirty: true });
+    clearErrors(["oauthAuthorizationId", "oauthVariableKey", "oauthClientId", "oauthClientSecret"]);
+  };
+
   const trimmedHeaderName = (headerName ?? "").trim();
   // The default Authorization: Bearer header needs no preview; it earns one once something is customized.
   const isHeaderCustomized =
@@ -127,7 +149,34 @@ export const McpCredentialFields = ({
         </FieldContent>
       </Field>
 
-      {isOAuth ? (
+      {isOAuth && !isMemberProvided && (
+        <Field>
+          <FieldLabel id={oauthSourceLabelId}>Sign-in</FieldLabel>
+          <FieldContent>
+            <Select
+              value={oauthUsesVariable ? OAuthSource.Variable : OAuthSource.ConnectHere}
+              onValueChange={(value) => selectOAuthSource(value as OAuthSource)}
+            >
+              <SelectTrigger aria-labelledby={oauthSourceLabelId} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {Object.values(OAuthSource).map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {OAUTH_SOURCE_LABELS[source]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldContent>
+        </Field>
+      )}
+
+      {isOAuth && oauthUsesVariable && (
+        <OAuthVariableField projectId={projectId} service={service} />
+      )}
+
+      {isOAuth && !oauthUsesVariable && (
         <OAuthAuthorizeCard
           projectId={projectId}
           service={service}
@@ -135,7 +184,9 @@ export const McpCredentialFields = ({
           isMemberProvided={isMemberProvided}
           onMemberProvidedChange={setMemberProvided}
         />
-      ) : (
+      )}
+
+      {!isOAuth && (
         <Controller
           control={control}
           name="secret"
