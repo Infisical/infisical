@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 
 import { apiRequest } from "@app/config/request";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
+import { useRevokeAccessRequest } from "@app/hooks/api/accessApproval/mutation";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import {
@@ -98,6 +99,15 @@ import {
 } from "@app/hooks/api/identityAuthTemplates/queries";
 import type { IdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates/types";
 import {
+  useCreateIdentityProjectAdditionalPrivilege,
+  useDeleteIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectAdditionalPrivilege
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/mutation";
+import {
+  useGetIdentityProjectPrivilegeDetails,
+  useListIdentityProjectPrivileges
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
+import {
   useGetVaultMounts,
   useGetVaultNamespaces,
   useGetVaultPolicies
@@ -134,6 +144,8 @@ import {
 } from "@app/hooks/api/projects/mutations";
 import {
   useDeleteUserFromWorkspace,
+  useGetIdentityPermissionAudit,
+  useGetMembershipPermissionAudit,
   useGetAvailableProjectUsers,
   useGetWorkspaceGroupMembershipDetails,
   useGetWorkspaceUserDetails,
@@ -141,6 +153,16 @@ import {
   useListWorkspaceGroups,
   useUpdateUserWorkspaceRole
 } from "@app/hooks/api/projects/queries";
+import {
+  useCreateProjectUserAdditionalPrivilege,
+  useDeleteProjectUserAdditionalPrivilege,
+  useUpdateProjectUserAdditionalPrivilege
+} from "@app/hooks/api/projectUserAdditionalPrivilege/mutation";
+import {
+  projectUserPrivilegeKeys,
+  useGetProjectUserPrivilegeDetails,
+  useListProjectUserPrivileges
+} from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import {
   useCreateOrgRole,
   useCreateProjectRole,
@@ -157,6 +179,7 @@ import {
   useGetUserOrgPermissions,
   useGetUserProjectPermissions
 } from "@app/hooks/api/roles/queries";
+import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import {
   useCreateServiceToken,
@@ -351,6 +374,32 @@ export const accessLive: AccessAdapter = {
   useUpdateProjectUserRoles: useUpdateUserWorkspaceRole,
   useRemoveProjectUsers: useDeleteUserFromWorkspace,
   useAssumeProjectPrivileges,
+  useMembershipPermissionAudit: useGetMembershipPermissionAudit,
+  useIdentityPermissionAudit: useGetIdentityPermissionAudit,
+  useProjectUserPrivileges: useListProjectUserPrivileges,
+  useProjectUserPrivilege: useGetProjectUserPrivilegeDetails,
+  useCreateProjectUserPrivilege: useCreateProjectUserAdditionalPrivilege,
+  useUpdateProjectUserPrivilege: useUpdateProjectUserAdditionalPrivilege,
+  useDeleteProjectUserPrivilege: useDeleteProjectUserAdditionalPrivilege,
+  useRevokeProjectUserPrivilegeRequest: () => {
+    const queryClient = useQueryClient();
+    const revoke = useRevokeAccessRequest();
+    return {
+      ...revoke,
+      mutateAsync: async ({ projectMembershipId, ...dto }) => {
+        const result = await revoke.mutateAsync(dto);
+        await queryClient.invalidateQueries({
+          queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
+        });
+        return result;
+      }
+    };
+  },
+  useIdentityProjectPrivileges: useListIdentityProjectPrivileges,
+  useIdentityProjectPrivilege: useGetIdentityProjectPrivilegeDetails,
+  useCreateIdentityProjectPrivilege: useCreateIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectPrivilege: useUpdateIdentityProjectAdditionalPrivilege,
+  useDeleteIdentityProjectPrivilege: useDeleteIdentityProjectAdditionalPrivilege,
 
   useProjectIdentities: useListProjectIdentityMemberships,
   useProjectIdentity: useGetProjectIdentityMembershipV2,
@@ -377,6 +426,7 @@ export const accessLive: AccessAdapter = {
   useUpdateProjectRole,
   useDeleteProjectRole,
   useProjectTags: useGetWsTags,
+  useProjectEnvironmentFolders: useListProjectEnvironmentsFolders,
   useAvailableAppConnections: useListAvailableAppConnections,
   useVaultNamespaces: useGetVaultNamespaces,
   useVaultPolicies: useGetVaultPolicies,

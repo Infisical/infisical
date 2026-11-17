@@ -12,7 +12,7 @@ import {
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -23,6 +23,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -34,9 +35,11 @@ import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../ui";
+import { ProjectAccessExtras } from "./access-extras";
 import { personName } from "./member-access";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 import { MemberRolesSection } from "./member-roles";
+import { PermissionAuditAction } from "./permission-audit-sheet";
 import { accessLabel, accessNoun, canAssumeUserIn } from "./product";
 import { useProjectScope } from "./scope";
 
@@ -114,6 +117,8 @@ export const ProjectMemberDetail = () => {
     ProjectPermissionSub.Member
   );
 
+  const isCertManager = scope.projectType === ProjectType.CertificateManager;
+
   const remove = async () => {
     setRemoving(false);
     try {
@@ -136,54 +141,64 @@ export const ProjectMemberDetail = () => {
         breadcrumb={breadcrumb}
         title={name}
         actions={
-          isSelf ? (
-            <Tooltip
-              side="right"
-              content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
-            >
-              <Badge tone="info">
-                <Icon name="info" size={12} />
-                {`Your ${accessNoun(scope.projectType)} membership`}
-              </Badge>
-            </Tooltip>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(user.id).catch(() => undefined);
-                    toast({ tone: "neutral", title: "User ID copied to clipboard" });
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy user ID
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!canAssume}
-                  description={canAssume ? undefined : RESTRICTED}
-                  onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
-                >
-                  <Icon name="user" />
-                  Assume privileges
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!canDelete}
-                  description={canDelete ? undefined : RESTRICTED}
-                  onSelect={() => setRemoving(true)}
-                >
-                  <Icon name="trash" />
-                  {`Remove user from ${accessNoun(scope.projectType)}`}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
+          <Inline gap={8}>
+            {!isCertManager && (
+              <PermissionAuditAction
+                projectId={projectId}
+                projectType={scope.projectType}
+                target={{ membershipId: member.id }}
+                targetName={name}
+              />
+            )}
+            {isSelf ? (
+              <Tooltip
+                side="right"
+                content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+              >
+                <Badge tone="info">
+                  <Icon name="info" size={12} />
+                  {`Your ${accessNoun(scope.projectType)} membership`}
+                </Badge>
+              </Tooltip>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      navigator.clipboard?.writeText(user.id).catch(() => undefined);
+                      toast({ tone: "neutral", title: "User ID copied to clipboard" });
+                    }}
+                  >
+                    <Icon name="copy" />
+                    Copy user ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canAssume}
+                    description={canAssume ? undefined : RESTRICTED}
+                    onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
+                  >
+                    <Icon name="user" />
+                    Assume privileges
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!canDelete}
+                    description={canDelete ? undefined : RESTRICTED}
+                    onSelect={() => setRemoving(true)}
+                  >
+                    <Icon name="trash" />
+                    {`Remove user from ${accessNoun(scope.projectType)}`}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </Inline>
         }
       />
       <DetailLayout
@@ -209,7 +224,21 @@ export const ProjectMemberDetail = () => {
           </Card>
         }
       >
-        <MemberRolesSection member={member} projectId={projectId} isSelf={isSelf} />
+        <Stack gap={24}>
+          <MemberRolesSection member={member} projectId={projectId} isSelf={isSelf} />
+          <ProjectAccessExtras
+            projectId={projectId}
+            projectType={scope.projectType}
+            readOnly={isSelf}
+            target={{
+              type: "user",
+              membershipId: member.id,
+              userId: user.id,
+              email: user.email,
+              name
+            }}
+          />
+        </Stack>
       </DetailLayout>
       <RemoveMemberDialog
         name={removing ? name : undefined}

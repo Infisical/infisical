@@ -94,6 +94,15 @@ import type {
   MachineIdentityAuthMethod
 } from "@app/hooks/api/identityAuthTemplates/types";
 import type {
+  useCreateIdentityProjectAdditionalPrivilege,
+  useDeleteIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectAdditionalPrivilege
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/mutation";
+import type {
+  useGetIdentityProjectPrivilegeDetails,
+  useListIdentityProjectPrivileges
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
+import type {
   useGetVaultMounts,
   useGetVaultNamespaces,
   useGetVaultPolicies
@@ -129,6 +138,8 @@ import type {
 } from "@app/hooks/api/projects/mutations";
 import type {
   useDeleteUserFromWorkspace,
+  useGetIdentityPermissionAudit,
+  useGetMembershipPermissionAudit,
   useGetAvailableProjectUsers,
   useGetWorkspaceById,
   useGetWorkspaceGroupMembershipDetails,
@@ -137,6 +148,15 @@ import type {
   useListWorkspaceGroups,
   useUpdateUserWorkspaceRole
 } from "@app/hooks/api/projects/queries";
+import type {
+  useCreateProjectUserAdditionalPrivilege,
+  useDeleteProjectUserAdditionalPrivilege,
+  useUpdateProjectUserAdditionalPrivilege
+} from "@app/hooks/api/projectUserAdditionalPrivilege/mutation";
+import type {
+  useGetProjectUserPrivilegeDetails,
+  useListProjectUserPrivileges
+} from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import type {
   useCreateOrgRole,
   useCreateProjectRole,
@@ -153,6 +173,7 @@ import type {
   useGetUserOrgPermissions,
   useGetUserProjectPermissions
 } from "@app/hooks/api/roles/queries";
+import type { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import type {
   useCreateServiceToken,
   useDeleteServiceToken,
@@ -314,6 +335,22 @@ export type AccessAdapter = {
   useUpdateProjectUserRoles: MutationOf<typeof useUpdateUserWorkspaceRole>;
   useRemoveProjectUsers: MutationOf<typeof useDeleteUserFromWorkspace>;
   useAssumeProjectPrivileges: MutationOf<typeof useAssumeProjectPrivileges>;
+  useMembershipPermissionAudit: QueryOf<typeof useGetMembershipPermissionAudit>;
+  useIdentityPermissionAudit: QueryOf<typeof useGetIdentityPermissionAudit>;
+  useProjectUserPrivileges: QueryOf<typeof useListProjectUserPrivileges>;
+  useProjectUserPrivilege: QueryOf<typeof useGetProjectUserPrivilegeDetails>;
+  useCreateProjectUserPrivilege: MutationOf<typeof useCreateProjectUserAdditionalPrivilege>;
+  useUpdateProjectUserPrivilege: MutationOf<typeof useUpdateProjectUserAdditionalPrivilege>;
+  useDeleteProjectUserPrivilege: MutationOf<typeof useDeleteProjectUserAdditionalPrivilege>;
+  useRevokeProjectUserPrivilegeRequest: V4Mutation<
+    { requestId: string; projectSlug: string; projectMembershipId: string },
+    unknown
+  >;
+  useIdentityProjectPrivileges: QueryOf<typeof useListIdentityProjectPrivileges>;
+  useIdentityProjectPrivilege: QueryOf<typeof useGetIdentityProjectPrivilegeDetails>;
+  useCreateIdentityProjectPrivilege: MutationOf<typeof useCreateIdentityProjectAdditionalPrivilege>;
+  useUpdateIdentityProjectPrivilege: MutationOf<typeof useUpdateIdentityProjectAdditionalPrivilege>;
+  useDeleteIdentityProjectPrivilege: MutationOf<typeof useDeleteIdentityProjectAdditionalPrivilege>;
 
   useProjectIdentities: QueryOf<typeof useListProjectIdentityMemberships>;
   useProjectIdentity: QueryOf<typeof useGetProjectIdentityMembershipV2>;
@@ -340,6 +377,7 @@ export type AccessAdapter = {
   useUpdateProjectRole: MutationOf<typeof useUpdateProjectRole>;
   useDeleteProjectRole: MutationOf<typeof useDeleteProjectRole>;
   useProjectTags: QueryOf<typeof useGetWsTags>;
+  useProjectEnvironmentFolders: QueryOf<typeof useListProjectEnvironmentsFolders>;
   useAvailableAppConnections: QueryOf<typeof useListAvailableAppConnections>;
   useVaultNamespaces: QueryOf<typeof useGetVaultNamespaces>;
   useVaultPolicies: QueryOf<typeof useGetVaultPolicies>;

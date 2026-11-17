@@ -1,4 +1,5 @@
 import { createMongoAbility, type RawRuleOf, type MongoAbility } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import { useRouterState } from "@tanstack/react-router";
 
 import type { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
@@ -19,8 +20,14 @@ import {
   type Organization,
   SsoMfaTrust
 } from "@app/hooks/api/organization/types";
-import { type Project, ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
-import type { TOrgRole } from "@app/hooks/api/roles/types";
+import {
+  type Project,
+  ProjectType,
+  ProjectVersion,
+  type TPermissionAuditSource
+} from "@app/hooks/api/projects/types";
+import type { TOrgRole, TProjectPermission } from "@app/hooks/api/roles/types";
+import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/types";
 import { TemporaryPermissionMode, type TIdentity } from "@app/hooks/api/shared/types";
 import type { TOrgUserAccess, TWorkspaceUser, OrgUser } from "@app/hooks/api/users/types";
 
@@ -728,7 +735,124 @@ const project = (state: AccessState, projectId: string): Project | undefined => 
     secretDetectionIgnoreValues: [],
     enforceEncryptedSecretManagerSecretMetadata: false,
     secretBlindIndexEnabled: false,
-    isLegacyAdditionalPrivilegesEnabled: false
+    isLegacyAdditionalPrivilegesEnabled: Boolean(found.legacyPrivileges)
+  };
+};
+
+const DEMO_FOLDER_PATHS = [
+  "/",
+  "/payments",
+  "/payments/stripe",
+  "/payments/stripe/webhooks",
+  "/payments/ledger",
+  "/deploy",
+  "/deploy/kubernetes",
+  "/deploy/terraform",
+  "/shared",
+  "/shared/observability"
+];
+
+const environmentFolders = (
+  state: AccessState,
+  projectId: string
+): TProjectEnvironmentsFolders | undefined => {
+  const found = projectOf(state, projectId);
+  if (!found) return undefined;
+  return Object.fromEntries(
+    found.environments.map((environment) => {
+      const folders = DEMO_FOLDER_PATHS.map((path) => {
+        const parent = path === "/" ? null : path.slice(0, path.lastIndexOf("/")) || "/";
+        return {
+          id: `${environment.slug}:${path}`,
+          name: path === "/" ? "root" : path.slice(path.lastIndexOf("/") + 1),
+          path,
+          parentId: parent === null ? null : `${environment.slug}:${parent}`
+        };
+      });
+      return [environment.slug, { ...environment, folders }];
+    })
+  );
+};
+
+const packed = (permissions: readonly TProjectPermission[] = []) =>
+  packRules(permissions as RawRuleOf<MongoAbility>[]) as unknown[];
+
+const roleSources = (
+  state: AccessState,
+  grants: readonly DemoRoleGrant[],
+  group?: { id: string; name: string }
+): TPermissionAuditSource[] =>
+  grants.flatMap((grant) => {
+    const role = state.projectRoles.find((entry) => entry.slug === grant.role);
+    if (!role) return [];
+    return [
+      {
+        id: group ? `${group.id}:${grant.id}` : grant.id,
+        type: group ? ("group_role" as const) : ("role" as const),
+        name: role.name,
+        slug: BUILT_IN_PROJECT_ROLES.includes(role.slug) ? role.slug : "custom",
+        groupId: group?.id,
+        groupName: group?.name,
+        isTemporary: grant.isTemporary,
+        temporaryAccessStartTime: grant.temporaryAccessStartTime,
+        temporaryAccessEndTime: grant.temporaryAccessEndTime,
+        permissions: packed(role.permissions)
+      }
+    ];
+  });
+
+const groupSources = (
+  state: AccessState,
+  projectId: string,
+  member: { userId?: string; identityId?: string }
+) =>
+  membershipsOf(state, "group", projectId)
+    .filter((membership) =>
+      state.groupMembers.some(
+        (entry) =>
+          entry.groupId === membership.groupId &&
+          (member.userId ? entry.userId === member.userId : entry.identityId === member.identityId)
+      )
+    )
+    .flatMap((membership) => {
+      const group = state.groups.find((entry) => entry.id === membership.groupId)!;
+      return roleSources(state, membership.roles, group);
+    });
+
+const privilegeSources = (
+  privileges: readonly {
+    id: string;
+    slug: string;
+    isTemporary: boolean;
+    temporaryAccessEndTime?: string | null;
+    permissions?: TProjectPermission[];
+  }[]
+): TPermissionAuditSource[] =>
+  privileges.map((privilege) => ({
+    id: privilege.id,
+    type: "additional_privilege",
+    name: privilege.slug,
+    isTemporary: privilege.isTemporary,
+    temporaryAccessEndTime: privilege.temporaryAccessEndTime ?? undefined,
+    permissions: packed(privilege.permissions)
+  }));
+
+const privilegeWindow = (
+  type:
+    | { isTemporary: false }
+    | { isTemporary: true; temporaryRange?: string; temporaryAccessStartTime?: string }
+) => {
+  if (!type.isTemporary) return { isTemporary: false as const };
+  const start = type.temporaryAccessStartTime ?? stamp();
+  const range = type.temporaryRange ?? "1h";
+  return {
+    isTemporary: true as const,
+    temporaryMode: TEMPORARY_MODE as string,
+    temporaryRange: range,
+    temporaryAccessStartTime: start,
+    temporaryAccessEndTime: new Date(
+      new Date(start).getTime() + rangeSeconds(range) * 1000
+    ).toISOString()
   };
 };
 
@@ -1670,6 +1794,158 @@ export const accessDemo: AccessAdapter = {
   useAssumeProjectPrivileges: demoMutation((_dto, state) =>
     done(state, { message: "Privilege assumption started" })
   ),
+  useMembershipPermissionAudit: demoQuery(
+    "membership-audit",
+    (state, projectId: string, membershipId: string) => {
+      const membership = membershipsOf(state, "user", projectId).find(
+        (entry) => entry.id === membershipId
+      );
+      if (!membership) return undefined;
+      return {
+        sources: [
+          ...roleSources(state, membership.roles),
+          ...groupSources(state, projectId, { userId: membership.userId }),
+          ...privilegeSources(
+            state.userPrivileges.filter((entry) => entry.projectMembershipId === membershipId)
+          )
+        ]
+      };
+    }
+  ),
+  useIdentityPermissionAudit: demoQuery(
+    "identity-audit",
+    (state, projectId: string, identityId: string) => {
+      const membership = membershipsOf(state, "identity", projectId).find(
+        (entry) => entry.identityId === identityId
+      );
+      if (!membership) return undefined;
+      return {
+        sources: [
+          ...roleSources(state, membership.roles),
+          ...groupSources(state, projectId, { identityId }),
+          ...privilegeSources(
+            state.identityPrivileges.filter(
+              (entry) => entry.projectId === projectId && entry.identityId === identityId
+            )
+          )
+        ]
+      };
+    }
+  ),
+  useProjectUserPrivileges: demoQuery("user-privileges", (state, projectMembershipId: string) =>
+    state.userPrivileges
+      .filter((entry) => entry.projectMembershipId === projectMembershipId)
+      .map((entry) => ({
+        ...entry,
+        permissions: entry.permissions ?? [],
+        isLinkedToAccessApproval: Boolean(entry.isLinkedToAccessApproval),
+        policyApproverUserIds: entry.policyApproverUserIds ?? []
+      }))
+  ),
+  useProjectUserPrivilege: demoQuery("user-privilege", (state, privilegeId: string) => {
+    const found = state.userPrivileges.find((entry) => entry.id === privilegeId);
+    return found && { ...found, permissions: found.permissions ?? [] };
+  }),
+  useCreateProjectUserPrivilege: demoMutation((dto, state) => {
+    const created = {
+      id: newId(),
+      projectMembershipId: dto.projectMembershipId,
+      slug: dto.slug || `privilege-${newId().slice(0, 8)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      permissions: dto.permissions,
+      ...privilegeWindow(dto.type)
+    };
+    return done(
+      { ...state, userPrivileges: [...state.userPrivileges, created] },
+      { privilege: created }
+    );
+  }),
+  useUpdateProjectUserPrivilege: demoMutation((dto, state) => {
+    const existing = state.userPrivileges.find((entry) => entry.id === dto.privilegeId)!;
+    const next = {
+      ...existing,
+      ...(dto.slug ? { slug: dto.slug } : {}),
+      ...(dto.permissions ? { permissions: dto.permissions } : {}),
+      ...(dto.type ? privilegeWindow(dto.type) : {}),
+      updatedAt: new Date()
+    } as typeof existing;
+    return done(
+      {
+        ...state,
+        userPrivileges: state.userPrivileges.map((entry) => (entry === existing ? next : entry))
+      },
+      { privilege: next }
+    );
+  }),
+  useDeleteProjectUserPrivilege: demoMutation((dto, state) => {
+    const existing = state.userPrivileges.find((entry) => entry.id === dto.privilegeId)!;
+    return done(
+      { ...state, userPrivileges: state.userPrivileges.filter((entry) => entry !== existing) },
+      { privilege: existing }
+    );
+  }),
+  useRevokeProjectUserPrivilegeRequest: demoMutation((dto, state) =>
+    done(
+      {
+        ...state,
+        userPrivileges: state.userPrivileges.filter(
+          (entry) => entry.accessApprovalRequestId !== dto.requestId
+        )
+      },
+      {}
+    )
+  ),
+  useIdentityProjectPrivileges: demoQuery("identity-privileges", (state, dto) =>
+    state.identityPrivileges.filter(
+      (entry) => entry.projectId === dto.projectId && entry.identityId === dto.identityId
+    )
+  ),
+  useIdentityProjectPrivilege: demoQuery("identity-privilege", (state, dto) =>
+    state.identityPrivileges.find((entry) => entry.id === dto.privilegeId)
+  ),
+  useCreateIdentityProjectPrivilege: demoMutation((dto, state) => {
+    const created = {
+      id: newId(),
+      projectId: dto.projectId,
+      identityId: dto.identityId,
+      slug: dto.slug || `privilege-${newId().slice(0, 8)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      permissions: dto.permissions,
+      ...privilegeWindow(dto.type)
+    };
+    return done({ ...state, identityPrivileges: [...state.identityPrivileges, created] }, created);
+  }),
+  useUpdateIdentityProjectPrivilege: demoMutation((dto, state) => {
+    const existing = state.identityPrivileges.find((entry) => entry.id === dto.privilegeId)!;
+    const next = {
+      ...existing,
+      ...(dto.slug ? { slug: dto.slug } : {}),
+      ...(dto.permissions ? { permissions: dto.permissions } : {}),
+      ...(dto.type ? privilegeWindow(dto.type) : {}),
+      updatedAt: new Date()
+    } as typeof existing;
+    return done(
+      {
+        ...state,
+        identityPrivileges: state.identityPrivileges.map((entry) =>
+          entry === existing ? next : entry
+        )
+      },
+      next
+    );
+  }),
+  useDeleteIdentityProjectPrivilege: demoMutation((dto, state) => {
+    const existing = state.identityPrivileges.find((entry) => entry.id === dto.privilegeId)!;
+    return done(
+      {
+        ...state,
+        identityPrivileges: state.identityPrivileges.filter((entry) => entry !== existing)
+      },
+      existing
+    );
+  }),
 
   useProjectIdentities: demoQuery(
     "project-identities",
@@ -1932,6 +2208,9 @@ export const accessDemo: AccessAdapter = {
       removed
     );
   }),
+  useProjectEnvironmentFolders: demoQuery("environment-folders", (state, projectId: string) =>
+    environmentFolders(state, projectId)
+  ),
   useProjectTags: (projectId: string) => {
     const scenario = useAccessScenario();
     if (scenario === "loading") return { data: undefined, isPending: true, error: null };

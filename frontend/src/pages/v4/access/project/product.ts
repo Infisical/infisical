@@ -11,6 +11,12 @@ const ROLE_DETAILS_HIDDEN_FOR_IDENTITIES = new Set<ProjectType>([
   ProjectType.SecretScanning
 ]);
 
+export const STANDALONE_PRODUCTS: readonly ProjectType[] = [
+  ProjectType.CertificateManager,
+  ProjectType.PAM,
+  ProjectType.AgentVault
+];
+
 export const canAssumeUserIn = (projectType: ProjectType) =>
   projectType !== ProjectType.CertificateManager && supportsAssumePrivileges(projectType);
 

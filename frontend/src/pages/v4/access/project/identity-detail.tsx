@@ -21,7 +21,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -51,6 +51,8 @@ import { AgentVaultIdentityDelegationSection } from "../product/agent-vault/dele
 import { formatDateTime } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, Muted } from "../ui";
+import { ProjectAccessExtras } from "./access-extras";
+import { IdentityAlertAction } from "./identity-alerts";
 import { ProjectIdentityAuthSection } from "./identity-auth";
 import {
   AssumePrivilegesDialog,
@@ -63,7 +65,8 @@ import {
   type ProjectIdentityMembership
 } from "./identity-common";
 import { IdentityRoleDetailsSection } from "./identity-roles";
-import { accessLabel, accessNoun } from "./product";
+import { PermissionAuditAction } from "./permission-audit-sheet";
+import { accessLabel, accessNoun, STANDALONE_PRODUCTS } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./identity.module.css";
@@ -400,6 +403,34 @@ const OrgManagedAuthCard = ({ identity }: { identity: Identity }) => {
   );
 };
 
+const IdentityHeaderInsights = ({
+  identity,
+  canEdit
+}: {
+  identity: Identity;
+  canEdit: boolean;
+}) => {
+  const scope = useProjectScope();
+  return (
+    <>
+      <IdentityAlertAction
+        identityId={identity.id}
+        projectId={isProjectManaged(identity) ? scope.projectId : undefined}
+        canEdit={canEdit}
+        readOnly={!isProjectManaged(identity)}
+      />
+      {!STANDALONE_PRODUCTS.includes(scope.projectType) && (
+        <PermissionAuditAction
+          projectId={scope.projectId}
+          projectType={scope.projectType}
+          target={{ identityId: identity.id }}
+          targetName={identity.name}
+        />
+      )}
+    </>
+  );
+};
+
 export const ProjectIdentityDetail = () => {
   const scope = useProjectScope();
   const { orgId, projectId } = scope;
@@ -456,40 +487,43 @@ export const ProjectIdentityDetail = () => {
         <PageHeader
           title={identity.name}
           actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(identity.id).catch(() => undefined);
-                    toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy machine identity ID
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled={!canAssume} onSelect={() => setAssuming(true)}>
-                  <Icon name="user" />
-                  Assume privileges
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!canDelete || deleteBlocked}
-                  description={deleteBlocked ? DELETE_PROTECTED : undefined}
-                  onSelect={() => setRemoving(true)}
-                >
-                  {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
-                  {isProjectIdentity
-                    ? "Delete machine identity"
-                    : `Remove from ${accessNoun(scope.projectType)}`}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Inline gap={8}>
+              <IdentityHeaderInsights identity={identity} canEdit={canEdit} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      navigator.clipboard?.writeText(identity.id).catch(() => undefined);
+                      toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
+                    }}
+                  >
+                    <Icon name="copy" />
+                    Copy machine identity ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={!canAssume} onSelect={() => setAssuming(true)}>
+                    <Icon name="user" />
+                    Assume privileges
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!canDelete || deleteBlocked}
+                    description={deleteBlocked ? DELETE_PROTECTED : undefined}
+                    onSelect={() => setRemoving(true)}
+                  >
+                    {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
+                    {isProjectIdentity
+                      ? "Delete machine identity"
+                      : `Remove from ${accessNoun(scope.projectType)}`}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Inline>
           }
         />
       </Stack>
@@ -513,6 +547,11 @@ export const ProjectIdentityDetail = () => {
           ) : (
             <IdentityRoleDetailsSection projectId={projectId} membership={membership} />
           )}
+          <ProjectAccessExtras
+            projectId={projectId}
+            projectType={scope.projectType}
+            target={{ type: "identity", identityId: identity.id, name: identity.name }}
+          />
         </Stack>
       </DetailLayout>
       {editing && (
