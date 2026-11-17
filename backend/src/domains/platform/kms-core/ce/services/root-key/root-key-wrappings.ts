@@ -49,7 +49,9 @@ export class RootKeyWrappings {
     throw new RuleViolationError({ message: `Invalid root key encryption strategy: ${String(strategy)}` });
   }
 
-  unwrap(config: RootKeyConfig): Promise<RootKey> {
+  // Async so an unknown strategy rejects rather than throws: boot skips a software row it can't open and tries the
+  // next one, and a synchronous throw would escape that handler and stop the boot.
+  async unwrap(config: RootKeyConfig): Promise<RootKey> {
     return this.for(config.strategy).unwrap(config.encryptedRootKey);
   }
 

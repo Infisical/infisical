@@ -1,5 +1,5 @@
 import { RootKey } from "../../models/root-key";
-import { RootKeyEncryptionStrategy } from "../../models/root-key-config";
+import { RootKeyConfig, RootKeyEncryptionStrategy } from "../../models/root-key-config";
 import { fakeHsm, rootKeyTestEnv, rootKeyWrappingsFor } from "../../testing/root-key-fixture";
 
 describe("RootKeyWrappings", () => {
@@ -44,6 +44,22 @@ describe("RootKeyWrappings", () => {
 
     // Assert
     expect(result).toThrow("Invalid root key encryption strategy: PLAINTEXT");
+  });
+
+  test("should reject, not throw, when unwrapping a row with an unknown strategy", async () => {
+    // Setup
+    const wrappings = rootKeyWrappingsFor(rootKeyTestEnv());
+    const row = { strategy: null, encryptedRootKey: Buffer.alloc(32) } as unknown as RootKeyConfig;
+
+    // Action
+    let result: Promise<RootKey> | undefined;
+    const call = () => {
+      result = wrappings.unwrap(row);
+    };
+
+    // Assert
+    expect(call).not.toThrow();
+    await expect(result).rejects.toThrow("Invalid root key encryption strategy: null");
   });
 
   test("should refuse HSM without the enterprise edition, and an HSM that is not configured", async () => {
