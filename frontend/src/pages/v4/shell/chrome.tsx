@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { type Announcement, Announcements } from "@infisical/cipher/ui/announcements";
+import { Button } from "@infisical/cipher/ui/button";
 import type { SidebarHelp } from "@infisical/cipher/ui/sidebar";
+import { Meta } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import type { ShellMenuEntry, TopBarAccount } from "@infisical/cipher/ui/top-bar";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, Github, LogOut, Mail, MessagesSquare } from "lucide-react";
+import { BookOpen, Github, LogOut, Mail, MessagesSquare, Users } from "lucide-react";
 
 import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { toV3Href } from "@app/helpers/v4Bridge";
 import type { TAnnouncement } from "@app/hooks/api/announcement/types";
 
@@ -18,6 +22,7 @@ import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { useGo, v4Path } from "../links";
 import { useV4ThemeChoice } from "../useV4Theme";
+import { ServerAdminsDialog } from "./server-admins";
 
 const publishedDate = (iso: string, options: Intl.DateTimeFormatOptions) => {
   const date = new Date(iso);
@@ -65,6 +70,27 @@ ${rootOrgId ? `- Root Organization ID: ${rootOrgId}` : ""}
 Thank you,
 [Your Name]`;
   return `mailto:support@infisical.com?body=${encodeURIComponent(body)}`;
+};
+
+const useVersion = (): { label?: string; badge: ReactNode } => {
+  const shell = useV4Adapter("shell");
+  const version = shell.usePlatformVersion();
+  const { data: serverConfig } = shell.useServerConfig();
+  if (!version) return { badge: null };
+  const latest = serverConfig?.latestAvailableVersion;
+  if (!latest) return { label: version, badge: <Meta mono>{`v${version}`}</Meta> };
+  return {
+    label: `${version} (v${latest} available)`,
+    badge: (
+      <Tooltip content={`v${version} to v${latest}`} side="bottom">
+        <Button variant="link" underline="hover" size="sm" asChild>
+          <a href="https://upgrade.infisical.com/" target="_blank" rel="noopener noreferrer">
+            New version available
+          </a>
+        </Button>
+      </Tooltip>
+    )
+  };
 };
 
 export const useShellChrome = () => {
@@ -129,6 +155,8 @@ export const useShellChrome = () => {
   const markSeen = org.useMarkAnnouncementSeen();
   const { data: currentOrg } = org.useOrganization(orgId);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [serverAdminsOpen, setServerAdminsOpen] = useState(false);
+  const version = useVersion();
   const announcementList = announcementData?.announcements ?? [];
   const latest = announcementList[0];
   const seenIndex = announcementList.findIndex(
@@ -178,19 +206,33 @@ export const useShellChrome = () => {
         href: "https://github.com/Infisical/infisical/issues",
         external: true
       },
-      { label: "Email Support", icon: Mail, href: supportEmailHref(orgId, currentOrg?.rootOrgId) }
-    ]
+      { label: "Email Support", icon: Mail, href: supportEmailHref(orgId, currentOrg?.rootOrgId) },
+      ...(isInfisicalCloud()
+        ? []
+        : [{ label: "Server admins", icon: Users, onSelect: () => setServerAdminsOpen(true) }])
+    ],
+    version: version.label
   };
   return {
     account,
     help,
+    versionBadge: version.badge,
     announcements: latest && { unread, onClick: openAnnouncements },
-    dialog: latest && (
-      <Announcements
-        items={announcementList.map(toAnnouncement)}
-        open={announcementsOpen}
-        onOpenChange={onAnnouncementsOpenChange}
-      />
+    dialog: (
+      <>
+        {latest && (
+          <Announcements
+            items={announcementList.map(toAnnouncement)}
+            open={announcementsOpen}
+            onOpenChange={onAnnouncementsOpenChange}
+          />
+        )}
+        <ServerAdminsDialog
+          orgId={orgId}
+          open={serverAdminsOpen}
+          onOpenChange={setServerAdminsOpen}
+        />
+      </>
     )
   };
 };

@@ -38,6 +38,7 @@ import { secretPoliciesDemo } from "./secret-policies/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
 import { secretSharingDemo } from "./secret-sharing/demo";
 import { secretsDemo } from "./secrets/demo";
+import { shellDemo } from "./shell/demo";
 import { ssoDemo } from "./sso/demo";
 
 export const demoAdapters: V4Adapters = {
@@ -80,5 +81,6 @@ export const demoAdapters: V4Adapters = {
   agentVaultResources: agentVaultResourcesDemo,
   appConnections: appConnectionsDemo,
   secretInsights: secretInsightsDemo,
-  pamAccess: pamAccessDemo
+  pamAccess: pamAccessDemo,
+  shell: shellDemo
 };

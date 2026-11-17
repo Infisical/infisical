@@ -5,6 +5,7 @@ import type { BreadcrumbCrumb } from "@infisical/cipher/ui/breadcrumb";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Loader } from "@infisical/cipher/ui/loader";
+import { Popover, PopoverAnchor } from "@infisical/cipher/ui/popover";
 import { Sidebar } from "@infisical/cipher/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@infisical/cipher/ui/top-bar";
 import {
@@ -16,12 +17,14 @@ import {
 } from "@tanstack/react-router";
 
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
+import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners } from "./banners";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
 import { shellTrail, type V4ShellLevel } from "./levels";
@@ -35,6 +38,7 @@ import {
   projectBase,
   projectHome
 } from "./navigation";
+import { NotificationInbox, useNotificationInbox } from "./notifications";
 import { ProjectGate } from "./project-gate";
 
 import styles from "./shell.module.css";
@@ -60,13 +64,80 @@ const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) =
   go(anchor.pathname + anchor.search + anchor.hash);
 };
 
+const OpenInClassic = ({ href }: { href: string }) => {
+  const navigate = useNavigate();
+  return (
+    <Button variant="link" underline="hover" asChild>
+      <a
+        href={href}
+        data-open-classic
+        onClick={(event) => {
+          keepInClassic(href);
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+          event.preventDefault();
+          navigate({ href });
+        }}
+      >
+        Open in classic
+      </a>
+    </Button>
+  );
+};
+
+const topBarActions = (versionBadge: ReactNode, classicHref?: string) =>
+  (versionBadge || classicHref) && (
+    <>
+      {versionBadge}
+      {classicHref && <OpenInClassic href={classicHref} />}
+    </>
+  );
+
+const bannerContext = ({
+  at,
+  base,
+  pathname,
+  nav,
+  banners
+}: {
+  at: ShellLocation;
+  base: string;
+  pathname: string;
+  nav?: V4ShellNav;
+  banners?: ShellBannerScope;
+}): Omit<ShellBannerContext, "orgId"> => {
+  if (nav) return { scope: banners ?? "org" };
+  const product = at.product ? productOf(at.product) : undefined;
+  const insideProject =
+    Boolean(at.projectId) ||
+    at.product === ProjectType.CertificateManager ||
+    at.product === ProjectType.SecretScanning;
+  let home = "";
+  if (product && at.projectId) home = `${base}${projectHome(product.type, at.projectId)}`;
+  else if (product) home = `${base}${productHome(product)}`;
+  return {
+    scope: insideProject ? "project" : "org",
+    product: at.product,
+    projectId: at.projectId,
+    home,
+    certManagerOverview: pathname.slice(base.length) === "/cert-manager/overview"
+  };
+};
+
 export type V4ShellNav = {
   levels?: readonly V4ShellLevel[];
   current?: string;
   crumbs: readonly BreadcrumbCrumb[];
 };
 
-export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellNav }) => {
+export const V4Shell = ({
+  children,
+  nav,
+  banners
+}: {
+  children: ReactNode;
+  nav?: V4ShellNav;
+  banners?: Extract<ShellBannerScope, "admin" | "personal">;
+}) => {
   const session = useV4Session();
   const { orgId = session.organization.id } = useParams({ strict: false });
   const location = useRouterState({ select: (state) => state.location });
@@ -74,6 +145,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
   const chrome = useShellChrome();
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const inbox = useNotificationInbox(orgId);
   const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
   const toClassic = useMatches({ select: (matches) => matches.at(-1)?.staticData.classicHref });
   const [switchingTo, setSwitchingTo] = useState<string>();
@@ -200,58 +272,54 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
     );
 
   return (
-    <AppShell style={{ height: "100%" }} onClickCapture={(event) => routeInternalLinks(event, go)}>
-      <TopBar
-        breadcrumb={breadcrumb}
-        actions={
-          classicHref && (
-            <Button variant="link" underline="hover" asChild>
-              <a
-                href={classicHref}
-                data-open-classic
-                onClick={(event) => {
-                  keepInClassic(classicHref);
-                  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
-                    return;
-                  event.preventDefault();
-                  navigate({ href: classicHref });
-                }}
-              >
-                Open in classic
-              </a>
-            </Button>
-          )
-        }
-        search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
-        account={chrome.account}
-      />
-      <Sidebar
-        label="Main"
-        sections={shown.sections}
-        scope={
-          parent && {
-            id: shown.id,
-            back: { id: parent.id, label: parent.label, link: parent.landing },
-            sections: shown.sections
+    <div className={styles.frame}>
+      <PageFrame scope={banners} />
+      <AppShell className={styles.app} onClickCapture={(event) => routeInternalLinks(event, go)}>
+        <Popover open={inbox.open} onOpenChange={inbox.onOpenChange}>
+          <PopoverAnchor asChild>
+            <TopBar
+              breadcrumb={breadcrumb}
+              notifications={{ unread: inbox.unread, onClick: inbox.toggle }}
+              actions={topBarActions(chrome.versionBadge, classicHref)}
+              search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
+              account={chrome.account}
+            />
+          </PopoverAnchor>
+          <NotificationInbox orgId={orgId} inbox={inbox} />
+        </Popover>
+        <Sidebar
+          label="Main"
+          sections={shown.sections}
+          scope={
+            parent && {
+              id: shown.id,
+              back: { id: parent.id, label: parent.label, link: parent.landing },
+              sections: shown.sections
+            }
           }
-        }
-        current={nav ? nav.current : sidebarCurrent && `${shown.id}:${sidebarCurrent.id}`}
-        help={chrome.help}
-        announcements={chrome.announcements}
-        {...agentVaultSetup}
-      />
-      <HuePortal {...hue}>
-        <AppInset {...hueScope(hue.hue, hue.level)}>
-          <PageGutter className={styles.content}>{content}</PageGutter>
-        </AppInset>
-      </HuePortal>
-      {chrome.dialog}
-      <CommandPalette
-        orgId={orgId}
-        projectId={at.projectId}
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-      />
-    </AppShell>
+          current={nav ? nav.current : sidebarCurrent && `${shown.id}:${sidebarCurrent.id}`}
+          help={chrome.help}
+          announcements={chrome.announcements}
+          {...agentVaultSetup}
+        />
+        <HuePortal {...hue}>
+          <AppInset {...hueScope(hue.hue, hue.level)}>
+            <ShellBanners
+              orgId={orgId}
+              {...bannerContext({ at, base, pathname: location.pathname, nav, banners })}
+            />
+            <PageGutter className={styles.content}>{content}</PageGutter>
+          </AppInset>
+        </HuePortal>
+        {chrome.dialog}
+        <CommandPalette
+          orgId={orgId}
+          projectId={at.projectId}
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+        />
+      </AppShell>
+      <PageFrame scope={banners} />
+    </div>
   );
 };
