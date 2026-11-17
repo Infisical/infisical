@@ -2,12 +2,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowRightIcon,
-  BookOpenTextIcon,
   CircleHelpIcon,
   CircleXIcon,
   InfoIcon,
   KeyIcon,
-  ListIcon,
   type LucideIcon,
   PlusIcon,
   ServerIcon,
@@ -53,27 +51,30 @@ const ARRIVAL_HOLD_MS = 1200;
 
 export const SESSION_LOG_COLUMN_COUNT = 7;
 
-export const DECISION_PRESENTATION: Record<
-  AgentVaultSessionLogDecision,
-  {
-    label: string;
-    variant: "success" | "neutral" | "warning" | "danger";
-    icon: LucideIcon;
-    iconClassName: string;
-  }
-> = {
+type DecisionPresentation = {
+  label: string;
+  variant: "success" | "neutral" | "warning" | "danger";
+  icon: LucideIcon;
+  iconClassName: string;
+};
+
+const PASSTHROUGH_PRESENTATION: DecisionPresentation = {
+  label: "Passthrough",
+  variant: "neutral",
+  icon: ArrowRightIcon,
+  iconClassName: "text-neutral"
+};
+
+// Listing services and fetching skills are forwarded to Infisical with nothing brokered, so they show and filter as
+// Passthrough, and the outcome's hover says what the agent asked for.
+const DECISION_PRESENTATION: Record<AgentVaultSessionLogDecision, DecisionPresentation> = {
   [AgentVaultSessionLogDecision.Brokered]: {
     label: "Brokered",
     variant: "success",
     icon: KeyIcon,
     iconClassName: "text-success"
   },
-  [AgentVaultSessionLogDecision.Passthrough]: {
-    label: "Passthrough",
-    variant: "neutral",
-    icon: ArrowRightIcon,
-    iconClassName: "text-neutral"
-  },
+  [AgentVaultSessionLogDecision.Passthrough]: PASSTHROUGH_PRESENTATION,
   [AgentVaultSessionLogDecision.Blocked]: {
     label: "Blocked",
     variant: "warning",
@@ -86,19 +87,16 @@ export const DECISION_PRESENTATION: Record<
     icon: CircleXIcon,
     iconClassName: "text-danger"
   },
-  [AgentVaultSessionLogDecision.Discovery]: {
-    label: "Listed Services",
-    variant: "neutral",
-    icon: ListIcon,
-    iconClassName: "text-neutral"
-  },
-  [AgentVaultSessionLogDecision.Skills]: {
-    label: "Fetched Skills",
-    variant: "neutral",
-    icon: BookOpenTextIcon,
-    iconClassName: "text-neutral"
-  }
+  [AgentVaultSessionLogDecision.Discovery]: PASSTHROUGH_PRESENTATION,
+  [AgentVaultSessionLogDecision.Skills]: PASSTHROUGH_PRESENTATION
 };
+
+export const SESSION_LOG_OUTCOMES = [
+  AgentVaultSessionLogDecision.Brokered,
+  AgentVaultSessionLogDecision.Passthrough,
+  AgentVaultSessionLogDecision.Blocked,
+  AgentVaultSessionLogDecision.Error
+].map((decision) => ({ decision, ...DECISION_PRESENTATION[decision] }));
 
 const decisionPresentation = (decision: AgentVaultSessionLogDecision) =>
   DECISION_PRESENTATION[decision] ?? {
@@ -119,10 +117,13 @@ const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Error;
 
 // Discovery and Skills requests go to the session's Infisical, so their status is Infisical's own answer and shows like
-// any host's, while the outcome says what the agent asked for.
+// any host's, while the outcome's hover says what the agent asked for.
 const isSessionEndpoint = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Discovery ||
   decision === AgentVaultSessionLogDecision.Skills;
+
+export const sessionLogOutcome = (decision: AgentVaultSessionLogDecision) =>
+  isSessionEndpoint(decision) ? AgentVaultSessionLogDecision.Passthrough : decision;
 
 const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
   if (record.decision === AgentVaultSessionLogDecision.Discovery) {
