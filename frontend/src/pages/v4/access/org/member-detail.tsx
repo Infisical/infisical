@@ -279,6 +279,22 @@ const UserGroupsSection = ({ username }: { username: string }) => {
   );
 };
 
+const MemberAuditLogs = ({ userId }: { userId: string }) => {
+  const orgId = useOrgId();
+  const { permission } = useOrgPermission();
+  const { data: plan } = useV4Adapter("auditLogs").usePlan(orgId);
+  if (
+    !plan?.auditLogs ||
+    !permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member)
+  )
+    return null;
+  return (
+    <Card variant="framed" title="Audit logs">
+      <AuditLogsTab actorId={userId} />
+    </Card>
+  );
+};
+
 export const OrgMemberDetail = () => {
   const { membershipId } = useParams({ from: "/v4/organizations/$orgId/members/$membershipId" });
   const access = useV4Adapter("access");
@@ -291,7 +307,6 @@ export const OrgMemberDetail = () => {
   const update = access.useUpdateOrgMembership();
   const remove = access.useDeleteOrgMembership();
   const resendInvite = access.useResendOrgInvite();
-  const { data: plan } = useV4Adapter("auditLogs").usePlan(orgId);
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -512,12 +527,7 @@ export const OrgMemberDetail = () => {
               canAdd={!self}
             />
             <UserGroupsSection username={user.username} />
-            {plan?.auditLogs &&
-              permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) && (
-                <Card variant="framed" title="Audit logs">
-                  <AuditLogsTab actorId={user.id} />
-                </Card>
-              )}
+            <MemberAuditLogs userId={user.id} />
           </div>
         </DetailLayout>
       </Stack>

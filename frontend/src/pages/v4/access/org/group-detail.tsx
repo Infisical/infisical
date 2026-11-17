@@ -206,6 +206,67 @@ const removeReason = (member: TGroupMember, canEdit: boolean, oidcManaged: boole
   return member.type === GroupMemberType.USER && oidcManaged ? OIDC_MANAGED : undefined;
 };
 
+const RemoveMemberDialog = ({
+  group,
+  member,
+  onClose
+}: {
+  group: TGroup;
+  member: TGroupMember | undefined;
+  onClose: () => void;
+}) => {
+  const access = useV4Adapter("access");
+  const removeUser = access.useRemoveUserFromGroup();
+  const removeIdentity = access.useRemoveIdentityFromGroup();
+  const remove = async (target: TGroupMember) => {
+    try {
+      if (target.type === GroupMemberType.USER) {
+        await removeUser.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          username: target.user.username
+        });
+        saved(`Successfully removed user ${target.user.username} from the group`);
+      } else {
+        await removeIdentity.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          identityId: target.machineIdentity.id
+        });
+        saved(`Successfully removed identity ${target.machineIdentity.name} from the group`);
+      }
+    } catch (error) {
+      failed("Failed to remove member from the group", error);
+    }
+  };
+  return (
+    <AlertDialog open={Boolean(member)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger" confirmText="confirm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {`Are you sure you want to remove ${member ? (memberEmail(member) ?? memberName(member)) : ""} from the group?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            They lose any access granted through this group.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (member) await remove(member);
+              onClose();
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 const GroupMembersSection = ({
   group,
   canEdit,
@@ -218,8 +279,6 @@ const GroupMembersSection = ({
   const access = useV4Adapter("access");
   const orgId = useOrgId();
   const { data: oidcManaged = false } = access.useOidcManageGroupMemberships(orgId);
-  const removeUser = access.useRemoveUserFromGroup();
-  const removeIdentity = access.useRemoveIdentityFromGroup();
   const [search, setSearch] = useState("");
   const [kinds, setKinds] = useState<FilterMemberType[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
@@ -290,28 +349,6 @@ const GroupMembersSection = ({
           : "Remove identity from group"}
       </DropdownMenuItem>
     )
-  };
-
-  const remove = async (member: TGroupMember) => {
-    try {
-      if (member.type === GroupMemberType.USER) {
-        await removeUser.mutateAsync({
-          groupId: group.id,
-          slug: group.slug,
-          username: member.user.username
-        });
-        saved(`Successfully removed user ${member.user.username} from the group`);
-      } else {
-        await removeIdentity.mutateAsync({
-          groupId: group.id,
-          slug: group.slug,
-          identityId: member.machineIdentity.id
-        });
-        saved(`Successfully removed identity ${member.machineIdentity.name} from the group`);
-      }
-    } catch (error) {
-      failed("Failed to remove member from the group", error);
-    }
   };
 
   return (
@@ -392,33 +429,7 @@ const GroupMembersSection = ({
       {adding && (
         <AddMembersDialog group={group} oidcManaged={oidcManaged} onOpenChange={setAdding} />
       )}
-      <AlertDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => !open && setRemoving(undefined)}
-      >
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {`Are you sure you want to remove ${removing ? (memberEmail(removing) ?? memberName(removing)) : ""} from the group?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              They lose any access granted through this group.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                if (removing) await remove(removing);
-                setRemoving(undefined);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveMemberDialog group={group} member={removing} onClose={() => setRemoving(undefined)} />
     </>
   );
 };

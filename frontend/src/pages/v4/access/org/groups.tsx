@@ -66,6 +66,107 @@ const managedByColumn = (orgId: string): DataTableColumn<TGroupOrgMembership> =>
   )
 });
 
+const editReason = (linked: boolean, canEdit: boolean) => {
+  if (linked) return "Managed by the root organization";
+  return canEdit ? undefined : RESTRICTED;
+};
+
+const GroupRowMenu = ({
+  group,
+  linked,
+  canEdit,
+  canDelete,
+  onManage,
+  onDelete
+}: {
+  group: TGroupOrgMembership;
+  linked: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onManage: () => void;
+  onDelete: () => void;
+}) => (
+  <>
+    <DropdownMenuItem
+      onSelect={() => {
+        navigator.clipboard?.writeText(group.id);
+        toast({ tone: "neutral", title: "Copied group ID to clipboard" });
+      }}
+    >
+      <Icon name="copy" />
+      Copy group ID
+    </DropdownMenuItem>
+    {!linked && (
+      <DropdownMenuItem
+        disabled={!canEdit}
+        description={canEdit ? undefined : RESTRICTED}
+        onSelect={onManage}
+      >
+        <Icon name="user" />
+        Manage members
+      </DropdownMenuItem>
+    )}
+    <DropdownMenuSeparator />
+    <DropdownMenuItem
+      variant="destructive"
+      disabled={!canDelete}
+      description={canDelete ? undefined : RESTRICTED}
+      onSelect={onDelete}
+    >
+      <Icon name="trash" />
+      {linked ? "Unlink group" : "Delete group"}
+    </DropdownMenuItem>
+  </>
+);
+
+const RemoveGroupDialog = ({
+  group,
+  onClose
+}: {
+  group: TGroupOrgMembership | undefined;
+  onClose: () => void;
+}) => {
+  const orgId = useOrgId();
+  const remove = useV4Adapter("access").useDeleteGroup();
+  const linked = Boolean(group && group.orgId !== orgId);
+  return (
+    <AlertDialog open={Boolean(group)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger" confirmText="confirm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {linked
+              ? `Are you sure you want to unlink the group "${group?.name ?? ""}" from this sub-organization?`
+              : `Are you sure you want to delete the group named ${group?.name ?? ""}?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (!group) return;
+              try {
+                await remove.mutateAsync({ id: group.id, organizationId: orgId });
+                saved(
+                  linked
+                    ? "Successfully unlinked group from sub-organization"
+                    : `Successfully deleted the group named ${group.name}`
+                );
+              } catch (error) {
+                failed("Failed to delete group", error);
+              }
+              onClose();
+            }}
+          >
+            {linked ? "Unlink" : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 export const OrgGroupsTab = () => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -73,12 +174,10 @@ export const OrgGroupsTab = () => {
   const { permission } = useOrgPermission();
   const isSubOrg = useV4Session().organization.isSubOrganization;
   const orgWord = isSubOrg ? "sub-organization" : "organization";
-  const isLinked = (group: TGroupOrgMembership) => group.orgId !== orgId;
   const can = (action: OrgPermissionGroupActions) =>
     permission.can(action, OrgPermissionSubjects.Groups);
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const update = access.useUpdateGroup();
-  const remove = access.useDeleteGroup();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const roleFilter = useMemo(
@@ -162,45 +261,19 @@ export const OrgGroupsTab = () => {
       {
         label: "Edit group",
         icon: PencilIcon,
-        disabledReason: (group) => {
-          if (isLinked(group)) return "Managed by the root organization";
-          return canEdit ? undefined : RESTRICTED;
-        },
+        disabledReason: (group) => editReason(group.orgId !== orgId, canEdit),
         onSelect: (group) => setDialog({ group: draftOf(group) })
       }
     ],
     renderMenu: (group) => (
-      <>
-        <DropdownMenuItem
-          onSelect={() => {
-            navigator.clipboard?.writeText(group.id);
-            toast({ tone: "neutral", title: "Copied group ID to clipboard" });
-          }}
-        >
-          <Icon name="copy" />
-          Copy group ID
-        </DropdownMenuItem>
-        {!isLinked(group) && (
-          <DropdownMenuItem
-            disabled={!canEdit}
-            description={canEdit ? undefined : RESTRICTED}
-            onSelect={() => openDetail(group)}
-          >
-            <Icon name="user" />
-            Manage members
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={!can(OrgPermissionGroupActions.Delete)}
-          description={can(OrgPermissionGroupActions.Delete) ? undefined : RESTRICTED}
-          onSelect={() => setDeleting(group)}
-        >
-          <Icon name="trash" />
-          {isLinked(group) ? "Unlink group" : "Delete group"}
-        </DropdownMenuItem>
-      </>
+      <GroupRowMenu
+        group={group}
+        linked={group.orgId !== orgId}
+        canEdit={canEdit}
+        canDelete={can(OrgPermissionGroupActions.Delete)}
+        onManage={() => openDetail(group)}
+        onDelete={() => setDeleting(group)}
+      />
     )
   };
 
@@ -301,43 +374,7 @@ export const OrgGroupsTab = () => {
           onOpenChange={(open) => !open && setDialog(undefined)}
         />
       )}
-      <AlertDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => !open && setDeleting(undefined)}
-      >
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleting && isLinked(deleting)
-                ? `Are you sure you want to unlink the group "${deleting.name}" from this sub-organization?`
-                : `Are you sure you want to delete the group named ${deleting?.name ?? ""}?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                if (!deleting) return;
-                try {
-                  await remove.mutateAsync({ id: deleting.id, organizationId: orgId });
-                  saved(
-                    isLinked(deleting)
-                      ? "Successfully unlinked group from sub-organization"
-                      : `Successfully deleted the group named ${deleting.name}`
-                  );
-                } catch (error) {
-                  failed("Failed to delete group", error);
-                }
-                setDeleting(undefined);
-              }}
-            >
-              {deleting && isLinked(deleting) ? "Unlink" : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveGroupDialog group={deleting} onClose={() => setDeleting(undefined)} />
     </Stack>
   );
 };

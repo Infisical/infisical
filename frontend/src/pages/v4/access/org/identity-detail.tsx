@@ -199,6 +199,54 @@ const BackLink = ({ orgId }: { orgId: string }) => (
   </span>
 );
 
+const IdentityHeaderActions = ({
+  identity,
+  showAlerts,
+  canEdit,
+  canDelete,
+  onDelete
+}: {
+  identity: { id: string; hasDeleteProtection: boolean };
+  showAlerts: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onDelete: () => void;
+}) => (
+  <Inline gap={8} wrap={false}>
+    {showAlerts && <IdentityAlertAction identityId={identity.id} canEdit={canEdit} />}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" iconRight="more">
+          Options
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onSelect={() => {
+            navigator.clipboard?.writeText(identity.id);
+            toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
+          }}
+        >
+          <Icon name="copy" />
+          Copy machine identity ID
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!canDelete || identity.hasDeleteProtection}
+          description={canDelete ? undefined : RESTRICTED}
+          onSelect={onDelete}
+        >
+          <Icon name="trash" />
+          {identity.hasDeleteProtection
+            ? "Delete is blocked by delete protection"
+            : "Delete machine identity"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </Inline>
+);
+
 export const OrgIdentityDetail = () => {
   const { identityId } = useParams({ from: "/v4/organizations/$orgId/identities/$identityId" });
   const access = useV4Adapter("access");
@@ -249,7 +297,6 @@ export const OrgIdentityDetail = () => {
   const isOwnIdentity = identity.orgId === orgId;
   const allConfigured = AUTH_METHOD_ORDER.every((method) => methods.includes(method));
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
-  const deleteBlocked = identity.hasDeleteProtection;
 
   const addAuthButton = (
     <Gate allowed={canEditAuth}>
@@ -321,44 +368,13 @@ export const OrgIdentityDetail = () => {
           <PageHeader
             title={identity.name}
             actions={
-              <Inline gap={8} wrap={false}>
-                {isOwnIdentity && !identity.projectId && (
-                  <IdentityAlertAction identityId={identity.id} canEdit={canEdit} />
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" iconRight="more">
-                      Options
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        navigator.clipboard?.writeText(identity.id);
-                        toast({
-                          tone: "neutral",
-                          title: "Machine identity ID copied to clipboard"
-                        });
-                      }}
-                    >
-                      <Icon name="copy" />
-                      Copy machine identity ID
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!canDelete || deleteBlocked}
-                      description={canDelete ? undefined : RESTRICTED}
-                      onSelect={() => setDeleting(true)}
-                    >
-                      <Icon name="trash" />
-                      {deleteBlocked
-                        ? "Delete is blocked by delete protection"
-                        : "Delete machine identity"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Inline>
+              <IdentityHeaderActions
+                identity={identity}
+                showAlerts={isOwnIdentity && !identity.projectId}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                onDelete={() => setDeleting(true)}
+              />
             }
           />
         </Stack>

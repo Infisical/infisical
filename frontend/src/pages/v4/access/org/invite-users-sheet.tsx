@@ -45,6 +45,78 @@ const InviteLinks = ({ links }: { links: readonly InviteLink[] }) => (
   </Stack>
 );
 
+const InviteSheetHeader = ({
+  subOrg,
+  orgName,
+  hasLinks
+}: {
+  subOrg: boolean;
+  orgName: string;
+  hasLinks: boolean;
+}) =>
+  subOrg ? (
+    <SheetHeader>
+      <SheetTitle>Add member from your organization</SheetTitle>
+    </SheetHeader>
+  ) : (
+    <SheetHeader>
+      <SheetTitle>{`Invite others to ${orgName}`}</SheetTitle>
+      <SheetDescription>
+        {hasLinks
+          ? "No email provider is set up. Share these invite links manually."
+          : "Invites are tied to one email address and expire after 1 day."}
+      </SheetDescription>
+    </SheetHeader>
+  );
+
+type PickerProps = { value: string[]; invalid: boolean; onChange: (next: string[]) => void };
+
+const RootUserPicker = ({ open, ...props }: PickerProps & { open: boolean }) => {
+  const { data: available = [], isPending } = useV4Adapter("access").useAvailableOrgUsers(open);
+  return (
+    <Combobox
+      multiple
+      label="Emails"
+      placeholder="Add one or more users..."
+      emptyText={
+        isPending
+          ? "Loading users..."
+          : "All root organization users are already in this sub-organization"
+      }
+      options={available.map(({ username }) => ({ value: username, label: username }))}
+      {...props}
+    />
+  );
+};
+
+const EmailPicker = ({
+  onAdd,
+  onError,
+  ...props
+}: PickerProps & {
+  onAdd: (emails: string[]) => void;
+  onError: (error: string | undefined) => void;
+}) => (
+  <Combobox
+    multiple
+    label="Emails"
+    placeholder="email@example.com, email2@example.com..."
+    emptyText="Type an email address and press Enter"
+    options={props.value.map((email) => ({ value: email, label: email }))}
+    onCreate={(query) => {
+      const values = parseEmailList([query]);
+      const invalid = values.find((value) => !isValidEmail(value));
+      if (invalid) {
+        onError(`${invalid} is not a valid email`);
+        return;
+      }
+      onAdd(values);
+      onError(undefined);
+    }}
+    {...props}
+  />
+);
+
 export const InviteUsersSheet = ({
   open,
   onOpenChange,
@@ -62,9 +134,6 @@ export const InviteUsersSheet = ({
   const { data: orgRoles = [] } = access.useOrgRoles(orgId);
   const { data: organization } = access.useOrganization(orgId);
   const invite = access.useInviteOrgUsers();
-  const { data: available = [], isPending: availablePending } = access.useAvailableOrgUsers(
-    open && subOrg
-  );
   const addToProject = access.useAddProjectUsers();
   const defaultRole =
     (organization && findOrgMembershipRole(orgRoles, organization.defaultMembershipRole)?.slug) ??
@@ -108,6 +177,11 @@ export const InviteUsersSheet = ({
     if (singleProject && singleProjectRoles) return roleOptions(singleProjectRoles);
     return builtInProjectRoles(selectedProduct?.type);
   })();
+
+  const pick = (next: string[]) => {
+    setEmails(next);
+    setError(undefined);
+  };
 
   const submit = async () => {
     if (!emails.length) {
@@ -165,20 +239,11 @@ export const InviteUsersSheet = ({
       }}
     >
       <SheetContent pending={pending} onOpenAutoFocus={(event) => event.preventDefault()}>
-        <SheetHeader>
-          <SheetTitle>
-            {subOrg
-              ? "Add member from your organization"
-              : `Invite others to ${session.organization.name}`}
-          </SheetTitle>
-          {!subOrg && (
-            <SheetDescription>
-              {links
-                ? "No email provider is set up. Share these invite links manually."
-                : "Invites are tied to one email address and expire after 1 day."}
-            </SheetDescription>
-          )}
-        </SheetHeader>
+        <InviteSheetHeader
+          subOrg={subOrg}
+          orgName={session.organization.name}
+          hasLinks={Boolean(links)}
+        />
         <SheetBody>
           {links ? (
             <InviteLinks links={links} />
@@ -193,49 +258,21 @@ export const InviteUsersSheet = ({
               <Stack gap={16}>
                 <Field label="Emails" error={error}>
                   {subOrg ? (
-                    <Combobox
-                      multiple
-                      label="Emails"
-                      placeholder="Add one or more users..."
-                      emptyText={
-                        availablePending
-                          ? "Loading users..."
-                          : "All root organization users are already in this sub-organization"
-                      }
-                      options={available.map((candidate) => ({
-                        value: candidate.username,
-                        label: candidate.username
-                      }))}
+                    <RootUserPicker
+                      open={open}
                       value={emails}
                       invalid={Boolean(error)}
-                      onChange={(next) => {
-                        setEmails(next);
-                        setError(undefined);
-                      }}
+                      onChange={pick}
                     />
                   ) : (
-                    <Combobox
-                      multiple
-                      label="Emails"
-                      placeholder="email@example.com, email2@example.com..."
-                      emptyText="Type an email address and press Enter"
-                      options={emails.map((email) => ({ value: email, label: email }))}
+                    <EmailPicker
                       value={emails}
                       invalid={Boolean(error)}
-                      onChange={(next) => {
-                        setEmails(next);
-                        setError(undefined);
-                      }}
-                      onCreate={(query) => {
-                        const values = parseEmailList([query]);
-                        const invalid = values.find((value) => !isValidEmail(value));
-                        if (invalid) {
-                          setError(`${invalid} is not a valid email`);
-                          return;
-                        }
-                        setEmails((current) => [...new Set([...current, ...values])]);
-                        setError(undefined);
-                      }}
+                      onChange={pick}
+                      onAdd={(values) =>
+                        setEmails((current) => [...new Set([...current, ...values])])
+                      }
+                      onError={setError}
                     />
                   )}
                 </Field>

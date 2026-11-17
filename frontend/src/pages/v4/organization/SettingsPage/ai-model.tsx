@@ -22,12 +22,12 @@ import {
   OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import type { TAnthropicModel } from "@app/hooks/api/ai/types";
+import type { TAnthropicModel, TOrgAiConfig } from "@app/hooks/api/ai/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 
 import { useOrgPermission } from "../../access/permissions";
-import { errorMessage, failed, saved } from "../../access/toast";
+import { errorMessage, failed, saved as savedToast } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
@@ -90,7 +90,7 @@ const TurnOffDialog = ({
               }
               onTurnedOff();
               onOpenChange(false);
-              saved("AI features turned off");
+              savedToast("AI features turned off");
             }}
           >
             Turn off
@@ -101,19 +101,105 @@ const TurnOffDialog = ({
   );
 };
 
-export const OrgAiModel = () => {
+const ConnectionField = ({
+  config,
+  value,
+  canEdit,
+  onChange
+}: {
+  config: TOrgAiConfig | null | undefined;
+  value: string;
+  canEdit: boolean;
+  onChange: (connectionId: string) => void;
+}) => {
   const settings = useV4Adapter("orgSettings");
   const createConnection = useV4Adapter("integrations").useCreateConnection();
-  const updateConfig = settings.useUpdateAiConfig();
   const { permission } = useOrgPermission();
-  const canEdit = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
   const canCreateConnection = permission.can(
     OrgPermissionAppConnectionActions.Create,
     OrgPermissionSubjects.AppConnections
   );
-  const { data: config, isPending } = settings.useAiConfig();
-  const { data: connections, isPending: connectionsPending } = settings.useAnthropicConnections();
+  const { data: connections = [], isPending } = settings.useAnthropicConnections();
   const [created, setCreated] = useState<{ id: string; name: string } | null>(null);
+  const saved = config ? [{ id: config.connectionId, name: config.connectionName }] : [];
+  const options = [...connections, ...(created ? [created] : []), ...saved]
+    .filter((entry, index, all) => all.findIndex((other) => other.id === entry.id) === index)
+    .map((connection) => ({ value: connection.id, label: connection.name }));
+  const creation = connectionCreation({
+    preset: CONNECTION_PRESETS[AppConnection.Anthropic],
+    disabledReason: canCreateConnection
+      ? undefined
+      : "Your role doesn't allow creating connections",
+    create: async ({ method, name, description, credentials }) => {
+      const connection = await createConnection
+        .mutateAsync({
+          app: AppConnection.Anthropic,
+          name,
+          method: method as TAppConnection["method"],
+          credentials: credentials as TAppConnection["credentials"],
+          description: (description as string | undefined)?.trim() || null
+        } as TCreateAppConnectionDTO)
+        .catch((error: unknown) => {
+          throw new Error(errorMessage(error));
+        });
+      setCreated({ id: connection.id, name: connection.name });
+      onChange(connection.id);
+      return connection;
+    }
+  });
+  return (
+    <Field
+      label="Anthropic connection"
+      description="An organization-level connection. AI requests are sent with its API key."
+    >
+      <Combobox
+        label="Anthropic connection"
+        placeholder="Select an Anthropic connection"
+        options={options}
+        value={value}
+        loading={isPending}
+        disabled={!canEdit}
+        creation={canEdit ? creation : undefined}
+        onValueChange={onChange}
+      />
+    </Field>
+  );
+};
+
+const ModelField = ({
+  connectionId,
+  value,
+  canEdit,
+  onChange
+}: {
+  connectionId: string;
+  value: string;
+  canEdit: boolean;
+  onChange: (model: string) => void;
+}) => {
+  const { data, isPending, error } = useV4Adapter("orgSettings").useAnthropicModels(connectionId);
+  const latest = latestModelPerFamily(data ?? [], value);
+  const isKept = !value || !data || latest.some((option) => option.id === value);
+  const options = [
+    ...latest.map((option) => ({ value: option.id, label: option.displayName })),
+    ...(isKept ? [] : [{ value, label: value }])
+  ];
+  return (
+    <Field label="Model" error={error ? modelsErrorText(error) : undefined}>
+      <Select
+        value={value}
+        placeholder={connectionId && isPending ? "Loading models" : "Select a model"}
+        disabled={!canEdit || !connectionId || Boolean(error)}
+        invalid={Boolean(error)}
+        options={options}
+        onValueChange={onChange}
+      />
+    </Field>
+  );
+};
+
+const AiModelCard = ({ config, canEdit }: { config: TOrgAiConfig | null; canEdit: boolean }) => {
+  const updateConfig = useV4Adapter("orgSettings").useUpdateAiConfig();
   const [turningOff, setTurningOff] = useState(false);
   const storedConnectionId = config?.connectionId ?? "";
   const storedModel = config?.model ?? "";
@@ -127,51 +213,6 @@ export const OrgAiModel = () => {
     onSave: (next) => updateConfig.mutateAsync(next)
   });
   const { connectionId, model } = autosave.value;
-  const modelsQuery = settings.useAnthropicModels(connectionId);
-
-  if (isPending) return <SettingsCard title="AI features" loading />;
-
-  const latest = latestModelPerFamily(modelsQuery.data ?? [], model);
-  const models =
-    model && modelsQuery.data && !latest.some((option) => option.id === model)
-      ? [...latest, { id: model, displayName: model, family: null, createdAt: null }]
-      : latest;
-  const known = [...(connections ?? []), ...(created ? [created] : [])];
-  const connectionOptions = [
-    ...known,
-    ...(config && !known.some((entry) => entry.id === config.connectionId)
-      ? [{ id: config.connectionId, name: config.connectionName }]
-      : [])
-  ]
-    .filter((entry, index, all) => all.findIndex((other) => other.id === entry.id) === index)
-    .map((connection) => ({ value: connection.id, label: connection.name }));
-
-  const creation = canEdit
-    ? connectionCreation({
-        preset: CONNECTION_PRESETS[AppConnection.Anthropic],
-        disabledReason: canCreateConnection
-          ? undefined
-          : "Your role doesn't allow creating connections",
-        create: async ({ method, name, description, credentials }) => {
-          const connection = await createConnection
-            .mutateAsync({
-              app: AppConnection.Anthropic,
-              name,
-              method: method as TAppConnection["method"],
-              credentials: credentials as TAppConnection["credentials"],
-              description: (description as string | undefined)?.trim() || null
-            } as TCreateAppConnectionDTO)
-            .catch((error: unknown) => {
-              throw new Error(errorMessage(error));
-            });
-          setCreated({ id: connection.id, name: connection.name });
-          autosave.edit({ connectionId: connection.id, model: "" });
-          return connection;
-        }
-      })
-    : undefined;
-  const restricted = canEdit ? undefined : "Your role doesn't allow editing settings";
-
   return (
     <>
       <SettingsCard
@@ -179,49 +220,31 @@ export const OrgAiModel = () => {
         description="The model Infisical uses for AI features, such as AI checks in auto-approval rules."
         saveStatus={autosave.status}
         actions={
-          config ? (
+          config && (
             <Button
               variant="outline"
               size="sm"
-              disabledReason={restricted}
+              disabledReason={canEdit ? undefined : "Your role doesn't allow editing settings"}
               onClick={() => setTurningOff(true)}
             >
               Turn off
             </Button>
-          ) : undefined
+          )
         }
       >
         <Stack gap={16}>
-          <Field
-            label="Anthropic connection"
-            description="An organization-level connection. AI requests are sent with its API key."
-          >
-            <Combobox
-              label="Anthropic connection"
-              placeholder="Select an Anthropic connection"
-              options={connectionOptions}
-              value={connectionId}
-              loading={connectionsPending}
-              disabled={!canEdit}
-              creation={creation}
-              onValueChange={(next) => autosave.edit({ connectionId: next, model: "" })}
-            />
-          </Field>
-          <Field
-            label="Model"
-            error={modelsQuery.error ? modelsErrorText(modelsQuery.error) : undefined}
-          >
-            <Select
-              value={model}
-              placeholder={
-                connectionId && modelsQuery.isPending ? "Loading models" : "Select a model"
-              }
-              disabled={!canEdit || !connectionId || Boolean(modelsQuery.error)}
-              invalid={Boolean(modelsQuery.error)}
-              options={models.map((option) => ({ value: option.id, label: option.displayName }))}
-              onValueChange={(next) => autosave.save({ connectionId, model: next })}
-            />
-          </Field>
+          <ConnectionField
+            config={config}
+            value={connectionId}
+            canEdit={canEdit}
+            onChange={(next) => autosave.edit({ connectionId: next, model: "" })}
+          />
+          <ModelField
+            connectionId={connectionId}
+            value={model}
+            canEdit={canEdit}
+            onChange={(next) => autosave.save({ connectionId, model: next })}
+          />
         </Stack>
       </SettingsCard>
       <TurnOffDialog
@@ -230,5 +253,17 @@ export const OrgAiModel = () => {
         onTurnedOff={() => autosave.edit({ connectionId: "", model: "" })}
       />
     </>
+  );
+};
+
+export const OrgAiModel = () => {
+  const { permission } = useOrgPermission();
+  const { data: config, isPending } = useV4Adapter("orgSettings").useAiConfig();
+  if (isPending) return <SettingsCard title="AI features" loading />;
+  return (
+    <AiModelCard
+      config={config ?? null}
+      canEdit={permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings)}
+    />
   );
 };

@@ -170,7 +170,8 @@ const users: DemoUser[] = [
   user("u-lena", "Lena", "Novak", "lena@acme.dev"),
   user("u-omar", "", "", "omar@acme.dev"),
   user("u-julia", "", "", "julia@acme.dev"),
-  user("u-kenji", "Kenji", "Watanabe", "kenji.watanabe@contractors.acme-partners.example")
+  user("u-kenji", "Kenji", "Watanabe", "kenji.watanabe@contractors.acme-partners.example"),
+  user("u-noor", "Noor", "Haddad", "noor@acme.dev")
 ];
 
 const orgRole = (
@@ -307,7 +308,8 @@ const orgMemberships: DemoOrgMembership[] = [
   membership("m-tom", "u-tom", "release-manager", "2025-06-23"),
   membership("m-lena", "u-lena", "no-access", "2025-08-14", { isActive: false }),
   membership("m-omar", "u-omar", "member", "2026-10-29", { status: "invited" }),
-  membership("m-julia", "u-julia", "member", "2026-10-30", { status: "invited" })
+  membership("m-julia", "u-julia", "member", "2026-10-30", { status: "invited" }),
+  membership("m-noor", "u-noor", "member", "2026-11-16")
 ];
 
 const group = (id: string, name: string, roleSlug: string, createdAt: string): DemoGroup => ({
