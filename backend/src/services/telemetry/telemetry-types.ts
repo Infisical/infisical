@@ -2579,9 +2579,10 @@ export type TAgentVaultSessionCreatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionCreated;
   properties: TAgentVaultEventBase & {
     sessionId: string;
-    // Null for a session started with inline services only.
+    // Null for a session started without an access bundle.
     accessBundleId: string | null;
     inlineServiceCount: number;
+    namedServiceCount: number;
     // How many metadata entries the session was created with. Never the keys or values.
     metadataCount: number;
     ttlSeconds: number | null;
