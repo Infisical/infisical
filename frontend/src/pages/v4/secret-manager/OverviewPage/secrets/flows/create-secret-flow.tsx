@@ -86,7 +86,7 @@ export function SecretEntryFields({
   onClearError: (key: string) => void;
   onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
   onRemove?: () => void;
-  onCreateTag: (query: string) => void;
+  onCreateTag?: (query: string) => void;
 }) {
   const keyError = errors[`${entry.id}.key`];
   const spaced = entry.key.trim().includes(" ");

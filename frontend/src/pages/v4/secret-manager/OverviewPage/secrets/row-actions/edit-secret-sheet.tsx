@@ -56,6 +56,7 @@ export function EditSecretSheet({
   tagOptions,
   title = "Edit secret",
   saveLabel = "Save changes",
+  canCreateTags,
   onClose,
   onSave
 }: {
@@ -64,8 +65,9 @@ export function EditSecretSheet({
   tagOptions: string[];
   title?: string;
   saveLabel?: string;
+  canCreateTags: boolean;
   onClose: () => void;
-  onSave: (patch: SecretPatch) => void;
+  onSave: (patch: SecretPatch) => Promise<boolean>;
 }) {
   const dependents = useDependents(secret);
   const initial = useMemo(() => toEntry(secret), [secret]);
@@ -75,6 +77,7 @@ export function EditSecretSheet({
   const [discard, setDiscard] = useState(false);
   const [confirm, setConfirm] = useState<SecretPatch>();
   const [typed, setTyped] = useState("");
+  const [saving, setSaving] = useState(false);
   const metadata = (list: Entry["metadata"]) =>
     list.map(({ key, value, isEncrypted }) => ({ key, value, encrypted: isEncrypted }));
   const patch: SecretPatch = {
@@ -96,6 +99,14 @@ export function EditSecretSheet({
     if (dirty) setDiscard(true);
     else onClose();
   };
+  const save = async (next: SecretPatch) => {
+    setSaving(true);
+    try {
+      await onSave(next);
+    } finally {
+      setSaving(false);
+    }
+  };
   const submit = () => {
     const issues: Record<string, string> = {};
     entry.metadata.forEach((item) => {
@@ -108,7 +119,7 @@ export function EditSecretSheet({
       setConfirm(patch);
       return;
     }
-    onSave(patch);
+    save(patch);
   };
   return (
     <>
@@ -118,7 +129,7 @@ export function EditSecretSheet({
           if (!next) close();
         }}
       >
-        <SheetContent className={flowStyles.secretSheet}>
+        <SheetContent className={flowStyles.secretSheet} pending={saving}>
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>{`Changes apply to ${environmentLabel} only.`}</SheetDescription>
@@ -163,12 +174,19 @@ export function EditSecretSheet({
                     return rest;
                   })
                 }
-                onCreateTag={(query) => {
-                  const parsed = slugSchema().safeParse(query.trim());
-                  if (!parsed.success) return;
-                  setCreatedTags((current) => [...current, parsed.data]);
-                  setEntry((current) => ({ ...current, tags: [...current.tags, parsed.data] }));
-                }}
+                onCreateTag={
+                  canCreateTags
+                    ? (query) => {
+                        const parsed = slugSchema().safeParse(query.trim());
+                        if (!parsed.success) return;
+                        setCreatedTags((current) => [...current, parsed.data]);
+                        setEntry((current) => ({
+                          ...current,
+                          tags: [...current.tags, parsed.data]
+                        }));
+                      }
+                    : undefined
+                }
               />
             </form>
           </SheetBody>
@@ -177,7 +195,12 @@ export function EditSecretSheet({
               <Button type="button" variant="ghost" onClick={close}>
                 Cancel
               </Button>
-              <Button type="submit" form="edit-secret-sheet" disabled={!dirty}>
+              <Button
+                type="submit"
+                form="edit-secret-sheet"
+                disabled={!dirty || saving}
+                loading={saving}
+              >
                 {saveLabel}
               </Button>
             </Inline>
@@ -228,7 +251,7 @@ export function EditSecretSheet({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={typed !== "confirm"}
-              onClick={() => confirm && onSave(confirm)}
+              onClick={() => confirm && save(confirm)}
             >
               Save changes
             </AlertDialogAction>

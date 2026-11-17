@@ -716,14 +716,20 @@ function SecretActionsRow({
               title={ctx.single ? undefined : "Edit value"}
               saveLabel={ctx.single ? undefined : "Save"}
               onClose={() => setOpen(undefined)}
+              canCreateTags={canCreateTags}
               onSave={(patch) =>
-                update(
-                  secret,
-                  patch,
-                  saved(
-                    ctx.single ? `Updated ${secret.name}` : `Updated ${secret.name} in ${label}`
+                handlers
+                  .onUpdate(
+                    secret,
+                    patch,
+                    saved(
+                      ctx.single ? `Updated ${secret.name}` : `Updated ${secret.name} in ${label}`
+                    )
                   )
-                )
+                  .then((ok) => {
+                    if (ok) setOpen(undefined);
+                    return ok;
+                  })
               }
             />
           )}
