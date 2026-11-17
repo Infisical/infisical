@@ -33,7 +33,6 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { assertFolderNotReserved } from "../secret-folder/secret-folder-reserved-fns";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import {
   describeSecretValidationFailures,
@@ -1721,8 +1720,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       message: `Destination folder with path '${destinationSecretPath}' in environment with slug '${destinationEnvironment}' not found`
     });
   }
-  assertFolderNotReserved(sourceFolder);
-  assertFolderNotReserved(destinationFolder);
 
   const sourceSecrets = await secretDAL.find(
     {

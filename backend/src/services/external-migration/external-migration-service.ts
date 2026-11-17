@@ -48,7 +48,6 @@ import {
 } from "../app-connection/hc-vault";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { assertFolderNotReserved } from "../secret-folder/secret-folder-reserved-fns";
 import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-service";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
@@ -508,7 +507,6 @@ export const externalMigrationServiceFactory = ({
         }
       }
     }
-    [basePath, ...candidatePaths].forEach((candidatePath) => assertFolderNotReserved({ path: candidatePath }));
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,

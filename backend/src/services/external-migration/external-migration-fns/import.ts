@@ -9,7 +9,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { assertFolderNameNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -113,7 +112,6 @@ export const importDataIntoInfisicalFn = async ({
         const parentEnv = originalToNewEnvironmentId.get(folder.parentFolderId as string);
         const parentFolder = originalToNewFolderId.get(folder.parentFolderId as string);
 
-        assertFolderNameNotReserved(folder.name);
         let newFolder: TSecretFolders;
 
         if (parentEnv?.rootFolderId) {

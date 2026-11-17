@@ -1459,8 +1459,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     secretTagDAL,
-    resourceMetadataDAL,
-    secretImportDAL
+    resourceMetadataDAL
   });
 
   const telemetryService = telemetryServiceFactory({

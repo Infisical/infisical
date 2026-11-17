@@ -180,24 +180,6 @@ func TestImportReplicationEnforcement_ReservedCopy(t *testing.T) {
 		return tn, proj, prodImport
 	}
 
-	t.Run("should refuse a secret written straight into a replication import's copy", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn, proj, prodImport := converted(t)
-		copyPath := "/__reserve_replication_" + prodImport
-
-		// Action
-		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "SNEAKY", api.CreateSecretV4JSONRequestBody{
-			ProjectId: proj.ID, Environment: "prod", SecretPath: &copyPath, SecretValue: "x",
-		})
-
-		// Assert
-		require.NoError(t, err)
-		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "writing into the copy returned %s", apierr.Body(res.Body))
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-	})
-
 	t.Run("should refuse a change to the import row that points at the copy", func(t *testing.T) {
 		t.Parallel()
 

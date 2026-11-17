@@ -19,7 +19,6 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
@@ -149,7 +148,6 @@ export const dynamicSecretServiceFactory = ({
     if (!folder) {
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
     }
-    assertFolderNotReserved(folder);
 
     const existingDynamicSecret = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (existingDynamicSecret)

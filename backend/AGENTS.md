@@ -988,7 +988,7 @@ EE routes register before community routes so they can override/extend endpoints
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
-**Secret import replication enforcement**: before changing secret imports, replication, or the secret change policy's `enforceImportReplication` option, read [`src/ee/services/secret-import-enforcement/AGENTS.md`](src/ee/services/secret-import-enforcement/AGENTS.md). Only that module's one-time conversion may write a replication copy without a change request, and reserved replication folders and import rows must never be written by other code.
+**Secret import replication enforcement**: before changing secret imports, replication, or the secret change policy's `enforceImportReplication` option, read [`src/ee/services/secret-import-enforcement/AGENTS.md`](src/ee/services/secret-import-enforcement/AGENTS.md). Only that module's one-time conversion may write a replication copy without a change request.
 
 **Certificate discovery**: before working on `pki-discovery-*` or `pki-installation-*`, read [`src/ee/services/pki-discovery/AGENTS.md`](src/ee/services/pki-discovery/AGENTS.md). Linux Server discovery splits work between the backend and the gateway's certificate scanner in the CLI repo, and keystore passwords live on installations, not jobs.
 

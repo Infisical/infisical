@@ -27,7 +27,6 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
@@ -665,7 +664,6 @@ export const secretSyncServiceFactory = ({
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
-    assertFolderNotReserved(folder);
 
     const requestedSyncOptions = params.syncOptions;
     const includeAllSubFolders = Boolean(params.includeAllSubFolders ?? requestedSyncOptions?.includeAllSubFolders);
@@ -906,7 +904,6 @@ export const secretSyncServiceFactory = ({
           message: `Could not find folder with path "${updatedSecretPath}" in environment "${updatedEnvironment}" for project with ID "${secretSync.projectId}"`
         });
 
-      assertFolderNotReserved(newFolder);
       folderId = newFolder.id;
     }
 

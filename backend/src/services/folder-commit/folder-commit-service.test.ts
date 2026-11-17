@@ -200,7 +200,6 @@ describe("folderCommitServiceFactory", () => {
       identityDAL: mockIdentityDAL,
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderDAL: mockFolderDAL,
-      secretImportDAL: { find: vi.fn().mockResolvedValue([]), updateById: vi.fn() },
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       folderVersionDAL: mockFolderVersionDAL,
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing

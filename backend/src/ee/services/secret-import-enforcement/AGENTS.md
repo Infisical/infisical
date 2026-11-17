@@ -34,9 +34,6 @@ change requests. Cross-project imports are never converted and stay live.
   (a resync opens the request).
 - `deleteImport` removes the reserved folder whether or not the import is a replication import yet, so a conversion
   that never flipped leaves no orphan.
-- Reserved folders and reserved import rows are written only by replication, change request merges and this module.
-  Writers elsewhere refuse them (`assertFolderNotReserved`, `assertFolderNameNotReserved` in
-  `services/secret-folder/secret-folder-reserved-fns.ts`).
 - On the conversion's final outbox attempt the import stays a regular import and the failure is audited as
   `secret-import-replication-enforced` with outcome `failed`; saving the policy again is a new policy change and
   retries it.

@@ -26,7 +26,6 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { assertFolderNotReserved } from "@app/services/secret-folder/secret-folder-reserved-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -222,7 +221,6 @@ export const honeyTokenServiceFactory = ({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
       });
     }
-    assertFolderNotReserved(folder);
 
     const providerType = assertSupportedHoneyTokenType(type);
     const providerHooks = honeyTokenProviderHooksByType[providerType];
