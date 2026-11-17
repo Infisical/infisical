@@ -2,12 +2,13 @@
 import https from "https";
 
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { isValidAzureAppConfigurationUrl } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -71,13 +72,18 @@ export const azureAppConfigurationSyncFactory = ({
     });
   };
 
-  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
-    if (!secretSync.destinationConfig.configurationUrl.endsWith(".azconfig.io")) {
-      throw new BadRequestError({
-        message: "Invalid Azure App Configuration URL provided."
+  const $assertValidConfigurationUrl = (configurationUrl: string) => {
+    if (!isValidAzureAppConfigurationUrl(configurationUrl)) {
+      throw new SecretSyncError({
+        message: "Invalid Azure App Configuration URL. Use the store endpoint, https://<store-name>.azconfig.io.",
+        shouldRetry: false
       });
     }
+  };
+
+  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
 
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
@@ -167,6 +173,8 @@ export const azureAppConfigurationSyncFactory = ({
 
   const removeSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
+
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
@@ -201,6 +209,8 @@ export const azureAppConfigurationSyncFactory = ({
   };
 
   const getSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials) => {
+    $assertValidConfigurationUrl(secretSync.destinationConfig.configurationUrl);
+
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
