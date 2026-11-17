@@ -9,6 +9,7 @@ import {
   BaseCreateApprovalPolicySchema,
   BaseUpdateApprovalPolicySchema
 } from "../approval-policy-schemas";
+import { formatApproverCount, getRevocationStepShortfall } from "./cert-revocation-policy-fns";
 
 const ProfileSlugSchema = z.string().trim().min(1).max(255);
 
@@ -26,7 +27,18 @@ const CertRevocationPolicyStepsSchema = PolicyStepSchema.extend({
   approvers: PolicyStepSchema.shape.approvers.min(1, "Each approval step needs at least one approver")
 })
   .array()
-  .min(1, "A revocation approval policy needs at least one approval step");
+  .min(1, "A revocation approval policy needs at least one approval step")
+  .superRefine((steps, ctx) => {
+    steps.forEach((step, index) => {
+      const shortfall = getRevocationStepShortfall(step);
+      if (shortfall?.kind !== "tooFewApprovers") return;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, "requiredApprovals"],
+        message: `Step ${index + 1} requires ${shortfall.requiredApprovals} approvals but only has ${formatApproverCount(shortfall.approverCount)}. Add approvers to the step or lower its required approvals.`
+      });
+    });
+  });
 
 export const CertRevocationPolicyInputsSchema = z.object({
   profileName: ProfileSlugSchema,

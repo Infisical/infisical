@@ -32,6 +32,10 @@ import {
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import {
+  formatApproverCount,
+  getRevocationStepShortfall
+} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-fns";
+import {
   TCertRevocationPolicy,
   TCertRevocationRequestData
 } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
@@ -1006,6 +1010,19 @@ export const certificateServiceFactory = ({
 
     if (approval && cert.applicationId) {
       const { policy, profile } = approval;
+      policy.steps.forEach((step, index) => {
+        const shortfall = getRevocationStepShortfall(step);
+        if (shortfall?.kind === "noApprovers") {
+          throw new BadRequestError({
+            message: `Revocation approval policy '${policy.name}' has no approvers on step ${index + 1}, so nobody could approve this request. Ask an Application Admin to add approvers to the policy.`
+          });
+        }
+        if (shortfall?.kind === "tooFewApprovers") {
+          throw new BadRequestError({
+            message: `Revocation approval policy '${policy.name}' requires ${shortfall.requiredApprovals} approvals on step ${index + 1} but has only ${formatApproverCount(shortfall.approverCount)}, so this request could never be approved. Ask an Application Admin to add approvers or lower the step's required approvals.`
+          });
+        }
+      });
       const requester = await $resolveRevocationRequester(actor, actorId);
       const requestData: TCertRevocationRequestData = {
         certificateId: cert.id,
