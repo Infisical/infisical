@@ -4,6 +4,7 @@ import { KmsAwsCredentialType, KmsProviders } from "@app/ee/services/external-km
 
 import { KmsCoreModule, KmsDataKey, KmsType } from "../../../ce/module";
 import { rootKeyTestEnv } from "../../../ce/testing/root-key-fixture";
+import { ExternalKmsEeModule } from "../../external-kms-module";
 import { KmsCoreEeModule } from "../../module";
 import { FakeExternalKmsProviders } from "../../testing/fake-external-kms-providers";
 
@@ -33,8 +34,6 @@ describe("External KMS keys on Postgres", () => {
       HSM_KEY_LABEL: undefined
     };
     const ee = await KmsCoreEeModule.create({
-      db: h.db,
-      readKnex: () => h.db,
       hsmConfig,
       isHsmEntitled: () => false,
       providers: fake.providers
@@ -47,16 +46,22 @@ describe("External KMS keys on Postgres", () => {
       isFipsEnabled: () => false,
       skipRotationState: true
     });
-    return { fake, module: core };
+    const { externalKmsService } = new ExternalKmsEeModule({
+      db: h.db,
+      readKnex: () => h.db,
+      kmsDataKeyService: core.kmsDataKeyService,
+      providers: fake.providers
+    });
+    return { fake, module: core, externalKmsService };
   };
 
   test("should store an external key with its provider config, encrypted with the org data key", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { module } = await build();
+    const { externalKmsService } = await build();
 
     // Action
-    const created = await module.kmsKeyService.createExternalKms({
+    const created = await externalKmsService.create({
       orgId: tn.org.id,
       name: "aws-key",
       provider: awsInputs
@@ -66,7 +71,7 @@ describe("External KMS keys on Postgres", () => {
     const stored = await h.db(TableName.ExternalKms).where({ kmsKeyId: created.id }).first();
     expect(stored?.provider).toBe(KmsProviders.Aws);
     expect(stored?.encryptedProviderInputs.toString()).not.toContain("secret");
-    expect((await module.kmsKeyService.getExternalKms(created.id)).external.providerInput).toMatchObject({
+    expect((await externalKmsService.getById(created.id)).external.providerInput).toMatchObject({
       awsRegion: "us-east-1"
     });
   });
@@ -74,11 +79,11 @@ describe("External KMS keys on Postgres", () => {
   test("should store nothing when the provider refuses the connection", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { module, fake } = await build();
+    const { fake, externalKmsService } = await build();
     fake.failValidation = true;
 
     // Action
-    const result = module.kmsKeyService.createExternalKms({ orgId: tn.org.id, name: "refused", provider: awsInputs });
+    const result = externalKmsService.create({ orgId: tn.org.id, name: "refused", provider: awsInputs });
 
     // Assert
     await expect(result).rejects.toThrow("AWS error: connection refused");
@@ -88,15 +93,15 @@ describe("External KMS keys on Postgres", () => {
   test("should remove the external config with its key", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { module } = await build();
-    const created = await module.kmsKeyService.createExternalKms({
+    const { externalKmsService } = await build();
+    const created = await externalKmsService.create({
       orgId: tn.org.id,
       name: "short-lived",
       provider: awsInputs
     });
 
     // Action
-    await module.kmsKeyService.deleteExternalKms(created.id);
+    await externalKmsService.delete(created.id);
 
     // Assert
     expect(await h.db(TableName.ExternalKms).where({ kmsKeyId: created.id }).first()).toBeUndefined();
@@ -105,8 +110,8 @@ describe("External KMS keys on Postgres", () => {
   test("should keep a project's data readable after switching to an external key and back", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { module } = await build();
-    const external = await module.kmsKeyService.createExternalKms({
+    const { module, externalKmsService } = await build();
+    const external = await externalKmsService.create({
       orgId: tn.org.id,
       name: "project-key",
       provider: awsInputs
@@ -143,8 +148,8 @@ describe("External KMS keys on Postgres", () => {
   test("should hold no transaction open while it calls the provider", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { module, fake } = await build();
-    const external = await module.kmsKeyService.createExternalKms({
+    const { module, fake, externalKmsService } = await build();
+    const external = await externalKmsService.create({
       orgId: tn.org.id,
       name: "watched",
       provider: awsInputs

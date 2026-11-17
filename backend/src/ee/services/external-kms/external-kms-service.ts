@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TExternalKmsDetails, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TExternalKmsDetails, TExternalKmsService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -20,6 +20,7 @@ import { TExternalKmsAwsSchema, TExternalKmsGcpSchema } from "./providers/model"
 
 type TExternalKmsServiceFactoryDep = {
   kmsKeyService: TKmsKeyService;
+  externalKmsService: TExternalKmsService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
 };
@@ -35,12 +36,14 @@ const typed = (details: TExternalKmsDetails) => ({
   }
 });
 
-// Org permissions and the externalKms plan for external KMS keys; KMS Core stores them and talks to the providers.
+// Org permissions and the externalKms plan for external KMS keys; KMS Core's enterprise edition stores them and talks
+// to the providers.
 // Creating, changing or browsing provider keys needs the plan; reading or deleting an existing key does not.
 export const externalKmsServiceFactory = ({
   permissionService,
   licenseService,
-  kmsKeyService
+  kmsKeyService,
+  externalKmsService
 }: TExternalKmsServiceFactoryDep) => {
   const $orgPermission = (
     actor: TCreateExternalKmsDTO["actor"],
@@ -83,7 +86,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return typed(await kmsKeyService.createExternalKms({ orgId: actorOrgId, name, description, provider }));
+    return typed(await externalKmsService.create({ orgId: actorOrgId, name, description, provider }));
   };
 
   const updateById = async ({
@@ -107,7 +110,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return typed(await kmsKeyService.updateExternalKms(kmsId, { name, description, provider }));
+    return typed(await externalKmsService.update(kmsId, { name, description, provider }));
   };
 
   const deleteById = async ({ actor, id: kmsId, actorId, actorOrgId, actorAuthMethod }: TDeleteExternalKmsDTO) => {
@@ -115,14 +118,14 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsKeyService.deleteExternalKms(kmsId));
+    return typed(await externalKmsService.delete(kmsId));
   };
 
   const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListExternalKmsDTO) => {
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return kmsKeyService.listExternalKms(actorOrgId);
+    return externalKmsService.list(actorOrgId);
   };
 
   const findById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id: kmsId }: TGetExternalKmsByIdDTO) => {
@@ -131,14 +134,14 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsKeyService.getExternalKms(kmsId));
+    return typed(await externalKmsService.getById(kmsId));
   };
 
   const findByName = async ({ actor, actorId, actorOrgId, actorAuthMethod, name }: TGetExternalKmsBySlugDTO) => {
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsKeyService.getExternalKmsByName(actorOrgId, name));
+    return typed(await externalKmsService.getByName(actorOrgId, name));
   };
 
   const fetchGcpKeys = async ({
@@ -159,7 +162,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return kmsKeyService.fetchGcpKeys({ credential, gcpRegion });
+    return externalKmsService.fetchGcpKeys({ credential, gcpRegion });
   };
 
   return {

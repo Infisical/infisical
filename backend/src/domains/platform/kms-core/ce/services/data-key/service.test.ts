@@ -19,13 +19,7 @@ const EXTERNAL_PREFIX = Buffer.from("external:");
 
 const fakeExternalKms = (): TExternalKmsHook => ({
   encrypt: async (_key, _orgCipher, plainText) => Buffer.concat([EXTERNAL_PREFIX, plainText]),
-  decrypt: async (_key, _orgCipher, cipherTextBlob) => Buffer.from(cipherTextBlob.subarray(EXTERNAL_PREFIX.length)),
-  create: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-  get: vi.fn(),
-  list: vi.fn(),
-  fetchGcpKeys: vi.fn()
+  decrypt: async (_key, _orgCipher, cipherTextBlob) => Buffer.from(cipherTextBlob.subarray(EXTERNAL_PREFIX.length))
 });
 
 const build = (externalKms?: TExternalKmsHook) => {

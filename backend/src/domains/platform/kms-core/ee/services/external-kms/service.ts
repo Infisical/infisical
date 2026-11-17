@@ -7,67 +7,43 @@ import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
   KmsProviders,
-  TExternalKmsAwsSchema,
   TExternalKmsGcpSchema,
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
 
 import { TCipherPair } from "../../../ce/models/data-key";
-import { TExternalKeyRef } from "../../../ce/models/external-key-config";
 import { KmsKey } from "../../../ce/models/kms-key";
+import { KmsDataKey, TKmsDataKeyService } from "../../../ce/services/data-key/service";
 import {
   TCreateExternalKmsInput,
   TExternalKmsDetails,
-  TExternalKmsHook,
+  TExternalKmsService,
   TExternalKmsSummary,
   TKmsCoreStores,
   TUpdateExternalKmsInput
 } from "../../../ce/services/dependencies";
 import { TExternalKmsProviders } from "../dependencies";
-
-type TProviderInput = TExternalKmsAwsSchema | TExternalKmsGcpSchema;
-
-type TOpenedInputs =
-  | { type: KmsProviders.Aws; inputs: TExternalKmsAwsSchema }
-  | { type: KmsProviders.Gcp; inputs: TExternalKmsGcpSchema };
+import { openProviderInputs, providerError, TProviderInput } from "../helpers/provider-inputs";
 
 const notFound = (kmsId: string) => new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
-const providerError = (provider: string, error: unknown, fallback: string) => {
-  if (error instanceof RuleViolationError) return error;
-  return new RuleViolationError({ message: error instanceof Error ? `${provider} error: ${error.message}` : fallback });
-};
-
-// External KMS keys: provider inputs are validated against the provider before anything is stored, and encrypted
-// with the org data-key cipher the community module hands in. No permission or plan checks: the caller owns those.
-export class ExternalKmsService implements TExternalKmsHook {
+/**
+ * Creates, changes and reads external KMS keys. Provider inputs are validated against the provider before anything
+ * is stored, and encrypted with the org data key, which is why this is built after KMS Core and takes its data-key
+ * service. No permission or plan checks: the caller owns those.
+ */
+export class ExternalKmsService implements TExternalKmsService {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly stores: TKmsCoreStores,
-    private readonly providers: TExternalKmsProviders
+    private readonly providers: TExternalKmsProviders,
+    private readonly kmsDataKeyService: TKmsDataKeyService
   ) {}
 
-  async encrypt(ref: TExternalKeyRef, orgCipher: TCipherPair, plainText: Buffer): Promise<Buffer<ArrayBuffer>> {
-    const client = await this.client(ref, orgCipher);
-    try {
-      return (await client.encrypt(plainText)).encryptedBlob;
-    } finally {
-      await client.cleanup();
-    }
-  }
-
-  async decrypt(ref: TExternalKeyRef, orgCipher: TCipherPair, cipherTextBlob: Buffer): Promise<Buffer<ArrayBuffer>> {
-    const client = await this.client(ref, orgCipher);
-    try {
-      return (await client.decrypt(cipherTextBlob)).data;
-    } finally {
-      await client.cleanup();
-    }
-  }
-
-  async create({ orgId, name, description, provider }: TCreateExternalKmsInput, orgCipher: TCipherPair) {
+  async create({ orgId, name, description, provider }: TCreateExternalKmsInput) {
     const providerInput = await this.validateNew(provider as TExternalKmsInputSchema);
+    const orgCipher = await this.orgCipher(orgId);
     const { cipherTextBlob } = orgCipher.encryptor({ plainText: Buffer.from(JSON.stringify(providerInput)) });
     const key = KmsKey.createExternal({
       orgId,
@@ -80,8 +56,9 @@ export class ExternalKmsService implements TExternalKmsHook {
     return ExternalKmsService.details(key, providerInput);
   }
 
-  async update(key: KmsKey, { name, description, provider }: TUpdateExternalKmsInput, orgCipher: TCipherPair) {
-    let providerInput = ExternalKmsService.openInputs(key, orgCipher).inputs;
+  async update(kmsId: string, { name, description, provider }: TUpdateExternalKmsInput) {
+    const { key, orgCipher } = await this.requireExternal(kmsId);
+    let providerInput = ExternalKmsService.openInputs(key, orgCipher);
     let encryptedProviderInputs: Buffer | undefined;
     if (provider) {
       providerInput = await this.validateUpdate(provider as TExternalKmsInputUpdateSchema, providerInput);
@@ -102,15 +79,23 @@ export class ExternalKmsService implements TExternalKmsHook {
     return ExternalKmsService.details(updated, providerInput);
   }
 
-  async delete(key: KmsKey, orgCipher: TCipherPair) {
-    const providerInput = ExternalKmsService.openInputs(key, orgCipher).inputs;
+  async delete(kmsId: string) {
+    const { key, orgCipher } = await this.requireExternal(kmsId);
+    const providerInput = ExternalKmsService.openInputs(key, orgCipher);
     await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.delete(key.id));
     return ExternalKmsService.details(key, providerInput);
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  async get(key: KmsKey, orgCipher: TCipherPair) {
-    return ExternalKmsService.details(key, ExternalKmsService.openInputs(key, orgCipher).inputs);
+  async getById(kmsId: string) {
+    const { key, orgCipher } = await this.requireExternal(kmsId);
+    return ExternalKmsService.details(key, ExternalKmsService.openInputs(key, orgCipher));
+  }
+
+  async getByName(orgId: string, name: string) {
+    const [key] = await this.stores.kmsKeyStore.find({ orgId, name });
+    if (!key?.isExternal) throw new EntityNotFoundError({ message: `External KMS with name '${name}' not found` });
+    const orgCipher = await this.orgCipher(orgId);
+    return ExternalKmsService.details(key, ExternalKmsService.openInputs(key, orgCipher));
   }
 
   async list(orgId: string): Promise<TExternalKmsSummary[]> {
@@ -128,47 +113,17 @@ export class ExternalKmsService implements TExternalKmsHook {
     const client = await this.providers.gcp({
       inputs: { credential: credential as TExternalKmsGcpSchema["credential"], gcpRegion, keyName: "" }
     });
-    try {
-      return await client.getKeysList();
-    } catch (error) {
-      throw providerError("GCP", error, "Failed to fetch GCP keys");
-    } finally {
-      await client.cleanup();
-    }
+    return ExternalKmsService.withClient(client, "GCP", "Failed to fetch GCP keys", () => client.getKeysList());
   }
 
-  private static refOf(key: KmsKey): TExternalKeyRef {
-    const ref = key.externalRef();
-    if (!ref) throw notFound(key.id);
-    return ref;
+  private orgCipher(orgId: string): Promise<TCipherPair> {
+    return this.kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
   }
 
-  private static statusOf(key: KmsKey) {
-    const status = key.externalStatus();
-    if (!status) throw notFound(key.id);
-    return status;
-  }
-
-  private static openInputs(key: KmsKey | TExternalKeyRef, orgCipher: TCipherPair): TOpenedInputs {
-    const ref = key instanceof KmsKey ? ExternalKmsService.refOf(key) : key;
-    const raw = JSON.parse(
-      orgCipher.decryptor({ cipherTextBlob: ref.encryptedProviderInputs }).toString("utf8")
-    ) as unknown;
-    switch (ref.provider) {
-      case KmsProviders.Aws:
-        return { type: KmsProviders.Aws, inputs: ExternalKmsAwsSchema.parse(raw) };
-      case KmsProviders.Gcp:
-        return { type: KmsProviders.Gcp, inputs: ExternalKmsGcpSchema.parse(raw) };
-      default:
-        throw new RuleViolationError({ message: "Invalid KMS provider." });
-    }
-  }
-
-  private client(ref: TExternalKeyRef, orgCipher: TCipherPair) {
-    const opened = ExternalKmsService.openInputs(ref, orgCipher);
-    return opened.type === KmsProviders.Aws
-      ? this.providers.aws({ inputs: opened.inputs })
-      : this.providers.gcp({ inputs: opened.inputs });
+  private async requireExternal(kmsId: string) {
+    const key = await this.stores.kmsKeyStore.findById(kmsId);
+    if (!key?.isExternal) throw notFound(kmsId);
+    return { key, orgCipher: await this.orgCipher(key.orgId) };
   }
 
   // Validates against the provider before anything is stored. AWS may create a key and return its id in the inputs.
@@ -183,26 +138,18 @@ export class ExternalKmsService implements TExternalKmsHook {
           }
           throw error;
         });
-        try {
+        return ExternalKmsService.withClient(client, "AWS", "Failed to validate AWS connection", async () => {
           const inputs = await client.generateInputKmsKey();
           await client.validateConnection();
           return inputs;
-        } catch (error) {
-          throw providerError("AWS", error, "Failed to validate AWS connection");
-        } finally {
-          await client.cleanup();
-        }
+        });
       }
       case KmsProviders.Gcp: {
         const client = await this.providers.gcp({ inputs: provider.inputs });
-        try {
+        return ExternalKmsService.withClient(client, "GCP", "Failed to validate GCP connection", async () => {
           await client.validateConnection();
           return provider.inputs;
-        } catch (error) {
-          throw providerError("GCP", error, "Failed to validate GCP connection");
-        } finally {
-          await client.cleanup();
-        }
+        });
       }
       default:
         throw new RuleViolationError({ message: "external kms provided is invalid" });
@@ -217,30 +164,50 @@ export class ExternalKmsService implements TExternalKmsHook {
       case KmsProviders.Aws: {
         const inputs = { ...ExternalKmsAwsSchema.parse(current), ...provider.inputs };
         const client = await this.providers.aws({ inputs });
-        try {
+        return ExternalKmsService.withClient(client, "AWS", "Failed to validate AWS connection", async () => {
           await client.validateConnection();
           return inputs;
-        } catch (error) {
-          throw providerError("AWS", error, "Failed to validate AWS connection");
-        } finally {
-          await client.cleanup();
-        }
+        });
       }
       case KmsProviders.Gcp: {
         const inputs = { ...ExternalKmsGcpSchema.parse(current), ...provider.inputs };
         const client = await this.providers.gcp({ inputs });
-        try {
+        return ExternalKmsService.withClient(client, "GCP", "Failed to validate GCP connection", async () => {
           await client.validateConnection();
           return inputs;
-        } catch (error) {
-          throw providerError("GCP", error, "Failed to validate GCP connection");
-        } finally {
-          await client.cleanup();
-        }
+        });
       }
       default:
         throw new RuleViolationError({ message: "external kms provided is invalid" });
     }
+  }
+
+  // Runs one provider call, words its failure for the user, and always releases the client.
+  private static async withClient<T>(
+    client: { cleanup(): Promise<void> },
+    provider: string,
+    fallback: string,
+    work: () => Promise<T>
+  ): Promise<T> {
+    try {
+      return await work();
+    } catch (error) {
+      throw providerError(provider, error, fallback);
+    } finally {
+      await client.cleanup();
+    }
+  }
+
+  private static openInputs(key: KmsKey, orgCipher: TCipherPair): TProviderInput {
+    const ref = key.externalRef();
+    if (!ref) throw notFound(key.id);
+    return openProviderInputs(ref, orgCipher).inputs;
+  }
+
+  private static statusOf(key: KmsKey) {
+    const status = key.externalStatus();
+    if (!status) throw notFound(key.id);
+    return status;
   }
 
   private static details(key: KmsKey, providerInput: TProviderInput): TExternalKmsDetails {

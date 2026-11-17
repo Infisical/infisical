@@ -45,7 +45,7 @@ const internalDecryptor = (
 ): TAsyncDecryptor => key.decryptor(rootKey, () => listArchived(stores, key, options));
 
 // The org's data key, which must already exist: an external key's inputs were encrypted with it when it was stored.
-export const existingOrgCipher = async (
+const existingOrgCipher = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,
   orgId: string,

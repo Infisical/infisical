@@ -1026,6 +1026,7 @@ export const registerRoutes = async (
 
   const externalKmsService = externalKmsServiceFactory({
     kmsKeyService,
+    externalKmsService: domains.externalKms.externalKmsService,
     permissionService,
     licenseService
   });

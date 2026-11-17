@@ -1,6 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
 import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
-import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
@@ -10,22 +9,11 @@ import { OrderByDirection } from "@app/lib/types";
 import { KeyMaterial } from "../../models/key-material";
 import { KmsKey, KmsKeyUsage, TKmsKeyDetails } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
-import { KmsDataKey, TKmsDataKeyService } from "../data-key/service";
+import { TExternalKmsHook, TKmsCoreStores, TKmsKeyFilter } from "../dependencies";
 import {
-  TExternalKmsDetails,
-  TExternalKmsHook,
-  TExternalKmsSummary,
-  TCreateExternalKmsInput,
-  TKmsCoreStores,
-  TKmsKeyFilter,
-  TUpdateExternalKmsInput
-} from "../dependencies";
-import {
-  existingOrgCipher,
   keyDecryptor,
   keyEncryptor,
   notFoundKey,
-  requireExternalKms,
   requireKey,
   TAsyncDecryptor,
   TAsyncEncryptor
@@ -142,14 +130,6 @@ export type TKmsKeyService = {
     kmsId: string;
   }): Promise<(input: { data: Buffer; mac: Buffer }) => { macValid: boolean; algorithm: HmacAlgorithm }>;
 
-  createExternalKms(input: TCreateExternalKmsInput): Promise<TExternalKmsDetails>;
-  updateExternalKms(kmsId: string, input: TUpdateExternalKmsInput): Promise<TExternalKmsDetails>;
-  deleteExternalKms(kmsId: string): Promise<TExternalKmsDetails>;
-  getExternalKms(kmsId: string): Promise<TExternalKmsDetails>;
-  getExternalKmsByName(orgId: string, name: string): Promise<TExternalKmsDetails>;
-  listExternalKms(orgId: string): Promise<TExternalKmsSummary[]>;
-  fetchGcpKeys(input: { credential: unknown; gcpRegion: string }): Promise<{ keys: string[] }>;
-
   within(tx: TTransaction): TKmsKeyTransaction;
 };
 
@@ -163,7 +143,6 @@ export class KmsKeyService implements TKmsKeyService {
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
     private readonly externalKms: TExternalKmsHook | undefined,
-    private readonly kmsDataKeyService: TKmsDataKeyService,
     // Set for a service bound to a caller's transaction.
     private readonly isJoined = false
   ) {}
@@ -171,9 +150,7 @@ export class KmsKeyService implements TKmsKeyService {
   within(tx: TTransaction): TKmsKeyTransaction {
     const runner = this.transactionRunner.within(tx);
     const joined = <T>(work: (service: KmsKeyService) => Promise<T>) =>
-      runner.run(({ stores }) =>
-        work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, this.kmsDataKeyService, true))
-      );
+      runner.run(({ stores }) => work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, true)));
     return {
       encryptWithKmsKey: (input) => joined((service) => service.encryptWithKmsKey(input)),
       decryptWithKmsKey: (input) => joined((service) => service.decryptWithKmsKey(input)),
@@ -367,60 +344,11 @@ export class KmsKeyService implements TKmsKeyService {
     return ({ data, mac }: { data: Buffer; mac: Buffer }) => key.verifyMac(this.rootKey, data, mac);
   }
 
-  async createExternalKms(input: TCreateExternalKmsInput) {
-    const provider = requireExternalKms(this.externalKms);
-    const cipher = await this.kmsDataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: input.orgId
-    });
-    return provider.create(input, cipher);
-  }
-
-  async updateExternalKms(kmsId: string, input: TUpdateExternalKmsInput) {
-    const provider = requireExternalKms(this.externalKms);
-    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
-    return provider.update(key, input, cipher);
-  }
-
-  async deleteExternalKms(kmsId: string) {
-    const provider = requireExternalKms(this.externalKms);
-    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
-    return provider.delete(key, cipher);
-  }
-
-  async getExternalKms(kmsId: string) {
-    const provider = requireExternalKms(this.externalKms);
-    const { key, cipher } = await this.externalKeyWithCipher(kmsId);
-    return provider.get(key, cipher);
-  }
-
-  async getExternalKmsByName(orgId: string, name: string) {
-    const provider = requireExternalKms(this.externalKms);
-    const [key] = await this.stores.kmsKeyStore.find({ orgId, name });
-    if (!key?.isExternal) throw new EntityNotFoundError({ message: `External KMS with name '${name}' not found` });
-    const cipher = await existingOrgCipher(this.stores, this.rootKey, orgId);
-    return provider.get(key, cipher);
-  }
-
-  async listExternalKms(orgId: string) {
-    return requireExternalKms(this.externalKms).list(orgId);
-  }
-
-  async fetchGcpKeys(input: { credential: unknown; gcpRegion: string }) {
-    return requireExternalKms(this.externalKms).fetchGcpKeys(input);
-  }
-
   // The key row and its material commit together. A duplicate name in a project fails on the unique index; callers
   // translate that DatabaseError into their own message. The result carries no material, wrapped or not.
   private async insertKey(key: KmsKey): Promise<TKmsKeyDetails> {
     await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.insert(key));
     return key.details();
-  }
-
-  private async externalKeyWithCipher(kmsId: string) {
-    const key = await this.stores.kmsKeyStore.findById(kmsId);
-    if (!key?.isExternal) throw new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
-    return { key, cipher: await existingOrgCipher(this.stores, this.rootKey, key.orgId) };
   }
 
   private static applyAttributes(key: KmsKey, attributes: TKmsKeyAttributes) {

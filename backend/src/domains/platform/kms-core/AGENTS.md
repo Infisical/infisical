@@ -10,7 +10,7 @@ product built on it.
 | `ce/models/`      | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KeyMaterial`, `RootKey`, `RootKeyConfig`, `RootKeyRing`, `KekHistoryEntry`, `OrganizationKey`, `ProjectKey`, `DataKey`, `EncryptedDataKey`, and the frozen formats (`KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey`) |
 | `ce/data-access/` | One store per entity, `kms-core-locks.ts` (the frozen lock ids), `kms-core-stores.ts` (`buildKmsCoreStoreAccess`), `project-data-key-cache.ts` (Redis)                                                                                                                                                           |
 | `ce/services/`    | `root-key/` (`KmsRootKeyService`, `RootKeyLoader`, `RootKeyWrappings`: the software or HSM wrapping per strategy), `kms-key/` (`KmsKeyService`), `data-key/` (`KmsDataKeyService`), `helpers/key-cipher.ts` (internal or external key dispatch), `dependencies.ts` (store, cache and enterprise port types) |
-| `ee/`             | `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-kms/` (`ExternalKmsService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`                                                                                                               |
+| `ee/`             | `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-key-cipher/` (`ExternalKeyCipherService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`; `services/external-kms/` (`ExternalKmsService`, key management) built by `ExternalKmsEeModule` |
 
 `KmsCoreModule.create` loads the root key (from the env key or the HSM, bootstrapping it on a new instance) before any
 service exists and passes the same `RootKey` to each, so a service never runs without it. The module exposes
@@ -81,9 +81,16 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
   `rootKeyWrapper.assertEntitled()`; migrations answer `true`. External KMS: the caller
   (`src/ee/services/external-kms/external-kms-service.ts`) checks the plan on create, update and GCP key listing;
   using an existing external key is never gated.
-- **External KMS lives in `ee/`** but its rows are part of the `KmsKey` entity, owned by `KmsKeyStore`. CE hands the
-  enterprise hook the org data-key cipher on every call, so `ee/` never holds the community module, and CE never
-  imports `@app/ee/**` (lint). Without the hook, external keys and an HSM root config fail with a readable error.
+- **External KMS lives in `ee/`** but its rows are part of the `KmsKey` entity, owned by `KmsKeyStore`. It is two
+  pieces built at different times, and nothing else in CE knows about external key management:
+  - `ExternalKeyCipherService` (the `TExternalKmsHook`: encrypt, decrypt) is built with `KmsCoreEeModule` *before*
+    KMS Core, which calls it whenever a data key sits behind AWS or GCP. It cannot hold KMS Core, so CE hands it the
+    org data-key cipher on every call.
+  - `ExternalKmsService` (`TExternalKmsService`: create, update, delete, read, list, GCP key listing) is built by
+    `ExternalKmsEeModule` in `domains.ts` *after* KMS Core, from `kmsDataKeyService`. KMS Core never calls it; the
+    type lives in CE only so legacy code can import it from `ce/module`.
+  CE never imports `@app/ee/**` (lint). Without the hook, external keys and an HSM root config fail with a readable
+  error.
 - **Migrations and scripts** use `startStandaloneKmsCore` from `domains.ts`: every query runs on the connection it is
   given (a migration's own transaction, so KMS Core's transactions nest as savepoints), only the root key is loaded,
   and there is no cache. It returns the module; take the services from it.

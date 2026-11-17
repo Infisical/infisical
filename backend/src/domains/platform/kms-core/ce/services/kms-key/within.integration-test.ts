@@ -3,7 +3,6 @@ import { sealKnexTransaction } from "@app/domains/lib/transactions";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
-import { TKmsDataKeyService } from "../data-key/service";
 import { KmsKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -15,13 +14,7 @@ describe("KmsKeyService.within on Postgres", () => {
 
   const newService = () => {
     const { transactionRunner, stores } = buildKmsCoreStoreAccess(h.db, () => h.db);
-    return new KmsKeyService(
-      transactionRunner,
-      stores,
-      RootKey.generate(),
-      undefined,
-      {} as unknown as TKmsDataKeyService
-    );
+    return new KmsKeyService(transactionRunner, stores, RootKey.generate(), undefined);
   };
 
   test("should decrypt a pre-rotation ciphertext with a decryptor used after the caller's transaction ended", async () => {

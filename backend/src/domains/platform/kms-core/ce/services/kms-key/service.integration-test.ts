@@ -5,7 +5,6 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
-import { TKmsDataKeyService } from "../data-key/service";
 import { KmsKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -17,13 +16,7 @@ describe("KmsKeyService on Postgres", () => {
 
   const newService = () => {
     const { transactionRunner, stores } = buildKmsCoreStoreAccess(h.db, () => h.db);
-    return new KmsKeyService(
-      transactionRunner,
-      stores,
-      RootKey.generate(),
-      undefined,
-      {} as unknown as TKmsDataKeyService
-    );
+    return new KmsKeyService(transactionRunner, stores, RootKey.generate(), undefined);
   };
 
   // Saving writes every attribute it read, so an edit that read before a concurrent one committed would write

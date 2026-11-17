@@ -29,7 +29,7 @@ export type {
   TKmsDataKeyTransaction,
   TEncryptWithKmsDataKeyDTO
 } from "./services/data-key/service";
-export type { TExternalKmsDetails } from "./services/dependencies";
+export type { TExternalKmsDetails, TExternalKmsService } from "./services/dependencies";
 export { ReadFrom } from "@app/domains/lib/data-access";
 export type { TReadOptions } from "@app/domains/lib/data-access";
 export { KmsKeyOrderBy } from "./services/kms-key/service";
@@ -104,7 +104,7 @@ export class KmsCoreModule {
     );
     const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
     const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
-    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, kmsDataKeyService);
+    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms);
     return new KmsCoreModule(kmsRootKeyService, kmsKeyService, kmsDataKeyService);
   }
 

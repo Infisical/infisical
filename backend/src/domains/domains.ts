@@ -11,6 +11,7 @@ import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
+import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
@@ -70,7 +71,7 @@ const buildKmsCore = async ({
   keyStore?: TDomainKeyStore;
   skipRotationState?: boolean;
 }) => {
-  const kmsCoreEe = await KmsCoreEeModule.create({ db, readKnex, hsmConfig: envConfig, isHsmEntitled });
+  const kmsCoreEe = await KmsCoreEeModule.create({ hsmConfig: envConfig, isHsmEntitled });
   const kmsCore = await KmsCoreModule.create({
     db,
     readKnex,
@@ -149,6 +150,11 @@ export const createDomains = async (deps: TDomainDeps) => {
     keyStore: deps.keyStore
   });
   kmsCore.start(deps.cronJob);
+  const externalKms = new ExternalKmsEeModule({
+    db: deps.db,
+    readKnex: () => deps.db.replicaNode(),
+    kmsDataKeyService: kmsCore.kmsDataKeyService
+  });
 
-  return { license, licenseBilling, kmsCoreEe, kmsCore, organizationsProjects, certManager, agentVault };
+  return { license, licenseBilling, kmsCoreEe, kmsCore, externalKms, organizationsProjects, certManager, agentVault };
 };

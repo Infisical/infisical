@@ -97,14 +97,7 @@ export class FakeKmsCore {
         "signWithKmsKey",
         "verifyWithKmsKey",
         "generateMac",
-        "verifyMac",
-        "createExternalKms",
-        "updateExternalKms",
-        "deleteExternalKms",
-        "getExternalKms",
-        "getExternalKmsByName",
-        "listExternalKms",
-        "fetchGcpKeys"
+        "verifyMac"
       ]
     );
     this.kmsKeyService = { ...kmsKeys, within: () => kmsKeys };

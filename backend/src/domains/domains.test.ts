@@ -11,6 +11,11 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("./platform/kms-core/ee/module", () => ({
   KmsCoreEeModule: { create: vi.fn(async () => ({ hooks: {} })) }
 }));
+vi.mock("./platform/kms-core/ee/external-kms-module", () => ({
+  ExternalKmsEeModule: class {
+    readonly externalKmsService = {};
+  }
+}));
 const createKmsCore = vi.hoisted(() => vi.fn(async () => ({ start: vi.fn() })));
 vi.mock("./platform/kms-core/ce/module", () => ({
   KmsCoreModule: { create: createKmsCore }

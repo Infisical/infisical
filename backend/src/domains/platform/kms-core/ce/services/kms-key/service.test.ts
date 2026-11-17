@@ -8,73 +8,25 @@ import { DataKey, TCipherPair } from "../../models/data-key";
 import { KmsKey, KmsKeyUsage } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
-import { TKmsDataKeyService } from "../data-key/service";
-import {
-  TCreateExternalKmsInput,
-  TExternalKmsDetails,
-  TExternalKmsHook,
-  TExternalKmsSummary,
-  TUpdateExternalKmsInput
-} from "../dependencies";
+import { TExternalKmsHook } from "../dependencies";
 import { KmsKeyService } from "./service";
-
-const fakeDetails = (kmsId: string, orgId: string): TExternalKmsDetails =>
-  ({
-    id: kmsId,
-    orgId,
-    external: { id: "ext", kmsKeyId: kmsId, provider: "aws", providerInput: {} }
-  }) as unknown as TExternalKmsDetails;
 
 const setup = (options: { withHook?: boolean } = {}) => {
   const memory = new InMemoryKmsCoreStores();
   const rootKey = RootKey.generate();
   const orgDataKey = DataKey.generate();
-  const createdWith: TCipherPair[] = [];
-  const seenCiphers: TCipherPair[] = [];
-
-  const kmsDataKeyService = {
-    createCipherPairWithDataKey: async () => {
-      const cipher = orgDataKey.toCipherPair();
-      createdWith.push(cipher);
-      return cipher;
-    }
-  } as unknown as TKmsDataKeyService;
 
   const encrypt = vi.fn(async (_ref: unknown, _cipher: TCipherPair, plainText: Buffer) =>
     Buffer.concat([Buffer.from("ext:"), plainText])
   );
   const decrypt = vi.fn(async (_ref: unknown, _cipher: TCipherPair, blob: Buffer) => Buffer.from(blob.subarray(4)));
-  const create = vi.fn(async (input: TCreateExternalKmsInput, cipher: TCipherPair) => {
-    seenCiphers.push(cipher);
-    return fakeDetails("new", input.orgId);
-  });
-  const update = vi.fn(async (key: KmsKey, _input: TUpdateExternalKmsInput, cipher: TCipherPair) => {
-    seenCiphers.push(cipher);
-    return fakeDetails(key.id, "org");
-  });
-  const remove = vi.fn(async (key: KmsKey, cipher: TCipherPair) => {
-    seenCiphers.push(cipher);
-    return fakeDetails(key.id, "org");
-  });
-  const get = vi.fn(async (key: KmsKey, cipher: TCipherPair) => {
-    seenCiphers.push(cipher);
-    return fakeDetails(key.id, "org");
-  });
-  const list = vi.fn<(orgId: string) => Promise<TExternalKmsSummary[]>>(async () => []);
-  const fetchGcpKeys = vi.fn<(input: { credential: unknown; gcpRegion: string }) => Promise<{ keys: string[] }>>(
-    async () => ({
-      keys: ["k1"]
-    })
-  );
-  const hook: TExternalKmsHook = { encrypt, decrypt, create, update, delete: remove, get, list, fetchGcpKeys };
-  const hookCalls = { encrypt, create, update, delete: remove, get, list };
+  const hook: TExternalKmsHook = { encrypt, decrypt };
 
   const service = new KmsKeyService(
     memory.transactionRunner,
     memory.stores,
     rootKey,
-    options.withHook === false ? undefined : hook,
-    kmsDataKeyService
+    options.withHook === false ? undefined : hook
   );
 
   const seedOrgKey = async (orgId: string) => {
@@ -93,7 +45,7 @@ const setup = (options: { withHook?: boolean } = {}) => {
     return key;
   };
 
-  return { service, memory, hookCalls, orgDataKey, createdWith, seenCiphers, seedOrgKey, seedExternalKey };
+  return { service, memory, hookCalls: { encrypt }, seedOrgKey, seedExternalKey };
 };
 
 const orgId = () => crypto.randomUUID();
@@ -638,105 +590,19 @@ describe("KmsKeyService cryptography", () => {
   });
 });
 
-describe("KmsKeyService external KMS", () => {
-  test("should create with the org cipher the data key service hands out", async () => {
+describe("KmsKeyService external keys", () => {
+  test("should refuse an external key without the enterprise hook", async () => {
     // Setup
-    const { service, hookCalls, createdWith, seenCiphers } = setup();
-    const org = orgId();
-
-    // Action
-    const created = await service.createExternalKms({ orgId: org, provider: { type: "aws", inputs: {} } });
-
-    // Assert
-    expect(created.id).toBe("new");
-    expect(hookCalls.create).toHaveBeenCalledTimes(1);
-    expect(seenCiphers[0]).toBe(createdWith[0]);
-  });
-
-  test("should open an existing key's inputs with its org's existing data key", async () => {
-    // Setup
-    const { service, hookCalls, orgDataKey, seenCiphers, seedOrgKey, seedExternalKey } = setup();
+    const { service, seedOrgKey, seedExternalKey } = setup({ withHook: false });
     const org = orgId();
     await seedOrgKey(org);
     const key = await seedExternalKey(org);
 
     // Action
-    await service.updateExternalKms(key.id, { description: "d" });
-    await service.getExternalKms(key.id);
-    await service.deleteExternalKms(key.id);
+    const result = service.encryptWithKmsKey({ kmsId: key.id });
 
     // Assert
-    expect(hookCalls.update).toHaveBeenCalledTimes(1);
-    expect(hookCalls.get).toHaveBeenCalledTimes(1);
-    expect(hookCalls.delete).toHaveBeenCalledTimes(1);
-    const sealed = seenCiphers[0].encryptor({ plainText: Buffer.from("inputs") }).cipherTextBlob;
-    expect(orgDataKey.decrypt(sealed).toString()).toBe("inputs");
-  });
-
-  test("should answer not found for a key that is not external", async () => {
-    // Setup
-    const { service, hookCalls, seedOrgKey } = setup();
-    const org = orgId();
-    await seedOrgKey(org);
-    const internal = await service.generateKmsKey(customerKey(org, "p1"));
-
-    // Action
-    const result = service.getExternalKms(internal.id);
-
-    // Assert
-    await expect(result).rejects.toThrow(`External KMS with ID '${internal.id}' not found`);
-    expect(hookCalls.get).not.toHaveBeenCalled();
-  });
-
-  test("should look an external key up by name", async () => {
-    // Setup
-    const { service, hookCalls, seedOrgKey, seedExternalKey } = setup();
-    const org = orgId();
-    await seedOrgKey(org);
-    const key = await seedExternalKey(org, "by-name");
-    await service.generateKmsKey(customerKey(org, "p1", "internal-one"));
-
-    // Action
-    const found = await service.getExternalKmsByName(org, "by-name");
-    const missing = service.getExternalKmsByName(org, "internal-one");
-
-    // Assert
-    expect(found.id).toBe(key.id);
-    expect(hookCalls.get).toHaveBeenCalledTimes(1);
-    await expect(missing).rejects.toThrow("External KMS with name 'internal-one' not found");
-  });
-
-  test("should list keys and fetch GCP keys through the hook", async () => {
-    // Setup
-    const { service, hookCalls } = setup();
-
-    // Action
-    const keys = await service.listExternalKms("org");
-    const gcp = await service.fetchGcpKeys({ credential: {}, gcpRegion: "us" });
-
-    // Assert
-    expect(keys).toEqual([]);
-    expect(gcp).toEqual({ keys: ["k1"] });
-    expect(hookCalls.list).toHaveBeenCalledWith("org");
-  });
-
-  test("should refuse every external operation without the enterprise hook", async () => {
-    // Setup
-    const { service } = setup({ withHook: false });
-
-    // Action
-    const results = [
-      service.createExternalKms({ orgId: "o", provider: { type: "aws", inputs: {} } }),
-      service.getExternalKms(crypto.randomUUID()),
-      service.listExternalKms("o"),
-      service.fetchGcpKeys({ credential: {}, gcpRegion: "us" })
-    ];
-
-    // Assert
-    for (const result of results) {
-      // eslint-disable-next-line no-await-in-loop
-      await expect(result).rejects.toThrow("External KMS keys require the Infisical enterprise edition.");
-    }
+    await expect(result).rejects.toThrow("External KMS keys require the Infisical enterprise edition.");
   });
 
   test("should encrypt and decrypt with an external key through the provider", async () => {
