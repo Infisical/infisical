@@ -1,6 +1,6 @@
-import nodeCrypto from "node:crypto";
-
 import { expect, test, vi } from "vitest";
+
+import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { superAdminServiceFactory } from "./super-admin-service";
 
@@ -16,8 +16,7 @@ vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), erro
 const BREACHED_PASSWORD = "Breached-Password-7!";
 
 test("admin signup refuses a breached password before creating the account", async () => {
-  const hash = nodeCrypto.createHash("sha1").update(BREACHED_PASSWORD, "utf8").digest("hex").toUpperCase();
-  mocks.get.mockResolvedValue({ data: `${hash.slice(5)}:3\r\n` });
+  mocks.get.mockResolvedValue(breachedRangeResponse(BREACHED_PASSWORD));
   const userDAL = { findOne: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
   const service = superAdminServiceFactory({ userDAL } as never);
 

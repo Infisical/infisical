@@ -1,8 +1,7 @@
-import nodeCrypto from "node:crypto";
-
 import { afterAll, beforeAll, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { authPaswordServiceFactory } from "./auth-password-service";
 import { ResetPasswordV2Type } from "./auth-password-type";
@@ -18,11 +17,6 @@ vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), erro
 
 const CURRENT_PASSWORD = "Current-Password-7!";
 const BREACHED_PASSWORD = "Breached-Password-7!";
-
-const rangeListing = (password: string) => {
-  const hash = nodeCrypto.createHash("sha1").update(password, "utf8").digest("hex").toUpperCase();
-  return { data: `${hash.slice(5)}:3\r\n` };
-};
 
 const setup = async () => {
   const keyStore = { setItemWithExpiryNX: vi.fn() };
@@ -55,7 +49,7 @@ afterAll(() => {
 
 beforeEach(() => {
   mocks.get.mockReset();
-  mocks.get.mockResolvedValue(rangeListing(BREACHED_PASSWORD));
+  mocks.get.mockResolvedValue(breachedRangeResponse(BREACHED_PASSWORD));
 });
 
 describe("breached password", () => {

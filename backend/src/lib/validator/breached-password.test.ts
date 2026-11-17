@@ -13,9 +13,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@app/lib/crypto/cryptography", async () => ({
   crypto: { nativeCrypto: await import("node:crypto") }
 }));
-vi.mock("../config/env", () => ({ getConfig: () => mocks.config }));
-vi.mock("../config/request", () => ({ request: { get: mocks.get } }));
-vi.mock("../logger", () => ({ logger: { warn: mocks.warn } }));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => mocks.config }));
+vi.mock("@app/lib/config/request", () => ({ request: { get: mocks.get } }));
+vi.mock("@app/lib/logger", () => ({ logger: { warn: mocks.warn } }));
 
 const PASSWORD = "Correct-Horse-Battery-7!";
 const HASH = nodeCrypto.createHash("sha1").update(PASSWORD, "utf8").digest("hex").toUpperCase();

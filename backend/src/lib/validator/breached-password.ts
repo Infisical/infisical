@@ -1,9 +1,8 @@
+import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
-
-import { getConfig } from "../config/env";
-import { request } from "../config/request";
-import { BadRequestError } from "../errors";
-import { logger } from "../logger";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 const PWNED_PASSWORDS_RANGE_URL = "https://api.pwnedpasswords.com/range";
 const REQUEST_TIMEOUT_MS = 3000;

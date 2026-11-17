@@ -1,8 +1,7 @@
-import nodeCrypto from "node:crypto";
-
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { authSignupServiceFactory } from "./auth-signup-service";
 import { CompleteAccountType } from "./auth-signup-type";
@@ -17,11 +16,6 @@ vi.mock("@app/lib/config/request", () => ({ request: { get: mocks.get } }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 const BREACHED_PASSWORD = "Breached-Password-7!";
-
-const rangeListing = (password: string) => {
-  const hash = nodeCrypto.createHash("sha1").update(password, "utf8").digest("hex").toUpperCase();
-  return { data: `${hash.slice(5)}:3\r\n` };
-};
 
 const completeEmailSignup = (user: { isAccepted: boolean }) => {
   const authDAL = { transaction: vi.fn() };
@@ -56,7 +50,7 @@ afterAll(() => {
 
 beforeEach(() => {
   mocks.get.mockReset();
-  mocks.get.mockResolvedValue(rangeListing(BREACHED_PASSWORD));
+  mocks.get.mockResolvedValue(breachedRangeResponse(BREACHED_PASSWORD));
 });
 
 test("signup refuses a breached password before completing the account", async () => {
