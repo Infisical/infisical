@@ -25,6 +25,7 @@ import {
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 type TMfaMethodOption = { value: MfaMethod; label: string };
@@ -41,18 +42,31 @@ export const OrgGenericAuthSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const { mutateAsync } = useUpdateOrg();
+  const { data: serverDetails } = useFetchServerStatus();
 
+  // Email codes need SMTP, and the backend refuses to enforce a list that allows email without it.
+  const isEmailAvailable = serverDetails?.emailConfigured ?? true;
+  const methodOptions = isEmailAvailable
+    ? MFA_METHOD_OPTIONS
+    : MFA_METHOD_OPTIONS.filter((option) => option.value !== MfaMethod.EMAIL);
+
+  // An org that never picked a method has no list and enforces email, the same fallback the backend uses.
   const allowedMethods = currentOrg?.allowedMfaMethods?.length
     ? currentOrg.allowedMfaMethods
     : [MfaMethod.EMAIL];
-  const selectedOptions = MFA_METHOD_OPTIONS.filter((option) =>
-    allowedMethods.includes(option.value)
-  );
+  const selectedOptions = methodOptions.filter((option) => allowedMethods.includes(option.value));
 
   const handleEnforceMfaToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
     if (!subscription?.enforceMfa) {
       handlePopUpOpen("upgradePlan");
+      return;
+    }
+    if (value && !selectedOptions.length) {
+      createNotification({
+        text: "Select at least one allowed MFA method before enforcing MFA.",
+        type: "error"
+      });
       return;
     }
 
@@ -118,32 +132,32 @@ export const OrgGenericAuthSection = () => {
             </OrgPermissionCan>
           </CardAction>
         </CardHeader>
-        {currentOrg?.enforceMfa && (
-          <CardContent className="max-w-lg px-6 pb-6">
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Field>
-                  <FieldLabel htmlFor="org-mfa-methods">Allowed MFA Methods</FieldLabel>
-                  <Combobox
-                    id="org-mfa-methods"
-                    multiple
-                    isClearable={false}
-                    isDisabled={!isAllowed}
-                    value={selectedOptions}
-                    onValueChange={handleUpdateAllowedMfa}
-                    options={MFA_METHOD_OPTIONS}
-                    getOptionValue={(option) => option.value}
-                    getOptionLabel={(option) => option.label}
-                    placeholder="Select methods..."
-                  />
-                  <FieldDescription>
-                    Members sign in with their preferred method from this list.
-                  </FieldDescription>
-                </Field>
-              )}
-            </OrgPermissionCan>
-          </CardContent>
-        )}
+        <CardContent className="max-w-lg px-6 pb-6">
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Field>
+                <FieldLabel htmlFor="org-mfa-methods">Allowed MFA Methods</FieldLabel>
+                <Combobox
+                  id="org-mfa-methods"
+                  multiple
+                  isClearable={false}
+                  isDisabled={!isAllowed}
+                  value={selectedOptions}
+                  onValueChange={handleUpdateAllowedMfa}
+                  options={methodOptions}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  placeholder="Select methods..."
+                />
+                <FieldDescription>
+                  While MFA is enforced, members sign in with their preferred method from this list.
+                  {!isEmailAvailable &&
+                    " Email isn't available because SMTP isn't configured for this instance."}
+                </FieldDescription>
+              </Field>
+            )}
+          </OrgPermissionCan>
+        </CardContent>
         <CardFooter className="min-h-8 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
           <p className="text-sm text-muted">
             {currentOrg?.enforceMfa

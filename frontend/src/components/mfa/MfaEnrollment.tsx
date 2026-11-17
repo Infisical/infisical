@@ -10,7 +10,7 @@ import { MFA_METHOD_ICONS, MFA_METHOD_LABELS, VerifyStep } from "./setup";
 type Props = {
   methods: MfaMethod[];
   onComplete: () => void | Promise<void>;
-  onUseRecoveryCode: () => void;
+  onUseRecoveryCode?: () => void;
 };
 
 // Guided factor setup shown at login when an org enforces MFA but the user has not
@@ -53,11 +53,7 @@ export const MfaEnrollment = ({ methods, onComplete, onUseRecoveryCode }: Props)
 
       {selectedMethod ? (
         <>
-          <VerifyStep
-            method={selectedMethod}
-            onVerified={handleVerified}
-            onUseRecoveryCode={onUseRecoveryCode}
-          />
+          <VerifyStep method={selectedMethod} onVerified={handleVerified} />
           {methods.length > 1 && (
             <button
               type="button"
@@ -86,6 +82,15 @@ export const MfaEnrollment = ({ methods, onComplete, onUseRecoveryCode }: Props)
             );
           })}
         </div>
+      )}
+
+      {onUseRecoveryCode && (
+        <p className="text-center text-sm text-muted">
+          Can&apos;t finish setup?{" "}
+          <button type="button" onClick={onUseRecoveryCode} className={linkClassName}>
+            Use a recovery code
+          </button>
+        </p>
       )}
     </div>
   );

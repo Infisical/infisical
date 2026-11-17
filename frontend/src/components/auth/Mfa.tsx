@@ -69,6 +69,8 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
   const [hasSavedRecoveryCodes, setHasSavedRecoveryCodes] = useState(false);
   const wasMfaEnabledRef = useRef(true);
+  // Recovery codes exist only while 2FA is on; unknown counts as yes so setup never hides a working way in.
+  const [hasRecoveryCodes, setHasRecoveryCodes] = useState(true);
   // Factor setup clears the MFA token so its calls run on the access token; a recovery-code
   // login out of setup needs it back.
   const mfaTokenRef = useRef(getMfaTempToken());
@@ -100,6 +102,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     fetchUserDetails()
       .then((user) => {
         wasMfaEnabledRef.current = Boolean(user.isMfaEnabled);
+        setHasRecoveryCodes(Boolean(user.isMfaEnabled));
       })
       .catch(() => {
         // Keep the safe default (treat as enabled) so existing codes are never rotated.
@@ -373,7 +376,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
             await successCallback();
             await loadMethods();
           }}
-          onUseRecoveryCode={switchToRecoveryCode}
+          onUseRecoveryCode={hasRecoveryCodes ? switchToRecoveryCode : undefined}
         />
       </AuthPageLayout>
     );
@@ -436,7 +439,6 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
             variant="outline"
             size="lg"
             isFullWidth
-            className="text-danger"
             onClick={() => {
               setMfaCode("");
               setShowMoreOptions(false);

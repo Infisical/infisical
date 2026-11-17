@@ -22,17 +22,14 @@ import { EnrollmentStepUp } from "./EnrollmentStepUp";
 type Props = {
   method: MfaMethod;
   onVerified: () => void | Promise<void>;
-  onUseRecoveryCode?: () => void;
   variant?: React.ComponentProps<typeof Button>["variant"];
 };
 
 const TotpVerify = ({
   onVerified,
-  onUseRecoveryCode,
   variant
 }: {
   onVerified: Props["onVerified"];
-  onUseRecoveryCode: Props["onUseRecoveryCode"];
   variant: Props["variant"];
 }) => {
   const [hasRegistered, setHasRegistered] = useState(false);
@@ -83,7 +80,6 @@ const TotpVerify = ({
       <EnrollmentStepUp
         challenge={stepUpChallenge}
         variant={variant}
-        onUseRecoveryCode={onUseRecoveryCode}
         onVerified={async () => {
           setEnrollStepUpChallenge(null);
           if (registrationError) await refetchRegistration();
@@ -139,11 +135,9 @@ const TotpVerify = ({
 
 const WebAuthnVerify = ({
   onVerified,
-  onUseRecoveryCode,
   variant
 }: {
   onVerified: Props["onVerified"];
-  onUseRecoveryCode: Props["onUseRecoveryCode"];
   variant: Props["variant"];
 }) => {
   const [stepUpChallenge, setStepUpChallenge] = useState<TMfaStepUpChallenge | null>(null);
@@ -173,7 +167,6 @@ const WebAuthnVerify = ({
       <EnrollmentStepUp
         challenge={stepUpChallenge}
         variant={variant}
-        onUseRecoveryCode={onUseRecoveryCode}
         onVerified={() => {
           setStepUpChallenge(null);
           createNotification({
@@ -209,21 +202,7 @@ const WebAuthnVerify = ({
   );
 };
 
-export const VerifyStep = ({
-  method,
-  onVerified,
-  onUseRecoveryCode,
-  variant = "project"
-}: Props) => {
-  if (method === MfaMethod.TOTP)
-    return (
-      <TotpVerify onVerified={onVerified} onUseRecoveryCode={onUseRecoveryCode} variant={variant} />
-    );
-  return (
-    <WebAuthnVerify
-      onVerified={onVerified}
-      onUseRecoveryCode={onUseRecoveryCode}
-      variant={variant}
-    />
-  );
+export const VerifyStep = ({ method, onVerified, variant = "project" }: Props) => {
+  if (method === MfaMethod.TOTP) return <TotpVerify onVerified={onVerified} variant={variant} />;
+  return <WebAuthnVerify onVerified={onVerified} variant={variant} />;
 };
