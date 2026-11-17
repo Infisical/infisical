@@ -1022,7 +1022,12 @@ export const CertificatesTable = ({
                       {visibleColumns.has("status") && (
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                            {!(
+                              pendingRevocation.isPending &&
+                              displayStatus.status === CertStatus.ACTIVE
+                            ) && (
+                              <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                            )}
                             {pendingRevocation.isPending &&
                               (pendingRevocation.revokeReplacesRequestReason ? (
                                 <Tooltip>
