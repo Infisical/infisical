@@ -2788,6 +2788,7 @@ interface CreateSecretImportEvent {
     importToSecretPath: string;
     isReplication?: boolean;
     enforcedBySecretChangePolicyId?: string;
+    enforcedBySecretChangePolicyName?: string;
   };
 }
 
@@ -2801,6 +2802,7 @@ interface UpdateSecretImportEvent {
     position: number;
     isReplication?: boolean;
     enforcedBySecretChangePolicyId?: string;
+    enforcedBySecretChangePolicyName?: string;
     orderBefore?: {
       environment: string;
       secretPath: string;
@@ -2816,6 +2818,7 @@ interface SecretImportReplicationEnforcedEvent {
   type: EventType.SECRET_IMPORT_REPLICATION_ENFORCED;
   metadata: {
     secretChangePolicyId: string;
+    secretChangePolicyName: string;
     secretImportId: string;
     sourceEnvironment: string;
     sourceSecretPath: string;

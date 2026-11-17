@@ -1308,7 +1308,7 @@ const Form = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Require approval for imported secrets?</AlertDialogTitle>
+            <AlertDialogTitle>Require Approval for Imported Secrets?</AlertDialogTitle>
             <AlertDialogDescription>
               When you save this policy, existing imports from this project into the paths it covers
               become replication imports. They keep their current values, but every later change to

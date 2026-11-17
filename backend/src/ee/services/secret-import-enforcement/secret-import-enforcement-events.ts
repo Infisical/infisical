@@ -12,6 +12,7 @@ export const SecretImportReplicationConversionRequestedEventV1 = defineEvent({
   data: z.object({
     secretImportId: z.string().uuid(),
     secretChangePolicyId: z.string().uuid(),
+    secretChangePolicyName: z.string(),
     projectId: z.string().min(1),
     environment: z.string().min(1),
     secretPath: z.string().min(1)

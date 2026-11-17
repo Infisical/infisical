@@ -82,7 +82,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
             importToEnvironment: req.body.environment,
             importToSecretPath: req.body.path,
             isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId
+            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
+            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
           }
         }
       });
@@ -180,7 +181,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
             importToEnvironment: req.body.environment,
             importToSecretPath: req.body.path,
             isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId
+            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
+            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
           }
         }
       });

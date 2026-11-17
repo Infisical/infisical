@@ -45,6 +45,11 @@ export const useCreateSecretApprovalPolicy = () => {
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[1] === "Secret-approval-policy" &&
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
       queryClient.invalidateQueries({
@@ -94,6 +99,11 @@ export const useUpdateSecretApprovalPolicy = () => {
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[1] === "Secret-approval-policy" &&
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
       queryClient.invalidateQueries({
@@ -117,6 +127,11 @@ export const useDeleteSecretApprovalPolicy = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[1] === "Secret-approval-policy" &&
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })

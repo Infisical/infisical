@@ -95,7 +95,9 @@ export const secretImportReplicationConversionConsumerFactory = ({
       runEventsConcurrentlyByKey(events, {
         keyOf: (event) => {
           const parsed = SecretImportReplicationConversionRequestedEventV1.data.safeParse(event.data);
-          return parsed.success ? `${parsed.data.environment}:${parsed.data.secretPath}` : undefined;
+          return parsed.success
+            ? `${parsed.data.projectId}:${parsed.data.environment}:${parsed.data.secretPath}`
+            : undefined;
         },
         concurrency: CONVERSION_CONCURRENCY,
         handleEvent: $handleEvent

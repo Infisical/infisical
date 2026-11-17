@@ -162,6 +162,7 @@ export const secretImportEnforcementServiceFactory = ({
         events.push({
           secretImportId: id,
           secretChangePolicyId: policy.id,
+          secretChangePolicyName: policy.name,
           projectId: data.projectId,
           environment,
           secretPath
@@ -176,7 +177,9 @@ export const secretImportEnforcementServiceFactory = ({
     return events.length;
   };
 
-  // What the replication job would copy from the source right now, read the way the job reads it.
+  // What the replication job would copy from the source right now, read the way the job reads it. Reads go to the
+  // primary: a source change that lands mid-conversion has to show up in the final comparison, and a lagging
+  // replica could hide it.
   const $computeSeed = async ({
     projectId,
     orgId,
@@ -188,7 +191,8 @@ export const secretImportEnforcementServiceFactory = ({
     sourceEnvironment: string;
     sourcePath: string;
   }) => {
-    const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourcePath);
+    const primary = secretImportDAL.primaryNode();
+    const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourcePath, primary);
     if (!sourceFolder) return [];
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -197,18 +201,27 @@ export const secretImportEnforcementServiceFactory = ({
     });
     const decrypt = (value?: Buffer | null) => (value ? decryptor({ cipherTextBlob: value }).toString() : "");
 
-    const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: sourceFolder.id, type: SecretType.Shared });
-    const sourceSecretImports = await secretImportDAL.find({ folderId: sourceFolder.id });
+    const sourceLocalSecrets = await secretV2BridgeDAL.find(
+      { folderId: sourceFolder.id, type: SecretType.Shared },
+      { tx: primary }
+    );
+    const sourceSecretImports = await secretImportDAL.find({ folderId: sourceFolder.id }, primary);
     const sourceImportedSecrets = await fnSecretsV2FromImports({
       secretImports: sourceSecretImports,
-      secretDAL: secretV2BridgeDAL,
-      folderDAL,
-      secretImportDAL,
+      secretDAL: {
+        find: (filter, opts) => secretV2BridgeDAL.find(filter, { ...opts, tx: primary }),
+        findByFolderIds: (dto) => secretV2BridgeDAL.findByFolderIds({ ...dto, tx: primary })
+      },
+      folderDAL: { findByManySecretPath: (query) => folderDAL.findByManySecretPath(query, primary) },
+      secretImportDAL: {
+        findByFolderIds: (folderIds) => secretImportDAL.findByFolderIds(folderIds, primary),
+        findByIds: (ids) => secretImportDAL.findByIds(ids, primary)
+      },
       decryptor: decrypt,
       viewSecretValue: true,
       hasSecretAccess: () => true,
       projectId,
-      projectFolderGrantDAL,
+      projectFolderGrantDAL: { find: (filter, opts) => projectFolderGrantDAL.find(filter, { ...opts, tx: primary }) },
       actorOrgId: orgId,
       orgDAL,
       kmsService
@@ -227,12 +240,14 @@ export const secretImportEnforcementServiceFactory = ({
 
   const $auditOutcome = async ({
     data,
+    policy,
     sourceEnvironment,
     sourcePath,
     outcome,
     reason
   }: {
     data: TSecretImportReplicationConversionRequestedEventData;
+    policy: { id: string; name: string };
     sourceEnvironment: string;
     sourcePath: string;
     outcome: "converted" | "failed";
@@ -245,7 +260,8 @@ export const secretImportEnforcementServiceFactory = ({
         event: {
           type: EventType.SECRET_IMPORT_REPLICATION_ENFORCED,
           metadata: {
-            secretChangePolicyId: data.secretChangePolicyId,
+            secretChangePolicyId: policy.id,
+            secretChangePolicyName: policy.name,
             secretImportId: data.secretImportId,
             sourceEnvironment,
             sourceSecretPath: sourcePath,
@@ -296,13 +312,25 @@ export const secretImportEnforcementServiceFactory = ({
     const seed = await $computeSeed(seedInput);
     const seedFingerprint = fingerprintReplicatedSecrets(seed);
     const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    // The source's own imports can reach another project, whose secrets keep that project's ciphertext, while the
+    // copy is read with this project's key. So imported values and comments are encrypted again here, not in the
+    // seed, whose fingerprint has to stay stable between the two reads.
+    const encrypt = (value: string) => encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
     const inputSecrets = await Promise.all(
       seed.map(async (secret) => ({
         type: secret.type,
         metadata: secret.metadata ? JSON.stringify(secret.metadata) : [],
         key: secret.key,
-        encryptedValue: secret.encryptedValue,
-        encryptedComment: secret.encryptedComment,
+        encryptedValue:
+          "secretComment" in secret && secret.encryptedValue ? encrypt(secret.secretValue) : secret.encryptedValue,
+        encryptedComment:
+          "secretComment" in secret && secret.encryptedComment
+            ? encrypt(secret.secretComment)
+            : secret.encryptedComment,
         skipMultilineEncoding: secret.skipMultilineEncoding,
         secretMetadata: "rawSecretMetadata" in secret ? (secret.rawSecretMetadata ?? undefined) : undefined,
         references: secret.secretValue ? getAllSecretReferences(secret.secretValue).nestedReferences : [],
@@ -345,10 +373,28 @@ export const secretImportEnforcementServiceFactory = ({
 
     const eventScope = { projectId, environment: destinationFolder.environmentSlug, secretPath: replicationFolderPath };
 
+    // Every write to the copy first checks, under the lock the import's other writers take, that the import is still
+    // the regular import this conversion read. Once something else has made it a replication import, readers see the
+    // reserved folder and only a change request may fill it.
+    const $lockIfStillRegular = async (tx: Knex) => {
+      await secretImportDAL.lockFolderImportPositions(destinationFolder.id, tx);
+      const locked = await secretImportDAL.lockWithFolderAgainstDelete(
+        { importId: secretImportId, folderId: destinationFolder.id, envId: destinationFolder.envId },
+        tx
+      );
+      return Boolean(
+        locked &&
+        !locked.isReplication &&
+        locked.importEnv === secretImport.importEnv.id &&
+        locked.importPath === secretImport.importPath
+      );
+    };
+
     // Nothing reads the reserved folder until the import points at it, so the copy is written in chunks, each in its
     // own transaction, and the import is flipped afterwards in a short transaction of its own. A retry of this same
     // conversion starts the copy over.
-    await secretImportDAL.transaction(async (tx: Knex) => {
+    const isCleared = await secretImportDAL.transaction(async (tx: Knex) => {
+      if (!(await $lockIfStillRegular(tx))) return false;
       const staleCopy = await secretV2BridgeDAL.delete({ folderId: replicationFolder.id }, tx);
       if (staleCopy.length) {
         await emitSecretsModified(
@@ -358,15 +404,18 @@ export const secretImportEnforcementServiceFactory = ({
           tx
         );
       }
+      return true;
     });
+    if (!isCleared) return SecretImportConversionOutcome.Skipped;
     const copySecrets = inputSecrets.map((secret, index) => ({
       ...secret,
       parentSecretVersionId: sourceSecretLatestVersions[seed[index].id]
     }));
     for (const batch of chunkArray(copySecrets, COPY_BATCH_SIZE)) {
       // eslint-disable-next-line no-await-in-loop
-      await secretImportDAL.transaction((tx: Knex) =>
-        fnSecretBulkInsert({
+      const isWritten = await secretImportDAL.transaction(async (tx: Knex) => {
+        if (!(await $lockIfStillRegular(tx))) return false;
+        await fnSecretBulkInsert({
           folderId: replicationFolder.id,
           orgId: project.orgId,
           eventEmitter,
@@ -379,24 +428,14 @@ export const secretImportEnforcementServiceFactory = ({
           folderCommitService,
           inputSecrets: batch,
           tx
-        })
-      );
+        });
+        return true;
+      });
+      if (!isWritten) return SecretImportConversionOutcome.Skipped;
     }
 
     const converted = await secretImportDAL.transaction(async (tx: Knex) => {
-      await secretImportDAL.lockFolderImportPositions(destinationFolder.id, tx);
-      const locked = await secretImportDAL.lockWithFolderAgainstDelete(
-        { importId: secretImportId, folderId: destinationFolder.id, envId: destinationFolder.envId },
-        tx
-      );
-      if (
-        !locked ||
-        locked.isReplication ||
-        locked.importEnv !== secretImport.importEnv.id ||
-        locked.importPath !== secretImport.importPath
-      ) {
-        return undefined;
-      }
+      if (!(await $lockIfStillRegular(tx))) return undefined;
 
       const [updated] = await secretImportDAL.update(
         { id: secretImportId, folderId: destinationFolder.id },
@@ -440,7 +479,7 @@ export const secretImportEnforcementServiceFactory = ({
       });
     }
 
-    await $auditOutcome({ data, sourceEnvironment, sourcePath, outcome: "converted" });
+    await $auditOutcome({ data, policy, sourceEnvironment, sourcePath, outcome: "converted" });
     logger.info(
       `Converted secret import to a replication import [secretImportId=${secretImportId}] [secretChangePolicyId=${data.secretChangePolicyId}] [secrets=${seed.length}]`
     );
@@ -455,6 +494,7 @@ export const secretImportEnforcementServiceFactory = ({
         const secretImport = await secretImportDAL.findById(data.secretImportId, secretImportDAL.primaryNode());
         await $auditOutcome({
           data,
+          policy: { id: data.secretChangePolicyId, name: data.secretChangePolicyName },
           sourceEnvironment: secretImport?.importEnv.slug ?? "",
           sourcePath: secretImport?.importPath ?? "",
           outcome: "failed",

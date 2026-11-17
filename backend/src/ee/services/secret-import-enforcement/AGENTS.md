@@ -29,9 +29,14 @@ change requests. Cross-project imports are never converted and stay live.
 - Import positions in a folder change only under `secretImportDAL.lockFolderImportPositions` (an advisory lock), taken
   before any row lock. The reserved row goes right after its import (`insertReservedImportRow`).
 - The conversion fills the reserved folder before the import points at it, so readers never see an empty copy. If the
-  source changed while the copy was written, the import is marked unsuccessful with
+  source changed while the copy was written (read from the primary), the import is marked unsuccessful with
   `SOURCE_CHANGED_DURING_CONVERSION_STATUS` instead of copying the change, so the change still needs approval
   (a resync opens the request).
+- Every conversion write to the copy re-checks, under the folder's position lock, that the import is still regular
+  with the same source. `createImport` and `updateImport` empty the reserved folder in the transaction that makes an
+  import a replication import (`$clearPendingCopy`), so a conversion they raced never exposes values without approval.
+- Imported values are encrypted again with the project's key before they are copied, since a source's own imports can
+  reach another project.
 - `deleteImport` removes the reserved folder whether or not the import is a replication import yet, so a conversion
   that never flipped leaves no orphan.
 - On the conversion's final outbox attempt the import stays a regular import and the failure is audited as

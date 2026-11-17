@@ -34,6 +34,7 @@ import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-f
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
+import { emitSecretsModified } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
@@ -58,7 +59,10 @@ type TSecretImportServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "find" | "findByFolderIds" | "delete" | "invalidateSecretCacheByProjectId"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -180,6 +184,40 @@ export const secretImportServiceFactory = ({
     });
   };
 
+  // A one-time conversion of this import may already have copied part of the source into its reserved folder. Once
+  // the import is a replication import, readers see that folder, so it starts empty and the replication job fills
+  // it through a change request.
+  const $clearPendingCopy = async (
+    {
+      importId,
+      folder,
+      projectId,
+      environment
+    }: { importId: string; folder: { id: string; path: string }; projectId: string; environment: string },
+    tx: Knex
+  ) => {
+    const replicationFolder = await folderDAL.findOne(
+      { parentId: folder.id, name: getReplicationFolderName(importId), isReserved: true },
+      tx
+    );
+    if (!replicationFolder) return;
+
+    const deleted = await secretV2BridgeDAL.delete({ folderId: replicationFolder.id }, tx);
+    if (deleted.length) {
+      await emitSecretsModified(
+        eventEmitter,
+        {
+          projectId,
+          environment,
+          secretPath: path.join(folder.path, replicationFolder.name),
+          modificationType: EventModificationType.Deleted
+        },
+        deleted,
+        tx
+      );
+    }
+  };
+
   // Makes a regular same-project import a replication import. Its copy starts empty and is filled by the
   // replication job as the actor, so the values arrive as a change request wherever a policy applies to them.
   const $forceReplication = async ({
@@ -220,6 +258,7 @@ export const secretImportServiceFactory = ({
         },
         tx
       );
+      await $clearPendingCopy({ importId, folder, projectId, environment }, tx);
       await $emitImportModified(
         importId,
         { projectId, environment, secretPath: folder.path },
@@ -446,12 +485,23 @@ export const secretImportServiceFactory = ({
           actorOrgId
         });
         if (converted) {
-          return { ...secImport, ...converted, importEnv, enforcedBySecretChangePolicyId: latePolicy.id };
+          return {
+            ...secImport,
+            ...converted,
+            importEnv,
+            enforcedBySecretChangePolicyId: latePolicy.id,
+            enforcedBySecretChangePolicyName: latePolicy.name
+          };
         }
       }
     }
 
-    return { ...secImport, importEnv, enforcedBySecretChangePolicyId: enforcingPolicy?.id };
+    return {
+      ...secImport,
+      importEnv,
+      enforcedBySecretChangePolicyId: enforcingPolicy?.id,
+      enforcedBySecretChangePolicyName: enforcingPolicy?.name
+    };
   };
 
   const updateImport = async ({
@@ -616,6 +666,7 @@ export const secretImportServiceFactory = ({
           },
           tx
         );
+        await $clearPendingCopy({ importId: doc.id, folder, projectId, environment }, tx);
       }
 
       await $emitImportModified(
@@ -643,7 +694,37 @@ export const secretImportServiceFactory = ({
       });
     }
 
-    return { ...updatedSecImport, importEnv: importedEnv, enforcedBySecretChangePolicyId: enforcingPolicy?.id };
+    // Same race as in createImport: the policy was read before the update, and a policy that started requiring
+    // replication in between skips this import once its source no longer matches what it read.
+    if (isSourceChanging && !updatedSecImport.isReplication && importedEnv.projectId === projectId) {
+      const latePolicy = await $findEnforcingPolicy(projectId, environment, folder.path, secretImportDAL.primaryNode());
+      if (latePolicy) {
+        const converted = await $forceReplication({
+          importId: updatedSecImport.id,
+          folder,
+          projectId,
+          environment,
+          actor,
+          actorId,
+          actorOrgId
+        });
+        if (converted) {
+          return {
+            ...converted,
+            importEnv: importedEnv,
+            enforcedBySecretChangePolicyId: latePolicy.id,
+            enforcedBySecretChangePolicyName: latePolicy.name
+          };
+        }
+      }
+    }
+
+    return {
+      ...updatedSecImport,
+      importEnv: importedEnv,
+      enforcedBySecretChangePolicyId: enforcingPolicy?.id,
+      enforcedBySecretChangePolicyName: enforcingPolicy?.name
+    };
   };
 
   const deleteImport = async ({
