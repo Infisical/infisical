@@ -232,6 +232,37 @@ export const approvalPolicyServiceFactory = ({
       : request.requesterId === actor.id;
   };
 
+  const $namesApprover = (approvers: { type: string; id: string }[], actorId: string, userGroupIds: Set<string>) =>
+    approvers.some(
+      (approver) =>
+        (approver.type === ApproverType.User && approver.id === actorId) ||
+        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+    );
+
+  // Approve, reject and the request page's canReview all ask whether this actor may decide the step in progress, so
+  // they share one check. Callers read group memberships from the primary, as the decision itself must.
+  const $assertCanReviewStep = async ({
+    request,
+    step,
+    actor,
+    userGroupIds,
+    decision
+  }: {
+    request: TApprovalRequests;
+    step: { approvers: { type: string; id: string }[] };
+    actor: TApprovalActor;
+    userGroupIds: Set<string>;
+    decision: ApprovalRequestApprovalDecision;
+  }) => {
+    if (!$namesApprover(step.approvers, actor.id, userGroupIds)) {
+      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+    }
+    const assertDomainCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
+    if (assertDomainCanReview) {
+      await assertDomainCanReview({ request, decision, actor, userGroupIds });
+    }
+  };
+
   const $isBreakGlassEligible = async ({
     request,
     policy,
@@ -1486,14 +1517,7 @@ export const approvalPolicyServiceFactory = ({
     const primaryDb = approvalPolicyDAL.primaryNode();
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId, primaryDb);
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
-    const namesActor = (approvers: (typeof steps)[number]["approvers"]) =>
-      approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      );
-
-    const isSnapshotApprover = steps.some((step) => namesActor(step.approvers));
+    const isSnapshotApprover = steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds));
 
     const checkLiveApprover = resources[request.type as ApprovalPolicyType]?.isLiveApprover;
     const checkScopeRead = resources[request.type as ApprovalPolicyType]?.canReadScope;
@@ -1545,19 +1569,23 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
-    // The saved approver list outlives a removal or demotion, so canReview runs the same checks as approve and reject
-    // for the step in progress. It asks as a rejection: approving can also depend on the resource itself (self-approval,
+    // The saved approver list outlives a removal or demotion, so canReview runs the same check as approve and reject on
+    // the step in progress. It asks as a rejection: approving can also depend on the resource itself (self-approval,
     // a moved PAM account), which the approve call reports.
     const currentStep = steps.find((step) => step.stepNumber === request.currentStep);
-    let canReview =
-      request.status === ApprovalRequestStatus.Pending && Boolean(currentStep && namesActor(currentStep.approvers));
-    const assertCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
-    if (canReview && assertCanReview) {
+    let canReview = false;
+    if (request.status === ApprovalRequestStatus.Pending && !isApprovalRequestExpired(request) && currentStep) {
       try {
-        await assertCanReview({ request, decision: ApprovalRequestApprovalDecision.Rejected, actor, userGroupIds });
+        await $assertCanReviewStep({
+          request,
+          step: currentStep,
+          actor,
+          userGroupIds,
+          decision: ApprovalRequestApprovalDecision.Rejected
+        });
+        canReview = true;
       } catch (error) {
         if (!(error instanceof ForbiddenRequestError || error instanceof BadRequestError)) throw error;
-        canReview = false;
       }
     }
 
@@ -1659,29 +1687,17 @@ export const approvalPolicyServiceFactory = ({
 
     const currentStep = steps[currentStepIndex];
 
-    const isEligible = currentStep.approvers.some(
-      (approver) =>
-        (approver.type === ApproverType.User && approver.id === actor.id) ||
-        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-    );
-
-    if (!isEligible) {
-      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-    }
-
     if (policyType === ApprovalPolicyType.CertCodeSigning && request.requesterId === actor.id) {
       throw new ForbiddenRequestError({ message: "You cannot approve your own signing request" });
     }
 
-    const assertDomainCanApprove = resources[policyType]?.assertCanReview;
-    if (assertDomainCanApprove) {
-      await assertDomainCanApprove({
-        request,
-        decision: ApprovalRequestApprovalDecision.Approved,
-        actor,
-        userGroupIds
-      });
-    }
+    await $assertCanReviewStep({
+      request,
+      step: currentStep,
+      actor,
+      userGroupIds,
+      decision: ApprovalRequestApprovalDecision.Approved
+    });
 
     const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
     if (hasApproved) {
@@ -1705,11 +1721,7 @@ export const approvalPolicyServiceFactory = ({
       }
 
       // The step may have advanced since the pre-transaction check.
-      const isEligibleForLockedStep = lockedStep.approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      );
+      const isEligibleForLockedStep = $namesApprover(lockedStep.approvers, actor.id, userGroupIds);
       if (!isEligibleForLockedStep) {
         throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
       }
@@ -1848,25 +1860,13 @@ export const approvalPolicyServiceFactory = ({
     );
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
-    const isEligible = currentStep.approvers.some(
-      (approver) =>
-        (approver.type === ApproverType.User && approver.id === actor.id) ||
-        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-    );
-
-    if (!isEligible) {
-      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-    }
-
-    const assertDomainCanReject = resources[request.type as ApprovalPolicyType]?.assertCanReview;
-    if (assertDomainCanReject) {
-      await assertDomainCanReject({
-        request,
-        decision: ApprovalRequestApprovalDecision.Rejected,
-        actor,
-        userGroupIds
-      });
-    }
+    await $assertCanReviewStep({
+      request,
+      step: currentStep,
+      actor,
+      userGroupIds,
+      decision: ApprovalRequestApprovalDecision.Rejected
+    });
 
     await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
@@ -1879,11 +1879,7 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Current step not found" });
       }
 
-      const isEligibleForLockedStep = lockedStep.approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      );
+      const isEligibleForLockedStep = $namesApprover(lockedStep.approvers, actor.id, userGroupIds);
       if (!isEligibleForLockedStep) {
         throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
       }
@@ -1990,13 +1986,7 @@ export const approvalPolicyServiceFactory = ({
 
       return requests.filter((request) => {
         if ($isRequester(request, actor)) return true;
-        return request.steps.some((step) =>
-          step.approvers.some(
-            (approver) =>
-              (approver.type === ApproverType.User && approver.id === actor.id) ||
-              (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-          )
-        );
+        return request.steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds));
       });
     })();
 

@@ -78,6 +78,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     {
       type = ApprovalPolicyType.CertRevocation,
       status = ApprovalRequestStatus.Pending,
+      expiresAt = null,
       steps = [{ stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }],
       replicaMemberships = applicationMemberships,
       groupIds = [],
@@ -85,6 +86,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     }: {
       type?: ApprovalPolicyType;
       status?: ApprovalRequestStatus;
+      expiresAt?: Date | null;
       steps?: { stepNumber: number; approvers: { type: ApproverType; id: string }[]; approvals: unknown[] }[];
       replicaMemberships?: TApplicationMembership[];
       groupIds?: string[];
@@ -101,6 +103,7 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       projectId: "project-1",
       organizationId: "org-1",
       status,
+      expiresAt,
       currentStep: 1,
       scopeType: ApprovalPolicyScope.PkiApplication,
       scopeId: "app-1"
@@ -273,6 +276,16 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
   it("doesn't let an approver review a request that's no longer pending", async () => {
     const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], {
       status: ApprovalRequestStatus.Approved
+    });
+
+    const result = await ctx.service.getRequestById("revocation-1", approver);
+
+    expect(result.canReview).toBe(false);
+  });
+
+  it("doesn't let an approver review a pending request that has expired before the sweep closes it", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], {
+      expiresAt: new Date(Date.now() - 60_000)
     });
 
     const result = await ctx.service.getRequestById("revocation-1", approver);
