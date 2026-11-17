@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,6 +199,11 @@ const ModelField = ({
   );
 };
 
+const turnOffBlock = (canEdit: boolean, saving: boolean) => {
+  if (!canEdit) return "Your role doesn't allow editing settings";
+  return saving ? "Wait for the model to finish saving" : undefined;
+};
+
 const AiModelCard = ({ config, canEdit }: { config: TOrgAiConfig | null; canEdit: boolean }) => {
   const updateConfig = useV4Adapter("orgSettings").useUpdateAiConfig();
   const [turningOff, setTurningOff] = useState(false);
@@ -224,7 +230,7 @@ const AiModelCard = ({ config, canEdit }: { config: TOrgAiConfig | null; canEdit
             <Button
               variant="outline"
               size="sm"
-              disabledReason={canEdit ? undefined : "Your role doesn't allow editing settings"}
+              disabledReason={turnOffBlock(canEdit, autosave.pending)}
               onClick={() => setTurningOff(true)}
             >
               Turn off
@@ -258,8 +264,24 @@ const AiModelCard = ({ config, canEdit }: { config: TOrgAiConfig | null; canEdit
 
 export const OrgAiModel = () => {
   const { permission } = useOrgPermission();
-  const { data: config, isPending } = useV4Adapter("orgSettings").useAiConfig();
+  const { data: config, isPending, error, refetch } = useV4Adapter("orgSettings").useAiConfig();
   if (isPending) return <SettingsCard title="AI features" loading />;
+  if (error)
+    return (
+      <SettingsCard title="AI features">
+        <Alert
+          tone="bad"
+          title="Couldn't load AI features"
+          actions={
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {errorMessage(error)}
+        </Alert>
+      </SettingsCard>
+    );
   return (
     <AiModelCard
       config={config ?? null}

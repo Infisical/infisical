@@ -1,4 +1,6 @@
 import { type ReactNode, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
@@ -11,6 +13,7 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
@@ -22,7 +25,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { roleOptions, slugify } from "../roles";
-import { failed, saved } from "../toast";
+import { failed, readableFailure, saved } from "../toast";
 import { Muted } from "../ui";
 
 export type GroupDraft = { id: string; name: string; slug: string; roleSlug: string };
@@ -160,69 +163,6 @@ const GroupForm = ({
   );
 };
 
-const LinkGroupForm = ({ roleLabel, onDone, setPending }: FormProps & { roleLabel: string }) => {
-  const access = useV4Adapter("access");
-  const go = useGo();
-  const { orgId, defaultRole } = useGroupRoles();
-  const link = access.useCreateOrgGroupMembership();
-  const { data: available = [], isPending: availablePending } = access.useAvailableOrgGroups();
-  const [linkedId, setLinkedId] = useState("");
-  const [linkError, setLinkError] = useState<string>();
-  const [role, setRole] = useState<string>();
-  const submit = async () => {
-    if (!linkedId) {
-      setLinkError("Select a group");
-      return;
-    }
-    setPending(true);
-    try {
-      await link.mutateAsync({
-        groupId: linkedId,
-        roles: [{ role: role ?? defaultRole, isTemporary: false }],
-        organizationId: orgId
-      });
-      saved("Successfully linked group");
-      onDone();
-      go(accessLinks.orgGroup(orgId, linkedId));
-    } catch (error) {
-      failed("Failed to link group", error);
-    } finally {
-      setPending(false);
-    }
-  };
-  return (
-    <form
-      id={FORM_ID}
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <Stack gap={16}>
-        <Field label="Group" error={linkError}>
-          <Combobox
-            label="Group"
-            placeholder="Select group..."
-            emptyText={
-              availablePending
-                ? "Loading groups..."
-                : "Every parent organization group is already here"
-            }
-            options={available.map((entry) => ({ value: entry.id, label: entry.name }))}
-            value={linkedId}
-            invalid={Boolean(linkError)}
-            onChange={(value) => {
-              setLinkedId(value);
-              setLinkError(undefined);
-            }}
-          />
-        </Field>
-        <RoleField label={roleLabel} value={role} onChange={setRole} />
-      </Stack>
-    </form>
-  );
-};
-
 const GroupDialogShell = ({
   open,
   onOpenChange,
@@ -277,43 +217,155 @@ const OwnedGroupDialog = ({ group, open, roleLabel, onOpenChange }: GroupDialogP
   );
 };
 
+type SubOrgGroupDraft = {
+  mode: "create" | "assign";
+  name: string;
+  slug: string;
+  slugDirty: boolean;
+  groupId: string;
+  role?: string;
+};
+
+const EMPTY_SUB_ORG_GROUP: SubOrgGroupDraft = {
+  mode: "create",
+  name: "",
+  slug: "",
+  slugDirty: false,
+  groupId: ""
+};
+
+const validateSubOrgGroup = (draft: SubOrgGroupDraft) => {
+  if (draft.mode === "assign")
+    return draft.groupId ? true : { fields: { group: "Select a group" } };
+  const fields = { name: nameError(draft.name), slug: slugError(draft.slug) };
+  return fields.name || fields.slug ? { fields } : true;
+};
+
 const SubOrgAddGroupDialog = ({ open, roleLabel, onOpenChange }: GroupDialogProps) => {
-  const [pending, setPending] = useState(false);
-  const [mode, setMode] = useState<"create" | "assign">("create");
-  const formProps = {
-    roleLabel: roleLabel ?? "Role",
-    onDone: () => onOpenChange(false),
-    setPending
+  const access = useV4Adapter("access");
+  const go = useGo();
+  const { orgId, defaultRole } = useGroupRoles();
+  const create = access.useCreateGroup();
+  const link = access.useCreateOrgGroupMembership();
+  const [draft, setDraft] = useState(EMPTY_SUB_ORG_GROUP);
+  const [completed, setCompleted] = useState(false);
+  const { data: available = [], isPending: availablePending } = access.useAvailableOrgGroups({
+    enabled: draft.mode === "assign"
+  });
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      !completed && Boolean(draft.name || draft.slug || draft.groupId || draft.role !== undefined),
+    onDiscard: () => onOpenChange(false)
+  });
+  const update = (patch: Partial<SubOrgGroupDraft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+  const role = draft.role ?? defaultRole;
+  const finish = () => {
+    setCompleted(true);
+    onOpenChange(false);
   };
   return (
-    <GroupDialogShell
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Add group to sub-organization"
-      submitLabel={mode === "assign" ? "Link" : "Create"}
-      pending={pending}
-    >
-      <Stack gap={16}>
-        <Stack gap={8}>
-          <Tabs
-            variant="segmented"
-            label="Group assignment mode"
-            value={mode}
-            onChange={(next) => setMode(next as "create" | "assign")}
-            tabs={[
-              { value: "create", label: "Create new" },
-              { value: "assign", label: "Assign existing" }
-            ]}
-          />
-          <Muted>
-            {mode === "assign"
-              ? "Reuse an existing group from your parent organization."
-              : "Creates a group managed by this sub-organization."}
-          </Muted>
-        </Stack>
-        {mode === "assign" ? <LinkGroupForm {...formProps} /> : <GroupForm {...formProps} />}
-      </Stack>
-    </GroupDialogShell>
+    <>
+      <MultiStep
+        variant="dialog"
+        open={open}
+        title="Add group to sub-organization"
+        completeLabel={draft.mode === "assign" ? "Link" : "Create"}
+        onOpenChange={(next) => !next && requestDiscard()}
+        onComplete={async () => {
+          if (draft.mode === "assign") {
+            await link
+              .mutateAsync({
+                groupId: draft.groupId,
+                roles: [{ role, isTemporary: false }],
+                organizationId: orgId
+              })
+              .catch(readableFailure("Couldn't link group"));
+            saved("Successfully linked group");
+            finish();
+            go(accessLinks.orgGroup(orgId, draft.groupId));
+            return;
+          }
+          await create
+            .mutateAsync({ name: draft.name.trim(), slug: draft.slug, role, organizationId: orgId })
+            .catch(readableFailure("Couldn't create group"));
+          saved("Successfully created group");
+          finish();
+        }}
+        steps={[
+          {
+            title: "Group",
+            validate: () => validateSubOrgGroup(draft),
+            content: (
+              <Stack gap={16}>
+                <Stack gap={8}>
+                  <Tabs
+                    variant="segmented"
+                    label="Group assignment mode"
+                    value={draft.mode}
+                    onChange={(next) => update({ mode: next as SubOrgGroupDraft["mode"] })}
+                    tabs={[
+                      { value: "create", label: "Create new" },
+                      { value: "assign", label: "Assign existing" }
+                    ]}
+                  />
+                  <Muted>
+                    {draft.mode === "assign"
+                      ? "Reuse an existing group from your parent organization."
+                      : "Creates a group managed by this sub-organization."}
+                  </Muted>
+                </Stack>
+                {draft.mode === "assign" ? (
+                  <Field label="Group" name="group">
+                    <Combobox
+                      label="Group"
+                      placeholder="Select group..."
+                      emptyText={
+                        availablePending
+                          ? "Loading groups..."
+                          : "Every parent organization group is already here"
+                      }
+                      options={available.map((entry) => ({ value: entry.id, label: entry.name }))}
+                      value={draft.groupId}
+                      onChange={(groupId) => update({ groupId })}
+                    />
+                  </Field>
+                ) : (
+                  <>
+                    <Field label="Name" name="name">
+                      <Input
+                        autoComplete="off"
+                        placeholder="Engineering"
+                        value={draft.name}
+                        onChange={(event) =>
+                          update({
+                            name: event.target.value,
+                            ...(draft.slugDirty ? {} : { slug: slugify(event.target.value) })
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Slug" name="slug">
+                      <Input
+                        placeholder="engineering"
+                        value={draft.slug}
+                        onChange={(event) => update({ slug: event.target.value, slugDirty: true })}
+                      />
+                    </Field>
+                  </>
+                )}
+                <RoleField
+                  label={roleLabel ?? "Role"}
+                  value={draft.role}
+                  onChange={(next) => update({ role: next })}
+                />
+              </Stack>
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog {...discardDialogProps} title="Discard this group?" />
+    </>
   );
 };
 

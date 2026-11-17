@@ -73,7 +73,7 @@ export type OrgSettingsAdapter = {
 
   useCreateMicrosoftTeamsIntegration: V4Mutation<TCreateMicrosoftTeamsIntegrationDTO>;
 
-  useAiConfig: () => V4QueryResult<TOrgAiConfig | null>;
+  useAiConfig: () => V4QueryResult<TOrgAiConfig | null> & { refetch: () => Promise<unknown> };
   useAnthropicConnections: () => V4QueryResult<TAvailableAppConnection[]>;
   useAnthropicModels: (connectionId: string) => V4QueryResult<TAnthropicModel[]>;
   useUpdateAiConfig: V4Mutation<TUpdateOrgAiConfigDTO, TOrgAiConfig | null>;

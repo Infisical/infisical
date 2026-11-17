@@ -1,14 +1,4 @@
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -72,7 +62,7 @@ import {
   sortedMethods
 } from "./auth-methods";
 import { Dash, MetadataBadges } from "./detail-parts";
-import { lastUsedLabel } from "./identities";
+import { DeleteIdentityLabel, lastUsedLabel, RemoveIdentityDialog } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
 
@@ -201,12 +191,14 @@ const BackLink = ({ orgId }: { orgId: string }) => (
 
 const IdentityHeaderActions = ({
   identity,
+  owned,
   showAlerts,
   canEdit,
   canDelete,
   onDelete
 }: {
   identity: { id: string; hasDeleteProtection: boolean };
+  owned: boolean;
   showAlerts: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -233,14 +225,12 @@ const IdentityHeaderActions = ({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
-          disabled={!canDelete || identity.hasDeleteProtection}
+          disabled={!canDelete || (owned && identity.hasDeleteProtection)}
           description={canDelete ? undefined : RESTRICTED}
           onSelect={onDelete}
         >
           <Icon name="trash" />
-          {identity.hasDeleteProtection
-            ? "Delete is blocked by delete protection"
-            : "Delete machine identity"}
+          <DeleteIdentityLabel owned={owned} deleteProtected={identity.hasDeleteProtection} />
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -255,7 +245,6 @@ export const OrgIdentityDetail = () => {
   const { permission, isPending: permissionPending } = useOrgPermission();
   const { data: membership, isPending } = access.useOrgIdentity(identityId);
   const { data: roles } = access.useOrgRoles(orgId);
-  const deleteIdentity = access.useDeleteOrgIdentity();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [authForm, setAuthForm] = useState<{ method?: IdentityAuthMethod }>();
@@ -370,6 +359,7 @@ export const OrgIdentityDetail = () => {
             actions={
               <IdentityHeaderActions
                 identity={identity}
+                owned={isOwnIdentity}
                 showAlerts={isOwnIdentity && !identity.projectId}
                 canEdit={canEdit}
                 canDelete={canDelete}
@@ -529,32 +519,12 @@ export const OrgIdentityDetail = () => {
         method={removingAuth}
         onClose={() => setRemovingAuth(undefined)}
       />
-      <AlertDialog open={deleting} onOpenChange={setDeleting}>
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Are you sure you want to delete ${identity.name}?`}</AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                setDeleting(false);
-                try {
-                  await deleteIdentity.mutateAsync({ identityId: identity.id, orgId });
-                  saved("Successfully deleted machine identity");
-                  go(backHref(orgId));
-                } catch (error) {
-                  failed("Failed to delete machine identity", error);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveIdentityDialog
+        identity={deleting ? identity : undefined}
+        owned={isOwnIdentity}
+        onClose={() => setDeleting(false)}
+        onRemoved={() => go(backHref(orgId))}
+      />
     </div>
   );
 };

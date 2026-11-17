@@ -315,7 +315,7 @@ export const orgSettingsDemo: OrgSettingsAdapter = {
   useAiConfig: () => {
     const scenario = useAiScenario();
     const stored = aiConfig.use();
-    return ready(scenario === "empty" ? null : stored[scenario]);
+    return { ...ready(stored[scenario]), refetch: async () => undefined };
   },
   useAnthropicConnections: () => {
     const scenario = useAiScenario();

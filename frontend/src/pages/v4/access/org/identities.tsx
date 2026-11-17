@@ -131,6 +131,14 @@ const deleteLabel = (deleteProtected: boolean, owned: boolean) => {
   return owned ? "Delete machine identity" : "Remove from sub-organization";
 };
 
+export const DeleteIdentityLabel = ({
+  owned,
+  deleteProtected
+}: {
+  owned: boolean;
+  deleteProtected: boolean;
+}) => <>{deleteLabel(owned && deleteProtected, owned)}</>;
+
 const AuthMethodsSubmenu = ({
   identity,
   canEditAuth,
@@ -169,20 +177,22 @@ const AuthMethodsSubmenu = ({
   );
 };
 
-const RemoveIdentityDialog = ({
-  row,
+export const RemoveIdentityDialog = ({
+  identity,
   owned,
-  onClose
+  onClose,
+  onRemoved
 }: {
-  row: Row | undefined;
+  identity: { id: string; name: string } | undefined;
   owned: boolean;
   onClose: () => void;
+  onRemoved?: () => void;
 }) => {
   const orgId = useOrgId();
   const deleteIdentity = useV4Adapter("access").useDeleteOrgIdentity();
-  const name = row?.identity.name ?? "machine identity";
+  const name = identity?.name ?? "machine identity";
   return (
-    <AlertDialog open={Boolean(row)} onOpenChange={(open) => !open && onClose()}>
+    <AlertDialog open={Boolean(identity)} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent tone="danger" confirmText="confirm">
         <AlertDialogHeader>
           <AlertDialogTitle>
@@ -195,15 +205,16 @@ const RemoveIdentityDialog = ({
           <AlertDialogAction
             variant="destructive"
             onClick={async () => {
-              if (!row) return;
+              if (!identity) return;
               onClose();
               try {
-                await deleteIdentity.mutateAsync({ identityId: row.identity.id, orgId });
+                await deleteIdentity.mutateAsync({ identityId: identity.id, orgId });
                 saved(
                   owned
                     ? "Successfully deleted machine identity"
                     : "Successfully removed machine identity from sub-organization"
                 );
+                onRemoved?.();
               } catch (error) {
                 failed("Failed to delete machine identity", error);
               }
@@ -414,12 +425,12 @@ export const OrgIdentitiesTab = () => {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
-            disabled={!canDelete || row.identity.hasDeleteProtection}
+            disabled={!canDelete || (isOwned(row) && row.identity.hasDeleteProtection)}
             description={canDelete ? undefined : RESTRICTED}
             onSelect={() => setDeleting(row)}
           >
             <Icon name="trash" />
-            {deleteLabel(row.identity.hasDeleteProtection, isOwned(row))}
+            {deleteLabel(isOwned(row) && row.identity.hasDeleteProtection, isOwned(row))}
           </DropdownMenuItem>
         </>
       )
@@ -570,7 +581,7 @@ export const OrgIdentitiesTab = () => {
         />
       )}
       <RemoveIdentityDialog
-        row={deleting}
+        identity={deleting?.identity}
         owned={Boolean(deleting && isOwned(deleting))}
         onClose={() => setDeleting(undefined)}
       />

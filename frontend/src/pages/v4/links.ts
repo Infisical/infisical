@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { useResolveV4Href } from "./resolveV4Href";
 
@@ -10,7 +10,15 @@ export const orgHref = (orgId: string, path = "") => `${V4_PREFIX}/organizations
 
 export const useGo = () => {
   const navigate = useNavigate();
-  const resolve = useResolveV4Href();
+  const resolveHref = useResolveV4Href();
+  const scenario = useRouterState({
+    select: (state) => (state.location.search as { scenario?: unknown }).scenario
+  });
+  const resolve = (href: string) => {
+    const resolved = resolveHref(href);
+    if (typeof scenario !== "string" || /[?&]scenario=/.test(resolved)) return resolved;
+    return `${resolved}${resolved.includes("?") ? "&" : "?"}scenario=${encodeURIComponent(scenario)}`;
+  };
   const go = (href: string) => navigate({ href: resolve(href) });
   const link = (href?: string) => {
     const [path, query] = href ? resolve(href).split("?") : [];
