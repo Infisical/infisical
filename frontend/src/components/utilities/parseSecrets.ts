@@ -155,12 +155,26 @@ export type CsvDelimiter = "," | ";" | "\t" | "|";
 const CSV_DELIMITERS: readonly CsvDelimiter[] = [",", ";", "\t", "|"];
 
 function detectSeparator(csvContent: string): CsvDelimiter {
-  const firstLine = csvContent.split("\n")[0];
-
   const counts = CSV_DELIMITERS.map((sep) => ({
     separator: sep,
-    count: (firstLine.match(new RegExp(`\\${sep}`, "g")) || []).length
+    count: 0
   }));
+  let inQuote = false;
+
+  for (let i = 0; i < csvContent.length; i += 1) {
+    const char = csvContent[i];
+    if (char === '"') {
+      if (inQuote && csvContent[i + 1] === '"') {
+        i += 1;
+      } else {
+        inQuote = !inQuote;
+      }
+    } else if (!inQuote) {
+      if (char === "\n" || char === "\r") break;
+      const delimiter = counts.find(({ separator }) => separator === char);
+      if (delimiter) delimiter.count += 1;
+    }
+  }
 
   const detected = counts.reduce((max, curr) => (curr.count > max.count ? curr : max));
 
