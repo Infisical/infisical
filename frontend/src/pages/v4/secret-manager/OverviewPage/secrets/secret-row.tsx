@@ -136,6 +136,7 @@ export type SecretRowHandlers = {
   tagOptions: string[];
   autoCapitalize: boolean;
   secretNames: string[];
+  secretNameTaken: (name: string) => Promise<boolean>;
   onRename: (
     secrets: Secret[],
     name: string,
@@ -498,7 +499,7 @@ function CellEditor({
   multiline?: boolean;
   placeholder?: string;
   transform?: (value: string) => string;
-  validate?: (value: string) => string | undefined;
+  validate?: (value: string) => string | undefined | Promise<string | undefined>;
   onCommit: (value: string) => void;
   onInvalidBlur: (message: string) => void;
   onDone: () => void;
@@ -506,13 +507,17 @@ function CellEditor({
   useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
-  const finish = (blurred: boolean) => {
+  const settling = useRef(false);
+  const finish = async (blurred: boolean) => {
+    if (settling.current) return;
     const next = multiline ? draft : draft.trim();
     if (next === initial) {
       onDone();
       return;
     }
-    const problem = validate?.(next);
+    settling.current = true;
+    const problem = await validate?.(next);
+    settling.current = false;
     if (problem && !blurred) {
       setError(problem);
       return;
@@ -1365,9 +1370,12 @@ function SingleSecretRowView({
             scope: first,
             placeholder: "Secret name",
             transform: handlers.autoCapitalize ? (value) => value.toUpperCase() : undefined,
-            validate: (next) => {
+            validate: async (next) => {
               if (!next) return "Secret name is required";
-              if (handlers.secretNames.includes(next))
+              if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(next))
+                return "Use letters, numbers and underscores, starting with a letter or underscore";
+              if (next === ctx.renamedFrom?.[first.id]) return undefined;
+              if (handlers.secretNames.includes(next) || (await handlers.secretNameTaken(next)))
                 return "A secret with this name already exists";
               return undefined;
             },

@@ -238,6 +238,7 @@ export const OverviewPage = () => {
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
+  const checkSecretKey = adapter.useSecretKeyCheck();
   const deleteEnvironmentMutation = adapter.useDeleteEnvironment();
   const project = projectId;
   const path = search.secretPath || "/";
@@ -745,7 +746,7 @@ export const OverviewPage = () => {
       projectId,
       environment: activeEnvironment,
       status: "open",
-      limit: 50
+      limit: 100
     }).data?.approvals ?? [];
   const inReview = [
     ...new Set(
@@ -1330,7 +1331,12 @@ export const OverviewPage = () => {
   const secretEvents = useStableHandlers<
     Omit<
       SecretRowHandlers,
-      "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize" | "secretNames"
+      | "copySecretBlock"
+      | "resources"
+      | "tagOptions"
+      | "autoCapitalize"
+      | "secretNames"
+      | "secretNameTaken"
     >
   >({
     onCreateIn: (environment, key) =>
@@ -1390,6 +1396,16 @@ export const OverviewPage = () => {
     resources,
     tagOptions,
     autoCapitalize: Boolean(projectQuery.data?.autoCapitalization),
+    secretNameTaken: (name) =>
+      checkSecretKey({
+        projectId,
+        environments: [activeEnvironment],
+        secretPath: path,
+        secretKey: name
+      }).then(
+        (environments) => environments.length > 0,
+        () => false
+      ),
     secretNames: shown.flatMap((resource) =>
       resource.kind === "secret" &&
       resource.project === project &&
