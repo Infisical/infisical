@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Empty,
@@ -35,6 +35,10 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const hasSecrets = !isPending && data?.secrets && data.secrets.length > 0;
+
+  useEffect(() => {
+    if (data && page > 1 && (page - 1) * perPage >= data.totalCount) setPage(1);
+  }, [data, page, perPage]);
 
   return (
     <div>
