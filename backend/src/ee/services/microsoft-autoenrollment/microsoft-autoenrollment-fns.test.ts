@@ -86,7 +86,9 @@ describe("getMicrosoftAutoenrollmentUnsupportedReason", () => {
           { profileSlug: "web", caId: "ca-id", keyAlgorithm },
           withCa(internalCa("RSA_2048"))
         )
-      ).resolves.toMatch(new RegExp(`${keyAlgorithm} as its default key algorithm.*only RSA and ECDSA`));
+      ).resolves.toContain(
+        `${keyAlgorithm} as its default key algorithm, but Windows autoenrollment supports only RSA and ECDSA keys`
+      );
     }
   );
 });
