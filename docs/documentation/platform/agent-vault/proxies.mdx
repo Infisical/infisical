@@ -205,7 +205,7 @@ X-Agent-Vault-Decision: blocked
 {"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://app.infisical.com/api/v1/agent-vault/session/services lists them."}
 ```
 
-The `X-Agent-Vault-Decision` header is on every response that goes through the proxy, so an agent can tell the proxy's responses apart from the API's. For its values, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
+Every response that goes through the proxy has an [`X-Agent-Vault-Decision` header](#responses-from-the-proxy), so an agent can tell the proxy's responses apart from the API's.
 
 The proxy also returns a 403 for:
 
@@ -246,6 +246,21 @@ If the proxy can't reach Infisical:
 - The proxy keeps using the session data it last fetched for five poll intervals
 - After that, the proxy refuses the affected requests with a 502 until it reaches Infisical again, instead of forwarding them without their credentials
 - The **Proxies** page marks the proxy **Unreachable** after three missed check-ins
+
+## Responses from the proxy
+
+Every response that goes through the proxy has an `X-Agent-Vault-Decision` header, so an agent can tell a response from the proxy apart from a response from the API:
+
+| Value | What the proxy did |
+| --- | --- |
+| `brokered` | Added a service's credential to the request. If the API still answers `401` or `403`, the service's stored [credential](/documentation/platform/agent-vault/http-apis#credential-types) is wrong or lacks a permission |
+| `passthrough` | Sent the request on without a credential, because no service covers the host |
+| `blocked` | Refused the request, for one of the reasons in [Blocked requests](#blocked-requests) |
+| `error` | Couldn't complete the request, such as when it can't reach the host |
+| `discovery` | Got the [list of services](/documentation/platform/agent-vault/service-discovery#get-the-list) from Infisical for the session |
+| `skills` | Got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
+
+If a service matched the request, the `X-Agent-Vault-Service` header names the service. If the proxy refuses a request, the response body is JSON with an error code, a message, and a hint that tells the agent what to do next.
 
 ## Rotate a proxy's token
 

@@ -197,13 +197,11 @@ If a service has path prefixes, the proxy also refuses any path that different s
 
 ### Refused requests
 
-If a request breaks either rule, the proxy refuses the request with a `403` response and the `policy_blocked` error code. The response's message names the service and the method or path that the service doesn't allow. For example:
+If a request breaks either rule, the proxy refuses the request with a `403` response and the `policy_blocked` error code, in the same JSON format as its other [responses](/documentation/platform/agent-vault/proxies#responses-from-the-proxy). The response's message names the service and the method or path that the service doesn't allow. For example:
 
 ```
 service "github" does not allow path "/admin": blocked by service policy
 ```
-
-For the response's full format, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
 
 <Note>
 If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response that holds your hook server's message.

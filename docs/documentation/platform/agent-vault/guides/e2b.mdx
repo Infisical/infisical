@@ -482,8 +482,8 @@ The function adds the proxy's CA to the sandbox's system trust store, and sets t
 The function also prepares the sandbox for an agent, as `agent-vault run` does on other hosts:
 
 - It installs the session's [skills](/documentation/platform/agent-vault/skills) from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint, including Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), which tells the agent how to work behind the proxy
-- It sets `INFISICAL_AGENT_VAULT_URL` to your Infisical instance's URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy
-- It writes the session's MCP servers that are ready to `MCP_CONFIG_PATH`, in the format of Claude Code's `--mcp-config`, as [Give the agent its MCP servers](/documentation/platform/agent-vault/service-discovery#give-the-agent-its-mcp-servers) describes
+- It sets `INFISICAL_AGENT_VAULT_URL` to your Infisical instance's URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#get-the-list) through the proxy
+- It writes the session's MCP servers that are ready to `MCP_CONFIG_PATH`, in the format of Claude Code's `--mcp-config`, as [MCP configuration from code](/documentation/platform/agent-vault/mcp-servers#mcp-configuration-from-code) describes
 
 To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/certificate-trust#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
 

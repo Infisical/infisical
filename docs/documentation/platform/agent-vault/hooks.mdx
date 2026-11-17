@@ -343,7 +343,7 @@ Here's a reference for each of the body's fields:
         The session's ID.
       </ResponseField>
       <ResponseField name="label" type="string | null">
-        The session's label, or `null` if it has none (don't base a decision on it, as [Limitations](#limitations) explains).
+        The session's label, or `null` if it has none. Don't base a decision on it (see [Limitations](#limitations)).
       </ResponseField>
       <ResponseField name="actor" type="object">
         The user or machine identity that created the session, as it was when the session was created. `type` is `user` or `machineIdentity`, and `email` is `null` for a machine identity.
@@ -503,7 +503,7 @@ The proxy delivers the message differently for each service type:
 - **Other MCP calls:** A JSON-RPC error with the message
 - **Databases and SSH servers:** [`infisical agent-vault connect`](/cli/reference#agent-vault-connect) prints the service's name and the message, as in `analytics: <message>`, and the proxy closes the agent's connection without opening one to the server
 
-For an HTTP denial, the response looks like the proxy's other [refusals](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy):
+For an HTTP denial, the response looks like the proxy's other [refusals](/documentation/platform/agent-vault/proxies#responses-from-the-proxy):
 
 ```text
 HTTP/1.1 403 Forbidden
