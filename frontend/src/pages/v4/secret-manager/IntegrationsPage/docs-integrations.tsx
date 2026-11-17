@@ -1,5 +1,12 @@
-import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
-import type { IconName } from "@infisical/cipher/ui/icon";
+import { useState } from "react";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Empty, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 
 import frameworks from "@app/const/integrationDocs/frameworkIntegrations.json";
 import infrastructure from "@app/const/integrationDocs/infrastructureIntegrations.json";
@@ -46,22 +53,78 @@ const SOURCES = {
 
 export const DocsIntegrationsTab = ({ kind }: { kind: keyof typeof SOURCES }) => {
   const { label, entries } = SOURCES[kind];
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const categories = filters.find((entry) => entry.field === "category")?.values ?? [];
+  const query = search.trim().toLowerCase();
+  const visible = entries.filter(
+    (entry) =>
+      (!categories.length || categories.includes(entry.category)) &&
+      (!query ||
+        [entry.name, entry.slug, entry.category].some((text) => text.toLowerCase().includes(query)))
+  );
+
   return (
-    <TilePicker
-      items={entries.map((entry) => ({
-        value: entry.docsLink,
-        title: entry.name,
-        eyebrow: entry.category,
-        icon: entry.image ? undefined : entry.icon,
-        media: entry.image && (
-          <ProviderIcon icon={`${entry.image}.png`} alt={`${entry.name} logo`} size="md" />
-        ),
-        keywords: [entry.slug]
-      }))}
-      onSelect={(docsLink) => window.open(docsLink, "_blank", "noopener,noreferrer")}
-      searchLabel={`Search ${label.toLowerCase()}`}
-      searchPlaceholder={`Search ${label.toLowerCase()}...`}
-      noun="integrations"
-    />
+    <Stack gap={16}>
+      <FilterBar
+        label={`${label} filters`}
+        fields={[
+          {
+            key: "category",
+            label: "Category",
+            type: "multi-select",
+            options: [...new Set(entries.map((entry) => entry.category))]
+              .sort()
+              .map((category) => ({ value: category, label: category }))
+          }
+        ]}
+        value={filters}
+        onChange={setFilters}
+        search={
+          <Input
+            icon="search"
+            aria-label={`Search ${label.toLowerCase()}`}
+            placeholder={`Search ${label.toLowerCase()}...`}
+            slashShortcut
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        }
+      />
+      <List
+        label={label}
+        empty={
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No matching integrations</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        }
+      >
+        {visible.map((entry) => (
+          <ListRow
+            key={entry.slug}
+            value={entry.slug}
+            label={entry.name}
+            title={entry.name}
+            media={
+              entry.image ? (
+                <ProviderIcon icon={`${entry.image}.png`} alt={`${entry.name} logo`} size="md" />
+              ) : (
+                entry.icon && <Icon name={entry.icon} />
+              )
+            }
+            badge={<Badge tone="soft">{entry.category}</Badge>}
+            actions={
+              <Button asChild variant="outline" size="xs" icon="external">
+                <a href={entry.docsLink} target="_blank" rel="noopener noreferrer">
+                  Docs
+                </a>
+              </Button>
+            }
+          />
+        ))}
+      </List>
+    </Stack>
   );
 };
