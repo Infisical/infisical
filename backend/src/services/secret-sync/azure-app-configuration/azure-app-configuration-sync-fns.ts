@@ -90,9 +90,7 @@ export const azureAppConfigurationSyncFactory = ({
       secretSync.destinationConfig.label ? `&label=${secretSync.destinationConfig.label}` : "&label=%00"
     }`;
 
-    const azureAppConfigValuesUrlAllSecrets = `/kv?api-version=2023-11-01`;
-
-    const azureAppConfigSecretsLabeled = Object.fromEntries(
+    const azureAppConfigSecrets = Object.fromEntries(
       (
         await $getCompleteAzureAppConfigValues(
           accessToken,
@@ -102,25 +100,9 @@ export const azureAppConfigurationSyncFactory = ({
       ).map((entry) => [entry.key, entry.value])
     );
 
-    const azureAppConfigSecrets = Object.fromEntries(
-      (
-        await $getCompleteAzureAppConfigValues(
-          accessToken,
-          secretSync.destinationConfig.configurationUrl,
-          azureAppConfigValuesUrlAllSecrets
-        )
-      ).map((entry) => [
-        entry.key,
-        {
-          value: entry.value,
-          label: entry.label
-        }
-      ])
-    );
-
     // add the secrets to azure app config, that are in infisical
     for await (const key of Object.keys(secretMap)) {
-      if (!(key in azureAppConfigSecretsLabeled) || secretMap[key]?.value !== azureAppConfigSecretsLabeled[key]) {
+      if (!(key in azureAppConfigSecrets) || secretMap[key]?.value !== azureAppConfigSecrets[key]) {
         await request.put(
           `${secretSync.destinationConfig.configurationUrl}/kv/${key}?api-version=2023-11-01`,
           {
@@ -153,14 +135,13 @@ export const azureAppConfigurationSyncFactory = ({
       // eslint-disable-next-line no-continue
       if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
-      const azureSecret = azureAppConfigSecrets[key];
-      if (
-        !(key in secretMap) ||
-        secretMap[key] === null ||
-        (azureSecret.label && azureSecret.label !== secretSync.destinationConfig.label) ||
-        (!azureSecret.label && secretSync.destinationConfig.label)
-      ) {
-        await $deleteAzureSecret(accessToken, secretSync.destinationConfig.configurationUrl, key, azureSecret.label);
+      if (!(key in secretMap) || secretMap[key] === null) {
+        await $deleteAzureSecret(
+          accessToken,
+          secretSync.destinationConfig.configurationUrl,
+          key,
+          secretSync.destinationConfig.label
+        );
       }
     }
   };
