@@ -218,6 +218,11 @@ const envSchema = z
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
+    BREACHED_PASSWORD_CHECK_ENABLED: zodStrBool
+      .optional()
+      .describe(
+        "Check new passwords against Have I Been Pwned. When unset, on for Infisical Cloud and Dedicated and off for self-hosted."
+      ),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
