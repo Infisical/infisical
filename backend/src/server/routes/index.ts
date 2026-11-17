@@ -271,6 +271,8 @@ import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/
 import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/cert-manager-signer-alert-dal";
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
+import { honeyTokenAlertDALFactory } from "@app/services/alert/providers/honey-token-alert-dal";
+import { honeyTokenAlertProviderFactory } from "@app/services/alert/providers/honey-token-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-folder-alert-dal";
@@ -1045,19 +1047,6 @@ export const registerRoutes = async (
     envConfig
   });
 
-  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
-    honeyTokenDAL,
-    honeyTokenConfigDAL,
-    appConnectionDAL,
-    kmsService
-  });
-
-  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
-    honeyTokenDAL,
-    honeyTokenCleanupService,
-    queueService
-  });
-
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
     kmsRootConfigDAL,
@@ -1129,6 +1118,13 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     secretRotationAlertProviderFactory({
       secretRotationAlertDAL: secretRotationAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    honeyTokenAlertProviderFactory({
+      honeyTokenAlertDAL: honeyTokenAlertDALFactory(db),
       folderDAL,
       permissionService
     })
@@ -1228,6 +1224,19 @@ export const registerRoutes = async (
     kmsService,
     alertProviderRegistry,
     alertHistoryDAL
+  });
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsService,
+    alertService
+  });
+  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
+    honeyTokenDAL,
+    honeyTokenCleanupService,
+    alertService,
+    queueService
   });
   const alertChannelTestService = alertChannelTestServiceFactory({
     alertChannelDAL,
@@ -3554,9 +3563,7 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     appConnectionDAL,
-    orgDAL,
     projectDAL,
-    smtpService,
     folderDAL,
     projectBotService,
     secretDAL: secretV2BridgeDAL,
@@ -3571,7 +3578,12 @@ export const registerRoutes = async (
     appConnectionService,
     telemetryService,
     auditLogService,
-    keyStore
+    keyStore,
+    alertService,
+    notificationService,
+    projectMembershipDAL,
+    orgDAL,
+    userDAL
   });
 
   const proxiedServiceService = proxiedServiceServiceFactory({

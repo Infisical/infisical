@@ -26,7 +26,6 @@ import {
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
   HealthAlertTemplate,
-  HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
   LegacyPkiDeprecationTemplate,
   MfaRecoveryCodeUsedTemplate,
@@ -128,7 +127,6 @@ export enum SmtpTemplates {
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
-  HoneyTokenTriggered = "honeyTokenTriggered",
   AuditReport = "auditReport",
   AlertNotification = "alertNotification"
 }
@@ -193,7 +191,6 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
-  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
   [SmtpTemplates.AuditReport]: AuditReportTemplate,
   [SmtpTemplates.AlertNotification]: AlertNotificationTemplate
 };
