@@ -180,6 +180,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   };
 
   const handleSubmit = async (shouldMerge: boolean) => {
+    if (!isReadyToSubmit || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
@@ -567,8 +568,8 @@ const BulkReviewChangeRequestsSheetContent = ({
                   Cancel
                 </Button>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" isDisabled={isSubmitting}>
+                  <DropdownMenuTrigger asChild disabled={isSubmitting}>
+                    <Button variant="outline" size="sm">
                       Decide All
                       <ChevronDownIcon />
                     </Button>
@@ -581,7 +582,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     >
                       <CheckIcon className="mt-0.5 self-start" />
                       <div className="flex flex-col">
-                        <span className="font-medium">Approve remaining ({remainingCount})</span>
+                        <span className="font-medium">Approve Remaining ({remainingCount})</span>
                         <span className="text-xs text-accent">
                           Keeps the decisions you already made.
                         </span>
@@ -594,7 +595,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     >
                       <XIcon className="mt-0.5 self-start" />
                       <div className="flex flex-col">
-                        <span className="font-medium">Reject remaining ({remainingCount})</span>
+                        <span className="font-medium">Reject Remaining ({remainingCount})</span>
                         <span className="text-xs text-accent">
                           Keeps the decisions you already made.
                         </span>
@@ -607,7 +608,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     >
                       <CheckIcon className="mt-0.5 self-start" />
                       <div className="flex flex-col">
-                        <span className="font-medium">Approve all {requests.length}</span>
+                        <span className="font-medium">Approve All {requests.length}</span>
                         <span className="text-xs text-accent">
                           Replaces every decision, including rejections.
                         </span>
@@ -619,7 +620,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     >
                       <XIcon className="mt-0.5 self-start" />
                       <div className="flex flex-col">
-                        <span className="font-medium">Reject all {requests.length}</span>
+                        <span className="font-medium">Reject All {requests.length}</span>
                         <span className="text-xs text-accent">
                           Replaces every decision, including approvals.
                         </span>
@@ -628,13 +629,8 @@ const BulkReviewChangeRequestsSheetContent = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="project"
-                      size="sm"
-                      isDisabled={!isReadyToSubmit || isSubmitting}
-                      isPending={isSubmitting}
-                    >
+                  <DropdownMenuTrigger asChild disabled={!isReadyToSubmit || isSubmitting}>
+                    <Button variant="project" size="sm" isPending={isSubmitting}>
                       <span className="tabular-nums opacity-70">
                         {approveCount}/{requests.length} Approved
                       </span>

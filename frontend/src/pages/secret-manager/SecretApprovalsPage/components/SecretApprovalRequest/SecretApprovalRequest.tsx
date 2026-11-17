@@ -137,7 +137,10 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
-  const [allMatchingSelectedFor, setAllMatchingSelectedFor] = useState<string | null>(null);
+  const [matchingSelection, setMatchingSelection] = useState<{
+    filtersKey: string;
+    ids: string[];
+  } | null>(null);
   const selectionVersion = useRef(0);
 
   const {
@@ -231,7 +234,6 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
 
   const markSelectionEdited = () => {
     selectionVersion.current += 1;
-    setAllMatchingSelectedFor(null);
   };
 
   const clearSelection = () => {
@@ -281,13 +283,15 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const listFiltersKey = JSON.stringify(listFilters);
-  const getMatchingSelectionKey = (count: number) => `${listFiltersKey}|${count}`;
+  const isEveryKnownMatchSelected =
+    matchingSelection?.filtersKey === listFiltersKey &&
+    matchingSelection.ids.every((id) => selectedRequests[id]);
   const canSelectAllMatching =
     isOpenTab &&
     isPageSelected &&
     totalApprovalCount > secretApprovalRequests.length &&
     selectedCount < MAX_BULK_SELECTION &&
-    allMatchingSelectedFor !== getMatchingSelectionKey(totalApprovalCount);
+    !isEveryKnownMatchSelected;
 
   const selectAllMatching = async () => {
     const version = selectionVersion.current;
@@ -299,21 +303,18 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         offset: 0
       });
       if (version !== selectionVersion.current) return;
-      setAllMatchingSelectedFor(getMatchingSelectionKey(totalCount));
-      setSelectedRequests((prev) => {
-        const unselected = approvals.filter(({ id }) => !prev[id]);
-        const available = Math.max(0, MAX_BULK_SELECTION - Object.keys(prev).length);
-        return {
-          ...prev,
-          ...Object.fromEntries(
-            unselected.slice(0, available).map((request) => [request.id, request])
-          )
-        };
-      });
-      if (totalCount > MAX_BULK_SELECTION) {
+      const unselected = approvals.filter(({ id }) => !selectedRequests[id]);
+      const added = unselected.slice(0, Math.max(0, MAX_BULK_SELECTION - selectedCount));
+      const leftOutCount = totalCount - approvals.length + unselected.length - added.length;
+      setMatchingSelection({ filtersKey: listFiltersKey, ids: approvals.map(({ id }) => id) });
+      setSelectedRequests((prev) => ({
+        ...prev,
+        ...Object.fromEntries(added.map((request) => [request.id, request]))
+      }));
+      if (leftOutCount > 0) {
         createNotification({
           type: "info",
-          text: `You can select up to ${MAX_BULK_SELECTION} change requests at once, so the selection stopped at ${MAX_BULK_SELECTION} of ${totalCount} matching`
+          text: `Selected ${added.length} more. ${leftOutCount} matching change requests were left out because you can select up to ${MAX_BULK_SELECTION} at once.`
         });
       }
     } catch {
