@@ -539,10 +539,6 @@ export const OverviewPage = () => {
         }
       },
       proxy: {
-        create: () =>
-          Promise.reject(
-            new Error("Proxied services are now created in Agent Vault, not in a project.")
-          ),
         update: (_before, after) =>
           updateProxiedService.mutateAsync({
             serviceId: after.id,
