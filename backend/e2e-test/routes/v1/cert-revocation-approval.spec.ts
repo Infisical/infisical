@@ -38,7 +38,7 @@ import {
   updateApplicationMemberRole,
   updateRevocationApprovalPolicy
 } from "../../testUtils/cert-manager";
-import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
+import { createEmptyOrg, createIsolatedOrgAndProject, deleteOrgs } from "../../testUtils/fixtures";
 import { createProjectGroup, deleteGroups, removeUserFromGroup } from "../../testUtils/groups";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { listUserNotifications } from "../../testUtils/notifications";
@@ -67,6 +67,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   let projectId = "";
   const createdUserIds: string[] = [];
   const createdGroupIds: string[] = [];
+  const createdOrgIds: string[] = [];
 
   beforeAll(async () => {
     restoreLicense = overrideLicenseFeatures({ pkiApprovals: true, groups: true, maxCas: 100, maxInternalCas: 100 });
@@ -81,6 +82,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     restoreLicense?.();
     await deleteGroups(createdGroupIds);
     await cleanupOrg?.();
+    await deleteOrgs(createdOrgIds);
     await deleteUsers(createdUserIds);
   });
 
@@ -550,6 +552,44 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       );
     }
   );
+
+  test("a refused approver outside the Application comes back only as the ID the caller sent, on create and update", async () => {
+    const fixture = await setUp({ approverVia: "user", steps: oneStep });
+    const outsider = await createUser("outsider-no-org");
+    createdUserIds.push(outsider.userId);
+    const foreignOrg = await createEmptyOrg({ namePrefix: "foreign-org" });
+    createdOrgIds.push(foreignOrg.orgId);
+    const foreignGroupName = `foreign-group-${crypto.randomUUID().slice(0, 8)}`;
+    const [foreignGroup] = (await testDb(TableName.Groups)
+      .insert({ orgId: foreignOrg.orgId, name: foreignGroupName, slug: foreignGroupName })
+      .returning("id")) as { id: string }[];
+
+    const approvers = [
+      { type: ApproverType.User, id: outsider.userId },
+      { type: ApproverType.Group, id: foreignGroup.id }
+    ];
+    const expectIdsOnly = (res: { statusCode: number; payload: string }) => {
+      expect(res.statusCode, res.payload).toBe(400);
+      const { message } = JSON.parse(res.payload);
+      expect(message).toBe(
+        `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users ${outsider.userId}; groups ${foreignGroup.id}.`
+      );
+      expect(message).not.toContain(outsider.username);
+      expect(message).not.toContain(foreignGroupName);
+    };
+
+    await createRevocationApprovalPolicy({
+      applicationId: fixture.application.id,
+      profileSlug: fixture.profile.slug,
+      steps: [{ requiredApprovals: 1, approvers }],
+      authToken: adminToken
+    }).expect(expectIdsOnly);
+    await updateRevocationApprovalPolicy({
+      policyId: fixture.policy.id,
+      steps: [{ requiredApprovals: 1, approvers }],
+      authToken: adminToken
+    }).expect(expectIdsOnly);
+  });
 
   test("a covered certificate can't be revoked once one of a 2-approval step's two approvers is demoted to Auditor", async () => {
     const fixture = await setUp({

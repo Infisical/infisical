@@ -89,7 +89,7 @@ const setup = (
           firstName: id === "auditor" ? "Ada" : null,
           lastName: id === "auditor" ? "Auditor" : null,
           email: `${id}@example.com`,
-          username: `${id}@example.com`
+          username: id === "sso-auditor" ? "sso-handle" : `${id}@example.com`
         }))
       )
     },
@@ -694,25 +694,33 @@ describe("certRevocationApprovalResourceFactory.verifyPolicyActors", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("refuses Auditors and non-members, naming each the way the approver picker does", async () => {
-    const { resource } = setup(
+  it("refuses Auditors and non-members, naming the Application's members and giving outsiders' IDs back", async () => {
+    const { deps, resource } = setup(
       [],
       [
         { actorUserId: "auditor", actorGroupId: null, isActive: true, role: "auditor" },
+        { actorUserId: "sso-auditor", actorGroupId: null, isActive: true, role: "auditor" },
         { actorUserId: null, actorGroupId: "auditor-group", isActive: true, role: "auditor" }
       ]
     );
 
     const result = verify(resource, [
       { type: ApproverType.User, id: "auditor" },
+      { type: ApproverType.User, id: "sso-auditor" },
       { type: ApproverType.User, id: "outsider" },
-      { type: ApproverType.Group, id: "auditor-group" }
+      { type: ApproverType.Group, id: "auditor-group" },
+      { type: ApproverType.Group, id: "outsider-group" }
     ]);
 
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toThrow(
-      "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users Ada Auditor, outsider@example.com; groups auditor-group name."
+      "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users Ada Auditor, sso-handle, outsider; groups auditor-group name, outsider-group."
     );
+    const lookedUp = [...deps.userDAL.find.mock.calls, ...deps.groupDAL.find.mock.calls].flatMap(
+      ([filter]) => filter.$in.id
+    );
+    expect(lookedUp).not.toContain("outsider");
+    expect(lookedUp).not.toContain("outsider-group");
   });
 });
 
