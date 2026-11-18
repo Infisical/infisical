@@ -1720,7 +1720,12 @@ export const agentVaultOauthServiceFactory = ({
     };
     const load = async (previous?: TLoadedOauthService) =>
       assertSameDestination(
-        await loadOauthTokens(holder, () => tokensNotFound(holder, serviceId, owner, variableId, inline), cipher, previous)
+        await loadOauthTokens(
+          holder,
+          () => tokensNotFound(holder, serviceId, owner, variableId, inline),
+          cipher,
+          previous
+        )
       );
 
     let current = await load();
