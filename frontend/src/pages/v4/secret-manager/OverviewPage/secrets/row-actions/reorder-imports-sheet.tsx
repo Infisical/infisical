@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
@@ -14,7 +16,7 @@ import { SmallText, Text } from "@infisical/cipher/ui/text";
 
 import type { TSecretImport } from "@app/hooks/api/secretImports/types";
 
-import { failed } from "../../../../access/toast";
+import { errorMessage, failed } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { nameLabel } from "../../../../shell/resource-name";
 import type { Resource } from "../../secrets-model";
@@ -47,7 +49,7 @@ export function ReorderImportsSheet({
   const entry = useLastDefined(openEntry);
   const adapter = useV4Adapter("secrets");
   const updateImport = adapter.useUpdateSecretImport();
-  const { data, isPending } = adapter.useSecretImports({
+  const { data, isPending, error, refetch } = adapter.useSecretImports({
     projectId: entry?.project ?? "",
     environment: entry?.environment ?? "",
     path: entry?.path ?? "/",
@@ -67,6 +69,14 @@ export function ReorderImportsSheet({
   const reorder = async (next: TSecretImport[]) => {
     const move = movedTo(items, next);
     if (!move) return;
+    const target = items[move.to];
+    const twin =
+      move.to > items.indexOf(move.moved) && target.isReplication
+        ? data?.find(
+            (item) =>
+              item.isReserved && item.importPath.endsWith(`/__reserve_replication_${target.id}`)
+          )
+        : undefined;
     setDraft({ basis, order: next });
     setSaving(true);
     try {
@@ -75,11 +85,11 @@ export function ReorderImportsSheet({
         environment: entry.environment,
         path: entry.path,
         id: move.moved.id,
-        import: { position: Number(items[move.to].position) }
+        import: { position: Number((twin ?? target).position) }
       });
-    } catch (error) {
+    } catch (saveError) {
       setDraft(undefined);
-      failed("Failed to reorder secret imports", error);
+      failed("Failed to reorder secret imports", saveError);
     } finally {
       setSaving(false);
     }
@@ -100,39 +110,53 @@ export function ReorderImportsSheet({
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
-          <SortableList
-            label="Secret imports"
-            items={items}
-            getKey={(item) => item.id}
-            getLabel={(item) => item.importPath}
-            disabled={isPending || saving || awaitingServer}
-            onReorder={reorder}
-            renderItem={(item, { index }) => (
-              <Stack gap={2}>
-                <Inline gap={8} align="center" wrap={false}>
-                  <Text truncate>{item.importPath}</Text>
-                  {index === items.length - 1 && items.length > 1 && (
-                    <Badge tone="soft">Wins on conflict</Badge>
-                  )}
-                </Inline>
-                <SmallText muted truncate>
-                  {item.importEnv.projectId && item.importEnv.projectId !== entry.project && (
-                    <>
-                      {nameLabel(
-                        {
-                          id: item.importEnv.projectId,
-                          name: item.sourceProjectName,
-                          pending: false
-                        },
-                        "project"
-                      )}{" "}
-                    </>
-                  )}
-                  {environmentLabel(item.importEnv.slug)}
-                </SmallText>
-              </Stack>
-            )}
-          />
+          {error ? (
+            <EmptyState
+              size="sm"
+              icon="alert-c"
+              title="Couldn't load secret imports"
+              description={errorMessage(error) ?? "Try again in a moment."}
+              actions={
+                <Button variant="outline" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              }
+            />
+          ) : (
+            <SortableList
+              label="Secret imports"
+              items={items}
+              getKey={(item) => item.id}
+              getLabel={(item) => item.importPath}
+              disabled={isPending || saving || awaitingServer}
+              onReorder={reorder}
+              renderItem={(item, { index }) => (
+                <Stack gap={2}>
+                  <Inline gap={8} align="center" wrap={false}>
+                    <Text truncate>{item.importPath}</Text>
+                    {index === items.length - 1 && items.length > 1 && (
+                      <Badge tone="soft">Wins on conflict</Badge>
+                    )}
+                  </Inline>
+                  <SmallText muted truncate>
+                    {item.importEnv.projectId && item.importEnv.projectId !== entry.project && (
+                      <>
+                        {nameLabel(
+                          {
+                            id: item.importEnv.projectId,
+                            name: item.sourceProjectName,
+                            pending: false
+                          },
+                          "project"
+                        )}{" "}
+                      </>
+                    )}
+                    {environmentLabel(item.importEnv.slug)}
+                  </SmallText>
+                </Stack>
+              )}
+            />
+          )}
         </SheetBody>
       </SheetContent>
     </Sheet>
