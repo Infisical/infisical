@@ -352,8 +352,20 @@ describe("createAccessDating", () => {
   test("does not let a recursive grant date access below a deeper recursive grant that restricts it", () => {
     const grants = [
       { id: "read-apps", date: day("2026-01-05"), role: SecretFolderRole.Read, path: "/apps", recursive: true },
-      { id: "list-payments", date: day("2026-03-05"), role: SecretFolderRole.List, path: "/apps/payments", recursive: true },
-      { id: "read-keys", date: day("2026-05-05"), role: SecretFolderRole.Read, path: "/apps/payments/keys", recursive: false }
+      {
+        id: "list-payments",
+        date: day("2026-03-05"),
+        role: SecretFolderRole.List,
+        path: "/apps/payments",
+        recursive: true
+      },
+      {
+        id: "read-keys",
+        date: day("2026-05-05"),
+        role: SecretFolderRole.Read,
+        path: "/apps/payments/keys",
+        recursive: false
+      }
     ].map(({ id, date, role, path, recursive }) => ({
       date,
       privilege: {
@@ -377,7 +389,10 @@ describe("createAccessDating", () => {
       }))
     );
     const secretAt = (secretPath: string) =>
-      activity({ secret: { key: "DB_PASS", tags: [], folderId: secretPath } as unknown as TSecretActivity["secret"], secretPath });
+      activity({
+        secret: { key: "DB_PASS", tags: [], folderId: secretPath } as unknown as TSecretActivity["secret"],
+        secretPath
+      });
 
     expect(accessSinceOf(actor, secretAt("/apps/payments/keys"))).toEqual(day("2026-05-05"));
     expect(accessSinceOf(actor, secretAt("/apps/other"))).toEqual(day("2026-01-05"));

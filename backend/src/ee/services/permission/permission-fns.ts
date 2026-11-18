@@ -758,7 +758,9 @@ export const buildFolderScopedPrivilegeRulesByGrant = <T extends TProjectFolderS
       privilege: grant.privilege,
       rules: [
         ...withConditions(
-          (isRecursiveTable ? RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE : FOLDER_SCOPED_DENY_RULES_BY_ROLE)[grant.role],
+          (isRecursiveTable ? RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE : FOLDER_SCOPED_DENY_RULES_BY_ROLE)[
+            grant.role
+          ],
           grant.conditions
         ),
         ...withConditions(

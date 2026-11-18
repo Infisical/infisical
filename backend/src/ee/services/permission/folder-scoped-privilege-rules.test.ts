@@ -1095,7 +1095,13 @@ describe("folder-scoped privilege boundary", () => {
 
   describe("nested recursive grants", () => {
     const recursiveAt = (role: SecretFolderRole, secretPath: string) =>
-      privilege({ id: `recursive-${secretPath}`, folderId: `folder-${secretPath}`, role, secretPath, appliesToSubfolders: true });
+      privilege({
+        id: `recursive-${secretPath}`,
+        folderId: `folder-${secretPath}`,
+        role,
+        secretPath,
+        appliesToSubfolders: true
+      });
     const manageA = recursiveAt(SecretFolderRole.Manage, "/a");
     const listAB = recursiveAt(SecretFolderRole.List, "/a/b");
     const listAC = recursiveAt(SecretFolderRole.List, "/a/c");
