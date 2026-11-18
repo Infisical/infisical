@@ -357,9 +357,9 @@ Two grants issue them: the authorization code flow (consented `scopes`) and the 
 product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
 administration route (below). And the handler must actually **check** a CASL ability, because that check
 is where the granted scopes get intersected in: building an ability and throwing it away
-(`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
-nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
-passing `requireOrg: false` accepts `AuthMode.OAUTH`.
+(`getOrgPermission` used as a membership gate) narrows nothing. `hasRole(...)` returns false for a
+scope-narrowed token, so a route that authorizes on a role alone denies every such token; it does not
+narrow a fully-delegated one. Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`.
 
 **Administration is read-only for a delegated token.** A delegated token can look at anything the
 authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at

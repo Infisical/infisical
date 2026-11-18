@@ -529,7 +529,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         memberships: permissionData,
-        hasRole
+        hasRole: oauthScopes ? () => false : hasRole
       };
     });
   };
@@ -891,7 +891,8 @@ export const permissionServiceFactory = ({
       permission: createMongoAbility<ProjectPermissionSet>(
         applyOauthScopeToProjectRules(payload.result.permission.rules, oauthScopes),
         { conditionsMatcher }
-      )
+      ),
+      hasRole: () => false
     };
   };
 
