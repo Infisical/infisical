@@ -5150,7 +5150,7 @@ export const AGENT_VAULT = {
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundle and of each project skill the session was created with, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. A skill sent with the session replaces a skill with the same name from its access bundle.",
+      "The latest version of each skill on the session's access bundle and of each project skill the session was created with, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. When a skill sent with the session has the same name as a skill from the project, the project's skill is returned and the sent one is left out.",
     onBehalfOfUserId:
       "List the skills a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
@@ -5337,7 +5337,7 @@ export const AGENT_VAULT = {
     skillName:
       "The name of a skill in this project. An Agent Vault admin can use any of them, and a member only a skill in an access bundle granted to them. A session on behalf of a user can use only a skill in an access bundle granted to both the user and the machine identity. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still use it.",
     inlineSkills:
-      "A skill sent with this session, alongside its access bundle's skills and the skills from the project. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited, and an agent gets it in place of a skill with the same name in the access bundle. Its files are deleted when the session is revoked, or within an hour after it expires.",
+      "A skill sent with this session, alongside its access bundle's skills and the skills from the project. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited. If its name matches a skill in the access bundle, the request fails with a 400 error. If a skill from the project takes its name later, for example by joining the access bundle, the agent gets that skill instead. Its files are deleted when the session is revoked, or within an hour after it expires.",
     skillsRead:
       "The skills from the project and the skills sent with this session, in the order they were sent. Its access bundle's skills aren't listed here. Empty when the session has no skills besides its access bundle's.",
     skillId: "The ID of the skill in the project, or of the skill sent with this session.",
