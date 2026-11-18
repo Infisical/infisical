@@ -429,13 +429,14 @@ export const McpToolsFields = ({
             help={
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="xs"
                 icon="sync"
                 disabled={
-                  isCredentialMemberProvided ? !form.serverUrl.trim() : isAuthorizationExpired
+                  isCredentialMemberProvided
+                    ? !form.serverUrl.trim()
+                    : isAuthorizationExpired || loading
                 }
-                loading={loading && !dialogOpen}
                 onClick={() => {
                   if (isCredentialMemberProvided) setDialogOpen(true);
                   else loadTools().catch(() => undefined);
