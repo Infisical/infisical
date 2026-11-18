@@ -570,7 +570,8 @@ export const SessionLogsPanel = ({
     gaps.length > 0 && !hasOpenedRecords && gaps.every((gap) => gap.reason === "fetch");
   // Hidden until the first page says there are logs to search, since logs that are off, off-plan or unreadable
   // replace the whole panel. An active filter keeps it so the filter can always be cleared.
-  const canSearch = !isPending && !isLoadError && (hasChunks || Boolean(hasNextPage) || isFiltered);
+  const canSearch =
+    !isPending && (isFiltered || (!isLoadError && (hasChunks || Boolean(hasNextPage))));
 
   const retryButton = (
     <Button
