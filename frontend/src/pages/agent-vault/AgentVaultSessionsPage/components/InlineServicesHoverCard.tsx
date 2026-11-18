@@ -69,7 +69,7 @@ export const InlineServicesList = ({
 
 export const NamedServicesList = ({ services }: { services: TAgentVaultSessionNamedService[] }) => (
   <ServiceListFrame
-    caption="The project's services, named when the session was created."
+    caption="The project's services, picked when the session was created."
     label="Services"
   >
     {services.map((service) => (
@@ -99,7 +99,7 @@ export const SessionSkillsList = ({
     caption={
       isInline
         ? "Sent with the session when it was created."
-        : "The project's skills, named when the session was created."
+        : "The project's skills, picked when the session was created."
     }
     label={isInline ? "Inline skills" : "Skills"}
   >
