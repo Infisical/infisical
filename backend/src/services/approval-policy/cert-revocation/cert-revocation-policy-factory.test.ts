@@ -38,15 +38,22 @@ type TTestMembership = {
   role?: string;
 };
 
-type TOrgAccess = { deactivated?: string[]; invited?: string[]; viaLinkedGroupOnly?: string[] };
+type TOrgAccess = {
+  deactivated?: string[];
+  invited?: string[];
+  viaLinkedGroupOnly?: string[];
+  subOrgOf?: string;
+  deactivatedInRoot?: string[];
+};
 
 // Every user has an active, accepted organization membership of their own, except those listed in the last argument:
 // `viaLinkedGroupOnly` users have no row of their own and reach the organization through a group linked into it.
+// With `subOrgOf`, the organization is a sub-org of that root, where everyone is active except `deactivatedInRoot`.
 const setup = (
   policies: unknown[],
   memberships: TTestMembership[] = [],
   groupLinks: { userId: string; groupId: string }[] = [],
-  { deactivated = [], invited = [], viaLinkedGroupOnly = [] }: TOrgAccess = {}
+  { deactivated = [], invited = [], viaLinkedGroupOnly = [], subOrgOf, deactivatedInRoot = [] }: TOrgAccess = {}
 ) => {
   const withIds = memberships.map((m, i) => ({ ...m, id: m.id ?? `membership-${i}`, scopeOrgId: "org-1" }));
   const ownOrgRows = (userIds: string[]) =>
@@ -76,10 +83,17 @@ const setup = (
       findMembership: vi
         .fn()
         .mockImplementation(async (filter: { $in: { actorUserId: string[] } }) => ownOrgRows(filter.$in.actorUserId)),
-      findActorsWithActiveOrgAccess: vi.fn().mockImplementation(async ({ userIds }: { userIds: string[] }) => ({
-        userIds: new Set(userIds.filter((userId) => viaLinkedGroupOnly.includes(userId))),
-        identityIds: new Set()
-      }))
+      findActorsWithActiveOrgAccess: vi
+        .fn()
+        .mockImplementation(async ({ orgId, userIds }: { orgId: string; userIds: string[] }) => ({
+          userIds: new Set(
+            userIds.filter((userId) =>
+              subOrgOf && orgId === subOrgOf ? !deactivatedInRoot.includes(userId) : viaLinkedGroupOnly.includes(userId)
+            )
+          ),
+          identityIds: new Set()
+        })),
+      findById: vi.fn().mockResolvedValue({ id: "org-1", rootOrgId: subOrgOf ?? null })
     },
     userDAL: {
       find: vi.fn().mockImplementation(async ({ $in }: { $in: { id: string[] } }) =>
@@ -328,6 +342,48 @@ describe("certRevocationApprovalResourceFactory organization access of approvers
 
     expect(approverCount).toBe(0);
     expect(undecidable).toBe(true);
+  });
+
+  describe("in a sub-organization", () => {
+    it("doesn't count a user named directly whose root organization membership was deactivated", async () => {
+      const { approverCount, undecidable } = await evaluate(
+        [{ type: ApproverType.User, id: "sub-org-user" }],
+        [{ actorUserId: "sub-org-user", actorGroupId: null, isActive: true }],
+        [],
+        { subOrgOf: "root-org", deactivatedInRoot: ["sub-org-user"] }
+      );
+
+      expect(approverCount).toBe(0);
+      expect(undecidable).toBe(true);
+    });
+
+    it("doesn't count a group entry's member whose root organization membership was deactivated", async () => {
+      const { approverCount, undecidable } = await evaluate(
+        [{ type: ApproverType.Group, id: "operator-group" }],
+        [operatorGroup],
+        [{ userId: "sub-org-user", groupId: "operator-group" }],
+        { subOrgOf: "root-org", deactivatedInRoot: ["sub-org-user"] }
+      );
+
+      expect(approverCount).toBe(0);
+      expect(undecidable).toBe(true);
+    });
+
+    it("counts an approver who is active in both the sub-org and its root organization, reading the primary", async () => {
+      const { approverCount, undecidable, deps } = await evaluate(
+        [{ type: ApproverType.User, id: "sub-org-user" }],
+        [{ actorUserId: "sub-org-user", actorGroupId: null, isActive: true }],
+        [],
+        { subOrgOf: "root-org", deactivatedInRoot: ["someone-else"] }
+      );
+
+      expect(approverCount).toBe(1);
+      expect(undecidable).toBe(false);
+      expect(deps.orgDAL.findActorsWithActiveOrgAccess).toHaveBeenCalledWith(
+        expect.objectContaining({ orgId: "root-org" }),
+        primaryDb
+      );
+    });
   });
 });
 
