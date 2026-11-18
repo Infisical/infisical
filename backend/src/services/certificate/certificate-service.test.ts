@@ -400,6 +400,7 @@ describe("certificate revocation behind an approval policy", () => {
     };
     const pkiApplicationDAL = { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) };
     const licenseService = { getPlan: vi.fn().mockResolvedValue({ has: () => true }) };
+    const signerDAL = { findOne: vi.fn().mockResolvedValue(undefined) };
 
     const deps = {
       certificateDAL,
@@ -418,7 +419,7 @@ describe("certificate revocation behind an approval policy", () => {
       pkiSyncQueue: { queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined) },
       pkiApplicationDAL,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
-      signerDAL: { findOne: vi.fn().mockResolvedValue(undefined) },
+      signerDAL,
       userDAL: {
         findById: vi.fn().mockResolvedValue({ firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
       },
@@ -443,6 +444,7 @@ describe("certificate revocation behind an approval policy", () => {
       auditLogService,
       pkiApplicationDAL,
       licenseService,
+      signerDAL,
       storedCertificate: () => stored,
       auditEvents: () => auditLogService.createAuditLog.mock.calls.map(([log]) => (log as TAuditLog).event)
     };
@@ -487,6 +489,17 @@ describe("certificate revocation behind an approval policy", () => {
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it("refuses to open a request when another revocation committed after the certificate was read", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findByIdForUpdate.mockImplementationOnce(async () => ({
+        ...ctx.storedCertificate(),
+        status: CertStatus.REVOKED
+      }));
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow("is already revoked.");
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
     });
 
     it("refuses a second request while one is still waiting for approval", async () => {
@@ -955,6 +968,20 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
         "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm. The certificate is still active."
+      );
+    });
+
+    it("fails an approved revocation once a code signing signer uses the certificate, as revoking it directly would", async () => {
+      const ctx = buildRevocationService();
+      ctx.signerDAL.findOne.mockResolvedValue({ id: "signer-1" });
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "This certificate is in use by a code signing signer. Revoke it from the signer instead. The certificate is still active."
       );
     });
 
