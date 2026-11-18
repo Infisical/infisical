@@ -21,17 +21,12 @@ import { TableCell, TableRow } from "@infisical/cipher/ui/table";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
-  BellIcon,
   ClipboardPasteIcon,
-  CodeXmlIcon,
   FilterIcon,
   FingerprintIcon,
   HexagonIcon,
   ImportIcon,
-  ListPlusIcon,
-  MessageSquareIcon,
-  PencilLineIcon,
-  TagsIcon
+  ListPlusIcon
 } from "lucide-react";
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
@@ -46,7 +41,7 @@ import {
 import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
 import { ReferenceEditor } from "./secret-references";
-import { Annotations } from "./secret-row";
+import { AnnotateMenu, Annotations } from "./secret-row";
 
 import styles from "./overview.module.css";
 
@@ -528,7 +523,6 @@ export function QuickAddRow({
   const valueRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const keyRef = useRef<HTMLInputElement>(null);
   const annotating = useRef(false);
-  const chosen = useRef<QuickAddAnnotation>(undefined);
   const resume = useRef<HTMLElement | null>(null);
   const annotated = Boolean(
     annotations.comment || annotations.tags.length || annotations.metadata.length
@@ -660,64 +654,27 @@ export function QuickAddRow({
                 if (!next) finishAnnotating();
               }}
             >
-              <DropdownMenu
-                onOpenChange={(next) => {
-                  if (!next) return;
-                  annotating.current = true;
-                  chosen.current = undefined;
-                  resume.current =
-                    document.activeElement === valueRef.current ? valueRef.current : keyRef.current;
-                }}
-              >
-                <PopoverAnchor asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-xs" iconOnly tabIndex={-1}>
-                      <Icon icon={PencilLineIcon} />
-                      <span className="sr-only">Annotate new secret</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                </PopoverAnchor>
-                <DropdownMenuContent
-                  align="start"
-                  onCloseAutoFocus={(event) => {
-                    event.preventDefault();
-                    if (chosen.current) setOverlay(chosen.current);
+              <PopoverAnchor asChild>
+                <AnnotateMenu
+                  revealed
+                  label="new secret"
+                  annotations={annotations}
+                  tagsBlock={tagsBlock}
+                  reminderBlock="Create the secret to add a reminder"
+                  onOpenChange={(next) => {
+                    if (!next) return;
+                    annotating.current = true;
+                    resume.current =
+                      document.activeElement === valueRef.current
+                        ? valueRef.current
+                        : keyRef.current;
+                  }}
+                  onChoose={(kind) => {
+                    if (kind && kind !== "reminder") setOverlay(kind);
                     else finishAnnotating();
                   }}
-                >
-                  <DropdownMenuLabel>Annotate</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      chosen.current = "comment";
-                    }}
-                  >
-                    <Icon icon={MessageSquareIcon} />
-                    {annotations.comment ? "Edit comment" : "Add comment"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={Boolean(tagsBlock)}
-                    description={tagsBlock}
-                    onSelect={() => {
-                      chosen.current = "tags";
-                    }}
-                  >
-                    <Icon icon={TagsIcon} />
-                    {annotations.tags.length ? "Edit tags" : "Add tags"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled description="Create the secret to add a reminder">
-                    <Icon icon={BellIcon} />
-                    Add reminder
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      chosen.current = "metadata";
-                    }}
-                  >
-                    <Icon icon={CodeXmlIcon} />
-                    {annotations.metadata.length ? "Edit metadata" : "Add metadata"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                />
+              </PopoverAnchor>
               <PopoverContent
                 draggable
                 align="start"
