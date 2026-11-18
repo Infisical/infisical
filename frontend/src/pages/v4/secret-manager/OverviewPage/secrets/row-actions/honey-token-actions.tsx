@@ -37,7 +37,7 @@ import {
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
-import { ActivityIcon, BanIcon, HexagonIcon, MapPinIcon, RotateCcwIcon } from "lucide-react";
+import { ActivityIcon, BanIcon, MapPinIcon, RotateCcwIcon } from "lucide-react";
 
 import {
   ProjectPermissionHoneyTokenActions,
@@ -387,7 +387,7 @@ function HoneyTokenDetailsSheet({
                     {token.path !== "/" && <span className={styles.mono}>{token.path}</span>}
                   </Badge>
                   <Badge tone="soft">
-                    <Icon icon={HexagonIcon} />
+                    <Icon name="honey" />
                     {`${openEvents} open event${openEvents === 1 ? "" : "s"}`}
                   </Badge>
                   <Badge tone="soft">

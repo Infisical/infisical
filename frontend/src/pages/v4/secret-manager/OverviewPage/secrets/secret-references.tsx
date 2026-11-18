@@ -24,7 +24,6 @@ import { CopyButton } from "@infisical/cipher/ui/sensitive-editor";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { AxiosError } from "axios";
-import { LayersIcon } from "lucide-react";
 
 import { ApiErrorTypes } from "@app/hooks/api/types";
 
@@ -392,7 +391,7 @@ function buildWizard(input: string, base: Scope, source: ReferenceSource): Wizar
 }
 
 const glyphs = {
-  environment: <Icon icon={LayersIcon} size={16} />,
+  environment: <Icon name="layers" size={16} />,
   folder: <Icon name="folder" size={16} />,
   secret: <Icon name="key" size={16} />
 };

@@ -22,7 +22,6 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import { KmipUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
@@ -138,7 +137,7 @@ export const KmipPage = () => {
   let empty = (
     <EmptyState
       size="sm"
-      icon="machine"
+      icon="server"
       title="No KMIP clients yet"
       description="Add a KMIP client to grant a device or application access to this project's keys."
     />
@@ -232,7 +231,7 @@ export const KmipPage = () => {
                       description={canEdit ? undefined : RESTRICTED}
                       onSelect={() => setOverlay({ kind: "client", client })}
                     >
-                      <Icon icon={PencilIcon} />
+                      <Icon name="pencil" />
                       Edit KMIP client
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

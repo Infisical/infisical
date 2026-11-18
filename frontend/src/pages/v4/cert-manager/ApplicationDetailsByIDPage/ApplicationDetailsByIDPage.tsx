@@ -281,7 +281,7 @@ const Page = () => {
   if (!application)
     return (
       <EmptyState
-        icon="apps"
+        icon="app-window"
         title="Application not found"
         description="It may have been deleted, or you may not have access to it."
         actions={

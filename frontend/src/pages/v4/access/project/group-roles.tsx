@@ -11,7 +11,7 @@ import {
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { ClockAlertIcon, PencilIcon } from "lucide-react";
+import { ClockAlertIcon } from "lucide-react";
 
 import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
@@ -229,7 +229,7 @@ export const GroupRoles = ({
                 disabled={!canEdit}
                 disabledReason={canEdit ? undefined : RESTRICTED}
               >
-                <Icon icon={PencilIcon} />
+                <Icon name="pencil" />
               </Button>
             </PopoverTrigger>
           </Tooltip>

@@ -21,12 +21,7 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  BotIcon,
-  ChevronsLeftRightEllipsisIcon
-} from "lucide-react";
+import { ArrowDownIcon, ArrowRightIcon, BotIcon } from "lucide-react";
 
 import { ProxiedServiceSubstitutionSurface } from "./managed-proxy-enums";
 import {
@@ -698,7 +693,7 @@ export function SubstitutionDiagram({ form }: { form: TProxiedServiceForm }) {
       {connector("Agent sends the placeholder in its request")}
       <Inset className={styles.node} data-accent="">
         <span className={styles.nodeTitle}>
-          <Icon icon={ChevronsLeftRightEllipsisIcon} size={14} />
+          <Icon name="proxy" size={14} />
           Agent Proxy
         </span>
         <span className={styles.nodeCode}>

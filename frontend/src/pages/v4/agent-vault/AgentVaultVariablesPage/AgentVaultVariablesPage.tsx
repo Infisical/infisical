@@ -28,7 +28,6 @@ import { Meta } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -293,7 +292,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
             ? [
                 {
                   label: "Edit variable",
-                  icon: PencilIcon,
+                  icon: "pencil",
                   onSelect: (variable) => setDialog({ variable })
                 }
               ]
@@ -371,7 +370,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
             <EmptyState
               size="sm"
               media="bare"
-              icon="key"
+              icon="braces"
               title="No variables yet"
               description={
                 isPersonal

@@ -156,6 +156,7 @@ export const CommandPalette = ({
           id: `project-entity:${entry.id}`,
           label: entry.name,
           kind: "project" as const,
+          icon: productOf(entry.type).folder,
           description: productOf(entry.type).label,
           onSelect: () => go(projectHome(entry.type, entry.id))
         })),

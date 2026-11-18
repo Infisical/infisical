@@ -17,10 +17,8 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import {
   BanIcon,
-  ChevronsLeftRightEllipsisIcon,
   FingerprintIcon,
   GitBranchIcon,
-  HexagonIcon,
   ImportIcon,
   type LucideIcon,
   SaveIcon,
@@ -101,8 +99,8 @@ const kindGlyphs: Record<ResourceKind, Glyph> = {
   import: { icon: ImportIcon },
   dynamic: { icon: FingerprintIcon },
   rotation: { name: "sync" },
-  honey: { icon: HexagonIcon },
-  proxy: { icon: ChevronsLeftRightEllipsisIcon }
+  honey: { name: "honey" },
+  proxy: { name: "proxy" }
 };
 export function TruncatedLabel({ children }: { children: string }) {
   const label = useRef<HTMLSpanElement>(null);

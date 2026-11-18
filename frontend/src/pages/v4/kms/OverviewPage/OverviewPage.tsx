@@ -16,7 +16,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import FileSaver from "file-saver";
-import { FileSignatureIcon, LockOpenIcon, PencilIcon } from "lucide-react";
+import { FileSignatureIcon, LockOpenIcon } from "lucide-react";
 
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -190,7 +190,7 @@ const KeyMenu = ({
         Export key
       </DropdownMenuItem>
       <DropdownMenuItem disabledReason={editReason} onSelect={() => onOpen("edit")}>
-        <Icon icon={PencilIcon} />
+        <Icon name="pencil" />
         Edit key
       </DropdownMenuItem>
       <DropdownMenuItem disabledReason={editReason} onSelect={onToggle}>

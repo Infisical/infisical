@@ -310,7 +310,7 @@ const SsoTabContent = () => {
         />
       ) : (
         <EmptyState
-          icon="lock"
+          icon="sign-in"
           title="Single sign-on (SSO) has been disabled"
           description="Contact your server administrator."
         />

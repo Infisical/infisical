@@ -35,7 +35,6 @@ import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import slugify from "@sindresorhus/slugify";
 import { addDays, format, intervalToDuration } from "date-fns";
-import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -550,7 +549,7 @@ export const EnvironmentsSettings = () => {
           description={editBlocked}
           onSelect={() => openEdit(environment)}
         >
-          <Icon icon={PencilIcon} />
+          <Icon name="pencil" />
           Edit environment
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -603,7 +602,7 @@ export const EnvironmentsSettings = () => {
               reorder={canEdit ? { onReorder: reorder, isRowDisabled: () => busy } : undefined}
             />
           ) : (
-            <EmptyState size="sm" icon="folder" title="No environments" />
+            <EmptyState size="sm" icon="layers" title="No environments" />
           ))}
       </Card>
       {canRead && deleted.length > 0 && (

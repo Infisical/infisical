@@ -233,7 +233,11 @@ export const IdentityRoleDetailsSection = ({
             rowLabel={grantLabel}
           />
         ) : (
-          <EmptyState size="sm" icon="user" title="This machine identity doesn't have any roles" />
+          <EmptyState
+            size="sm"
+            icon="id-badge"
+            title="This machine identity doesn't have any roles"
+          />
         )}
       </Card>
       <AddRoleSheet

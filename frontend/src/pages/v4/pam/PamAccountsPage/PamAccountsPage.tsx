@@ -188,7 +188,7 @@ export const PamAccountsPage = () => {
     <EmptyState
       size="sm"
       media="bare"
-      icon="folder"
+      icon="user-key"
       title="No accounts available"
       description="Ask your PAM admin to grant you access to a folder or account."
     />
@@ -212,7 +212,7 @@ export const PamAccountsPage = () => {
       <EmptyState
         size="sm"
         media="bare"
-        icon="folder"
+        icon="user-key"
         title="No accounts yet"
         description="You need at least one account template first."
         actions={

@@ -450,7 +450,7 @@ const CaDetailScreen = ({
   if (!ca)
     return (
       <EmptyState
-        icon="building"
+        icon="landmark"
         title="Certificate authority not found"
         description="It may have been deleted, or you may not have access to it."
         actions={

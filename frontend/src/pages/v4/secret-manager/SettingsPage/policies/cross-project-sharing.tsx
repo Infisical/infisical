@@ -17,7 +17,6 @@ import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { PencilIcon } from "lucide-react";
 
 import {
   ProjectPermissionProjectFolderGrantActions,
@@ -257,7 +256,7 @@ export const CrossProjectSharingSection = ({
                         setSheetOpen(true);
                       }}
                     >
-                      <Icon icon={PencilIcon} />
+                      <Icon name="pencil" />
                       Edit shared folders
                     </DropdownMenuItem>
                     <DropdownMenuItem

@@ -323,7 +323,7 @@ export const RelaysPanel = ({
               }
             />
           ) : (
-            <EmptyState size="sm" icon="globe" title="No relays yet" />
+            <EmptyState size="sm" icon="server" title="No relays yet" />
           )
         }
       />

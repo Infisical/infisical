@@ -25,7 +25,6 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionGroupActions,
@@ -261,7 +260,7 @@ export const OrgGroupsTab = () => {
     inline: [
       {
         label: "Edit group",
-        icon: PencilIcon,
+        icon: "pencil",
         disabledReason: (group) => editReason(group.orgId !== orgId, canEdit),
         onSelect: (group) => setDialog({ group: draftOf(group) })
       }

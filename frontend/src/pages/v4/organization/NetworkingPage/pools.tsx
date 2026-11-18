@@ -20,7 +20,7 @@ import {
 import { StatusText } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { HeartPulseIcon, PencilIcon } from "lucide-react";
+import { HeartPulseIcon } from "lucide-react";
 
 import {
   OrgGatewayPoolPermissionActions,
@@ -298,7 +298,7 @@ export const PoolSheet = ({
                       </DropdownMenuItem>
                     )
                   }}
-                  empty={<EmptyState size="sm" icon="globe" title="No gateways in this pool" />}
+                  empty={<EmptyState size="sm" icon="server" title="No gateways in this pool" />}
                 />
               </Card>
             </Stack>
@@ -356,7 +356,7 @@ export const PoolsTable = ({
     initialSort: { columnId: "name", direction: "asc" }
   });
 
-  let empty = <EmptyState size="sm" icon="globe" title="No gateway pools yet" />;
+  let empty = <EmptyState size="sm" icon="server" title="No gateway pools yet" />;
   if (pools.length)
     empty = <EmptyState size="sm" icon="search" title="No gateway pools match your search" />;
   if (!isEnterprise)
@@ -433,7 +433,7 @@ export const PoolsTable = ({
           inline: [
             {
               label: "Edit pool",
-              icon: PencilIcon,
+              icon: "pencil",
               disabledReason: () => (canEdit ? undefined : RESTRICTED),
               onSelect: setEditing
             }

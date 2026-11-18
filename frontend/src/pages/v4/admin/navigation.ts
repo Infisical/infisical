@@ -38,7 +38,7 @@ export const resourceTabs = [
 export const adminNav = [
   { id: "general", label: "General", icon: "settings", path: "/admin" },
   { id: "resources", label: "Resource overview", icon: "apps", path: RESOURCES_PATH },
-  { id: "access", label: "Access control", icon: "user-plus", path: "/admin/access-management" },
+  { id: "access", label: "Access control", icon: "shield-user", path: "/admin/access-management" },
   { id: "encryption", label: "Encryption", icon: "lock", path: "/admin/encryption" },
   { id: "authentication", label: "Authentication", icon: "key", path: "/admin/authentication" },
   { id: "integrations", label: "Integrations", icon: "link", path: "/admin/integrations" },

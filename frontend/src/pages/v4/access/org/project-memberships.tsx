@@ -463,7 +463,7 @@ export const ProjectMembershipsSection = ({
       render: (row) => (
         <RowLink link={go.link(projectHref(row))} title={labelOf(row)}>
           <Inline gap={8} align="center" wrap={false}>
-            <Icon name={productOf(row.project.type).icon} />
+            <Icon name={productOf(row.project.type).folder} />
             {productName(row.project.type)}
           </Inline>
         </RowLink>

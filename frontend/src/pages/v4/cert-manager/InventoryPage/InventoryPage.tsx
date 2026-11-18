@@ -371,7 +371,7 @@ const InventoryRowMenu = ({
           disabledReason={isAdmin ? undefined : RESTRICTED}
           onSelect={() => onAction("assign")}
         >
-          <Icon name="apps" />
+          <Icon name="app-window" />
           Assign to application
         </DropdownMenuItem>
       )}

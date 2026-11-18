@@ -58,7 +58,7 @@ const SecretScanningScope = ({ children }: { children: ReactNode }) => {
       projectType={ProjectType.SecretScanning}
       projectId={data}
       isPending={isPending}
-      notSetUp={<EmptyState icon="search" title="Secret Scanning is not set up" />}
+      notSetUp={<EmptyState icon="scan-key" title="Secret Scanning is not set up" />}
     >
       {children}
     </Scoped>
@@ -73,7 +73,7 @@ const PamScope = ({ children }: { children: ReactNode }) => {
       projectType={ProjectType.PAM}
       projectId={data}
       isPending={isPending}
-      notSetUp={<EmptyState icon="terminal" title="Privileged Access Manager is not set up" />}
+      notSetUp={<EmptyState icon="terminal-key" title="Privileged Access Manager is not set up" />}
     >
       {children}
     </Scoped>

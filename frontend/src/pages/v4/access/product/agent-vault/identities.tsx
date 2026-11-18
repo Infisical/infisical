@@ -19,7 +19,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Trash2Icon, VaultIcon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 
 import {
   ProjectPermissionIdentityActions,
@@ -46,7 +46,7 @@ const ManagedByBadge = ({ identity }: { identity: IdentityMember }) => {
   if (identity.isManagedByAgentVault)
     return (
       <Badge tone="accent">
-        <Icon icon={VaultIcon} size={12} />
+        <Icon name="agent-lock" size={12} />
         Agent Vault
       </Badge>
     );

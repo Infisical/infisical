@@ -26,7 +26,7 @@ import { CopyButton } from "@infisical/cipher/ui/sensitive-editor";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { Navigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { PencilIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 
 import {
   OrgPermissionActions,
@@ -155,7 +155,7 @@ const OauthClientsList = ({
     inline: [
       {
         label: "Edit",
-        icon: PencilIcon,
+        icon: "pencil",
         disabledReason: () => (canEdit ? undefined : RESTRICTED),
         onSelect: onEdit
       }

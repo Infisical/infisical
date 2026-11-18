@@ -903,7 +903,7 @@ const SkillSheetBody = ({ skillId, ...props }: TSkillSheetProps & { skillId: str
     return (
       <SheetBody>
         <EmptyState
-          icon="file"
+          icon="book"
           title="Skill not found"
           description="This skill was deleted, or you don't have access to it."
         />

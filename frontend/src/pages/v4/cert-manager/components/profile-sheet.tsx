@@ -692,7 +692,7 @@ const DefaultsFields = ({
   return !draft.policyId ? (
     <EmptyState
       size="sm"
-      icon="shield"
+      icon="shield-check"
       title="Select a certificate policy on the Issuer step to configure defaults"
     />
   ) : (

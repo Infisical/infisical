@@ -95,7 +95,7 @@ export const KmipServersPage = () => {
   let empty = (
     <EmptyState
       size="sm"
-      icon="machine"
+      icon="server"
       title="No KMIP servers yet"
       description="Create a KMIP server to proxy KMIP requests to Infisical KMS."
     />

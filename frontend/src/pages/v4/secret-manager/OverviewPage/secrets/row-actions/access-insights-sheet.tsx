@@ -38,7 +38,7 @@ import {
 } from "@infisical/cipher/ui/table";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
-import { BanIcon, FilterIcon, HardDriveIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { BanIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 
 import {
   OrgPermissionMemberActions,
@@ -85,9 +85,12 @@ const columns: { action: Action; label: string }[] = [
   { action: "edit", label: "Edit" },
   { action: "delete", label: "Delete" }
 ];
-const typeConfig: Record<RowType, { label: string; icon?: typeof UsersIcon; name?: "user" }> = {
+const typeConfig: Record<
+  RowType,
+  { label: string; icon?: typeof UsersIcon; name?: "user" | "machine" }
+> = {
   user: { label: "User", name: "user" },
-  identity: { label: "Machine Identity", icon: HardDriveIcon },
+  identity: { label: "Machine Identity", name: "machine" },
   group: { label: "Group", icon: UsersIcon }
 };
 const typeOrder: RowType[] = ["user", "identity", "group"];
@@ -298,7 +301,7 @@ export function AccessInsightsSheet({
                 <Tooltip content="Filter by type">
                   <DropdownMenuTrigger asChild>
                     <Button variant={types.length ? "default" : "outline"} size="icon-sm" iconOnly>
-                      <Icon icon={FilterIcon} />
+                      <Icon name="funnel" />
                       <span className="sr-only">Filter by type</span>
                     </Button>
                   </DropdownMenuTrigger>

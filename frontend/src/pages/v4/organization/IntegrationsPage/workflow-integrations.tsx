@@ -25,7 +25,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionActions,
@@ -255,7 +254,7 @@ export const WorkflowIntegrationsTab = () => {
         sort={sort}
         onSortChange={setSort}
         rowActions={{
-          inline: [{ label: "Edit details", icon: PencilIcon, onSelect: edit }],
+          inline: [{ label: "Edit details", icon: "pencil", onSelect: edit }],
           menuDisabledReason: (row) => (busyId === row.id ? "Working on it" : undefined),
           renderMenu: (row) => (
             <>

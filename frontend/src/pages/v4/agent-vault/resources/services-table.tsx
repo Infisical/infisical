@@ -21,7 +21,7 @@ import { Inline } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
-import { PencilIcon, UnlinkIcon } from "lucide-react";
+import { UnlinkIcon } from "lucide-react";
 
 import {
   displayHostPattern,
@@ -249,7 +249,7 @@ export const ServicesTable = ({
       ? [
           {
             label: "Edit service",
-            icon: PencilIcon,
+            icon: "pencil",
             onSelect: onEdit
           }
         ]

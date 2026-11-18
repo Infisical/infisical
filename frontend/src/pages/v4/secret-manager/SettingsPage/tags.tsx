@@ -32,7 +32,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
 import slugify from "@sindresorhus/slugify";
-import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -251,7 +250,7 @@ export const TagsSettings = () => {
           description={canEdit ? undefined : RESTRICTED}
           onSelect={() => openEdit(tag)}
         >
-          <Icon icon={PencilIcon} />
+          <Icon name="pencil" />
           Edit tag
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -319,7 +318,7 @@ export const TagsSettings = () => {
           ) : (
             <EmptyState
               size="sm"
-              icon={searching ? "search" : "link"}
+              icon={searching ? "search" : "tag"}
               title={searching ? "No tags match search" : "No tags"}
               description={searching ? undefined : "Tags group secrets across environments."}
             />

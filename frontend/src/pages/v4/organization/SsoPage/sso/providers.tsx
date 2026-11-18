@@ -38,7 +38,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { Switch } from "@infisical/cipher/ui/switch";
-import { ArrowLeftRightIcon, PencilIcon } from "lucide-react";
+import { ArrowLeftRightIcon } from "lucide-react";
 
 import {
   LdapUpgradeIntent,
@@ -158,7 +158,7 @@ const ProviderMenu = ({
         description={canEdit ? undefined : RESTRICTED}
         onSelect={onEdit}
       >
-        <Icon icon={PencilIcon} />
+        <Icon name="pencil" />
         Edit configuration
       </DropdownMenuItem>
       {onSwitchProvider && (

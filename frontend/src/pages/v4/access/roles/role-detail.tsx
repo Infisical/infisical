@@ -22,7 +22,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { useParams } from "@tanstack/react-router";
-import { LayersIcon, PencilIcon, SaveIcon } from "lucide-react";
+import { SaveIcon } from "lucide-react";
 
 import {
   OrgPermissionActions,
@@ -181,7 +181,7 @@ export const RoleEditor = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("template")}>
-            <Icon icon={LayersIcon} />
+            <Icon name="layers" />
             Add from template
           </DropdownMenuItem>
           {vaultConnections.length > 0 && (
@@ -249,7 +249,7 @@ export const RoleEditor = ({
                     description={builtInNote}
                     onSelect={() => setOverlay("edit")}
                   >
-                    <Icon icon={PencilIcon} />
+                    <Icon name="pencil" />
                     Edit role
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -389,7 +389,7 @@ export const RoleEditor = ({
 
 const NotFound = ({ backHref }: { backHref: string }) => (
   <EmptyState
-    icon="lock"
+    icon="id-badge"
     title="Role not found"
     description="This role may have been deleted."
     actions={

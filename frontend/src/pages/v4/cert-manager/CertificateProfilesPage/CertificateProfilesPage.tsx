@@ -133,7 +133,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
   ) : (
     <EmptyState
       size="sm"
-      icon="file-key"
+      icon="file-badge"
       title="No certificate profiles yet"
       description="Create a profile to start issuing certificates for an application."
       actions={

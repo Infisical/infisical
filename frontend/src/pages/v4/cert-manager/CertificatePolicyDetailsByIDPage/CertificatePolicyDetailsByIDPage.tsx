@@ -271,7 +271,7 @@ const Sections = ({ policy }: { policy: TCertificatePolicy }) => {
       <Card variant="framed" title="No restrictions">
         <EmptyState
           size="sm"
-          icon="shield"
+          icon="shield-check"
           title="This policy enforces no constraints"
           description="Certificates issued under it can use any subject attributes, subject alternative names, algorithms, key usages, and validity period. Edit the policy to add restrictions."
         />
@@ -443,7 +443,7 @@ const Page = () => {
   if (!policy)
     return (
       <EmptyState
-        icon="shield"
+        icon="shield-check"
         title="Certificate policy not found"
         description="It may have been deleted, or you may not have access to it."
         actions={

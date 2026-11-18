@@ -122,7 +122,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
   let empty = (
     <EmptyState
       size="sm"
-      icon="pencil"
+      icon="pen-nib"
       title="No signers yet"
       description="Create a signer to start signing artifacts."
       actions={

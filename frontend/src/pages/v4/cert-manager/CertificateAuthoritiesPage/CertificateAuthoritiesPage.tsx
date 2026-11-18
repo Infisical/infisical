@@ -17,7 +17,6 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCertificateAuthorityActions } from "@app/context/ProjectPermissionContext/types";
@@ -280,7 +279,7 @@ const InternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
             ) : (
               <EmptyState
                 size="sm"
-                icon="shield"
+                icon="landmark"
                 title="No internal CAs yet"
                 description="Create a root CA, then intermediates under it to issue certificates."
               />
@@ -359,7 +358,7 @@ const ExternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
     inline: [
       {
         label: "Edit CA",
-        icon: PencilIcon,
+        icon: "pencil",
         disabledReason: (ca) => block(ProjectPermissionCertificateAuthorityActions.Edit, ca.name),
         onSelect: (ca) => setSheet({ ca })
       }
@@ -456,7 +455,7 @@ const ExternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
             ) : (
               <EmptyState
                 size="sm"
-                icon="globe"
+                icon="landmark"
                 title="No external CAs yet"
                 description="Connect ACME, DigiCert, AWS Private CA and other providers to issue through them."
               />
