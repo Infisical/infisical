@@ -2227,7 +2227,7 @@ export const OverviewPage = () => {
                                     entries={entries as Of<"import">[]}
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
-                                    projectName={project}
+                                    projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
                                   />
                                 );
