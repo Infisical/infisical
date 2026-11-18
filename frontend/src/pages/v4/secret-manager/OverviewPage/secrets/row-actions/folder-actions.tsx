@@ -11,11 +11,11 @@ import type {
   TFolderGrantType
 } from "@app/hooks/api/folderAccess/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { MoveSecretsDialog } from "../bulk/move-secrets-dialog";
-import { childPath } from "../flows/shared";
 import {
   type AccessMember,
   type AccessState,
@@ -58,15 +58,29 @@ export function FolderActions({
   const adapter = useV4Adapter("secrets");
   const [last, setLast] = useState(action);
   const [session, setSession] = useState(0);
+  const [accessScope, setAccessScope] = useState({ environment: "", secretPath: "/" });
   if (action && action !== last) {
     setLast(action);
     setSession(session + 1);
+    if (action.action === "access")
+      setAccessScope({
+        environment: action.environment,
+        secretPath: normalizeFolderPath(action.secretPath)
+      });
   }
   const blockFor = useManagedBlock(scope.project);
+  const folderTree = adapter.useProjectFolders(scope.project).data;
+  const folderPathsIn = (slug: string) => [
+    ...new Set(
+      Object.values(folderTree ?? {})
+        .find((entry) => entry.slug === slug)
+        ?.folders.map((folder) => normalizeFolderPath(folder.path)) ?? []
+    )
+  ];
   const environment =
-    scope.visibleEnvironments.find((entry) => entry.value === last?.entry.environment) ??
-    scope.visibleEnvironments[0];
-  const folderPath = last ? childPath(last.entry.path, last.entry.name) : "";
+    scope.environments.find((entry) => entry.value === accessScope.environment) ??
+    scope.environments[0];
+  const folderPath = accessScope.secretPath;
   const manageBlock = blockFor(
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSecretFolderActions.ManageAccess,
@@ -89,37 +103,41 @@ export function FolderActions({
   if (!last) return null;
 
   const key = grantKey(target.environmentSlug, folderPath);
-  const fromUser = (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
-    {
-      type: "user",
-      id: user.userId,
-      name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-      subtitle: user.email ?? user.username,
-      isProjectAdmin: user.membership.isProjectAdmin,
-      roles: user.membership.roles.map((role) => role.name),
-      inProject: true
-    },
-    toGrant(user.folderRBACAccess)
-  ];
-  const fromIdentity = (
-    identity: TFolderAccessIdentity
-  ): [AccessMember, FolderGrant | undefined] => [
-    {
-      type: "identity",
-      id: identity.identityId,
-      name: identity.name,
-      subtitle: "Machine identity",
-      isProjectAdmin: identity.membership.isProjectAdmin,
-      roles: identity.membership.roles.map((role) => role.name),
-      inProject: true
-    },
-    toGrant(identity.folderRBACAccess)
-  ];
+  const fromUser =
+    (hasAccess: boolean) =>
+    (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
+      {
+        type: "user",
+        id: user.userId,
+        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
+        subtitle: user.email ?? user.username,
+        isProjectAdmin: user.membership.isProjectAdmin,
+        roles: user.membership.roles.map((role) => role.name),
+        inProject: true,
+        hasAccess
+      },
+      toGrant(user.folderRBACAccess)
+    ];
+  const fromIdentity =
+    (hasAccess: boolean) =>
+    (identity: TFolderAccessIdentity): [AccessMember, FolderGrant | undefined] => [
+      {
+        type: "identity",
+        id: identity.identityId,
+        name: identity.name,
+        subtitle: "Machine identity",
+        isProjectAdmin: identity.membership.isProjectAdmin,
+        roles: identity.membership.roles.map((role) => role.name),
+        inProject: true,
+        hasAccess
+      },
+      toGrant(identity.folderRBACAccess)
+    ];
   const entries = [
-    ...[...(users?.users ?? []), ...(users?.usersWithoutAccess ?? [])].map(fromUser),
-    ...[...(identities?.identities ?? []), ...(identities?.identitiesWithoutAccess ?? [])].map(
-      fromIdentity
-    )
+    ...(users?.users ?? []).map(fromUser(true)),
+    ...(users?.usersWithoutAccess ?? []).map(fromUser(false)),
+    ...(identities?.identities ?? []).map(fromIdentity(true)),
+    ...(identities?.identitiesWithoutAccess ?? []).map(fromIdentity(false))
   ];
   const access: AccessState = {
     members: entries.map(([member]) => member),
@@ -197,7 +215,16 @@ export function FolderActions({
       state={access}
       environmentSlug={target.environmentSlug}
       environmentName={environment?.label ?? ""}
+      environments={scope.environments}
       folderPath={folderPath}
+      folderPaths={folderPathsIn(target.environmentSlug)}
+      onEnvironmentChange={(slug) =>
+        setAccessScope({
+          environment: slug,
+          secretPath: !folderTree || folderPathsIn(slug).includes(folderPath) ? folderPath : "/"
+        })
+      }
+      onFolderPathChange={(secretPath) => setAccessScope({ ...accessScope, secretPath })}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}

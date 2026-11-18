@@ -582,7 +582,22 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
               "/api/v1/partner-integrations",
               "settlement-reconciliation-service-with-a-long-folder-name",
               all
-            )
+            ),
+            ...folders("payments-api", "/", "services", all),
+            ...[
+              "billing",
+              "checkout",
+              "fraud-detection-and-chargeback-dispute-automation",
+              "invoicing",
+              "ledger",
+              "notifications",
+              "payouts",
+              "refunds",
+              "reporting",
+              "subscriptions",
+              "tax-calculation",
+              "webhook-relay"
+            ].flatMap((name) => folders("payments-api", "/services", name, all))
           ]
         : []),
       ...folders("web-dashboard", "/", "shared", ["prod"]),
@@ -646,7 +661,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     leases: seedLeases(dynamicSecrets),
     secretSyncs: seedSecretSyncs(envOf),
     commits: seedDemoCommits(secrets),
-    folderAccess: seedFolderAccess(),
+    folderAccess: seedFolderAccess(large),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",
