@@ -1,0 +1,68 @@
+// Pixel-diffs two snapshot trees and writes the report the Cipher visual check uploads.
+// node compare.mjs <before-dir> <after-dir> <out-dir> [scope.json]
+// Writes out/summary.json, out/summary.md and out/changed/<name>.{before,after,diff}.png.
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
+
+const [before, after, out, scopeFile] = process.argv.slice(2);
+const list = (root, dir = "") =>
+  existsSync(path.join(root, dir))
+    ? readdirSync(path.join(root, dir)).flatMap((name) => {
+        const rel = path.join(dir, name);
+        return statSync(path.join(root, rel)).isDirectory() ? list(root, rel) : rel.endsWith(".png") ? [rel] : [];
+      })
+    : [];
+const a = new Set(list(before));
+const b = new Set(list(after));
+const result = { changed: [], added: [], removed: [], unchanged: 0, total: new Set([...a, ...b]).size };
+const save = (key, kind, source) => {
+  const file = path.join(out, "changed", key.replace(/\.png$/, "." + kind + ".png"));
+  mkdirSync(path.dirname(file), { recursive: true });
+  if (Buffer.isBuffer(source)) writeFileSync(file, source);
+  else copyFileSync(source, file);
+};
+for (const key of [...b].sort()) {
+  if (!a.has(key)) {
+    result.added.push(key);
+    save(key, "after", path.join(after, key));
+    continue;
+  }
+  const x = readFileSync(path.join(before, key));
+  const y = readFileSync(path.join(after, key));
+  if (x.equals(y)) { result.unchanged += 1; continue; }
+  const px = PNG.sync.read(x);
+  const py = PNG.sync.read(y);
+  let pixels;
+  let diff;
+  if (px.width !== py.width || px.height !== py.height) {
+    pixels = -1;
+  } else {
+    diff = new PNG({ width: px.width, height: px.height });
+    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold: 0.1 });
+  }
+  if (pixels === 0) { result.unchanged += 1; continue; }
+  result.changed.push({ file: key, pixels: pixels === -1 ? "size " + px.width + "x" + px.height + " -> " + py.width + "x" + py.height : pixels });
+  save(key, "before", path.join(before, key));
+  save(key, "after", path.join(after, key));
+  if (diff) save(key, "diff", PNG.sync.write(diff));
+}
+for (const key of [...a].sort()) if (!b.has(key)) result.removed.push(key);
+const scope = scopeFile && existsSync(scopeFile) ? JSON.parse(readFileSync(scopeFile, "utf8")) : null;
+const summary = { ...result, scope };
+mkdirSync(out, { recursive: true });
+writeFileSync(path.join(out, "summary.json"), JSON.stringify(summary, null, 2));
+const lines = [
+  "## Cipher visual check",
+  "",
+  scope ? "Base " + scope.base.ref + " (" + scope.base.source.slice(0, 7) + "), candidate " + scope.candidate.ref + " (" + scope.candidate.source.slice(0, 7) + "). Scope: " + (scope.mode === "scoped" && !scope.full ? "scoped to " + (scope.pages?.length ?? 0) + " pages" : "full" + (scope.fullReasons?.length ? " (" + scope.fullReasons.join("; ") + ")" : "")) + "." : "",
+  "",
+  "**" + result.changed.length + " changed** of " + result.total + " snapshots, " + result.added.length + " added, " + result.removed.length + " removed, " + result.unchanged + " unchanged.",
+  "",
+];
+if (result.changed.length) lines.push("| Changed | Pixels |", "| --- | --- |", ...result.changed.map((c) => "| " + c.file + " | " + c.pixels + " |"), "");
+if (result.added.length) lines.push("Added: " + result.added.join(", "), "");
+if (result.removed.length) lines.push("Removed: " + result.removed.join(", "), "");
+writeFileSync(path.join(out, "summary.md"), lines.join("\n"));
+console.log(lines.join("\n"));
