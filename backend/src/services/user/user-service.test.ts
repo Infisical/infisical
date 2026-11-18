@@ -401,6 +401,24 @@ describe("getStepUpMfaMethod", () => {
     });
   });
 
+  test("never lets a weaker org's method prove removal of a factor a stricter org accepts", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: ["email-org", ENFORCED_ORG_ID],
+      orgs: [
+        { id: "email-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] },
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] }
+      ],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, "email-org", MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+  });
+
   test("challenges the factor being removed when no other allowed one is set up", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },

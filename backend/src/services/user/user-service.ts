@@ -661,17 +661,14 @@ export const userServiceFactory = ({
     };
   };
 
-  // Resolves the method a step-up challenge must use from the current org context, by the same rule as login
-  // (resolveMfaChallenge), so a session is never asked for a method its org does not allow. Reaching a
-  // step-up-gated route already proves membership of this org, so no permission check is needed.
+  // Picks the step-up method by the login rule (resolveMfaChallenge) for the current org. Reaching a
+  // step-up-gated route already proves membership, so no permission check is needed.
   //
-  // Removing a factor never challenges that factor, it's usually the lost one: another usable factor stands in.
-  // Exception: when some org the user belongs to could be satisfied by nothing else they have set up, the factor
-  // is still challenged, and a lost device goes through recovery-code login instead. All orgs are checked so
-  // switching orgs can't bypass it.
+  // Removing a factor challenges a substitute instead, since the removed one is usually lost. Every enforcing
+  // org that accepts the removed factor must accept the substitute too, or a weaker org's session could strip it
+  // and enroll its own to get into the stricter org. With no such substitute, the factor itself is challenged.
   //
-  // `accepted` is every factor a prior proof may carry for this action: the usable methods, plus the substitute
-  // when one is challenged. Other actions never accept the substitute.
+  // `accepted` lists every factor a prior proof may carry for this action; only removals accept a substitute.
   const getStepUpMfaMethod = async (
     userId: string,
     orgId: string | undefined,
@@ -699,11 +696,25 @@ export const userServiceFactory = ({
 
     const remainingMethods = enrolledMethods.filter((method) => method !== excludeMethod);
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
-    const leavesAnOrgUnsatisfiable = enforcingOrgs.some((enforcingOrg) => {
-      const orgAllowed = getOrgAllowedMfaMethods(enforcingOrg);
-      return orgAllowed.includes(excludeMethod) && !orgAllowed.some((method) => remainingMethods.includes(method));
-    });
-    if (leavesAnOrgUnsatisfiable) return { challenge: excludeMethod, accepted: [excludeMethod] };
+    const affectedOrgsAllowedMethods = enforcingOrgs
+      .map((enforcingOrg) => getOrgAllowedMfaMethods(enforcingOrg))
+      .filter((orgAllowedMethods) => orgAllowedMethods.includes(excludeMethod));
+
+    if (affectedOrgsAllowedMethods.length) {
+      const acceptedMethodsForAffectedOrgs = enrolledMethods.filter((method) =>
+        affectedOrgsAllowedMethods.every((orgAllowedMethods) => orgAllowedMethods.includes(method))
+      );
+      const substituteMethods = acceptedMethodsForAffectedOrgs.filter((method) => method !== excludeMethod);
+
+      if (!substituteMethods.length) return { challenge: excludeMethod, accepted: [excludeMethod] };
+
+      const substituteMethod =
+        substituteMethods.find((method) => method === challenge) ??
+        substituteMethods.find((method) => method === user.selectedMfaMethod) ??
+        substituteMethods[0];
+      return { challenge: substituteMethod, accepted: acceptedMethodsForAffectedOrgs };
+    }
+
     if (challenge !== excludeMethod) return asResolved;
 
     const replacement = usableMethods.find((method) => method !== excludeMethod) ?? remainingMethods[0] ?? null;
