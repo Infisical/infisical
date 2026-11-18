@@ -105,22 +105,6 @@ describe("applyOauthScopeToProjectRules", () => {
     expect(inverted).toMatchObject({ inverted: true, conditions: { secretPath: "/x" } });
   });
 
-  test("projects:read lists secret names without granting their values", () => {
-    const rules = [
-      {
-        action: [
-          ProjectPermissionSecretActions.DescribeAndReadValue,
-          ProjectPermissionSecretActions.DescribeSecret,
-          ProjectPermissionSecretActions.ReadValue
-        ],
-        subject: ProjectPermissionSub.Secrets
-      }
-    ];
-    const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.ProjectsRead]);
-    expect(scoped).toHaveLength(1);
-    expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
-  });
-
   test("secrets:write grants writes without reads", () => {
     const rules = [{ action: "manage", subject: ProjectPermissionSub.Secrets }];
     const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsWrite]);

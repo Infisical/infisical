@@ -13,16 +13,36 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+  RadioGroup,
+  RadioGroupItem,
   Skeleton
 } from "@app/components/v3";
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
 import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
 
+type TAccessLevel = "read" | "full";
+
+// The user picks one access level per product rather than individual scopes. Read-only grants the product's read
+// scope, Full access its read and write scopes, and only scopes the application asked for are ever granted.
+const PRODUCT_ACCESS = [
+  {
+    key: "secrets-management",
+    product: "Secrets Management",
+    readScope: "secrets:read",
+    writeScope: "secrets:write",
+    readDescription: "See projects, folders and secrets, including their values",
+    fullDescription: "Also create, change and delete secrets and folders"
+  }
+];
+
 export const OauthConsentPage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
-  // The user can grant less than the application asked for; the token response tells it what it got.
-  const [declinedScopes, setDeclinedScopes] = useState<string[]>([]);
+  const [accessLevels, setAccessLevels] = useState<Record<string, TAccessLevel>>({});
 
   const search = useSearch({
     from: "/_authenticate/organization/oauth-consent"
@@ -49,10 +69,20 @@ export const OauthConsentPage = () => {
     enabled: Boolean(authorizeInfo?.publicClientHost && organizationId)
   });
 
-  const requestedScopes = authorizeInfo?.requestedScopes ?? [];
-  const grantedScopes = requestedScopes
-    .map(({ scope }) => scope)
-    .filter((scope) => !declinedScopes.includes(scope));
+  const requestedScopes = (authorizeInfo?.requestedScopes ?? []).map(({ scope }) => scope);
+  const requestedProducts = PRODUCT_ACCESS.filter(
+    ({ readScope, writeScope }) =>
+      requestedScopes.includes(readScope) || requestedScopes.includes(writeScope)
+  );
+  // Read-only unless the application asked only for write access.
+  const getAccessLevel = ({ key, readScope }: (typeof PRODUCT_ACCESS)[number]) =>
+    accessLevels[key] ?? (requestedScopes.includes(readScope) ? "read" : "full");
+  const grantedScopes = requestedProducts.flatMap((productAccess) =>
+    (getAccessLevel(productAccess) === "full"
+      ? [productAccess.readScope, productAccess.writeScope]
+      : [productAccess.readScope]
+    ).filter((scope) => requestedScopes.includes(scope))
+  );
   const isNothingGranted = requestedScopes.length > 0 && grantedScopes.length === 0;
 
   const isGrantingSecretValues = Boolean(
@@ -166,36 +196,49 @@ export const OauthConsentPage = () => {
                   ? "Choose what this application can do on your behalf. It is limited to your existing Infisical permissions until you revoke its session."
                   : "This application will be able to act on your behalf with your existing Infisical permissions until you revoke its session."}
               </p>
-              {requestedScopes.length > 0 && (
-                <ul className="mt-3 flex flex-col gap-2">
-                  {requestedScopes.map(({ scope, description }) => (
-                    <li key={scope}>
-                      <label
-                        htmlFor={`oauth-scope-${scope}`}
-                        className="flex cursor-pointer items-start gap-2 text-sm text-foreground"
-                      >
-                        <Checkbox
-                          id={`oauth-scope-${scope}`}
-                          variant="org"
-                          className="mt-0.5"
-                          isChecked={!declinedScopes.includes(scope)}
-                          onCheckedChange={(checked) =>
-                            setDeclinedScopes((prev) =>
-                              checked === true
-                                ? prev.filter((declined) => declined !== scope)
-                                : [...prev, scope]
-                            )
-                          }
-                        />
-                        <span>
-                          {description}
-                          <span className="ml-1 text-xs text-muted">({scope})</span>
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {requestedProducts.map((productAccess) => (
+                <div key={productAccess.key} className="mt-3 flex flex-col gap-2">
+                  <p className="text-sm font-medium text-foreground">{productAccess.product}</p>
+                  <RadioGroup
+                    value={getAccessLevel(productAccess)}
+                    onValueChange={(level) =>
+                      setAccessLevels((prev) => ({
+                        ...prev,
+                        [productAccess.key]: level as TAccessLevel
+                      }))
+                    }
+                  >
+                    {requestedScopes.includes(productAccess.readScope) && (
+                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-read`} variant="org">
+                        <Field orientation="horizontal">
+                          <FieldContent>
+                            <FieldTitle>Read-only</FieldTitle>
+                            <FieldDescription>{productAccess.readDescription}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            value="read"
+                            id={`oauth-access-${productAccess.key}-read`}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    )}
+                    {requestedScopes.includes(productAccess.writeScope) && (
+                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-full`} variant="org">
+                        <Field orientation="horizontal">
+                          <FieldContent>
+                            <FieldTitle>Full access</FieldTitle>
+                            <FieldDescription>{productAccess.fullDescription}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            value="full"
+                            id={`oauth-access-${productAccess.key}-full`}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    )}
+                  </RadioGroup>
+                </div>
+              ))}
             </div>
           )}
           {isGrantingSecretValues && (

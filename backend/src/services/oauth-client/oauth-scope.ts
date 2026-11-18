@@ -10,9 +10,9 @@ import {
 // CASL rules in permission-service. Keep this list curated — it is a public contract.
 //
 // The delegated use cases are `infisical run` fetching secrets at runtime (e.g. via Coder External Auth) and
-// the MCP server's tools. Add further scopes only when a route or MCP tool accepting AuthMode.OAUTH needs them.
+// the MCP server's tools. Each product gets a read and a write scope, which the consent page offers as
+// Read-only and Full access. Add further scopes only when a route or MCP tool accepting AuthMode.OAUTH needs them.
 export enum OauthScope {
-  ProjectsRead = "projects:read",
   SecretsRead = "secrets:read",
   SecretsWrite = "secrets:write"
 }
@@ -33,19 +33,6 @@ type TOauthScopeDefinition = {
 };
 
 export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> = {
-  [OauthScope.ProjectsRead]: {
-    description: "See projects, environments, folders and secret names, without secret values",
-    rules: [
-      // Not the legacy combined "read" action, which also grants secret values.
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Secrets,
-        actions: [ProjectPermissionSecretActions.DescribeSecret]
-      },
-      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.SecretImports, actions: [ProjectPermissionActions.Read] }
-    ]
-  },
   [OauthScope.SecretsWrite]: {
     description: "Create, change and delete secrets, and create folders",
     rules: [
@@ -79,9 +66,9 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
   }
 };
 
-// Delegated tokens for the REST API have only ever been able to read. These scopes serve the MCP tools, so they are
+// Delegated tokens for the REST API have only ever been able to read. Write scopes serve the MCP tools, so they are
 // only granted to tokens bound to the MCP endpoint; offering them to every OAuth application is a separate decision.
-export const MCP_ONLY_OAUTH_SCOPES: readonly OauthScope[] = [OauthScope.ProjectsRead, OauthScope.SecretsWrite];
+export const MCP_ONLY_OAUTH_SCOPES: readonly OauthScope[] = [OauthScope.SecretsWrite];
 
 export const isValidOauthScope = (value: string): value is OauthScope =>
   Object.prototype.hasOwnProperty.call(OAUTH_SCOPE_DEFINITIONS, value);
