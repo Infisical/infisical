@@ -493,6 +493,18 @@ export const getGitLabErrorMessage = (error: unknown) => {
   return error.response?.status ? `GitLab responded with status ${error.response.status}` : error.message;
 };
 
+export const getGitLabCurrentUserId = async ({
+  apiUrl,
+  headers
+}: {
+  apiUrl: string;
+  headers: Record<string, string>;
+}) => {
+  const { data } = await safeRequest.get<{ id: number }>(`${apiUrl}/user`, { headers });
+
+  return data.id.toString();
+};
+
 const GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE = 100;
 const GITLAB_SERVICE_ACCOUNTS_MAX_PAGES = 50;
 
@@ -510,24 +522,31 @@ export const listGitLabGroupServiceAccounts = async ({
   const accessToken = await getGitLabConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
   const instanceUrl = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
 
+  const apiUrl = `${instanceUrl}/api/v4`;
+  const headers = getGitLabAuthHeaders(appConnection.method, accessToken);
   const serviceAccounts: TGitLabServiceAccount[] = [];
 
   try {
+    // a rotation can't target the connection's own identity, so it isn't offered
+    const connectionUserId = await getGitLabCurrentUserId({ apiUrl, headers });
+
     for (let page = 1; page <= GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; page += 1) {
       const { data } = await safeRequest.get<{ id: number; username: string; name: string }[]>(
-        `${instanceUrl}/api/v4/groups/${encodeURIComponent(groupId)}/service_accounts`,
+        `${apiUrl}/groups/${encodeURIComponent(groupId)}/service_accounts`,
         {
-          headers: getGitLabAuthHeaders(appConnection.method, accessToken),
+          headers,
           params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
         }
       );
 
       serviceAccounts.push(
-        ...data.map((serviceAccount) => ({
-          id: serviceAccount.id.toString(),
-          username: serviceAccount.username,
-          name: serviceAccount.name
-        }))
+        ...data
+          .filter((serviceAccount) => serviceAccount.id.toString() !== connectionUserId)
+          .map((serviceAccount) => ({
+            id: serviceAccount.id.toString(),
+            username: serviceAccount.username,
+            name: serviceAccount.name
+          }))
       );
 
       if (data.length < GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE) return serviceAccounts;

@@ -13,6 +13,11 @@ import {
   revokeGitLabToken,
   verifyGitLabToken
 } from "@app/ee/services/secret-rotation-v2/shared/gitlab-token";
+import { BadRequestError } from "@app/lib/errors";
+import {
+  getGitLabCurrentUserId,
+  getGitLabErrorMessage
+} from "@app/services/app-connection/gitlab/gitlab-connection-fns";
 
 import {
   TGitLabServiceAccountTokenRotationGeneratedCredentials,
@@ -38,10 +43,33 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     return getGitLabTokenApiContext({ connection, appConnectionDAL, kmsDataKeyService });
   };
 
+  // A token for the connection's own identity would give whoever reads the rotated secret the
+  // connection's access (Owner on the group), outliving their access to Infisical.
+  const $getTokenIssuingContext = async () => {
+    const context = await $getContext();
+
+    let connectionUserId: string;
+    try {
+      connectionUserId = await getGitLabCurrentUserId(context);
+    } catch (error: unknown) {
+      throw new BadRequestError({
+        message: `Failed to look up the GitLab user of the connection: ${getGitLabErrorMessage(error)}`
+      });
+    }
+
+    if (connectionUserId === serviceAccountId) {
+      throw new BadRequestError({
+        message: `The GitLab connection authenticates as ${resourceLabel}, so this rotation can't create tokens for it. Use a connection whose token belongs to a different GitLab user.`
+      });
+    }
+
+    return context;
+  };
+
   const issueCredentials: TRotationFactoryIssueCredentials<
     TGitLabServiceAccountTokenRotationGeneratedCredentials
   > = async (callback) => {
-    const context = await $getContext();
+    const context = await $getTokenIssuingContext();
     const credentials = await createGitLabToken({
       context,
       tokensPath,
@@ -74,7 +102,7 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TGitLabServiceAccountTokenRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
-    const context = await $getContext();
+    const context = await $getTokenIssuingContext();
 
     if (credentialsToRevoke?.tokenId) {
       await revokeGitLabToken({ context, tokensPath, tokenId: credentialsToRevoke.tokenId, resourceLabel });

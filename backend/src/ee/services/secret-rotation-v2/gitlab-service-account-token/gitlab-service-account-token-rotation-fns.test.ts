@@ -93,6 +93,7 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-18T15:30:00.000Z"));
+    getMock.mockResolvedValue({ data: { id: 1 } });
     postMock.mockResolvedValue({ data: { id: 101, token: "glpat-new" } });
     deleteMock.mockResolvedValue({ status: 204 });
   });
@@ -150,6 +151,32 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
       expect(callback).not.toHaveBeenCalled();
     }
   );
+
+  it("refuses to create a token for the service account the connection authenticates as", async () => {
+    getMock.mockResolvedValue({ data: { id: Number(SERVICE_ACCOUNT_ID) } });
+
+    await expect(buildFactory().issueCredentials(callback)).rejects.toThrow(
+      "The GitLab connection authenticates as service account '12' in group '34'"
+    );
+    expect(getMock).toHaveBeenCalledWith("https://gitlab.example.com/api/v4/user", {
+      headers: { "PRIVATE-TOKEN": "connection-token" }
+    });
+    expect(postMock).not.toHaveBeenCalled();
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("refuses to rotate the connection's own service account without revoking anything", async () => {
+    getMock.mockResolvedValue({ data: { id: Number(SERVICE_ACCOUNT_ID) } });
+
+    await expect(
+      buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old" }, callback, {
+        tokenId: "88",
+        token: "glpat-active"
+      })
+    ).rejects.toThrow("so this rotation can't create tokens for it");
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(postMock).not.toHaveBeenCalled();
+  });
 
   it("surfaces GitLab's validation message when token creation is rejected", async () => {
     postMock.mockRejectedValue(axiosError(400, { message: { expires_at: ["must be before 2027-01-01"] } }));
