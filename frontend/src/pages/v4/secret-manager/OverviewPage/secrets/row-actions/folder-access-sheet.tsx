@@ -39,8 +39,12 @@ import {
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { FileTree, type FileTreeNode } from "@infisical/cipher/ui/file-tree";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Select } from "@infisical/cipher/ui/select";
 import { Separator } from "@infisical/cipher/ui/separator";
 import {
   Sheet,
@@ -53,7 +57,7 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { ChevronRightIcon, FilterIcon, LayersIcon, ShieldIcon } from "lucide-react";
+import { FilterIcon, LayersIcon, ShieldIcon } from "lucide-react";
 
 import { SecretFolderRole } from "@app/hooks/api/folderAccess/types";
 import { ms } from "@app/lib/fn/time";
@@ -81,6 +85,7 @@ export type AccessMember = {
   isProjectAdmin: boolean;
   roles: string[];
   inProject: boolean;
+  hasAccess: boolean;
 };
 export type AccessState = {
   members: AccessMember[];
@@ -90,7 +95,6 @@ type Actor = AccessMember & { access: FolderGrant | null; listed: boolean };
 type Kind = "admin" | "project-role" | "folder-grant" | "override" | "temporary";
 type Filter = { types: AccessMember["type"][]; kinds: Kind[] };
 
-const ROLES_GRANTING_FOLDERS = ["Admin", "Developer", "Viewer"];
 const FOLDER_ROLE_TIERS = [
   {
     value: SecretFolderRole.List,
@@ -140,8 +144,6 @@ export const grantKey = (environment: string, path: string) => `${environment}:$
 export const memberKey = (member: Pick<AccessMember, "type" | "id">) =>
   `${member.type}:${member.id}`;
 
-const grantingRoles = (member: AccessMember) =>
-  member.roles.filter((role) => ROLES_GRANTING_FOLDERS.includes(role));
 const grantStateOf = (access: FolderGrant | null) => {
   if (!access?.isTemporary || !access.temporaryAccessEndTime) return "permanent" as const;
   return new Date(access.temporaryAccessEndTime).getTime() <= Date.now()
@@ -243,6 +245,29 @@ function TierDropdown({
   );
 }
 
+function AccessValue({
+  value,
+  more = 0,
+  scope,
+  children
+}: {
+  value: string;
+  more?: number;
+  scope: string;
+  children?: ReactNode;
+}) {
+  return (
+    <span className={styles.accessValue}>
+      <span className={styles.accessText}>
+        <span className={styles.accessRole}>{value}</span>
+        {more > 0 && <span className={styles.accessMore}>+{more}</span>}
+        <span className={styles.accessScope}>, {scope}</span>
+      </span>
+      {children}
+    </span>
+  );
+}
+
 function ActorIdentity({ actor }: { actor: Actor }) {
   return (
     <div className={styles.actor}>
@@ -312,12 +337,13 @@ function AccessRow({
     return (
       <div className={styles.actorRow}>
         <ActorIdentity actor={actor} />
-        <Button variant="ghost" size="sm" disabled>
-          Full access on all folders
-          <Badge tone="outline">
-            <Icon icon={ShieldIcon} size={12} />
-            Admin
-          </Badge>
+        <Button
+          layout="trigger"
+          variant="ghost"
+          size="sm"
+          disabledReason="Admins have full access to every folder"
+        >
+          <AccessValue value="Full access" scope="Admin" />
         </Button>
       </div>
     );
@@ -330,25 +356,29 @@ function AccessRow({
           <DropdownMenuTrigger asChild disabled={Boolean(block)}>
             {access ? (
               <Button layout="trigger" variant="ghost" size="sm">
-                {tierLabel(access.permission)}
-                {isOverride && <Badge tone="warn">Override</Badge>}
-                {remainingTime && (
-                  <Tooltip
-                    content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                  >
-                    <span className={styles.badgeSlot}>
-                      <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
-                        <Icon name="clock" size={12} />
-                        {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                      </Badge>
-                    </span>
-                  </Tooltip>
-                )}
+                <AccessValue value={tierLabel(access.permission)} scope="Folder">
+                  {isOverride && <Badge tone="warn">Override</Badge>}
+                  {remainingTime && (
+                    <Tooltip
+                      content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                    >
+                      <span className={styles.badgeSlot}>
+                        <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
+                          <Icon name="clock" size={12} />
+                          {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                        </Badge>
+                      </span>
+                    </Tooltip>
+                  )}
+                </AccessValue>
               </Button>
             ) : (
               <Button layout="trigger" variant="ghost" size="sm" title={roleNames || undefined}>
-                <span className={styles.roleNames}>{roleNames || "Role"}</span>
-                <Badge tone="soft">Project</Badge>
+                <AccessValue
+                  value={actor.roles[0] ?? "Role"}
+                  more={actor.roles.length - 1}
+                  scope="Project"
+                />
               </Button>
             )}
           </DropdownMenuTrigger>
@@ -536,6 +566,82 @@ function RemoveAccessDialog({
   );
 }
 
+const toFolderTree = (paths: readonly string[]): FileTreeNode[] => {
+  const childrenOf = new Map<string, string[]>();
+  [...new Set(["/", ...paths])].sort().forEach((path) => {
+    const segments = path.split("/").filter(Boolean);
+    segments.forEach((_, index) => {
+      const parent = `/${segments.slice(0, index).join("/")}`;
+      const id = `/${segments.slice(0, index + 1).join("/")}`;
+      const siblings = childrenOf.get(parent) ?? [];
+      if (!siblings.includes(id)) childrenOf.set(parent, [...siblings, id]);
+    });
+  });
+  const nodeFor = (id: string, name: string): FileTreeNode => {
+    const children = childrenOf.get(id);
+    return {
+      id,
+      name,
+      type: "folder",
+      children: children?.map((child) => nodeFor(child, child.split("/").at(-1) ?? child))
+    };
+  };
+  return [{ ...nodeFor("/", "Root"), icon: "home" }];
+};
+
+const ancestorsOf = (path: string) => {
+  const segments = path.split("/").filter(Boolean);
+  return [
+    "/",
+    ...segments.slice(0, -1).map((_, index) => `/${segments.slice(0, index + 1).join("/")}`)
+  ];
+};
+
+// Temporary until Cipher ships a TreeSelect.
+function FolderScopePicker({
+  value,
+  paths,
+  onChange
+}: {
+  value: string;
+  paths: readonly string[];
+  onChange: (path: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          layout="trigger"
+          variant="outline"
+          size="sm"
+          icon="folder"
+          aria-label={`Folder: ${value}`}
+          className={styles.scopePath}
+        >
+          <MiddleTruncate mono text={value} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" surface="menu" className={styles.scopeTree}>
+        <FileTree
+          label="Folders"
+          items={toFolderTree(paths)}
+          size="sm"
+          selectable="folders"
+          truncate="middle"
+          maxHeight={320}
+          selected={value}
+          defaultExpanded={ancestorsOf(value)}
+          onSelect={(path) => {
+            onChange(path);
+            setIsOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function SectionLabel({ title, count }: { title: string; count: number }) {
   return (
     <div className={styles.sectionLabel}>
@@ -550,7 +656,11 @@ export function FolderAccessSheet({
   state,
   environmentSlug,
   environmentName,
+  environments,
   folderPath,
+  folderPaths,
+  onEnvironmentChange,
+  onFolderPathChange,
   onOpenChange,
   onChange,
   onSuccess,
@@ -560,7 +670,11 @@ export function FolderAccessSheet({
   state: AccessState;
   environmentSlug: string;
   environmentName: string;
+  environments: { value: string; label: string }[];
   folderPath: string;
+  folderPaths: readonly string[];
+  onEnvironmentChange: (environment: string) => void;
+  onFolderPathChange: (path: string) => void;
   onOpenChange: (open: boolean) => void;
   onChange: (update: (current: AccessState) => AccessState) => void;
   onSuccess: (title: string) => void;
@@ -584,9 +698,8 @@ export function FolderAccessSheet({
   const projectMembers = state.members.filter((member) => member.inProject);
   const toActor = (member: AccessMember): Actor => {
     const access = grants[memberKey(member)] ?? null;
-    const roles = grantingRoles(member);
-    const listed = member.isProjectAdmin || Boolean(access) || roles.length > 0;
-    return { ...member, roles: listed ? roles : member.roles, access, listed };
+    const listed = member.isProjectAdmin || Boolean(access) || member.hasAccess;
+    return { ...member, access, listed };
   };
   const roster = projectMembers.filter(matchesQuery).map(toActor);
   const actors = roster
@@ -683,11 +796,20 @@ export function FolderAccessSheet({
             <SheetTitle>Manage permissions</SheetTitle>
           </SheetHeader>
           <SheetSubheader className={styles.crumbs}>
-            <Icon icon={LayersIcon} size={14} className={styles.mutedIcon} />
-            <span>{environmentName}</span>
-            <Icon icon={ChevronRightIcon} size={14} className={styles.mutedIcon} />
-            <Icon name="folder" size={14} />
-            <span className={styles.crumbPath}>{folderPath}</span>
+            <Select
+              size="sm"
+              width="sm"
+              icon={LayersIcon}
+              aria-label="Environment"
+              value={environmentSlug}
+              options={environments}
+              onValueChange={onEnvironmentChange}
+            />
+            <FolderScopePicker
+              value={folderPath}
+              paths={folderPaths}
+              onChange={onFolderPathChange}
+            />
           </SheetSubheader>
           <SheetBody>
             <div className={styles.accessBody}>

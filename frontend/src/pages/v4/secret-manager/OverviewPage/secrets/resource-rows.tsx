@@ -63,6 +63,7 @@ import {
   type Secret,
   selectionKey
 } from "../secrets-model";
+import { childPath } from "./flows/shared";
 import {
   ChildSelectCell,
   ChildSelectHead,
@@ -718,11 +719,42 @@ function FolderRowView({
     gateAny(ctx, ProjectPermissionSub.SecretFolders, action, folderScopes, verb);
   const editBlock = folderGate(ProjectPermissionActions.Edit, "edit this folder");
   const deleteBlock = folderGate(ProjectPermissionActions.Delete, "delete this folder");
-  const accessBlock = ctx.single
-    ? folderGate(ProjectPermissionSecretFolderActions.ManageAccess, "manage access to this folder")
-    : "Select a single environment to manage folder access.";
+  const accessBlock = folderGate(
+    ProjectPermissionSecretFolderActions.ManageAccess,
+    "manage access to this folder"
+  );
+  const byEnvironment = ctx.environments.flatMap(
+    (environment) => entries.find((entry) => entry.environment === environment.value) ?? []
+  );
+  const accessEntry =
+    byEnvironment.find(
+      (entry) =>
+        !gate(
+          ctx,
+          ProjectPermissionSub.SecretFolders,
+          ProjectPermissionSecretFolderActions.ManageAccess,
+          { environment: entry.environment, secretPath: childPath(entry.path, entry.name) },
+          "manage access to this folder"
+        )
+    ) ??
+    byEnvironment[0] ??
+    first;
   const rowActions: RowActionProps = {
     label: first.name,
+    inline: [
+      {
+        label: "Manage access",
+        icon: UsersIcon,
+        disabledReason: accessBlock,
+        onSelect: () =>
+          ctx.onAction({
+            kind: "folder",
+            action: "access",
+            environment: accessEntry.environment,
+            secretPath: childPath(accessEntry.path, accessEntry.name)
+          })
+      }
+    ],
     menu: (
       <>
         <PendingMenuItems id={first.id} ctx={ctx} />
@@ -733,14 +765,6 @@ function FolderRowView({
         >
           <Icon icon={FolderInputIcon} />
           Move folder
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={Boolean(accessBlock)}
-          description={accessBlock}
-          onSelect={() => ctx.onAction({ kind: "folder", action: "access", entry: first, entries })}
-        >
-          <Icon icon={UsersIcon} />
-          Manage access
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

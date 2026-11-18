@@ -87,9 +87,34 @@ const memberGrants = [
 ];
 
 const role = (name: string) => ({ id: name.toLowerCase(), slug: name.toLowerCase(), name });
+export const STRESSED_ROLE = "Platform reliability read-only auditor";
+const stressedActors: DemoAccessActor[] = [
+  {
+    type: "identity",
+    id: "7f3c9e21-5a4d-4b8e-9c16-2d8f0a7b4e53",
+    name: "github-actions-settlement-reconciliation-deployer-production",
+    membership: {
+      id: "membership-gha",
+      isProjectAdmin: false,
+      roles: [role(STRESSED_ROLE)]
+    }
+  },
+  {
+    type: "user",
+    id: "u-alexandra",
+    name: "Alexandra Konstantinopoulou-Whitfield",
+    email: "alexandra.konstantinopoulou-whitfield@acme.dev",
+    membership: {
+      id: "membership-alexandra",
+      isProjectAdmin: false,
+      roles: [role(STRESSED_ROLE), role("Viewer")]
+    }
+  }
+];
 
-export const seedFolderAccess = (): DemoFolderAccess => ({
+export const seedFolderAccess = (large: boolean): DemoFolderAccess => ({
   actors: [
+    ...(large ? stressedActors : []),
     {
       type: "user",
       id: "u-sarah",
