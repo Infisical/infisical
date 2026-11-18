@@ -11,11 +11,11 @@ import type {
   TFolderGrantType
 } from "@app/hooks/api/folderAccess/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { MoveSecretsDialog } from "../bulk/move-secrets-dialog";
-import { childPath } from "../flows/shared";
 import {
   type AccessMember,
   type AccessState,
@@ -58,15 +58,29 @@ export function FolderActions({
   const adapter = useV4Adapter("secrets");
   const [last, setLast] = useState(action);
   const [session, setSession] = useState(0);
+  const [accessScope, setAccessScope] = useState({ environment: "", secretPath: "/" });
   if (action && action !== last) {
     setLast(action);
     setSession(session + 1);
+    if (action.action === "access")
+      setAccessScope({
+        environment: action.environment,
+        secretPath: normalizeFolderPath(action.secretPath)
+      });
   }
   const blockFor = useManagedBlock(scope.project);
+  const folderTree = adapter.useProjectFolders(scope.project).data;
+  const folderPathsIn = (slug: string) => [
+    ...new Set(
+      Object.values(folderTree ?? {})
+        .find((entry) => entry.slug === slug)
+        ?.folders.map((folder) => normalizeFolderPath(folder.path)) ?? []
+    )
+  ];
   const environment =
-    scope.visibleEnvironments.find((entry) => entry.value === last?.entry.environment) ??
-    scope.visibleEnvironments[0];
-  const folderPath = last ? childPath(last.entry.path, last.entry.name) : "";
+    scope.environments.find((entry) => entry.value === accessScope.environment) ??
+    scope.environments[0];
+  const folderPath = accessScope.secretPath;
   const manageBlock = blockFor(
     ProjectPermissionSub.SecretFolders,
     ProjectPermissionSecretFolderActions.ManageAccess,
@@ -197,7 +211,16 @@ export function FolderActions({
       state={access}
       environmentSlug={target.environmentSlug}
       environmentName={environment?.label ?? ""}
+      environments={scope.environments}
       folderPath={folderPath}
+      folderPaths={folderPathsIn(target.environmentSlug)}
+      onEnvironmentChange={(slug) =>
+        setAccessScope({
+          environment: slug,
+          secretPath: folderPathsIn(slug).includes(folderPath) ? folderPath : "/"
+        })
+      }
+      onFolderPathChange={(secretPath) => setAccessScope({ ...accessScope, secretPath })}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}

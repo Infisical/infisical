@@ -312,26 +312,40 @@ export function AddNewMenu({
 export function FolderBreadcrumbBar({
   path,
   actions,
+  manageAccessBlock,
+  onManageAccess,
   onNavigate,
   report
 }: {
   path: string;
   actions?: ReactNode;
+  manageAccessBlock?: string;
+  onManageAccess: () => void;
   onNavigate: (path: string) => void;
   report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
-  const copyPath = (
-    <DropdownMenuItem
-      onSelect={async () => {
-        if (await copyText(path, "Failed to copy folder path to clipboard.")) {
-          report("Folder path copied to clipboard.", "ok");
-        }
-      }}
-    >
-      <Icon name="copy" />
-      Copy path
-    </DropdownMenuItem>
+  const folderMenu = (
+    <>
+      <DropdownMenuItem
+        onSelect={async () => {
+          if (await copyText(path, "Failed to copy folder path to clipboard.")) {
+            report("Folder path copied to clipboard.", "ok");
+          }
+        }}
+      >
+        <Icon name="copy" />
+        Copy path
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        disabled={Boolean(manageAccessBlock)}
+        description={manageAccessBlock}
+        onSelect={onManageAccess}
+      >
+        <Icon name="users" />
+        Manage access
+      </DropdownMenuItem>
+    </>
   );
   return (
     <div className={styles.pathBar}>
@@ -343,7 +357,7 @@ export function FolderBreadcrumbBar({
           {
             label: <Icon name="home" label="Root folder" />,
             onNavigate: segments.length ? () => onNavigate("/") : undefined,
-            menu: segments.length ? undefined : copyPath
+            menu: segments.length ? undefined : folderMenu
           },
           ...segments.map((segment, index) => {
             const current = index === segments.length - 1;
@@ -352,7 +366,7 @@ export function FolderBreadcrumbBar({
               onNavigate: current
                 ? undefined
                 : () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`),
-              menu: current ? copyPath : undefined
+              menu: current ? folderMenu : undefined
             };
           })
         ]}

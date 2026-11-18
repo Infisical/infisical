@@ -93,6 +93,7 @@ import type {
 import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { useProjectPermission } from "../../access/permissions";
 import { dismissToast, errorMessage, toast } from "../../access/toast";
@@ -324,6 +325,24 @@ export const OverviewPage = () => {
   );
   const single = visibleEnvironments.length === 1;
   const activeEnvironment = visibleEnvironments[0]?.value ?? "";
+  const folderAccessBlockAt = (environment: string) =>
+    blockFor(
+      ProjectPermissionSub.SecretFolders,
+      ProjectPermissionSecretFolderActions.ManageAccess,
+      { environment, secretPath: path },
+      "manage access to this folder"
+    );
+  const pathEnvironments = visibleEnvironments.filter((environment) =>
+    Object.values(folderTree ?? {}).some(
+      (entry) =>
+        entry.slug === environment.value &&
+        entry.folders.some((folder) => normalizeFolderPath(folder.path) === path)
+    )
+  );
+  const folderAccessEnvironment =
+    pathEnvironments.find((environment) => !folderAccessBlockAt(environment.value)) ??
+    pathEnvironments[0] ??
+    visibleEnvironments[0];
   const externalImports = useExternalImports(
     projectId,
     visibleEnvironments.map((environment) => environment.value),
@@ -1786,7 +1805,7 @@ export const OverviewPage = () => {
                   }
                   badges={
                     <EnvironmentAction
-                      label="Manage access to this folder"
+                      label="Manage access"
                       icon="users"
                       environments={visibleEnvironments}
                       disabledReason={writeBlock}
@@ -1794,30 +1813,18 @@ export const OverviewPage = () => {
                         blockFor(
                           ProjectPermissionSub.SecretFolders,
                           ProjectPermissionSecretFolderActions.ManageAccess,
-                          { environment, secretPath: path },
+                          { environment, secretPath: "/" },
                           "manage access to this folder"
                         )
                       }
-                      onSelect={(environment) => {
-                        const segments = path.split("/").filter(Boolean);
-                        const folder: Of<"folder"> = {
-                          kind: "folder",
-                          id: `folder:${path}`,
-                          project,
-                          environment: environment.value,
-                          path: `/${segments.slice(0, -1).join("/")}`,
-                          name: segments.at(-1) ?? "",
-                          description: "",
-                          createdAt: "",
-                          updatedAt: ""
-                        };
+                      onSelect={(environment) =>
                         startRowAction({
                           kind: "folder",
                           action: "access",
-                          entry: folder,
-                          entries: [folder]
-                        });
-                      }}
+                          environment: environment.value,
+                          secretPath: "/"
+                        })
+                      }
                     />
                   }
                   description={projectQuery.data?.description || undefined}
@@ -1895,6 +1902,17 @@ export const OverviewPage = () => {
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
+                      manageAccessBlock={
+                        writeBlock ?? folderAccessBlockAt(folderAccessEnvironment?.value ?? "")
+                      }
+                      onManageAccess={() =>
+                        startRowAction({
+                          kind: "folder",
+                          action: "access",
+                          environment: folderAccessEnvironment?.value ?? "",
+                          secretPath: path
+                        })
+                      }
                       actions={
                         !single &&
                         !unavailableState && (

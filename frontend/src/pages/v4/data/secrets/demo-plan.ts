@@ -43,7 +43,7 @@ export const secretsPlanDemo: SecretsPlanAdapter = {
     const scenario = useScenario();
     const override = usePlanOverride();
     let plan = PAID;
-    if (override === "free" || scenario === "empty") plan = FREE;
+    if (override === "free" || (scenario === "empty" && override !== "paid")) plan = FREE;
     else if (scenario === "large") plan = AT_LIMIT;
     return { data: plan, isPending: false, error: null };
   },
