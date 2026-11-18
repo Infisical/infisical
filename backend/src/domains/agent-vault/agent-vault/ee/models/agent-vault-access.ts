@@ -3,13 +3,14 @@ import { Plan, PlanProduct } from "@app/domains/platform/license/ce/module";
 
 import {
   AgentVaultAccessState,
+  AgentVaultFreeUsageThreshold,
   TAgentVaultAccessJSON,
   TAgentVaultFreeUsageJSON
 } from "../../ce/models/agent-vault-access-state";
 import { UsageMonth } from "./usage-month";
 
 const AGENT_VAULT_FREE_MONTHLY_REQUESTS = 5_000;
-const WARN_AT_SHARE_OF_LIMIT = 0.8;
+const WARN_AT_SHARE_OF_LIMIT = 0.75;
 
 export class AgentVaultAccess {
   private constructor(
@@ -21,6 +22,27 @@ export class AgentVaultAccess {
   // that says nothing (null) is not limited, so a missing switch never blocks anyone.
   static isLimited({ isCloud, plan }: { isCloud: boolean; plan: Plan }): boolean {
     return isCloud && !plan.allows(PlanProduct.AgentVault);
+  }
+
+  static get freeMonthlyLimit(): number {
+    return AGENT_VAULT_FREE_MONTHLY_REQUESTS;
+  }
+
+  // The share of the free requests a threshold stands for, as a whole percent, so a notice states the same number
+  // that triggered it.
+  static thresholdPercent(threshold: AgentVaultFreeUsageThreshold): number {
+    return threshold === AgentVaultFreeUsageThreshold.Warning ? Math.round(WARN_AT_SHARE_OF_LIMIT * 100) : 100;
+  }
+
+  // The thresholds a count has reached this month, warning first. Decided from the count itself rather than one
+  // report's jump, so a notice missed while the plan allowed (a trial, a License Server outage) is still sent once
+  // the org is limited.
+  static thresholdsReached(used: number): AgentVaultFreeUsageThreshold[] {
+    const points: [AgentVaultFreeUsageThreshold, number][] = [
+      [AgentVaultFreeUsageThreshold.Warning, AGENT_VAULT_FREE_MONTHLY_REQUESTS * WARN_AT_SHARE_OF_LIMIT],
+      [AgentVaultFreeUsageThreshold.Limit, AGENT_VAULT_FREE_MONTHLY_REQUESTS]
+    ];
+    return points.filter(([, at]) => used >= at).map(([threshold]) => threshold);
   }
 
   // `used` is null when the count couldn't be read, which allows: an outage never blocks.

@@ -129,9 +129,8 @@ export type TOrgProductStats = {
     foldersCount: number;
   };
   agentVault: {
-    accessBundlesCount: number;
     servicesCount: number;
-    proxiesCount: number;
+    skillsCount: number;
     projectsCount: number;
   };
 };

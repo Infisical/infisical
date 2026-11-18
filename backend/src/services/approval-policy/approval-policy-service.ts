@@ -26,6 +26,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -1538,6 +1539,15 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
+  const $assertNotScopeNarrowed = () => {
+    if (isScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message:
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+      });
+    }
+  };
+
   const approveRequest = async (
     requestId: string,
     { comment, bypassReason }: { comment?: string; bypassReason?: string },
@@ -1547,6 +1557,8 @@ export const approvalPolicyServiceFactory = ({
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -1777,6 +1789,8 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     policyType: ApprovalPolicyType
   ) => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
