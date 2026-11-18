@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -50,7 +50,7 @@ import type {
 
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
-import { saved } from "../../access/toast";
+import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 
@@ -114,7 +114,7 @@ const EnvironmentDialog = ({
     name: environment?.name ?? "",
     slug: environment?.slug ?? ""
   });
-  const [slugTouched, setSlugTouched] = useState(Boolean(environment));
+  const slugTouched = useRef(Boolean(environment));
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
   const issues = submitted
@@ -160,7 +160,7 @@ const EnvironmentDialog = ({
                   const name = event.target.value;
                   setDraft({
                     name,
-                    slug: slugTouched ? draft.slug : slugify(name, { lowercase: true })
+                    slug: slugTouched.current ? draft.slug : slugify(name, { lowercase: true })
                   });
                 }}
               />
@@ -176,7 +176,7 @@ const EnvironmentDialog = ({
                 value={draft.slug}
                 invalid={Boolean(issues?.slug)}
                 onChange={(event) => {
-                  setSlugTouched(true);
+                  slugTouched.current = true;
                   setDraft({ ...draft, slug: event.target.value });
                 }}
               />
@@ -363,19 +363,140 @@ const PendingDeletion = ({ environment }: { environment: ProjectDeletedEnv }) =>
   );
 };
 
+const deletedColumns: DataTableColumn<ProjectDeletedEnv>[] = [
+  {
+    id: "name",
+    header: "Name",
+    primary: true,
+    grow: true,
+    render: (environment) => environment.name
+  },
+  {
+    id: "slug",
+    header: "Slug",
+    mono: true,
+    width: 200,
+    render: (environment) => environment.slug
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: 180,
+    render: (environment) => <PendingDeletion environment={environment} />
+  }
+];
+
+const PendingDeletionCard = ({
+  environments,
+  canDelete,
+  onConfirm
+}: {
+  environments: ProjectDeletedEnv[];
+  canDelete: boolean;
+  onConfirm: (confirm: Confirm) => void;
+}) => (
+  <Card variant="framed" title="Pending deletion" flush>
+    <DataTable
+      label="Environments pending deletion"
+      rows={environments}
+      columns={deletedColumns}
+      getRowId={(environment) => environment.id}
+      rowLabel={(environment) => environment.name}
+      rowActions={{
+        inline: [
+          {
+            label: "Restore environment",
+            icon: "history",
+            disabledReason: () => (canDelete ? undefined : RESTRICTED),
+            onSelect: (environment) => onConfirm({ kind: "restore", environment })
+          }
+        ],
+        renderMenu: (environment) => (
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!canDelete}
+            description={canDelete ? undefined : RESTRICTED}
+            onSelect={() => onConfirm({ kind: "hard-delete", environment })}
+          >
+            <Icon name="trash" />
+            Delete now
+          </DropdownMenuItem>
+        )
+      }}
+    />
+  </Card>
+);
+
+const blockedReasons = ({
+  canCreate,
+  canEdit,
+  count,
+  limit
+}: {
+  canCreate: boolean;
+  canEdit: boolean;
+  count: number;
+  limit?: number;
+}) => {
+  const overLimit = limit ? Math.max(0, count - limit) : 0;
+  const planLimit = `Your plan allows ${limit} environments.`;
+
+  let createBlocked: string | undefined;
+  if (!canCreate) createBlocked = RESTRICTED;
+  else if (limit && count >= limit) createBlocked = `${planLimit} Upgrade to add more.`;
+
+  let editBlocked: string | undefined;
+  if (!canEdit) editBlocked = RESTRICTED;
+  else if (overLimit > 0)
+    editBlocked = `${planLimit} Upgrade, or delete ${overLimit} environment${overLimit === 1 ? "" : "s"}, to edit.`;
+
+  return { createBlocked, editBlocked };
+};
+
+const useEnvironmentOrder = (projectId: string, serverOrder: ProjectEnv[] | undefined) => {
+  const update = useV4Adapter("projectEnvironments").useUpdateEnvironment();
+  const [moving, setMoving] = useState(false);
+  const [reordered, setReordered] = useState<{ base: ProjectEnv[]; order: ProjectEnv[] }>();
+  const active =
+    (reordered && reordered.base === serverOrder ? reordered.order : serverOrder) ?? [];
+
+  const reorder = async (next: ProjectEnv[]) => {
+    if (!serverOrder) return;
+    const changed = next.flatMap((env, index) => (env.id === active[index].id ? [] : [index]));
+    if (changed.length === 0) return;
+    const first = changed[0];
+    const last = changed[changed.length - 1];
+    const movedUp = next[first].id === active[last].id;
+    const environment = movedUp ? next[first] : next[last];
+    const position = (movedUp ? first : last) + 1;
+    setReordered({ base: serverOrder, order: next });
+    setMoving(true);
+    try {
+      await update.mutateAsync({ projectId, id: environment.id, position });
+      saved("Environment order saved");
+    } catch (error) {
+      setReordered(undefined);
+      failed("Couldn't save the environment order", error);
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  return { active, moving, reorder };
+};
+
 export const EnvironmentsSettings = () => {
   const { orgId, projectId } = useProjectScope();
   const adapter = useV4Adapter("projectEnvironments");
   const { data: project, isPending } = adapter.useProject(projectId);
   const { data: environmentLimit } = adapter.useEnvironmentLimit(orgId);
-  const update = adapter.useUpdateEnvironment();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
   const [dialog, setDialog] = useState<{ open: boolean; key: number; environment?: ProjectEnv }>({
     open: false,
     key: 0
   });
   const [confirm, setConfirm] = useState<Confirm>();
-  const [moving, setMoving] = useState(false);
+  const { active, moving, reorder } = useEnvironmentOrder(projectId, project?.environments);
 
   const can = (action: ProjectPermissionActions) =>
     permission.can(action, ProjectPermissionSub.Environments);
@@ -383,40 +504,17 @@ export const EnvironmentsSettings = () => {
   const canEdit = can(ProjectPermissionActions.Edit);
   const canDelete = can(ProjectPermissionActions.Delete);
 
-  const active = project?.environments ?? [];
   const deleted = project?.deletedEnvironments ?? [];
-  const overLimit = environmentLimit ? Math.max(0, active.length - environmentLimit) : 0;
-  const planLimit = `Your plan allows ${environmentLimit} environments.`;
-
-  let createBlocked: string | undefined;
-  if (!can(ProjectPermissionActions.Create)) createBlocked = RESTRICTED;
-  else if (environmentLimit && active.length >= environmentLimit)
-    createBlocked = `${planLimit} Upgrade to add more.`;
-
-  let editBlocked: string | undefined;
-  if (!canEdit) editBlocked = RESTRICTED;
-  else if (overLimit > 0)
-    editBlocked = `${planLimit} Upgrade, or delete ${overLimit} environment${overLimit === 1 ? "" : "s"}, to edit.`;
-
-  let moveBlocked: string | undefined;
-  if (!canEdit) moveBlocked = RESTRICTED;
-  else if (moving) moveBlocked = "Saving the new order";
+  const { createBlocked, editBlocked } = blockedReasons({
+    canCreate: can(ProjectPermissionActions.Create),
+    canEdit,
+    count: active.length,
+    limit: environmentLimit
+  });
 
   const openEdit = (environment: ProjectEnv) => {
     if (!editBlocked) setDialog({ open: true, key: Date.now(), environment });
   };
-
-  const move = async (environment: ProjectEnv, position: number) => {
-    setMoving(true);
-    const done = await update.mutateAsync({ projectId, id: environment.id, position }).then(
-      () => true,
-      () => false
-    );
-    setMoving(false);
-    if (done) saved("Environment order saved");
-  };
-
-  const indexOf = (environment: ProjectEnv) => active.findIndex((env) => env.id === environment.id);
 
   const activeColumns: DataTableColumn<ProjectEnv>[] = [
     {
@@ -424,16 +522,8 @@ export const EnvironmentsSettings = () => {
       header: "Name",
       primary: true,
       grow: true,
-      render: (environment) => (
-        <Button
-          variant="link"
-          underline="hover"
-          disabledReason={editBlocked}
-          onClick={() => openEdit(environment)}
-        >
-          {environment.name}
-        </Button>
-      )
+      minWidth: 160,
+      render: (environment) => environment.name
     },
     {
       id: "slug",
@@ -445,23 +535,6 @@ export const EnvironmentsSettings = () => {
   ];
 
   const activeActions: DataTableRowActions<ProjectEnv> = {
-    inline: [
-      {
-        label: "Move up",
-        icon: "arrow-up",
-        disabledReason: (environment) =>
-          moveBlocked ?? (indexOf(environment) === 0 ? "Already first" : undefined),
-        onSelect: (environment) => move(environment, Math.max(1, indexOf(environment)))
-      },
-      {
-        label: "Move down",
-        icon: "arrow-down",
-        disabledReason: (environment) =>
-          moveBlocked ?? (indexOf(environment) === active.length - 1 ? "Already last" : undefined),
-        onSelect: (environment) =>
-          move(environment, Math.min(active.length, indexOf(environment) + 2))
-      }
-    ],
     renderMenu: (environment) => (
       <>
         <DropdownMenuItem
@@ -483,51 +556,6 @@ export const EnvironmentsSettings = () => {
           Delete environment
         </DropdownMenuItem>
       </>
-    )
-  };
-
-  const deletedColumns: DataTableColumn<ProjectDeletedEnv>[] = [
-    {
-      id: "name",
-      header: "Name",
-      primary: true,
-      grow: true,
-      render: (environment) => environment.name
-    },
-    {
-      id: "slug",
-      header: "Slug",
-      mono: true,
-      width: 200,
-      render: (environment) => environment.slug
-    },
-    {
-      id: "status",
-      header: "Status",
-      width: 180,
-      render: (environment) => <PendingDeletion environment={environment} />
-    }
-  ];
-
-  const deletedActions: DataTableRowActions<ProjectDeletedEnv> = {
-    inline: [
-      {
-        label: "Restore environment",
-        icon: "history",
-        disabledReason: () => (canDelete ? undefined : RESTRICTED),
-        onSelect: (environment) => setConfirm({ kind: "restore", environment })
-      }
-    ],
-    renderMenu: (environment) => (
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={!canDelete}
-        description={canDelete ? undefined : RESTRICTED}
-        onSelect={() => setConfirm({ kind: "hard-delete", environment })}
-      >
-        <Icon name="trash" />
-        Delete now
-      </DropdownMenuItem>
     )
   };
 
@@ -564,22 +592,14 @@ export const EnvironmentsSettings = () => {
               rowLabel={(environment) => environment.name}
               onRowActivate={editBlocked ? undefined : openEdit}
               rowActions={activeActions}
+              reorder={canEdit ? { onReorder: reorder, isRowDisabled: () => moving } : undefined}
             />
           ) : (
             <EmptyState size="sm" icon="folder" title="No environments" />
           ))}
       </Card>
       {canRead && deleted.length > 0 && (
-        <Card variant="framed" title="Pending deletion" flush>
-          <DataTable
-            label="Environments pending deletion"
-            rows={deleted}
-            columns={deletedColumns}
-            getRowId={(environment) => environment.id}
-            rowLabel={(environment) => environment.name}
-            rowActions={deletedActions}
-          />
-        </Card>
+        <PendingDeletionCard environments={deleted} canDelete={canDelete} onConfirm={setConfirm} />
       )}
       <EnvironmentDialog
         key={dialog.key}
