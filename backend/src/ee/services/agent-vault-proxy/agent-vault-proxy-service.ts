@@ -52,7 +52,7 @@ import {
   openInlineServiceSecrets,
   toInlineServiceFacts,
   toResolvedInlineService,
-  withoutShadowedBundleServices
+  withoutShadowedServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
@@ -123,7 +123,10 @@ const RESOLVE_REFRESH_BUDGET_MS = 4_000;
 
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
-  agentVaultResolveDAL: TAgentVaultResolveDALFactory;
+  agentVaultResolveDAL: Pick<
+    TAgentVaultResolveDALFactory,
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles"
+  >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
@@ -1009,17 +1012,16 @@ export const agentVaultProxyServiceFactory = ({
 
     // Sending inline services takes its own permission, and like a grant it is re-checked on every resolve: an owner who
     // loses it keeps the session's bundle, if it has one, and loses its inline services until they hold it again.
-    const inlineServiceRows = ownerCanUseInlineServices
-      ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
-      : [];
-    const rows = withoutShadowedBundleServices(
+    const { bundleServices: rows, inlineServices: inlineServiceRows } = withoutShadowedServices(
       await agentVaultResolveDAL.findResolvableServices({
         sessionId: session.id,
         projectId: session.projectId,
         accessBundleIds,
         onPrimary
       }),
-      inlineServiceRows
+      ownerCanUseInlineServices
+        ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
+        : []
     );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
@@ -1221,7 +1223,14 @@ export const agentVaultProxyServiceFactory = ({
       }
       return [resolved];
     });
-    const services = [...bundleServices, ...inlineServices];
+    // An override goes last, so it takes only a host that nothing else in the session names exactly: an exact host beats
+    // a wildcard wherever it sits, and the Go matcher breaks a tie between two exact ones by order.
+    const overrideIds = new Set(rows.filter((row) => row.isOverride).map((row) => row.id));
+    const services = [
+      ...bundleServices.filter((service) => !overrideIds.has(service.id)),
+      ...inlineServices,
+      ...bundleServices.filter((service) => overrideIds.has(service.id))
+    ];
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -1425,13 +1434,16 @@ export const agentVaultProxyServiceFactory = ({
     const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId);
 
     const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
-    const [bundleRows, bundles, inlineRows] = await Promise.all([
+    const [resolvableRows, bundles, sessionInlineRows] = await Promise.all([
       agentVaultResolveDAL.findResolvableServices(scope),
       agentVaultResolveDAL.findReachableBundles(scope),
       ownerCanUseInlineServices ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
     ]);
-    // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
-    const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
+    // The same services resolve sends, one per name.
+    const { bundleServices: rows, inlineServices: inlineRows } = withoutShadowedServices(
+      resolvableRows,
+      sessionInlineRows
+    );
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
@@ -1444,22 +1456,23 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const factsOf = (row: (typeof rows)[number]) =>
+      toBundleServiceFacts(row, {
+        customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
+        substitutions: substitutionRows
+          .filter((substitution) => substitution.serviceId === row.id)
+          .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
+      });
 
-    // Bundle services before inline ones, the order resolve sends them in.
+    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
     const services = [
-      ...rows.map((row) =>
-        toBundleServiceFacts(row, {
-          customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
-          substitutions: substitutionRows
-            .filter((substitution) => substitution.serviceId === row.id)
-            .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-          setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
-        })
-      ),
+      ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {
         const facts = toInlineServiceFacts(row);
         return facts ? [facts] : [];
-      })
+      }),
+      ...rows.filter((row) => row.isOverride).map(factsOf)
     ];
 
     // A proxy names itself on the requests it forwards. One outside the session's project is ignored rather than

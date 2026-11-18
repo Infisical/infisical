@@ -6,11 +6,13 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
   honeyToken?: TDashboardHoneyToken;
+  // The token's folder path. The dashboard row only carries the folder's name.
+  secretPath: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
 
-export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props) => {
+export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken, secretPath }: Props) => {
   if (!honeyToken) return null;
 
   return (
@@ -24,7 +26,7 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
           onCancel={() => onOpenChange(false)}
           honeyToken={honeyToken}
           type={honeyToken.type as HoneyTokenType}
-          secretPath={honeyToken.folder.path}
+          secretPath={secretPath}
           environment={honeyToken.environment.slug}
         />
       </SheetContent>
