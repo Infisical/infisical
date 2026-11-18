@@ -1,4 +1,4 @@
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { Meter } from "../../models/meter";
@@ -22,7 +22,7 @@ export class UsageReportService implements TUsageReportService {
     private readonly usageQueue: UsageQueue,
     private readonly licenseService: TLicenseService,
     private readonly licenseServer: TLicenseServer,
-    private readonly organizationsProjectsService: TOrganizationsProjectsService
+    private readonly organizationsService: TOrganizationsService
   ) {}
 
   // Skips unpaid cloud orgs: they have no license on the server, so a report would 404. observedAt is stamped at
@@ -44,7 +44,7 @@ export class UsageReportService implements TUsageReportService {
     let reportOrgId = SELF_HOSTED_LICENSE_ORG_ID;
     if (cloud) {
       reportOrgId =
-        counter.meter.scope === "org-tree" ? await this.organizationsProjectsService.resolveRootOrgId(orgId) : orgId;
+        counter.meter.scope === "org-tree" ? await this.organizationsService.resolveRootOrgId(orgId) : orgId;
     }
 
     try {
@@ -90,8 +90,7 @@ export class UsageReportService implements TUsageReportService {
 
     try {
       if (this.isCloud()) {
-        reportOrgId =
-          meter?.scope === "org-tree" ? await this.organizationsProjectsService.resolveRootOrgId(orgId) : orgId;
+        reportOrgId = meter?.scope === "org-tree" ? await this.organizationsService.resolveRootOrgId(orgId) : orgId;
       }
 
       const outcome = await this.licenseServer.reportEvents(reportOrgId, events, this.source);
