@@ -4,7 +4,7 @@
 
 ## When it runs
 
-- **Pin pull requests.** Any pull request into `design/v4-controls-polish` or `main` that changes `frontend/package.json`. The baseline is the `@infisical/cipher` pin on the PR's base, the candidate is the pin on the PR's head (`github:Infisical/cipher#<ref>`, where the ref is a tag, branch or sha). When the pin did not change, the check passes in a few seconds without rendering anything.
+- **Pin pull requests.** Any pull request into `design/v4-controls-polish` or `main` that changes `frontend/package.json`. The baseline is the `@infisical/cipher` pin on the PR's base branch, and the candidate is the pin in the PR's merge commit (`github:Infisical/cipher#<ref>`, where the ref is a tag, branch or sha). Reading the merge commit means a branch that is behind its base still compares the right way round. When the pin did not change, the check passes in a few seconds without rendering anything.
 - **Release cascade.** The Cipher pin bump PR the release opens is a pin pull request, so the check runs on it with no extra step. To check an RC, open a draft PR that pins `github:Infisical/cipher#<rc sha>`.
 - **Manual.** `workflow_dispatch` with `base`, `candidate` and `scope` (`full` or `scoped`). GitHub only offers dispatch for workflows on the default branch, so this works once v4 is on `main`.
 - **Overrides.** `CIPHER_BASE` and `CIPHER_CANDIDATE` at the top of the workflow replace the pins when set. Leave them empty on a merged workflow.

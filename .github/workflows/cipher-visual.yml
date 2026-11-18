@@ -65,7 +65,7 @@ jobs:
           BASE: ${{ inputs.base || env.CIPHER_BASE }}
           CANDIDATE: ${{ inputs.candidate || env.CIPHER_CANDIDATE }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_MERGE_SHA: ${{ github.event.pull_request && github.sha || '' }}
           EXPLICIT: ${{ inputs.base || env.CIPHER_BASE }}${{ inputs.candidate || env.CIPHER_CANDIDATE }}
         run: |
           pin() {
@@ -76,7 +76,7 @@ jobs:
             '
           }
           if [ -z "$BASE" ] && [ -n "$PR_BASE_SHA" ]; then BASE=$(pin "$PR_BASE_SHA"); fi
-          if [ -z "$CANDIDATE" ] && [ -n "$PR_HEAD_SHA" ]; then CANDIDATE=$(pin "$PR_HEAD_SHA"); fi
+          if [ -z "$CANDIDATE" ] && [ -n "$PR_MERGE_SHA" ]; then CANDIDATE=$(pin "$PR_MERGE_SHA"); fi
           echo "Base $BASE, candidate $CANDIDATE"
           if [ -z "$EXPLICIT" ] && [ "$BASE" = "$CANDIDATE" ]; then
             echo "The Cipher pin did not change; nothing to compare."
