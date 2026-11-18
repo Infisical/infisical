@@ -1044,3 +1044,74 @@ describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
     expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
   });
 });
+
+describe("Validate Permission Boundary: subset deny rules", () => {
+  const atPath = (glob: string, environment = "dev") => ({
+    environment,
+    secretPath: { [PermissionConditionOperators.$GLOB]: glob }
+  });
+  const parentPermission = createMongoAbility([
+    { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+    { action: "read", subject: "secrets", inverted: true, conditions: atPath("/a/b/**") }
+  ]);
+
+  test("A subset that only denies an action needs nothing from the parent", () => {
+    const childPermission = createMongoAbility([{ action: "delete", subject: "secrets", inverted: true }]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission)).toEqual({ isValid: true });
+  });
+
+  test("A parent deny inside a later subset deny does not block the subset's allow", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+      { action: "read", subject: "secrets", inverted: true, conditions: atPath("/a/b/**") }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission)).toEqual({ isValid: true });
+  });
+
+  test("An unconditional later subset deny covers any parent deny", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+      { action: "read", subject: "secrets", inverted: true }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission)).toEqual({ isValid: true });
+  });
+
+  test("A subset deny before the allow is overridden by it and covers nothing", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", inverted: true, conditions: atPath("/a/b/**") },
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("A subset deny narrower than the parent deny does not cover it", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+      { action: "read", subject: "secrets", inverted: true, conditions: atPath("/a/b/c/**") }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("A subset deny in another environment does not cover the parent deny", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+      { action: "read", subject: "secrets", inverted: true, conditions: atPath("/a/b/**", "prod") }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("A subset deny for another action does not cover the parent deny", () => {
+    const childPermission = createMongoAbility([
+      { action: "read", subject: "secrets", conditions: atPath("/a/**") },
+      { action: "edit", subject: "secrets", inverted: true, conditions: atPath("/a/b/**") }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+});

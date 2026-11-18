@@ -78,6 +78,7 @@ import {
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildFolderScopedPrivilegeRules,
+  buildFolderScopedPrivilegeRulesByGrant,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
@@ -1434,7 +1435,11 @@ export const permissionServiceFactory = ({
       secretFolderDAL
     });
 
-    privileges.filter(isActiveRole).forEach((priv) => {
+    const activePrivileges = privileges.filter(isActiveRole);
+    const rulesByPrivilegeId = new Map(
+      buildFolderScopedPrivilegeRulesByGrant(activePrivileges).map(({ privilege, rules }) => [privilege.id, rules])
+    );
+    activePrivileges.forEach((priv) => {
       sources.push({
         id: priv.id,
         type: "additional_privilege",
@@ -1442,7 +1447,7 @@ export const permissionServiceFactory = ({
         isTemporary: Boolean(priv.isTemporary),
         temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
         temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-        permissions: packRules(buildFolderScopedPrivilegeRules([priv]))
+        permissions: packRules(rulesByPrivilegeId.get(priv.id) ?? [])
       });
     });
 
@@ -1467,12 +1472,14 @@ export const permissionServiceFactory = ({
       secretFolderDAL
     });
 
-    return privileges.filter(isActiveRole).map((privilege) =>
-      createMongoAbility<ProjectPermissionSet>(
-        buildFolderScopedPrivilegeRules([privilege]).filter((rule) => !rule.inverted),
-        { conditionsMatcher }
-      )
-    );
+    const activePrivileges = privileges.filter(isActiveRole);
+    if (!activePrivileges.length) return [];
+
+    return [
+      createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules(activePrivileges), {
+        conditionsMatcher
+      })
+    ];
   };
 
   const $interpolateGrantsForActor = async (

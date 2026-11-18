@@ -7,7 +7,11 @@ import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { NotFoundError } from "@app/lib/errors";
 
 import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
-import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
+import {
+  buildFolderScopedPrivilegeRules,
+  buildFolderScopedPrivilegeRulesByGrant,
+  filterOverriddenFolderScopedDenyRules
+} from "./permission-fns";
 import { buildProjectPermissionRules } from "./permission-service";
 import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
@@ -856,6 +860,52 @@ describe("recursive and exact folder grants together", () => {
   });
 });
 
+describe("buildFolderScopedPrivilegeRulesByGrant", () => {
+  const exactManage = privilege({ id: "exact-manage", role: SecretFolderRole.Manage, secretPath: "/a/b" });
+  const recursiveEdit = privilege({
+    id: "recursive-edit",
+    folderId: "folder-a",
+    role: SecretFolderRole.Edit,
+    secretPath: "/a",
+    appliesToSubfolders: true
+  });
+
+  test("joins back into the rules built for the whole set, one grant at a time in build order", () => {
+    const privileges = [
+      privilege({ id: "exact-grant", role: SecretFolderRole.Edit, secretPath: "/a" }),
+      privilege({ id: "deep-grant", role: SecretFolderRole.List, secretPath: "/a/b/c", appliesToSubfolders: true }),
+      recursiveRoot(SecretFolderRole.Read),
+      privilege({ id: "mid-grant", role: SecretFolderRole.Edit, secretPath: "/a/b", appliesToSubfolders: true })
+    ];
+    const byGrant = buildFolderScopedPrivilegeRulesByGrant(privileges);
+
+    expect(byGrant.map(({ privilege: grant }) => grant.id)).toEqual([
+      "root-grant",
+      "mid-grant",
+      "deep-grant",
+      "exact-grant"
+    ]);
+    expect(byGrant.flatMap(({ rules }) => rules)).toEqual(buildFolderScopedPrivilegeRules(privileges));
+  });
+
+  test("an exact grant under a recursive edit grant keeps folder create and edit in its own rules", () => {
+    const exactManageCanAt = (privileges: TProjectFolderScopedPrivilege[], action: ProjectPermissionActions) => {
+      const ownRules = buildFolderScopedPrivilegeRulesByGrant(privileges).find(
+        ({ privilege: grant }) => grant.id === exactManage.id
+      )?.rules;
+      return createMongoAbility<ProjectPermissionSet>(ownRules ?? [], { conditionsMatcher }).can(
+        action,
+        subject(ProjectPermissionSub.SecretFolders, { environment: "dev", secretPath: "/a/b" })
+      );
+    };
+
+    [ProjectPermissionActions.Create, ProjectPermissionActions.Edit].forEach((action) => {
+      expect(exactManageCanAt([exactManage], action)).toBe(false);
+      expect(exactManageCanAt([recursiveEdit, exactManage], action)).toBe(true);
+    });
+  });
+});
+
 describe("filterOverriddenFolderScopedDenyRules", () => {
   const denyActionsFor = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], sub: string) =>
     rules
@@ -935,13 +985,8 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
 // The boundary reads an ability literally, with no notion of CASL's last-match-wins, so the deny half
 // of a folder grant used to make its own holder look barred from the path the grant opens.
 describe("folder-scoped privilege boundary", () => {
-  // How `$folderScopedGrantAbilities` presents a target's grant: the denies are dropped because the
-  // boundary walks the subset's rules as if each were a grant.
   const grantAbility = (privileges: TProjectFolderScopedPrivilege[]) =>
-    createMongoAbility<ProjectPermissionSet>(
-      buildFolderScopedPrivilegeRules(privileges).filter((rule) => !rule.inverted),
-      { conditionsMatcher }
-    );
+    createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules(privileges), { conditionsMatcher });
 
   test("a grant does not bound out an identical grant", () => {
     const actor = abilityFor(memberRoles, [privilege()]);
@@ -1046,5 +1091,40 @@ describe("folder-scoped privilege boundary", () => {
       )
     ).toBe(true);
     expect(validatePermissionBoundary(actor, grantAbility([exactEdit])).isValid).toBe(false);
+  });
+
+  describe("nested recursive grants", () => {
+    const recursiveAt = (role: SecretFolderRole, secretPath: string) =>
+      privilege({ id: `recursive-${secretPath}`, folderId: `folder-${secretPath}`, role, secretPath, appliesToSubfolders: true });
+    const manageA = recursiveAt(SecretFolderRole.Manage, "/a");
+    const listAB = recursiveAt(SecretFolderRole.List, "/a/b");
+    const listAC = recursiveAt(SecretFolderRole.List, "/a/c");
+
+    test.each([
+      ["no-access", noAccessRoles],
+      ["member", memberRoles]
+    ] as const)("a target restricted below its grant is bounded by an actor with the same grants on %s", (_, roles) => {
+      const actor = abilityFor(roles, [manageA, listAB]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB]))).toEqual({ isValid: true });
+    });
+
+    test("an actor restricted below its grant does not bound a target without that restriction", () => {
+      const actor = abilityFor(noAccessRoles, [manageA, listAB]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA])).isValid).toBe(false);
+    });
+
+    test("an actor without the restriction bounds a target restricted below its grant", () => {
+      const actor = abilityFor(noAccessRoles, [manageA]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB]))).toEqual({ isValid: true });
+    });
+
+    test("a restriction on another subtree does not excuse the actor's", () => {
+      const actor = abilityFor(noAccessRoles, [manageA, listAC]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB])).isValid).toBe(false);
+    });
   });
 });

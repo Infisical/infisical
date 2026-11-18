@@ -1,6 +1,10 @@
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
-import { hasSecretReadValueOrDescribePermission, isFolderPathBelow } from "@app/ee/services/permission/permission-fns";
+import {
+  buildFolderScopedPrivilegeRulesByGrant,
+  hasSecretReadValueOrDescribePermission,
+  isFolderPathBelow
+} from "@app/ee/services/permission/permission-fns";
 import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
@@ -141,6 +145,28 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
   secretName: secret.key,
   secretTags: secret.tags?.map((tag) => tag.slug)
 });
+
+export const buildFolderGrantSourceRules = <T extends TProjectFolderScopedPrivilege>(grants: T[]) => {
+  const rulesByGrant = buildFolderScopedPrivilegeRulesByGrant(grants);
+  return new Map(
+    rulesByGrant.map(({ privilege, rules }, index) => [
+      privilege.id,
+      privilege.appliesToSubfolders
+        ? [
+            ...rules,
+            ...rulesByGrant
+              .slice(index + 1)
+              .filter(
+                (later) =>
+                  later.privilege.environmentSlug === privilege.environmentSlug &&
+                  isFolderPathBelow(later.privilege.secretPath, privilege.secretPath)
+              )
+              .flatMap((later) => later.rules.filter((rule) => rule.inverted))
+          ]
+        : rules
+    ])
+  );
+};
 
 // Dates an actor's access to each secret from the oldest of their sources that still grants it on its own, so a
 // change only restarts the window for the secrets it opened. With no single source granting it (rules that only

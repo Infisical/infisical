@@ -7,7 +7,6 @@ import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/ident
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
 import {
-  buildFolderScopedPrivilegeRules,
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
@@ -35,6 +34,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
+  buildFolderGrantSourceRules,
   classifySecretReads,
   computeSecretReach,
   createAccessDating,
@@ -435,8 +435,9 @@ export const secretReadActivityServiceFactory = ({
           )
         };
       }),
-      ...[...folderAccessByActorId].flatMap(([actorId, grants]) =>
-        grants.map((grant) => {
+      ...[...folderAccessByActorId].flatMap(([actorId, grants]) => {
+        const sourceRulesByGrantId = once(() => buildFolderGrantSourceRules(grants));
+        return grants.map((grant) => {
           const subtreeReach = { environment: grant.environmentSlug, secretPath: grant.secretPath };
           return {
             actorId,
@@ -446,11 +447,13 @@ export const secretReadActivityServiceFactory = ({
             // grant restarts its folder and every folder below it.
             restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? subtreeReach : undefined,
             permission: once(() =>
-              createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), { conditionsMatcher })
+              createMongoAbility<ProjectPermissionSet>(sourceRulesByGrantId().get(grant.id) ?? [], {
+                conditionsMatcher
+              })
             )
           };
-        })
-      )
+        });
+      })
     ];
 
     // A group's expired temporary role reached each of its members.
