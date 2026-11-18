@@ -3,6 +3,7 @@ import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/plat
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
+import { AgentVaultFreeUsageThreshold } from "../../../ce/models/agent-vault-access-state";
 import {
   TAgentVaultFreeUsageCrossing,
   TAgentVaultUsageService,
@@ -97,7 +98,12 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     at: Date,
     used: number
   ): Promise<TAgentVaultFreeUsageCrossing[]> {
-    const reached = AgentVaultAccess.thresholdsReached(used);
+    // Past the limit the warning is out of date, and leaving it out here rather than when sending keeps a concurrent
+    // report that locks only the warning from sending it beside the limit notice.
+    const thresholds = AgentVaultAccess.thresholdsReached(used);
+    const reached = thresholds.includes(AgentVaultFreeUsageThreshold.Limit)
+      ? [AgentVaultFreeUsageThreshold.Limit]
+      : thresholds;
     if (!reached.length) return [];
 
     const month = UsageMonth.of(at);

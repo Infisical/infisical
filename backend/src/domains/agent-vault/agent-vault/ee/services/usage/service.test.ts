@@ -183,7 +183,7 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     expect(due).toEqual([]);
   });
 
-  test("should return both thresholds when one report passes both", async () => {
+  test("should return only the limit when one report passes both", async () => {
     // Setup
     const { service } = build();
 
@@ -191,10 +191,23 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
     const due = await service.recordProxyUsage({ ...report, brokered: 5_200 });
 
     // Assert
-    expect(due.map((d) => [d.threshold, d.percent])).toEqual([
-      [AgentVaultFreeUsageThreshold.Warning, 75],
-      [AgentVaultFreeUsageThreshold.Limit, 100]
-    ]);
+    expect(due.map((d) => [d.threshold, d.percent])).toEqual([[AgentVaultFreeUsageThreshold.Limit, 100]]);
+  });
+
+  test("should never return the warning once past the limit, even when its send failed", async () => {
+    // Setup: one report holds the warning while another passes the limit.
+    const { service } = build();
+    const [warning] = await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 });
+    const [limit] = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 1_300 });
+    await service.releaseNotice(warning);
+    await service.completeNotice(limit);
+
+    // Action
+    const later = await service.recordProxyUsage({ ...report, reportId: "r-3", brokered: 10 });
+
+    // Assert
+    expect(limit.threshold).toBe(AgentVaultFreeUsageThreshold.Limit);
+    expect(later).toEqual([]);
   });
 
   test("should not return a notice again while it's being sent", async () => {
@@ -276,10 +289,7 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
 
     // Assert
     expect(duringTrial).toEqual([]);
-    expect(afterTrial.map((d) => d.threshold)).toEqual([
-      AgentVaultFreeUsageThreshold.Warning,
-      AgentVaultFreeUsageThreshold.Limit
-    ]);
+    expect(afterTrial.map((d) => d.threshold)).toEqual([AgentVaultFreeUsageThreshold.Limit]);
   });
 
   test.each([
