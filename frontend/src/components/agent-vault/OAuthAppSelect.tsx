@@ -42,7 +42,7 @@ export const OAuthAppSelect = ({
             <SelectItem value={AUTOMATIC} disabled={isAutomaticDisabled}>
               Automatic Setup
             </SelectItem>
-            <SelectItem value={OWN_APP}>Your Own OAuth App</SelectItem>
+            <SelectItem value={OWN_APP}>Custom</SelectItem>
           </SelectContent>
         </Select>
         {isAutomaticDisabled && (
