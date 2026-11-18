@@ -84,6 +84,10 @@ type Props = {
   onSignInChange: (isSigningIn: boolean) => void;
   /** A sign-in finished here, so the variable as last saved is now connected. */
   onAuthorized: () => void;
+  /** Hands the sign-in action to the form's footer, which starts it: the window has to open in the same click. */
+  registerAuthorize: (authorize: () => void) => void;
+  /** Whether a sign-in can start here: the caller may edit variables, the server is set, and no app hosts the callback. */
+  onCanAuthorizeChange: (canStart: boolean) => void;
   /** A sign-in started elsewhere that needs more settings before it can go ahead. */
   initialSignInStart?: TAgentVaultOauthVariableSignInStart | null;
 };
@@ -95,6 +99,8 @@ export const OAuthVariableFields = ({
   projectId,
   onSignInChange,
   onAuthorized,
+  registerAuthorize,
+  onCanAuthorizeChange,
   initialSignInStart
 }: Props) => {
   const {
@@ -246,6 +252,10 @@ export const OAuthVariableFields = ({
     }, applyNotReady);
   };
 
+  useEffect(() => {
+    registerAuthorize(handleAuthorize);
+  });
+
   const switchToOwnApp = () => setIsOwnApp(true);
   const switchToAutomaticSetup = () => {
     setIsOwnApp(false);
@@ -257,9 +267,13 @@ export const OAuthVariableFields = ({
   const host = hostOf(serverUrl.trim() || authorizationEndpoint.trim());
   const oauth = variable?.oauth ?? null;
   const connection = oauth?.connection ?? null;
-  const hasConnection = Boolean(connection) || authorizedScopes !== null;
   // A sign-in from here would return to the app that hosts the callback, not to Infisical.
   const isAppRedirect = Boolean(redirectUri.trim());
+  const canStartSignIn =
+    canAuthorize && !isAppRedirect && Boolean(serverUrl.trim() || authorizationEndpoint.trim());
+  useEffect(() => {
+    onCanAuthorizeChange(canStartSignIn);
+  }, [canStartSignIn, onCanAuthorizeChange]);
   // The API takes a client secret only with a sign-in, which can't start here for an app's redirect URI.
   const typedSecret = formValues.clientSecret;
   useEffect(() => {
@@ -323,14 +337,7 @@ export const OAuthVariableFields = ({
     };
   };
 
-  const isProblem =
-    state.status === "failed" ||
-    (oauth && oauth.status !== AgentVaultOauthStatus.Connected && authorizedScopes === null);
-  let authorizeLabel = "Authorize";
-  if (state.status === "failed") authorizeLabel = "Try Again";
-  else if (hasConnection) authorizeLabel = "Reauthorize";
-
-  let authorizeAction: ReactNode;
+  let authorizeAction: ReactNode = null;
   if (isWaiting) {
     authorizeAction = (
       <div className="flex shrink-0 items-center gap-2">
@@ -345,49 +352,9 @@ export const OAuthVariableFields = ({
     );
   } else if (isAppRedirect) {
     authorizeAction = (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-          <span className="inline-block shrink-0" tabIndex={0}>
-            <Button type="button" variant="outline" size="sm" isDisabled>
-              {hasConnection ? "Reauthorize" : "Authorize"}
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          {hasConnection ? "Reauthorize" : "Authorize"} from your app. Its redirect URI finishes the
-          sign-in there.
-        </TooltipContent>
-      </Tooltip>
-    );
-  } else if (!canAuthorize) {
-    authorizeAction = (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-          <span className="inline-block shrink-0" tabIndex={0}>
-            <Button type="button" variant="outline" size="sm" isDisabled>
-              {hasConnection ? "Reauthorize" : "Authorize"}
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          You need permission to edit variables to authorize.
-        </TooltipContent>
-      </Tooltip>
-    );
-  } else {
-    authorizeAction = (
-      <Button
-        type="button"
-        variant={hasConnection && !isProblem ? "outline" : "av"}
-        size="sm"
-        className="shrink-0"
-        onClick={handleAuthorize}
-        isDisabled={!serverUrl.trim() && !authorizationEndpoint.trim()}
-      >
-        {authorizeLabel}
-      </Button>
+      <span className="max-w-xs shrink-0 text-right text-xs text-muted">
+        Sign in from your app. Its redirect URI finishes the sign-in there.
+      </span>
     );
   }
 

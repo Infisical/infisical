@@ -65,6 +65,7 @@ import {
   changedVariableFormFields,
   CREATE_OAUTH_VARIABLE_TITLE,
   isOAuthVariableSignInChanged,
+  parseOAuthScopes,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
   TVariableFormValues
@@ -263,6 +264,24 @@ export const VariableForm = ({
     isOAuthVariableSignInChanged(savedOAuth, formValues)
   );
 
+  // The footer starts the sign-in, since for an OAuth variable that is the step that finishes it.
+  const authorizeRef = useRef<(() => void) | null>(null);
+  const registerAuthorize = useCallback((authorize: () => void) => {
+    authorizeRef.current = authorize;
+  }, []);
+  const [canStartSignIn, setCanStartSignIn] = useState(false);
+  const isConnected = savedOAuth?.status === AgentVaultOauthStatus.Connected;
+  const hasConnection = Boolean(
+    savedOAuth && savedOAuth.status !== AgentVaultOauthStatus.NotConnected
+  );
+  // Scopes take effect only at the next sign-in, so changing them needs one as much as a sign-in setting does.
+  const isSignInEdit = Boolean(
+    savedOAuth &&
+    (isOAuthVariableSignInChanged(savedOAuth, formValues) ||
+      parseOAuthScopes(formValues.scopes ?? "").join(" ") !== savedOAuth.scopes.join(" ") ||
+      clientSecret)
+  );
+
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
@@ -425,7 +444,16 @@ export const VariableForm = ({
   if (isUpdate) submitLabel = "Save";
   else if (fixedType === AgentVaultVariableType.OAuth) submitLabel = CREATE_OAUTH_VARIABLE_TITLE;
   // A variable an OAuth sign-in already created has nothing left to add unless it was changed since.
-  const isDone = isCreatedHere && !isDirty;
+  const isDone = isCreatedHere && !isDirty && isConnected;
+
+  // One main action, worded for what the variable needs next. Without a sign-in here (an app hosts the callback, or
+  // the caller can't edit), the form only saves.
+  let signInLabel: string | null = null;
+  if (isOAuth && canStartSignIn) {
+    if (!isConnected) signInLabel = hasConnection ? "Reauthorize" : "Authorize";
+    else if (!isDirty) signInLabel = "Reauthorize";
+    else if (isSignInEdit) signInLabel = "Save and Reauthorize";
+  }
 
   const headerProps = { variable, scope };
 
@@ -554,6 +582,8 @@ export const VariableForm = ({
               projectId={projectId}
               onSignInChange={changeSigningIn}
               onAuthorized={markSavedConnected}
+              registerAuthorize={registerAuthorize}
+              onCanAuthorizeChange={setCanStartSignIn}
               initialSignInStart={signInStart}
             />
           )}
@@ -574,7 +604,10 @@ export const VariableForm = ({
         <SheetFooter className="items-center justify-between border-t">
           <span className="text-xs text-muted">
             {isSigningIn && "Finish or cancel signing in first."}
-            {!isSigningIn && isSecretUnsent && "Authorize to save the client secret."}
+            {!isSigningIn &&
+              isSecretUnsent &&
+              !signInLabel &&
+              "Authorize to save the client secret."}
           </span>
           <div className="flex items-center gap-2">
             {isDone ? (
@@ -594,16 +627,27 @@ export const VariableForm = ({
                   onClick={onCancel}
                   isDisabled={isSigningIn || isSubmitting}
                 >
-                  {isCreatedHere ? "Close" : "Cancel"}
+                  {isCreatedHere || (signInLabel && !isDirty) ? "Close" : "Cancel"}
                 </Button>
-                <Button
-                  type="submit"
-                  variant="av"
-                  isPending={isSubmitting}
-                  isDisabled={(isUpdate && !isDirty) || isSigningIn || isSecretUnsent}
-                >
-                  {submitLabel}
-                </Button>
+                {signInLabel ? (
+                  <Button
+                    type="button"
+                    variant="av"
+                    isDisabled={isSigningIn || isSubmitting}
+                    onClick={() => authorizeRef.current?.()}
+                  >
+                    {signInLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="av"
+                    isPending={isSubmitting}
+                    isDisabled={(isUpdate && !isDirty) || isSigningIn || isSecretUnsent}
+                  >
+                    {submitLabel}
+                  </Button>
+                )}
               </>
             )}
           </div>
