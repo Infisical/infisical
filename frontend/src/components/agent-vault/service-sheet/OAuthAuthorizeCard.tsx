@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useId, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 import {
   CheckIcon,
   CircleAlertIcon,
@@ -521,14 +521,20 @@ export const OAuthAuthorizeCard = ({
                 <Field className="flex-1">
                   <FieldLabel htmlFor={clientSecretInputId}>Client Secret (optional)</FieldLabel>
                   <FieldContent>
-                    <ClientSecretInput
-                      {...register("oauthClientSecret")}
-                      id={clientSecretInputId}
-                      maxLength={4096}
-                      placeholder={
-                        isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
-                      }
-                      isError={Boolean(errors.oauthClientSecret)}
+                    <Controller
+                      control={control}
+                      name="oauthClientSecret"
+                      render={({ field }) => (
+                        <ClientSecretInput
+                          {...field}
+                          id={clientSecretInputId}
+                          maxLength={4096}
+                          placeholder={
+                            isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
+                          }
+                          isError={Boolean(errors.oauthClientSecret)}
+                        />
+                      )}
                     />
                     <FieldError>{errors.oauthClientSecret?.message}</FieldError>
                   </FieldContent>

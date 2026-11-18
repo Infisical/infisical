@@ -447,14 +447,20 @@ export const OAuthVariableFields = ({
                     </FieldDescription>
                   </>
                 ) : (
-                  <ClientSecretInput
-                    {...register("clientSecret")}
-                    id={ids.clientSecret}
-                    maxLength={4096}
-                    placeholder={
-                      hasStoredSecret ? "Leave blank to keep the saved secret" : undefined
-                    }
-                    isError={Boolean(errors.clientSecret)}
+                  <Controller
+                    control={control}
+                    name="clientSecret"
+                    render={({ field }) => (
+                      <ClientSecretInput
+                        {...field}
+                        id={ids.clientSecret}
+                        maxLength={4096}
+                        placeholder={
+                          hasStoredSecret ? "Leave blank to keep the saved secret" : undefined
+                        }
+                        isError={Boolean(errors.clientSecret)}
+                      />
+                    )}
                   />
                 )}
                 <FieldError>{errors.clientSecret?.message}</FieldError>
