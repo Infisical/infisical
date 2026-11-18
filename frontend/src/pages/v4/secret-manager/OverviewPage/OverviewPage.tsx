@@ -1849,14 +1849,9 @@ export const OverviewPage = () => {
                   size="md"
                   className={styles.header}
                   title={
-                    <>
-                      <span className={styles.titleIcon}>
-                        <Icon name="folder" size={20} />
-                      </span>
-                      {session.projects.find((entry) => entry.id === projectId)?.name ??
-                        projectQuery.data?.name ??
-                        projectId}
-                    </>
+                    session.projects.find((entry) => entry.id === projectId)?.name ??
+                    projectQuery.data?.name ??
+                    projectId
                   }
                   badges={
                     <EnvironmentAction
