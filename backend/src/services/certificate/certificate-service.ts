@@ -774,24 +774,24 @@ export const certificateServiceFactory = ({
     new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
 
   const $assertImportedCertificateIssuedByCa = async (cert: TRevocableCertificate, ca: TRevocationCa) => {
-    if (!(ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported)) return;
+    if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
+      if (cert.deletedAt) {
+        throw new BadRequestError({
+          message: `Certificate '${getCertificateDisplayName(cert)}' can't be revoked because it was imported and then deleted on ${cert.deletedAt.toISOString()}.`
+        });
+      }
 
-    if (cert.deletedAt) {
-      throw new BadRequestError({
-        message: `Certificate '${getCertificateDisplayName(cert)}' can't be revoked because it was imported and then deleted on ${cert.deletedAt.toISOString()}.`
+      const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+      if (!certBody) {
+        throw new NotFoundError({ message: "Certificate body not found" });
+      }
+
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+        kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId)
       });
+      const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
+      await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
     }
-
-    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
-    if (!certBody) {
-      throw new NotFoundError({ message: "Certificate body not found" });
-    }
-
-    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
-      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId)
-    });
-    const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
-    await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
   };
 
   const $validateRevocationPqcLicense = async (ca: TRevocationCa) => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/certificate-authority-fns";
 
@@ -177,6 +178,18 @@ describe("certificateService.revokeCertAsPlatform", () => {
     });
     expect(certificateDAL.update).not.toHaveBeenCalled();
   });
+
+  it("refuses an imported certificate whose stored body is missing, before writing anything", async () => {
+    const { service, certificateDAL } = buildService(
+      { ...activeCertificate, profileId: "profile-1", source: CertificateSource.Imported },
+      { certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(undefined) } }
+    );
+
+    await expect(
+      service.revokeCertAsPlatform({ certificateId: "cert-1", revocationReason: CrlReason.UNSPECIFIED })
+    ).rejects.toThrow("Certificate body not found");
+    expect(certificateDAL.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("certificateService.rebuildCrlsAfterPlatformRevocations", () => {
@@ -260,5 +273,20 @@ describe("certificateService.revokeCert", () => {
 
     expect(certificateDAL.update).not.toHaveBeenCalled();
     expect(rebuildCaCrlAfterChange).not.toHaveBeenCalled();
+  });
+
+  it("refuses an imported certificate that was deleted, before writing anything", async () => {
+    const deletedAt = new Date("2026-01-02T03:04:05.000Z");
+    const { service, certificateDAL } = buildService({
+      ...activeCertificate,
+      profileId: "profile-1",
+      source: CertificateSource.Imported,
+      deletedAt
+    });
+
+    await expect(revokeAsUser(service)).rejects.toThrow(
+      `Certificate 'device' can't be revoked because it was imported and then deleted on ${deletedAt.toISOString()}.`
+    );
+    expect(certificateDAL.update).not.toHaveBeenCalled();
   });
 });
