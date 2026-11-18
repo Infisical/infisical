@@ -50,6 +50,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, saved, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { TemplateSheet } from "./template-sheet";
 
@@ -421,9 +422,9 @@ export const PamTemplatesPage = () => {
             renderMenu: (row) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard.writeText(row.id);
-                    toast({ tone: "ok", title: "Template ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(row.id))
+                      toast({ tone: "ok", title: "Template ID copied to clipboard" });
                   }}
                 >
                   <Icon name="copy" />

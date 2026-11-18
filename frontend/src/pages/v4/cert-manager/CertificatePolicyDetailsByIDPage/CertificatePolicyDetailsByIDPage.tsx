@@ -31,6 +31,7 @@ import type { TCertificatePolicy } from "@app/hooks/api/certificatePolicies/type
 import { useProjectPermission } from "../../access/permissions";
 import { saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
@@ -362,9 +363,8 @@ const PolicyDetail = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(policy.id).catch(() => undefined);
-                    saved("Policy ID copied");
+                  onSelect={async () => {
+                    if (await copyText(policy.id)) saved("Policy ID copied");
                   }}
                 >
                   <Icon name="copy" />

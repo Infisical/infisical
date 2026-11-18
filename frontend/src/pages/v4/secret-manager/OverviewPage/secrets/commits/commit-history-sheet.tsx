@@ -45,6 +45,7 @@ import type { Commit } from "@app/hooks/api/folderCommits/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { errorMessage } from "../../../../access/toast";
+import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
 import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
@@ -470,8 +471,9 @@ export function CommitHistorySheet({
                   label="Copy commit ID"
                   name="copy"
                   onClick={async () => {
-                    await navigator.clipboard.writeText(commit.id);
-                    onToast("ok", { title: "Commit ID copied to clipboard" });
+                    if (await copyText(commit.id)) {
+                      onToast("ok", { title: "Commit ID copied to clipboard" });
+                    }
                   }}
                 />
               </span>

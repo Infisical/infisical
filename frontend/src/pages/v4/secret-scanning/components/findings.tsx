@@ -56,6 +56,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 
 export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
@@ -330,9 +331,9 @@ const FindingSheet = ({
                 <Button
                   variant="outline"
                   icon="copy"
-                  onClick={() => {
-                    navigator.clipboard.writeText(finding.fingerprint);
-                    toast({ tone: "ok", title: "Fingerprint copied to clipboard" });
+                  onClick={async () => {
+                    if (await copyText(finding.fingerprint))
+                      toast({ tone: "ok", title: "Fingerprint copied to clipboard" });
                   }}
                 >
                   Copy fingerprint

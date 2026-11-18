@@ -23,6 +23,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { ImportKeysDialog } from "../keys/import-dialog";
@@ -122,12 +123,7 @@ const rotateReason = (item: TCmek, permissions: KeyPermissions) => {
 const isServed = (item: TCmek) => item.isPublicKeyPublished && !item.isDisabled;
 
 const copy = async (value: string, label: string) => {
-  try {
-    await navigator.clipboard.writeText(value);
-    saved(`${label} copied`);
-  } catch (error) {
-    failed(`Couldn't copy the ${label}`, error);
-  }
+  if (await copyText(value, `Couldn't copy the ${label}`)) saved(`${label} copied`);
 };
 
 const KeyMenu = ({
@@ -229,15 +225,11 @@ const KeyId = ({ id }: { id: string }) => {
           size="icon-xs"
           icon={copied ? "check" : "copy"}
           iconOnly
-          onClick={() => {
-            navigator.clipboard?.writeText(id).then(
-              () => {
-                setCopied(true);
-                saved("Key ID copied");
-                window.setTimeout(() => setCopied(false), 1200);
-              },
-              (error) => failed("Failed to copy key ID", error)
-            );
+          onClick={async () => {
+            if (!(await copyText(id, "Failed to copy key ID"))) return;
+            setCopied(true);
+            saved("Key ID copied");
+            window.setTimeout(() => setCopied(false), 1200);
           }}
         >
           Copy key ID

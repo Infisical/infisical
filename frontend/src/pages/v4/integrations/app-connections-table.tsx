@@ -39,6 +39,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useOrgId, useOrgPermission, useProjectPermission } from "../access/permissions";
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
+import { copyText } from "../clipboard";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
@@ -276,12 +277,10 @@ const ConnectionMenu = ({
   return (
     <>
       <DropdownMenuItem
-        onSelect={() =>
-          navigator.clipboard
-            .writeText(row.id)
-            .then(() => saved("Connection ID copied"))
-            .catch((cause) => failed("Couldn't copy the connection ID", cause))
-        }
+        onSelect={async () => {
+          if (await copyText(row.id, "Couldn't copy the connection ID"))
+            saved("Connection ID copied");
+        }}
       >
         <Icon name="copy" />
         Copy connection ID

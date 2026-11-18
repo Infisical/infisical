@@ -20,6 +20,7 @@ import type { TPkiApplicationListItem } from "@app/hooks/api/pkiApplications/typ
 import { formatDate } from "../../access/roles";
 import { saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { APPLICATION_DOCS } from "../ApplicationDetailsByIDPage/shared";
@@ -186,9 +187,8 @@ const Page = () => {
             renderMenu: (application) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(application.id).catch(() => undefined);
-                    saved("Application ID copied");
+                  onSelect={async () => {
+                    if (await copyText(application.id)) saved("Application ID copied");
                   }}
                 >
                   <Icon name="copy" />

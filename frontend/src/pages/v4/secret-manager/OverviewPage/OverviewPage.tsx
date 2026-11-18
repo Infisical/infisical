@@ -96,6 +96,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
 import { dismissToast, errorMessage, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -1220,8 +1221,9 @@ export const OverviewPage = () => {
       .join("\n")}\n`;
     try {
       if (action === "clipboard") {
-        await navigator.clipboard.writeText(text);
-        toast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
+        if (await copyText(text)) {
+          toast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
+        }
         return;
       }
       const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -1485,11 +1487,8 @@ export const OverviewPage = () => {
         return lines.join("\n");
       })
       .join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text, "Failed to copy selected secrets to clipboard")) {
       toast({ tone: "ok", title: "Selected secrets copied to clipboard" });
-    } catch {
-      toast({ tone: "bad", title: "Failed to copy selected secrets to clipboard" });
     }
   };
   const clearFilters = () => {
@@ -1721,11 +1720,8 @@ export const OverviewPage = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={async () => {
-            try {
-              await navigator.clipboard.writeText(environment.value);
+            if (await copyText(environment.value, "Failed to copy the environment slug")) {
               toast({ tone: "ok", title: "Environment slug copied to clipboard" });
-            } catch {
-              toast({ tone: "bad", title: "Failed to copy the environment slug" });
             }
           }}
         >

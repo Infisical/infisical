@@ -33,6 +33,7 @@ import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { KmipEnrollment } from "../../data/kmip/contract";
 import { useGo } from "../../links";
@@ -177,9 +178,9 @@ export const KmipServerDetailsByIDPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onSelect={() => {
-                        navigator.clipboard?.writeText(server.id);
-                        toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
+                      onSelect={async () => {
+                        if (await copyText(server.id))
+                          toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
                       }}
                     >
                       <Icon name="copy" />

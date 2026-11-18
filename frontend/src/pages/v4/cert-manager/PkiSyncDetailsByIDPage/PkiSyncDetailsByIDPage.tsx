@@ -39,6 +39,7 @@ import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/cert
 import { EditPkiSyncSheet, type PkiSyncEditSection } from "../components/pki-syncs/edit-sync-sheet";
 import { notifyUnhandledHostCommandError } from "../components/pki-syncs/options/host-command-errors";
 import {
+  copySyncId,
   PkiSyncScopeProvider,
   usePkiSyncOption,
   usePkiSyncPermissions
@@ -46,7 +47,6 @@ import {
 import { hasFieldMappings } from "../components/pki-syncs/steps";
 import {
   AutoSyncOff,
-  copySyncId,
   PkiSyncDialog,
   type PkiSyncDialogKind,
   PkiSyncMenuItems,

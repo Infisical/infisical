@@ -28,6 +28,7 @@ import { SignerStatus, type TSigner } from "@app/hooks/api/signers/types";
 
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CODE_SIGNING_DOCS, SignerStatusBadge } from "../CodeSigningPage/signer-shared";
@@ -102,9 +103,8 @@ const SignerDetail = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onSelect={() => {
-                  navigator.clipboard?.writeText(signer.id).catch(() => undefined);
-                  saved("Signer ID copied");
+                onSelect={async () => {
+                  if (await copyText(signer.id)) saved("Signer ID copied");
                 }}
               >
                 <Icon name="copy" />

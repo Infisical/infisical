@@ -23,6 +23,7 @@ import { IssuerType, type TCertificateProfile } from "@app/hooks/api/certificate
 import { useProjectPermission } from "../../access/permissions";
 import { saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
@@ -180,9 +181,8 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
             return (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(profile.id).catch(() => undefined);
-                    saved("Profile ID copied");
+                  onSelect={async () => {
+                    if (await copyText(profile.id)) saved("Profile ID copied");
                   }}
                 >
                   <Icon name="copy" />

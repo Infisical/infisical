@@ -34,6 +34,7 @@ import {
 
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
@@ -402,9 +403,8 @@ const DiscoveryDetail = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onSelect={() => {
-                  navigator.clipboard?.writeText(discovery.id).catch(() => undefined);
-                  saved("Discovery job ID copied");
+                onSelect={async () => {
+                  if (await copyText(discovery.id)) saved("Discovery job ID copied");
                 }}
               >
                 <Icon name="copy" />

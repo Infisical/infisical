@@ -7,6 +7,7 @@ import { PamAccountType } from "@app/hooks/api/pam";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 
 import { saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 
 const SSH_CA_DOCS =
   "https://infisical.com/docs/documentation/platform/pam/guides/ssh-certificate-auth";
@@ -21,12 +22,12 @@ export const SshCaNotice = ({
   accountId?: string;
 }) => {
   if (accountType !== PamAccountType.SSH || authMethod !== "certificate") return null;
-  const copy = () => {
+  const copy = async () => {
     if (!accountId) return;
-    navigator.clipboard.writeText(
+    const copied = await copyText(
       `curl -sSf -H "Authorization: Bearer ${getAuthToken()}" "${window.location.origin}/api/v1/pam/accounts/${accountId}/ssh-ca-setup" | sudo bash`
     );
-    saved("Install command copied to clipboard");
+    if (copied) saved("Install command copied to clipboard");
   };
   return (
     <Alert

@@ -75,6 +75,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 
 import { failed } from "../../../access/toast";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
@@ -166,12 +167,7 @@ const copy = async (
   failure: string,
   report: (message: string, tone: "ok" | "bad") => void
 ) => {
-  try {
-    await navigator.clipboard.writeText(value);
-    report(done, "ok");
-  } catch {
-    report(failure, "bad");
-  }
+  if (await copyText(value, failure)) report(done, "ok");
 };
 
 function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {

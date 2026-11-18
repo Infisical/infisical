@@ -22,6 +22,7 @@ import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { formatDate } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useGo } from "../../links";
 import { CreateKmipServerDialog } from "./create-server-dialog";
@@ -165,9 +166,9 @@ export const KmipServersPage = () => {
               {
                 label: "Copy KMIP server ID",
                 icon: "copy",
-                onSelect: (server) => {
-                  navigator.clipboard?.writeText(server.id);
-                  toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
+                onSelect: async (server) => {
+                  if (await copyText(server.id))
+                    toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
                 }
               }
             ],

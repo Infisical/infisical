@@ -52,6 +52,7 @@ import type { TGroupWithProjectMemberships } from "@app/hooks/api/groups/types";
 import type { OrgUser } from "@app/hooks/api/users/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
@@ -378,9 +379,9 @@ export const OrgMemberDetail = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onSelect={() => {
-                        navigator.clipboard?.writeText(user.id);
-                        toast({ tone: "neutral", title: "User ID copied to clipboard" });
+                      onSelect={async () => {
+                        if (await copyText(user.id))
+                          toast({ tone: "neutral", title: "User ID copied to clipboard" });
                       }}
                     >
                       <Icon name="copy" />

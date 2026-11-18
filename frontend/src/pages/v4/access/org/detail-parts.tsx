@@ -5,6 +5,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Heading } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
+import { copyText } from "../../clipboard";
 import { Muted } from "../ui";
 
 import css from "./org.module.css";
@@ -37,7 +38,15 @@ export const BackButton = ({ label, onClick }: { label: string; onClick: () => v
   </span>
 );
 
-export const CopyButton = ({ value, label }: { value: string; label: string }) => {
+export const CopyButton = ({
+  value,
+  label,
+  failure
+}: {
+  value: string;
+  label: string;
+  failure?: string;
+}) => {
   const [copied, setCopied] = useState(false);
   return (
     <Tooltip content={copied ? "Copied" : label}>
@@ -46,8 +55,8 @@ export const CopyButton = ({ value, label }: { value: string; label: string }) =
         size="icon-xs"
         icon={copied ? "check" : "copy"}
         iconOnly
-        onClick={() => {
-          navigator.clipboard?.writeText(value);
+        onClick={async () => {
+          if (!(await copyText(value, failure))) return;
           setCopied(true);
           window.setTimeout(() => setCopied(false), 2000);
         }}

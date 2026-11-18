@@ -38,7 +38,11 @@ const InviteLinks = ({ links }: { links: readonly InviteLink[] }) => (
       <Field key={invite.email} label={`Invite for ${invite.email}`}>
         <Inline gap={4} wrap={false}>
           <Input readOnly value={invite.link} aria-label={`Invitation link for ${invite.email}`} />
-          <CopyButton value={invite.link} label={`Copy invitation link for ${invite.email}`} />
+          <CopyButton
+            value={invite.link}
+            label={`Copy invitation link for ${invite.email}`}
+            failure="Couldn't access the clipboard. Select the link in the field and copy it."
+          />
         </Inline>
       </Field>
     ))}

@@ -37,6 +37,7 @@ import {
 
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { orgHref, v4Path } from "../../links";
@@ -46,7 +47,7 @@ import { CertificatesTab } from "./certificates-tab";
 import { MembersTab } from "./members-tab";
 import { RequestsTab } from "./requests-tab";
 import { SettingsTab } from "./settings-tab";
-import { APPLICATION_DOCS, type ApplicationTab, appCan, copyId } from "./shared";
+import { APPLICATION_DOCS, type ApplicationTab, appCan } from "./shared";
 import { SyncsTab } from "./syncs-tab";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/applications/$applicationName");
@@ -156,9 +157,8 @@ const ApplicationDetail = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    copyId(application.id);
-                    saved("Application ID copied");
+                  onSelect={async () => {
+                    if (await copyText(application.id)) saved("Application ID copied");
                   }}
                 >
                   <Icon name="copy" />

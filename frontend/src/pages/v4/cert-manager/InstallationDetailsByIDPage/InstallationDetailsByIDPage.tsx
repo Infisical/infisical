@@ -35,6 +35,7 @@ import { getCertValidUntilBadgeDetails } from "@app/pages/cert-manager/Certifica
 
 import { saved } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
@@ -224,9 +225,8 @@ const InstallationDetail = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onSelect={() => {
-                  navigator.clipboard?.writeText(installation.id).catch(() => undefined);
-                  saved("Installation ID copied");
+                onSelect={async () => {
+                  if (await copyText(installation.id)) saved("Installation ID copied");
                 }}
               >
                 <Icon name="copy" />

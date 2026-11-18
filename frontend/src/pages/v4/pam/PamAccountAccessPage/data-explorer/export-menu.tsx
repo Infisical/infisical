@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
 
-import { failed, saved } from "../../../access/toast";
+import { saved } from "../../../access/toast";
 import { copyRows, type ExportFormat, exportRows } from "./export";
 
 export const ExportMenu = ({
@@ -19,14 +19,10 @@ export const ExportMenu = ({
   columns: string[];
   disabledReason?: string;
 }) => {
-  const copy = (format: ExportFormat) =>
-    copyRows(rows, columns, format)
-      .then(() =>
-        saved(
-          `Copied ${rows.length} ${rows.length === 1 ? "row" : "rows"} as ${format.toUpperCase()}`
-        )
-      )
-      .catch((error) => failed("Couldn't copy rows", error));
+  const copy = async (format: ExportFormat) => {
+    if (!(await copyRows(rows, columns, format))) return;
+    saved(`Copied ${rows.length} ${rows.length === 1 ? "row" : "rows"} as ${format.toUpperCase()}`);
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

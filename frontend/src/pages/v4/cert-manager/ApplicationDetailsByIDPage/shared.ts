@@ -16,8 +16,6 @@ export const appCan = (
 export const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
-export const copyId = (id: string) => navigator.clipboard?.writeText(id).catch(() => undefined);
-
 export const APP_ROLES = [
   { value: "admin", label: "Admin", description: "Manage members, profiles and policies" },
   { value: "operator", label: "Operator", description: "Issue certificates and submit requests" },
