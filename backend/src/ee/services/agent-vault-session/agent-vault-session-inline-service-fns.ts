@@ -367,8 +367,8 @@ export const assertNoOverrideConflicts = (prepared: TPreparedInlineService[], ov
     if (overrideNames.has(displayName)) {
       throw new BadRequestError({
         message: service.name
-          ? `The service ${inlineServiceLabel(service)} has the same name as '${displayName}', a service this session gets from an access bundle alongside a service it names. Give it a different name.`
-          : `The service ${inlineServiceLabel(service)} goes by its first host, '${displayName}', which is the name of a service this session gets from an access bundle alongside a service it names. Give it a name.`
+          ? `The service ${inlineServiceLabel(service)} has the same name as '${displayName}', a service this session gets from an access bundle alongside one of its project services. Give it a different name.`
+          : `The service ${inlineServiceLabel(service)} goes by its first host, '${displayName}', which is the name of a service this session gets from an access bundle alongside one of its project services. Give it a name.`
       });
     }
   });

@@ -346,7 +346,7 @@ describe("mintSession, project services named in services", () => {
     });
 
     await expect(mintWith(service, ["github", inline("unrelated.example.com", "gh-readonly")])).rejects.toThrow(
-      "The service 'gh-readonly' has the same name as 'gh-readonly', a service this session gets from an access bundle alongside a service it names. Give it a different name."
+      "The service 'gh-readonly' has the same name as 'gh-readonly', a service this session gets from an access bundle alongside one of its project services. Give it a different name."
     );
     expect(findNamedServiceOverrides).toHaveBeenCalledWith(
       expect.objectContaining({

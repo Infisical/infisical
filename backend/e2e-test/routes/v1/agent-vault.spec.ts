@@ -6822,7 +6822,7 @@ describe("Agent Vault V1 Router", async () => {
         const taken = await mint([wildcard, sent(readOnly)]);
         expect(taken.statusCode, taken.payload).toBe(400);
         expect(taken.json().message).toContain(
-          `has the same name as '${readOnly}', a service this session gets from an access bundle alongside a service it names`
+          `has the same name as '${readOnly}', a service this session gets from an access bundle alongside one of its project services`
         );
 
         // A rename after the mint can still give the two one name, and then the override is the one resolve keeps.
