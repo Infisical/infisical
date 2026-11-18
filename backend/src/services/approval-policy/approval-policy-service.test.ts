@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { OrgMembershipStatus, ResourceMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApprovalPolicyScope, ApprovalPolicyType, ApprovalRequestStatus, ApproverType } from "./approval-policy-enums";
@@ -9,6 +10,10 @@ import { approvalPolicyServiceFactory } from "./approval-policy-service";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+vi.mock("@app/lib/request-context/oauth-delegation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/request-context/oauth-delegation")>()),
+  isScopeNarrowedRequest: vi.fn().mockReturnValue(false)
+}));
 
 type TDeps = Parameters<typeof approvalPolicyServiceFactory>[0];
 
@@ -309,6 +314,24 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const result = await ctx.service.getRequestById("revocation-1", approver);
 
     expect(result.request.canReview).toBe(true);
+  });
+
+  it("doesn't let an OAuth application with scoped access review, since approving and rejecting refuse it", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true, role: "operator" }]);
+    vi.mocked(isScopeNarrowedRequest).mockReturnValue(true);
+    try {
+      const result = await ctx.service.getRequestById("revocation-1", approver);
+
+      expect(result.request.canReview).toBe(false);
+      for (const decide of [ctx.service.approveRequest, ctx.service.rejectRequest]) {
+        // eslint-disable-next-line no-await-in-loop
+        await expect(decide("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation)).rejects.toThrow(
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests."
+        );
+      }
+    } finally {
+      vi.mocked(isScopeNarrowedRequest).mockReturnValue(false);
+    }
   });
 });
 
