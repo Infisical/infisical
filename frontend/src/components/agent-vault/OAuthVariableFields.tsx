@@ -78,6 +78,8 @@ type Props = {
   persist: (values: TVariableFormValues) => Promise<TAgentVaultVariable>;
   projectId: string;
   onSignInChange: (isSigningIn: boolean) => void;
+  /** A sign-in finished here, so the variable as last saved is now connected. */
+  onAuthorized: () => void;
   /** A sign-in started elsewhere that needs more settings before it can go ahead. */
   initialSignInStart?: TAgentVaultOauthVariableSignInStart | null;
 };
@@ -88,6 +90,7 @@ export const OAuthVariableFields = ({
   persist,
   projectId,
   onSignInChange,
+  onAuthorized,
   initialSignInStart
 }: Props) => {
   const {
@@ -183,6 +186,7 @@ export const OAuthVariableFields = ({
       if (sentSecretRef.current && getValues("clientSecret") === sentSecretRef.current) {
         resetField("clientSecret", { defaultValue: "" });
       }
+      onAuthorized();
       refreshVariables();
     }
   });
@@ -221,12 +225,7 @@ export const OAuthVariableFields = ({
   const handleAuthorize = () => {
     const values = getValidValues();
     if (!values) return;
-    // A sign-in finished in this editor connected the variable, though the saved view still says it isn't.
-    const savedOAuth =
-      variable?.oauth && authorizedScopes !== null
-        ? { ...variable.oauth, status: AgentVaultOauthStatus.Connected }
-        : variable?.oauth;
-    if (savedOAuth && isOAuthClientSecretRequired(savedOAuth, values)) {
+    if (variable?.oauth && isOAuthClientSecretRequired(variable.oauth, values)) {
       setError(
         "clientSecret",
         { message: OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE },
@@ -427,7 +426,7 @@ export const OAuthVariableFields = ({
             </FieldDescription>
           ) : (
             <FieldDescription>
-              Separate scopes with spaces. Leave empty to ask for the ones the server lists.
+              Separate scopes with spaces. Leave empty to ask for the ones the server asks for.
             </FieldDescription>
           )}
           <FieldError>{errors.scopes?.message}</FieldError>

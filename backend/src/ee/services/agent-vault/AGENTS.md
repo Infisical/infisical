@@ -1021,8 +1021,10 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A
   variable set up by hand with no `issuer` records only its authorization endpoint's origin as the issuer, so its record
   carries `issuerOriginOnly` and a callback's `iss` must have that origin (Keycloak issues from a path under it); no
-  `iss` passes. Records from before the rename carry `issuerUnchecked`, read the same way. A discovered server that
-  lists no scopes, for a variable that names none, gets a sign-in with no `scope` parameter, as a service's own does;
+  `iss` passes. Records from before the rename carry `issuerUnchecked`, read the same way. A variable that names no
+  scopes asks for what the server's challenge or protected resource lists, never the authorization server's whole
+  `scopes_supported` (that list covers every API it protects, admin scopes included), and with none of those it signs
+  in with no `scope` parameter, as a service's own does;
   a variable set up by hand must name a scope. A dynamic registration happens on every sign-in,
   as for a service's own, and sends the variable's `clientName` (default: the project's name) and the record's redirect
   URI.

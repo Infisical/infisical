@@ -1068,7 +1068,8 @@ export const agentVaultProxyServiceFactory = ({
     const refreshedCredentials = new Map<string, TRefreshed>();
     const refreshedVariables = new Map<string, TRefreshed>();
     // Services whose refresh was refused because they moved or switched variables: a token refreshed through a
-    // sibling must not reach the host this snapshot still holds for them.
+    // sibling must not reach the host this snapshot still holds for them. Only services tried before the one that
+    // refreshed are checked; a later one that moved gets the token until the next poll, an accepted window.
     const refusedVariableServices = new Set<string>();
     const isDue = (oauth: Pick<TAgentVaultOauthConfig, "status" | "expiresAt">) =>
       oauth.status !== AgentVaultOauthStatus.NeedsReauthorization &&

@@ -2534,7 +2534,7 @@ describe("starting an OAuth variable's sign-in", () => {
     expect([...env.store.keys()]).toEqual([]);
   });
 
-  test("without the variable's scopes, a sign-in asks for the ones the authorization server lists", async () => {
+  test("without the variable's scopes, a sign-in asks for no more than a service's would, not the server's whole list", async () => {
     const advertised = {
       ...LINEAR_JSON,
       "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
@@ -2551,7 +2551,7 @@ describe("starting an OAuth variable's sign-in", () => {
 
     const start = await startVariableSignIn(env);
 
-    expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("read offline_access");
+    expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("offline_access");
 
     const service = setup({ metadata: advertised });
     const { authorization } = await createAuthorization(service);
@@ -2601,7 +2601,7 @@ describe("starting an OAuth variable's sign-in", () => {
     expect(start.manualSetupRequired).toBe(false);
     const url = new URL(start.authorization!.authorizeUrl);
     expect(`${url.origin}${url.pathname}`).toBe(`${realm}/protocol/openid-connect/auth`);
-    expect(url.searchParams.get("scope")).toBe("openid profile");
+    expect(url.searchParams.get("scope")).toBeNull();
   });
 
   test("a variable set up by hand discovers nothing, and a reconnect keeps the stored client secret", async () => {

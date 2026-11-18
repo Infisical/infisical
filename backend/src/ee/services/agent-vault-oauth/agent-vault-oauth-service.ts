@@ -1193,9 +1193,7 @@ export const agentVaultOauthServiceFactory = ({
     } else {
       const discovery = await discoverOauthServer(http, serverUrl, undefined, {
         allowIssuerMismatch: true,
-        issuerFromServerPath: true,
-        // Only when the variable names none, so a provider listing hundreds of scopes can't trip the scope cap.
-        scopesFromAuthorizationServer: !settings.scopes.length
+        issuerFromServerPath: true
       });
       if (discovery.endpointsGuessed || discovery.issuerMismatch) {
         return notReady({

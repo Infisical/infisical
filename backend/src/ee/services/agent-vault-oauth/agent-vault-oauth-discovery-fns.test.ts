@@ -236,23 +236,6 @@ describe("scope selection", () => {
     expect(selectScopes({ challengeScope: "read", authorizationServerScopes: ["read"] })).toEqual(["read"]);
   });
 
-  test("asked to, falls back to the authorization server's valid scopes when nothing else names any", () => {
-    expect(
-      selectScopes({
-        authorizationServerScopes: ["openid", "has space", "offline_access"],
-        fallBackToAuthorizationServerScopes: true
-      })
-    ).toEqual(["openid", "offline_access"]);
-    expect(
-      selectScopes({
-        scopesSupported: ["repo"],
-        authorizationServerScopes: ["openid"],
-        fallBackToAuthorizationServerScopes: true
-      })
-    ).toEqual(["repo"]);
-    expect(selectScopes({ authorizationServerScopes: ["openid"] })).toEqual([]);
-  });
-
   test("scopes that aren't OAuth scope tokens are dropped from the challenge and from scopes_supported", () => {
     expect(selectScopes({ challengeScope: 'read wr"ite a\\b \u0000 \tadmin' })).toEqual(["read"]);
     expect(
@@ -548,17 +531,14 @@ describe("discovering an MCP server's authorization server", () => {
       ]);
     });
 
-    test("asked to, the authorization server's scopes are used when nothing else names any", async () => {
+    test("the authorization server's scopes are never asked for, only offline_access when it lists it", async () => {
       const { http } = stubHttp({
         json: { [`${KEYCLOAK_URL}/.well-known/openid-configuration`]: KEYCLOAK_AS }
       });
 
-      const discovery = await discoverOauthServer(http, KEYCLOAK_URL, undefined, {
-        issuerFromServerPath: true,
-        scopesFromAuthorizationServer: true
-      });
+      const discovery = await discoverOauthServer(http, KEYCLOAK_URL, undefined, { issuerFromServerPath: true });
 
-      expect(discovery.scopes).toEqual(["openid", "profile", "offline_access"]);
+      expect(discovery.scopes).toEqual(["offline_access"]);
     });
   });
 

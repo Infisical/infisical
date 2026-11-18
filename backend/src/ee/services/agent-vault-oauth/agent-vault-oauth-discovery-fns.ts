@@ -49,8 +49,6 @@ export type TOauthDiscoveryOptions = {
   // Without protected resource metadata, also tries the server URL itself as the issuer before its origin, for
   // providers that host several issuers under paths (a Keycloak realm at /realms/acme).
   issuerFromServerPath?: boolean;
-  // With no scopes from the challenge or the protected resource, asks for every scope the authorization server lists.
-  scopesFromAuthorizationServer?: boolean;
 };
 
 export const describeServer = (serverUrl: string) => {
@@ -245,20 +243,15 @@ export const checkIssuer = (
 export const selectScopes = ({
   challengeScope,
   scopesSupported,
-  authorizationServerScopes,
-  fallBackToAuthorizationServerScopes = false
+  authorizationServerScopes
 }: {
   challengeScope?: string;
   scopesSupported?: unknown;
   authorizationServerScopes?: unknown;
-  fallBackToAuthorizationServerScopes?: boolean;
 }): string[] => {
   let scopes = splitScopes(challengeScope);
   if (!scopes.length && Array.isArray(scopesSupported)) {
     scopes = scopesSupported.filter(isOauthScopeToken);
-  }
-  if (!scopes.length && fallBackToAuthorizationServerScopes && Array.isArray(authorizationServerScopes)) {
-    scopes = authorizationServerScopes.filter(isOauthScopeToken);
   }
   const offline =
     Array.isArray(authorizationServerScopes) && authorizationServerScopes.includes(OFFLINE_ACCESS_SCOPE)
@@ -270,11 +263,7 @@ export const selectScopes = ({
 const discover = async (
   http: TOauthHttpClient,
   serverUrl: string,
-  {
-    allowIssuerMismatch = false,
-    issuerFromServerPath = false,
-    scopesFromAuthorizationServer = false
-  }: TOauthDiscoveryOptions
+  { allowIssuerMismatch = false, issuerFromServerPath = false }: TOauthDiscoveryOptions
 ): Promise<TOauthDiscovery> => {
   const compatibility = new Set<AgentVaultOauthCompatibility>();
   let answered = false;
@@ -360,8 +349,7 @@ const discover = async (
   const scopes = selectScopes({
     challengeScope: challenge?.scope,
     scopesSupported: protectedResource?.scopes_supported,
-    authorizationServerScopes: metadata?.scopes_supported,
-    fallBackToAuthorizationServerScopes: scopesFromAuthorizationServer
+    authorizationServerScopes: metadata?.scopes_supported
   });
   if (scopes.length > MAX_OAUTH_SCOPES) {
     throw oauthSetupError(

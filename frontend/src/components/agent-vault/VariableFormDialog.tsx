@@ -273,6 +273,14 @@ export const VariableForm = ({
     },
     [onPendingChange]
   );
+  // A sign-in in this editor doesn't come back through a save, so the saved view would still say not connected.
+  const markSavedConnected = useCallback(() => {
+    setSaved((current) =>
+      current?.oauth
+        ? { ...current, oauth: { ...current.oauth, status: AgentVaultOauthStatus.Connected } }
+        : current
+    );
+  }, []);
 
   // Asked of the server each time typing pauses, never from a cache, since another admin can add or delete the key
   // at any time. A duplicate saved before the answer arrives is refused by the API and flagged under the field.
@@ -544,6 +552,7 @@ export const VariableForm = ({
             persist={persistOAuth}
             projectId={projectId}
             onSignInChange={changeSigningIn}
+            onAuthorized={markSavedConnected}
             initialSignInStart={signInStart}
           />
         )}
