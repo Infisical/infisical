@@ -23,6 +23,7 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -38,7 +39,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
+import { AgentVaultDocs } from "../resources/agent-vault-utils";
 import { DateCell } from "../resources/shared";
 import { CreateSkillDialog, DeleteSkillDialog, SkillSheet } from "../resources/skills";
 
@@ -271,11 +272,11 @@ const Skills = ({ projectId }: { projectId: string }) => {
 
 export const AgentVaultSkillsPage = () => {
   const { projectId } = useParams({ from: route });
-  const { isAdmin, isPending } = useIsAgentVaultAdmin(projectId);
+  const { permission, isPending } = useProjectPermission(projectId);
   return (
     <TooltipProvider>
       <PageTitle title="Skills" />
-      {isPending || isAdmin ? (
+      {isPending || canManageAgentVaultSkills(permission) ? (
         <Skills key={projectId} projectId={projectId} />
       ) : (
         <AccessRestricted />

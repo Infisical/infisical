@@ -35,7 +35,6 @@ import type {
   TUpdateAgentVaultMemberRolesDTO
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
-import type { TGetUserProjectPermissionDTO } from "@app/hooks/api/roles/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 
@@ -83,9 +82,6 @@ export type TAgentVaultSessionLogs = {
 export type TAgentVaultCreatedIdentity = { id: string; name: string; authAttachFailed: boolean };
 
 export type AgentVaultAdapter = {
-  useProjectPermission: (
-    dto: TGetUserProjectPermissionDTO
-  ) => V4QueryResult<{ memberships: { roles: { role: string }[] }[] }>;
   useSessions: (
     orgId: string,
     projectId: string,

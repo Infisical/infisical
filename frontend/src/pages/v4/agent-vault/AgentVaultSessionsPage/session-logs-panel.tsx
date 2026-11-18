@@ -12,7 +12,12 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { endOfDay, format, startOfDay, subHours, subMinutes } from "date-fns";
 
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { hostPatternCovers } from "@app/helpers/agentVaultHostPattern";
+import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
 import {
   isInfisicalLogHost,
   isInfisicalSessionEndpointRequest
@@ -37,6 +42,7 @@ import {
   useAgentVaultSessionLogTimeline
 } from "@app/hooks/api/agentVault/useAgentVaultSessionLogTimeline";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { UpgradeDialog } from "../AgentVaultSettingsPage/session-logs/upgrade-dialog";
@@ -334,24 +340,28 @@ const SettingsLink = ({
 export const SessionLogsPanel = ({
   orgId,
   projectId,
-  session,
-  isAdmin
+  session
 }: {
   orgId: string;
   projectId: string;
   session: TAgentVaultSession;
-  isAdmin: boolean;
 }) => {
+  const { permission } = useProjectPermission(projectId);
+  const canEditSessionLogSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
+  const canAddService = canManageAgentVaultServices(permission);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [opened, setOpened] = useState<TAgentVaultSessionLogRecord | null>(null);
   const [serviceRequest, setServiceRequest] = useState<{ host: string; path: string } | null>(null);
   const bundle = session.accessBundle;
   const { data: bundleDetail } = useV4Adapter("agentVaultResources").useAccessBundle(
     projectId,
-    isAdmin ? (bundle?.id ?? "") : ""
+    canAddService ? (bundle?.id ?? "") : ""
   );
   const columns = useMemo(() => {
-    if (!isAdmin || !bundle?.id || !bundleDetail) return LOG_COLUMNS;
+    if (!canAddService || !bundle?.id || !bundleDetail) return LOG_COLUMNS;
     const covered = bundleDetail.services.flatMap((service) =>
       "hostPattern" in service ? service.hostPattern.split(",").map((host) => host.trim()) : []
     );
@@ -385,7 +395,7 @@ export const SessionLogsPanel = ({
         ) : null
     };
     return [...LOG_COLUMNS, addColumn];
-  }, [isAdmin, bundle, bundleDetail]);
+  }, [canAddService, bundle, bundleDetail]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date }>();
@@ -589,7 +599,9 @@ export const SessionLogsPanel = ({
         actions={
           <Inline gap={8}>
             {retryButton}
-            {isAdmin && !isDefaultStorage && <SettingsLink orgId={orgId} projectId={projectId} />}
+            {canEditSessionLogSettings && !isDefaultStorage && (
+              <SettingsLink orgId={orgId} projectId={projectId} />
+            )}
           </Inline>
         }
       />
@@ -603,12 +615,12 @@ export const SessionLogsPanel = ({
           icon="lock"
           title="Session logs aren't on your plan"
           description={
-            isAdmin
+            canEditSessionLogSettings
               ? "Upgrade to see recorded logs and record what your agents reach."
               : "Ask a project admin about upgrading."
           }
           actions={
-            isAdmin ? (
+            canEditSessionLogSettings ? (
               <Button variant="accent" onClick={() => setIsUpgradeOpen(true)}>
                 Upgrade
               </Button>
@@ -633,12 +645,12 @@ export const SessionLogsPanel = ({
         icon="history"
         title="Session logs are off"
         description={
-          isAdmin
+          canEditSessionLogSettings
             ? "Turn them on in Settings to record what your agents do."
             : "Ask a project admin to turn them on."
         }
         actions={
-          isAdmin && isActive ? (
+          canEditSessionLogSettings && isActive ? (
             <SettingsLink orgId={orgId} projectId={projectId} variant="accent" />
           ) : undefined
         }
@@ -754,7 +766,7 @@ export const SessionLogsPanel = ({
     );
   else if (!hasNextPage && visible.length * ROW_HEIGHT > TABLE_HEIGHT) end = "No more requests";
 
-  const settingsLink = isAdmin && !isDefaultStorage && (
+  const settingsLink = canEditSessionLogSettings && !isDefaultStorage && (
     <SettingsLink orgId={orgId} projectId={projectId} />
   );
 
@@ -809,7 +821,7 @@ export const SessionLogsPanel = ({
         >
           {isDefaultStorage
             ? `Your browser couldn't download this session's logs. Your network may be blocking them. Try again, or contact ${isInfisicalCloud() ? "Infisical support" : "your server administrator"} if it keeps happening.`
-            : `None of this session's logs could be downloaded from the bucket. The bucket's CORS rule may not allow this origin, or this network may block the bucket.${isAdmin ? "" : " Ask a project admin to check the bucket's CORS rule."}`}
+            : `None of this session's logs could be downloaded from the bucket. The bucket's CORS rule may not allow this origin, or this network may block the bucket.${canEditSessionLogSettings ? "" : " Ask a project admin to check the bucket's CORS rule."}`}
         </Alert>
       )}
 

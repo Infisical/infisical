@@ -32,6 +32,7 @@ import {
 import { PageTitle } from "@app/components/PageTitle";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
@@ -47,7 +48,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AccessBundleDialog, DeleteAccessBundleDialog } from "../resources/access-bundle-dialogs";
 import { AddBundleServicesDialog, AddBundleSkillsDialog } from "../resources/add-to-bundle-dialogs";
-import { targetOf, AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
+import { targetOf, AgentVaultDocs } from "../resources/agent-vault-utils";
 import { ManageAccessSheet } from "../resources/manage-access-sheet";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
 import { ServiceSheet } from "../resources/service-sheet";
@@ -251,7 +252,6 @@ const AccessBundleDetail = ({
 }) => {
   const resources = useV4Adapter("agentVaultResources");
   const navigate = useNavigate();
-  const { isAdmin } = useIsAgentVaultAdmin(projectId);
   const { permission } = useProjectPermission(projectId);
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
@@ -273,6 +273,18 @@ const AccessBundleDetail = ({
     ProjectPermissionAgentVaultAccessBundleActions.Edit,
     ProjectPermissionSub.AgentVaultAccessBundles
   );
+  const canDeleteBundle = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Delete,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canManageBundleMembers = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canReadAnySession = permission.can(
+    ProjectPermissionAgentVaultSessionActions.ReadAny,
+    ProjectPermissionSub.AgentVaultSessions
+  );
   const { id: skillId, openSheet, closeSheet } = useAgentVaultSheetState("skillId");
   const { data: accessBundle, isPending } = resources.useAccessBundle(projectId, accessBundleId);
   const [search, setSearch] = useState("");
@@ -286,7 +298,7 @@ const AccessBundleDetail = ({
   const [addingService, setAddingService] = useState(false);
   const [sheet, setSheet] = useState<{ service?: TAgentVaultService }>();
   const [settingUp, setSettingUp] = useState<TAgentVaultService>();
-  useAgentVaultCreateIntent(() => setSheet({}), isAdmin && Boolean(accessBundle));
+  useAgentVaultCreateIntent(() => setSheet({}), canEditBundle && Boolean(accessBundle));
 
   const back = () => navigate({ to: listRoute, params: { orgId, projectId } });
   const services = useMemo(() => {
@@ -348,7 +360,7 @@ const AccessBundleDetail = ({
                 <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
               }
               actions={
-                isAdmin ? (
+                canManageBundleMembers || canEditBundle || canDeleteBundle ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" iconRight="more">
@@ -356,19 +368,27 @@ const AccessBundleDetail = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setManaging(true)}>
-                        <Icon name="users" />
-                        Manage access
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setEditing(true)}>
-                        <Icon icon={PencilIcon} />
-                        Edit access bundle
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                        <Icon name="trash" />
-                        Delete access bundle
-                      </DropdownMenuItem>
+                      {canManageBundleMembers && (
+                        <DropdownMenuItem onSelect={() => setManaging(true)}>
+                          <Icon name="users" />
+                          Manage access
+                        </DropdownMenuItem>
+                      )}
+                      {canEditBundle && (
+                        <DropdownMenuItem onSelect={() => setEditing(true)}>
+                          <Icon icon={PencilIcon} />
+                          Edit access bundle
+                        </DropdownMenuItem>
+                      )}
+                      {(canManageBundleMembers || canEditBundle) && canDeleteBundle && (
+                        <DropdownMenuSeparator />
+                      )}
+                      {canDeleteBundle && (
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                          <Icon name="trash" />
+                          Delete access bundle
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : undefined
@@ -387,7 +407,7 @@ const AccessBundleDetail = ({
               {`${one ? `${needsSetup[0].name} requires` : `${needsSetup.length} services require`} your personal values. Sessions from this bundle can't reach ${one ? "it" : "them"} until you set ${one ? "it" : "them"} up.`}
             </Alert>
           )}
-          {isAdmin && accessBundle.services.length > 0 && (
+          {canReadAnySession && accessBundle.services.length > 0 && (
             <ReadyAlert orgId={orgId} projectId={projectId} />
           )}
           <Card
@@ -404,7 +424,7 @@ const AccessBundleDetail = ({
                     onValueChange={setSearch}
                   />
                 )}
-                {isAdmin && (
+                {canEditBundle && (
                   <Button variant="outline" icon="plus" onClick={() => setAddingService(true)}>
                     Add services
                   </Button>
@@ -418,7 +438,7 @@ const AccessBundleDetail = ({
                 projectId={projectId}
                 accessBundleId={accessBundle.id}
                 services={services}
-                canManage={isAdmin}
+                canManage={canEditBundle}
                 loading={false}
                 sort={sort}
                 onSortChange={setSort}
@@ -463,7 +483,7 @@ const AccessBundleDetail = ({
           onOpenChange={setAddingService}
         />
       )}
-      {isAdmin && sheet && (
+      {canEditBundle && sheet && (
         <ServiceSheet
           key={sheet.service?.id ?? "new"}
           projectId={projectId}

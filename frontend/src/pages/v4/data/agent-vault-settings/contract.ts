@@ -49,10 +49,14 @@ export type AgentVaultSettingsAdapter = {
   ) => ReturnType<
     V4Mutation<TUpdateAgentVaultSessionLogSettingsDTO, TAgentVaultSessionLogSettingsState>
   >;
-  useProjectConnections: (projectId: string) => V4QueryResult<TAppConnection[]>;
+  useProjectConnections: (
+    projectId: string,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<TAppConnection[]>;
   useAvailableConnections: (
     app: AppConnection,
-    projectId: string
+    projectId: string,
+    options?: { enabled?: boolean }
   ) => V4QueryResult<TAvailableAppConnection[]>;
   useCreateConnection: V4Mutation<TCreateAppConnectionDTO, TAppConnection>;
   useUpdateConnection: V4Mutation<TUpdateAppConnectionDTO, TAppConnection>;

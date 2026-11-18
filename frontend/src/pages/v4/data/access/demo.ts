@@ -78,7 +78,9 @@ const SCENARIOS = [
   "stressed",
   "sub-org",
   "legacy-privileges",
-  "oidc-groups"
+  "oidc-groups",
+  "agent-vault-member",
+  "agent-vault-custom"
 ] as const;
 export type AccessScenario = (typeof SCENARIOS)[number];
 
@@ -694,6 +696,30 @@ const removeUserEverywhere = (state: AccessState, userIds: readonly string[]): A
 });
 
 const ALL_RULE = [{ action: "manage", subject: "all" }];
+
+const AGENT_VAULT_MEMBER_RULES = [
+  { action: "read", subject: "agent-vault-access-bundles" },
+  { action: ["read", "create", "edit", "revoke"], subject: "agent-vault-sessions" },
+  { action: "read", subject: "agent-vault-proxies" },
+  { action: "read", subject: "agent-vault-skills" }
+];
+
+const AGENT_VAULT_CUSTOM_RULES = [
+  { action: ["read", "edit"], subject: "agent-vault-access-bundles" },
+  { action: ["read", "read-any", "create", "edit", "revoke"], subject: "agent-vault-sessions" },
+  { action: "read", subject: "agent-vault-proxies" },
+  { action: "read", subject: "agent-vault-skills" },
+  { action: "read", subject: "agent-vault-variables" },
+  { action: "read", subject: "settings" },
+  { action: "read", subject: "app-connections" },
+  { action: "read", subject: "identity" }
+];
+
+const AGENT_VAULT_ROLE_RULES: Partial<Record<AccessScenario, typeof AGENT_VAULT_CUSTOM_RULES>> = {
+  "agent-vault-member": AGENT_VAULT_MEMBER_RULES,
+  "agent-vault-custom": AGENT_VAULT_CUSTOM_RULES
+};
+
 const scenarioRules = (scenario: AccessScenario, blocked: string[]) => {
   if (scenario === "denied") return [];
   if (scenario === "read-only") return [{ action: "read", subject: "all" }];
@@ -943,7 +969,8 @@ export const accessDemo: AccessAdapter = {
   useProjectPermission: () => {
     const scenario = useAccessScenario();
     const permission = createMongoAbility<ProjectPermissionSet>(
-      scenarioRules(scenario, ["service-tokens", "role"]) as RawRuleOf<
+      (AGENT_VAULT_ROLE_RULES[scenario] ??
+        scenarioRules(scenario, ["service-tokens", "role"])) as RawRuleOf<
         MongoAbility<ProjectPermissionSet>
       >[]
     );

@@ -379,16 +379,20 @@ const DeleteProject = ({ project, canDelete }: { project: Project; canDelete: bo
 };
 
 export const ProjectGeneralSettings = ({
-  adminOnlyDanger = false
+  dangerNeedsDeletePermission = false
 }: {
-  adminOnlyDanger?: boolean;
+  dangerNeedsDeletePermission?: boolean;
 }) => {
   const { projectId } = useProjectScope();
   const { data: project } = useV4Adapter("projectSettings").useProject(projectId);
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: facts } = useV4Adapter("projectSettings").useMembershipFacts(projectId);
   if (!project || isPending) return <SettingsCard title="Project details" loading onSave={noop} />;
-  const showDanger = !adminOnlyDanger || Boolean(facts?.isAdmin);
+  const canDeleteProject = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Project
+  );
+  const showDanger = !dangerNeedsDeletePermission || canDeleteProject;
   return (
     <Stack gap={24}>
       <ProjectDetails
@@ -403,13 +407,7 @@ export const ProjectGeneralSettings = ({
             canEdit={permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)}
           />
           <LeaveProject project={project} isDirectMember={Boolean(facts?.isDirectMember)} />
-          <DeleteProject
-            project={project}
-            canDelete={permission.can(
-              ProjectPermissionActions.Delete,
-              ProjectPermissionSub.Project
-            )}
-          />
+          <DeleteProject project={project} canDelete={canDeleteProject} />
         </>
       )}
     </Stack>

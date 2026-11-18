@@ -23,6 +23,11 @@ import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Switch } from "@infisical/cipher/ui/switch";
 
 import {
+  ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
   isAgentVaultSessionLogBlockedByPlan,
@@ -46,6 +51,7 @@ import {
 } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogModal.utils";
 import { connectionCreation } from "@app/pages/v4/components/app-connection-form";
 
+import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
@@ -228,11 +234,28 @@ const SessionLogSettingsCard = ({
   const adapter = useV4Adapter("agentVaultSettings");
   const updateSettings = adapter.useUpdateSessionLogSettings(orgId, projectId);
   const { fetch: fetchReadCheck } = adapter.useSessionLogReadCheckActions(orgId, projectId);
+  const { permission } = useProjectPermission(projectId);
+  const canEditSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
+  // Only names the connection in use and lists the connections, so each read waits for the permission its API checks.
   const { data: connections, isPending: isLoadingConnections } = adapter.useAvailableConnections(
     AppConnection.AWS,
-    projectId
+    projectId,
+    {
+      enabled: permission.can(
+        ProjectPermissionAppConnectionActions.Connect,
+        ProjectPermissionSub.AppConnections
+      )
+    }
   );
-  const { data: projectConnections = [] } = adapter.useProjectConnections(projectId);
+  const { data: projectConnections = [] } = adapter.useProjectConnections(projectId, {
+    enabled: permission.can(
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionSub.AppConnections
+    )
+  });
   const { canCreate, canEdit } = useConnectionPermissions();
   const createAwsConnection = useCreateAwsConnection();
 
@@ -290,7 +313,7 @@ const SessionLogSettingsCard = ({
   );
   const canEditConnection = editableConnection ? canEdit(editableConnection.id) : false;
 
-  const connectionOptions = (connections ?? []).map((connection) => ({
+  const connectionOptions = (connections ?? projectConnections).map((connection) => ({
     value: connection.id,
     label: connection.name,
     meta: connection.projectId ? undefined : "Organization"
@@ -377,6 +400,9 @@ const SessionLogSettingsCard = ({
           </Inline>
         }
         dirty={dirty}
+        locked={
+          canEditSettings ? undefined : "You don't have permission to change session log settings"
+        }
         onDiscard={() => {
           setDraft(initial);
           setSubmitted(false);
@@ -430,7 +456,11 @@ const SessionLogSettingsCard = ({
                       label="AWS connection"
                       placeholder="Select a connection"
                       options={connectionOptions}
-                      value={draft.appConnectionId}
+                      value={
+                        connectionOptions.some(({ value }) => value === draft.appConnectionId)
+                          ? draft.appConnectionId
+                          : ""
+                      }
                       loading={isLoadingConnections}
                       invalid={Boolean(shown?.appConnectionId)}
                       disabled={isExternalReadOnly}
@@ -574,6 +604,11 @@ export const SessionLogsTab = () => {
   const { data: plan } = adapter.useSessionLogPlan(orgId);
   const [upgradeFor, setUpgradeFor] = useState<AgentVaultSessionLogStorageType | null>(null);
   const [awsSetup, setAwsSetup] = useState<AwsSetupTarget | null>(null);
+  const { permission } = useProjectPermission(projectId);
+  const canReadAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Read,
+    ProjectPermissionSub.AppConnections
+  );
   if (!state || !plan) return <SettingsCard title="Session logs" loading onSave={noop} />;
   return (
     <Stack gap={24}>
@@ -589,7 +624,9 @@ export const SessionLogsTab = () => {
         onUpgrade={setUpgradeFor}
         onAwsSetup={setAwsSetup}
       />
-      <SessionLogConnections inUseId={externalOf(state.settings)?.appConnectionId ?? null} />
+      {canReadAppConnections && (
+        <SessionLogConnections inUseId={externalOf(state.settings)?.appConnectionId ?? null} />
+      )}
       <AwsSetupDialog
         open={Boolean(awsSetup)}
         onOpenChange={(open) => !open && setAwsSetup(null)}
