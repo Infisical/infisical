@@ -710,6 +710,20 @@ describe("recursive folder grants on nested folders", () => {
       expect(canCreateFoldersAt(privileges, "/apps/web")).toBe(false);
     });
 
+    test("a non-canonical stored path applies to the canonical folder and still decides the exact grant below it", () => {
+      const privileges = [
+        recursiveAt(SecretFolderRole.Edit, "//apps/"),
+        exactAt(SecretFolderRole.Manage, "apps/payments/")
+      ];
+      const ability = abilityFor(noAccessRoles, privileges);
+
+      ["/apps", "/apps/web"].forEach((secretPath) => {
+        expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt(secretPath))).toBe(true);
+      });
+      expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt("/infra"))).toBe(false);
+      expect(ability.can(ProjectPermissionActions.Create, foldersAt("/apps/payments"))).toBe(true);
+    });
+
     test("an exact grant keeps them only when the nearest recursive grant above it gives them", () => {
       const exactManage = exactAt(SecretFolderRole.Manage, "/apps/payments");
 

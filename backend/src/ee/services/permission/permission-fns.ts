@@ -689,12 +689,23 @@ const RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE = buildFolderScopedDenyRulesByR
 
 const FOLDER_EDITING_ROLES = new Set([SecretFolderRole.Edit, SecretFolderRole.Manage, SecretFolderRole.FullAccess]);
 
-export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
+const canonicalFolderPath = (folderPath: string) => {
+  const segments = folderPath.split("/").filter(Boolean);
+  return segments.length ? `/${segments.join("/")}` : "/";
+};
+
+export const recursiveFolderPathGlob = (folderPath: string) => {
+  const path = canonicalFolderPath(folderPath);
+  return path === "/" ? "/**" : `${path}/**`;
+};
 
 const folderPathDepth = (folderPath: string) => folderPath.split("/").filter(Boolean).length;
 
-export const isFolderPathBelow = (folderPath: string, ancestorPath: string) =>
-  folderPath !== ancestorPath && folderPath.startsWith(`${ancestorPath.replace(/\/$/, "")}/`);
+export const isFolderPathBelow = (folderPath: string, ancestorPath: string) => {
+  const folder = canonicalFolderPath(folderPath);
+  const ancestor = canonicalFolderPath(ancestorPath);
+  return folder !== ancestor && folder.startsWith(ancestor === "/" ? "/" : `${ancestor}/`);
+};
 
 export const buildFolderScopedPrivilegeRules = (
   privileges: TProjectFolderScopedPrivilege[]
@@ -706,16 +717,15 @@ export const buildFolderScopedPrivilegeRules = (
         message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
       });
     }
+    const secretPath = canonicalFolderPath(privilege.secretPath);
     return {
       role: privilege.role as SecretFolderRole,
       isRecursive: privilege.appliesToSubfolders,
       environment: privilege.environmentSlug,
-      secretPath: privilege.secretPath,
+      secretPath,
       conditions: {
         environment: privilege.environmentSlug,
-        secretPath: privilege.appliesToSubfolders
-          ? { $glob: recursiveFolderPathGlob(privilege.secretPath) }
-          : privilege.secretPath
+        secretPath: privilege.appliesToSubfolders ? { $glob: recursiveFolderPathGlob(secretPath) } : secretPath
       }
     };
   });

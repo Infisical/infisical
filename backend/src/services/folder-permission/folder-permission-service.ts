@@ -325,9 +325,6 @@ export const folderPermissionServiceFactory = ({
     ]);
     const folderIds = [folder.id, ...ancestorFolders.map((ancestor) => ancestor.id)];
     const pageActorIds = folderAccess.actors.map(({ actor }) => actorIdOf(actor));
-    // Grants stay out of the cached folder access so a grant or revoke is visible on the very next request.
-    // They are read for the page's actors only: every actor can hold one grant per folder above this one, so
-    // reading them for the whole project grows with the roster and the folder's depth.
     const grants = pageActorIds.length
       ? await additionalPrivilegeDAL.find({
           projectId,
