@@ -20,19 +20,21 @@ describe("PamProjectRoles.rulesFor", () => {
     expect(roles.projectType).toBe(ProjectType.PAM);
   });
 
-  test.each([ProjectMembershipRole.Member, ProjectMembershipRole.Viewer, "removed-product-role"])(
-    "should read the slug %s as a member",
-    (slug) => {
-      // Setup
-      const roles = new PamProjectRoles();
+  test.each([
+    ProjectMembershipRole.Member,
+    ProjectMembershipRole.Viewer,
+    ProjectMembershipRole.NoAccess,
+    "removed-product-role"
+  ])("should read the slug %s as a member", (slug) => {
+    // Setup
+    const roles = new PamProjectRoles();
 
-      // Action
-      const rules = roles.rulesFor(Grant.restore({ slug }));
+    // Action
+    const rules = roles.rulesFor(Grant.restore({ slug }));
 
-      // Assert
-      expect(rules).toBe(pamProjectMemberPermissions);
-    }
-  );
+    // Assert
+    expect(rules).toBe(pamProjectMemberPermissions);
+  });
 
   test("should read a custom role carrying the admin rules as a member", () => {
     // Setup
