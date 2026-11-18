@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -23,15 +22,20 @@ import {
   TUserGroupMembershipInsert,
   TUsersInsert
 } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
-import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
-import { buildOrgInsightsGateStubs, passThroughKeyStore, projectScopedInsightsDepStubs } from "./testUtils/insights";
+import {
+  buildOrgInsightsGateStubs,
+  insightsActor,
+  passThroughKeyStore,
+  projectScopedInsightsDepStubs
+} from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -102,11 +106,13 @@ const scopes = {
 
 const scopeList = Object.values(scopes);
 
-const { permissionService, licenseService, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { orgPermissionService, secretsPermissionService, licenseService, setCanReadInsights, setPlanHasInsights } =
+  buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
-  permissionService,
+  orgPermissionService,
+  secretsPermissionService,
   licenseService,
   orgDAL: orgDALFactory(testDb),
   identityOrgMembershipDAL: identityOrgDALFactory(testDb),
@@ -116,10 +122,7 @@ const insightsService = insightsServiceFactory({
 });
 
 const actor = (orgId: string): TOrgInsightsDTO => ({
-  actor: ActorType.USER,
-  actorId: ids.uDirect,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: orgId,
+  actor: insightsActor(ids.uDirect, orgId),
   orgId
 });
 
@@ -406,7 +409,9 @@ describe("insights secrets usage insights", () => {
   test("throws when the actor cannot read secrets management insights", async () => {
     setCanReadInsights(false);
     try {
-      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(
+        PermissionDeniedError
+      );
     } finally {
       setCanReadInsights(true);
     }

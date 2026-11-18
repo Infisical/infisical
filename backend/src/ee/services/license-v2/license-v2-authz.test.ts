@@ -1,6 +1,6 @@
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { FakeLicenseServerBilling } from "@app/domains/platform/license/ce/testing/fake-license-server-billing";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { licenseV2ServiceFactory } from "./license-v2-service";
 
@@ -19,23 +19,21 @@ const ROOT_ORG = "11111111-1111-1111-1111-111111111111";
 const OTHER_ORG = "22222222-2222-2222-2222-222222222222";
 
 const actor = {
-  id: "user-1",
-  type: "user",
-  orgId: ROOT_ORG,
-  authMethod: "email"
-} as Parameters<ReturnType<typeof licenseV2ServiceFactory>["getBillableOrganizations"]>[0]["actor"];
+  principal: { type: "user", id: "user-1", authMethod: "email" },
+  org: { id: ROOT_ORG, rootOrgId: ROOT_ORG }
+} as unknown as Parameters<ReturnType<typeof licenseV2ServiceFactory>["getBillableOrganizations"]>[0]["actor"];
 
 const buildService = () => {
   const getOrgPermission = vi.fn(async () => {
     // Stands in for a caller with no membership in the org being asked about, which is what a
     // cross-org request resolves to once the shortcut no longer applies.
-    throw new ForbiddenRequestError({ message: "You are not a member of this organization" });
+    throw new PermissionDeniedError({ message: "You are not a member of this organization" });
   });
 
   const service = licenseV2ServiceFactory({
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
     orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
-    permissionService: { getOrgPermission },
+    orgPermissionService: { getOrgPermission },
     organizationsService: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
       getBillableIdentityOwnershipBreakdown: vi.fn(async () => []),
@@ -93,7 +91,7 @@ describe("billing v2 cross-org read shortcut", () => {
         limit: 10,
         offset: 0
       })
-    ).rejects.toThrow(ForbiddenRequestError);
+    ).rejects.toThrow(PermissionDeniedError);
 
     // The check is the point: it is where permission-service intersects the granted scopes.
     expect(getOrgPermission).toHaveBeenCalledTimes(1);
@@ -111,7 +109,7 @@ describe("billing v2 cross-org read shortcut", () => {
         limit: 10,
         offset: 0
       })
-    ).rejects.toThrow(ForbiddenRequestError);
+    ).rejects.toThrow(PermissionDeniedError);
     expect(getOrgPermission).toHaveBeenCalledTimes(1);
   });
 
@@ -126,7 +124,7 @@ describe("billing v2 cross-org read shortcut", () => {
         isInstanceAdmin: true,
         dimensionKey: "identities"
       })
-    ).rejects.toThrow(ForbiddenRequestError);
+    ).rejects.toThrow(PermissionDeniedError);
     expect(getOrgPermission).toHaveBeenCalledTimes(1);
   });
 });

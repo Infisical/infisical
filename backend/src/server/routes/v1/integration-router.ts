@@ -18,8 +18,6 @@ import {
   TIntegrationSyncedEvent
 } from "@app/services/telemetry/telemetry-types";
 
-import {} from "../sanitizedSchemas";
-
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -133,10 +131,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.updateIntegration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.integrationId,
         ...req.body
       });
@@ -178,10 +173,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.getIntegration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.integrationId
       });
 
@@ -197,10 +189,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         integration.integration === Integrations.AWS_PARAMETER_STORE
       ) {
         const awsRoleDetails = await server.services.integration.getIntegrationAWSIamRole({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           id: req.params.integrationId
         });
 
@@ -250,10 +239,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.deleteIntegration({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.integrationId,
         shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
       });
@@ -331,10 +317,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.syncIntegration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.integrationId
       });
 

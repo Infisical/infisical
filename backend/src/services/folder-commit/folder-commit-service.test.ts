@@ -164,8 +164,8 @@ describe("folderCommitServiceFactory", () => {
     createFolderTreeCheckpoint: vi.fn().mockResolvedValue({})
   };
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({})
+  const mockSecretsPermissionService = {
+    getSecretsPermission: vi.fn().mockResolvedValue({})
   };
 
   const mockSecretTagDAL = {
@@ -216,8 +216,7 @@ describe("folderCommitServiceFactory", () => {
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       secretV2BridgeDAL: mockSecretV2BridgeDAL,
       folderCommitQueueService: mockFolderCommitQueueService,
-      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
-      permissionService: mockPermissionService,
+      secretsPermissionService: mockSecretsPermissionService as never,
       kmsDataKeyService: mockKmsService as never,
       secretTagDAL: mockSecretTagDAL,
       resourceMetadataDAL: mockResourceMetadataDAL,

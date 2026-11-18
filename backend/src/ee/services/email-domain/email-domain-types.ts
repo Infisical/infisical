@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export enum EmailDomainStatus {
   Pending = "pending",
@@ -8,14 +8,17 @@ export enum EmailDomainStatus {
 
 export type TCreateEmailDomainDTO = {
   domain: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TVerifyEmailDomainDTO = {
   emailDomainId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
-export type TListEmailDomainsDTO = TOrgPermission;
+export type TListEmailDomainsDTO = { orgId: string } & TActorInput;
 
 export type TDeleteEmailDomainDTO = {
   emailDomainId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;

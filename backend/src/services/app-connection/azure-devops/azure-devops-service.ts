@@ -2,11 +2,11 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError } from "axios";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -18,7 +18,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAzureDevOpsConnection>;
 
 type TAzureDevOpsProject = {
@@ -114,7 +114,7 @@ export const azureDevOpsConnectionService = (
   kmsDataKeyService: TKmsDataKeyService,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AzureDevOps, connectionId, actor);
 
     const projects = await listAzureDevOpsProjects(

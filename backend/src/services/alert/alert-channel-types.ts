@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TPermissionCheck } from "@app/domains/platform/access-control/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
 import { getConfig } from "@app/lib/config/env";
@@ -100,7 +101,7 @@ export type TAlertChannelDefinition = {
     deps: TAlertChannelScopeDeps
   ) => Promise<void>;
   getWorkflowIntegrationId?: (config: Record<string, unknown>) => string;
-  requiredOrgPermission?: { permission: OrgPermissionSet; message: string };
+  requiredOrgPermission?: { permission: TPermissionCheck<OrgPermissionSet>; message: string };
   send: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>;
 };
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/certificate-authority-fns";
 
@@ -213,10 +214,10 @@ describe("certificateService.revokeCert", () => {
     service.revokeCert({
       id: "cert-1",
       revocationReason: CrlReason.KEY_COMPROMISE,
-      actor: ActorType.USER,
-      actorId: "user-1",
-      actorAuthMethod: null,
-      actorOrgId: "org-1"
+      actor: {
+        principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+        org: { id: "org-1" }
+      } as unknown as TActorContext
     });
 
   it("rebuilds the CRL right after the revocation commits, before later steps can fail", async () => {

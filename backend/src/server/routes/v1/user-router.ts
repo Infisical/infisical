@@ -194,10 +194,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const groupMemberships = await server.services.user.listUserGroups({
         username: req.params.username,
-        actorOrgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       return groupMemberships;

@@ -89,10 +89,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accessType: req.body.accessType,
         breakGlass: req.body.breakGlass,
         autoApprovalInputs: req.body.autoApprovalInputs,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -205,10 +202,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         status: req.query.status,
         offset: req.query.offset,
         limit: req.query.limit,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return result;
     }
@@ -233,10 +227,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       const result = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return result;
     }
@@ -258,10 +249,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return result;
     }
@@ -303,10 +291,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         accessType: req.query.accessType,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return result;
     }

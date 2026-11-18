@@ -1,8 +1,10 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/testing/fake-access-bundle-permission-service";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { TProjectRule } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { sha256Hex } from "../agent-vault-skill/agent-vault-skill-fns";
@@ -19,11 +21,26 @@ const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-} as unknown as TMintSessionDTO["ctx"];
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
+
+const permissionServiceFor = ({
+  rules,
+  reachesEveryBundle = true,
+  grantedAccessBundleIds = []
+}: {
+  rules: { action: string | string[]; subject: string; inverted?: boolean }[];
+  reachesEveryBundle?: boolean;
+  grantedAccessBundleIds?: string[];
+}) =>
+  new FakeAccessBundlePermissionService().allow({
+    actorId: ctx.principal.id,
+    projectId: PROJECT_ID,
+    rules: rules as unknown as TProjectRule[],
+    reachesEveryBundle,
+    grantedAccessBundleIds
+  });
 
 const VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
 
@@ -78,14 +95,7 @@ const buildService = ({
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
     agentVaultVariableDAL: { findKeys, findOauthForResolve },
-    membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(rules),
-        hasRole: () => true,
-        memberships: []
-      })
-    },
+    accessBundlePermissionService: permissionServiceFor({ rules }),
     kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
@@ -190,14 +200,14 @@ const buildMintWithServices = ({
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
     services.map((row) => ({ ...row, id: `inline-${row.position}`, sessionId: "session-1" }))
   );
-  const permission = isAdmin
-    ? createMongoAbility([{ action: "manage", subject: "all" }])
-    : createMongoAbility([
+  const rules = isAdmin
+    ? [{ action: "manage", subject: "all" }]
+    : [
         {
           action: ["read", "create", "edit", "revoke", ...(canSendInline ? ["create-with-inline-services"] : [])],
           subject: "agent-vault-sessions"
         }
-      ]);
+      ];
   const findServiceOverrides = vi.fn().mockResolvedValue(overrides);
   const service = agentVaultSessionServiceFactory({
     agentVaultSessionDAL: {
@@ -231,16 +241,11 @@ const buildMintWithServices = ({
       )
     },
     agentVaultResolveDAL: { findServiceOverrides },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue(
-          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
-        )
-    },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
-    },
+    accessBundlePermissionService: permissionServiceFor({
+      rules,
+      reachesEveryBundle: isAdmin,
+      grantedAccessBundleIds: grantedBundleIds
+    }),
     kmsDataKeyService: { wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")) },
     licenseService: { getPlan: vi.fn() }
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
@@ -473,13 +478,7 @@ describe("updateSession", () => {
       },
       agentVaultSessionInlineSkillDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
       agentVaultSessionSkillDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
-      permissionService: {
-        getProjectPermission: vi.fn().mockResolvedValue({
-          permission: createMongoAbility(rules),
-          hasRole: () => true,
-          memberships: []
-        })
-      }
+      accessBundlePermissionService: permissionServiceFor({ rules })
     } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
     return { service, agentVaultSessionDAL, resourceMetadataDAL, tx };
   };
@@ -680,9 +679,9 @@ const buildSkillService = ({
     }))
   );
   const memberActions = ["read", "create", "edit", "revoke", ...(canSendSkills ? ["create-with-inline-skills"] : [])];
-  const permission = isAdmin
-    ? createMongoAbility([{ action: "manage", subject: "all" }])
-    : createMongoAbility([{ action: memberActions, subject: "agent-vault-sessions" }]);
+  const rules = isAdmin
+    ? [{ action: "manage", subject: "all" }]
+    : [{ action: memberActions, subject: "agent-vault-sessions" }];
   const service = agentVaultSessionServiceFactory({
     agentVaultSessionDAL: {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() })),
@@ -708,16 +707,11 @@ const buildSkillService = ({
           .map((entry) => entry.id)
       )
     },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue(
-          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
-        )
-    },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
-    },
+    accessBundlePermissionService: permissionServiceFor({
+      rules,
+      reachesEveryBundle: isAdmin,
+      grantedAccessBundleIds: grantedBundleIds
+    }),
     kmsDataKeyService: {
       wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")),
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({

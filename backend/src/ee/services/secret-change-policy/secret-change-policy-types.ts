@@ -2,8 +2,8 @@ import { Knex } from "knex";
 
 import { TProjectEnvironments, TSecretApprovalPolicies } from "@app/db/schemas";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -36,7 +36,7 @@ export type TCreateSapDTO = {
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateSapDTO = {
   secretPolicyId: string;
@@ -53,21 +53,21 @@ export type TUpdateSapDTO = {
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteSapDTO = {
   secretPolicyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TListSapDTO = TProjectPermission;
+export type TListSapDTO = { projectId: string } & TActorInput;
 
-export type TGetSapByIdDTO = Omit<TProjectPermission, "projectId"> & { sapId: string };
+export type TGetSapByIdDTO = TActorInput & { sapId: string };
 
 export type TGetBoardSapDTO = {
   projectId: string;
   environment: string;
   secretPath: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
 
@@ -122,6 +122,6 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
 };

@@ -1,6 +1,6 @@
 import { IPType } from "@app/lib/ip";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
-import { OrderByDirection, TOrgPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TListActorProjectMembershipsFilter } from "@app/services/project-membership/project-membership-types";
 
 export type TCreateIdentityDTO = {
@@ -8,7 +8,8 @@ export type TCreateIdentityDTO = {
   name: string;
   hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TUpdateIdentityDTO = {
   id: string;
@@ -17,16 +18,16 @@ export type TUpdateIdentityDTO = {
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TDeleteIdentityDTO = {
   id: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TGetIdentityByIdDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export interface TIdentityTrustedIp {
   ipAddress: string;
@@ -37,7 +38,7 @@ export interface TIdentityTrustedIp {
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
 } & TListActorProjectMembershipsFilter &
-  Omit<TOrgPermission, "orgId">;
+  TActorInput;
 
 export type TListOrgIdentitiesByOrgIdDTO = {
   limit?: number;
@@ -45,7 +46,8 @@ export type TListOrgIdentitiesByOrgIdDTO = {
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export enum OrgIdentityOrderBy {
   Name = "name",
@@ -64,4 +66,4 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
   }>;
 };
 
-export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
+export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TActorInput;

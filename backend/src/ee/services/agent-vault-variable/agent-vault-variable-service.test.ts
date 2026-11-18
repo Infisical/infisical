@@ -1,9 +1,11 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/testing/fake-access-bundle-permission-service";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionAgentVaultVariableActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectRule
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -35,11 +37,9 @@ const TEXT_ID = "22222222-2222-4222-8222-222222222222";
 type TService = ReturnType<typeof agentVaultVariableServiceFactory>;
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-} as unknown as Parameters<TService["createVariable"]>[0]["ctx"];
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
 
 const settings = toOauthVariableSettings({
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -148,14 +148,12 @@ const buildService = ({
   const service = agentVaultVariableServiceFactory({
     agentVaultVariableDAL,
     agentVaultPersonalValueDAL: { delete: vi.fn() },
-    membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(rules),
-        hasRole: () => true,
-        memberships: []
-      })
-    },
+    accessBundlePermissionService: new FakeAccessBundlePermissionService().allow({
+      actorId: ctx.principal.id,
+      projectId: PROJECT_ID,
+      rules: rules as unknown as TProjectRule[],
+      reachesEveryBundle: true
+    }),
     kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({

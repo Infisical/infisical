@@ -1,8 +1,9 @@
-import { createMongoAbility } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -31,11 +32,11 @@ const liveCertificate = {
 };
 
 const actor = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: null,
-  actorOrgId: "org-1"
-} as const;
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+    org: { id: "org-1" }
+  } as unknown as TActorContext
+};
 
 const buildService = () => {
   const certificateDAL = {
@@ -60,10 +61,10 @@ const buildService = () => {
     certificateSyncDAL,
     signerDAL,
     resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
-    permissionService: {
+    projectPermissionService: {
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     },
     pkiApplicationDAL: { findById: vi.fn() },
     pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
@@ -186,10 +187,10 @@ describe("certificateService.importCert with a CSR", () => {
           certificateAuthority: { externalType: null, name: "my-root-ca" }
         })
       },
-      permissionService: {
+      projectPermissionService: {
         getProjectPermission: vi
           .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
       }
     } as unknown as TDeps;
 

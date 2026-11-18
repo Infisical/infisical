@@ -31,22 +31,14 @@ import {
 import { agentVaultSessionInlineSkillDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-skill-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
-import { groupDALFactory } from "@app/ee/services/group/group-dal";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
-import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
-import { roleDALFactory } from "@app/services/role/role-dal";
-import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -57,9 +49,11 @@ import {
   deleteAgentVaultProject,
   markAgentVaultProjectOriginal
 } from "e2e-test/testUtils/agent-vault";
+import { buildPermissionDomains } from "e2e-test/testUtils/domains";
 import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createIdentityActor } from "e2e-test/testUtils/identities";
 import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
+import { clearPermissionCaches } from "e2e-test/testUtils/permission-cache";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
@@ -96,20 +90,11 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("identities").where({ id: identityId }).delete();
 };
 
-const buildPermissionService = () =>
-  permissionServiceFactory({
-    permissionDAL: permissionDALFactory(testDb),
-    serviceTokenDAL: serviceTokenDALFactory(testDb),
-    projectDAL: projectDALFactory(testDb),
-    keyStore: testKeyStore,
-    roleDAL: roleDALFactory(testDb),
-    userDAL: userDALFactory(testDb),
-    identityDAL: identityDALFactory(testDb),
-    additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-    groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb),
-    orgDAL: orgDALFactory(testDb)
-  });
+// What the proxy checks a session's owner with, over the test database.
+const buildProxyPermissionDeps = () => ({
+  ...buildPermissionDomains(testDb, testKeyStore),
+  identityDAL: identityDALFactory(testDb)
+});
 
 const grantRows = (
   accessBundleId: string,
@@ -1017,7 +1002,7 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("membership_roles")
         .where({ membershipId: membership.id })
         .update({ role: ProjectMembershipRole.Member });
-      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      await clearPermissionCaches(cacheKeys, [secondProjectId]);
 
       try {
         const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
@@ -1032,7 +1017,7 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: membership.id })
           .update({ role: ProjectMembershipRole.Admin });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [secondProjectId]);
       }
     });
   });
@@ -5266,13 +5251,30 @@ describe("Agent Vault V1 Router", async () => {
         expect(minted.statusCode, minted.payload).toBe(200);
         const { session } = minted.json() as { session: { id: string; token: string; services: unknown[] } };
         expect(session.services).toEqual([
-          expect.objectContaining({ name: "ns-inline", type: "http", hostPattern: "ns-inline.example.com", isInline: true }),
-          { id: loose.id, name: "ns-loose", type: "http", description: null, hostPattern: "ns-loose.example.com", isInline: false }
+          expect.objectContaining({
+            name: "ns-inline",
+            type: "http",
+            hostPattern: "ns-inline.example.com",
+            isInline: true
+          }),
+          {
+            id: loose.id,
+            name: "ns-loose",
+            type: "http",
+            description: null,
+            hostPattern: "ns-loose.example.com",
+            isInline: false
+          }
         ]);
 
         const read = await inject("GET", `${sessionsUrl}/${session.id}`);
         expect(read.statusCode).toBe(200);
-        expect((read.json().session.services as { name: string; isInline: boolean }[]).map((entry) => [entry.name, entry.isInline])).toEqual([
+        expect(
+          (read.json().session.services as { name: string; isInline: boolean }[]).map((entry) => [
+            entry.name,
+            entry.isInline
+          ])
+        ).toEqual([
           ["ns-inline", true],
           ["ns-loose", false]
         ]);
@@ -5318,10 +5320,16 @@ describe("Agent Vault V1 Router", async () => {
 
           // Session reads show a listed service only while the reader reaches it, so its later changes stay with the
           // services API.
-          const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as { id: string };
+          const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as {
+            id: string;
+          };
           expect(
-            (await inject("PATCH", `${servicesUrl}/${granted.id}`, { type: "http", description: "changed after the revoke" }))
-              .statusCode
+            (
+              await inject("PATCH", `${servicesUrl}/${granted.id}`, {
+                type: "http",
+                description: "changed after the revoke"
+              })
+            ).statusCode
           ).toBe(200);
           const ownRead = await member.as("GET", `${sessionsUrl}/${sessionId}`);
           expect(ownRead.statusCode).toBe(200);
@@ -5396,7 +5404,10 @@ describe("Agent Vault V1 Router", async () => {
           expect(await sessionServiceNames(token)).toEqual(["ns-ov-api", "ns-ov-v1", "ns-ov-wild"]);
 
           // The bundle's later edits reach the session on the next resolve, as they would a session carrying it.
-          const unlinked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${deep.id}`);
+          const unlinked = await inject(
+            "DELETE",
+            `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${deep.id}`
+          );
           expect(unlinked.statusCode, unlinked.payload).toBe(200);
           expect(await resolved(token)).toEqual(["ns-ov-wild@-", `ns-ov-api@${bundle.name}`]);
 
@@ -6019,7 +6030,9 @@ describe("Agent Vault V1 Router", async () => {
         expect(refused.map((res) => res.statusCode)).toEqual([403, 403, 403, 403]);
         refused.forEach((res) => {
           expect(res.json().error).toBe("PermissionDenied");
-          expect(res.json().message).toMatch(/^You are not allowed to (read|create|edit|delete) on (member|groups|identity)$/);
+          expect(res.json().message).toMatch(
+            /^You are not allowed to (read|create|edit|delete) on (member|groups|identity)$/
+          );
         });
 
         const listed = await listMembers("actorType=machineIdentity");
@@ -7069,7 +7082,10 @@ describe("Agent Vault V1 Router", async () => {
         };
         expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:any`, `${readOnly}:GET`]);
 
-        const renamed = await inject("PATCH", `/api/v1/agent-vault/services/${override.id}`, { type: "http", name: later });
+        const renamed = await inject("PATCH", `/api/v1/agent-vault/services/${override.id}`, {
+          type: "http",
+          name: later
+        });
         expect(renamed.statusCode, renamed.payload).toBe(200);
         expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:GET`]);
       } finally {
@@ -7372,7 +7388,9 @@ describe("Agent Vault V1 Router", async () => {
         const forAdmin = (requiresSetup: string) =>
           bot.as(
             "GET",
-            servicesUrl(`onBehalfOfUserId=${seedData1.id}&requiresSetup=${requiresSetup}&orderBy=name&orderDirection=asc`)
+            servicesUrl(
+              `onBehalfOfUserId=${seedData1.id}&requiresSetup=${requiresSetup}&orderBy=name&orderDirection=asc`
+            )
           );
         const pendingForAdmin = await forAdmin("true");
         expect(listed(pendingForAdmin)).toEqual([setupService.name]);
@@ -7402,7 +7420,9 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (adminsOwn.json().services as TListedService[]).find((row) => row.name === setupService.name)?.personalValues
         ).toMatchObject({
-          fields: [{ field: "credential-value", variableReferences: [{ variableId: adminVariableId, key: variableKey }] }]
+          fields: [
+            { field: "credential-value", variableReferences: [{ variableId: adminVariableId, key: variableKey }] }
+          ]
         });
         expect(
           (configuredForAdmin.json().services as TListedService[]).find((row) => row.name === setupService.name)
@@ -8932,15 +8952,23 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [owner.id], role })).statusCode
         ).toBe(200);
-        await testKeyStore.deleteItemsByKeyIn([
-          KeyStorePrefixes.ProjectPermissionMarker(
-            projectId,
-            ActorType.IDENTITY,
-            owner.id,
-            ActionProjectType.AgentVault
-          ),
-          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, owner.id, ActionProjectType.AgentVault)
-        ]);
+        await clearPermissionCaches(
+          [
+            KeyStorePrefixes.ProjectPermissionMarker(
+              projectId,
+              ActorType.IDENTITY,
+              owner.id,
+              ActionProjectType.AgentVault
+            ),
+            KeyStorePrefixes.ProjectPermissionData(
+              projectId,
+              ActorType.IDENTITY,
+              owner.id,
+              ActionProjectType.AgentVault
+            )
+          ],
+          [projectId]
+        );
       };
       try {
         await setRole("admin");
@@ -9167,11 +9195,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineSkillDAL: agentVaultSessionInlineSkillDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyPermissionDeps(),
         kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -9307,11 +9334,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineSkillDAL: agentVaultSessionInlineSkillDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyPermissionDeps(),
         kmsDataKeyService: {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
@@ -9573,11 +9599,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineSkillDAL: agentVaultSessionInlineSkillDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyPermissionDeps(),
         kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -9608,13 +9633,13 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
         await expect(resolve()).rejects.toThrow(UnauthorizedError);
       } finally {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: false, temporaryAccessEndTime: null });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
       }
 
       expect((await resolve()).services).toHaveLength(1);
@@ -11768,10 +11793,18 @@ describe("Agent Vault V1 Router", async () => {
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
         .first();
     const clearSeedPermissionCache = (projectId: string) =>
-      testKeyStore.deleteItemsByKeyIn([
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-      ]);
+      clearPermissionCaches(
+        [
+          KeyStorePrefixes.ProjectPermissionMarker(
+            projectId,
+            ActorType.USER,
+            seedData1.id,
+            ActionProjectType.AgentVault
+          ),
+          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+        ],
+        [projectId]
+      );
 
     test("the generic role change refuses to demote the last Agent Vault admin", async () => {
       const projectId = await projectFor();
@@ -12279,11 +12312,10 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionInlineSkillDAL: agentVaultSessionInlineSkillDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-          membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
-          permissionService: buildPermissionService(),
+          ...buildProxyPermissionDeps(),
           kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
@@ -12388,11 +12420,10 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionInlineSkillDAL: agentVaultSessionInlineSkillDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-          membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
-          permissionService: buildPermissionService(),
+          ...buildProxyPermissionDeps(),
           kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
@@ -12415,14 +12446,14 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: groupMembership.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
 
         expect((await resolve()).services).toHaveLength(0);
         const lapsed = await mint();
         expect(lapsed.statusCode).toBe(400);
         expect(JSON.parse(lapsed.payload).message).toContain("is granted to you");
       } finally {
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
         await deleteUaIdentity(agent.id);
         await group.cleanup();
       }

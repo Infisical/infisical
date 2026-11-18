@@ -1,5 +1,5 @@
 import { ActorType } from "@app/lib/auth/actor-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateWebhookDTO = {
   environment: string;
@@ -8,30 +8,32 @@ export type TCreateWebhookDTO = {
   webhookSecretKey?: string;
   type: string;
   eventsFilter?: { eventName: TSubscribableWebhookEvent }[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateWebhookDTO = {
   id: string;
   isDisabled?: boolean;
   eventsFilter?: { eventName: TSubscribableWebhookEvent }[];
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TTestWebhookDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteWebhookDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetWebhookByIdDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListWebhookDTO = {
   environment?: string;
   secretPath?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export enum WebhookType {
   GENERAL = "general",

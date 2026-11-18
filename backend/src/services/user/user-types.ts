@@ -1,9 +1,9 @@
 import { MfaMethod } from "@app/lib/auth/actor-types";
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TListUserGroupsDTO = {
   username: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export enum UserEncryption {
   V1 = 1,

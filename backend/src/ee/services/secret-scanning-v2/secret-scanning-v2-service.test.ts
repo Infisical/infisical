@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { SecretScanningDataSource } from "./secret-scanning-v2-enums";
@@ -17,12 +17,8 @@ vi.mock("./secret-scanning-v2-factory", () => ({
 }));
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: AuthMethod.EMAIL,
-  orgId: "org-1",
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 };
 
 const credentials = { webhookId: "hook-1", webhookSecret: "secret" };
@@ -35,10 +31,8 @@ const buildService = (transaction: (fn: (tx: unknown) => Promise<unknown>) => Pr
   };
   const overrides: Record<string, unknown> = {
     licenseService: { getPlan: vi.fn(async () => ({ has: () => true })) },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
-      }))
+    projectPermissionService: {
+      getProjectPermission: vi.fn(async () => Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     },
     secretScanningV2DAL: {
       dataSources: {

@@ -1,5 +1,6 @@
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { SecretSharingAccessType, TGenericPermission, TOrgPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { SecretSharingAccessType, TActorInput } from "@app/lib/types";
 
 export enum SecretSharingType {
   Share = "share",
@@ -10,13 +11,9 @@ export type TGetSharedSecretsDTO = {
   type: SecretSharingType;
   offset: number;
   limit: number;
-} & TGenericPermission;
+} & TActorInput;
 
-export type TSharedSecretPermission = {
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
+export type TSharedSecretPermission = TActorInput & {
   orgId: string;
   accessType?: SecretSharingAccessType;
   name?: string;
@@ -51,20 +48,24 @@ export type TCreateSecretRequestDTO = {
   name?: string;
   accessType: SecretSharingAccessType;
   expiresIn: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TRevealSecretRequestValueDTO = {
   id: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TGetSecretRequestByIdDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+  actor?: TActorContext;
+};
 
 export type TSetSecretRequestValueDTO = {
   id: string;
   secretValue: string;
-} & Omit<TOrgPermission, "orgId">;
+  actor?: TActorContext;
+};
 
 export type TDeleteSharedSecretDTO = {
   sharedSecretId: string;

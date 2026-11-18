@@ -56,10 +56,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -124,10 +121,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.getInstallation({
         installationId: req.params.installationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -182,10 +176,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: req.params.installationId,
         name: req.body.name,
         keystorePassword: req.body.keystorePassword,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -230,10 +221,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.deleteInstallation({
         installationId: req.params.installationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

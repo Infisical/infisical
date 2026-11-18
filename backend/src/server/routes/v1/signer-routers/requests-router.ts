@@ -51,10 +51,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         statuses: req.query.statuses,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -83,10 +80,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       const request = await server.services.signerPolicy.requestToSign({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ipAddress: req.realIp
       });
 
@@ -131,10 +125,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       const result = await server.services.signerPolicy.preApproveSigning({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
@@ -174,10 +165,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       const result = await server.services.signerPolicy.revokeRequest({
         signerId: req.params.signerId,
         requestId: req.params.requestId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);

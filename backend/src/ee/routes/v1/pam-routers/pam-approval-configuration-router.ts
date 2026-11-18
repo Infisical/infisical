@@ -69,10 +69,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
       const result = await server.services.pamAccessRequest.getApprovalConfiguration({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return result;
     }
@@ -113,10 +110,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         notificationConfigs: req.body.notificationConfigs,
         breakGlassUsers: req.body.breakGlassUsers,
         autoApproval: req.body.autoApproval,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

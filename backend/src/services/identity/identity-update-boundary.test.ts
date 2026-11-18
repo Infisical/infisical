@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
@@ -73,16 +74,17 @@ const createService = ({
   };
 
   const service = identityServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+        )
     } as never,
     licenseService: new FakeLicenseService().setPlan(ORG_ID, { rbac: true }),
     organizationsService: new FakeOrganizationsService(),
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, scopeOrgId: ORG_ID })
     } as never,
     membershipIdentityDAL: {
@@ -97,7 +99,9 @@ const createService = ({
     identityDAL: identityDAL as never
   } as never);
 
-  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+  const actor = {
+    actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } }
+  };
 
   return {
     update: (role: string) => service.updateIdentity({ id: IDENTITY_ID, role, ...actor } as never),

@@ -1,9 +1,8 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { ProjectPermissionSecretSyncActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -44,7 +43,7 @@ export type TSecretSyncTarget = TSecretSyncWithPath & {
 export type TSecretSyncAlertProviderDep = {
   secretSyncAlertDAL: Pick<TSecretSyncAlertDALFactory, "findSyncsByIds" | "findSyncNamesByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
 };
 
 const ACTION_LABELS: Record<SecretSyncAction, string> = {
@@ -58,7 +57,7 @@ const destinationName = (destination: string) => SECRET_SYNC_NAME_MAP[destinatio
 export const secretSyncAlertProviderFactory = ({
   secretSyncAlertDAL,
   folderDAL,
-  permissionService
+  secretsPermissionService
 }: TSecretSyncAlertProviderDep): IEventAlertProvider<TSecretSyncTarget> => {
   const $loadSyncsWithPath = async (syncIds: string[]): Promise<TSecretSyncWithPath[]> => {
     const syncs = await secretSyncAlertDAL.findSyncsByIds(syncIds);
@@ -188,57 +187,58 @@ export const secretSyncAlertProviderFactory = ({
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
     const projectId = $requireProject(input.projectId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      projectId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor: input.actor, projectId });
 
     if (!input.resourceId) {
       if (input.action !== AlertPermissionAction.Read) {
         // A test send for a sync that is still being created. It reads nothing back.
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretSyncActions.Create,
-          ProjectPermissionSub.SecretSyncs
-        );
+        permission.assert({
+          action: ProjectPermissionSecretSyncActions.Create,
+          subject: ProjectPermissionSub.SecretSyncs
+        });
         return;
       }
 
       // Listing without a sync returns the alerts of every sync in the project, so a read limited to some
       // environments, paths or connections, or narrowed by a deny rule, would expose the rest.
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.Read,
-        ProjectPermissionSub.SecretSyncs
-      );
-      const readRules = permission.rulesFor(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+      permission.assert({ action: ProjectPermissionSecretSyncActions.Read, subject: ProjectPermissionSub.SecretSyncs });
+      const readRules = permission
+        .toAbility()
+        .rulesFor(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
       const canReadEverySync =
         readRules.some((rule) => !rule.inverted && !rule.conditions) && !readRules.some((rule) => rule.inverted);
       if (!canReadEverySync) {
-        // Built by hand because throwUnlessCan passes a partial read, and a CASL error is what the
+        // Built by hand because the check above passes a partial read, and a denial is what the
         // permission-denied audit hook records.
-        const denial = ForbiddenError.from(permission);
-        denial.action = ProjectPermissionSecretSyncActions.Read;
-        denial.subject = ProjectPermissionSub.SecretSyncs;
-        denial.subjectType = ProjectPermissionSub.SecretSyncs;
-        throw denial;
+        throw new PermissionDeniedError({
+          denial: {
+            action: ProjectPermissionSecretSyncActions.Read,
+            subject: ProjectPermissionSub.SecretSyncs,
+            matchedRules: readRules.map(({ action, inverted, subject, conditions }) => ({
+              action,
+              inverted,
+              subject,
+              conditions
+            }))
+          }
+        });
       }
       return;
     }
 
     const sync = await $loadInScopeSync({ orgId: input.orgId, projectId, resourceId: input.resourceId });
-    ForbiddenError.from(permission).throwUnlessCan(
-      input.action === AlertPermissionAction.Read
-        ? ProjectPermissionSecretSyncActions.Read
-        : ProjectPermissionSecretSyncActions.Edit,
-      subject(ProjectPermissionSub.SecretSyncs, {
+    permission.assert({
+      action:
+        input.action === AlertPermissionAction.Read
+          ? ProjectPermissionSecretSyncActions.Read
+          : ProjectPermissionSecretSyncActions.Edit,
+      subject: ProjectPermissionSub.SecretSyncs,
+      fields: {
         ...(sync.envSlug && { environment: sync.envSlug }),
         ...(sync.secretPath && { secretPath: sync.secretPath }),
         connectionId: sync.connectionId
-      })
-    );
+      }
+    });
   };
 
   return {
