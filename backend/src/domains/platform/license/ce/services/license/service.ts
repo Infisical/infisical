@@ -3,7 +3,7 @@ import { TOrganizationsProjectsService } from "@app/domains/platform/organizatio
 import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements } from "../../models/instance-entitlements";
-import { Plan } from "../../models/plan";
+import { Plan, PlanLimit } from "../../models/plan";
 import { SeatUsage } from "../../models/seat-usage";
 import { TInstanceEntitlementsCache, TLicensePolicyService, TLicenseServer, TPlanCache } from "../dependencies";
 import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-types";
@@ -22,8 +22,12 @@ export type TLicenseService = {
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
-  // Drops the cache without refetching.
+  // Drops the cache without refetching. Only for a change to the plan itself; a project change calls
+  // refreshWorkspacesUsed, since dropping the plan sends every in-flight request to the License Server.
   invalidatePlan(orgId: string): Promise<void>;
+  // Recounts the projects shown against the plan's project limit, after a project create, delete or restore
+  // commits. Never throws: the change already committed.
+  refreshWorkspacesUsed(orgId: string): Promise<void>;
   getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
   // Cloud only. Safe to repeat; throws so the caller can retry.
   closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
@@ -77,8 +81,8 @@ export class LicenseService implements TLicenseService {
       if (rootOrgId !== orgId) cached = await this.planCache.read(rootOrgId);
     }
 
-    const plan = cached.plan ?? (await this.fetchPlanOrFallback(rootOrgId));
-    if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
+    const plan = cached.plan ?? (await this.fetchOnMiss(rootOrgId));
+    if (cached.plan && (cached.passThrough || cached.stale)) this.revalidateInBackground(rootOrgId);
     if (plan.isPaid) this.usageQueue.reconcile(orgId);
     return plan;
   }
@@ -126,6 +130,22 @@ export class LicenseService implements TLicenseService {
     await this.planCache.invalidate(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
+  async refreshWorkspacesUsed(orgId: string): Promise<void> {
+    if (!this.getInstanceEntitlements().isCloud()) return;
+    try {
+      const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+      const { plan } = await this.planCache.read(rootOrgId);
+      // With no plan cached, the next fetch counts.
+      if (!plan || !plan.isLimited(PlanLimit.Projects)) return;
+      await this.planCache.writeWorkspacesUsed(
+        rootOrgId,
+        await this.organizationsProjectsService.countWorkspaces(rootOrgId)
+      );
+    } catch (error) {
+      logger.error(error, `refreshWorkspacesUsed: failed to recount projects [orgId=${orgId}]`);
+    }
+  }
+
   async getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
     return this.planCache.lastKnown(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
@@ -151,6 +171,20 @@ export class LicenseService implements TLicenseService {
     return SeatUsage.fromBillableActors(await this.organizationsProjectsService.countBillableOrgActors(orgId));
   }
 
+  // One caller per root org fetches; the others serve the last-known plan meanwhile, so a burst of requests on a
+  // miss doesn't become a burst of License Server calls and project counts. Without one, they all fetch.
+  private async fetchOnMiss(rootOrgId: string): Promise<Plan> {
+    if (await this.planCache.acquireRevalidateLock(rootOrgId)) {
+      try {
+        return await this.fetchPlanOrFallback(rootOrgId);
+      } finally {
+        await this.planCache.releaseRevalidateLock(rootOrgId);
+      }
+    }
+    const lastKnown = await this.planCache.lastKnown(rootOrgId);
+    return lastKnown ? lastKnown.plan : this.fetchPlanOrFallback(rootOrgId);
+  }
+
   // Only a License Server failure caches the fallback. DB or key store errors propagate, so they never clobber a paid plan.
   private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
     const rootOrg = await this.rootOrg(rootOrgId);
@@ -171,13 +205,20 @@ export class LicenseService implements TLicenseService {
     return org ? { id: rootOrgId, name: org.name, slug: org.slug } : { id: rootOrgId };
   }
 
+  // Only a project limit reads the count, and counting an org with many projects is expensive.
   private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
-    const plan = fetched.withWorkspacesUsed(await this.organizationsProjectsService.countWorkspaces(rootOrgId));
-    await this.planCache.write(rootOrgId, plan);
+    if (!fetched.isLimited(PlanLimit.Projects)) {
+      await this.planCache.write(rootOrgId, fetched, null);
+      return fetched;
+    }
+    const workspacesUsed = await this.organizationsProjectsService.countWorkspaces(rootOrgId);
+    const plan = fetched.withWorkspacesUsed(workspacesUsed);
+    await this.planCache.write(rootOrgId, plan, workspacesUsed);
     return plan;
   }
 
-  // After a billing change, reads get the cached plan while one caller at a time refreshes it.
+  // Near expiry or after a billing change, reads get the cached plan while one caller at a time refreshes it. The
+  // lock isn't released, so a billing change polls the License Server at most once per lock TTL.
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.planCache.acquireRevalidateLock(rootOrgId))) return;

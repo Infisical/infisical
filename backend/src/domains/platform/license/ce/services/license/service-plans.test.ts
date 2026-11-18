@@ -19,6 +19,22 @@ const selfHostedLicenseServer = () => {
   return licenseServer;
 };
 
+const limitedPlan = () => ({ ...enterprisePlan(), slug: "pro", workspaceLimit: 10 });
+
+const countingWorkspaces = () => {
+  const counts = {
+    calls: 0,
+    used: WORKSPACES_USED,
+    organizations: {
+      countWorkspaces: async () => {
+        counts.calls += 1;
+        return counts.used;
+      }
+    }
+  };
+  return counts;
+};
+
 describe("LicenseService.getPlan", () => {
   const queuedDimensions = async (queue: { jobs: { data: unknown }[] }) => {
     await new Promise((resolve) => {
@@ -83,7 +99,9 @@ describe("LicenseService.getPlan", () => {
 
   test("should fetch for the root org and cache under the root's key on cloud", async () => {
     // Setup
-    const { licenseService, keyStore, licenseServer } = await buildLicense();
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, limitedPlan());
+    const { licenseService, keyStore } = await buildLicense({ licenseServer });
 
     // Action
     const plan = await licenseService.getPlan(ROOT.id);
@@ -91,7 +109,107 @@ describe("LicenseService.getPlan", () => {
     // Assert
     expect(licenseServer.fetches).toEqual([ROOT.id]);
     expect(plan.toJSON().workspacesUsed).toBe(WORKSPACES_USED);
+    expect((await licenseService.getPlan(ROOT.id)).toJSON().workspacesUsed).toBe(WORKSPACES_USED);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
+  });
+
+  test("should not count projects for a plan without a project limit", async () => {
+    // Setup
+    const counts = countingWorkspaces();
+    const { licenseService } = await buildLicense({ organizations: counts.organizations });
+
+    // Action
+    const plan = await licenseService.getPlan(ROOT.id);
+
+    // Assert
+    expect(plan.toJSON().workspacesUsed).toBe(0);
+    expect(counts.calls).toBe(0);
+  });
+
+  test("should fetch once and serve the last known plan to concurrent reads on a cache miss", async () => {
+    // Setup
+    const counts = countingWorkspaces();
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, limitedPlan());
+    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
+    await licenseService.getPlan(ROOT.id);
+    await licenseService.invalidatePlan(ROOT.id);
+
+    // Action
+    const plans = await Promise.all([
+      licenseService.getPlan(ROOT.id),
+      licenseService.getPlan(SUB_ORG_ID),
+      licenseService.getPlan(ROOT.id),
+      licenseService.getPlan(SUB_ORG_ID)
+    ]);
+
+    // Assert
+    expect(plans.map((plan) => plan.slug)).toEqual(["pro", "pro", "pro", "pro"]);
+    expect(licenseServer.fetches).toHaveLength(2);
+    expect(counts.calls).toBe(2);
+  });
+
+  test("should let the next cache miss fetch once the first has finished", async () => {
+    // Setup
+    const { licenseService, licenseServer } = await buildLicense();
+    await licenseService.getPlan(ROOT.id);
+    await licenseService.invalidatePlan(ROOT.id);
+
+    // Action
+    await licenseService.getPlan(ROOT.id);
+
+    // Assert
+    expect(licenseServer.fetches).toHaveLength(2);
+  });
+
+  test("should fetch on every concurrent cache miss when there is no last known plan to serve", async () => {
+    // Setup
+    const { licenseService, licenseServer } = await buildLicense();
+
+    // Action
+    const plans = await Promise.all([licenseService.getPlan(ROOT.id), licenseService.getPlan(ROOT.id)]);
+
+    // Assert
+    expect(plans.map((plan) => plan.slug)).toEqual(["enterprise", "enterprise"]);
+    expect(licenseServer.fetches).toHaveLength(2);
+  });
+
+  test("should serve the cached plan near expiry and refresh it once in the background", async () => {
+    // Setup
+    let now = 1_000_000;
+    const { licenseService, licenseServer } = await buildLicense({ now: () => now });
+    await licenseService.getPlan(ROOT.id);
+    licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
+    now += 880 * 1000;
+
+    // Action
+    const served = await licenseService.getPlan(ROOT.id);
+    await licenseService.getPlan(SUB_ORG_ID);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
+    // Assert
+    expect(served.slug).toBe("enterprise");
+    expect((await licenseService.getPlan(ROOT.id)).slug).toBe("pro");
+    expect(licenseServer.fetches).toHaveLength(2);
+  });
+
+  test("should not refresh a plan that is not near expiry", async () => {
+    // Setup
+    let now = 1_000_000;
+    const { licenseService, licenseServer } = await buildLicense({ now: () => now });
+    await licenseService.getPlan(ROOT.id);
+    now += 600 * 1000;
+
+    // Action
+    await licenseService.getPlan(ROOT.id);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
+    // Assert
+    expect(licenseServer.fetches).toHaveLength(1);
   });
 
   test("should serve a sub-org the root's cached plan without fetching again", async () => {
@@ -403,6 +521,89 @@ describe("LicenseService.refreshPlan after a billing change", () => {
 
     // Assert
     expect(licenseServer.fetches).toEqual([]);
+  });
+});
+
+describe("LicenseService.refreshWorkspacesUsed", () => {
+  test("should recount the projects of a limited plan without fetching it again", async () => {
+    // Setup
+    const counts = countingWorkspaces();
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, limitedPlan());
+    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
+    await licenseService.getPlan(ROOT.id);
+    counts.used = 7;
+
+    // Action
+    await licenseService.refreshWorkspacesUsed(SUB_ORG_ID);
+
+    // Assert
+    expect((await licenseService.getPlan(SUB_ORG_ID)).toJSON().workspacesUsed).toBe(7);
+    expect(licenseServer.fetches).toHaveLength(1);
+  });
+
+  test("should not overwrite a plan fetched after it with the plan it read", async () => {
+    // Setup
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, limitedPlan());
+    const { licenseService } = await buildLicense({ licenseServer });
+    await licenseService.getPlan(ROOT.id);
+    licenseServer.plans.set(ROOT.id, { ...limitedPlan(), slug: "enterprise" });
+
+    // Action
+    await Promise.all([licenseService.refreshWorkspacesUsed(ROOT.id), licenseService.refreshPlan(ROOT.id)]);
+
+    // Assert
+    expect((await licenseService.getPlan(ROOT.id)).slug).toBe("enterprise");
+  });
+
+  test("should not count for a plan without a project limit", async () => {
+    // Setup
+    const counts = countingWorkspaces();
+    const { licenseService } = await buildLicense({ organizations: counts.organizations });
+    await licenseService.getPlan(ROOT.id);
+
+    // Action
+    await licenseService.refreshWorkspacesUsed(ROOT.id);
+
+    // Assert
+    expect(counts.calls).toBe(0);
+  });
+
+  test("should not count or fetch when no plan is cached", async () => {
+    // Setup
+    const counts = countingWorkspaces();
+    const { licenseService, licenseServer } = await buildLicense({ organizations: counts.organizations });
+
+    // Action
+    await licenseService.refreshWorkspacesUsed(ROOT.id);
+
+    // Assert
+    expect(counts.calls).toBe(0);
+    expect(licenseServer.fetches).toEqual([]);
+  });
+
+  test("should not throw when the count fails", async () => {
+    // Setup
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, limitedPlan());
+    const { licenseService } = await buildLicense({ licenseServer });
+    await licenseService.getPlan(ROOT.id);
+    const failing = await buildLicense({
+      licenseServer,
+      organizations: {
+        countWorkspaces: async () => {
+          throw new Error("replica timeout");
+        }
+      }
+    });
+    await failing.licenseService.refreshPlan(ROOT.id).catch(() => undefined);
+
+    // Action
+    const result = failing.licenseService.refreshWorkspacesUsed(ROOT.id);
+
+    // Assert
+    await expect(result).resolves.toBeUndefined();
   });
 });
 
