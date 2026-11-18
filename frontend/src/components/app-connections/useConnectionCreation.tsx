@@ -3,7 +3,7 @@ import { ComponentProps, useRef, useState } from "react";
 import { ComboboxDialogCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, isFederatedAppConnection } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection, TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -18,6 +18,9 @@ export const useConnectionCreationDialog = <TOption,>(
 ): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  // A federated connection stays in the dialog after create: the provider can only trust it once it exists, so
+  // the user copies its values and verifies it here instead of finding it unverified on first use
+  const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
   const attemptRef = useRef(0);
@@ -28,6 +31,7 @@ export const useConnectionCreationDialog = <TOption,>(
       onDiscard: () => {
         attemptRef.current += 1;
         setIsDirty(false);
+        setCreatedConnection(null);
         cancelRef.current();
       }
     });
@@ -52,21 +56,40 @@ export const useConnectionCreationDialog = <TOption,>(
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
-        <AppConnectionForm
-          app={app}
-          layout="dialog"
-          {...formProps}
-          onDirtyChange={setIsDirty}
-          onPendingChange={setIsPending}
-          onComplete={(connection) => {
-            if (attempt !== attemptRef.current) return;
-            setIsDirty(false);
-            setIsDiscardDialogOpen(false);
-            onCreated(connection);
-            complete();
-          }}
-          onCancel={() => requestCancel(cancel)}
-        />
+        {createdConnection ? (
+          <AppConnectionForm
+            appConnection={createdConnection}
+            isNewConnection
+            layout="dialog"
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={() => {
+              setCreatedConnection(null);
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        ) : (
+          <AppConnectionForm
+            app={app}
+            layout="dialog"
+            {...formProps}
+            onDirtyChange={setIsDirty}
+            onPendingChange={setIsPending}
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
+              setIsDirty(false);
+              setIsDiscardDialogOpen(false);
+              onCreated(connection);
+              if (isFederatedAppConnection(connection)) {
+                setCreatedConnection(connection);
+                return;
+              }
+              complete();
+            }}
+            onCancel={() => requestCancel(cancel)}
+          />
+        )}
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}
           onOpenChange={setIsDiscardDialogOpen}
