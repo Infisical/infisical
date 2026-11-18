@@ -239,16 +239,15 @@ const SessionLogSettingsCard = ({
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Settings
   );
-  // Only names the connection in use and lists the connections, so each read waits for the permission its API checks.
+  const canConnectAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Connect,
+    ProjectPermissionSub.AppConnections
+  );
+  // Each connection read waits for the permission its API checks.
   const { data: connections, isPending: isLoadingConnections } = adapter.useAvailableConnections(
     AppConnection.AWS,
     projectId,
-    {
-      enabled: permission.can(
-        ProjectPermissionAppConnectionActions.Connect,
-        ProjectPermissionSub.AppConnections
-      )
-    }
+    { enabled: canConnectAppConnections }
   );
   const { data: projectConnections = [] } = adapter.useProjectConnections(projectId, {
     enabled: permission.can(
@@ -461,7 +460,7 @@ const SessionLogSettingsCard = ({
                           ? draft.appConnectionId
                           : ""
                       }
-                      loading={isLoadingConnections}
+                      loading={canConnectAppConnections && isLoadingConnections}
                       invalid={Boolean(shown?.appConnectionId)}
                       disabled={isExternalReadOnly}
                       creation={creation}
