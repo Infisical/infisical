@@ -180,7 +180,7 @@ const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPre
 };
 
 // Destinations that refuse some names. A key schema renders the same way for every secret, so one rendered with the
-// sync's own environment shows whether the destination can ever accept it.
+// sync's own environment and the shortest possible key shows whether the destination can ever accept it.
 const SECRET_SYNC_KEY_NAME_RULES: Partial<
   Record<SecretSync, { isValidName: (name: string) => boolean; rule: string }>
 > = {
@@ -199,7 +199,7 @@ export const assertKeySchemaProducesValidNames = ({
   const nameRule = SECRET_SYNC_KEY_NAME_RULES[destination];
   if (!nameRule || !keySchema) return;
 
-  const exampleName = getKeyWithSchema({ key: "EXAMPLE", environment, schema: keySchema });
+  const exampleName = getKeyWithSchema({ key: "A", environment, schema: keySchema });
 
   if (!nameRule.isValidName(exampleName)) {
     throw new BadRequestError({

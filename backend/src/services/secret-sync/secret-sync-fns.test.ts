@@ -22,7 +22,7 @@ describe("assertKeySchemaProducesValidNames", () => {
         keySchema: "{{environment}}_{{secretKey}}",
         environment: "prod-eu"
       })
-    ).toThrow("'prod-eu_EXAMPLE'");
+    ).toThrow("'prod-eu_A'");
   });
 
   it("rejects a key schema whose own characters the destination refuses", () => {
@@ -41,6 +41,17 @@ describe("assertKeySchemaProducesValidNames", () => {
         destination: SecretSync.Convex,
         keySchema: "INF_{{environment}}_{{secretKey}}",
         environment: "prod"
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts a key schema that only fits short secret keys", () => {
+    // 225 + 25 + 1 = 251 characters, under Convex's 256 limit
+    expect(() =>
+      assertKeySchemaProducesValidNames({
+        destination: SecretSync.Convex,
+        keySchema: `${"A".repeat(225)}{{environment}}{{secretKey}}`,
+        environment: "e".repeat(25)
       })
     ).not.toThrow();
   });
