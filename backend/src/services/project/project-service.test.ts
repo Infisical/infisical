@@ -1,9 +1,11 @@
+import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { projectServiceFactory } from "./project-service";
 
@@ -213,5 +215,54 @@ describe("org-scoped product projects", () => {
     ).rejects.toThrow("Agent Vault projects don't use project templates");
 
     expect(projectDAL.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("certificate search with current status", () => {
+  test("derives each status and reads rows and count at the same instant", async () => {
+    const past = new Date(Date.now() - 86_400_000);
+    const future = new Date(Date.now() + 86_400_000);
+    const certificateDAL = {
+      findWithPrivateKeyInfo: vi.fn().mockResolvedValue([
+        { id: "expired", status: CertStatus.ACTIVE, notAfter: past, deletedAt: null },
+        { id: "active", status: CertStatus.ACTIVE, notAfter: future, deletedAt: null },
+        { id: "deleted", status: CertStatus.ACTIVE, notAfter: future, deletedAt: past }
+      ]),
+      countCertificatesInProject: vi.fn().mockResolvedValue(3)
+    };
+    const service = projectServiceFactory({
+      projectDAL: { findProjectByFilter: vi.fn().mockResolvedValue({ id: "project" }) },
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({
+          permission: createMongoAbility([{ action: "manage", subject: "all" }])
+        })
+      },
+      certificateDAL,
+      licenseService: new FakeLicenseService()
+    } as unknown as Parameters<typeof projectServiceFactory>[0]);
+
+    const result = await service.searchCertificatesWithCurrentStatus({
+      filter: { type: "id", projectId: "project" },
+      actor: ActorType.USER,
+      actorId: "user",
+      actorOrgId: "org",
+      actorAuthMethod: null,
+      sortBy: "status"
+    } as unknown as Parameters<typeof service.searchCertificatesWithCurrentStatus>[0]);
+
+    expect(result.certificates.map(({ id, status }) => ({ id, status }))).toEqual([
+      { id: "expired", status: CertStatus.EXPIRED },
+      { id: "active", status: CertStatus.ACTIVE },
+      { id: "deleted", status: CertStatus.DELETED }
+    ]);
+    expect(result.totalCount).toBe(3);
+
+    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0] as [
+      unknown,
+      { sortByCurrentStatus?: boolean; statusAt?: Date }
+    ];
+    expect(listOptions.sortByCurrentStatus).toBe(true);
+    expect(listOptions.statusAt).toBeInstanceOf(Date);
+    expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
   });
 });
