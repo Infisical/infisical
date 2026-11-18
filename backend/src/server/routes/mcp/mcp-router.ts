@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { UnauthorizedError } from "@app/lib/errors";
-import { publicJwksLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { mcpLimit, publicJwksLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getMcpOauthUrls, MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
@@ -64,7 +64,7 @@ export const registerMcpRouter = async (server: FastifyZodProvider) => {
     method: ["GET", "POST", "DELETE"],
     url: "/",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: mcpLimit
     },
     schema: {
       operationId: "mcpEndpoint",
