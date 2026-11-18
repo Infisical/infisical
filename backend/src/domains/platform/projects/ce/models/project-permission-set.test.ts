@@ -1,5 +1,8 @@
+import { createMongoAbility, MongoAbility } from "@casl/ability";
+
 import {
   ProjectPermissionActions,
+  ProjectPermissionCmekActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   ProjectPermissionV2Schema
@@ -71,4 +74,22 @@ describe("ProjectPermissionV2Schema and the generic project roles", () => {
       ).toEqual([]);
     }
   );
+});
+
+describe("ProjectPermissionCmekActions.PublishPublicKey", () => {
+  test("should be granted to the generic admin and written by the role API", () => {
+    // Setup
+    const rule = { subject: ProjectPermissionSub.Cmek, action: [ProjectPermissionCmekActions.PublishPublicKey] };
+    const admin = createMongoAbility<MongoAbility>(genericProjectRoles.admin);
+    const member = createMongoAbility<MongoAbility>(genericProjectRoles.member);
+
+    // Action
+    const granted = [admin, member].map((ability) =>
+      ability.can(ProjectPermissionCmekActions.PublishPublicKey, ProjectPermissionSub.Cmek)
+    );
+
+    // Assert
+    expect(granted).toEqual([true, false]);
+    expect(ProjectPermissionV2Schema.safeParse(rule).success).toBe(true);
+  });
 });
