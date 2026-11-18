@@ -43,6 +43,17 @@ const bootGrounds = themes
       `      html[data-v4-boot="${theme.id}"] { background: ${bootValue(theme.id, "inset")}; color-scheme: ${theme.scheme}; }`
   )
   .join("\n");
+const progressBar = themes
+  .filter((theme) => defaultTheme[theme.scheme] === theme.id)
+  .map((theme) => {
+    const accent = bootValue(theme.id, "accent");
+    return `      html[data-v4][data-theme="${theme.scheme}"] #nprogress .bar { background: ${accent}; }
+      html[data-v4][data-theme="${theme.scheme}"] #nprogress .peg { box-shadow: 0 0 10px ${accent}, 0 0 5px ${accent}; }`;
+  })
+  .join("\n");
+const progressMotion = `      @media (prefers-reduced-motion: reduce) {
+        html[data-v4] #nprogress .bar { transition: none !important; }
+      }`;
 const bootScript = `(function () {
         var path = location.pathname;
         if (!/^\\/v4(?:\\/|$)/.test(path)) return;
@@ -73,6 +84,8 @@ if (from < 0 || to < from) throw new Error("index.html is missing the v4-boot ma
 const next = `${current.slice(0, from)}${bootStart}
     <style>
 ${bootGrounds}
+${progressBar}
+${progressMotion}
     </style>
     <script>
       ${bootScript}
