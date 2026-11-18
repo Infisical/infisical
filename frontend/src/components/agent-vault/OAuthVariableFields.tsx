@@ -221,7 +221,12 @@ export const OAuthVariableFields = ({
   const handleAuthorize = () => {
     const values = getValidValues();
     if (!values) return;
-    if (variable?.oauth && isOAuthClientSecretRequired(variable.oauth, values)) {
+    // A sign-in finished in this editor connected the variable, though the saved view still says it isn't.
+    const savedOAuth =
+      variable?.oauth && authorizedScopes !== null
+        ? { ...variable.oauth, status: AgentVaultOauthStatus.Connected }
+        : variable?.oauth;
+    if (savedOAuth && isOAuthClientSecretRequired(savedOAuth, values)) {
       setError(
         "clientSecret",
         { message: OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE },

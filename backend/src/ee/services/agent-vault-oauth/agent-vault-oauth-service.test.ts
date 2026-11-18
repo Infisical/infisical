@@ -3021,12 +3021,17 @@ describe("completing an OAuth variable's sign-in", () => {
     row.encryptedValue = refreshed;
     row.oauthConfig = {
       ...row.oauthConfig!,
-      connection: { ...row.oauthConfig!.connection!, accessTokenHash: "refreshed" }
+      connection: {
+        ...row.oauthConfig!.connection!,
+        accessTokenHash: "refreshed",
+        authorizationMethod: AgentVaultOauthVariableConnectMethod.Reconnect
+      }
     };
 
     const retried = await completeVariableSignIn(env, state);
 
-    expect(retried.variableConnected).not.toBeNull();
+    // The method comes from what the first write stored, not a guess.
+    expect(retried.variableConnected).toMatchObject({ method: AgentVaultOauthVariableConnectMethod.Reconnect });
     expect(row.encryptedValue).toBe(refreshed);
     expect(row.oauthConfig!.connection!.accessTokenHash).toBe("refreshed");
     expect(env.tokenRequests).toHaveLength(1);

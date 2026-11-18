@@ -863,7 +863,7 @@ export const agentVaultOauthServiceFactory = ({
         return {
           variableId: locked.id,
           key: locked.key,
-          method: AgentVaultOauthVariableConnectMethod.SignIn,
+          method: previous.authorizationMethod ?? AgentVaultOauthVariableConnectMethod.SignIn,
           issuer: previous.issuer,
           scopes: previous.grantedScopes
         };
@@ -874,10 +874,14 @@ export const agentVaultOauthServiceFactory = ({
       const { config, encryptedCredential } = buildCredentialFromAuthorization(record, {
         previousRequiredScopes: previous?.issuer === record.issuer ? previous.requiredScopes : []
       });
+      const method = previous
+        ? AgentVaultOauthVariableConnectMethod.Reconnect
+        : AgentVaultOauthVariableConnectMethod.SignIn;
       const connection: TAgentVaultOauthVariableConnection = {
         ...config,
         serverUrl: settings.serverUrl,
-        authorizationId: record.id
+        authorizationId: record.id,
+        authorizationMethod: method
       };
       await agentVaultVariableDAL.updateById(
         locked.id,
@@ -890,7 +894,7 @@ export const agentVaultOauthServiceFactory = ({
       return {
         variableId: locked.id,
         key: locked.key,
-        method: previous ? AgentVaultOauthVariableConnectMethod.Reconnect : AgentVaultOauthVariableConnectMethod.SignIn,
+        method,
         issuer: connection.issuer,
         scopes: connection.grantedScopes
       };
