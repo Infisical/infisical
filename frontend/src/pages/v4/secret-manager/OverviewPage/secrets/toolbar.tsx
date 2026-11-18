@@ -14,24 +14,19 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
-import { Icon } from "@infisical/cipher/ui/icon";
+import { Icon, type IconSource } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/popover";
 import { TableCell, TableRow } from "@infisical/cipher/ui/table";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
-  BellIcon,
   ClipboardPasteIcon,
-  CodeXmlIcon,
   FilterIcon,
   FingerprintIcon,
   HexagonIcon,
   ImportIcon,
-  ListPlusIcon,
-  MessageSquareIcon,
-  PencilLineIcon,
-  TagsIcon
+  ListPlusIcon
 } from "lucide-react";
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
@@ -46,7 +41,7 @@ import {
 import { KindIcon } from "./overview-cells";
 import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
 import { ReferenceEditor } from "./secret-references";
-import { Annotations } from "./secret-row";
+import { AnnotateMenu, Annotations } from "./secret-row";
 
 import styles from "./overview.module.css";
 
@@ -189,6 +184,7 @@ export function AddNewMenu({
   onUpload,
   onCopySecrets,
   onAddSync,
+  onAddProxiedService,
   trigger,
   importSources = [],
   onImportFrom
@@ -201,6 +197,7 @@ export function AddNewMenu({
   onUpload: () => void;
   onCopySecrets: () => void;
   onAddSync: () => void;
+  onAddProxiedService: () => void;
   trigger?: ReactNode;
   importSources?: ExternalImportSource[];
   onImportFrom?: (source: ExternalImportSource) => void;
@@ -254,6 +251,10 @@ export function AddNewMenu({
         )}
         {item("dynamic", "Add dynamic secret", <Icon icon={FingerprintIcon} />)}
         {item("rotation", "Add secret rotation", <Icon name="sync" />)}
+        <DropdownMenuItem onSelect={onAddProxiedService}>
+          <KindIcon kind="proxy" />
+          Add proxied service
+        </DropdownMenuItem>
         {item("honey", "Add honey token", <Icon icon={HexagonIcon} />)}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
@@ -309,75 +310,121 @@ export function AddNewMenu({
 
 export function FolderBreadcrumbBar({
   path,
-  accessBlock,
   actions,
-  onManageAccess,
   onNavigate,
   report
 }: {
   path: string;
-  accessBlock?: string;
   actions?: ReactNode;
-  onManageAccess?: () => void;
   onNavigate: (path: string) => void;
   report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
+  const copyPath = (
+    <DropdownMenuItem
+      onSelect={async () => {
+        try {
+          await navigator.clipboard.writeText(path);
+          report("Folder path copied to clipboard.", "ok");
+        } catch {
+          report("Failed to copy folder path to clipboard.", "bad");
+        }
+      }}
+    >
+      <Icon name="copy" />
+      Copy path
+    </DropdownMenuItem>
+  );
   return (
     <div className={styles.pathBar}>
-      <span className={styles.crumbs}>
-        <Breadcrumb
-          aria-label="Folder path"
-          items={[
-            {
-              label: <Icon name="home" label="Root folder" />,
-              onNavigate: segments.length ? () => onNavigate("/") : undefined
-            },
-            ...segments.map((segment, index) => ({
+      <Breadcrumb
+        aria-label="Folder path"
+        className={styles.crumbs}
+        trailingDivider
+        items={[
+          {
+            label: <Icon name="home" label="Root folder" />,
+            onNavigate: segments.length ? () => onNavigate("/") : undefined,
+            menu: segments.length ? undefined : copyPath
+          },
+          ...segments.map((segment, index) => {
+            const current = index === segments.length - 1;
+            return {
               label: segment,
-              onNavigate:
-                index < segments.length - 1
-                  ? () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`)
-                  : undefined
-            }))
-          ]}
-        />
-      </span>
-      <span className={styles.pathActions}>
-        {actions}
-        <Tooltip content="Copy path">
-          <span className={styles.actionSlot}>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              icon="copy"
-              iconOnly
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(path);
-                  report("Folder path copied to clipboard.", "ok");
-                } catch {
-                  report("Failed to copy folder path to clipboard.", "bad");
-                }
-              }}
-            >
-              Copy path
-            </Button>
-          </span>
-        </Tooltip>
-        {onManageAccess && (
-          <Button
-            variant="ghost"
-            size="xs"
-            icon="user"
-            disabledReason={accessBlock}
-            onClick={onManageAccess}
-          >
-            Manage access
-          </Button>
-        )}
-      </span>
+              onNavigate: current
+                ? undefined
+                : () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`),
+              menu: current ? copyPath : undefined
+            };
+          })
+        ]}
+      />
+      {actions && <span className={styles.pathActions}>{actions}</span>}
     </div>
+  );
+}
+
+type HeaderEnvironment = { value: string; label: string };
+
+export function EnvironmentAction({
+  label,
+  icon,
+  environments,
+  disabledReason,
+  blockOf,
+  onSelect
+}: {
+  label: string;
+  icon: IconSource;
+  environments: HeaderEnvironment[];
+  disabledReason?: string;
+  blockOf?: (environment: string) => string | undefined;
+  onSelect: (environment: HeaderEnvironment) => void;
+}) {
+  const reason =
+    disabledReason ?? (environments.length === 1 ? blockOf?.(environments[0].value) : undefined);
+  if (reason)
+    return (
+      <Button variant="ghost" icon={icon} iconOnly disabledReason={reason}>
+        {label}
+      </Button>
+    );
+  if (environments.length === 1)
+    return (
+      <Tooltip content={label}>
+        <Button variant="ghost" icon={icon} iconOnly onClick={() => onSelect(environments[0])}>
+          {label}
+        </Button>
+      </Tooltip>
+    );
+  return (
+    <DropdownMenu>
+      <Tooltip content={label}>
+        <span className={styles.actionSlot}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" icon={icon} iconOnly>
+              {label}
+            </Button>
+          </DropdownMenuTrigger>
+        </span>
+      </Tooltip>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Environment</DropdownMenuLabel>
+        {environments.map((environment) => {
+          const block = blockOf?.(environment.value);
+          return (
+            <DropdownMenuItem
+              key={environment.value}
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={() => onSelect(environment)}
+            >
+              {environment.label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -476,7 +523,6 @@ export function QuickAddRow({
   const valueRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const keyRef = useRef<HTMLInputElement>(null);
   const annotating = useRef(false);
-  const chosen = useRef<QuickAddAnnotation>(undefined);
   const resume = useRef<HTMLElement | null>(null);
   const annotated = Boolean(
     annotations.comment || annotations.tags.length || annotations.metadata.length
@@ -608,64 +654,27 @@ export function QuickAddRow({
                 if (!next) finishAnnotating();
               }}
             >
-              <DropdownMenu
-                onOpenChange={(next) => {
-                  if (!next) return;
-                  annotating.current = true;
-                  chosen.current = undefined;
-                  resume.current =
-                    document.activeElement === valueRef.current ? valueRef.current : keyRef.current;
-                }}
-              >
-                <PopoverAnchor asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-xs" iconOnly tabIndex={-1}>
-                      <Icon icon={PencilLineIcon} />
-                      <span className="sr-only">Annotate new secret</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                </PopoverAnchor>
-                <DropdownMenuContent
-                  align="start"
-                  onCloseAutoFocus={(event) => {
-                    event.preventDefault();
-                    if (chosen.current) setOverlay(chosen.current);
+              <PopoverAnchor asChild>
+                <AnnotateMenu
+                  revealed
+                  label="new secret"
+                  annotations={annotations}
+                  tagsBlock={tagsBlock}
+                  reminderBlock="Create the secret to add a reminder"
+                  onOpenChange={(next) => {
+                    if (!next) return;
+                    annotating.current = true;
+                    resume.current =
+                      document.activeElement === valueRef.current
+                        ? valueRef.current
+                        : keyRef.current;
+                  }}
+                  onChoose={(kind) => {
+                    if (kind && kind !== "reminder") setOverlay(kind);
                     else finishAnnotating();
                   }}
-                >
-                  <DropdownMenuLabel>Annotate</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      chosen.current = "comment";
-                    }}
-                  >
-                    <Icon icon={MessageSquareIcon} />
-                    {annotations.comment ? "Edit comment" : "Add comment"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={Boolean(tagsBlock)}
-                    description={tagsBlock}
-                    onSelect={() => {
-                      chosen.current = "tags";
-                    }}
-                  >
-                    <Icon icon={TagsIcon} />
-                    {annotations.tags.length ? "Edit tags" : "Add tags"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled description="Create the secret to add a reminder">
-                    <Icon icon={BellIcon} />
-                    Add reminder
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      chosen.current = "metadata";
-                    }}
-                  >
-                    <Icon icon={CodeXmlIcon} />
-                    {annotations.metadata.length ? "Edit metadata" : "Add metadata"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                />
+              </PopoverAnchor>
               <PopoverContent
                 draggable
                 align="start"

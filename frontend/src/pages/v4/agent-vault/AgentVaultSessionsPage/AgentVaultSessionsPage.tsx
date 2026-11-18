@@ -36,6 +36,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { CreateSessionSheet } from "./create-session-sheet";
@@ -124,13 +125,8 @@ const Access = ({
 };
 
 const Expiry = ({ session }: { session: TAgentVaultSession }) => {
-  if (session.status === AgentVaultSessionStatus.Revoked) return <Meta>-</Meta>;
-  if (!session.expiresAt)
-    return (
-      <Tooltip content="This session runs until someone revokes it.">
-        <span>Never</span>
-      </Tooltip>
-    );
+  if (session.status === AgentVaultSessionStatus.Revoked) return null;
+  if (!session.expiresAt) return <NoExpiry />;
   return (
     <Tooltip content={formatTimestamp(session.expiresAt)}>
       <span>{formatSessionExpiry(session.expiresAt)}</span>

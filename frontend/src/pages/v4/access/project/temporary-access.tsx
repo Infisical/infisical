@@ -13,6 +13,7 @@ import ms from "ms";
 
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 
+import { NoExpiry } from "../../components/no-expiry";
 import { grantSlug, isGrantExpired, type RoleGrant } from "../roles";
 
 import styles from "./project.module.css";
@@ -82,7 +83,7 @@ export const durationOf = (grant: GrantDraft) => {
 
 export const DurationBadge = ({ grant }: { grant: GrantDraft }) => {
   const { text, tooltip, expired } = durationOf(grant);
-  if (!grant.isTemporary) return <span>{text}</span>;
+  if (!grant.isTemporary) return <NoExpiry />;
   return (
     <Tooltip content={tooltip}>
       <Badge tone={expired ? "bad" : "warn"}>

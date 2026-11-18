@@ -117,6 +117,7 @@ import {
   setEnvironmentOptions
 } from "./secrets-model";
 import { SecretsActivationNudge, useSecretsActivationNudge } from "./secrets/activation-nudge";
+import { AgentProxyMovedDialog } from "./secrets/agent-proxy-moved-dialog";
 import {
   type PendingChange,
   pendingIn,
@@ -173,6 +174,7 @@ import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
   type AddNewBlocks,
   AddNewMenu,
+  EnvironmentAction,
   ExportMenu,
   FolderBreadcrumbBar,
   type QuickAddAnnotations,
@@ -237,6 +239,7 @@ export const OverviewPage = () => {
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
+  const checkSecretKey = adapter.useSecretKeyCheck();
   const deleteEnvironmentMutation = adapter.useDeleteEnvironment();
   const project = projectId;
   const path = search.secretPath || "/";
@@ -286,10 +289,12 @@ export const OverviewPage = () => {
   const [moving, setMoving] = useState<Resource[]>();
   const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
   const [syncOpen, setSyncOpen] = useState(false);
+  const [proxyMovedOpen, setProxyMovedOpen] = useState(false);
   const [addingEnvironment, setAddingEnvironment] = useState(false);
   const [externalImport, setExternalImport] = useState<ExternalImportSource>();
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [discardingPending, setDiscardingPending] = useState(false);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
     label: string;
@@ -537,10 +542,6 @@ export const OverviewPage = () => {
         }
       },
       proxy: {
-        create: () =>
-          Promise.reject(
-            new Error("Proxied services are now created in Agent Vault, not in a project.")
-          ),
         update: (_before, after) =>
           updateProxiedService.mutateAsync({
             serviceId: after.id,
@@ -741,6 +742,31 @@ export const OverviewPage = () => {
     ].map((entry) => entry.id)
   );
   const pendingIds = new Set(pendingHere.map((change) => pendingTarget(change).id));
+  const openRequests =
+    adapter.useApprovalRequests({
+      projectId,
+      environment: activeEnvironment,
+      status: "open",
+      limit: 100
+    }).data?.approvals ?? [];
+  const inReview = [
+    ...new Set(
+      adapter
+        .useApprovalRequestDetailsList(
+          single
+            ? openRequests
+                .filter((request) => request.secretPath === path)
+                .map((request) => request.id)
+            : []
+        )
+        .flatMap(({ data }) =>
+          (data?.commits ?? []).flatMap((commit) => [
+            commit.secretKey,
+            commit.secretVersion?.secretKey ?? commit.secretKey
+          ])
+        )
+    )
+  ];
   const shown = pendingHere.length ? withPending(resources, pendingHere) : resources;
   const scoped = shown.filter(
     (resource) =>
@@ -817,9 +843,7 @@ export const OverviewPage = () => {
     const signature = recent.join("|");
     if (!signature || !isRecentShown || revealed.current === signature) return;
     revealed.current = signature;
-    root.current
-      ?.querySelector('tbody tr[data-state="selected"]')
-      ?.scrollIntoView({ block: "nearest" });
+    root.current?.querySelector("tbody tr[data-recent]")?.scrollIntoView({ block: "nearest" });
   }, [recent, isRecentShown]);
   const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = tagList.map((tag) => tag.slug).sort();
@@ -929,6 +953,17 @@ export const OverviewPage = () => {
     recent,
     expanded: expandedRows,
     pending: pendingMarks(pendingHere),
+    inReview,
+    renamedFrom: Object.fromEntries(
+      pendingHere.flatMap((change) =>
+        change.type === "update" &&
+        change.original &&
+        change.next &&
+        change.original.name !== change.next.name
+          ? [[change.original.id, change.original.name]]
+          : []
+      )
+    ),
     selectionDisabled: pendingHere.length > 0,
     ...rowEvents
   };
@@ -1206,13 +1241,6 @@ export const OverviewPage = () => {
     return undefined;
   })();
   const colSpan = visibleEnvironments.length + 3;
-  const commitCount =
-    adapter.useCommitCount({
-      projectId,
-      environment: activeEnvironment,
-      directory: path,
-      enabled: single
-    }).data ?? 0;
   const createDenied = (environment: string) =>
     Boolean(
       blockFor(
@@ -1295,7 +1323,15 @@ export const OverviewPage = () => {
       node
     );
   const secretEvents = useStableHandlers<
-    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions" | "autoCapitalize">
+    Omit<
+      SecretRowHandlers,
+      | "copySecretBlock"
+      | "resources"
+      | "tagOptions"
+      | "autoCapitalize"
+      | "secretNames"
+      | "secretNameTaken"
+    >
   >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
@@ -1353,7 +1389,25 @@ export const OverviewPage = () => {
     copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
     tagOptions,
-    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization)
+    autoCapitalize: Boolean(projectQuery.data?.autoCapitalization),
+    secretNameTaken: (name) =>
+      checkSecretKey({
+        projectId,
+        environments: [activeEnvironment],
+        secretPath: path,
+        secretKey: name
+      }).then(
+        (environments) => environments.length > 0,
+        () => false
+      ),
+    secretNames: shown.flatMap((resource) =>
+      resource.kind === "secret" &&
+      resource.project === project &&
+      resource.path === path &&
+      resource.environment === activeEnvironment
+        ? [resource.name]
+        : []
+    )
   };
   const allOnPage =
     selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
@@ -1464,6 +1518,7 @@ export const OverviewPage = () => {
         })
       }
       onAddSync={() => setSyncOpen(true)}
+      onAddProxiedService={() => setProxyMovedOpen(true)}
       importSources={externalImports.sources}
       onImportFrom={setExternalImport}
       trigger={trigger}
@@ -1720,12 +1775,66 @@ export const OverviewPage = () => {
               <div className={styles.page}>
                 <PageHeader
                   size="md"
+                  className={styles.header}
                   title={
-                    session.projects.find((entry) => entry.id === projectId)?.name ??
-                    projectQuery.data?.name ??
-                    projectId
+                    <>
+                      <span className={styles.titleIcon}>
+                        <Icon name="folder" size={20} />
+                      </span>
+                      {session.projects.find((entry) => entry.id === projectId)?.name ??
+                        projectQuery.data?.name ??
+                        projectId}
+                    </>
+                  }
+                  badges={
+                    <EnvironmentAction
+                      label="Manage access to this folder"
+                      icon="users"
+                      environments={visibleEnvironments}
+                      disabledReason={writeBlock}
+                      blockOf={(environment) =>
+                        blockFor(
+                          ProjectPermissionSub.SecretFolders,
+                          ProjectPermissionSecretFolderActions.ManageAccess,
+                          { environment, secretPath: path },
+                          "manage access to this folder"
+                        )
+                      }
+                      onSelect={(environment) => {
+                        const segments = path.split("/").filter(Boolean);
+                        const folder: Of<"folder"> = {
+                          kind: "folder",
+                          id: `folder:${path}`,
+                          project,
+                          environment: environment.value,
+                          path: `/${segments.slice(0, -1).join("/")}`,
+                          name: segments.at(-1) ?? "",
+                          description: "",
+                          createdAt: "",
+                          updatedAt: ""
+                        };
+                        startRowAction({
+                          kind: "folder",
+                          action: "access",
+                          entry: folder,
+                          entries: [folder]
+                        });
+                      }}
+                    />
                   }
                   description={projectQuery.data?.description || undefined}
+                  actions={
+                    <>
+                      {addNewMenu()}
+                      <EnvironmentAction
+                        label="Commit history"
+                        icon="history"
+                        environments={visibleEnvironments}
+                        disabledReason={writeBlock}
+                        onSelect={viewCommits}
+                      />
+                    </>
+                  }
                 />
                 <div className={styles.toolbar}>
                   <div className={styles.envPicker}>
@@ -1783,42 +1892,11 @@ export const OverviewPage = () => {
                     secretCount={single ? envSecrets(activeEnvironment).length : 0}
                     onExport={(action) => exportEnv(activeEnvironment, action)}
                   />
-                  {addNewMenu()}
                 </div>
                 <div className={styles.tableBlock}>
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
-                      accessBlock={blockFor(
-                        ProjectPermissionSub.SecretFolders,
-                        ProjectPermissionSecretFolderActions.ManageAccess,
-                        { environment: activeEnvironment, secretPath: path },
-                        "manage access to this folder"
-                      )}
-                      onManageAccess={
-                        single
-                          ? () => {
-                              const segments = path.split("/").filter(Boolean);
-                              const folder: Of<"folder"> = {
-                                kind: "folder",
-                                id: `folder:${path}`,
-                                project,
-                                environment: activeEnvironment,
-                                path: `/${segments.slice(0, -1).join("/")}`,
-                                name: segments.at(-1) ?? "",
-                                description: "",
-                                createdAt: "",
-                                updatedAt: ""
-                              };
-                              startRowAction({
-                                kind: "folder",
-                                action: "access",
-                                entry: folder,
-                                entries: [folder]
-                              });
-                            }
-                          : undefined
-                      }
                       actions={
                         !single &&
                         !unavailableState && (
@@ -1922,18 +2000,6 @@ export const OverviewPage = () => {
                                       onClick={() => setRevealAll(!revealAll)}
                                     >
                                       {revealAll ? "Hide values" : "Reveal all"}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon="git"
-                                      onClick={() => viewCommits(visibleEnvironments[0])}
-                                    >
-                                      <span className={styles.headLabel}>
-                                        {planGates.plan && !planGates.plan.pitRecovery
-                                          ? "Commit history"
-                                          : `${commitCount} commit${commitCount === 1 ? "" : "s"}`}
-                                      </span>
                                     </Button>
                                     <SecretSyncStatusBadge
                                       syncs={syncs}
@@ -2143,11 +2209,7 @@ export const OverviewPage = () => {
                   label="Pending change actions"
                   count={reviewOpen ? 0 : pendingHere.length}
                   noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
-                  onClear={() =>
-                    setPending((current) =>
-                      current.filter((change) => !pendingHere.includes(change))
-                    )
-                  }
+                  onClear={() => setDiscardingPending(true)}
                   actions={[
                     { label: "Review", icon: "eye", onClick: () => setReviewOpen(true) },
                     {
@@ -2428,6 +2490,30 @@ export const OverviewPage = () => {
             }
             onCommit={(message) => commitChanges(pendingHere, message)}
           />
+          <AlertDialog open={discardingPending} onOpenChange={setDiscardingPending}>
+            <AlertDialogContent tone="danger">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard drafted changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingHere.length === 1
+                    ? "Discards the drafted change in this folder. It isn't committed, so it can't be recovered."
+                    : `Discards all ${pendingHere.length} drafted changes in this folder. They aren't committed, so they can't be recovered.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    const discarded = new Set(pendingHere.map((change) => change.id));
+                    setPending((current) => current.filter((change) => !discarded.has(change.id)));
+                  }}
+                >
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <AlertDialog
             open={Boolean(deletingEnvironment)}
             onOpenChange={(open) => {
@@ -2479,6 +2565,13 @@ export const OverviewPage = () => {
                 )
               );
             })()}
+          {proxyMovedOpen && (
+            <AgentProxyMovedDialog
+              orgId={orgId}
+              projectId={projectId}
+              onOpenChange={setProxyMovedOpen}
+            />
+          )}
           <ShareSecretSheet
             open={sharing !== undefined}
             value={sharing ?? ""}

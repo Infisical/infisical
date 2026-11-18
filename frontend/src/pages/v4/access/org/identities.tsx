@@ -412,7 +412,7 @@ export const OrgIdentitiesTab = () => {
             onSelect={() => openDetail(row)}
           >
             <Icon icon={PencilIcon} />
-            {isOwned(row) ? "Edit machine identity" : "Edit machine identity membership"}
+            {isOwned(row) ? "Edit machine identity" : "Edit membership"}
           </DropdownMenuItem>
           {isOwned(row) && (
             <AuthMethodsSubmenu

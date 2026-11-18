@@ -27,7 +27,6 @@ import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { roleOptions, slugify } from "../roles";
 import { failed, readableFailure, saved } from "../toast";
-import { Muted } from "../ui";
 
 export type GroupDraft = { id: string; name: string; slug: string; roleSlug: string };
 
@@ -315,23 +314,16 @@ const SubOrgAddGroupDialog = ({ open, roleLabel, onOpenChange }: GroupDialogProp
             validate: () => validateSubOrgGroup(draft),
             content: (
               <Stack gap={16}>
-                <Stack gap={8}>
-                  <Tabs
-                    variant="segmented"
-                    label="Group assignment mode"
-                    value={draft.mode}
-                    onChange={(next) => update({ mode: next as SubOrgGroupDraft["mode"] })}
-                    tabs={[
-                      { value: "create", label: "Create new" },
-                      { value: "assign", label: "Assign existing" }
-                    ]}
-                  />
-                  <Muted>
-                    {draft.mode === "assign"
-                      ? "Reuse an existing group from your parent organization."
-                      : "Creates a group managed by this sub-organization."}
-                  </Muted>
-                </Stack>
+                <Tabs
+                  variant="segmented"
+                  label="Group assignment mode"
+                  value={draft.mode}
+                  onChange={(next) => update({ mode: next as SubOrgGroupDraft["mode"] })}
+                  tabs={[
+                    { value: "create", label: "Create new" },
+                    { value: "assign", label: "Link existing" }
+                  ]}
+                />
                 {draft.mode === "assign" ? (
                   <Field label="Group" name="group">
                     <Combobox

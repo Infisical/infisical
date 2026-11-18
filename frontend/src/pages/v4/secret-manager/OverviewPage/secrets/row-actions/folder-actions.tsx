@@ -63,7 +63,9 @@ export function FolderActions({
     setSession(session + 1);
   }
   const blockFor = useManagedBlock(scope.project);
-  const environment = scope.visibleEnvironments[0];
+  const environment =
+    scope.visibleEnvironments.find((entry) => entry.value === last?.entry.environment) ??
+    scope.visibleEnvironments[0];
   const folderPath = last ? childPath(last.entry.path, last.entry.name) : "";
   const manageBlock = blockFor(
     ProjectPermissionSub.SecretFolders,

@@ -11,7 +11,7 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { SmallText, Text } from "@infisical/cipher/ui/text";
+import { Text } from "@infisical/cipher/ui/text";
 
 import { OrgMembershipRole } from "@app/helpers/roles";
 
@@ -88,14 +88,8 @@ const UpgradePrivilegeSystemDialog = ({
             </Stack>
           ) : (
             <Stack gap={16}>
-              <Text>
-                Existing access control workflows keep working. Updating roles, managing group
-                memberships and modifying privileges will require explicit permission on the
-                resource.
-              </Text>
               <Alert tone="warn" title="This upgrade is permanent">
-                Your organization can&apos;t go back to the legacy privilege system. Complete these
-                preparations first.
+                Complete these preparations first.
               </Alert>
               <Stack gap={12}>
                 {CHECKS.map((label, index) => (
@@ -111,9 +105,6 @@ const UpgradePrivilegeSystemDialog = ({
                   />
                 ))}
               </Stack>
-              {!isAdmin && (
-                <SmallText muted>Only organization admins can perform this upgrade.</SmallText>
-              )}
             </Stack>
           )}
         </DialogBody>
@@ -162,13 +153,10 @@ export const LegacyPrivilegeBanner = () => {
         title="Your organization is using legacy privilege management"
         actions={
           <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-            Learn more and upgrade
+            Upgrade
           </Button>
         }
-      >
-        Upgrade to permission-based privilege management, which lets you choose exactly who can
-        change each access level instead of relying on role hierarchy.
-      </Alert>
+      />
       {open && <UpgradePrivilegeSystemDialog onOpenChange={setOpen} />}
     </>
   );

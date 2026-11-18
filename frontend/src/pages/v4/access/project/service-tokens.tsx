@@ -29,11 +29,12 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import type { ServiceToken } from "@app/hooks/api/serviceTokens/types";
 
+import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, Muted, RESTRICTED, usePagedList } from "../ui";
+import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { useProjectScope } from "./scope";
 import { ServiceTokenCreateSheet } from "./service-token-create-sheet";
 
@@ -106,7 +107,7 @@ export const ServiceTokensTab = () => {
       header: "Valid until",
       sortable: true,
       render: (token) =>
-        token.expiresAt ? <span>{formatDateTime(token.expiresAt)}</span> : <Muted>-</Muted>
+        token.expiresAt ? <span>{formatDateTime(token.expiresAt)}</span> : <NoExpiry />
     }
   ];
 
