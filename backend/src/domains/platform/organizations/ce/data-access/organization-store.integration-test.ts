@@ -2,17 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import { Knex } from "knex";
 
-import { ProjectType } from "@app/db/schemas";
 import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
-import { OrganizationsProjectsModule } from "../module";
+import { OrganizationsModule } from "../module";
 import { OrganizationStore } from "./organization-store";
 
-describe("OrganizationsProjectsService organizations for License", () => {
+describe("OrganizationsService organizations for License", () => {
   const h = setupIntegration();
 
-  const build = () => ({ organizations: new OrganizationsProjectsModule({ db: h.db }).organizationsProjectsService });
+  const build = () => ({ organizations: new OrganizationsModule({ db: h.db }).organizationsService });
 
   const orgTree = async () => {
     const root = await h.factories.organization();
@@ -56,26 +55,6 @@ describe("OrganizationsProjectsService organizations for License", () => {
 
     // Assert
     expect(found).toEqual([{ id: root.id, name: root.name, slug: root.slug }, null]);
-  });
-
-  test("should count live workspaces across the org tree, leaving out products that take no workspace slot", async () => {
-    // Setup
-    const { root, sub } = await orgTree();
-    await h.factories.project({ orgId: root.id, type: ProjectType.SecretManager });
-    await h.factories.project({ orgId: sub.id, type: ProjectType.KMS });
-    await h.factories.project({ orgId: root.id, type: ProjectType.SecretManager, deleteAfter: new Date() });
-    await Promise.all(
-      [ProjectType.CertificateManager, ProjectType.SecretScanning, ProjectType.PAM, ProjectType.AgentVault].map(
-        (type) => h.factories.project({ orgId: root.id, type })
-      )
-    );
-    const { organizations } = build();
-
-    // Action
-    const used = await organizations.countWorkspaces(root.id);
-
-    // Assert
-    expect(used).toBe(2);
   });
 
   test("should read the primary and not the replica when asked for the primary", async () => {

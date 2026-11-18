@@ -1,7 +1,8 @@
 import { TDomainQueue } from "@app/domains/lib/jobs";
 import { FakeQueue } from "@app/domains/lib/jobs/testing/fake-queue";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
-import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
+import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
+import { FakeProjectsService } from "@app/domains/platform/projects/ce/testing/fake-projects-service";
 
 import { LicenseModule } from "../module";
 import { TUsageCounter } from "../services/dependencies";
@@ -17,17 +18,22 @@ export type TBuildLicenseOptions = {
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
   now?: () => number;
-  organizations?: Partial<FakeOrganizationsProjectsService>;
+  organizations?: Partial<FakeOrganizationsService>;
 };
 
 // resolveRootOrgId reads findRootOrgId, so overriding findRootOrgId changes both.
-const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) => {
-  const organizations = new FakeOrganizationsProjectsService()
+const buildOrganizations = (overrides: Partial<FakeOrganizationsService> = {}) => {
+  const organizations = new FakeOrganizationsService()
     .setRoot(ROOT.id, ROOT.id)
     .setRoot(SUB_ORG_ID, ROOT.id)
     .setRoot(OTHER_ROOT.id, OTHER_ROOT.id);
-  organizations.workspaces = WORKSPACES_USED;
   return Object.assign(organizations, overrides);
+};
+
+const buildProjects = () => {
+  const projects = new FakeProjectsService();
+  projects.workspaces = WORKSPACES_USED;
+  return projects;
 };
 
 export const buildLicense = async ({
@@ -55,7 +61,8 @@ export const buildLicense = async ({
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
     licensePolicyService: licenseServer,
     licenseServer,
-    organizationsProjectsService: buildOrganizations(organizations),
+    organizationsService: buildOrganizations(organizations),
+    projectsService: buildProjects(),
     usageCounters: counters
   });
   module.start();

@@ -1,5 +1,6 @@
 import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/errors";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements } from "../../models/instance-entitlements";
@@ -31,7 +32,7 @@ export type TLicenseService = {
   // read it before the transaction and check it with seatUsage.assertAvailable inside.
   getSeatUsage(orgId: string | null): Promise<SeatUsage>;
   // The org to count seats for, or null for the whole instance (self-hosted). For a check atomic with its insert,
-  // pass it to organizationsProjectsService.within(tx).lockAndCountBillableOrgActors inside the transaction.
+  // pass it to organizationsService.within(tx).lockAndCountBillableOrgActors inside the transaction.
   getSeatCountScope(orgId: string): string | null;
 };
 
@@ -40,7 +41,8 @@ export class LicenseService implements TLicenseService {
     private readonly instanceEntitlementsCache: TInstanceEntitlementsCache,
     private readonly planCache: TPlanCache,
     private readonly usageQueue: UsageQueue,
-    private readonly organizationsProjectsService: TOrganizationsProjectsService,
+    private readonly organizationsService: TOrganizationsService,
+    private readonly projectsService: TProjectsService,
     private readonly licensePolicyService: TLicensePolicyService,
     private readonly licenseServer: TLicenseServer
   ) {}
@@ -72,7 +74,7 @@ export class LicenseService implements TLicenseService {
     let rootOrgId: string | null = orgId;
     let cached = await this.planCache.read(orgId);
     if (!cached.plan) {
-      rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
+      rootOrgId = await this.organizationsService.findRootOrgId(orgId);
       if (!rootOrgId) return this.licensePolicyService.fallbackPlan();
       if (rootOrgId !== orgId) cached = await this.planCache.read(rootOrgId);
     }
@@ -89,7 +91,7 @@ export class LicenseService implements TLicenseService {
     if (opts.afterBillingChange) {
       if (!this.getInstanceEntitlements().isCloud()) return;
       try {
-        const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+        const rootOrgId = await this.organizationsService.resolveRootOrgId(orgId);
         await this.planCache.markForRevalidation(rootOrgId, Boolean(opts.afterBillingChange.checkout));
       } catch (error) {
         logger.error(error, `refreshPlan: failed to mark the plan for revalidation [orgId=${orgId}]`);
@@ -97,7 +99,7 @@ export class LicenseService implements TLicenseService {
       return;
     }
     if (this.getInstanceEntitlements().isCloud()) {
-      const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
+      const rootOrgId = await this.organizationsService.findRootOrgId(orgId);
       if (!rootOrgId) return;
       const rootOrg = await this.rootOrg(rootOrgId);
       let fetched: Plan;
@@ -123,11 +125,11 @@ export class LicenseService implements TLicenseService {
   }
 
   async invalidatePlan(orgId: string): Promise<void> {
-    await this.planCache.invalidate(await this.organizationsProjectsService.resolveRootOrgId(orgId));
+    await this.planCache.invalidate(await this.organizationsService.resolveRootOrgId(orgId));
   }
 
   async getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
-    return this.planCache.lastKnown(await this.organizationsProjectsService.resolveRootOrgId(orgId));
+    return this.planCache.lastKnown(await this.organizationsService.resolveRootOrgId(orgId));
   }
 
   async closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult> {
@@ -138,7 +140,7 @@ export class LicenseService implements TLicenseService {
 
   async getSeatUsage(orgId: string | null): Promise<SeatUsage> {
     if (orgId === null || !this.getInstanceEntitlements().isCloud()) return this.countSeats(null);
-    const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
+    const rootOrgId = await this.organizationsService.findRootOrgId(orgId);
     if (!rootOrgId) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return this.countSeats(rootOrgId);
   }
@@ -148,7 +150,7 @@ export class LicenseService implements TLicenseService {
   }
 
   private async countSeats(orgId: string | null): Promise<SeatUsage> {
-    return SeatUsage.fromBillableActors(await this.organizationsProjectsService.countBillableOrgActors(orgId));
+    return SeatUsage.fromBillableActors(await this.organizationsService.countBillableOrgActors(orgId));
   }
 
   // Only a License Server failure caches the fallback. DB or key store errors propagate, so they never clobber a paid plan.
@@ -167,12 +169,12 @@ export class LicenseService implements TLicenseService {
   }
 
   private async rootOrg(rootOrgId: string): Promise<TEntitlementOrg> {
-    const org = await this.organizationsProjectsService.findOrganization(rootOrgId);
+    const org = await this.organizationsService.findOrganization(rootOrgId);
     return org ? { id: rootOrgId, name: org.name, slug: org.slug } : { id: rootOrgId };
   }
 
   private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
-    const plan = fetched.withWorkspacesUsed(await this.organizationsProjectsService.countWorkspaces(rootOrgId));
+    const plan = fetched.withWorkspacesUsed(await this.projectsService.countWorkspaces(rootOrgId));
     await this.planCache.write(rootOrgId, plan);
     return plan;
   }

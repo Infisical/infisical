@@ -13,7 +13,8 @@ import {
   TSubscriptionResponse,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -61,7 +62,8 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  organizationsService: TOrganizationsService;
+  projectsService: TProjectsService;
   certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   licenseService: TLicenseService;
@@ -410,7 +412,8 @@ export const licenseV2ServiceFactory = ({
   licenseService,
   usageMeteringService,
   licenseBilling,
-  organizationsProjectsService,
+  organizationsService,
+  projectsService,
   certManagerService,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
@@ -1052,7 +1055,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = isInstanceScope ? null : await organizationsProjectsService.resolveRootOrgId(orgId);
+    const rootOrgId = isInstanceScope ? null : await organizationsService.resolveRootOrgId(orgId);
     const scopeOrgId = rootOrgId ?? undefined;
     const orgs = isInstanceScope
       ? await breakdownDAL.findAllOrgNames()
@@ -1098,8 +1101,8 @@ export const licenseV2ServiceFactory = ({
     switch (dimensionKey) {
       case BillingV2BreakdownDimension.Identities: {
         const [counts, rows] = await Promise.all([
-          organizationsProjectsService.countBillableOrgActors(rootOrgId),
-          organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
+          organizationsService.countBillableOrgActors(rootOrgId),
+          organizationsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
         return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
@@ -1108,8 +1111,8 @@ export const licenseV2ServiceFactory = ({
         const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
         const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          organizationsProjectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
-          organizationsProjectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
+          projectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
+          projectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1121,7 +1124,7 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        const { users } = await organizationsProjectsService.countBillableOrgActors(rootOrgId);
+        const { users } = await organizationsService.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,

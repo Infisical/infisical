@@ -26,7 +26,7 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -157,7 +157,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  projectsService: TProjectsService;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -240,7 +240,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
-  organizationsProjectsService,
+  projectsService,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -349,7 +349,7 @@ export const projectServiceFactory = ({
       // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
       // together, and an import creating many projects in one transaction counts the ones it already made.
       if (plan.isLimited(PlanLimit.Projects) && type === ProjectType.SecretManager) {
-        const currentProjectCount = await organizationsProjectsService
+        const currentProjectCount = await projectsService
           .within(sealKnexTransaction(tx))
           .lockAndCountWorkspaces(organization.id);
         if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
@@ -1066,7 +1066,7 @@ export const projectServiceFactory = ({
 
         const restored = await projectDAL.transaction(async (tx) => {
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
-            const currentProjectCount = await organizationsProjectsService
+            const currentProjectCount = await projectsService
               .within(sealKnexTransaction(tx))
               .lockAndCountWorkspaces(project.orgId);
             if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {

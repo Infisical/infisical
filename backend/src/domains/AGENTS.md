@@ -16,7 +16,8 @@ src/domains/
 │   ├── license/
 │   ├── kms-core/
 │   ├── instance-config-core/
-│   └── organizations-projects/
+│   ├── organizations/
+│   └── projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
 ├── agent-vault/agent-vault/
@@ -24,7 +25,7 @@ src/domains/
 ```
 
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
-[organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
+[organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
 [instance-config-core](platform/instance-config-core/AGENTS.md).
@@ -71,7 +72,7 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | Cache | Expiring state over the key store or memory (`PlanCache`). Stores keep data durably, caches can lose it |
 | Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner` |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
-| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsProjectsModule.organizationsProjectsService`, `LicenseModule.licenseService`). Never wraps a service method |
+| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsModule.organizationsService`, `LicenseModule.licenseService`). Never wraps a service method |
 | Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
 | Helpers | Plain functions |
 
@@ -105,7 +106,7 @@ Where a rule goes:
 3. It needs another domain's value: the service reads it before `run` and passes it to the model.
 
 Not everything is a model. A read-only shape with no rules (a count, a breakdown row, `TOrganization` in
-`organizations-projects`) stays a plain type in `services/dependencies.ts`. Make it a model the first time a
+`organizations`) stays a plain type in `services/dependencies.ts`. Make it a model the first time a
 rule about it shows up.
 
 ### State and lifecycle
@@ -126,7 +127,7 @@ rule about it shows up.
 
 - Take a connection, not a handle: `constructor(private readonly connection: TStoreConnection)`
   (`lib/data-access/`). The module builds the stores a service reads through outside a transaction on
-  `poolStoreConnection(db)` and the stores bundle on `singleStoreConnection(trx)` (`OrganizationsProjectsModule`).
+  `poolStoreConnection(db)` and the stores bundle on `singleStoreConnection(trx)` (`OrganizationsModule`).
   A migration passes its own connection as the replica too (`poolStoreConnection(db, () => db)`), never the global
   replica.
 - Every fetch (`find*`, `get*`, `list*`, `count*`, `references*`, `is*`) takes a separate trailing
@@ -249,7 +250,7 @@ transaction lets concurrent writers pass the limit together, and an import that 
 transaction never sees its own rows.
 
 - Only the domain that owns the rows being counted joins. It exposes `within(tx)` returning a narrow type
-  with only those methods (`TOrganizationsProjectsTransaction`), never its whole service, so nothing that
+  with only those methods (`TOrganizationsTransaction`), never its whole service, so nothing that
   calls the network or opens a connection can run inside. A domain that only supplies a limit or a scope
   (License) hands it over as a value before the transaction and never takes `within(tx)` itself, so one
   transaction never spans two domains.
@@ -359,7 +360,7 @@ in-memory stores and lets EE plug in without `ce/` importing it.
 - Enums and types from a legacy `*-types.ts` (`CertStatus`) may be imported until their owner migrates, then
   they move with it. Never from `@app/ee/**` into `ce/`.
 - A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
-  `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
+  `organizations`. Prefer adding the read there over a second domain reading the same table.
 - Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`models/`,
   `services/`, `data-access/`, `clients/`, `router/`), each repeating the shared patterns because the last matching
   override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
@@ -389,10 +390,10 @@ sets the pattern from the rules above, and its PR names it here.
 | Piece | Copy |
 | --- | --- |
 | Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
-| Stores bundle passed to `TransactionRunner` | `platform/organizations-projects/ce/module.ts` |
+| Stores bundle passed to `TransactionRunner` | `platform/organizations/ce/module.ts` |
 | Entity, in-memory store, contract suite, router | none yet |
-| Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
-| Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
+| Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations/ce/data-access/billable-actor-store.ts` |
+| Joining a caller's transaction | `platform/organizations/ce/services/organizations/organizations-transaction.ts` |
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
 | EE implementing a `ce/` type, external client | `platform/license/ee/` |
 | Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
@@ -450,7 +451,7 @@ Where each legacy piece lands:
 - Dependencies are constructor parameter properties, `private readonly`. Public state is a `readonly` field
   (`LicenseModule.licenseService`). Nothing is reassigned after construction except state its owner mutates.
 - Methods are methods, not arrow-function properties. Test fakes may use arrow properties so a test can
-  override one (`FakeOrganizationsProjectsService`).
+  override one (`FakeOrganizationsService`).
 - A helper only one class uses is a `private` method; a pure function only one file uses is a file-local
   `const`. Shared helpers are exported plain functions in `services/helpers/`.
 - Static constructors, never `new` from outside the class: `create(record)` (validates), `restore(record)`
@@ -477,7 +478,7 @@ Where each legacy piece lands:
 | Dependency name | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationStore: TOrganizationStore`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`) | `planCache: TPlanCache` |
 | Module deps | `T<Name>Deps`, named, beside the module, never inline: `domains.ts` passes it as an object | `TLicenseDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
-| Stores bundle | `T<Domain>Stores` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`), one field per store named like its type without the `T` (`organizationStore: TOrganizationStore`, the Dependency name rule), plus `locks`; the run context field is `stores` | `TOrganizationsProjectsStores` |
+| Stores bundle | `T<Domain>Stores` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`), one field per store named like its type without the `T` (`organizationStore: TOrganizationStore`, the Dependency name rule), plus `locks`; the run context field is `stores` | `TOrganizationsStores` |
 | Transaction arg | `tx: TTransaction` | |
 | Service file | `services/<name>/service.ts`; the folder carries the name | `license/service.ts` |
 | Tests | `<file>.test.ts` (unit), `<file>.integration-test.ts` (integration), beside the code | `service.test.ts` |

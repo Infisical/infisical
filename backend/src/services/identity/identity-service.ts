@@ -11,7 +11,7 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -61,7 +61,7 @@ type TIdentityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  organizationsService: TOrganizationsService;
   instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
@@ -82,7 +82,7 @@ export const identityServiceFactory = ({
   permissionService,
   licenseService,
   usageMeteringService,
-  organizationsProjectsService,
+  organizationsService,
   instanceConfigService,
   keyStore,
   orgDAL,
@@ -155,7 +155,7 @@ export const identityServiceFactory = ({
     const identity = await identityDAL.transaction(async (tx) => {
       // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
       if (plan.isLimited(PlanLimit.Identities)) {
-        const counts = await organizationsProjectsService
+        const counts = await organizationsService
           .within(sealKnexTransaction(tx))
           .lockAndCountBillableOrgActors(seatCountScope);
         if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

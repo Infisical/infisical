@@ -1,4 +1,4 @@
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { Meter } from "../../models/meter";
@@ -30,7 +30,7 @@ export class UsageMeteringService implements TUsageMeteringService {
     private readonly counterRegistry: CounterRegistry,
     private readonly usageQueue: UsageQueue,
     private readonly licenseService: TLicenseService,
-    private readonly organizationsProjectsService: TOrganizationsProjectsService
+    private readonly organizationsService: TOrganizationsService
   ) {}
 
   async countUsage(orgId: string, meter: Meter): Promise<number | null> {
@@ -49,7 +49,7 @@ export class UsageMeteringService implements TUsageMeteringService {
 
   async syncSeats(orgId: string): Promise<void> {
     try {
-      const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+      const rootOrgId = await this.organizationsService.resolveRootOrgId(orgId);
       this.usageQueue.emit(rootOrgId, Meter.UserIdentities);
       await this.licenseService.refreshPlan(rootOrgId);
     } catch (error) {

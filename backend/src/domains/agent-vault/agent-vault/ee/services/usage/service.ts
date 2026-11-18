@@ -1,6 +1,6 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { AgentVaultFreeUsageThreshold } from "../../../ce/models/agent-vault-access-state";
@@ -24,7 +24,7 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
   constructor(
     private readonly licenseService: Pick<TLicenseService, "getInstanceEntitlements" | "getPlan">,
     private readonly usageMeteringService: Pick<TUsageMeteringService, "recordMeteringEvents">,
-    private readonly organizationsProjectsService: Pick<TOrganizationsProjectsService, "resolveRootOrgId">,
+    private readonly organizationsService: Pick<TOrganizationsService, "resolveRootOrgId">,
     private readonly freeUsageCache: Pick<
       TAgentVaultFreeUsageCache,
       "claimReport" | "add" | "isNoticeSent" | "lockNotice" | "markNoticeSent" | "releaseNotice"
@@ -54,7 +54,7 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     // into another month.
     let crossings: TAgentVaultFreeUsageCrossing[] = [];
     try {
-      const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+      const rootOrgId = await this.organizationsService.resolveRootOrgId(orgId);
       const receivedAt = new Date();
       const used = await this.freeUsageCache.add(rootOrgId, receivedAt, brokered);
       crossings = await this.claimPendingNotices(rootOrgId, receivedAt, used).catch((error) => {

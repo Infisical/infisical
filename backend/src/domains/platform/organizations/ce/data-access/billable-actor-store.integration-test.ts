@@ -1,17 +1,16 @@
 import { randomUUID } from "node:crypto";
 
-import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
-import { OrganizationsProjectsModule } from "../module";
+import { OrganizationsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
 
-describe("OrganizationsProjectsService billable actor counts", () => {
+describe("OrganizationsService billable actor counts", () => {
   const h = setupIntegration();
 
-  const build = () => ({ module: new OrganizationsProjectsModule({ db: h.db }) });
-  const countSeats = async (module: OrganizationsProjectsModule, orgId: string | null) => {
-    const { users, identities } = await module.organizationsProjectsService.countBillableOrgActors(orgId);
+  const build = () => ({ module: new OrganizationsModule({ db: h.db }) });
+  const countSeats = async (module: OrganizationsModule, orgId: string | null) => {
+    const { users, identities } = await module.organizationsService.countBillableOrgActors(orgId);
     return users + identities;
   };
 
@@ -21,7 +20,7 @@ describe("OrganizationsProjectsService billable actor counts", () => {
     const { module } = build();
 
     // Action
-    const { users } = await module.organizationsProjectsService.countBillableOrgActors(rootOrgId);
+    const { users } = await module.organizationsService.countBillableOrgActors(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -65,31 +64,13 @@ describe("OrganizationsProjectsService billable actor counts", () => {
     expect(instance).toBeGreaterThanOrEqual(perOrg);
   });
 
-  test("should count a project type's users and identities once each, direct or through a group, skipping deleted projects", async () => {
-    // Setup
-    const { rootOrgId } = await seedBillableActors(h.db);
-    const { module } = build();
-
-    // Action
-    const [secretManager, pam, otherOrg] = await Promise.all([
-      module.organizationsProjectsService.countProjectIdentitiesByKind(ProjectType.SecretManager, rootOrgId),
-      module.organizationsProjectsService.countProjectIdentitiesByKind(ProjectType.PAM, rootOrgId),
-      module.organizationsProjectsService.countProjectIdentities(ProjectType.SecretManager, randomUUID())
-    ]);
-
-    // Assert
-    expect(secretManager).toEqual({ users: 2, identities: 1 });
-    expect(pam).toEqual({ users: 3, identities: 1 });
-    expect(otherOrg).toBe(0);
-  });
-
   test("should attribute billable identities to the org and project that own them", async () => {
     // Setup
     const { rootOrgId, subOrgId } = await seedBillableActors(h.db);
     const { module } = build();
 
     // Action
-    const rows = await module.organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId);
+    const rows = await module.organizationsService.getBillableIdentityOwnershipBreakdown(rootOrgId);
 
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(4);
@@ -103,8 +84,8 @@ describe("OrganizationsProjectsService billable actor counts", () => {
 
     // Action
     const roots = await Promise.all([
-      module.organizationsProjectsService.resolveRootOrgId(subOrgId),
-      module.organizationsProjectsService.resolveRootOrgId(rootOrgId)
+      module.organizationsService.resolveRootOrgId(subOrgId),
+      module.organizationsService.resolveRootOrgId(rootOrgId)
     ]);
 
     // Assert
