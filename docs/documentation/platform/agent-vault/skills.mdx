@@ -257,7 +257,7 @@ In the access bundle's **Skills** section, open the skill's actions menu and sel
 
 ## Sessions
 
-Instead of an access bundle, or alongside it, you can give a session skills from the project and send skills with the session. An agent that you start with the session gets these skills along with the access bundle's.
+Instead of an access bundle, or alongside it, you can give a session skills from the project and send skills with the session. An agent that you start with the session gets these skills along with the access bundle's. Infisical shows skills sent with a session as inline skills, both in the sessions table and under **Inline Skills** in the session's details.
 
 ### Pick skills from the project
 
@@ -290,8 +290,11 @@ Anyone who can create a session can send skills with it, within these limits:
 - A session can have up to 20 skills from the project and up to 5 skills sent with it
 - The files of all the skills you send share the request's 2 MB limit
 - Each name can appear only once in `skills` (if a name repeats, the request fails with a 422 error that includes the name)
+- A skill you send can't have the same name as a skill in the session's access bundle (if it does, the request fails with a 400 error that names the skill and the access bundle)
 
-If a skill you send has the same name as a skill in the session's access bundle, the agent gets the skill you sent. The skills you send belong to that session only, and nobody can edit them. Infisical deletes their files when the session is revoked, or within an hour after it expires.
+If someone later adds a skill to the access bundle with the same name as a skill you sent, or renames a skill in the access bundle to that name, agents that start with the session afterwards get the access bundle's skill instead of yours.
+
+The skills you send belong to that session only, and nobody can edit them. Infisical deletes their files when the session is revoked, or within an hour after it expires.
 
 ## Skill installation
 
