@@ -43,6 +43,7 @@ const DRIVER = "4c7a1e95-2d6b-4b08-9f3e-8e5d0a2c7f16";
 const LEGACY = "b81f3d6a-7e20-4c95-a4d1-5f9c2e0b6a73";
 const MACOS = "92d5f1e7-0a4c-4b36-8e19-3c7b6d2a5f04";
 const DIGICERT_CA = "f2c6a9d4-1b8e-4e73-9a05-7d3b6c1e8f20";
+const DIGICERT_EV_CA = "c7e0b5a2-9f41-4d36-8a1c-5b2e7d9f0c83";
 const ADCS_CA = "6a3e9c12-4f7d-4a58-b1e6-0c8d2f5a9b34";
 const DIGICERT_REVOCATION_REQUEST_ID = 1288431;
 
@@ -115,10 +116,10 @@ const signers = createFixtureStore<TSigner[]>([
   signer(DESKTOP, "acme-desktop-suite-windows-authenticode-production-ev-signer", {
     description:
       "Signs every Windows desktop build shipped to enterprise customers, including the installer, the auto-updater and the bundled command line tools",
-    caId: DIGICERT_CA,
+    caId: DIGICERT_EV_CA,
     caType: CaType.DIGICERT,
     certificateAuthority: {
-      id: DIGICERT_CA,
+      id: DIGICERT_EV_CA,
       name: "DigiCert CertCentral EV Code Signing for Acme Software International Holdings",
       status: CaStatus.DISABLED,
       type: CaType.DIGICERT

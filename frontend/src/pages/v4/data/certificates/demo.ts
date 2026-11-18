@@ -7,7 +7,11 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
-import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import {
+  DigiCertCaPurpose,
+  type TInternalCertificateAuthority,
+  type TUnifiedCertificateAuthority
+} from "@app/hooks/api/ca/types";
 import type {
   TCertificateInventoryView,
   TListInventoryViewsResponse,
@@ -98,6 +102,32 @@ const authorities = [
   )
 ];
 const [issuing, root] = authorities;
+
+const codeSigningAuthorities: TUnifiedCertificateAuthority[] = [
+  {
+    id: "f2c6a9d4-1b8e-4e73-9a05-7d3b6c1e8f20",
+    projectId,
+    type: CaType.DIGICERT,
+    status: CaStatus.ACTIVE,
+    name: "DigiCert Code Signing",
+    enableDirectIssuance: true,
+    configuration: {
+      appConnectionId: "digicert-certcentral",
+      organizationId: 1184302,
+      productNameId: "code_signing_ev",
+      purpose: DigiCertCaPurpose.CodeSigning
+    }
+  },
+  {
+    id: "6a3e9c12-4f7d-4a58-b1e6-0c8d2f5a9b34",
+    projectId,
+    type: CaType.ADCS,
+    status: CaStatus.ACTIVE,
+    name: "Acme Corp Enterprise CA",
+    enableDirectIssuance: true,
+    configuration: { appConnectionId: "adcs-corp", caName: "Acme Corp Enterprise CA" }
+  }
+];
 
 const profile = (
   id: string,
@@ -798,7 +828,8 @@ export const certificatesDemo: CertificatesAdapter = {
       error: found ? null : new Error("Certificate not found")
     };
   },
-  useCertificateAuthorities: () => result([...authorities, ...useDemoCreatedCas()]),
+  useCertificateAuthorities: () =>
+    result([...authorities, ...codeSigningAuthorities, ...useDemoCreatedCas()]),
   useCertificateProfiles: () => {
     const rows = demoCertificateProfiles.use();
     return result({ certificateProfiles: rows, totalCount: rows.length });
