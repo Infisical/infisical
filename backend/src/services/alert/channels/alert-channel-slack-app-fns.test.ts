@@ -62,7 +62,7 @@ const slackIntegration = (overrides: Record<string, unknown> = {}) => ({
 const deps = (integration: ReturnType<typeof slackIntegration> | null = slackIntegration()) =>
   ({
     smtpService: { sendMail: async () => undefined },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: vi.fn(),
         decryptor: () => Buffer.from("xoxb-token")

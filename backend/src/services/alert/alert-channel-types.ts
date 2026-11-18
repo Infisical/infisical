@@ -1,10 +1,10 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionSet } from "@app/ee/services/permission/org-permission";
 import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -74,7 +74,7 @@ export type TAlertChannelScopeDeps = {
 
 export type TAlertChannelDeps = TAlertChannelScopeDeps & {
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">;
 };
 
 export type TAlertChannelSendContext = {

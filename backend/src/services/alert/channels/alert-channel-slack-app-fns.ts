@@ -1,5 +1,6 @@
 import { ErrorCode, WebClient } from "@slack/web-api";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import {
   OrgPermissionActions,
   OrgPermissionSet,
@@ -7,7 +8,6 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import {
@@ -72,14 +72,14 @@ export const getSlackAppWorkflowIntegrationId = (config: Record<string, unknown>
   SlackAppChannelConfigSchema.parse(config).workflowIntegrationId;
 
 export const createSlackAppClient = async (
-  { slackIntegrationDAL, kmsService }: Pick<TAlertChannelDeps, "slackIntegrationDAL" | "kmsService">,
+  { slackIntegrationDAL, kmsDataKeyService }: Pick<TAlertChannelDeps, "slackIntegrationDAL" | "kmsDataKeyService">,
   orgId: string,
   workflowIntegrationId: string
 ) => {
   const slackIntegration = await findSlackIntegrationInOrg(slackIntegrationDAL, orgId, workflowIntegrationId);
   if (!slackIntegration) return null;
 
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
   const botToken = decryptor({ cipherTextBlob: slackIntegration.encryptedBotAccessToken }).toString("utf8");
 
   // The SDK's default retry policy waits up to half an hour, which would stall the whole dispatch run.

@@ -1,7 +1,7 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { getChannelDefinition, mergeChannelConfigWithStored, parseChannelConfig } from "./alert-channel-config-fns";
@@ -26,7 +26,7 @@ export type TAlertChannelTestServiceFactoryDep = {
     "validateRecipients" | "assertRecipientTypesAllowed" | "assertActorMayUseConfig"
   >;
   alertProviderRegistry: TAlertProviderRegistry;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
   slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
@@ -44,7 +44,7 @@ export const alertChannelTestServiceFactory = ({
   alertRecipientResolver,
   alertChannelService,
   alertProviderRegistry,
-  kmsService,
+  kmsDataKeyService,
   smtpService,
   slackIntegrationDAL,
   keyStore
@@ -116,7 +116,7 @@ export const alertChannelTestServiceFactory = ({
 
     await $assertChannelOwnersPermit(channel.id, dto);
 
-    const { decryptor } = await getAlertChannelCipher(kmsService, {
+    const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: channel.orgId,
       projectId: channel.projectId
     });
@@ -173,7 +173,7 @@ export const alertChannelTestServiceFactory = ({
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
     await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
 
-    const deps: TAlertChannelDeps = { smtpService, kmsService, slackIntegrationDAL };
+    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
     const payload = buildTestAlertPayload({
       orgId: dto.actorOrgId,
       projectId,

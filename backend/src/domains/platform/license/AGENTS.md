@@ -17,14 +17,14 @@ through `ce/services/dependencies.ts`: `TLicensePolicyService` = `LicensePolicyS
 `TLicenseServer` = `LicenseServerClient`. Never add defaults or fallbacks for them in `ce/`: a free tier copy in MIT code is one
 anyone can edit into a paid one.
 
-| Layer | Holds |
-| --- | --- |
-| `ce/models/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
-| `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names; `InstanceEntitlementsCache` (in memory) |
-| `ce/services/` | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts` |
-| `ce/services/helpers/` | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
+| Layer                         | Holds                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ce/models/`                  | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data                                                                                                                                                                                                                                   |
+| `ce/data-access/`             | `PlanCache`, `UsageReportCache` (key store) and their key names; `InstanceEntitlementsCache` (in memory)                                                                                                                                                                                                |
+| `ce/services/`                | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts`                                                                                                                                                                                                                                       |
+| `ce/services/helpers/`        | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`)                                                                                                            |
 | `ee/services/license-policy/` | `LicensePolicyService` (the instance's license: cloud, online or offline key, or community; and cloud org plans), with `default-features.ts` (the free tier only), `license-key.ts` (key parsing, offline key shape), entitlement projection (the only place the free tier is applied), feature mapping |
-| `ee/clients/license-server/` | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping |
+| `ee/clients/license-server/`  | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping                                                                                                                                                                      |
 
 Rules:
 
@@ -75,7 +75,8 @@ Rules:
 - **License knows no product.** It sits on `organizationsProjectsService` and builds the two seat meters
   (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other meter comes in as a
   `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
-  `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
+  `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Metering events
+  (`recordMeteringEvents`) follow the same rule, from their meter's scope. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
 - **The instance license lives in `InstanceEntitlementsCache`** (in memory, per process), not in a service.
   `LicenseService.refreshInstanceEntitlements` is its only writer, called by the module's background sync and by

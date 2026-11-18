@@ -13,6 +13,8 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionSub,
   useOrganization,
   useOrgPermission,
   useProject,
@@ -25,7 +27,6 @@ import {
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
 import { AgentVaultNav } from "./AgentVaultNav";
@@ -67,7 +68,7 @@ export const ProjectNav = () => {
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
   const { permission } = useOrgPermission();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission: projectPermission } = useProjectPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -118,7 +119,7 @@ export const ProjectNav = () => {
     if (
       isOnProjectSettings &&
       currentProject.type === ProjectType.AgentVault &&
-      hasProjectRole(ProjectMembershipRole.Admin)
+      projectPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)
     )
       return AGENT_VAULT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)

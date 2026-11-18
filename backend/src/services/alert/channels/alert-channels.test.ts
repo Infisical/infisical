@@ -81,7 +81,7 @@ const samplePayload = (): TAlertPayload => ({
 });
 
 const slackAppDeps = () => ({
-  kmsService: { createCipherPairWithDataKey: vi.fn() },
+  kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
   slackIntegrationDAL: { findByIdWithWorkflowIntegrationDetails: vi.fn() }
 });
 

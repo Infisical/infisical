@@ -345,6 +345,27 @@ html[data-theme="light"] {
   --color-proxied-service: oklch(0.4447 0.1461 309.7);
 }
 
+/* Declared after the light theme so the repoint wins at equal specificity; data-product is set by the root route. */
+html[data-product="cert-manager"] {
+  --color-project: var(--color-product-pki);
+}
+
+html[data-product="kms"] {
+  --color-project: var(--color-product-kms);
+}
+
+html[data-product="secret-scanning"] {
+  --color-project: var(--color-product-ss);
+}
+
+html[data-product="pam"] {
+  --color-project: var(--color-product-pam);
+}
+
+html[data-product="agent-vault"] {
+  --color-project: var(--color-product-av);
+}
+
 .product-color {
   --product-color-resolved: var(--product-color);
 }

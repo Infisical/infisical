@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { TAgentVaultSkillVersions } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -9,8 +10,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
@@ -53,7 +52,7 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TAgentVaultSkillServiceFactory = ReturnType<typeof agentVaultSkillServiceFactory>;
@@ -65,10 +64,10 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultAccessBundleDAL,
   permissionService,
   membershipDAL,
-  kmsService
+  kmsDataKeyService
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const $getPermission = async (scoped: TAgentVaultSkillScoped) =>
     (await getAgentVaultPermission({ permissionService }, scoped)).permission;

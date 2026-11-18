@@ -1,5 +1,6 @@
 import { AxiosRequestConfig, isAxiosError } from "axios";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -185,7 +186,7 @@ export const listPowerDnsZones = async (
 
     return zones.filter((zone) => zone.id && zone.name).map((zone) => ({ id: zone.id, name: zone.name }));
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), "Failed to list PowerDNS zones");
     throw new BadRequestError({
@@ -212,7 +213,7 @@ export const getPowerDnsZoneRrset = async (
 
     return zone.rrsets?.find((rrset) => rrset.name === name && rrset.type === type);
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), `Failed to read PowerDNS zone [zoneId=${zoneId}] [name=${name}]`);
     throw new Error(`Failed to read PowerDNS zone '${zoneId}': ${getPowerDnsErrorMessage(error, "unknown error")}`);
@@ -231,7 +232,7 @@ export const patchPowerDnsZoneRrsets = async (
       deps
     );
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), `Failed to update PowerDNS records [zoneId=${zoneId}]`);
     throw new Error(
@@ -247,7 +248,7 @@ export const validatePowerDnsConnectionCredentials = async (
   try {
     await powerDnsRequest(config, { method: "GET", path: "/zones" }, { gatewayV2Service });
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), "Failed to validate PowerDNS connection credentials");
     throw new BadRequestError({

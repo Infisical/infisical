@@ -1,5 +1,7 @@
 import { AxiosError, AxiosRequestConfig } from "axios";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
@@ -11,7 +13,6 @@ import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-reques
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { DatabricksConnectionMethod } from "./databricks-connection-enums";
 import {
@@ -142,7 +143,7 @@ const authorizeDatabricksConnection = async (config: TDatabricksRequestConfig, d
 export const getDatabricksConnectionAccessToken = async (
   { id, orgId, credentials, projectId, gatewayId, gatewayPoolId }: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   deps: TDatabricksGatewayDeps = {}
 ) => {
   // checked before the cached token is returned, since a caller without gateway support goes on to call the workspace
@@ -166,7 +167,7 @@ export const getDatabricksConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService,
+    kmsDataKeyService,
     projectId
   });
 
@@ -190,7 +191,7 @@ export const validateDatabricksConnectionCredentials = async (
       expiresAt
     };
   } catch (e: unknown) {
-    if (e instanceof BadRequestError) throw e;
+    if (e instanceof BadRequestError || e instanceof RuleViolationError) throw e;
 
     throw new BadRequestError({
       message: `Unable to validate connection: ${
