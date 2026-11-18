@@ -1,3 +1,5 @@
+import { useRouterState } from "@tanstack/react-router";
+
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import type { TProjectPermission } from "@app/hooks/api/roles/types";
 import type { TGetSecretAccessListDTO } from "@app/hooks/api/secrets/types";
@@ -100,6 +102,9 @@ export const useDemoSecretAccessList = (dto: TGetSecretAccessListDTO) => {
   const state = useDemoAccessState();
   const granted = privileges.use();
   const scenario = useScenario();
+  const accessState = useRouterState({
+    select: (routerState) => new URLSearchParams(routerState.location.searchStr).get("access")
+  });
   const memberships = state.projectMemberships.filter((entry) => entry.projectId === dto.projectId);
   const actionsOf = (roles: { role: string }[]) =>
     roles.flatMap((grant) => roleActions(grant.role, dto.environment));
@@ -158,6 +163,17 @@ export const useDemoSecretAccessList = (dto: TGetSecretAccessListDTO) => {
     list.users.push(...extra.users);
     list.identities.push(...extra.identities);
     list.groups.push(...extra.groups);
+  }
+  if (accessState === "loading") return { data: undefined, isPending: true, error: null };
+  if (accessState === "few") {
+    list.users = list.users.slice(0, 1);
+    list.identities = list.identities.slice(0, 1);
+    list.groups = [];
+  }
+  if (accessState === "empty") {
+    list.users = list.users.map((entry) => ({ ...entry, allowedActions: [] }));
+    list.identities = list.identities.map((entry) => ({ ...entry, allowedActions: [] }));
+    list.groups = list.groups.map((entry) => ({ ...entry, allowedActions: [] }));
   }
   if (!dto.includeAllEntities) {
     const hasAccess = (entry: { allowedActions: unknown[] }) => entry.allowedActions.length > 0;
