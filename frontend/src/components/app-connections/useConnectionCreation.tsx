@@ -18,8 +18,9 @@ export const useConnectionCreationDialog = <TOption,>(
 ): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  // A federated connection stays in the dialog after create: the provider can only trust it once it exists, so
-  // the user copies its values and verifies it here instead of finding it unverified on first use
+  // A federated connection stays in the dialog after create and is selected only once it verifies: the provider
+  // can only trust it once it exists, and selecting it earlier runs lookups (such as GCP project discovery) that
+  // fail until then and are not refetched
   const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
@@ -63,8 +64,10 @@ export const useConnectionCreationDialog = <TOption,>(
             layout="dialog"
             onDirtyChange={setIsDirty}
             onPendingChange={setIsPending}
-            onComplete={() => {
+            onComplete={(connection) => {
+              if (attempt !== attemptRef.current) return;
               setCreatedConnection(null);
+              onCreated(connection);
               complete();
             }}
             onCancel={() => requestCancel(cancel)}
@@ -80,11 +83,11 @@ export const useConnectionCreationDialog = <TOption,>(
               if (attempt !== attemptRef.current) return;
               setIsDirty(false);
               setIsDiscardDialogOpen(false);
-              onCreated(connection);
               if (isFederatedAppConnection(connection)) {
                 setCreatedConnection(connection);
                 return;
               }
+              onCreated(connection);
               complete();
             }}
             onCancel={() => requestCancel(cancel)}
