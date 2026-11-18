@@ -2,6 +2,9 @@ import { Grant } from "./grant";
 import { Membership, TMembershipRecord } from "./membership";
 import { Privilege, TPrivilegeRecord } from "./privilege";
 
+// The built-in role that grants nothing, at the org and in projects alike.
+const NO_ACCESS_SLUG = "no-access";
+
 export type TIdentityAttributeRecord = { id: string; key: string; value: string };
 
 export type TActorGrantsRecord = {
@@ -42,6 +45,22 @@ export class ActorGrants {
       .filter((privilege) => privilege.isActive(now))
       .map((privilege) => privilege.toGrant());
     return roles.concat(privileges);
+  }
+
+  // What a privilege boundary compares an actor against: each distinct role it holds now (by the slug it is known
+  // by), leaving out no-access, then each privilege in force.
+  distinctActiveGrants(now: Date = new Date()): Grant[] {
+    const seen = new Set<string>();
+    const roles = this.memberships
+      .flatMap((membership) => membership.activeRoles(now))
+      .filter((role) => {
+        const slug = role.effectiveSlug;
+        if (slug === NO_ACCESS_SLUG || seen.has(slug)) return false;
+        seen.add(slug);
+        return true;
+      })
+      .map((role) => role.toGrant());
+    return roles.concat(this.activePrivileges(now).map((privilege) => privilege.toGrant()));
   }
 
   activePrivileges(now: Date = new Date()): Privilege[] {

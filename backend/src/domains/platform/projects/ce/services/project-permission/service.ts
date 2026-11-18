@@ -210,7 +210,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
       ? this.getProjectRoles({ projectType: project.type })
       : StandardProjectRoles.generic(ProjectType.SecretManager);
     const identity = RuleIdentity.create({ id: actor.id, username: actor.name, metadata: grants.attributeMap() });
-    return grants.active().map((grant) =>
+    return grants.distinctActiveGrants().map((grant) =>
       Permission.fromRules<ProjectPermissionSet>({
         rules: ProjectAccess.rulesOf([grant], roles).interpolateStored(identity.toContext())
       })

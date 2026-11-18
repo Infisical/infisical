@@ -90,3 +90,62 @@ describe("OrganizationsService organizations for License", () => {
     expect(replica).toHaveBeenCalled();
   });
 });
+
+describe("OrganizationStore.findActorOrg", () => {
+  const h = setupIntegration();
+
+  const store = () => new OrganizationStore(poolStoreConnection(h.db));
+
+  test("should give a sub-org its root org's sign-in policy", async () => {
+    // Setup
+    const root = await h.factories.organization({
+      authEnforced: true,
+      googleSsoAuthEnforced: false,
+      bypassOrgAuthEnabled: true
+    });
+    const sub = await h.factories.organization({
+      rootOrgId: root.id,
+      parentOrgId: root.id,
+      authEnforced: false,
+      googleSsoAuthEnforced: true,
+      bypassOrgAuthEnabled: false
+    });
+
+    // Action
+    const found = await store().findActorOrg(sub.id);
+
+    // Assert
+    expect(found).toEqual({
+      id: sub.id,
+      name: sub.name,
+      rootOrgId: root.id,
+      parentOrgId: root.id,
+      shouldUseNewPrivilegeSystem: Boolean(sub.shouldUseNewPrivilegeSystem),
+      ssoPolicy: { authEnforced: true, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: true }
+    });
+  });
+
+  test("should give a root org itself as its root and parent, with its own policy", async () => {
+    // Setup
+    const root = await h.factories.organization({ googleSsoAuthEnforced: true });
+
+    // Action
+    const found = await store().findActorOrg(root.id);
+
+    // Assert
+    expect(found).toMatchObject({
+      id: root.id,
+      rootOrgId: root.id,
+      parentOrgId: root.id,
+      ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: true, bypassOrgAuthEnabled: false }
+    });
+  });
+
+  test("should find nothing for an org that does not exist", async () => {
+    // Action
+    const found = await store().findActorOrg(randomUUID());
+
+    // Assert
+    expect(found).toBeNull();
+  });
+});

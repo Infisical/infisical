@@ -125,7 +125,7 @@ export class OrgPermissionService implements TOrgPermissionService {
       scope: { scope: AccessScope.Organization, orgId }
     });
     const identity = RuleIdentity.create({ id: actor.id, username: actor.name, metadata: grants.attributeMap() });
-    return grants.active().map((grant) => OrgPermission.forGrant({ grant, identity }));
+    return grants.distinctActiveGrants().map((grant) => OrgPermission.forGrant({ grant, identity }));
   }
 
   async canBypassSso({ userId, rootOrgId }: { userId: string; rootOrgId: string }): Promise<boolean> {

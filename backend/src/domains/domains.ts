@@ -136,8 +136,16 @@ export const createDomains = async (deps: TDomainDeps) => {
     cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
   const { projectsService } = projects;
-  const secrets = new SecretsModule({ projectsService });
   const { projectPermissionService, projectResourcePermissionService } = projects;
+  const secrets = new SecretsModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService,
+    groupService: accessControl.groupService,
+    projectsService,
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
   const pam = new PamModule({ projectsService, projectResourcePermissionService });
   const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
   const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
@@ -205,6 +213,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     instanceConfigCore,
     organizations,
     projects,
+    secrets,
     pam,
     certManager,
     codeSigning,
