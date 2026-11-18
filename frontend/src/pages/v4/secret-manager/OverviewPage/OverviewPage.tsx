@@ -18,6 +18,7 @@ import {
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@infisical/cipher/ui/button-group";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Dialog,
@@ -200,15 +201,56 @@ const overviewOrder: ResourceKind[] = [
   "proxy",
   "secret"
 ];
-const sortOptions: { value: string; label: string; field: SortField; direction: "asc" | "desc" }[] =
-  [
-    { value: "name-asc", label: "Name (A to Z)", field: "name", direction: "asc" },
-    { value: "name-desc", label: "Name (Z to A)", field: "name", direction: "desc" },
-    { value: "updatedAt-desc", label: "Last edited (new)", field: "updatedAt", direction: "desc" },
-    { value: "updatedAt-asc", label: "Last edited (old)", field: "updatedAt", direction: "asc" },
-    { value: "createdAt-desc", label: "Created (new)", field: "createdAt", direction: "desc" },
-    { value: "createdAt-asc", label: "Created (old)", field: "createdAt", direction: "asc" }
-  ];
+const sortOptions: {
+  value: string;
+  label: string;
+  chip: string;
+  field: SortField;
+  direction: "asc" | "desc";
+}[] = [
+  {
+    value: "name-asc",
+    label: "Name (A to Z)",
+    chip: "Name, A to Z",
+    field: "name",
+    direction: "asc"
+  },
+  {
+    value: "name-desc",
+    label: "Name (Z to A)",
+    chip: "Name, Z to A",
+    field: "name",
+    direction: "desc"
+  },
+  {
+    value: "updatedAt-desc",
+    label: "Last edited (new)",
+    chip: "Last edited, newest",
+    field: "updatedAt",
+    direction: "desc"
+  },
+  {
+    value: "updatedAt-asc",
+    label: "Last edited (old)",
+    chip: "Last edited, oldest",
+    field: "updatedAt",
+    direction: "asc"
+  },
+  {
+    value: "createdAt-desc",
+    label: "Created (new)",
+    chip: "Created, newest",
+    field: "createdAt",
+    direction: "desc"
+  },
+  {
+    value: "createdAt-asc",
+    label: "Created (old)",
+    chip: "Created, oldest",
+    field: "createdAt",
+    direction: "asc"
+  }
+];
 
 const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/overview");
 const filterRowTypes: Record<ResourceKind, string> = {
@@ -1647,11 +1689,33 @@ export const OverviewPage = () => {
       );
     return undefined;
   })();
+  const activeSort = sortOptions.find(
+    (option) => option.value === `${sort.field}-${sort.direction}`
+  );
+  const sortIcon = sort.direction === "desc" ? "arrow-down" : "arrow-up";
+  const nameSortActive = !sort.environment && activeSort?.value !== "name-asc";
+  const sortSummary =
+    activeSort &&
+    (nameSortActive || sort.environment) &&
+    [
+      activeSort.chip,
+      sort.environment &&
+        (visibleEnvironments.find((environment) => environment.value === sort.environment)?.label ??
+          sort.environment)
+    ]
+      .filter(Boolean)
+      .join(", ");
   const sortMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <TableHeadButton aria-label="Name column menu">
+        <TableHeadButton
+          data-active={nameSortActive || undefined}
+          aria-label={
+            nameSortActive ? `Name column menu, sorted by ${sortSummary}` : "Name column menu"
+          }
+        >
           Name
+          {nameSortActive && <Icon name={sortIcon} />}
           <span className={styles.push}>
             <Icon name="chev-down" size="var(--cipher-size-icon-xs)" />
           </span>
@@ -1682,10 +1746,20 @@ export const OverviewPage = () => {
   const environmentMenu = (environment: { value: string; label: string }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <TableHeadButton aria-label={`${environment.label} column menu`}>
+        <TableHeadButton
+          data-active={sort.environment === environment.value || undefined}
+          aria-label={
+            sort.environment === environment.value
+              ? `${environment.label} column menu, sorted by ${sortSummary}`
+              : `${environment.label} column menu`
+          }
+        >
           <TruncatedLabel>{environment.label}</TruncatedLabel>
           <span className={styles.push}>
-            <Icon name="chev-down" size="var(--cipher-size-icon-xs)" />
+            <Icon
+              name={sort.environment === environment.value ? sortIcon : "chev-down"}
+              size="var(--cipher-size-icon-xs)"
+            />
           </span>
         </TableHeadButton>
       </DropdownMenuTrigger>
@@ -1896,46 +1970,69 @@ export const OverviewPage = () => {
                     <FolderBreadcrumbBar
                       path={path}
                       actions={
-                        !single &&
                         !unavailableState && (
                           <>
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              disabled={!expandableKeysOnPage.length}
-                              onClick={() =>
-                                setExpandedRows(
-                                  allOpen
-                                    ? []
-                                    : [...new Set([...expandedRows, ...expandableKeysOnPage])]
-                                )
-                              }
-                            >
-                              <Icon icon={allOpen ? ChevronsDownUpIcon : ChevronsUpDownIcon} />
-                              {allOpen ? "Close all" : "Open all"}
-                            </Button>
-                            <Tooltip
-                              content={
-                                showValues
-                                  ? "Values of every secret you open are shown. Select to hide them."
-                                  : "Show values of open secrets and any you open later. Remembered in this browser."
-                              }
-                            >
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                aria-pressed={showValues}
-                                onClick={() => {
-                                  if (showValues)
-                                    localStorage.removeItem("overview-reveal-all-values");
-                                  else localStorage.setItem("overview-reveal-all-values", "true");
-                                  setShowValues(!showValues);
-                                }}
-                              >
-                                <Icon icon={showValues ? EyeOffIcon : EyeIcon} />
-                                {showValues ? "Hide values" : "Show values"}
-                              </Button>
-                            </Tooltip>
+                            {sortSummary && (
+                              <ButtonGroup label="Applied sort" className={styles.sortChip}>
+                                <ButtonGroupText className={styles.sortChipText}>
+                                  <TruncatedLabel>{sortSummary}</TruncatedLabel>
+                                </ButtonGroupText>
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  icon="x"
+                                  iconOnly
+                                  onClick={() => {
+                                    setSort({ field: "name", direction: "asc" });
+                                    setPage(1);
+                                  }}
+                                >
+                                  Clear sort
+                                </Button>
+                              </ButtonGroup>
+                            )}
+                            {!single && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  disabled={!expandableKeysOnPage.length}
+                                  onClick={() =>
+                                    setExpandedRows(
+                                      allOpen
+                                        ? []
+                                        : [...new Set([...expandedRows, ...expandableKeysOnPage])]
+                                    )
+                                  }
+                                >
+                                  <Icon icon={allOpen ? ChevronsDownUpIcon : ChevronsUpDownIcon} />
+                                  {allOpen ? "Close all" : "Open all"}
+                                </Button>
+                                <Tooltip
+                                  content={
+                                    showValues
+                                      ? "Values of every secret you open are shown. Select to hide them."
+                                      : "Show values of open secrets and any you open later. Remembered in this browser."
+                                  }
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    aria-pressed={showValues}
+                                    onClick={() => {
+                                      if (showValues)
+                                        localStorage.removeItem("overview-reveal-all-values");
+                                      else
+                                        localStorage.setItem("overview-reveal-all-values", "true");
+                                      setShowValues(!showValues);
+                                    }}
+                                  >
+                                    <Icon icon={showValues ? EyeOffIcon : EyeIcon} />
+                                    {showValues ? "Hide values" : "Show values"}
+                                  </Button>
+                                </Tooltip>
+                              </>
+                            )}
                           </>
                         )
                       }
