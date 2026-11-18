@@ -667,7 +667,14 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       </Tab>
     </Tabs>
 
-    If Infisical revoked the certificate right away, the actor of the `revoke-cert` event is the user or machine identity that revoked it. If the revocation needed approval, the actor is `platform`, and `event.metadata.approvalRequestId` holds the ID of the approval request. If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.
+    The actor of a `revoke-cert` event shows how the certificate was revoked:
+
+    - A user or machine identity: that actor revoked the certificate right away
+    - `platform`, with the approval request's ID in `event.metadata.approvalRequestId`: Infisical revoked the certificate once the request was approved
+    - `platform`, with `event.metadata.source` set to `microsoft-intune`: Microsoft Intune asked Infisical to revoke the certificate
+    - `platform`, with neither field: the certificate's DigiCert CA revoked it, and Infisical recorded the revocation
+
+    If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.
 
     To find who requested and who reviewed an approved revocation, look for events with the same `approvalRequestId`:
 

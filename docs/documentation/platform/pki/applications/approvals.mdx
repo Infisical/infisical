@@ -58,6 +58,7 @@ If a revocation policy covers a certificate's profile, revoking the certificate 
 
 - If the request gets the required approvals at every step, Infisical revokes the certificate with the reason the requester chose
 - If an approver rejects the request, or it's cancelled or expires, the certificate isn't revoked
+- If [Microsoft Intune asks Infisical to revoke the certificate](/documentation/platform/pki/guides/applications/microsoft-intune-scep#how-revocation-works) for a device, Infisical revokes the certificate right away, even while the request is pending
 
 A certificate can have only one revocation request pending at a time. Sometimes too few of a pending request's approvers can still approve it, for example because they were demoted to Auditor, removed from the Application or its group, or deactivated in the organization. Once the revocation policy has approvers who can approve, revoking the certificate again cancels that request and creates a new one from the current policy.
 
@@ -105,9 +106,9 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | Status | Meaning |
 |--------|---------|
 | **Open** | Pending approval |
-| **Approved** | All steps completed, certificate issued or revoked |
+| **Approved** | Every step approved the request, and Infisical [issued or revoked the certificate, or recorded why it couldn't](#approve-a-request) |
 | **Rejected** | An approver rejected the request |
-| **Cancelled** | Requester cancelled the request |
+| **Cancelled** | The requester cancelled the request, someone deleted its policy, or a new revocation request replaced it |
 | **Expired** | Request exceeded max TTL |
 
 ### Approve a request
