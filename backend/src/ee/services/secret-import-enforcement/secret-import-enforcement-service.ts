@@ -491,14 +491,28 @@ export const secretImportEnforcementServiceFactory = ({
       return await $convertImport(data);
     } catch (error) {
       if (isFinalAttempt) {
+        const reason = `Infisical could not convert this import to a replication import after ${MAX_OUTBOX_ATTEMPTS} attempts (${error instanceof Error ? error.message.slice(0, 200) : "Unknown error"}). It still reads the source directly, so its changes don't need approval. Save the secret change policy again to retry, or create a replicated import of the same source and delete this one.`;
         const secretImport = await secretImportDAL.findById(data.secretImportId, secretImportDAL.primaryNode());
+        // The import keeps reading the source so nothing it serves disappears. The status fields are what the
+        // dashboard shows; on a regular import they are only ever set here, and a later conversion clears them.
+        try {
+          await secretImportDAL.update(
+            { id: data.secretImportId, isReplication: false },
+            { isReplicationSuccess: false, replicationStatus: reason, lastReplicated: new Date() }
+          );
+        } catch (statusError) {
+          logger.error(
+            statusError,
+            `Failed to record a failed secret import conversion [secretImportId=${data.secretImportId}]`
+          );
+        }
         await $auditOutcome({
           data,
           policy: { id: data.secretChangePolicyId, name: data.secretChangePolicyName },
           sourceEnvironment: secretImport?.importEnv.slug ?? "",
           sourcePath: secretImport?.importPath ?? "",
           outcome: "failed",
-          reason: `Infisical could not convert this import to a replication import after ${MAX_OUTBOX_ATTEMPTS} attempts (${error instanceof Error ? error.message : "Unknown error"}). It still reads the source directly. Save the secret change policy again to retry.`
+          reason
         });
       }
       throw error;

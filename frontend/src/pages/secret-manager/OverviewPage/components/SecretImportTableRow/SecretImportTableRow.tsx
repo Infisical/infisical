@@ -386,7 +386,11 @@ export const SecretImportTableRow = ({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1.5">
                   <InfoIcon className="size-3" />
-                  <span className="text-sm">Last Replication</span>
+                  <span className="text-sm">
+                    {importItem.isReplication
+                      ? "Last Replication"
+                      : "Replication Conversion Failed"}
+                  </span>
                 </div>
                 <span className="pl-4 text-xs text-foreground/50">
                   {new Date(importItem.lastReplicated).toLocaleString()}
@@ -835,8 +839,10 @@ export const SecretImportTableRow = ({
                 </Badge>
               </div>
             )}
+            {/* A regular import only carries a replication status when converting it to a replication import failed */}
             {isSingleEnvView &&
-              singleEnvImport?.isReplication &&
+              singleEnvImport &&
+              (singleEnvImport.isReplication || singleEnvImport.replicationStatus) &&
               singleEnvImport.lastReplicated && (
                 <div className="mr-16 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16">
                   <Tooltip>
@@ -858,7 +864,11 @@ export const SecretImportTableRow = ({
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5">
                           <InfoIcon className="size-3" />
-                          <span className="text-sm">Last Replication</span>
+                          <span className="text-sm">
+                            {singleEnvImport.isReplication
+                              ? "Last Replication"
+                              : "Replication Conversion Failed"}
+                          </span>
                         </div>
                         <span className="pl-4 text-xs text-foreground/50">
                           {new Date(singleEnvImport.lastReplicated).toLocaleString()}
@@ -940,7 +950,9 @@ export const SecretImportTableRow = ({
                           <Badge variant="neutral">
                             <LayersIcon />
                             {envName}
-                            {secImp?.isReplication && renderReplicationStatus(secImp, slug)}
+                            {secImp &&
+                              (secImp.isReplication || secImp.replicationStatus) &&
+                              renderReplicationStatus(secImp, slug)}
                           </Badge>
                         </div>
                       );

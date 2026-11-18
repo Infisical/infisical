@@ -39,6 +39,7 @@ change requests. Cross-project imports are never converted and stay live.
   reach another project.
 - `deleteImport` removes the reserved folder whether or not the import is a replication import yet, so a conversion
   that never flipped leaves no orphan.
-- On the conversion's final outbox attempt the import stays a regular import and the failure is audited as
-  `secret-import-replication-enforced` with outcome `failed`; saving the policy again is a new policy change and
-  retries it.
+- On the conversion's final outbox attempt the import stays a regular import, so nothing it serves disappears. The
+  reason goes on the import's `replicationStatus` (with `isReplicationSuccess: false`), which the dashboard shows for a
+  regular import only when it is set, and the failure is audited as `secret-import-replication-enforced` with outcome
+  `failed`. Never set those fields on a regular import anywhere else. Saving the policy again retries.
