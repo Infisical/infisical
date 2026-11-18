@@ -17,6 +17,7 @@ import {
 
 import { environmentLabel, Gate } from "../flows/shared";
 import { useManagedBlock } from "./permissions";
+import { ReorderImportsSheet } from "./reorder-imports-sheet";
 import type { RowActionHostProps } from "./types";
 
 export function ImportActions({
@@ -63,38 +64,44 @@ export function ImportActions({
   const deleteBlock =
     removing && importBlock(removing, ProjectPermissionActions.Delete, "remove this secret import");
   return (
-    <AlertDialog
-      open={Boolean(removing)}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <AlertDialogContent tone="danger">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remove secret import</AlertDialogTitle>
-          <AlertDialogDescription>
-            {`Unlinks secrets imported from ${removing ? environmentLabel(removing.source.environment) : ""}. The source secrets are not affected.`}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Gate reason={deleteBlock}>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={Boolean(deleteBlock)}
-              onClick={() => {
-                if (!removing) return;
-                onApply((current) => current.filter((resource) => resource.id !== removing.id), {
-                  title: "Successfully removed secret link"
-                });
-                onClose();
-              }}
-            >
-              Remove
-            </AlertDialogAction>
-          </Gate>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <ReorderImportsSheet
+        entry={action?.action === "reorder" ? action.entry : undefined}
+        onClose={onClose}
+      />
+      <AlertDialog
+        open={Boolean(removing)}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <AlertDialogContent tone="danger">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove secret import</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Unlinks secrets imported from ${removing ? environmentLabel(removing.source.environment) : ""}. The source secrets are not affected.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Gate reason={deleteBlock}>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={Boolean(deleteBlock)}
+                onClick={() => {
+                  if (!removing) return;
+                  onApply((current) => current.filter((resource) => resource.id !== removing.id), {
+                    title: "Successfully removed secret link"
+                  });
+                  onClose();
+                }}
+              >
+                Remove
+              </AlertDialogAction>
+            </Gate>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -151,27 +151,30 @@ export const buildResources = ({
     (overview?.secretRotations ?? []).map((rotation) => [rotation.id, rotation.name])
   );
 
-  (overview?.imports ?? []).forEach((entry) =>
-    push({
-      ...at(entry.environment ?? ""),
-      kind: "import",
-      id: entry.id,
-      name: `${entry.importEnv.slug}:${entry.importPath}`,
-      source: {
-        project: entry.importEnv.projectId ?? projectId,
-        environment: entry.importEnv.slug,
-        path: entry.importPath
-      },
-      sourceProjectName: entry.sourceProjectName,
-      revoked: Boolean(entry.isAccessRevoked),
-      replicated: Boolean(entry.isReplication),
-      replicationStatus: replicationOf(entry.isReplication, entry.isReplicationSuccess),
-      replicationDetails: entry.replicationStatus,
-      lastReplicated: entry.lastReplicated,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt
-    })
-  );
+  (overview?.imports ?? [])
+    .filter((entry) => !entry.isReserved)
+    .forEach((entry) =>
+      push({
+        ...at(entry.environment ?? ""),
+        kind: "import",
+        id: entry.id,
+        name: `${entry.importEnv.slug}:${entry.importPath}`,
+        source: {
+          project: entry.importEnv.projectId ?? projectId,
+          environment: entry.importEnv.slug,
+          path: entry.importPath
+        },
+        sourceProjectName: entry.sourceProjectName,
+        revoked: Boolean(entry.isAccessRevoked),
+        replicated: Boolean(entry.isReplication),
+        position: Number(entry.position),
+        replicationStatus: replicationOf(entry.isReplication, entry.isReplicationSuccess),
+        replicationDetails: entry.replicationStatus,
+        lastReplicated: entry.lastReplicated,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt
+      })
+    );
   (overview?.folders ?? []).forEach((entry) =>
     push({
       ...at(entry.environment),

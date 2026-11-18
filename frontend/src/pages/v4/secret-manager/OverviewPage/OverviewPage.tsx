@@ -859,12 +859,15 @@ export const OverviewPage = () => {
     const environment = sort.environment ?? activeEnvironment;
     return entries.find((entry) => entry.environment === environment)?.[sort.field] ?? "";
   };
+  const importPosition = (entries: Resource[]) =>
+    entries[0].kind === "import" ? (entries[0].position ?? Infinity) : 0;
   const sorted = overviewOrder.flatMap((kind) =>
     matches
       .filter(([, entries]) => entries[0].kind === kind)
-      .sort(
-        ([, a], [, b]) =>
-          sortValue(a).localeCompare(sortValue(b)) * (sort.direction === "desc" ? -1 : 1)
+      .sort(([, a], [, b]) =>
+        kind === "import" && single
+          ? importPosition(a) - importPosition(b)
+          : sortValue(a).localeCompare(sortValue(b)) * (sort.direction === "desc" ? -1 : 1)
       )
   );
   const quickAddScope = single ? JSON.stringify([path, activeEnvironment]) : "";

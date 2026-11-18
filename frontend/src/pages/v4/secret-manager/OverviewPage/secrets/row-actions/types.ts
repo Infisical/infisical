@@ -27,7 +27,7 @@ type Of<K extends Resource["kind"]> = Extract<Resource, { kind: K }>;
 export type RowAction =
   | { kind: "folder"; action: "move"; entry: Of<"folder">; entries: Of<"folder">[] }
   | { kind: "folder"; action: "access"; environment: string; secretPath: string }
-  | { kind: "import"; action: "resync" | "delete"; entry: Of<"import"> }
+  | { kind: "import"; action: "resync" | "delete" | "reorder"; entry: Of<"import"> }
   | {
       kind: "dynamic";
       action: "leases" | "edit" | "delete" | "force-delete";
