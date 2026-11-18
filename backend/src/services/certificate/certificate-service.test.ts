@@ -502,6 +502,19 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
     });
 
+    it("refuses a certificate a code signing signer uses, even while the replica hasn't seen the signer", async () => {
+      const ctx = buildRevocationService();
+      ctx.signerDAL.findOne.mockImplementation(async (_filter: unknown, db?: unknown) =>
+        db === primaryDb ? { id: "signer-1" } : undefined
+      );
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+        "This certificate is in use by a code signing signer. Revoke it from the signer instead."
+      );
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+    });
+
     it("refuses a second request while one is still waiting for approval", async () => {
       const ctx = buildRevocationService();
       ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
@@ -864,6 +877,22 @@ describe("certificate revocation behind an approval policy", () => {
     });
   });
 
+  describe("revokeOwnedCertificate", () => {
+    it("revokes a code signing signer's certificate, which the revoke route refuses", async () => {
+      const ctx = buildRevocationService();
+      ctx.signerDAL.findOne.mockResolvedValue({ id: "signer-1" });
+
+      await ctx.service.revokeOwnedCertificate({
+        certificateId: "cert-1",
+        revocationReason: CrlReason.CESSATION_OF_OPERATION,
+        orgId: "org-1"
+      });
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).toHaveBeenCalled();
+      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
+    });
+  });
+
   describe("revokeApprovedCertificate", () => {
     it("revokes the certificate and records who requested it", async () => {
       const ctx = buildRevocationService();
@@ -971,9 +1000,11 @@ describe("certificate revocation behind an approval policy", () => {
       );
     });
 
-    it("fails an approved revocation once a code signing signer uses the certificate, as revoking it directly would", async () => {
+    it("fails an approved revocation once a code signing signer uses the certificate, even while the replica hasn't seen the signer", async () => {
       const ctx = buildRevocationService();
-      ctx.signerDAL.findOne.mockResolvedValue({ id: "signer-1" });
+      ctx.signerDAL.findOne.mockImplementation(async (_filter: unknown, db?: unknown) =>
+        db === primaryDb ? { id: "signer-1" } : undefined
+      );
 
       await ctx.service.revokeApprovedCertificate(approvedRevocation);
 
