@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { Tabs, TabsList, TabsTrigger } from "@app/components/v3";
@@ -12,29 +11,21 @@ const SLACK_METHODS = [
 type Props = { index: number };
 
 export const SlackMethodSwitch = ({ index }: Props) => {
-  const { control, getValues, setValue, clearErrors } = useFormContext<TChannelsForm>();
-  // getValues returns the live form object, so copy the saved fields before any switch overwrites them.
-  const [saved] = useState(() => {
-    const channel = getValues(`channels.${index}`);
-    return {
-      id: channel?.id,
-      channelType: channel?.channelType,
-      hasWebhookUrl: channel?.hasWebhookUrl
-    };
-  });
+  const { control, setValue, clearErrors } = useFormContext<TChannelsForm>();
+  const saved = useWatch({ control, name: `channels.${index}.savedChannel` });
   const channelType = useWatch({ control, name: `channels.${index}.channelType` });
 
   // A saved channel can't change type, so switching drops its id and the save replaces it with a new one.
   const selectMethod = (nextType: AlertChannelType) => {
     if (nextType === channelType) return;
-    const isSavedMethod = Boolean(saved.id) && saved.channelType === nextType;
+    const isSavedMethod = saved?.channelType === nextType;
     setValue(`channels.${index}.id`, isSavedMethod ? saved.id : undefined, { shouldDirty: true });
     setValue(`channels.${index}.hasWebhookUrl`, isSavedMethod ? saved.hasWebhookUrl : false);
     setValue(`channels.${index}.channelType`, nextType, { shouldDirty: true });
     clearErrors(`channels.${index}`);
   };
 
-  const isReplacingSaved = Boolean(saved.id) && saved.channelType !== channelType;
+  const isReplacingSaved = Boolean(saved) && saved?.channelType !== channelType;
 
   return (
     <div className="flex flex-col gap-1.5">

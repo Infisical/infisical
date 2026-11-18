@@ -44,7 +44,12 @@ export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm
   hasBasicPassword: Boolean(channel.config.hasBasicPassword),
   hasAuthHeaderValue: Boolean(channel.config.hasAuthHeaderValue),
   hasIntegrationKey: Boolean(channel.config.hasIntegrationKey),
-  savedUrl: channel.config.url as string | undefined
+  savedUrl: channel.config.url as string | undefined,
+  savedChannel: {
+    id: channel.id,
+    channelType: channel.channelType,
+    hasWebhookUrl: Boolean(channel.config.hasWebhookUrl)
+  }
 });
 
 const filled = (fields: Record<string, string | undefined>) =>

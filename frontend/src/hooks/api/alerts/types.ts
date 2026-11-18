@@ -361,7 +361,14 @@ export const channelFormSchema = z
     hasBasicPassword: z.boolean().optional(),
     hasAuthHeaderValue: z.boolean().optional(),
     hasIntegrationKey: z.boolean().optional(),
-    savedUrl: z.string().optional()
+    savedUrl: z.string().optional(),
+    savedChannel: z
+      .object({
+        id: z.string(),
+        channelType: z.nativeEnum(AlertChannelType),
+        hasWebhookUrl: z.boolean()
+      })
+      .optional()
   })
   .superRefine((channel, ctx) => {
     const isNew = !channel.id;
