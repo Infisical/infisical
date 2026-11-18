@@ -214,10 +214,10 @@ export const alertEngineFactory = ({
       }
     }
 
-    if (status === AlertRunStatus.SUCCESS) return AlertDispatchOutcome.DeliverySuccess;
-    return status === AlertRunStatus.PARTIAL
-      ? AlertDispatchOutcome.DeliveryPartial
-      : AlertDispatchOutcome.DeliveryFailed;
+    if (status === AlertRunStatus.FAILED) return AlertDispatchOutcome.DeliveryFailed;
+    // A channel that reached only some destinations is recorded as delivered, so a retry would skip it.
+    const anyChannelFailed = dispatched.some((result) => !result.success);
+    return anyChannelFailed ? AlertDispatchOutcome.DeliveryPartial : AlertDispatchOutcome.DeliverySuccess;
   };
 
   const $buildChannelWork = (

@@ -847,21 +847,15 @@ export const alertServiceFactory = ({
         tx
       );
       for (const channel of channels.filter((row) => row.alertId === alertId)) {
+        const {
+          id: channelId,
+          alertId: channelAlertId,
+          createdAt: channelCreatedAt,
+          updatedAt: channelUpdatedAt,
+          ...channelFields
+        } = channel;
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-        const copiedChannel = await alertChannelDAL.create(
-          {
-            name: channel.name,
-            channelType: channel.channelType,
-            encryptedConfig: channel.encryptedConfig,
-            workflowIntegrationId: channel.workflowIntegrationId,
-            enabled: channel.enabled,
-            orgId: channel.orgId,
-            projectId: channel.projectId,
-            createdByActorId: channel.createdByActorId,
-            createdByActorType: channel.createdByActorType
-          },
-          tx
-        );
+        const copiedChannel = await alertChannelDAL.create(channelFields, tx);
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
         await alertChannelMembershipDAL.insertMany([{ alertId: copiedAlert.id, channelId: copiedChannel.id }], tx);
         const channelRecipients = recipients.filter((recipient) => recipient.channelId === channel.id);

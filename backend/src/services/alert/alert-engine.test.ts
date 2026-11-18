@@ -355,7 +355,7 @@ describe("alert engine", () => {
     ]);
   });
 
-  test("reports a run as partial when a channel delivered to only some of its destinations", async () => {
+  test("shows a run as partial without retrying when a channel reached only some of its destinations", async () => {
     const send = vi
       .spyOn(ALERT_CHANNEL_REGISTRY[AlertChannelType.SLACK_APP], "send")
       .mockResolvedValue({ success: true, error: "#security is archived." });
@@ -367,7 +367,7 @@ describe("alert engine", () => {
     const outcome = await engine.runAlert(makeAlert());
     send.mockRestore();
 
-    expect(outcome).toBe(AlertDispatchOutcome.DeliveryPartial);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(historyWrites[0].status).toBe(AlertRunStatus.PARTIAL);
   });
 
