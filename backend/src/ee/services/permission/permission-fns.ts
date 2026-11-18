@@ -700,7 +700,6 @@ export const buildFolderScopedPrivilegeRules = (
   privileges: TProjectFolderScopedPrivilege[]
 ): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
   const scopedGrants = privileges.map((privilege) => {
-    // make sure the role is valid
     if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
       throw new NotFoundError({
         name: "FolderRoleInvalid",
@@ -721,18 +720,11 @@ export const buildFolderScopedPrivilegeRules = (
     };
   });
 
-  // CASL lets the last matching rule decide. Recursive grants are built first, shallowest first, so the deepest one
-  // above a folder decides it. Exact grants are built last, so each one decides its own folder.
   const recursiveGrants = scopedGrants
     .filter((grant) => grant.isRecursive)
     .sort((a, b) => folderPathDepth(a.secretPath) - folderPathDepth(b.secretPath));
   const exactGrants = scopedGrants.filter((grant) => !grant.isRecursive);
 
-  // An exact grant is built from the recursive role table when the recursive grant that decides its folder already
-  // lets the actor create and edit folders, so a higher exact role on a subfolder never takes that away. The two
-  // tables differ only in folder create and edit, from the edit tier up, so a lower exact role still narrows it.
-  // The deciding grant is found by walking up from the folder's parent, not by scanning every recursive grant:
-  // this runs for each exact grant on every permission build, and an actor can hold a grant on every folder.
   const recursiveRoleByFolder = new Map(
     recursiveGrants.map((grant) => [`${grant.environment}:${grant.secretPath}`, grant.role])
   );
@@ -749,8 +741,6 @@ export const buildFolderScopedPrivilegeRules = (
   const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
     rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
 
-  // Each grant's denies come right before its own allows. Grouping every deny ahead of every allow would let a
-  // shallow grant's allows override the denies of a deeper recursive grant.
   return [...recursiveGrants, ...exactGrants].flatMap((grant) => {
     const isRecursiveTable = usesRecursiveTables(grant);
     return [
