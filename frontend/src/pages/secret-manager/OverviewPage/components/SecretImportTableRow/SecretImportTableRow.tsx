@@ -67,6 +67,7 @@ import { SecretImportSecretRow } from "./SecretImportSecretRow";
 type ImportedSecretData = {
   environment: string;
   secretPath: string;
+  importId?: string;
   sourceEnv: string;
   secrets: Pick<SecretV3RawSanitized, "id" | "key" | "env" | "isEmpty" | "version">[];
 };
@@ -145,11 +146,14 @@ export const SecretImportTableRow = ({
 
   const allEnvImportedSecrets = useMemo(() => {
     if (isSingleEnvView) {
+      // A folder can import the same source twice, once directly and once as a replication import, and both
+      // report the source's environment and path, so the import's own ID tells them apart.
       const match = importedSecrets?.find(
         (imp) =>
-          imp.environment === importEnvSlug &&
-          imp.secretPath === importPath &&
-          imp.sourceEnv === singleEnvSlug
+          imp.sourceEnv === singleEnvSlug &&
+          (imp.importId && singleEnvImport?.id
+            ? imp.importId === singleEnvImport.id
+            : imp.environment === importEnvSlug && imp.secretPath === importPath)
       );
       return match ? [match] : [];
     }
@@ -158,7 +162,14 @@ export const SecretImportTableRow = ({
         (imp) => imp.environment === importEnvSlug && imp.secretPath === importPath
       ) ?? []
     );
-  }, [importedSecrets, importEnvSlug, importPath, isSingleEnvView, singleEnvSlug]);
+  }, [
+    importedSecrets,
+    importEnvSlug,
+    importPath,
+    isSingleEnvView,
+    singleEnvSlug,
+    singleEnvImport?.id
+  ]);
 
   // Union of unique secret keys across all environments (preserves search/expand behavior)
   const matchingImportedSecrets = useMemo(() => {

@@ -1038,6 +1038,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));

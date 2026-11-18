@@ -73,6 +73,40 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		require.Equal(t, stagingApp.Path, imports[0].SourceSecretPath)
 	})
 
+	t.Run("should report each import's own secrets when a folder imports a source both directly and replicated", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `This is the recreate step an admin follows for a direct import. The two imports
+			share a source, so the dashboard can only tell their secrets apart by import ID.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
+		directImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		createPolicy(t, proj, "prod", "/", tn.Admin, true)
+		replicatedImport := secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.Replicated())
+		waitForOpenRequest(t, proj)
+
+		// Action
+		res, err := tn.Admin.API.GetSecretImportsWithResponse(t.Context(),
+			&api.GetSecretImportsParams{ProjectId: proj.ID, Environment: "prod", Path: new("/")})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "listing imported secrets returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		keysByImport := map[string][]string{}
+		for _, group := range res.JSON200.Secrets {
+			require.NotNil(t, group.ImportId)
+			keys := []string{}
+			for _, secret := range group.Secrets {
+				keys = append(keys, secret.SecretKey)
+			}
+			keysByImport[*group.ImportId] = keys
+		}
+		require.Equal(t, map[string][]string{directImport: {"KEY"}, replicatedImport: {}}, keysByImport)
+	})
+
 	t.Run("should refuse to point a direct import at another source in a governed folder", func(t *testing.T) {
 		t.Parallel()
 

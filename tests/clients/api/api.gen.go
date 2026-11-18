@@ -268464,6 +268464,7 @@ type GetSecretImportsResponse struct {
 				Slug string `json:"slug"`
 			} `json:"environmentInfo"`
 			FolderId   *string `json:"folderId,omitempty"`
+			ImportId   *string `json:"importId,omitempty"`
 			SecretPath string  `json:"secretPath"`
 			Secrets    []struct {
 				UnderscoreId string `json:"_id"`
@@ -268549,6 +268550,7 @@ func (r GetSecretImportsResponse) GetJSON200() *struct {
 			Slug string `json:"slug"`
 		} `json:"environmentInfo"`
 		FolderId   *string `json:"folderId,omitempty"`
+		ImportId   *string `json:"importId,omitempty"`
 		SecretPath string  `json:"secretPath"`
 		Secrets    []struct {
 			UnderscoreId string `json:"_id"`
@@ -410348,6 +410350,7 @@ func ParseGetSecretImportsResponse(rsp *http.Response) (*GetSecretImportsRespons
 					Slug string `json:"slug"`
 				} `json:"environmentInfo"`
 				FolderId   *string `json:"folderId,omitempty"`
+				ImportId   *string `json:"importId,omitempty"`
 				SecretPath string  `json:"secretPath"`
 				Secrets    []struct {
 					UnderscoreId string `json:"_id"`

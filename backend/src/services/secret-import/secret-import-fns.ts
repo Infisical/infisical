@@ -42,6 +42,7 @@ type TSecretImportSecretsV2 = {
     name: string;
   };
   id: string;
+  importId: string;
   folderId: string | undefined;
   importFolderId: string;
   crossProjectImport: boolean;
@@ -82,7 +83,7 @@ export const processReservedImports = async <
 >(
   imports: T[],
   secretImportDAL: Pick<TSecretImportDALFactory, "findByIds">
-): Promise<T[]> => {
+): Promise<(T & { replicationImportId?: string })[]> => {
   const reservedImportIds: string[] = [];
 
   imports.forEach((secretImport) => {
@@ -124,7 +125,8 @@ export const processReservedImports = async <
             return {
               ...secretImport,
               importPath: referencedDetails.importPath,
-              importEnv: referencedDetails.importEnv
+              importEnv: referencedDetails.importEnv,
+              replicationImportId: referencedImportId
             };
           }
         }
@@ -441,7 +443,7 @@ export const fnSecretsV2FromImports = async ({
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
     const isFirstIteration = !processedImports.length;
-    processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved }, i) => {
+    processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved, replicationImportId }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
 
       const isCrossProject =
@@ -511,6 +513,9 @@ export const fnSecretsV2FromImports = async ({
           environmentInfo: importEnv,
           folderId: importedFolders?.[i]?.id,
           id,
+          // The import the user sees: a replication import's values come through its reserved row, which reports
+          // the same source environment and path as a regular import of that source.
+          importId: replicationImportId ?? id,
           importFolderId: folderId,
           secrets: secretsWithDuplicate,
           crossProjectImport: isCrossProject
