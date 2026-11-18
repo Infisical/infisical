@@ -240,6 +240,15 @@ export const approvalPolicyServiceFactory = ({
         (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
     );
 
+  const $assertNotScopeNarrowed = () => {
+    if (isScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message:
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+      });
+    }
+  };
+
   // Approve, reject and the request page's canReview all ask whether this actor may decide the step in progress, so
   // they share one check. Callers read group memberships from the primary, as the decision itself must.
   const $assertCanReviewStep = async ({
@@ -257,6 +266,7 @@ export const approvalPolicyServiceFactory = ({
     decision: ApprovalRequestApprovalDecision;
     tx?: Knex;
   }) => {
+    $assertNotScopeNarrowed();
     if (!$namesApprover(step.approvers, actor.id, userGroupIds)) {
       throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
     }
@@ -1661,15 +1671,6 @@ export const approvalPolicyServiceFactory = ({
       ? { approversCanNoLongerApprove: await isPendingRequestUndecidable(request.id, primaryDb) }
       : {};
     return { request: { ...decorated, canReview, ...approversCanNoLongerApprove } };
-  };
-
-  const $assertNotScopeNarrowed = () => {
-    if (isScopeNarrowedRequest()) {
-      throw new ForbiddenRequestError({
-        message:
-          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
-      });
-    }
   };
 
   const approveRequest = async (
