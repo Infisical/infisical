@@ -2,8 +2,8 @@ import type { FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { AuthMethod, AuthMode, AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
-import { AuthMethod, AuthMode, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { extractAuth } from "./inject-identity";
 

@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TApprovalRequestApprovals, TApprovalRequests, TSecretChangeRequests } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
@@ -11,7 +12,6 @@ import {
   ApprovalRequestApprovalDecision,
   ApprovalRequestStatus
 } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";

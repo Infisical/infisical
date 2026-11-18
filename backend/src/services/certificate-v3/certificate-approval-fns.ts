@@ -13,9 +13,9 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";

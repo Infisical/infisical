@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { ApiDocsTags, SecretValidationRules } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { DynamicSecretsValidationRuleSchema } from "@app/services/secret-validation-rule/dynamic-secrets";
 import { SecretRotationsValidationRuleSchema } from "@app/services/secret-validation-rule/secret-rotations";
 import { StaticSecretsValidationRuleSchema } from "@app/services/secret-validation-rule/static-secrets";

@@ -10,6 +10,7 @@ import { seedData1 } from "@app/db/seed-data";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory } from "@app/keystore/keystore";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
 import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
@@ -18,7 +19,6 @@ import { initLogger } from "@app/lib/logger";
 import { queueServiceFactory } from "@app/queue";
 import { main } from "@app/server/app";
 import { bootstrapCheck } from "@app/server/boot-strap-check";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { mockSmtpServer } from "./mocks/smtp";
 

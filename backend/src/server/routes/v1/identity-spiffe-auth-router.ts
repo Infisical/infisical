@@ -3,11 +3,11 @@ import { z } from "zod";
 import { IdentitySpiffeAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SPIFFE_AUTH } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { SpiffeTrustBundleProfile } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-types";
 import {
   validateSpiffeAllowedAudiencesField,

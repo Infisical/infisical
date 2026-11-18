@@ -18,10 +18,10 @@ import {
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";

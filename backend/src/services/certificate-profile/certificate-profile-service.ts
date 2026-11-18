@@ -18,13 +18,13 @@ import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";

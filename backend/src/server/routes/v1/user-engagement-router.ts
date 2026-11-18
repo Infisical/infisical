@@ -1,8 +1,8 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { userEngagementLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserEngagementRouter = async (server: FastifyZodProvider) => {
   server.route({

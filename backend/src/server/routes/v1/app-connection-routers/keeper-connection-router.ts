@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -9,7 +10,6 @@ import {
   SanitizedKeeperConnectionSchema,
   UpdateKeeperConnectionSchema
 } from "@app/services/app-connection/keeper";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 

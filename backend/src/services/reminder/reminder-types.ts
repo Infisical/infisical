@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+
 import { TAlertChannelInput } from "../alert/alert-channel-service-types";
 import { TPreparedAlert } from "../alert/alert-service";
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
   id: string;

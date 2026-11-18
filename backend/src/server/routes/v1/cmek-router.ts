@@ -4,6 +4,7 @@ import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -14,7 +15,6 @@ import { publicJwksLimit, readLimit, writeLimit } from "@app/server/config/rateL
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { canPublishCmekPublicKey, getCmekJwkKid, getCmekJwksUrl } from "@app/services/cmek/cmek-fns";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { UserNotificationsSchema } from "@app/db/schemas/user-notifications";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerNotificationRouter = async (server: FastifyZodProvider) => {

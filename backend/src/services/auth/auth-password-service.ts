@@ -1,4 +1,5 @@
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -12,7 +13,6 @@ import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { ResetPasswordV2Type, TResetPasswordV2DTO, TSetupPasswordViaBackupKeyDTO } from "./auth-password-type";
-import { ActorType, AuthMethod } from "./auth-type";
 
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;

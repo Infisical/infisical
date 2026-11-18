@@ -1,5 +1,5 @@
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
 import { TRevokedProjectAccess } from "@app/services/membership/project-access-revoke-service";
 

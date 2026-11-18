@@ -9,6 +9,7 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -16,7 +17,6 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

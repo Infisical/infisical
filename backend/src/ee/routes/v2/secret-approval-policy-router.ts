@@ -2,13 +2,13 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

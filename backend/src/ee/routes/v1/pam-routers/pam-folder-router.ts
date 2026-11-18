@@ -5,11 +5,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamFolderCallerAccess, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { FolderMemberResultSchema } from "./pam-membership-router";

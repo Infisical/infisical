@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaStepUpResource, TMfaStepUpResource } from "@app/services/mfa-session/mfa-session-types";
 
 export { MfaStepUpResource };

@@ -1,7 +1,7 @@
 import { TSamlConfigs } from "@app/db/schemas";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { TOrgPermission } from "@app/lib/types";
 import { TProviderAuthResult } from "@app/services/auth/auth-login-type";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
 export enum SamlProviders {

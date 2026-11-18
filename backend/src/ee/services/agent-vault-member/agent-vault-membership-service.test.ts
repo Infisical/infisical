@@ -12,7 +12,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
 import { agentVaultMembershipServiceFactory } from "./agent-vault-membership-service";

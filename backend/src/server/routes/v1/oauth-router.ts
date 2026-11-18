@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { OauthClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
 import {
   ACCEPTED_SUBJECT_TOKEN_TYPES,

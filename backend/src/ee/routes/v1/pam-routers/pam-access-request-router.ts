@@ -3,6 +3,7 @@ import z from "zod";
 import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -18,7 +19,6 @@ import {
   AutoApprovalOutcomeSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 // The evidence holds data fetched from other services, so only its outcome is returned

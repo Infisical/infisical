@@ -5,12 +5,12 @@ import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agen
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";

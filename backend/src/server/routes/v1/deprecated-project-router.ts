@@ -11,11 +11,11 @@ import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-micr
 import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";

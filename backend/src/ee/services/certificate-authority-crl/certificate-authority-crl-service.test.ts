@@ -10,8 +10,8 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { buildLocalCaSigner } from "@app/services/certificate-authority/ca-signer";
 import { CaCrlRegenerationTrigger } from "@app/services/certificate-authority/certificate-authority-enums";
 import { rebuildCaCrl } from "@app/services/certificate-authority/certificate-authority-fns";

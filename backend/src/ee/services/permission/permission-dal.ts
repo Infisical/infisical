@@ -12,10 +12,10 @@ import {
   TMemberships,
   TRoles
 } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
-import { ActorType } from "@app/services/auth/auth-type";
 
 interface TPermissionDataReturn extends TMemberships {
   orgAuthEnforced?: boolean | null;

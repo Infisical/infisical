@@ -21,6 +21,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -41,7 +42,6 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR

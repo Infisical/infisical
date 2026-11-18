@@ -11,6 +11,7 @@ import {
   GroupProjectsOrderBy
 } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -18,7 +19,6 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const GroupIdentityResponseSchema = IdentitiesSchema.pick({

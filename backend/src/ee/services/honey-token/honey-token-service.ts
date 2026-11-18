@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -18,7 +19,6 @@ import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-sco
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";

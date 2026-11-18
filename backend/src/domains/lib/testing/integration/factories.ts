@@ -15,7 +15,7 @@ import {
   TUsers,
   TUsersInsert
 } from "@app/db/schemas";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 
 import { randomId } from "./run";
 

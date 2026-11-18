@@ -2,12 +2,12 @@ import { z } from "zod";
 
 import { IdentitiesSchema } from "@app/db/schemas";
 import { ApiDocsTags, IDENTITIES_V2 } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OrgIdentitySearchOrderBy, SearchIdentitiesScope } from "@app/services/identity-v2/identity-types";
 
 const searchResourceZodValidate = zodValidateCharacters([

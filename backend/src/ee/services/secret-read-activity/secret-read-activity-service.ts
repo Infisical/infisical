@@ -15,13 +15,13 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";

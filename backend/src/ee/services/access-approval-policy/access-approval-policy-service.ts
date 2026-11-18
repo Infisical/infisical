@@ -4,11 +4,11 @@ import { Knex } from "knex";
 import { ActionProjectType } from "@app/db/schemas";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
-import { ActorType } from "@app/services/auth/auth-type";
 import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 

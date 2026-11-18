@@ -17,6 +17,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +26,6 @@ import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";

@@ -15,8 +15,8 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 
 // Org-less sessions are allowed because enrolling a factor at login is challenged before

@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { ActorAuthMethod, ActorType, MfaMethod } from "@app/lib/auth/actor-types";
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
+import { SsoMfaTrust } from "../auth/auth-type";
 import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 import { OrgWithSubOrgsSchema } from "./org-schema";
 

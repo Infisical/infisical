@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { startsWithVowel } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,7 +13,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TAppConnectionCreateSchema<I extends TAppConnectionInput> = z.ZodType<{

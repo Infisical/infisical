@@ -6,7 +6,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";

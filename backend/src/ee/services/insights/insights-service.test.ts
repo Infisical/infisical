@@ -9,8 +9,8 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { insightsServiceFactory, PROJECT_WARNINGS_CHUNK_SIZE, TInsightsServiceFactoryDep } from "./insights-service";
 import { TSecretsProjectWarning } from "./insights-types";

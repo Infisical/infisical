@@ -17,6 +17,7 @@ import { z } from "zod";
 import { extractSamlAuthnContextClassRefs } from "@app/ee/services/saml-config/saml-assertion-fns";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -32,7 +33,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode, ProviderAuthResult, TProviderAuthCallback } from "@app/services/auth/auth-type";
+import { ProviderAuthResult, TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

@@ -6,7 +6,7 @@ import {
   TMembershipsInsert
 } from "@app/db/schemas";
 import { randomId, setupIntegration } from "@app/domains/lib/testing/integration";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { permissionDALFactory } from "./permission-dal";
 
