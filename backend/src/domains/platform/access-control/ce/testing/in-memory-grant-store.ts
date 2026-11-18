@@ -106,7 +106,7 @@ export class InMemoryGrantStore implements TGrantStore {
       }))
     );
     const privileges = this.actorPrivileges(actor)
-      .filter((privilege) => privilege.projectId === scope.projectId)
+      .filter((privilege) => privilege.projectId === scope.projectId && !privilege.folderId)
       .map((privilege) => ({ id: privilege.id, updatedAt: privilege.updatedAt, pExp: hasEnded(privilege, now) }));
     const attributes = this.actorAttributes(actor, scope.orgId).map(({ id, updatedAt }) => ({ id, updatedAt }));
     return generateCacheKeyFromData({ memberships, privileges, attributes });

@@ -37,7 +37,9 @@ export class OrgPermission extends Permission<OrgPermissionSet> {
   private constructor(
     rules: TRuleSource,
     // What it was built from, for code that still reads the membership rows.
-    readonly grants: ActorGrants
+    readonly grants: ActorGrants,
+    // A delegated OAuth token holds no roles of its own: it only borrows what its scopes allow.
+    private readonly isDelegated: boolean
   ) {
     super(Permission.abilityOf<OrgPermissionSet>(rules));
   }
@@ -47,7 +49,7 @@ export class OrgPermission extends Permission<OrgPermissionSet> {
   static fromGrants({ grants, principal }: { grants: ActorGrants; principal?: TPrincipal }): OrgPermission {
     const rules = RuleSet.merge(grants.active().map((grant) => OrgRoles.rulesFor(grant)));
     const scopes = principal?.type === ActorType.USER ? principal.oauth?.scopes : undefined;
-    return new OrgPermission(scopes ? rules.narrowTo(oauthAllowlist(scopes)) : rules, grants);
+    return new OrgPermission(scopes ? rules.narrowTo(oauthAllowlist(scopes)) : rules, grants, Boolean(scopes));
   }
 
   // One role or privilege on its own, with `{{identity.*}}` filled from a stored identity: for privilege boundaries
@@ -65,12 +67,12 @@ export class OrgPermission extends Permission<OrgPermissionSet> {
 
   // An active role with this slug: a custom role's own slug, or a built-in slug.
   hasRole({ slug }: { slug: string }): boolean {
-    return this.grants.hasActiveRole(slug);
+    return !this.isDelegated && this.grants.hasActiveRole(slug);
   }
 
   // An active built-in role with this slug. A custom role slugged the same never matches.
   hasBuiltInRole({ slug }: { slug: string }): boolean {
-    return this.grants.hasActiveBuiltInRole(slug);
+    return !this.isDelegated && this.grants.hasActiveBuiltInRole(slug);
   }
 
   canBypassSso(): boolean {
