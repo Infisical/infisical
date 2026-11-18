@@ -357,9 +357,9 @@ Two grants issue them: the authorization code flow (consented `scopes`) and the 
 product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
 administration route (below). And the handler must actually **check** a CASL ability, because that check
 is where the granted scopes get intersected in: building an ability and throwing it away
-(`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
-nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
-passing `requireOrg: false` accepts `AuthMode.OAUTH`.
+(`getOrgPermission` used as a membership gate) narrows nothing. `hasRole(...)` returns false for a
+scope-narrowed token, so a route that authorizes on a role alone denies every such token; it does not
+narrow a fully-delegated one. Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`.
 
 **Administration is read-only for a delegated token.** A delegated token can look at anything the
 authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at
@@ -898,7 +898,12 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 [`src/ee/services/certificate-authority-ocsp/AGENTS.md`](src/ee/services/certificate-authority-ocsp/AGENTS.md).**
 One rule binds code elsewhere: **any new path that revokes a certificate must bump
 `internal_certificate_authorities.ocspGeneration` in the same transaction as the status write** (as
-`revokeCert` does), or cached OCSP responses keep answering `good`.
+`revokeCert` does), or cached OCSP responses keep answering `good`. A job that revokes on a signal from an
+outside system, where the CA hasn't revoked yet, calls `certificateService.revokeCertAsPlatform` (the
+upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
+audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
+`revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
+DigiCert revocation sync) keeps writing `status` directly.
 
 ### Internal CA key sources
 

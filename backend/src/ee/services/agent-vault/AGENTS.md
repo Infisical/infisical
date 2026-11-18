@@ -95,6 +95,8 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **Only brokering is gated, at the free limit on Infisical Cloud.** Which proxy calls check it, and which never do,
   is in `src/domains/agent-vault/agent-vault/AGENTS.md`. This is the one written exception to the license rule in
   `backend/CODE_QUALITY.md`.
+- **Free-usage emails and events** (75% and the limit) come only from `agentVaultFreeUsageNoticeService`, fed by
+  the usage route; see the domain's AGENTS.md.
 - **The refusal is a `RuleViolationError` named `AgentVaultFreeLimitReached`.** The CLI keys on that name, so
   keep it.
 - **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)
