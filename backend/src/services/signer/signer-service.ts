@@ -15,6 +15,8 @@ import {
   TPkiSignerCertificateRevocations,
   TPkiSigners
 } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -95,13 +97,11 @@ import {
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateServiceFactory } from "../certificate/certificate-service";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { withSignerCertificateLock } from "./signer-certificate-lock";
@@ -276,8 +276,9 @@ type TSignerServiceFactoryDep = {
     | "fetchIssuedCodeSigningCertificate"
     | "prepareCodeSigningCertificateImport"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
@@ -464,7 +465,8 @@ export const signerServiceFactory = ({
   internalCertificateAuthorityService,
   digicertFns,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
@@ -485,19 +487,15 @@ export const signerServiceFactory = ({
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateDAL,
-    hsmConnectorService,
-    projectDAL,
-    kmsService
+    hsmConnectorService
   };
   const softwareCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
-    kmsService
+    kmsDataKeyService,
+    kmsKeyService
   };
 
   const $loadSignerResourcePermission = async (
@@ -2182,7 +2180,7 @@ export const signerServiceFactory = ({
     try {
       requestStatus = await digicertFns.getRevocationRequestStatus({ caId: ca.id, requestId });
     } catch (err) {
-      if (!(err instanceof BadRequestError)) throw err;
+      if (!(err instanceof BadRequestError || err instanceof RuleViolationError)) throw err;
       await $stopTrackingRevocation(revocation, `DigiCert refused the status check (${err.message})`);
       return;
     }
@@ -2245,7 +2243,7 @@ export const signerServiceFactory = ({
       await $settleRevocation(revocation, {
         status: SignerRevocationStatus.Failed,
         failureReason:
-          err instanceof BadRequestError
+          err instanceof BadRequestError || err instanceof RuleViolationError
             ? `DigiCert refused the status check for revocation request #${requestId} (${err.message.replace(/\.$/, "")}). Fix the DigiCert connection or certificate authority, then revoke the certificate again.`
             : UNFINISHED_REVOKE_REASON
       });
@@ -2421,7 +2419,11 @@ export const signerServiceFactory = ({
         await $settleRevocation(revocation, { status: SignerRevocationStatus.Completed });
         return $buildRevokeResponse(signer, certificate);
       }
-      const isRefusal = err instanceof BadRequestError || err instanceof NotFoundError;
+      const isRefusal =
+        err instanceof BadRequestError ||
+        err instanceof NotFoundError ||
+        err instanceof RuleViolationError ||
+        err instanceof EntityNotFoundError;
       const refusalMessage = (err as Error).message;
       if (isRefusal && isRetryOfUnknownOutcome) {
         await $settleRevocation(revocation, {
@@ -2484,12 +2486,8 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: signer.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(signer.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
     const cert = new x509.X509Certificate(decryptedCert);
     const certificatePem = cert.toString("pem");
@@ -2713,8 +2711,8 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       certPrivateKey = Buffer.from(creds.certPrivateKey);
       const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
@@ -2920,8 +2918,8 @@ export const signerServiceFactory = ({
       if (!certBody?.encryptedCertificate) {
         throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
       }
-      const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+      const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
       const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
       const cert = new x509.X509Certificate(decryptedCert);
       publicKeyObject = crypto.nativeCrypto.createPublicKey({
@@ -2934,8 +2932,8 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       if (!certPublicKey) {

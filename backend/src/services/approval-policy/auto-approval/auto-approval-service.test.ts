@@ -75,7 +75,7 @@ const setup = (runJudge: (args: { deadline?: number }) => Promise<TAiJudgeResult
     } as never,
     appConnectionService: {} as never,
     aiService: aiService as never,
-    kmsService: {} as never,
+    kmsDataKeyService: {} as never,
     gatewayV2Service: {} as never,
     gatewayPoolService: {} as never
   });

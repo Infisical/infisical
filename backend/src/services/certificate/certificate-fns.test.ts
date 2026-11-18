@@ -2,6 +2,7 @@ import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { daysToMillisecond } from "@app/lib/dates";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -16,7 +17,8 @@ import {
   normalizeThumbprint,
   parseCertificateBody,
   parsePemCertificateChain,
-  resolveCertificateStatus
+  resolveCertificateStatus,
+  resolveCurrentCertificateStatus
 } from "./certificate-fns";
 import { CertExtendedKeyUsage, CertKeyUsage, CertStatus } from "./certificate-types";
 
@@ -295,6 +297,38 @@ describe("resolveCertificateStatus", () => {
       resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future, renewedByCertificateId: "next" })
     ).toBe(CertStatus.RENEWED);
     expect(resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future })).toBe(CertStatus.ACTIVE);
+  });
+});
+
+describe("resolveCurrentCertificateStatus", () => {
+  const future = new Date(Date.now() + daysToMillisecond(30));
+  const past = new Date(Date.now() - daysToMillisecond(1));
+
+  it("returns deleted over every other state", () => {
+    const deletedAt = new Date();
+    expect(resolveCurrentCertificateStatus({ status: CertStatus.REVOKED, notAfter: past, deletedAt })).toBe(
+      CertStatus.DELETED
+    );
+    expect(resolveCurrentCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future, deletedAt })).toBe(
+      CertStatus.DELETED
+    );
+  });
+
+  it("falls back to the validity status when the certificate is not deleted", () => {
+    expect(resolveCurrentCertificateStatus({ status: CertStatus.ACTIVE, notAfter: past, deletedAt: null })).toBe(
+      CertStatus.EXPIRED
+    );
+    expect(
+      resolveCurrentCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future, renewedByCertificateId: "next" })
+    ).toBe(CertStatus.RENEWED);
+    expect(resolveCurrentCertificateStatus({ status: CertStatus.REVOKED, notAfter: past })).toBe(CertStatus.REVOKED);
+  });
+
+  it("evaluates expiry at the given time", () => {
+    const before = new Date(past.getTime() - daysToMillisecond(1));
+    expect(resolveCurrentCertificateStatus({ status: CertStatus.ACTIVE, notAfter: past }, before)).toBe(
+      CertStatus.ACTIVE
+    );
   });
 });
 
