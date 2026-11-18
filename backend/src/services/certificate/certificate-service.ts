@@ -811,6 +811,16 @@ export const certificateServiceFactory = ({
     await $validateRevocationPqcLicense(ca);
   };
 
+  // A signer's certificate is revoked through the signer, which also cancels its pending reissue and issuance jobs.
+  // A signer can take over a certificate while a revocation request for it is pending, so the approved run checks too.
+  const $assertNotUsedBySigner = async (cert: TRevocableCertificate) => {
+    if (await signerDAL.findOne({ certificateId: cert.id })) {
+      throw new BadRequestError({
+        message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
+      });
+    }
+  };
+
   const $rebuildCrlAfterRevocation = async (ca: TRevocationCa) => {
     if (ca.externalCa?.id || getInternalCaExpiredAt(ca.internalCa?.notAfter)) return undefined;
 
@@ -1054,12 +1064,7 @@ export const certificateServiceFactory = ({
       resourceMetadataDAL
     });
 
-    const signerUsingCertificate = await signerDAL.findOne({ certificateId: cert.id });
-    if (signerUsingCertificate) {
-      throw new BadRequestError({
-        message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
-      });
-    }
+    await $assertNotUsedBySigner(cert);
 
     const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
     if (!approval && !canRevokeDirectly) {
@@ -1105,7 +1110,9 @@ export const certificateServiceFactory = ({
       } = await certificateDAL.transaction(async (tx) => {
         // Locking the certificate serializes revocation requests for it, so two concurrent requests can't
         // both pass the pending check below.
-        await certificateDAL.findByIdForUpdate(cert.id, tx);
+        const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
+        // Another path (an approved request, a sync, a signer) can revoke the certificate after it was read above.
+        if (lockedCert?.status === CertStatus.REVOKED) throw $alreadyRevokedError(cert);
 
         const pending = await certificateDAL.findPendingRevocationApprovalRequest(
           { certificateId: cert.id, projectId: ca.projectId },
@@ -1369,6 +1376,7 @@ export const certificateServiceFactory = ({
 
       const ca = await $loadRevocationCa(cert);
       await $assertCertificateRevocable(cert, ca);
+      await $assertNotUsedBySigner(cert);
       let revokedAtCa: boolean;
       try {
         revokedAtCa = await $revokeAtUpstreamCa({ cert, ca, revocationReason });
