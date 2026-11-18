@@ -13,6 +13,7 @@ import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
+import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -23,9 +24,10 @@ import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent"
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
+import { AgentVaultDocs } from "../resources/agent-vault-utils";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
 import { ServiceSheet } from "../resources/service-sheet";
 import { ServicesTable } from "../resources/services-table";
@@ -44,7 +46,8 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const navigate = useNavigate();
   const { requiresSetup } = useSearch({ from: route });
   const onlyRequiringSetup = Boolean(requiresSetup);
-  const { isAdmin, isPending: isRolePending } = useIsAgentVaultAdmin(projectId);
+  const { permission, isPending: isPermissionPending } = useProjectPermission(projectId);
+  const canManageServices = canManageAgentVaultServices(permission);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [sort, setSort] = useState(DEFAULT_SORT);
@@ -54,7 +57,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   );
   const [sheet, setSheet] = useState<{ service?: TAgentVaultService }>();
   const [settingUp, setSettingUp] = useState<TAgentVaultService>();
-  useAgentVaultCreateIntent(() => setSheet({}), isAdmin);
+  useAgentVaultCreateIntent(() => setSheet({}), canManageServices);
 
   const setRequiringSetup = (next: boolean) => {
     navigate({
@@ -115,7 +118,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
         }
       />
     );
-  else if (isAdmin)
+  else if (canManageServices)
     empty = (
       <EmptyState
         size="sm"
@@ -139,7 +142,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           title="Services"
           badges={<DocumentationLink href={AgentVaultDocs.services} subject="services" />}
           actions={
-            isAdmin ? (
+            canManageServices ? (
               <Button variant="accent" icon="plus" onClick={() => setSheet({})}>
                 Add service
               </Button>
@@ -190,8 +193,8 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           orgId={orgId}
           projectId={projectId}
           services={services}
-          canManage={isAdmin}
-          loading={isPending || isRolePending}
+          canManage={canManageServices}
+          loading={isPending || isPermissionPending}
           sort={sort}
           onSortChange={(next) => {
             setSort(next.columnId in ORDER_BY ? next : DEFAULT_SORT);
@@ -221,7 +224,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           onSetUp={setSettingUp}
         />
       </Stack>
-      {isAdmin && sheet && (
+      {canManageServices && sheet && (
         <ServiceSheet
           key={sheet.service?.id ?? "new"}
           projectId={projectId}

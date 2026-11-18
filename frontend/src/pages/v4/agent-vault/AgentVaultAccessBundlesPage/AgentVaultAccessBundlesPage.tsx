@@ -23,6 +23,10 @@ import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
@@ -32,15 +36,11 @@ import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent"
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AccessBundleDialog, DeleteAccessBundleDialog } from "../resources/access-bundle-dialogs";
-import {
-  AgentVaultDocs,
-  nameList,
-  plural,
-  useIsAgentVaultAdmin
-} from "../resources/agent-vault-utils";
+import { AgentVaultDocs, nameList, plural } from "../resources/agent-vault-utils";
 import { ManageAccessSheet } from "../resources/manage-access-sheet";
 import { DateCell, ServiceIconStack } from "../resources/shared";
 
@@ -62,7 +62,15 @@ const DEFAULT_SORT = {
 const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const resources = useV4Adapter("agentVaultResources");
   const navigate = useNavigate();
-  const { isAdmin, isPending: isRolePending } = useIsAgentVaultAdmin(projectId);
+  const { permission, isPending: isPermissionPending } = useProjectPermission(projectId);
+  const canBundles = (action: ProjectPermissionAgentVaultAccessBundleActions) =>
+    permission.can(action, ProjectPermissionSub.AgentVaultAccessBundles);
+  const canCreateBundles = canBundles(ProjectPermissionAgentVaultAccessBundleActions.Create);
+  const canEditBundles = canBundles(ProjectPermissionAgentVaultAccessBundleActions.Edit);
+  const canDeleteBundles = canBundles(ProjectPermissionAgentVaultAccessBundleActions.Delete);
+  const canManageBundleMembers = canBundles(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers
+  );
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [sort, setSort] = useState<{
@@ -77,7 +85,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
   const [editing, setEditing] = useState<TAgentVaultAccessBundleListItem>();
   const [deleting, setDeleting] = useState<TAgentVaultAccessBundleListItem>();
   const [managing, setManaging] = useState<TAgentVaultAccessBundleListItem>();
-  useAgentVaultCreateIntent(() => setCreating(true), isAdmin);
+  useAgentVaultCreateIntent(() => setCreating(true), canCreateBundles);
 
   const { data, isPending } = resources.useAccessBundles(projectId, {
     search: debouncedSearch.trim() || undefined,
@@ -150,7 +158,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
       header: "Members",
       width: 128,
       render: (bundle) =>
-        isAdmin ? (
+        canManageBundleMembers ? (
           <Button
             variant="link"
             underline="always"
@@ -190,31 +198,41 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
     }
   ];
 
-  const rowActions: DataTableRowActions<TAgentVaultAccessBundleListItem> | undefined = isAdmin
-    ? {
-        menuLabel: "Access bundle options",
-        inline: [
-          {
-            label: "Edit access bundle",
-            icon: PencilIcon,
-            onSelect: setEditing
-          }
-        ],
-        renderMenu: (bundle) => (
-          <>
-            <DropdownMenuItem onSelect={() => setManaging(bundle)}>
-              <Icon name="users" />
-              Manage access
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(bundle)}>
-              <Icon name="trash" />
-              Delete access bundle
-            </DropdownMenuItem>
-          </>
-        )
-      }
-    : undefined;
+  const hasMenu = canManageBundleMembers || canDeleteBundles;
+  const rowActions: DataTableRowActions<TAgentVaultAccessBundleListItem> | undefined =
+    canEditBundles || hasMenu
+      ? {
+          menuLabel: "Access bundle options",
+          inline: canEditBundles
+            ? [
+                {
+                  label: "Edit access bundle",
+                  icon: PencilIcon,
+                  onSelect: setEditing
+                }
+              ]
+            : undefined,
+          renderMenu: hasMenu
+            ? (bundle) => (
+                <>
+                  {canManageBundleMembers && (
+                    <DropdownMenuItem onSelect={() => setManaging(bundle)}>
+                      <Icon name="users" />
+                      Manage access
+                    </DropdownMenuItem>
+                  )}
+                  {canManageBundleMembers && canDeleteBundles && <DropdownMenuSeparator />}
+                  {canDeleteBundles && (
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(bundle)}>
+                      <Icon name="trash" />
+                      Delete access bundle
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )
+            : undefined
+        }
+      : undefined;
 
   let empty = (
     <EmptyState
@@ -239,7 +257,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
         }
       />
     );
-  else if (isAdmin)
+  else if (canCreateBundles)
     empty = (
       <EmptyState
         size="sm"
@@ -265,7 +283,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
             <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
           }
           actions={
-            isAdmin ? (
+            canCreateBundles ? (
               <Button variant="accent" icon="plus" onClick={() => setCreating(true)}>
                 Create access bundle
               </Button>
@@ -315,7 +333,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
           label="Access bundles"
           rows={bundles}
           columns={columns}
-          loading={isPending || isRolePending}
+          loading={isPending || isPermissionPending}
           getRowId={(bundle) => bundle.id}
           rowLabel={(bundle) => bundle.name}
           rowActions={rowActions}

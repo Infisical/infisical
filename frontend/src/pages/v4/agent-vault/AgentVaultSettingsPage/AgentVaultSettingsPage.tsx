@@ -1,21 +1,28 @@
 import { useSearch } from "@tanstack/react-router";
 
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+
+import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
-import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
 import { ProjectGeneralSettings } from "../../project/SettingsPage/general";
 import { ProjectSettingsLayout } from "../../project/SettingsPage/layout";
 import { SessionLogsTab } from "./session-logs/session-logs";
 
-const AgentVaultGeneral = () => <ProjectGeneralSettings adminOnlyDanger />;
+const AgentVaultGeneral = () => <ProjectGeneralSettings dangerNeedsDeletePermission />;
 
 export const AgentVaultSettingsPage = () => {
   const { selectedTab } = useSearch({
     from: "/v4/organizations/$orgId/projects/agent-vault/$projectId/settings"
   });
   const { orgId, projectId } = useProjectScope();
-  const isAdmin = Boolean(
-    useV4Adapter("projectSettings").useMembershipFacts(projectId).data?.isAdmin
+  const { permission } = useProjectPermission(projectId);
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
   );
   return (
     <ProjectSettingsLayout
@@ -25,7 +32,7 @@ export const AgentVaultSettingsPage = () => {
           key: "tab-session-logs",
           name: "Session logs",
           description: "Record your agents' requests and choose where the logs are stored.",
-          hidden: !isAdmin,
+          hidden: !canReadSessionLogSettings,
           Body: SessionLogsTab
         }
       ]}

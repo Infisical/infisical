@@ -45,6 +45,10 @@ import { BanIcon, PencilIcon, RefreshCwIcon } from "lucide-react";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import { downloadTxtFile } from "@app/helpers/download";
@@ -60,10 +64,11 @@ import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 import { slugSchema } from "@app/lib/schemas";
 
 import { CopyButton } from "../../access/org/detail-parts";
+import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
+import { AgentVaultDocs } from "../resources/agent-vault-utils";
 import { DateCell, Dash } from "../resources/shared";
 
 import css from "../resources/resources.module.css";
@@ -472,9 +477,52 @@ const CONFIRM_COPY = {
   }
 };
 
+const ProxyMenu = ({
+  canIssueTokens,
+  canRevoke,
+  canDelete,
+  onConfirm
+}: {
+  canIssueTokens: boolean;
+  canRevoke: boolean;
+  canDelete: boolean;
+  onConfirm: (kind: TConfirm["kind"]) => void;
+}) => (
+  <>
+    {canIssueTokens && (
+      <DropdownMenuItem onSelect={() => onConfirm("rotate")}>
+        <Icon icon={RefreshCwIcon} />
+        Rotate proxy token
+      </DropdownMenuItem>
+    )}
+    {canIssueTokens && (canRevoke || canDelete) && <DropdownMenuSeparator />}
+    {canRevoke && (
+      <DropdownMenuItem variant="destructive" onSelect={() => onConfirm("revoke")}>
+        <Icon icon={BanIcon} />
+        Revoke access
+      </DropdownMenuItem>
+    )}
+    {canDelete && (
+      <DropdownMenuItem variant="destructive" onSelect={() => onConfirm("delete")}>
+        <Icon name="trash" />
+        Delete proxy
+      </DropdownMenuItem>
+    )}
+  </>
+);
+
 const Proxies = ({ projectId }: { projectId: string }) => {
   const resources = useV4Adapter("agentVaultResources");
-  const { isAdmin, isPending: isRolePending } = useIsAgentVaultAdmin(projectId);
+  const { permission, isPending: isPermissionPending } = useProjectPermission(projectId);
+  const canProxy = (action: ProjectPermissionAgentVaultProxyActions) =>
+    permission.can(action, ProjectPermissionSub.AgentVaultProxies);
+  const canCreateProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Create);
+  // The list carries each proxy's settings only for those who can change them, as the server decides.
+  const showsSettings = canProxy(ProjectPermissionAgentVaultProxyActions.Edit);
+  const canIssueTokens = canProxy(ProjectPermissionAgentVaultProxyActions.IssueToken);
+  const canRevokeProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Revoke);
+  const canDeleteProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Delete);
+  const hasMenu = canIssueTokens || canRevokeProxies || canDeleteProxies;
   const [sort, setSort] = useState<{
     columnId: string;
     direction: "asc" | "desc";
@@ -489,7 +537,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
   const [dialog, setDialog] = useState<{ proxy?: TAgentVaultProxy }>();
   const [confirm, setConfirm] = useState<TConfirm>();
   const [proxyToken, setProxyToken] = useState<TAgentVaultProxyToken>();
-  useAgentVaultCreateIntent(() => setDialog({}), isAdmin);
+  useAgentVaultCreateIntent(() => setDialog({}), canCreateProxies);
 
   const { data, isPending } = resources.useProxies(projectId, {
     orderBy: sort.columnId === "name" ? "name" : "createdAt",
@@ -542,7 +590,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
       width: 136,
       render: (proxy) => <Status proxy={proxy} />
     },
-    ...(isAdmin
+    ...(showsSettings
       ? [
           {
             id: "trafficPolicy",
@@ -587,7 +635,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
           <Dash />
         )
     },
-    ...(isAdmin
+    ...(showsSettings
       ? [
           {
             id: "createdAt",
@@ -601,41 +649,31 @@ const Proxies = ({ projectId }: { projectId: string }) => {
       : [])
   ];
 
-  const rowActions: DataTableRowActions<TAgentVaultProxy> | undefined = isAdmin
-    ? {
-        menuLabel: "Proxy options",
-        inline: [
-          {
-            label: "Edit settings",
-            icon: PencilIcon,
-            onSelect: (proxy) => setDialog({ proxy })
-          }
-        ],
-        renderMenu: (proxy) => (
-          <>
-            <DropdownMenuItem onSelect={() => setConfirm({ kind: "rotate", proxy })}>
-              <Icon icon={RefreshCwIcon} />
-              Rotate proxy token
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setConfirm({ kind: "revoke", proxy })}
-            >
-              <Icon icon={BanIcon} />
-              Revoke access
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setConfirm({ kind: "delete", proxy })}
-            >
-              <Icon name="trash" />
-              Delete proxy
-            </DropdownMenuItem>
-          </>
-        )
-      }
-    : undefined;
+  const rowActions: DataTableRowActions<TAgentVaultProxy> | undefined =
+    showsSettings || hasMenu
+      ? {
+          menuLabel: "Proxy options",
+          inline: showsSettings
+            ? [
+                {
+                  label: "Edit settings",
+                  icon: PencilIcon,
+                  onSelect: (proxy) => setDialog({ proxy })
+                }
+              ]
+            : undefined,
+          renderMenu: hasMenu
+            ? (proxy) => (
+                <ProxyMenu
+                  canIssueTokens={canIssueTokens}
+                  canRevoke={canRevokeProxies}
+                  canDelete={canDeleteProxies}
+                  onConfirm={(kind) => setConfirm({ kind, proxy })}
+                />
+              )
+            : undefined
+        }
+      : undefined;
 
   const runConfirm = async ({ kind, proxy }: TConfirm) => {
     try {
@@ -662,7 +700,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
           title="Proxies"
           badges={<DocumentationLink href={AgentVaultDocs.proxies} subject="proxies" />}
           actions={
-            isAdmin ? (
+            canCreateProxies ? (
               <Button variant="accent" icon="plus" onClick={() => setDialog({})}>
                 Create proxy
               </Button>
@@ -673,7 +711,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
           label="Proxies"
           rows={proxies}
           columns={columns}
-          loading={isPending || isRolePending}
+          loading={isPending || isPermissionPending}
           getRowId={(proxy) => proxy.id}
           rowLabel={(proxy) => proxy.name}
           rowActions={rowActions}
@@ -690,7 +728,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
               title="No proxies yet"
               description="Create a proxy and start it where agent traffic leaves your network."
               actions={
-                isAdmin ? (
+                canCreateProxies ? (
                   <Button variant="outline" icon="plus" onClick={() => setDialog({})}>
                     Create proxy
                   </Button>

@@ -151,19 +151,32 @@ export const agentVaultSettingsDemo: AgentVaultSettingsAdapter = {
       return next;
     }
   }),
-  useProjectConnections: (projectId) => ({
-    data: connections.use().filter((entry) => entry.projectId === projectId),
-    isPending: false,
-    error: null
-  }),
-  useAvailableConnections: (app, projectId) => ({
-    data: connections
-      .use()
-      .filter((entry) => entry.app === app && (!entry.projectId || entry.projectId === projectId))
-      .map(({ id, name, projectId: owner }) => ({ id, name, projectId: owner })),
-    isPending: false,
-    error: null
-  }),
+  useProjectConnections: (projectId, options) => {
+    const all = connections.use();
+    return {
+      data:
+        options?.enabled === false
+          ? undefined
+          : all.filter((entry) => entry.projectId === projectId),
+      isPending: false,
+      error: null
+    };
+  },
+  useAvailableConnections: (app, projectId, options) => {
+    const all = connections.use();
+    return {
+      data:
+        options?.enabled === false
+          ? undefined
+          : all
+              .filter(
+                (entry) => entry.app === app && (!entry.projectId || entry.projectId === projectId)
+              )
+              .map(({ id, name, projectId: owner }) => ({ id, name, projectId: owner })),
+      isPending: false,
+      error: null
+    };
+  },
   useCreateConnection: fixtureMutation((input) => {
     const created = connection(
       crypto.randomUUID(),

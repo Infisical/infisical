@@ -11,10 +11,10 @@ export const AgentVaultIndexRedirect = () => {
   const { orgId, projectId } = useParams({
     from: "/v4/organizations/$orgId/projects/agent-vault/$projectId/"
   });
-  const { isPermissionLoaded, isAdmin, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
+  const { isPermissionLoaded, canSetUp, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
     useAgentVaultSetupProgress(orgId, projectId);
 
-  if (!isPermissionLoaded || (isAdmin && !isLoaded && !isFailed))
+  if (!isPermissionLoaded || (canSetUp && !isLoaded && !isFailed))
     return <Loader size="page" label="Loading Agent Vault" />;
 
   const step = isVisible && nextStep ? nextStep : AgentVaultSetupStep.Session;
