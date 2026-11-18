@@ -1,6 +1,6 @@
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 // The route that updates an identity's org membership takes no isActive, so the service is driven
 // directly: it is the same path a future route would take, and it owns the revoke and restore hooks

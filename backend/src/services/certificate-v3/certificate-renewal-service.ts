@@ -11,6 +11,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -18,7 +19,6 @@ import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa

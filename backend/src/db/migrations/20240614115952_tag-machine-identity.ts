@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TableName } from "../schemas";
 

@@ -2,10 +2,10 @@ import z from "zod";
 
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { RAW_SECRETS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const AccessListEntrySchema = z.object({
   allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),

@@ -34,9 +34,9 @@ import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-ro
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationListItemSchema,

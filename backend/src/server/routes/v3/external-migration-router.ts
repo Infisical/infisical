@@ -2,11 +2,11 @@ import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { MAX_VAULT_IMPORT_PATHS } from "@app/services/external-migration/external-migration-fns/vault";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
 import {

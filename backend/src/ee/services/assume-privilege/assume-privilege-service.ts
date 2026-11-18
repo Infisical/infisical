@@ -1,12 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";

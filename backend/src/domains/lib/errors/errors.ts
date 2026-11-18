@@ -33,3 +33,34 @@ export class StateConflictError extends DomainError {}
 
 // Something we depend on failed. Nothing the caller sent is wrong.
 export class ExternalSystemError extends DomainError {}
+
+// One CASL rule that matched a refused check: what the 403 response lists.
+export type TPermissionDeniedRule = {
+  action: unknown;
+  inverted?: boolean;
+  subject: unknown;
+  conditions?: unknown;
+};
+
+export type TPermissionDenial = {
+  action: string;
+  subject: string;
+  // The object checked, when the check named one (an environment and secret path, a key name).
+  subjectFields?: Record<string, unknown>;
+  matchedRules: TPermissionDeniedRule[];
+};
+
+// The actor may not do this. `denial` says what was refused, for the response and the permission-denied audit log.
+export class PermissionDeniedError extends DomainError {
+  readonly denial: TPermissionDenial;
+
+  constructor({ denial, cause }: { denial: TPermissionDenial; cause?: unknown }) {
+    super({
+      message: `You are not allowed to ${denial.action} on ${denial.subject}`,
+      name: "PermissionDenied",
+      details: denial.matchedRules,
+      cause
+    });
+    this.denial = denial;
+  }
+}

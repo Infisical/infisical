@@ -1,4 +1,6 @@
-import { AuthMethod, MfaMethod, ProviderAuthResult } from "./auth-type";
+import { AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
+
+import { ProviderAuthResult } from "./auth-type";
 import { TIdpMfaSignal } from "./idp-mfa-signal";
 
 export type TLoginGenServerPublicKeyDTO = {

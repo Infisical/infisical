@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "@app/services/alert/alert-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { UpdateChannelInputSchema } from "../alert-channel-schemas";

@@ -9,10 +9,10 @@ import {
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProxiedServiceRouter = async (server: FastifyZodProvider) => {
   server.route({

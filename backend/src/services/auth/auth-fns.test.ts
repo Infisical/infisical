@@ -1,3 +1,5 @@
+import { AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
+
 import { LoginMethod } from "../super-admin/super-admin-types";
 import {
   assertOAuthLoginMethodEnabled,
@@ -8,7 +10,7 @@ import {
   isSsoSessionIssuedByOrg,
   RECOVERY_CODE_MFA_ASSURANCE
 } from "./auth-fns";
-import { AuthMethod, MfaMethod, SsoMfaTrust } from "./auth-type";
+import { SsoMfaTrust } from "./auth-type";
 
 describe("OAuth login method policy", () => {
   test.each([

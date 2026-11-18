@@ -8,6 +8,7 @@ import { DomainError } from "@app/domains/lib/errors";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -21,7 +22,6 @@ import {
 import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, isLockHeldByAnotherOwner } from "@app/lib/red-lock";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { CERT_CLOCK_SKEW_MS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";

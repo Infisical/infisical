@@ -7,8 +7,8 @@ import {
   OrgPermissionSet,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { insightsServiceFactory, TInsightsServiceFactoryDep } from "./insights-service";
 

@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { SecretScanningDataSource } from "./secret-scanning-v2-enums";
 import { secretScanningV2ServiceFactory } from "./secret-scanning-v2-service";

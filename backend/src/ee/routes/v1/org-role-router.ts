@@ -5,13 +5,13 @@ import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas"
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSchema, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { ApiDocsTags, ORG_ROLE } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedOrgRoleSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const INVALID_SUBORG_PERMISSIONS = [

@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TAgentVaultActorPostHogEvent, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 

@@ -31,6 +31,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -74,7 +75,6 @@ import {
   TCodeSigningGrantAttributes,
   TCodeSigningRequestData
 } from "../approval-policy/code-signing/code-signing-policy-types";
-import { ActorType } from "../auth/auth-type";
 import { assertAdcsRevocationReasonSupported } from "../certificate-authority/adcs/adcs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";

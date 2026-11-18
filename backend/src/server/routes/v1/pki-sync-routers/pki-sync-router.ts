@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SYNC_FILTERS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";

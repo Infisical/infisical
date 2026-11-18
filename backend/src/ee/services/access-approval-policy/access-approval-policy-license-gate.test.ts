@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { EnforcementLevel } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretAccessApprovalPolicyServiceFactory } from "./access-approval-policy-service";
 import { ApproverType } from "./access-approval-policy-types";
