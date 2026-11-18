@@ -1,4 +1,5 @@
 import { useCloud66ConnectionListStacks } from "@app/hooks/api/appConnections/cloud-66";
+import { useConvexConnectionListDeployments } from "@app/hooks/api/appConnections/convex";
 import { useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
 import { useHerokuConnectionListApps } from "@app/hooks/api/appConnections/heroku";
 import {
@@ -35,6 +36,8 @@ export const syncHostingLive: SyncHostingLookups = {
   useRailwayProjects: (connectionId, options) =>
     useRailwayConnectionListProjects(connectionId, options),
   useFlyioApps: (connectionId, options) => useFlyioConnectionListApps(connectionId, options),
+  useConvexDeployments: (connectionId, options) =>
+    useConvexConnectionListDeployments(connectionId, options),
   useCloud66Stacks: (connectionId, options) =>
     useCloud66ConnectionListStacks(connectionId, options),
   useLaravelForgeOrganizations: (connectionId, options) =>

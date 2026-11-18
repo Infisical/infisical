@@ -75,6 +75,10 @@ export const syncHostingDemo: SyncHostingLookups = {
     { id: "acme-demo-api", name: "acme-demo-api" },
     { id: "acme-demo-edge", name: "acme-demo-edge" }
   ]),
+  useConvexDeployments: listOf([
+    { name: "acme-demo-prod", type: "prod" },
+    { name: "acme-demo-dev", type: "dev" }
+  ]),
   useCloud66Stacks: listOf([
     { id: "cloud66-stack-acme-demo-web", name: "acme-demo-web" },
     { id: "cloud66-stack-acme-demo-api", name: "acme-demo-api" }
