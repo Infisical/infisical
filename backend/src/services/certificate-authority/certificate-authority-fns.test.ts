@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { crypto as appCrypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -23,6 +24,7 @@ import {
   buildIssuedCertificateChain,
   buildOcspResponderUrl,
   createDistinguishedName,
+  createSerialNumber,
   extractDnParts,
   getActiveCaCertificate,
   getCrlNumber,
@@ -1065,4 +1067,34 @@ describe("getActiveCaCertificate", () => {
   it("falls back to the stored DN while the CA has no certificate", async () => {
     expect(await resolveIssuer(null)).toBe(storedDn);
   });
+});
+
+describe("createSerialNumber", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  it.each([0x00, 0x80])(
+    "should match the serial encoded in the certificate when the first random byte is %i",
+    async (firstByte) => {
+      const random = Buffer.alloc(20, 0x3a);
+      random[0] = firstByte;
+      const randomBytesSpy = vi.spyOn(appCrypto, "randomBytes").mockReturnValueOnce(random as never);
+
+      const serialNumber = createSerialNumber();
+      const keys = await generateCaKeys();
+      const cert = await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber,
+        name: "CN=serial",
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 60_000),
+        signingAlgorithm: EC_SIGNING_ALGORITHM,
+        keys
+      });
+
+      expect(serialNumber).toHaveLength(40);
+      expect(cert.serialNumber).toBe(serialNumber);
+      randomBytesSpy.mockRestore();
+    }
+  );
 });

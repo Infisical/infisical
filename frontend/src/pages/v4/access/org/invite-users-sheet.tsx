@@ -188,7 +188,7 @@ export const InviteUsersSheet = ({
       setError(subOrg ? "Select at least one user" : "Enter at least one email");
       return;
     }
-    if (emails.length > MAX_INVITE_EMAILS) {
+    if (!subOrg && emails.length > MAX_INVITE_EMAILS) {
       setError(`You can invite up to ${MAX_INVITE_EMAILS} emails at once`);
       return;
     }

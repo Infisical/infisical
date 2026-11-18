@@ -146,6 +146,7 @@ const Details = ({
   const hasExpired = Boolean(
     session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const inlineServices = session.services.flatMap((service) => (service.isInline ? [service] : []));
   return (
     <Stack gap={24}>
       <LabelField
@@ -210,12 +211,12 @@ const Details = ({
             </DetailValue>
           </Detail>
         )}
-        {session.services.length > 0 && (
+        {inlineServices.length > 0 && (
           <Detail>
             <DetailLabel>Inline services</DetailLabel>
             <DetailValue>
               <Inline gap={4}>
-                {session.services.map((service) => (
+                {inlineServices.map((service) => (
                   <Tooltip
                     key={service.id}
                     content={`Sent with this session when it was created, for ${inlineServiceTarget(service)}.`}
