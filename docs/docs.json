@@ -751,6 +751,7 @@
                     "group": "Variables",
                     "root": "documentation/platform/agent-vault/variables",
                     "pages": [
+                      "documentation/platform/agent-vault/text-variables",
                       "documentation/platform/agent-vault/oauth-variables"
                     ]
                   },
