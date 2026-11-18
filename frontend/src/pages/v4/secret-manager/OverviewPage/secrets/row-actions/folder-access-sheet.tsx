@@ -1,10 +1,12 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from "@infisical/cipher/ui/accordion";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
@@ -552,10 +554,15 @@ function ReviewAccessDialog({
 }) {
   const { actor, tier, editsDuration } = review;
   const { access } = actor;
-  const [isTemporary, setIsTemporary] = useState(
-    Boolean(editsDuration || (tier && access?.isTemporary))
-  );
-  const [range, setRange] = useState(access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
+  const initialTemporary = Boolean(editsDuration || (tier && access?.isTemporary));
+  const initialRange = access?.temporaryRange || DEFAULT_TEMPORARY_RANGE;
+  const [isTemporary, setIsTemporary] = useState(initialTemporary);
+  const [range, setRange] = useState(initialRange);
+  const completed = useRef(false);
+  const guard = useDiscardChangesGuard({
+    isDirty: isTemporary !== initialTemporary || range !== initialRange,
+    onDiscard: () => onOpenChange(false)
+  });
   const { isUnchanged, rangeError, temporaryError, copy, nextAccess, nextGrant } = reviewStateOf(
     review,
     folderPath,
@@ -564,75 +571,91 @@ function ReviewAccessDialog({
   );
 
   return (
-    <MultiStep
-      variant="dialog"
-      open={open}
-      onOpenChange={onOpenChange}
-      title={copy.title}
-      completeLabel="Confirm"
-      onComplete={() => (rangeError || temporaryError ? false : onConfirm(nextGrant()))}
-      steps={[
-        {
-          title: "Review",
-          disabledReason: isUnchanged ? "Nothing to change" : undefined,
-          completeVariant: copy.completeVariant,
-          content: (
-            <div className={styles.review}>
-              <DetailGroup>
-                <Detail>
-                  <DetailLabel>{actor.type === "user" ? "User" : "Machine identity"}</DetailLabel>
-                  <DetailValue>
-                    {actor.type === "user" ? <ActorIdentity actor={actor} /> : actor.name}
-                  </DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Folder</DetailLabel>
-                  <DetailValue>
-                    <span className={styles.reviewPath}>
-                      {environmentName}
-                      <MiddleTruncate mono text={folderPath} />
-                    </span>
-                  </DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Current access</DetailLabel>
-                  <DetailValue>{currentAccessOf(actor)}</DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>New access</DetailLabel>
-                  <DetailValue>{nextAccess}</DetailValue>
-                </Detail>
-              </DetailGroup>
-              {copy.description && <SmallText muted>{copy.description}</SmallText>}
-              {tier && (
-                <div className={styles.stackTight}>
-                  <Switch
-                    layout="row"
-                    label="Temporary access"
-                    checked={isTemporary}
-                    onCheckedChange={setIsTemporary}
-                  />
-                  {isTemporary && (
-                    <Field
-                      label="Duration"
-                      description="Starts when you confirm."
-                      error={rangeError ?? temporaryError}
-                    >
-                      <DurationInput
-                        value={range}
-                        invalid={Boolean(rangeError ?? temporaryError)}
-                        placeholder="1"
-                        onChange={setRange}
-                      />
-                    </Field>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        }
-      ]}
-    />
+    <>
+      <MultiStep
+        variant="dialog"
+        open={open}
+        onOpenChange={(next) => {
+          if (next || completed.current) {
+            onOpenChange(next);
+            return;
+          }
+          guard.requestDiscard();
+        }}
+        title={copy.title}
+        completeLabel="Confirm"
+        onComplete={async () => {
+          if (rangeError || temporaryError) return false;
+          completed.current = await onConfirm(nextGrant());
+          return completed.current;
+        }}
+        steps={[
+          {
+            title: "Review",
+            disabledReason: isUnchanged ? "Nothing to change" : undefined,
+            completeVariant: copy.completeVariant,
+            content: (
+              <div className={styles.review}>
+                <DetailGroup>
+                  <Detail>
+                    <DetailLabel>{actor.type === "user" ? "User" : "Machine identity"}</DetailLabel>
+                    <DetailValue>
+                      {actor.type === "user" ? <ActorIdentity actor={actor} /> : actor.name}
+                    </DetailValue>
+                  </Detail>
+                  <Detail>
+                    <DetailLabel>Folder</DetailLabel>
+                    <DetailValue>
+                      <span className={styles.reviewPath}>
+                        {environmentName}
+                        <MiddleTruncate mono text={folderPath} />
+                      </span>
+                    </DetailValue>
+                  </Detail>
+                  <Detail>
+                    <DetailLabel>Current access</DetailLabel>
+                    <DetailValue>{currentAccessOf(actor)}</DetailValue>
+                  </Detail>
+                  <Detail>
+                    <DetailLabel>New access</DetailLabel>
+                    <DetailValue>{nextAccess}</DetailValue>
+                  </Detail>
+                </DetailGroup>
+                {copy.description && <SmallText muted>{copy.description}</SmallText>}
+                {tier && (
+                  <div className={styles.stackTight}>
+                    <Switch
+                      layout="row"
+                      label="Temporary access"
+                      checked={isTemporary}
+                      onCheckedChange={setIsTemporary}
+                    />
+                    {isTemporary && (
+                      <Field
+                        label="Duration"
+                        description="Starts when you confirm."
+                        error={rangeError ?? temporaryError}
+                      >
+                        <DurationInput
+                          value={range}
+                          invalid={Boolean(rangeError ?? temporaryError)}
+                          placeholder="1"
+                          onChange={setRange}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...guard.discardDialogProps}
+        description="The temporary access you set will be lost."
+      />
+    </>
   );
 }
 
