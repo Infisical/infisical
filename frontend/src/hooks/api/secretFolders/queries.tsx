@@ -195,6 +195,9 @@ export const useGetOrCreateFolder = () => {
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: path })
       });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+      });
     }
   });
 };
@@ -226,6 +229,9 @@ export const useCreateFolder = ({ meta }: { meta?: MutationMeta } = {}) => {
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
       });
     }
   });
@@ -261,6 +267,9 @@ export const useUpdateFolder = () => {
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: path })
       });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+      });
     }
   });
 };
@@ -295,6 +304,9 @@ export const useDeleteFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
       });
     }
   });

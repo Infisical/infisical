@@ -221,7 +221,7 @@ export function FolderActions({
       onEnvironmentChange={(slug) =>
         setAccessScope({
           environment: slug,
-          secretPath: folderPathsIn(slug).includes(folderPath) ? folderPath : "/"
+          secretPath: !folderTree || folderPathsIn(slug).includes(folderPath) ? folderPath : "/"
         })
       }
       onFolderPathChange={(secretPath) => setAccessScope({ ...accessScope, secretPath })}
