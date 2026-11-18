@@ -249,6 +249,10 @@ export const EditSyncSheet = ({
   const save = async () => {
     if (conflicts.length) return;
     if (!(await form.trigger(SECTION_FIELDS[section]))) return;
+    if (section === "alerts") {
+      await submit(form.getValues());
+      return;
+    }
     await form.handleSubmit(submit, (errors) =>
       failed("Some sync settings are invalid", new Error(firstError(errors)))
     )();

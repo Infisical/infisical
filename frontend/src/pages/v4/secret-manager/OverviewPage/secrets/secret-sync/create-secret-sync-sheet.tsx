@@ -916,6 +916,8 @@ function ReviewFields({
   );
 }
 
+const createSyncResolver = zodResolver(SecretSyncFormSchema());
+
 const mergeDefaults = (base: FieldValues, extra: FieldValues): FieldValues => ({
   ...base,
   ...extra,
@@ -980,8 +982,21 @@ export function CreateSecretSyncSheet({
     })),
     ...addedConnections
   ];
+  const { permission } = useProjectPermission(scope.project);
+  const alertScopeOf = (formValues: FieldValues) => ({
+    environment: formValues.environment?.slug,
+    secretPath: formValues.secretPath,
+    connectionId: formValues.connection?.id
+  });
   const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretSyncFormSchema()),
+    resolver: (formValues, context, options) =>
+      createSyncResolver(
+        canManageFailureAlert(permission, alertScopeOf(formValues))
+          ? formValues
+          : { ...formValues, isFailureAlertEnabled: false },
+        context,
+        options
+      ),
     mode: "onChange",
     reValidateMode: "onChange"
   });
@@ -1001,12 +1016,7 @@ export function CreateSecretSyncSheet({
     "create secret syncs here"
   );
   const conflicts = useSourceConflicts(scope.project, values);
-  const { permission } = useProjectPermission(scope.project);
-  const canManageAlert = canManageFailureAlert(permission, {
-    environment: values.environment?.slug,
-    secretPath: values.secretPath,
-    connectionId: values.connection?.id
-  });
+  const canManageAlert = canManageFailureAlert(permission, alertScopeOf(values));
   const duplicate =
     destination && values.connection?.id
       ? syncs.find(
