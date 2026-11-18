@@ -16,26 +16,30 @@ src/domains/
 │   ├── license/
 │   ├── kms-core/
 │   ├── instance-config-core/
+│   ├── access-control/
 │   ├── organizations/
 │   └── projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
 ├── agent-vault/agent-vault/
-└── certificates/cert-manager/
+├── certificates/cert-manager/
+├── certificates/code-signing/
+└── kms/kms/
 ```
 
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
-[organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
+[access-control](platform/access-control/AGENTS.md), [organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
-[instance-config-core](platform/instance-config-core/AGENTS.md).
+[instance-config-core](platform/instance-config-core/AGENTS.md), [code-signing](certificates/code-signing/AGENTS.md),
+[kms](kms/kms/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
 
 | Folder | Exports | Test doubles |
 | --- | --- | --- |
-| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `StateConflictError`, `ExternalSystemError` | |
+| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `StateConflictError`, `PermissionDeniedError`, `ExternalSystemError` | |
 | `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
 | `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
@@ -299,6 +303,7 @@ maps them at the HTTP boundary.
 | `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan | 400 |
 | `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
 | `StateConflictError` | The request is valid, but the current state prevents it: the name is taken, it is in use, or it changed since it was read | 409 |
+| `PermissionDeniedError` | The actor may not do this: a refused permission check (`permission.assert`, carrying a `denial` the 403 body and the permission-denied audit log report), or a refusal with no check behind it (not a member, another org's project), which carries only its message | 403 |
 | `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
 
 Who throws:
@@ -308,8 +313,8 @@ Who throws:
 - A store never throws for a missing row: `find*` returns `null`, and the service turns it into
   `EntityNotFoundError` with the id in the message.
 - A client maps a failed call into an outcome or an `ExternalSystemError`; services never match on status codes.
-- Permission denied has no kind yet. It arrives with the permissions domain; until then a module that checks
-  permissions isn't migrated (see Dependency direction), so don't invent one.
+- A permission service throws `PermissionDeniedError`. A refused check goes through `permission.assert(...)`, never
+  a hand-built error, so the denial is recorded with its action and subject.
 
 Writing them:
 
@@ -353,9 +358,9 @@ in-memory stores and lets EE plug in without `ce/` importing it.
   `TDomainKeyStore` from `lib/`, never a fresh `Pick<>` of the legacy factory.
 - No HTTP error classes from `@app/lib/errors` in a domain; see Errors.
 - A domain never takes a legacy service or DAL (`src/services/**`, `src/ee/services/**`), and legacy code never
-  feeds one in. If a module needs one, migrate that dependency first. That includes authorization: a module that
-  checks permissions waits for the permissions domain; don't wrap `permissionService` in an adapter or add a second
-  construction phase to get at it. Pure helpers from `@app/lib` (`@app/lib/ip`, the crypto primitives) are fine;
+  feeds one in. If a module needs one, migrate that dependency first. That includes authorization: a module checks permissions through
+  the permission service of the scope it acts in (`orgPermissionService`, `projectPermissionService`, or its
+  product's), taking `actor: TActorContext`. Pure helpers from `@app/lib` (`@app/lib/ip`, the crypto primitives) are fine;
   `@app/lib/request-context` is not, since domains also run from queues and crons.
 - Enums and types from a legacy `*-types.ts` (`CertStatus`) may be imported until their owner migrates, then
   they move with it. Never from `@app/ee/**` into `ce/`.
@@ -398,6 +403,8 @@ sets the pattern from the rules above, and its PR names it here.
 | EE implementing a `ce/` type, external client | `platform/license/ee/` |
 | Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
 | A product handing a platform domain its implementation | `secrets-manager/secrets/ce/module.ts` (`usageCounters`) |
+| A product telling a platform domain what its data means | `pam/pam/ce/models/pam-project-roles.ts` (`TProjectRoles`, passed to Projects as `projectRoles` in `domains.ts`) |
+| Permission service built on another domain's | `secrets-manager/secrets/ce/services/secrets-permission/service.ts` |
 | Legacy code calling a domain | any `licenseService: TLicenseService` in `src/services/**` |
 
 ## Migrating a legacy module
@@ -413,7 +420,7 @@ Where each legacy piece lands:
 | `x-queue.ts` | Workers and crons registered in the module's `start()`, each calling a service method. Queue and job names stay |
 | `keyStore` reads and writes in the service | A `<Thing>Cache` in `data-access/` |
 | `BadRequestError` / `NotFoundError` / `ConflictError` | `RuleViolationError` / `EntityNotFoundError` (see Errors) |
-| `permissionService` | Blocked until the permissions domain exists (see Dependency direction) |
+| `permissionService` | The scope owner's permission service (`orgPermissionService`, `projectPermissionService`, a product's), taking `actor: TActorContext`; see `platform/access-control/AGENTS.md` |
 | Wiring in `server/routes/index.ts` | `new` in the module, the module built in `domains.ts` |
 
 1. Check its dependencies. Every legacy service or DAL it calls must already be a domain, or be one this module

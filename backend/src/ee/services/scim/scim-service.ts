@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -14,7 +13,11 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -76,7 +79,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
 import {
   applyScimPatch,
@@ -165,7 +167,7 @@ type TScimServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
@@ -194,7 +196,7 @@ export const scimServiceFactory = ({
   userGroupMembershipDAL,
   projectKeyDAL,
   projectBotDAL,
-  permissionService,
+  orgPermissionService,
   smtpService,
   externalGroupOrgRoleMappingDAL,
   membershipGroupDAL,
@@ -217,24 +219,13 @@ export const scimServiceFactory = ({
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
-  const createScimToken: TScimServiceFactory["createScimToken"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    orgId,
-    description,
-    ttlDays
-  }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const createScimToken: TScimServiceFactory["createScimToken"] = async ({ actor, orgId, description, ttlDays }) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Scim });
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.has(PlanFeature.Scim))
@@ -261,49 +252,31 @@ export const scimServiceFactory = ({
     return { scimToken };
   };
 
-  const listScimTokens: TScimServiceFactory["listScimTokens"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    orgId
-  }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const listScimTokens: TScimServiceFactory["listScimTokens"] = async ({ actor, orgId }) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Scim });
 
     const scimTokens = await scimDAL.find({ orgId });
     return scimTokens;
   };
 
-  const deleteScimToken: TScimServiceFactory["deleteScimToken"] = async ({
-    scimTokenId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }) => {
+  const deleteScimToken: TScimServiceFactory["deleteScimToken"] = async ({ scimTokenId, actor }) => {
     let scimToken = isUuidV4(scimTokenId) ? await scimDAL.findById(scimTokenId) : undefined;
     // Another organization's token reads as missing, so its id cannot be confirmed by probing.
-    if (!scimToken || scimToken.orgId !== actorOrgId) {
+    if (!scimToken || scimToken.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId: scimToken.orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Scim });
 
     scimToken = await scimDAL.deleteById(scimTokenId);
 
@@ -312,23 +285,17 @@ export const scimServiceFactory = ({
 
   const listScimEvents: TScimServiceFactory["listScimEvents"] = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     orgId,
     since = "1d",
     limit = 30,
     offset = 0
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Scim });
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.has(PlanFeature.Scim))

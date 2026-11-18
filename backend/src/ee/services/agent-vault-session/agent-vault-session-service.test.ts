@@ -1,8 +1,10 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/testing/fake-access-bundle-permission-service";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { TProjectRule } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
@@ -16,11 +18,16 @@ const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-} as unknown as TMintSessionDTO["ctx"];
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
+
+const allowAll = new FakeAccessBundlePermissionService().allow({
+  actorId: ctx.principal.id,
+  projectId: PROJECT_ID,
+  rules: [{ action: "manage", subject: "all" }] as unknown as TProjectRule[],
+  reachesEveryBundle: true
+});
 
 const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
@@ -56,14 +63,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     agentVaultSessionInlineServiceDAL: { insertForSession },
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
-    membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
-        hasRole: () => true,
-        memberships: []
-      })
-    },
+    accessBundlePermissionService: allowAll,
     kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
@@ -168,14 +168,14 @@ const buildNamingService = ({
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
     services.map((row) => ({ ...row, id: `inline-${row.position}`, sessionId: "session-1" }))
   );
-  const permission = isAdmin
-    ? createMongoAbility([{ action: "manage", subject: "all" }])
-    : createMongoAbility([
+  const rules = (isAdmin
+    ? [{ action: "manage", subject: "all" }]
+    : [
         {
           action: ["read", "create", "edit", "revoke", ...(canSendInline ? ["create-with-inline-services"] : [])],
           subject: "agent-vault-sessions"
         }
-      ]);
+      ]) as unknown as TProjectRule[];
   const findNamedServiceOverrides = vi.fn().mockResolvedValue(overrides);
   const service = agentVaultSessionServiceFactory({
     agentVaultSessionDAL: {
@@ -208,16 +208,13 @@ const buildNamingService = ({
       )
     },
     agentVaultResolveDAL: { findNamedServiceOverrides },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue(
-          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
-        )
-    },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
-    },
+    accessBundlePermissionService: new FakeAccessBundlePermissionService().allow({
+      actorId: ctx.principal.id,
+      projectId: PROJECT_ID,
+      rules,
+      reachesEveryBundle: isAdmin,
+      grantedAccessBundleIds: grantedBundleIds
+    }),
     kmsDataKeyService: { wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")) },
     licenseService: { getPlan: vi.fn() }
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
@@ -435,13 +432,7 @@ describe("updateSession", () => {
       resourceMetadataDAL,
       agentVaultSessionInlineServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
       agentVaultSessionServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
-      permissionService: {
-        getProjectPermission: vi.fn().mockResolvedValue({
-          permission: createMongoAbility([{ action: "manage", subject: "all" }]),
-          hasRole: () => true,
-          memberships: []
-        })
-      }
+      accessBundlePermissionService: allowAll
     } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
     return { service, agentVaultSessionDAL, resourceMetadataDAL, tx };
   };

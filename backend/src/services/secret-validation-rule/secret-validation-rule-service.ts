@@ -1,16 +1,15 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
-import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -61,7 +60,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
 };
 
@@ -74,18 +73,11 @@ export const secretValidationRuleServiceFactory = ({
   secretDAL,
   secretVersionV2BridgeDAL,
   projectDAL,
-  permissionService,
+  secretsPermissionService,
   kmsDataKeyService
 }: TSecretValidationRuleServiceFactoryDep) => {
-  const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const $getPermission = async (projectId: string, actor: TActorContext) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     return permission;
   };
 
@@ -98,11 +90,17 @@ export const secretValidationRuleServiceFactory = ({
    * A rule is addressed by ID alone, so refusing one in an unreachable project would confirm it
    * exists. Reads as missing instead. A member lacking the action still gets a refusal.
    */
-  const $getPermissionForRule = async (projectId: string, actor: OrgServiceActor, notFound: Error) => {
+  const $getPermissionForRule = async (projectId: string, actor: TActorContext, notFound: Error) => {
     try {
       return await $getPermission(projectId, actor);
     } catch (error) {
-      if (error instanceof ForbiddenRequestError || error instanceof NotFoundError) throw notFound;
+      if (
+        error instanceof ForbiddenRequestError ||
+        error instanceof NotFoundError ||
+        error instanceof PermissionDeniedError ||
+        error instanceof EntityNotFoundError
+      )
+        throw notFound;
       throw error;
     }
   };
@@ -217,13 +215,13 @@ export const secretValidationRuleServiceFactory = ({
 
   const listSecretValidationRules = async (
     { projectId, type }: TListSecretValidationRulesDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const permission = await $getPermission(projectId, actor);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretValidationRuleActions.Read,
-      ProjectPermissionSub.SecretValidationRules
-    );
+    permission.assert({
+      action: ProjectPermissionSecretValidationRuleActions.Read,
+      subject: ProjectPermissionSub.SecretValidationRules
+    });
 
     const rules = await secretValidationRuleDAL.findWithEnv({ projectId, ...(type && { type }) });
     if (!rules.length) return [];
@@ -240,16 +238,16 @@ export const secretValidationRuleServiceFactory = ({
     );
   };
 
-  const $findRuleOrThrow = async (ruleId: string, type: SecretValidationRuleType, actor: OrgServiceActor) => {
+  const $findRuleOrThrow = async (ruleId: string, type: SecretValidationRuleType, actor: TActorContext) => {
     const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
     const rule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
     if (!rule) throw notFound;
 
     const permission = await $getPermissionForRule(rule.projectId, actor, notFound);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretValidationRuleActions.Read,
-      ProjectPermissionSub.SecretValidationRules
-    );
+    permission.assert({
+      action: ProjectPermissionSecretValidationRuleActions.Read,
+      subject: ProjectPermissionSub.SecretValidationRules
+    });
     $assertRuleType(rule, type);
 
     const { decryptor } = await $getCipher(rule.projectId);
@@ -263,7 +261,7 @@ export const secretValidationRuleServiceFactory = ({
 
   const findSecretValidationRuleById = async (
     { ruleId, type }: TFindSecretValidationRuleByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const { rule, config } = await $findRuleOrThrow(ruleId, type, actor);
     return $toRecord(rule, config);
@@ -280,13 +278,13 @@ export const secretValidationRuleServiceFactory = ({
       isActive,
       ...configInput
     }: TCreateSecretValidationRuleDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const permission = await $getPermission(projectId, actor);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretValidationRuleActions.Create,
-      ProjectPermissionSub.SecretValidationRules
-    );
+    permission.assert({
+      action: ProjectPermissionSecretValidationRuleActions.Create,
+      subject: ProjectPermissionSub.SecretValidationRules
+    });
 
     const envId = environment ? await $resolveEnvId(projectId, environment) : null;
     const config = parseSecretValidationRuleConfig(type, configInput);
@@ -323,7 +321,7 @@ export const secretValidationRuleServiceFactory = ({
       isActive,
       ...configPatch
     }: TUpdateSecretValidationRuleDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
     const existingRule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
@@ -331,10 +329,10 @@ export const secretValidationRuleServiceFactory = ({
 
     const { projectId } = existingRule;
     const permission = await $getPermissionForRule(existingRule.projectId, actor, notFound);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretValidationRuleActions.Edit,
-      ProjectPermissionSub.SecretValidationRules
-    );
+    permission.assert({
+      action: ProjectPermissionSecretValidationRuleActions.Edit,
+      subject: ProjectPermissionSub.SecretValidationRules
+    });
     $assertRuleType(existingRule, type);
 
     let envId = existingRule.envId ?? null;
@@ -373,19 +371,16 @@ export const secretValidationRuleServiceFactory = ({
     return $toRecord(rule, config);
   };
 
-  const deleteSecretValidationRule = async (
-    { ruleId, type }: TDeleteSecretValidationRuleDTO,
-    actor: OrgServiceActor
-  ) => {
+  const deleteSecretValidationRule = async ({ ruleId, type }: TDeleteSecretValidationRuleDTO, actor: TActorContext) => {
     const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
     const rule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
     if (!rule) throw notFound;
 
     const permission = await $getPermissionForRule(rule.projectId, actor, notFound);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretValidationRuleActions.Delete,
-      ProjectPermissionSub.SecretValidationRules
-    );
+    permission.assert({
+      action: ProjectPermissionSecretValidationRuleActions.Delete,
+      subject: ProjectPermissionSub.SecretValidationRules
+    });
     $assertRuleType(rule, type);
 
     const { decryptor } = await $getCipher(rule.projectId);

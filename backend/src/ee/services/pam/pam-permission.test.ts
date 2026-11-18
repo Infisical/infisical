@@ -1,53 +1,122 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { PamResourcePermissionSub } from "@app/domains/pam/pam/ce/module";
+import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
+import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
-import { accountAccessAllows } from "./pam-permission";
+import { accountAccessAllows, checkAccountAccess } from "./pam-permission";
 
-const abilityFor = (allowed: boolean) =>
-  createMongoAbility(allowed ? [{ action: "view-credentials", subject: ResourcePermissionSub.PamResource }] : []);
+const rulesFor = (allowed: boolean) =>
+  allowed ? [{ action: "view-credentials", subject: PamResourcePermissionSub.PamResource }] : [];
 
-const ctx = { actorId: "u1", actor: "user", actorOrgId: "o1", actorAuthMethod: "email" } as never;
+const membershipOn = (resourceType: string, resourceId: string) => ({
+  id: `membership-${resourceId}`,
+  scope: "resource",
+  scopeOrgId: "o1",
+  scopeProjectId: "proj-1",
+  scopeResourceType: resourceType,
+  scopeResourceId: resourceId,
+  actorUserId: "u1",
+  isActive: true,
+  roles: [
+    {
+      id: `role-${resourceId}`,
+      role: "member",
+      customRoleId: null,
+      isTemporary: false,
+      temporaryMode: null,
+      temporaryRange: null,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ]
+});
+
+const permissionFor = (
+  allowed: boolean,
+  memberships: ReturnType<typeof membershipOn>[] = [membershipOn("pam-account", "acc-1")]
+) =>
+  ProjectResourcePermission.fromGrants({
+    grants: ActorGrants.restore({ memberships: memberships as never, privileges: [], attributes: [] }),
+    roles: { resourceType: "pam-account", rulesFor: () => rulesFor(allowed) as never, projectAdminRules: () => [] },
+    isProjectAdmin: false
+  });
+
+const ctx = { principal: { type: "user", id: "u1" }, org: { id: "o1" } } as never;
 
 describe("accountAccessAllows", () => {
   test("is true when the actor holds the action", async () => {
-    const permissionService = { getResourcePermission: vi.fn(async () => ({ permission: abilityFor(true) })) };
+    const pamPermissionService = { getPamPermission: vi.fn(async () => permissionFor(true)) };
     await expect(
-      accountAccessAllows(permissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
+      accountAccessAllows(pamPermissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
     ).resolves.toBe(true);
   });
 
   test("is false when the actor does not, rather than throwing", async () => {
-    const permissionService = { getResourcePermission: vi.fn(async () => ({ permission: abilityFor(false) })) };
+    const pamPermissionService = { getPamPermission: vi.fn(async () => permissionFor(false)) };
     await expect(
-      accountAccessAllows(permissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
+      accountAccessAllows(pamPermissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
     ).resolves.toBe(false);
   });
 
   test("rethrows a failure that is not a permission refusal", async () => {
-    const permissionService = {
-      getResourcePermission: vi.fn(async () => {
+    const pamPermissionService = {
+      getPamPermission: vi.fn(async () => {
         throw new Error("database unreachable");
       })
     };
     await expect(
-      accountAccessAllows(permissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
+      accountAccessAllows(pamPermissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
     ).rejects.toThrow("database unreachable");
   });
 
   test("treats both refusal classes as a denial", async () => {
-    for (const err of [new ForbiddenRequestError({ message: "no" }), new ForbiddenError(abilityFor(false))]) {
-      const permissionService = {
-        getResourcePermission: vi.fn(async () => {
+    for (const err of [
+      new ForbiddenRequestError({ message: "no" }),
+      new ForbiddenError(createMongoAbility(rulesFor(false)))
+    ]) {
+      const pamPermissionService = {
+        getPamPermission: vi.fn(async () => {
           throw err;
         })
       };
       // eslint-disable-next-line no-await-in-loop
       await expect(
-        accountAccessAllows(permissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
+        accountAccessAllows(pamPermissionService as never, "acc-1", null, "proj-1", "view-credentials" as never, ctx)
       ).resolves.toBe(false);
     }
+  });
+});
+
+describe("checkAccountAccess", () => {
+  const check = (permission: ReturnType<typeof permissionFor>) =>
+    checkAccountAccess(
+      { getPamPermission: vi.fn(async () => permission) } as never,
+      "acc-1",
+      "folder-1",
+      "proj-1",
+      "view-credentials" as never,
+      ctx
+    );
+
+  test("passes when the folder or the account gives the action", async () => {
+    await expect(check(permissionFor(true, [membershipOn("pam-folder", "folder-1")]))).resolves.toBeUndefined();
+  });
+
+  test("refuses a folder member with no role on the account as a non-member of the account", async () => {
+    await expect(check(permissionFor(false, [membershipOn("pam-folder", "folder-1")]))).rejects.toThrow(
+      new ForbiddenRequestError({ message: "You are not a member of this pam-account." })
+    );
+  });
+
+  test("refuses an account member without the action with the permission error", async () => {
+    await expect(
+      check(permissionFor(false, [membershipOn("pam-folder", "folder-1"), membershipOn("pam-account", "acc-1")]))
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 });

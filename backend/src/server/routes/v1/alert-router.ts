@@ -97,10 +97,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.createAlert({
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -144,10 +141,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId, resourceName, ...result } = await server.services.alertChannelTest.testChannel({
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -197,10 +191,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alerts = await server.services.alert.listAlerts({
         ...req.query,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { alerts };
     }
@@ -222,10 +213,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.getAlertById({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { alert };
     }
@@ -260,10 +248,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       const alert = await server.services.alert.updateAlert({
         alertId: req.params.alertId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -294,10 +279,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.deleteAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

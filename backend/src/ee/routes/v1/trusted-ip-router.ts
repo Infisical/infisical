@@ -27,11 +27,8 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
-        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { trustedIps };
     }
@@ -62,11 +59,8 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.addProjectIp({
-        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
       await server.services.auditLog.createAuditLog({
@@ -112,10 +106,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.updateProjectIp({
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         trustedIpId: req.params.trustedIpId,
         ...req.body
       });
@@ -158,10 +149,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.deleteProjectIp({
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         trustedIpId: req.params.trustedIpId
       });
       await server.services.auditLog.createAuditLog({

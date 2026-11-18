@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
@@ -63,28 +63,28 @@ export type TOidcTemplateFields = {
 export type TDeleteIdentityAuthTemplateDTO = {
   templateId: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetIdentityAuthTemplateDTO = {
   templateId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListIdentityAuthTemplatesDTO = {
   limit?: number;
   offset?: number;
   search?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTemplatesByAuthMethodDTO = {
   authMethod: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TFindTemplateUsagesDTO = {
   templateId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUnlinkTemplateUsageDTO = {
   templateId: string;
   identityIds: string[];
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

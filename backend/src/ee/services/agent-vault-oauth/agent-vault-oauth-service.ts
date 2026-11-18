@@ -1,19 +1,16 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
-
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
@@ -25,7 +22,6 @@ import {
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   manualOauthClient,
@@ -111,8 +107,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TAgentVaultPersonalValueDALFactory,
     "findOauthForOwner" | "compareAndSwapOauth" | "addRequiredScopes"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  accessBundlePermissionService: Pick<TAccessBundlePermissionService, "getAccessBundlePermission">;
   http?: TOauthHttpClient;
 };
 
@@ -250,8 +245,7 @@ export const agentVaultOauthServiceFactory = ({
   kmsDataKeyService,
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
-  permissionService,
-  membershipDAL,
+  accessBundlePermissionService,
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
@@ -302,8 +296,8 @@ export const agentVaultOauthServiceFactory = ({
     if (
       !stored ||
       stored.record.projectId !== projectId ||
-      ctx.actor !== ActorType.USER ||
-      stored.record.actorUserId !== ctx.actorId
+      ctx.principal.type !== ActorType.USER ||
+      stored.record.actorUserId !== ctx.principal.id
     ) {
       throw new NotFoundError({
         message: `Authorization with ID '${authorizationId}' not found. It may have expired or was already used. Authorize the service again.`
@@ -325,19 +319,19 @@ export const agentVaultOauthServiceFactory = ({
     registration: requestedRegistration,
     personal
   }: TCreateAuthorizationDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: ctx,
+      projectId
+    });
     // A member's own sign-in needs only the reach to use the service; connecting the service itself is an admin's job.
-    ForbiddenError.from(permission).throwUnlessCan(
-      personal
+    permission.assert({
+      action: personal
         ? ProjectPermissionAgentVaultAccessBundleActions.Read
         : ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
 
-    if (ctx.actor !== ActorType.USER) {
+    if (ctx.principal.type !== ActorType.USER) {
       throw new BadRequestError({
         message: "Only a user can authorize an OAuth connection, since it needs a browser."
       });
@@ -401,7 +395,7 @@ export const agentVaultOauthServiceFactory = ({
         // The member's previous sign-in, for its scopes and, if registration fails, its client.
         const previous = await agentVaultPersonalValueDAL.findOauthForOwner({
           serviceId: service.id,
-          owner: { userId: ctx.actorId }
+          owner: { userId: ctx.principal.id }
         });
         if (previous) {
           const secret = await open<TAgentVaultOauthSecret>(projectId, previous.encryptedValue);
@@ -529,7 +523,7 @@ export const agentVaultOauthServiceFactory = ({
       projectId,
       serviceId: serviceId ?? null,
       ...(personal ? { personal: true, memberSetup } : {}),
-      actorUserId: ctx.actorId,
+      actorUserId: ctx.principal.id,
       serverUrl,
       state,
       redirectUri: callbackUri,

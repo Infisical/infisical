@@ -1,20 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { TAgentVaultSkillVersions } from "@app/db/schemas";
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { assertSkillNameNotReserved, getAgentVaultBuiltinSkill } from "./agent-vault-builtin-skill";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
@@ -50,8 +46,10 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultSkillVersionDAL: TAgentVaultSkillVersionDALFactory;
   agentVaultSkillBundleDAL: TAgentVaultSkillBundleDALFactory;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  accessBundlePermissionService: Pick<
+    TAccessBundlePermissionService,
+    "getAgentVaultPermission" | "getAccessBundlePermission"
+  >;
   kmsDataKeyService: TKmsDataKeyService;
 };
 
@@ -62,46 +60,46 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultSkillVersionDAL,
   agentVaultSkillBundleDAL,
   agentVaultAccessBundleDAL,
-  permissionService,
-  membershipDAL,
+  accessBundlePermissionService,
   kmsDataKeyService
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
     kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const $getPermission = async (scoped: TAgentVaultSkillScoped) =>
-    (await getAgentVaultPermission({ permissionService }, scoped)).permission;
+    (await accessBundlePermissionService.getAgentVaultPermission({ actor: scoped.ctx, projectId: scoped.projectId }))
+      .permission;
 
   const $authorize = async (scoped: TAgentVaultSkillScoped, action: ProjectPermissionAgentVaultSkillActions) => {
     const permission = await $getPermission(scoped);
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
+    permission.assert({ action, subject: ProjectPermissionSub.AgentVaultSkills });
   };
 
   // A member sees only the skills on bundles they can reach, so accessBundleIds is null for an admin and the
   // reachable bundles otherwise.
   const $authorizeRead = async (scoped: TAgentVaultSkillScoped) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      scoped
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSkillActions.Read,
-      ProjectPermissionSub.AgentVaultSkills
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: scoped.ctx,
+      projectId: scoped.projectId
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSkillActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSkills
+    });
     return accessBundleIds;
   };
 
   // Adding a skill changes what a bundle hands out, so it is a bundle edit, and the skill has to be one the caller can see.
   const $authorizeBundleLink = async (scoped: TAgentVaultSkillScoped) => {
     const permission = await $getPermission(scoped);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSkillActions.Read,
-      ProjectPermissionSub.AgentVaultSkills
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    permission.assert({
+      action: ProjectPermissionAgentVaultSkillActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSkills
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
   };
 
   const projectSkill = (row: TAgentVaultSkillSummaryRow): TAgentVaultSkill => ({

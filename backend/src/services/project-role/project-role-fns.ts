@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { cryptographicOperatorPermissions } from "@app/domains/kms/kms/ce/module";
 import {
-  cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission
-} from "@app/ee/services/permission/default-roles";
+} from "@app/domains/platform/projects/ce/module";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
 // Agent Vault resolves every slug except admin to its member set, so Viewer and No Access would promise

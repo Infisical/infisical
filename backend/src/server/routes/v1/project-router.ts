@@ -207,12 +207,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const roles = (req.query.roles?.split(",") || []).filter(Boolean);
       const users = await server.services.projectMembership.getProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.projectId,
-        actorOrgId: req.permission.orgId,
         roles
       });
 
@@ -267,10 +264,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const project = await server.services.project.createProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         projectName: req.body.projectName,
         projectDescription: req.body.projectDescription,
         slug: req.body.slug,
@@ -351,10 +345,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projects, totalCount } = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         type: req.query.type,
         limit: req.query.limit,
         offset: req.query.offset
@@ -395,10 +386,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
         },
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { project };
     }
@@ -435,10 +423,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           type: ProjectFilterType.SLUG
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       return project;
@@ -484,10 +469,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       // Soft delete: returns fast (single UPDATE). The async cleanup worker hard-deletes the project
       // after its grace period.
       const project = await server.services.project.deleteProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         filter: {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
@@ -552,10 +534,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projects = await server.services.project.listDeletedProjects({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         type: req.query.type
       });
       return { projects };
@@ -590,10 +569,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.permanentlyDeleteProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         projectId: req.params.projectId
       });
 
@@ -645,10 +621,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.restoreProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         projectId: req.params.projectId
       });
 
@@ -759,10 +732,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata,
           auditLogsRetentionDays: req.body.auditLogsRetentionDays
         },
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -825,10 +795,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.project.enableSecretBlindIndex({
         projectId: req.params.projectId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return { message: "Successfully enabled secret blind indexing" };
@@ -865,10 +832,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.project.getSecretBlindIndexMigrationStatus({
         projectId: req.params.projectId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -897,10 +861,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateAuditLogsRetention({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogsRetentionDays: req.body.auditLogsRetentionDays,
         filter: {
           projectId: req.params.projectId,
@@ -949,10 +910,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { auditLogSettings };
@@ -981,10 +939,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         eventClasses: req.body.eventClasses
       });
@@ -1042,10 +997,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { integrations };
@@ -1080,10 +1032,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { authorizations };
@@ -1110,10 +1059,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const serviceTokenData = await server.services.serviceToken.getProjectServiceTokens({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { serviceTokenData };
@@ -1166,10 +1112,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const config = await server.services.project.getProjectWorkflowIntegrationConfig({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         integration: req.params.integration
       });
@@ -1214,10 +1157,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedIntegration = await server.services.project.deleteProjectWorkflowIntegration({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         integration: req.params.integration,
         integrationId: req.params.integrationId
@@ -1294,10 +1234,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workflowIntegrationConfig = await server.services.project.updateProjectWorkflowIntegration({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         ...req.body
       });
@@ -1391,7 +1328,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { docs: projects, totalCount } = await server.services.project.searchProjects({
-        permission: req.permission,
+        actor: req.permission,
         ...req.body
       });
 
@@ -1422,7 +1359,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.project.requestProjectAccess({
-        permission: req.permission,
+        actor: req.permission,
         comment: req.body.comment,
         projectId: req.params.projectId
       });
@@ -1468,10 +1405,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.project.upgradeProject({
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         projectId: req.params.projectId,
         userPrivateKey: req.body.userPrivateKey
       });
@@ -1499,11 +1433,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const status = await server.services.project.getProjectUpgradeStatus({
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id
+        actor: req.permission
       });
 
       return { status };
@@ -1543,10 +1474,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           projectId: req.params.projectId,
           type: ProjectFilterType.ID
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
+        actor: req.permission,
         ...req.query
       });
       return { cas };
@@ -1604,10 +1532,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           projectId: req.params.projectId,
           type: ProjectFilterType.ID
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
+        actor: req.permission,
         ...req.query
       });
       return { certificates, totalCount };
@@ -1697,10 +1622,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           projectId: req.params.projectId,
           type: ProjectFilterType.ID
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
+        actor: req.permission,
         ...filters,
         metadataFilter: metadata,
         sortBy,
@@ -1754,10 +1676,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           projectId: req.params.projectId,
           type: ProjectFilterType.ID
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
     }
   });
@@ -1801,10 +1720,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           type: ProjectFilterType.ID
         },
         range: req.query.range,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
     }
   });
@@ -1846,10 +1762,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           type: ProjectFilterType.ID
         },
         range: req.query.range,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
     }
   });
@@ -1877,10 +1790,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { alerts } = await server.services.project.listProjectAlerts({
         projectId: req.params.projectId,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       return { alerts };
@@ -1910,10 +1820,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { pkiCollections } = await server.services.project.listProjectPkiCollections({
         projectId: req.params.projectId,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       return { collections: pkiCollections };
@@ -1942,10 +1849,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscribers = await server.services.project.listProjectPkiSubscribers({
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
+        actor: req.permission,
         projectId: req.params.projectId
       });
 
@@ -1976,10 +1880,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
         projectId: req.params.projectId,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       return { certificateTemplates };

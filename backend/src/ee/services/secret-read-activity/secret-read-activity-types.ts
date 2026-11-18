@@ -2,7 +2,7 @@ import { MongoAbility, MongoQuery } from "@casl/ability";
 
 import { SecretFolderRole, TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
 import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import type { TMemberRoleSummary } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
@@ -184,10 +184,7 @@ export type TSecretReadActivityActor = {
 };
 
 // A group's roles carry no assignment id, and naming a role does not need one.
-export type TMemberRole = Omit<
-  Awaited<ReturnType<TPermissionServiceFactory["getProjectPermissions"]>>["userPermissions"][number]["roles"][number],
-  "id"
->;
+export type TMemberRole = Omit<TMemberRoleSummary, "id">;
 
 export type TUnusedAccessRole = { id: string | null; slug: string; name: string };
 

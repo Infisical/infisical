@@ -1,18 +1,24 @@
-import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 import { z } from "zod";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionPkiDiscoveryActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -83,7 +89,8 @@ type TPkiDiscoveryServiceFactoryDep = {
     TPkiDiscoveryScanHistoryDALFactory,
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectPermissionService: TProjectPermissionService;
+  orgPermissionService: TOrgPermissionService;
   licenseService: TLicenseService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
@@ -99,7 +106,8 @@ export type TPkiDiscoveryServiceFactory = ReturnType<typeof pkiDiscoveryServiceF
 export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
-  permissionService,
+  projectPermissionService,
+  orgPermissionService,
   licenseService,
   gatewayV2DAL,
   gatewayPoolDAL,
@@ -130,7 +138,7 @@ export const pkiDiscoveryServiceFactory = ({
     discoveryType: THostDiscoveryType,
     targetConfig: TPkiDiscoveryTargetConfig,
     projectId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     existingConnectionIds?: string[]
   ): Promise<TLinuxServerTargetConfig | TWindowsServerTargetConfig> => {
     const hostType = HOST_DISCOVERY_TYPES[discoveryType];
@@ -189,7 +197,7 @@ export const pkiDiscoveryServiceFactory = ({
     targetConfig: TPkiDiscoveryTargetConfig;
     hasGateway: boolean;
     projectId: string;
-    actor: OrgServiceActor;
+    actor: TActorContext;
     existingConnectionIds?: string[];
   }): Promise<TPkiDiscoveryTargetConfig> => {
     switch (discoveryType) {
@@ -213,32 +221,25 @@ export const pkiDiscoveryServiceFactory = ({
     scanIntervalDays,
     gatewayId,
     gatewayPoolId,
-    orgActor,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TCreatePkiDiscoveryDTO) => {
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Create,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Create,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     // Creation only; existing discoveries keep scanning and stay editable.
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.PkiDiscovery)) {
       throw new BadRequestError({
         message:
@@ -262,35 +263,28 @@ export const pkiDiscoveryServiceFactory = ({
       targetConfig,
       hasGateway: Boolean(gatewayId || gatewayPoolId),
       projectId,
-      actor: orgActor
+      actor
     });
 
     if (gatewayId) {
-      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.org.id });
       if (!gateway) {
         throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
+      const orgPermission = await orgPermissionService.getOrgPermission({ actor });
+
+      orgPermission.assert({
+        action: OrgPermissionGatewayActions.AttachGateways,
+        subject: OrgPermissionSubjects.Gateway
       });
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
-
-      await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId });
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.org.id, gatewayId });
     } else if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
-        orgId: actorOrgId,
-        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+        orgId: actor.org.id,
+        actor
       });
     }
 
@@ -330,11 +324,7 @@ export const pkiDiscoveryServiceFactory = ({
     gatewayId,
     gatewayPoolId,
     isActive,
-    orgActor,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TUpdatePkiDiscoveryDTO) => {
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
@@ -345,19 +335,16 @@ export const pkiDiscoveryServiceFactory = ({
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Edit,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Edit,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     const discoveryType = (discovery.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network;
     const gatewayIdValue = gatewayPoolId ? null : gatewayId;
@@ -380,7 +367,7 @@ export const pkiDiscoveryServiceFactory = ({
           targetConfig,
           hasGateway: effectiveHasGateway,
           projectId: discovery.projectId,
-          actor: orgActor,
+          actor,
           existingConnectionIds
         })
       : undefined;
@@ -390,36 +377,29 @@ export const pkiDiscoveryServiceFactory = ({
     }
 
     if (gatewayId) {
-      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.org.id });
       if (!gateway) {
         throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const orgPermission = await orgPermissionService.getOrgPermission({ actor });
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      orgPermission.assert({
+        action: OrgPermissionGatewayActions.AttachGateways,
+        subject: OrgPermissionSubjects.Gateway
+      });
 
       await assertIndividualGatewayAllowed({
         orgDAL,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         gatewayId,
         previousGatewayId: discovery.gatewayId
       });
     } else if (gatewayPoolId && gatewayPoolId !== discovery.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
-        orgId: actorOrgId,
-        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+        orgId: actor.org.id,
+        actor
       });
     }
 
@@ -447,31 +427,22 @@ export const pkiDiscoveryServiceFactory = ({
     }
   };
 
-  const deleteDiscovery = async ({
-    discoveryId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeletePkiDiscoveryDTO) => {
+  const deleteDiscovery = async ({ discoveryId, actor }: TDeletePkiDiscoveryDTO) => {
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Delete,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Delete,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     await pkiDiscoveryConfigDAL.deleteById(discoveryId);
 
@@ -497,25 +468,22 @@ export const pkiDiscoveryServiceFactory = ({
     }));
   };
 
-  const getDiscovery = async ({ discoveryId, actor, actorId, actorAuthMethod, actorOrgId }: TGetPkiDiscoveryDTO) => {
+  const getDiscovery = async ({ discoveryId, actor }: TGetPkiDiscoveryDTO) => {
     const discovery = await pkiDiscoveryConfigDAL.findByIdWithInstallationCounts(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Read,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Read,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     let gatewayName: string | null = null;
     let gatewayPoolName: string | null = null;
@@ -531,66 +499,45 @@ export const pkiDiscoveryServiceFactory = ({
       }
     }
 
-    const [discoveryWithConnections] = await $attachConnections([discovery], actorOrgId);
+    const [discoveryWithConnections] = await $attachConnections([discovery], actor.org.id);
 
     return { ...discoveryWithConnections, gatewayName, gatewayPoolName };
   };
 
-  const listDiscoveries = async ({
-    projectId,
-    offset,
-    limit,
-    search,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TListPkiDiscoveriesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listDiscoveries = async ({ projectId, offset, limit, search, actor }: TListPkiDiscoveriesDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Read,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Read,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     const discoveries = await pkiDiscoveryConfigDAL.findByProjectId(projectId, { offset, limit, search });
     const totalCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId, { search });
 
-    return { discoveries: await $attachConnections(discoveries, actorOrgId), totalCount };
+    return { discoveries: await $attachConnections(discoveries, actor.org.id), totalCount };
   };
 
-  const triggerScan = async ({
-    discoveryId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TTriggerPkiDiscoveryScanDTO) => {
+  const triggerScan = async ({ discoveryId, actor }: TTriggerPkiDiscoveryScanDTO) => {
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.RunScan,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.RunScan,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     if (!discovery.isActive) {
       throw new BadRequestError({ message: "Cannot trigger scan on an inactive discovery configuration" });
@@ -621,58 +568,44 @@ export const pkiDiscoveryServiceFactory = ({
     return { message: "Scan queued successfully", name: discovery.name, projectId: discovery.projectId };
   };
 
-  const getLatestScan = async ({ discoveryId, actor, actorId, actorAuthMethod, actorOrgId }: TGetLatestScanDTO) => {
+  const getLatestScan = async ({ discoveryId, actor }: TGetLatestScanDTO) => {
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Read,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Read,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     const latestScan = await pkiDiscoveryScanHistoryDAL.findLatestByDiscoveryId(discoveryId);
 
     return latestScan || null;
   };
 
-  const getScanHistory = async ({
-    discoveryId,
-    offset,
-    limit,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetScanHistoryDTO) => {
+  const getScanHistory = async ({ discoveryId, offset, limit, actor }: TGetScanHistoryDTO) => {
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: discovery.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiDiscoveryActions.Read,
-      ProjectPermissionSub.PkiDiscovery
-    );
+    permission.assert({
+      action: ProjectPermissionPkiDiscoveryActions.Read,
+      subject: ProjectPermissionSub.PkiDiscovery
+    });
 
     const scans = await pkiDiscoveryScanHistoryDAL.findByDiscoveryId(discoveryId, { offset, limit });
     const totalCount = await pkiDiscoveryScanHistoryDAL.countByDiscoveryId(discoveryId);

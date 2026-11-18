@@ -1,5 +1,6 @@
 import { FastifyRequest } from "fastify";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
@@ -8,14 +9,8 @@ import {
 import { TAgentVaultServiceTypeFields } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
-import { TGenericPermission } from "@app/lib/types";
 
-export const actorContext = (req: FastifyRequest): TGenericPermission => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
-});
+export const actorContext = (req: FastifyRequest): TActorContext => req.permission;
 
 // Zod validation strips keys a schema does not declare, so a body projectId on a route that reads the query is
 // recorded before validation by the preValidation hook in registerAgentVaultRouters.

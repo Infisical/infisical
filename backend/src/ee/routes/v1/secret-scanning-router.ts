@@ -37,10 +37,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       }
 
       const session = await server.services.secretScanning.createInstallationSession({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.body.organizationId
       });
 
@@ -66,10 +63,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { installatedApp } = await server.services.secretScanning.linkInstallationToOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
       return installatedApp;
@@ -91,10 +85,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const appInstallationCompleted = await server.services.secretScanning.getOrgInstallationStatus({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.params.organizationId
       });
       return { appInstallationCompleted };
@@ -126,10 +117,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const risks = await server.services.secretScanning.getAllRisksByOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.params.organizationId,
         filter: {
           repositoryNames: req.query.repositoryNames,
@@ -173,10 +161,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { risks, totalCount, repos } = await server.services.secretScanning.getRisksByOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.params.organizationId,
         filter: {
           limit: req.query.limit,
@@ -207,10 +192,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { risk } = await server.services.secretScanning.updateRiskStatus({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.params.organizationId,
         riskId: req.params.riskId,
         ...req.body

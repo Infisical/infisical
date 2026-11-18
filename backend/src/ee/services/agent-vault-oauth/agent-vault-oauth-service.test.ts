@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
@@ -55,12 +57,8 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const REDIRECT_URI = "https://app.infisical.test/agent-vault/oauth/callback";
 const DESTINATION = { hostPattern: "mcp.linear.app", serverUrl: SERVER_URL };
 
-const ctxOf = (actorId: string) => ({
-  actor: ActorType.USER,
-  actorId,
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-});
+const ctxOf = (actorId: string, type: ActorType = ActorType.USER) =>
+  ({ principal: { type, id: actorId, authMethod: null }, org: { id: "org-1" } }) as unknown as TActorContext;
 
 const json = (status: number, body: unknown): TOauthHttpResponse => ({
   status,
@@ -337,10 +335,10 @@ const setup = ({
         return { id, oauthConfig: row.oauthConfig } as never;
       }
     },
-    permissionService: {
-      getProjectPermission: async () =>
-        ({
-          permission: createMongoAbility([
+    accessBundlePermissionService: {
+      getAccessBundlePermission: async () => ({
+        permission: Permission.fromRules({
+          rules: [
             {
               action: ProjectPermissionAgentVaultAccessBundleActions.Read,
               subject: ProjectPermissionSub.AgentVaultAccessBundles
@@ -353,14 +351,11 @@ const setup = ({
                   }
                 ]
               : [])
-          ]),
-          hasRole: () => isAdmin,
-          memberships: []
-        }) as never
-    },
-    membershipDAL: {
-      findResourceMembershipsForActor: async () =>
-        grantedBundleIds.map((scopeResourceId) => ({ scopeResourceId, isActive: true, actorGroupId: null })) as never
+          ]
+        }) as never,
+        reachesEveryBundle: isAdmin,
+        accessBundleIds: isAdmin ? null : grantedBundleIds
+      })
     }
   });
 
@@ -634,7 +629,7 @@ describe("starting an authorization", () => {
 
   test("a caller who can't edit access bundles is refused before any request to the server", async () => {
     const env = setup({ canEditBundles: false });
-    await expect(createAuthorization(env)).rejects.toThrow(ForbiddenError);
+    await expect(createAuthorization(env)).rejects.toThrow(PermissionDeniedError);
     expect(env.registrations).toHaveLength(0);
   });
 
@@ -643,7 +638,7 @@ describe("starting an authorization", () => {
     await expect(
       env.service.createAuthorization({
         projectId: PROJECT_ID,
-        ctx: { ...ctxOf(USER_ID), actor: ActorType.IDENTITY },
+        ctx: ctxOf(USER_ID, ActorType.IDENTITY),
         serverUrl: SERVER_URL
       })
     ).rejects.toThrow("Only a user can authorize an OAuth connection");
@@ -1810,7 +1805,7 @@ describe("a member's own sign-in", () => {
     const env = setup({ canEditBundles: false });
     env.rows.set(SERVICE_ID, memberService());
 
-    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(ForbiddenError);
+    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(PermissionDeniedError);
   });
 
   test("a personal sign-in is claimed only as a personal value, and an admin's only for the service", async () => {

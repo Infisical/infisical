@@ -110,10 +110,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.create({
         ...req.body,
         projectId: req.body.projectId ?? req.internalCertManagerProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -186,10 +183,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const { signers, totalCount } = await server.services.pkiSigner.list({
         ...req.query,
         projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -227,10 +221,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.getById({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -280,10 +271,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const data = await server.services.pkiSigner.getMyPermissions({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { data };
     }
@@ -308,10 +296,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.checkIssuanceNow({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return signer;
     }
@@ -341,10 +326,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.update({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -392,10 +374,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.delete({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -444,17 +423,11 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = wantDisabled
         ? await server.services.pkiSigner.disable({
             signerId: req.params.signerId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
+            actor: req.permission
           })
         : await server.services.pkiSigner.enable({
             signerId: req.params.signerId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
+            actor: req.permission
           });
 
       await server.services.auditLog.createAuditLog({

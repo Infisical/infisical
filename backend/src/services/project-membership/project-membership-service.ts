@@ -1,12 +1,14 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +27,11 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
-import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import {
+  assertProductWillRetainAdmin,
+  resolveMembershipRoleSlugs,
+  toRoleAbilities
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
@@ -48,7 +54,7 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
+  projectPermissionService: TProjectPermissionService;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -76,7 +82,7 @@ type TProjectMembershipServiceFactoryDep = {
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
 
 export const projectMembershipServiceFactory = ({
-  permissionService,
+  projectPermissionService,
   projectMembershipDAL,
   smtpService,
   userGroupMembershipDAL,
@@ -138,24 +144,9 @@ export const projectMembershipServiceFactory = ({
     }
   };
 
-  const getProjectMemberships = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    includeGroupMembers,
-    projectId,
-    roles
-  }: TGetProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+  const getProjectMemberships = async ({ actor, includeGroupMembers, projectId, roles }: TGetProjectMembershipDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId, { roles });
 
@@ -220,23 +211,9 @@ export const projectMembershipServiceFactory = ({
     return unique(deduped.map((identifier) => resolved.get(identifier)?.username ?? identifier));
   };
 
-  const getProjectMembershipByUsername = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    username
-  }: TGetProjectMembershipByUsernameDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+  const getProjectMembershipByUsername = async ({ actor, projectId, username }: TGetProjectMembershipByUsernameDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member });
 
     const [canonicalUsername] = await $toCanonicalUsernames([username], projectId);
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, {
@@ -246,30 +223,15 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
-  const addUsersToProject = async ({
-    projectId,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    members,
-    sendEmails = true
-  }: TAddUsersToWorkspaceDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+  const addUsersToProject = async ({ projectId, actor, members, sendEmails = true }: TAddUsersToWorkspaceDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ProjectPermissionSub.Member });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
     const orgMembers = await membershipUserDAL.find({
-      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: actorOrgId,
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: actor.org.id,
       scope: AccessScope.Organization,
       $in: {
         [`${TableName.Membership}.id` as "id"]: members.map(({ orgMembershipId }) => orgMembershipId)
@@ -301,20 +263,18 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
-      [ProjectMembershipRole.Member],
-      projectId
-    );
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const memberRolePermissions = await projectPermissionService.getProjectPermissionByRoles({
+      projectId,
+      roles: [ProjectMembershipRole.Member]
+    });
+    const { shouldUseNewPrivilegeSystem } = actor.org;
     for (const addedUser of orgMembershipUsernames) {
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
         opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         opSubject: ProjectPermissionSub.Member,
-        actorPermission: permission,
-        targetPermissions: memberRolePermissions,
+        actorPermission: permission.toAbility(),
+        targetPermissions: toRoleAbilities(memberRolePermissions),
         baseMessage: "Failed to add a member with a role exceeding your own privileges",
         subjectFields: { userEmail: addedUser.email || undefined }
       });
@@ -329,7 +289,7 @@ export const projectMembershipServiceFactory = ({
 
     await membershipUserDAL.transaction(async (tx) => {
       await lockAndAssertActiveOrgAccess(
-        { orgDAL, orgId: actorOrgId, userIds: orgMembers.map(({ actorUserId }) => actorUserId as string) },
+        { orgDAL, orgId: actor.org.id, userIds: orgMembers.map(({ actorUserId }) => actorUserId as string) },
         tx
       );
       const projectMemberships = await membershipUserDAL.insertMany(
@@ -337,7 +297,7 @@ export const projectMembershipServiceFactory = ({
           scopeProjectId: projectId,
           actorUserId,
           scope: AccessScope.Project,
-          scopeOrgId: actorOrgId
+          scopeOrgId: actor.org.id
         })),
         tx
       );
@@ -352,7 +312,7 @@ export const projectMembershipServiceFactory = ({
           .map(({ actorUserId, id }) => ({
             encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
             nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-            senderId: actorId,
+            senderId: actor.principal.id,
             receiverId: actorUserId as string,
             projectId
           })),
@@ -364,7 +324,7 @@ export const projectMembershipServiceFactory = ({
       await notificationService.createUserNotifications(
         orgMembershipUsernames.map((member) => ({
           userId: member.id,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           type: NotificationType.PROJECT_INVITATION,
           title: "Project Invitation",
           body: `You've been invited to join the project **${project.name}**.`
@@ -388,18 +348,11 @@ export const projectMembershipServiceFactory = ({
   };
 
   const deleteProjectMemberships = async (
-    { actorId, actor, actorOrgId, actorAuthMethod, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
+    { actor, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
     externalTx?: Knex
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionMemberActions.Delete, subject: ProjectPermissionSub.Member });
 
     const usernamesAndEmails = await $toCanonicalUsernames([...emails, ...usernames], projectId);
 
@@ -412,7 +365,7 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    if (actor === ActorType.USER && projectMembers.some(({ user }) => user.id === actorId)) {
+    if (actor.principal.type === ActorType.USER && projectMembers.some(({ user }) => user.id === actor.principal.id)) {
       throw new BadRequestError({
         message: "Cannot remove yourself from project",
         name: "Delete project membership"
@@ -421,12 +374,12 @@ export const projectMembershipServiceFactory = ({
 
     const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
     const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
-    const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
+    const resolvedRoles = await projectPermissionService.getProjectPermissionByRoles({
+      projectId,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
     const unattributableRoles: typeof resolvedRoles = [];
@@ -447,8 +400,8 @@ export const projectMembershipServiceFactory = ({
         shouldUseNewPrivilegeSystem,
         opActions: ProjectPermissionMemberActions.Delete,
         opSubject: ProjectPermissionSub.Member,
-        actorPermission: permission,
-        targetPermissions,
+        actorPermission: permission.toAbility(),
+        targetPermissions: toRoleAbilities(targetPermissions),
         baseMessage: "Failed to remove a more privileged member from the project",
         subjectFields: { userEmail: projectMember.user.email || undefined }
       });
@@ -545,13 +498,13 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actor.org.id, Meter.SecretIdentities);
+    usageMeteringService.emit(actor.org.id, Meter.PamIdentities);
     return memberships;
   };
 
-  const leaveProject = async ({ projectId, actorId, actor }: TLeaveProjectDTO) => {
-    if (actor !== ActorType.USER) {
+  const leaveProject = async ({ projectId, actor }: TLeaveProjectDTO) => {
+    if (actor.principal.type !== ActorType.USER) {
       throw new BadRequestError({ message: "Only users can leave projects" });
     }
 
@@ -572,10 +525,10 @@ export const projectMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
-    const actorMembership = projectMembers.find((member) => member.userId === actorId);
+    const actorMembership = projectMembers.find((member) => member.userId === actor.principal.id);
     if (!actorMembership) {
       const [groupMembership] = await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(
-        [actorId],
+        [actor.principal.id],
         project.id
       );
       if (groupMembership) {
@@ -587,7 +540,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     await checkUserApproverPolicies(
-      [actorId],
+      [actor.principal.id],
       project.id,
       "Cannot leave project. Please ask a project admin to remove you from the following policies first"
     );
@@ -606,7 +559,7 @@ export const projectMembershipServiceFactory = ({
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
-          actorUserId: actorId
+          actorUserId: actor.principal.id
         },
         tx
       );
@@ -614,7 +567,7 @@ export const projectMembershipServiceFactory = ({
       await secretReminderRecipientsDAL.delete(
         {
           projectId,
-          userId: actorId
+          userId: actor.principal.id
         },
         tx
       );
@@ -625,12 +578,12 @@ export const projectMembershipServiceFactory = ({
         {
           projectId: project.id,
           actorKind: ApplicationMemberKind.User,
-          actorId
+          actorId: actor.principal.id
         },
         tx
       );
 
-      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actorId] }, tx);
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actor.principal.id] }, tx);
 
       return membership;
     });

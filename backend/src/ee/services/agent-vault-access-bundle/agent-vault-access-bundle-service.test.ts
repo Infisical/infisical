@@ -1,13 +1,17 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultServices } from "@app/db/schemas";
+import { FakeAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/testing/fake-access-bundle-permission-service";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectRule
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError } from "@app/lib/errors";
@@ -31,11 +35,9 @@ const SERVICE_ID = "service-1";
 type TUpdateServiceInput = Parameters<ReturnType<typeof agentVaultAccessBundleServiceFactory>["updateService"]>[0];
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-} as unknown as TUpdateServiceInput["ctx"];
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
 
 const sshService = ({ hasCertificate, secret }: { hasCertificate: boolean; secret: string }): TAgentVaultServices => ({
   id: SERVICE_ID,
@@ -131,26 +133,21 @@ const buildService = ({
     },
     agentVaultVariableDAL,
     agentVaultPersonalValueDAL: { delete: vi.fn(), deleteForServiceExceptFields: vi.fn() },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(
-          rules ??
-            (member
-              ? [
-                  {
-                    action: ProjectPermissionAgentVaultAccessBundleActions.Read,
-                    subject: ProjectPermissionSub.AgentVaultAccessBundles
-                  }
-                ]
-              : [{ action: "manage", subject: "all" }])
-        ),
-        hasRole: () => !member,
-        memberships: []
-      })
-    },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi.fn().mockResolvedValue([{ isActive: true, scopeResourceId: BUNDLE_ID }])
-    },
+    accessBundlePermissionService: new FakeAccessBundlePermissionService().allow({
+      actorId: ctx.principal.id,
+      projectId: PROJECT_ID,
+      rules: (rules ??
+        (member
+          ? [
+              {
+                action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+                subject: ProjectPermissionSub.AgentVaultAccessBundles
+              }
+            ]
+          : [{ action: "manage", subject: "all" }])) as TProjectRule[],
+      reachesEveryBundle: !member,
+      grantedAccessBundleIds: [BUNDLE_ID]
+    }),
     agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
     kmsDataKeyService,
     licenseService
@@ -544,7 +541,7 @@ describe("global variable references", () => {
         variableKeys: ["DB_PASSWORD"]
       });
 
-      await expect(create(built.service, password)).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(create(built.service, password)).rejects.toBeInstanceOf(PermissionDeniedError);
       expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
       expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
     }
@@ -595,7 +592,7 @@ describe("global variable references", () => {
         username: "agent",
         password: "{{DB_PASSWORD}}"
       })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(built.agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
   });
 
@@ -615,7 +612,7 @@ describe("global variable references", () => {
         transport: AgentVaultMcpTransport.StreamableHttp,
         credential: { type: AgentVaultCredentialType.Bearer, value: "{{DB_PASSWORD}}" }
       })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
   });
 });

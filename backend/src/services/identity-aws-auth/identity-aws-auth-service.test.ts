@@ -36,6 +36,7 @@ vi.mock("@app/services/identity/identity-auth-method-events", () => ({
 
 const IDENTITY_ID = "5d3a8b2e-7c61-4b0f-9f3e-2a1c4d6e8f90";
 const ORG_ID = "org-id";
+const ACTOR = { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID } };
 const ACCESS_TOKEN = "access-token";
 const ACCOUNT_ID = "123456789012";
 const ROLE_ARN = `arn:aws:iam::${ACCOUNT_ID}:role/app-role`;
@@ -91,7 +92,10 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
     } as never,
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
-    permissionService: {} as never,
+    orgPermissionService: {} as never,
+    projectPermissionService: {} as never,
+    secretsPermissionService: {} as never,
+    actorGrantsService: {} as never,
     licenseService: new FakeLicenseService().setPlan(ORG_ID, { ipAllowlisting: true }),
     instanceConfigService: new FakeInstanceConfigService(),
     identityAccessTokenService: {
@@ -189,7 +193,7 @@ describe("awsAuthService.login without a trust binding", () => {
   });
 });
 
-// Attach and update are the only places a binding can be saved. The permission service is an empty object, so a
+// Attach and update are the only places a binding can be saved. The permission domains are empty objects, so a
 // call that got past the binding check would throw a TypeError instead of the binding message.
 describe("awsAuthService trust binding on write", () => {
   const BINDING_MESSAGE = "Configure at least one allowed AWS account ID or principal ARN";
@@ -199,7 +203,7 @@ describe("awsAuthService trust binding on write", () => {
     return {
       result: service.attachAwsAuth({
         identityId: IDENTITY_ID,
-        actorOrgId: ORG_ID,
+        actor: ACTOR,
         stsEndpoint: "https://sts.amazonaws.com/",
         allowedAccountIds: "",
         allowedPrincipalArns: "",
@@ -216,7 +220,7 @@ describe("awsAuthService trust binding on write", () => {
   const update = (existing: Partial<TAwsAuthRow>, body: Record<string, unknown>) => {
     const { service, updateById } = makeService(existing, [IdentityAuthMethod.AWS_AUTH]);
     return {
-      result: service.updateAwsAuth({ identityId: IDENTITY_ID, actorOrgId: ORG_ID, ...body } as never),
+      result: service.updateAwsAuth({ identityId: IDENTITY_ID, actor: ACTOR, ...body } as never),
       updateById
     };
   };

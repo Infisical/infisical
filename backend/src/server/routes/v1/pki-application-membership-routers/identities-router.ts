@@ -33,10 +33,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity
@@ -71,10 +68,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.addMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         identityId: req.params.identityId,
@@ -130,10 +124,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.updateMemberRole({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity,
@@ -189,10 +180,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationMembership.removeMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity,

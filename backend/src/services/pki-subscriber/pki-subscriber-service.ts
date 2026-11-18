@@ -1,18 +1,17 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-bitwise */
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSubscriberActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -87,7 +86,7 @@ type TPkiSubscriberServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -107,7 +106,7 @@ export const pkiSubscriberServiceFactory = ({
   certificateBodyDAL,
   kmsDataKeyService,
   kmsKeyService,
-  permissionService,
+  projectPermissionService,
   certificateAuthorityQueue,
   internalCaFns,
   pkiSyncDAL,
@@ -126,26 +125,21 @@ export const pkiSubscriberServiceFactory = ({
     autoRenewalPeriodInDays,
     properties,
     projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TCreatePkiSubscriberDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Create,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.Create,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name
-      })
-    );
+      }
+    });
 
     if (enableAutoRenewal) {
       if (!autoRenewalPeriodInDays) {
@@ -180,14 +174,7 @@ export const pkiSubscriberServiceFactory = ({
     return newSubscriber;
   };
 
-  const getSubscriber = async ({
-    subscriberName,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetPkiSubscriberDTO) => {
+  const getSubscriber = async ({ subscriberName, projectId, actor }: TGetPkiSubscriberDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
       projectId
@@ -195,21 +182,19 @@ export const pkiSubscriberServiceFactory = ({
 
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Read,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.Read,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     let supportsImmediateCertIssuance = false;
     if (subscriber.caId) {
@@ -239,10 +224,7 @@ export const pkiSubscriberServiceFactory = ({
     enableAutoRenewal,
     autoRenewalPeriodInDays,
     properties,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TUpdatePkiSubscriberDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
@@ -250,21 +232,19 @@ export const pkiSubscriberServiceFactory = ({
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Edit,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.Edit,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     if (enableAutoRenewal) {
       if (!autoRenewalPeriodInDays && !subscriber.autoRenewalPeriodInDays) {
@@ -300,49 +280,33 @@ export const pkiSubscriberServiceFactory = ({
     return updatedSubscriber;
   };
 
-  const deleteSubscriber = async ({
-    subscriberName,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TDeletePkiSubscriberDTO) => {
+  const deleteSubscriber = async ({ subscriberName, projectId, actor }: TDeletePkiSubscriberDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
       projectId
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.Delete,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.Delete,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     await pkiSubscriberDAL.deleteById(subscriber.id);
 
     return subscriber;
   };
 
-  const orderSubscriberCert = async ({
-    subscriberName,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TOrderPkiSubscriberCertDTO) => {
+  const orderSubscriberCert = async ({ subscriberName, projectId, actor }: TOrderPkiSubscriberCertDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
       projectId
@@ -351,21 +315,19 @@ export const pkiSubscriberServiceFactory = ({
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.IssueCert,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.IssueCert,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
@@ -391,14 +353,7 @@ export const pkiSubscriberServiceFactory = ({
     throw new BadRequestError({ message: "Unsupported CA type" });
   };
 
-  const issueSubscriberCert = async ({
-    subscriberName,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TIssuePkiSubscriberCertDTO) => {
+  const issueSubscriberCert = async ({ subscriberName, projectId, actor }: TIssuePkiSubscriberCertDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
       projectId
@@ -407,21 +362,19 @@ export const pkiSubscriberServiceFactory = ({
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     if (!subscriber.caId) throw new BadRequestError({ message: "Subscriber does not have an assigned issuing CA" });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.IssueCert,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.IssueCert,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
@@ -439,15 +392,7 @@ export const pkiSubscriberServiceFactory = ({
     throw new BadRequestError({ message: "CA does not support immediate issuance of certificates" });
   };
 
-  const signSubscriberCert = async ({
-    subscriberName,
-    projectId,
-    csr,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TSignPkiSubscriberCertDTO) => {
+  const signSubscriberCert = async ({ subscriberName, projectId, csr, actor }: TSignPkiSubscriberCertDTO) => {
     const appCfg = getConfig();
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
@@ -459,21 +404,19 @@ export const pkiSubscriberServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
     if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${subscriber.caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.IssueCert,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.IssueCert,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     if (subscriber.status !== PkiSubscriberStatus.ACTIVE)
       throw new BadRequestError({ message: "Subscriber is not active" });
@@ -711,10 +654,7 @@ export const pkiSubscriberServiceFactory = ({
     projectId,
     offset,
     limit,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TListPkiSubscriberCertsDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
@@ -722,21 +662,19 @@ export const pkiSubscriberServiceFactory = ({
     });
     if (!subscriber) throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.ListCerts,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.ListCerts,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
     const certificates = await certificateDAL.find(
       {
@@ -756,10 +694,7 @@ export const pkiSubscriberServiceFactory = ({
   const getSubscriberActiveCertBundle = async ({
     subscriberName,
     projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TGetSubscriberActiveCertBundleDTO) => {
     const subscriber = await pkiSubscriberDAL.findOne({
       name: subscriberName,
@@ -770,31 +705,26 @@ export const pkiSubscriberServiceFactory = ({
       throw new NotFoundError({ message: `PKI subscriber named '${subscriberName}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: subscriber.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiSubscriberActions.ListCerts,
-      subject(ProjectPermissionSub.PkiSubscribers, {
+    permission.assert({
+      action: ProjectPermissionPkiSubscriberActions.ListCerts,
+      subject: ProjectPermissionSub.PkiSubscribers,
+      fields: {
         name: subscriber.name
-      })
-    );
+      }
+    });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    permission.assert({ action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateActions.ReadPrivateKey,
+      subject: ProjectPermissionSub.Certificates
+    });
 
     const cert = await certificateDAL.findLatestActiveCertForSubscriber({
       subscriberId: subscriber.id

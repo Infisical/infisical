@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
@@ -87,13 +88,15 @@ const createGuard = ({
   };
 
   const factory = newOrgMembershipUserFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+        )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
+    orgDAL: {} as never,
     membershipUserDAL: {
       getUserById: vi.fn().mockResolvedValue({ roles: (targetRoles ?? [targetRole]).map((role) => ({ role })) })
     } as never,
@@ -111,7 +114,10 @@ const createGuard = ({
 
   return () =>
     factory.onUpdateMembershipUserGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: {
+        principal: { type: "user", id: "actor-id" },
+        org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+      },
       scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
       selector: { userId: TARGET_USER_ID },
       data: data ?? { roles: [{ role: incomingRole, isTemporary: false }] }
@@ -311,11 +317,13 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
     };
 
     const factory = newOrgMembershipUserFactory({
-      permissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+      orgPermissionService: {
+        getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
         getOrgPermissionByRoles: vi
           .fn()
-          .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+          .mockImplementation(({ roles }: { roles: string[] }) =>
+            roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+          )
       } as never,
       orgDAL: {
         findById: vi
@@ -338,7 +346,10 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
     return () =>
       factory.onCreateMembershipUserGuard(
         {
-          permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+          actor: {
+            principal: { type: "user", id: "actor-id" },
+            org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+          },
           scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
           data: { roles: incomingRoles.map((role) => ({ role, isTemporary: false })) }
         } as never,

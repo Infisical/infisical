@@ -58,10 +58,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       await server.services.migration.importEnvKeyData({
         decryptionKey,
         encryptedJson: parsedJsonFile,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       void server.services.telemetry
@@ -95,10 +92,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.migration.importVaultData({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         ...req.body
       });
 
@@ -133,10 +127,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const enabled = await server.services.migration.hasCustomVaultMigration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         provider: req.params.provider
       });
       return { enabled };

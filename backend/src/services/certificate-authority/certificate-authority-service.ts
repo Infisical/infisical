@@ -1,6 +1,5 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TableName, ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -14,16 +13,16 @@ import {
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
@@ -154,7 +153,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -189,7 +188,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
   telemetryService,
-  permissionService,
+  projectPermissionService,
   internalCertificateAuthorityService,
   appConnectionDAL,
   appConnectionService,
@@ -336,23 +335,21 @@ export const certificateAuthorityServiceFactory = ({
 
   const createCertificateAuthority = async (
     { type, projectId, name, configuration, status }: TCreateCertificateAuthorityDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Create,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Create,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name }
+    });
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
@@ -401,7 +398,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
+      usageMeteringService.emit(actor.org.id, Meter.InternalCas);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -499,7 +496,7 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const findCertificateAuthorityById = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+  const findCertificateAuthorityById = async ({ id, type }: { id: string; type: CaType }, actor: TActorContext) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
     if (!certificateAuthority)
@@ -507,19 +504,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with id "${id}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: certificateAuthority.name }
+    });
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
@@ -585,7 +580,7 @@ export const certificateAuthorityServiceFactory = ({
 
   const findCertificateAuthorityByNameAndProjectId = async (
     { caName, type, projectId }: { caName: string; type: CaType; projectId: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
       caName,
@@ -597,19 +592,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: caName })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: caName }
+    });
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
@@ -670,20 +663,17 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const getCertificateAuthorityQuota = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+  const getCertificateAuthorityQuota = async ({ projectId }: { projectId: string }, actor: TActorContext) => {
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities
+    });
 
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -706,24 +696,21 @@ export const certificateAuthorityServiceFactory = ({
 
   const listCertificateAuthoritiesByProjectId = async (
     { projectId, type }: { projectId: string; type: CaType },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities
+    });
 
     const permissionFilters = getProcessedPermissionRules(
-      permission,
+      permission.toAbility(),
       ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
@@ -788,7 +775,7 @@ export const certificateAuthorityServiceFactory = ({
 
   const updateCertificateAuthority = async (
     { id, type, configuration, status, name }: TUpdateCertificateAuthorityDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
@@ -797,19 +784,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with id "${id}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: certificateAuthority.name }
+    });
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
@@ -941,7 +926,7 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+  const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: TActorContext) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
     if (!certificateAuthority)
@@ -949,19 +934,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with id "${id}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Delete,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Delete,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: certificateAuthority.name }
+    });
 
     if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
       throw new BadRequestError({
@@ -985,7 +968,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
+      usageMeteringService.emit(actor.org.id, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1034,7 +1017,7 @@ export const certificateAuthorityServiceFactory = ({
 
   const deprecatedUpdateCertificateAuthority = async (
     { caName, type, configuration, status, name, projectId }: TDeprecatedUpdateCertificateAuthorityDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
       caName,
@@ -1046,19 +1029,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: certificateAuthority.name }
+    });
 
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
@@ -1176,7 +1157,7 @@ export const certificateAuthorityServiceFactory = ({
 
   const deprecatedDeleteCertificateAuthority = async (
     { caName, type, projectId }: { caName: string; type: CaType; projectId: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
       caName,
@@ -1188,19 +1169,17 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: certificateAuthority.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Delete,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Delete,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: certificateAuthority.name }
+    });
 
     if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
       throw new BadRequestError({
@@ -1224,7 +1203,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
+      usageMeteringService.emit(actor.org.id, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1274,17 +1253,11 @@ export const certificateAuthorityServiceFactory = ({
   const getAzureAdcsTemplates = async ({
     caId,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     projectId: string;
-    actor: OrgServiceActor["type"];
-    actorId: string;
-    actorAuthMethod: OrgServiceActor["authMethod"];
-    actorOrgId?: string;
+    actor: TActorContext;
   }) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
 
@@ -1293,21 +1266,19 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with id "${caId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, {
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: {
         name: certificateAuthority.name
-      })
-    );
+      }
+    });
 
     return azureAdCsFns.getTemplates({
       caId,
@@ -1318,17 +1289,11 @@ export const certificateAuthorityServiceFactory = ({
   const getADCSTemplates = async ({
     caId,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     projectId: string;
-    actor: OrgServiceActor["type"];
-    actorId: string;
-    actorAuthMethod: OrgServiceActor["authMethod"];
-    actorOrgId?: string;
+    actor: TActorContext;
   }) => {
     const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
 
@@ -1337,21 +1302,19 @@ export const certificateAuthorityServiceFactory = ({
         message: `Could not find certificate authority with id "${caId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, {
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: {
         name: certificateAuthority.name
-      })
-    );
+      }
+    });
 
     return adcsFns.getCertificateTemplates({
       caId,
@@ -1362,16 +1325,10 @@ export const certificateAuthorityServiceFactory = ({
   const getCaById = async ({
     caId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     isInternal
   }: {
     caId: string;
-    actor: OrgServiceActor["type"];
-    actorId: string;
-    actorAuthMethod: OrgServiceActor["authMethod"];
-    actorOrgId?: string;
+    actor: TActorContext;
     isInternal?: boolean;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -1380,21 +1337,19 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.Read,
-        subject(ProjectPermissionSub.CertificateAuthorities, {
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.Read,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: {
           name: ca.name
-        })
-      );
+        }
+      });
     }
 
     return ca;
@@ -1448,39 +1403,34 @@ export const certificateAuthorityServiceFactory = ({
 
   const triggerCertificateRequestValidation = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     certificateRequestId
-  }: Omit<TProjectPermission, "projectId"> & { certificateRequestId: string }) => {
+  }: TActorInput & { certificateRequestId: string }) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certificateRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const requestMetadata = (await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id })).map(
       ({ key, value }) => ({ key, value: value || "" })
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
+    permission.assert({
+      action: ProjectPermissionCertificateActions.Edit,
+      subject: ProjectPermissionSub.Certificates,
+      fields: {
         commonName: certificateRequest.commonName ?? undefined,
         altNames: Array.isArray(certificateRequest.altNames)
           ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
           : undefined,
         metadata: requestMetadata
-      })
-    );
+      }
+    });
 
     if (certificateRequest.status !== CertificateRequestStatus.PENDING_VALIDATION) {
       throw new BadRequestError({

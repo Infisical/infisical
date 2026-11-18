@@ -33,10 +33,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Group
@@ -61,10 +58,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.addMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         groupId: req.body.groupId,
@@ -118,10 +112,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.updateMemberRole({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Group,
@@ -175,10 +166,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.signerMembership.removeMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Group,

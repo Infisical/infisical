@@ -1,21 +1,21 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { ProjectType } from "@app/db/schemas";
+import {
+  TApplicationPermissionService,
+  TCertManagerService,
+  ApplicationEnrollmentPermissionActions,
+  ApplicationPermissionSub
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionApplicationEnrollmentActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
@@ -112,7 +112,8 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy" | "createRequestFromPolicy">;
@@ -149,7 +150,8 @@ export const pkiScepServiceFactory = ({
   certificateRequestService,
   certificateIssuanceQueue,
   auditLogService,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   approvalPolicyService,
@@ -924,10 +926,7 @@ export const pkiScepServiceFactory = ({
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.SCEP_ACCOUNT,
-        actorId: profile.id,
-        actorAuthMethod: null,
-        actorOrgId: project.orgId,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
         profileId: profile.id,
         csr: csrPem,
         validity: { ttl },
@@ -1003,10 +1002,7 @@ export const pkiScepServiceFactory = ({
       tx?: Knex
     ) =>
       certificateRequestService.createCertificateRequest({
-        actor: ActorType.SCEP_ACCOUNT,
-        actorId: profile.id,
-        actorAuthMethod: null,
-        actorOrgId: project.orgId,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
         projectId: profile.projectId,
         caId: profile.caId!,
         profileId: profile.id,
@@ -1283,14 +1279,7 @@ export const pkiScepServiceFactory = ({
     }
   };
 
-  const generateDynamicChallenge = async ({
-    profileId,
-    applicationId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGenerateDynamicChallengeDTO) => {
+  const generateDynamicChallenge = async ({ profileId, applicationId, actor }: TGenerateDynamicChallengeDTO) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "SCEP profile not found" });
@@ -1309,33 +1298,27 @@ export const pkiScepServiceFactory = ({
       }
       resolvedScepConfigId = junction.scepConfigId ?? null;
 
-      const { permission } = await permissionService.getResourcePermission({
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId: profile.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge,
-        ResourcePermissionSub.ApplicationEnrollment
-      );
+      permission.assert({
+        action: ApplicationEnrollmentPermissionActions.GenerateScepChallenge,
+        subject: ApplicationPermissionSub.ApplicationEnrollment
+      });
     } else {
       resolvedScepConfigId = profile.scepConfigId ?? null;
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.Edit,
-        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.Edit,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: { slug: profile.slug }
+      });
     }
 
     if (!resolvedScepConfigId) {

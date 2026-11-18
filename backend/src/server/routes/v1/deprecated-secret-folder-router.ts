@@ -74,10 +74,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const path = req.body.path || req.body.directory || "/";
       const folder = await server.services.folder.createFolder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         projectId: req.body.workspaceId,
         path,
@@ -167,10 +164,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const path = req.body.path || req.body.directory || "/";
       const { folder, old } = await server.services.folder.updateFolder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
@@ -250,10 +244,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
         ...req.body,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await Promise.all(
@@ -335,10 +326,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const path = req.body.path || req.body.directory || "/";
       const folder = await server.services.folder.deleteFolder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         projectId: req.body.workspaceId,
         idOrName: req.params.folderIdOrName,
@@ -416,10 +404,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const path = req.query.path || req.query.directory || "/";
       const folders = await server.services.folder.getFolders({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query,
         projectId: req.query.workspaceId,
         path
@@ -469,10 +454,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const folder = await server.services.folder.getFolderById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.id
       });
       return { folder };

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
@@ -57,14 +57,14 @@ const formatSigners = (signerNames: string[]) =>
 
 export type TCertManagerSignerAlertProviderDep = {
   certManagerSignerAlertDAL: TCertManagerSignerAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerSignerAlertProviderFactory = ({
   certManagerSignerAlertDAL,
-  permissionService,
+  projectPermissionService,
   licenseService,
   certManagerProjectResolver
 }: TCertManagerSignerAlertProviderDep): IScheduledAlertProvider<TSignerAlertCertificate> => {
@@ -145,7 +145,7 @@ export const certManagerSignerAlertProviderFactory = ({
     assertNoResource(resourceId);
 
     await assertCertManagerAdminAlertPermission(
-      permissionService,
+      projectPermissionService,
       { action, projectId, actor },
       "Signer certificate expiration alerts send certificate details from every signer, so only Certificate Manager admins can create or edit them."
     );

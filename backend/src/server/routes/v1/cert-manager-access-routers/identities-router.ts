@@ -54,7 +54,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         data: {
           offset: req.query.offset,
@@ -88,7 +88,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         data: {
           offset: req.query.offset,
@@ -141,7 +141,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { identityId: req.params.identityId }
       });
@@ -186,7 +186,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         throw new BadRequestError({ message: "You must provide either role or roles field" });
       }
       const { membership } = await server.services.membershipIdentity.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         data: {
           identityId: req.params.identityId,
@@ -235,7 +235,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { identityId: req.params.identityId },
         data: { roles: req.body.roles }
@@ -280,7 +280,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { identityId: req.params.identityId }
       });

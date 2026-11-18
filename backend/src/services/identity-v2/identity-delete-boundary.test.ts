@@ -2,14 +2,19 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  projectAdminPermissions,
+  projectNoAccessPermissions
+} from "@app/domains/platform/projects/ce/module";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgIdentityFactory } from "./org/org-identity-factory";
@@ -48,6 +53,8 @@ const projectIdentityDeleter = createMongoAbility<MongoAbility>([
   }
 ]);
 
+const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
+
 const createOrgGuard = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
@@ -58,19 +65,20 @@ const createOrgGuard = ({
   targetRole?: string;
 }) => {
   const factory = newOrgIdentityFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: orgAbilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: toPermission(orgAbilityByRole[role]) }))
+        )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never
   });
 
   return () =>
     factory.onDeleteIdentityGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } },
       scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
       selector: { identityId: IDENTITY_ID }
     } as never);
@@ -86,19 +94,20 @@ const createProjectGuard = ({
   targetRole?: string;
 }) => {
   const factory = newProjectIdentityFactory({
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    projectPermissionService: {
+      getProjectPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
       getProjectPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: projectAbilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: toPermission(projectAbilityByRole[role]) }))
+        )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never
   });
 
   return () =>
     factory.onDeleteIdentityGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } },
       scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID },
       selector: { identityId: IDENTITY_ID }
     } as never);

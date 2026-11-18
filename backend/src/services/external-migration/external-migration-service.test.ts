@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { SecretProtectionType } from "../secret/secret-types";
@@ -30,10 +30,8 @@ const ENVIRONMENT = "prod";
 const BASE_PATH = "/base";
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  orgId: "org-1",
-  authMethod: undefined
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 } as unknown as Parameters<ReturnType<typeof externalMigrationServiceFactory>["importVaultSecrets"]>[0]["actor"];
 
 // only the collaborators the structure-preserving import touches; anything else is left undefined so an
@@ -58,10 +56,10 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
   const existingPaths = new Set([BASE_PATH]);
 
   const deps = {
-    permissionService: {
-      getProjectPermission: vi
+    secretsPermissionService: {
+      getSecretsPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue({ permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }) })
     },
     appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({ id: "connection-1" }) },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: ENVIRONMENT, name: "Production" }) },
