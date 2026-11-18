@@ -3,12 +3,10 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { extractObjectFieldPaths, takeDistinctKeyScanWindow } from "@app/lib/fn";
@@ -23,7 +21,6 @@ import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-s
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";

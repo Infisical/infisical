@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_RESOURCE_TYPE,
@@ -10,10 +11,6 @@ import {
 } from "@app/ee/services/honey-token/honey-token-events";
 import { HONEY_TOKEN_PROVIDER_MAP } from "@app/ee/services/honey-token/honey-token-provider-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";

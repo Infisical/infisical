@@ -8,7 +8,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";

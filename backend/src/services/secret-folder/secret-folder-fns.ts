@@ -3,9 +3,6 @@ import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TSecretFolders } from "@app/db/schemas";
-import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
-import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -14,7 +11,10 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";

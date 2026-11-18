@@ -12,15 +12,15 @@ import {
 } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionSub

@@ -5,6 +5,18 @@ import picomatch from "picomatch";
 import { z } from "zod";
 
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
+import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
+import {
+  ActionAllowedConditions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  ProjectPermissionV2Schema,
+  SecretSubjectFields
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
@@ -19,20 +31,8 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
-import { OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
-import {
-  ActionAllowedConditions,
-  ProjectPermissionGroupActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub,
-  ProjectPermissionV2Schema,
-  SecretSubjectFields
-} from "./project-permission";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,

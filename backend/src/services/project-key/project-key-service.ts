@@ -1,8 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";

@@ -2,17 +2,17 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
-import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
 

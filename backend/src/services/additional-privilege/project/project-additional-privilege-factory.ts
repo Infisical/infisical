@@ -2,22 +2,22 @@ import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
-import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";

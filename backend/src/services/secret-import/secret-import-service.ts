@@ -7,15 +7,15 @@ import { ActionProjectType, TableName } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
+import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

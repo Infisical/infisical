@@ -9,15 +9,15 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

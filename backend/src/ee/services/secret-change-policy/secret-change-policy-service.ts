@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";

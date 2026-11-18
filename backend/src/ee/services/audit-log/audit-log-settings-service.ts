@@ -2,6 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TAuditLogSettings } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -11,9 +13,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES,

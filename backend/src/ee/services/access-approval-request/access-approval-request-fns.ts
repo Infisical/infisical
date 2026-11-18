@@ -1,13 +1,6 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { PermissionConditionOperators } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
-import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
-import { slugSchema } from "@app/server/lib/schemas";
-
-import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
-import { PermissionConditionSchema } from "../permission/permission-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -15,7 +8,13 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
-} from "../permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { PermissionConditionOperators } from "@app/lib/casl";
+import { CASL_ACTION_SCHEMA_NATIVE_ENUM, PermissionConditionSchema } from "@app/lib/casl/permission-schemas";
+import { BadRequestError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { slugSchema } from "@app/server/lib/schemas";
+
 import { TVerifyPermission } from "./access-approval-request-types";
 
 const ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH = 512;

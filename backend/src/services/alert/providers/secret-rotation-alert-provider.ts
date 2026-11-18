@@ -2,11 +2,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { ProjectPermissionSecretRotationActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionSecretRotationActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_FAILED_EVENT,

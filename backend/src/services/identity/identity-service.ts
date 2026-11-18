@@ -11,8 +11,11 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  TOrganizationsService,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

@@ -14,17 +14,17 @@ import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates"
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
-import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
-import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
-import { TOidcTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
+import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
+import { TOidcTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

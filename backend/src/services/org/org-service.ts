@@ -13,6 +13,14 @@ import {
   TSamlConfigs
 } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionGroupActions,
+  OrgPermissionMemberActions,
+  OrgPermissionSecretShareAction,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -23,14 +31,6 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import {
-  OrgPermissionActions,
-  OrgPermissionGroupActions,
-  OrgPermissionMemberActions,
-  OrgPermissionSecretShareAction,
-  OrgPermissionSsoActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";

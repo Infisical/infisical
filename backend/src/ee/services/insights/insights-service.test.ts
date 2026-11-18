@@ -7,8 +7,8 @@ import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { OrgServiceActor } from "@app/lib/types";
 

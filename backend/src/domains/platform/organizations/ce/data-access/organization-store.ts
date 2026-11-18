@@ -1,4 +1,5 @@
-import { TableName } from "@app/db/schemas";
+import { TableName, TOrganizations } from "@app/db/schemas";
+import type { TActorOrg } from "@app/domains/lib/actor-context";
 import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
@@ -31,6 +32,50 @@ export class OrganizationStore implements TOrganizationStore {
       return row ?? null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find organization" });
+    }
+  }
+
+  async findActorOrg(orgId: string, options?: TReadOptions): Promise<TActorOrg | null> {
+    try {
+      const knex = this.connection.reader(options);
+      const row = await knex(TableName.Organization)
+        .joinRaw(
+          `LEFT JOIN "${TableName.Organization}" AS root ON root.id = COALESCE("${TableName.Organization}"."rootOrgId", "${TableName.Organization}".id)`
+        )
+        .where(`${TableName.Organization}.id`, orgId)
+        .select(
+          knex.ref("id").withSchema(TableName.Organization),
+          knex.ref("name").withSchema(TableName.Organization),
+          knex.ref("rootOrgId").withSchema(TableName.Organization),
+          knex.ref("parentOrgId").withSchema(TableName.Organization),
+          knex.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
+          knex.ref("authEnforced").withSchema("root").as("rootAuthEnforced"),
+          knex.ref("googleSsoAuthEnforced").withSchema("root").as("rootGoogleSsoAuthEnforced"),
+          knex.ref("bypassOrgAuthEnabled").withSchema("root").as("rootBypassOrgAuthEnabled")
+        )
+        .first<
+          | (Pick<TOrganizations, "id" | "name" | "rootOrgId" | "parentOrgId" | "shouldUseNewPrivilegeSystem"> & {
+              rootAuthEnforced: boolean | null;
+              rootGoogleSsoAuthEnforced: boolean | null;
+              rootBypassOrgAuthEnabled: boolean | null;
+            })
+          | undefined
+        >();
+      if (!row) return null;
+      return {
+        id: row.id,
+        name: row.name,
+        rootOrgId: row.rootOrgId ?? row.id,
+        parentOrgId: row.parentOrgId ?? row.id,
+        shouldUseNewPrivilegeSystem: Boolean(row.shouldUseNewPrivilegeSystem),
+        ssoPolicy: {
+          authEnforced: Boolean(row.rootAuthEnforced),
+          googleSsoAuthEnforced: Boolean(row.rootGoogleSsoAuthEnforced),
+          bypassOrgAuthEnabled: Boolean(row.rootBypassOrgAuthEnabled)
+        }
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find actor organization" });
     }
   }
 }
