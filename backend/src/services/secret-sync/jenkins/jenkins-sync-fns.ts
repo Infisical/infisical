@@ -2,6 +2,7 @@
 import { isAxiosError } from "axios";
 import RE2 from "re2";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, GatewayTransportError } from "@app/lib/errors";
@@ -67,7 +68,10 @@ export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) 
 const toSyncError = (error: unknown, message: string, secretKey?: string) => {
   // A gateway that is missing or not allowed is a configuration problem a retry will not fix, while a
   // tunnel that could not be opened never reached Jenkins and is left to the queue's retries
-  if (error instanceof BadRequestError && !(error instanceof GatewayTransportError)) {
+  if (
+    (error instanceof BadRequestError && !(error instanceof GatewayTransportError)) ||
+    error instanceof RuleViolationError
+  ) {
     return new SecretSyncError({ message: error.message, secretKey, shouldRetry: false });
   }
 

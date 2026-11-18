@@ -1,7 +1,7 @@
 import z from "zod";
 
 import { DiscriminativePick } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TCipherPairSource } from "@app/services/app-connection/app-connection-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
@@ -39,7 +39,7 @@ export type TGcpConnectionFederatedCredential = z.infer<typeof GcpConnectionFede
 // and caches GCP's access token in the connection's credentials.
 export type TGcpConnectionAuthDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 

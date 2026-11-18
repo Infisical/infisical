@@ -239,7 +239,7 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
   const findById = vi.fn();
   const deps = {
     appConnectionDAL: { findById, update },
-    kmsService: {},
+    kmsDataKeyService: {},
     oidcIssuerService
   } as unknown as TGcpConnectionAuthDeps;
   const connection = {

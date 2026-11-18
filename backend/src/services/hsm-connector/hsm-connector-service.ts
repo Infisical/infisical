@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
@@ -17,7 +18,6 @@ import {
 import { Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
@@ -46,7 +46,7 @@ import type {
 export type THsmConnectorServiceFactoryDep = {
   hsmConnectorDAL: THsmConnectorDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
@@ -68,7 +68,7 @@ const ML_DSA_HSM_KEY_ALGORITHMS = new Set<HsmKeyAlgorithm>([
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
@@ -162,7 +162,7 @@ export const hsmConnectorServiceFactory = ({
     const encryptedCredentials = await encryptHsmConnectorCredentials({
       projectId: dto.projectId,
       credentials: parsedCreds.data,
-      kmsService
+      kmsDataKeyService
     });
 
     let row: Awaited<ReturnType<typeof hsmConnectorDAL.create>>;
@@ -205,7 +205,7 @@ export const hsmConnectorServiceFactory = ({
         const credentials = await decryptHsmConnectorCredentials({
           projectId: row.projectId,
           encryptedCredentials: row.encryptedCredentials,
-          kmsService
+          kmsDataKeyService
         });
         return HsmConnectorSanitizedSchema.parse({
           ...row,
@@ -228,7 +228,7 @@ export const hsmConnectorServiceFactory = ({
     const credentials = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      kmsService
+      kmsDataKeyService
     });
     return HsmConnectorSanitizedSchema.parse({
       ...row,
@@ -279,7 +279,7 @@ export const hsmConnectorServiceFactory = ({
     const currentCreds = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      kmsService
+      kmsDataKeyService
     });
     const credentialsChanged = dto.credentials !== undefined;
     const mergedCreds: THsmConnectorCredentials = {
@@ -319,7 +319,7 @@ export const hsmConnectorServiceFactory = ({
       update.encryptedCredentials = await encryptHsmConnectorCredentials({
         projectId: row.projectId,
         credentials: parsedCreds.data,
-        kmsService
+        kmsDataKeyService
       });
     }
 
@@ -413,7 +413,7 @@ export const hsmConnectorServiceFactory = ({
     const credentials = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      kmsService
+      kmsDataKeyService
     });
 
     const result = await routing.runTestRoundTrip({
@@ -428,7 +428,7 @@ export const hsmConnectorServiceFactory = ({
     decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      kmsService
+      kmsDataKeyService
     });
 
   const $loadConnector = async (connectorId: string, expectedProjectId: string) => {

@@ -1,9 +1,11 @@
 ---
 title: "Sessions on behalf of users"
-description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, so each session uses the personal values of the user it's for."
+description: "Let a machine identity create sessions on behalf of users, so each session uses the personal values of the user it's for."
 ---
 
-A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in an [Agent Vault project](/documentation/platform/agent-vault/projects). The machine identity can still create sessions as itself. It creates a session on behalf of a user only if it sends the user's email or ID in `onBehalfOf`. For a session created on behalf of a user, the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values), not the machine identity's. The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
+A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in an [Agent Vault project](/documentation/platform/agent-vault/projects). If the machine identity sends a user's email or ID in `onBehalfOf`, it creates the session on behalf of that user. Otherwise, it creates the session as itself.
+
+For a session created on behalf of a user, the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values), not the machine identity's. The session can only use the [access bundles](#access-bundles-and-personal-values) that both the user and the machine identity have access to.
 
 Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it.
 
@@ -26,7 +28,7 @@ sequenceDiagram
 ## Prerequisites
 
 - The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), or an admin of the project who can [set up the delegation](#set-up-a-delegation) for you
-- A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth), as [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) describes
+- A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth)
 - A [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) for the machine identity on each access bundle its sessions use
 - Users who are [members of the project](/documentation/platform/agent-vault/access-control#product-membership) and have a grant on the access bundles their agents use
 
@@ -61,7 +63,7 @@ sequenceDiagram
     </Steps>
   </Tab>
   <Tab title="API">
-    Call [the endpoint that sets a delegation](/api-reference/endpoints/agent-vault-delegations/set) with the machine identity's ID and your [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
+    Call the [Set delegation](/api-reference/endpoints/agent-vault-delegations/set) endpoint with the machine identity's ID and your [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
 
     ```bash
     curl -X PUT "https://app.infisical.com/api/v1/agent-vault/delegations/<machine-identity-id>?projectId=<project-id>" \
@@ -72,24 +74,43 @@ sequenceDiagram
 
     Set `scope` to `all-members` to cover every member of the project, or to `selected` with `userIds`, `groupIds`, or both. The request replaces any delegation the machine identity already has.
 
-    To add or remove users and groups without sending the whole list, call [the endpoint that adds users and groups](/api-reference/endpoints/agent-vault-delegations/add-subjects) or [the endpoint that removes them](/api-reference/endpoints/agent-vault-delegations/remove-subjects).
+    To add users and groups without sending the whole list, call the [Add users and groups](/api-reference/endpoints/agent-vault-delegations/add-subjects) endpoint.
   </Tab>
 </Tabs>
 
-You can add only users and groups that are members of the project. If a user is in the project only through a group, add the group. If a user or group leaves the project, Infisical takes them out of the delegation, and adding them back to the project doesn't add them back to the delegation.
+## Remove a user or group from a delegation
 
-To take a user or group out of the delegation, select **Manage Delegation**, select **In Delegation** on its row, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or turn off **All Project Members**, the machine identity can no longer act on behalf of anyone.
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step>
+        On the machine identity's page, select **Manage Delegation**.
+      </Step>
+      <Step>
+        Select **In Delegation** on the user's or group's row, then select **Remove**.
+      </Step>
+      <Step>
+        Select **Remove** again to confirm.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call the [Remove users and groups](/api-reference/endpoints/agent-vault-delegations/remove-subjects) endpoint with the machine identity's ID and your [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id), and list the users and groups to take out in `userIds`, `groupIds`, or both:
 
-<Warning>
-  A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
+    ```bash
+    curl -X DELETE "https://app.infisical.com/api/v1/agent-vault/delegations/<machine-identity-id>/subjects?projectId=<project-id>" \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{"userIds": ["<user-id>"]}'
+    ```
+  </Tab>
+</Tabs>
 
-  - If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers. Protect the machine identity's credentials as carefully as you'd protect those users' own credentials
-  - A machine identity with the **Admin** role in the project can set delegations, including one for itself that covers every member, project admins included. Give a machine identity the **Admin** role only if it needs it
-</Warning>
+If you remove the last user or group, or turn off **All Project Members**, the machine identity can no longer act on behalf of anyone.
 
 ## Create a session on behalf of a user
 
-Log in as the machine identity, as [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) describes. Then call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and name the user in `onBehalfOf`:
+[Log in as a machine identity](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api), then call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and name the user in `onBehalfOf`:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
@@ -100,18 +121,18 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
 - In `accessBundle`, name a bundle that both the user and the machine identity can use
-- In `services`, name services instead of an access bundle or alongside one, as [What the session can reach](#what-the-session-can-reach) describes
+- In `services`, name services from [a bundle that both of them can use](#access-bundles-and-personal-values)
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
-
-Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
 
 <Tip>
   You can also create the session with [the Python SDK](/sdks/languages/python#create-a-session-on-behalf-of-a-user) or [the Node.js SDK](/sdks/languages/node#create-a-session-on-behalf-of-a-user).
 </Tip>
 
+[Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent) with the session token from the response, and [revoke the session](/documentation/platform/agent-vault/revoke-a-session) when the agent finishes.
+
 ### Find the access bundles a session can use
 
-To choose an access bundle for the user, call [the endpoint that lists access bundles](/api-reference/endpoints/agent-vault-access-bundles/list) as the machine identity with the project's ID, and name the user in `onBehalfOfUserEmail` or `onBehalfOfUserId`:
+To choose an access bundle for the user, call the [List access bundles](/api-reference/endpoints/agent-vault-access-bundles/list) endpoint as the machine identity with the project's ID, and name the user in `onBehalfOfUserEmail` or `onBehalfOfUserId`:
 
 ```bash
 curl "https://app.infisical.com/api/v1/agent-vault/access-bundles?projectId=<project-id>&onBehalfOfUserEmail=<user-email>" \
@@ -131,7 +152,7 @@ curl "https://app.infisical.com/api/v1/agent-vault/services?projectId=<project-i
 
 The response lists only the services in an access bundle that both the user and the machine identity can use, which are the services a session on the user's behalf can name. For each service, `personalValues` shows whether the user has set up their personal values for it. Add `requiresSetup=false` to list only the services the user has set up.
 
-## What the session can reach
+## Access bundles and personal values
 
 A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
 
@@ -139,16 +160,16 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an admin of the project, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-If you name services in `services`, each service has to be in an access bundle that both the user and the machine identity can use. If both are admins of the project, you can name any of its services.
+Each service you name in `services` also has to be in a bundle that both of them can use, unless both are admins of the project.
 
 If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
 
 - In the machine identity's **Delegation** section, the row for the user or group shows the number of excluded bundles, and hovering over the number lists them
-- [The endpoint that reads a delegation](/api-reference/endpoints/agent-vault-delegations/get) returns the bundles in `missingAccessBundles` (always empty if a machine identity that isn't an admin of the project reads its own delegation)
+- The [Get delegation](/api-reference/endpoints/agent-vault-delegations/get) endpoint returns the bundles in `missingAccessBundles` (always empty if a machine identity that isn't an admin of the project reads its own delegation)
 
 To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
 
-## When the session stops working
+## Delegation changes
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
 
@@ -159,20 +180,37 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 - An admin removes the machine identity from the project, which also deletes its delegation
 - Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
-If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
+If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
 
-If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes. If you named services, the session also stops getting a service's credential once no access bundle that both the user and the machine identity can use holds the service.
+If the user or the machine identity can no longer use the access bundle, the session [stops getting credentials](/documentation/platform/agent-vault/sessions#access-changes) for the bundle. The same goes for each service you named.
 
 ## Track sessions created on behalf of users
 
 A session created on behalf of a user belongs to the machine identity, so the user can't see it. Only the machine identity and admins of the project can see the session, read its [session logs](/documentation/platform/agent-vault/session-logs), and revoke it:
 
-- The machine identity, through the endpoints that [read a session](/api-reference/endpoints/agent-vault-sessions/get), [list its session logs](/api-reference/endpoints/agent-vault-session-logs/list), and [revoke a session](/api-reference/endpoints/agent-vault-sessions/revoke)
+- The machine identity, through the [Get session](/api-reference/endpoints/agent-vault-sessions/get), [List session logs](/api-reference/endpoints/agent-vault-session-logs/list), and [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoints
 - Admins, under **All Sessions** on the **Sessions** page
 
 On the **Sessions** page, the **Identity** column shows the machine identity's name, followed by "on behalf of" and the user's name. The session's details list the user under **On Behalf Of**.
 
+### Audit events
+
 When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
+
+## Considerations
+
+### Machine identity access
+
+A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
+
+- If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers (protect the machine identity's credentials as carefully as those users' own credentials)
+- A machine identity with the **Admin** role in the project can set delegations, including one for itself that covers every member and project admin (give a machine identity the **Admin** role only if it needs it)
+
+### Project membership
+
+- You can add only users and groups that are members of the project
+- If a user is in the project only through a group, add the group
+- If a user or group leaves the project, Infisical takes them out of the delegation, and adding them back to the project doesn't add them back to the delegation
 
 ## Troubleshooting
 
@@ -205,8 +243,8 @@ When the machine identity creates the session, Infisical writes an audit event w
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
-    Create, use, and revoke a session from your own code.
+  <Card title="Create a session" icon="plus" href="/documentation/platform/agent-vault/create-a-session">
+    Create a session and start an agent with its token.
   </Card>
   <Card title="HTTP APIs" icon="plug" href="/documentation/platform/agent-vault/http-apis#member-provided-values">
     Leave part of a service's credential to each member.

@@ -102,7 +102,7 @@ const buildService = ({
     delete: vi.fn()
   });
   // The "sealed" bytes are the plaintext behind a marker, so a test can read what was sealed.
-  const kmsService = {
+  const kmsDataKeyService = {
     createCipherPairWithDataKey: vi.fn().mockResolvedValue({
       encryptor: ({ plainText }: { plainText: Buffer }) => ({
         cipherTextBlob: Buffer.concat([Buffer.from("sealed:"), plainText])
@@ -152,10 +152,10 @@ const buildService = ({
       findResourceMembershipsForActor: vi.fn().mockResolvedValue([{ isActive: true, scopeResourceId: BUNDLE_ID }])
     },
     agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
-    kmsService,
+    kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
-  return { service, agentVaultServiceDAL, agentVaultVariableDAL, kmsService, licenseService };
+  return { service, agentVaultServiceDAL, agentVaultVariableDAL, kmsDataKeyService, licenseService };
 };
 
 const updatePort = (
@@ -240,7 +240,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
 
   test("with no concurrent save, writes no secret and replaces no credential", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
-    const { service, agentVaultServiceDAL, kmsService } = buildService({ firstRead: stored, locked: stored });
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
     const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey, certificate: null });
 
@@ -248,7 +248,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
     expect(columns).not.toHaveProperty("encryptedCredential");
     expect(columns.credentialConfig).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: false });
     expect(result.credentialReplaced).toBe(false);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 });
 
@@ -282,7 +282,7 @@ describe("updateService, the service it returns", () => {
 describe("updateService, what the audit is told changed", () => {
   test("an empty certificate with none stored writes no secret and replaces no credential", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
-    const { service, agentVaultServiceDAL, kmsService } = buildService({ firstRead: stored, locked: stored });
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
     const result = await updateSsh(service, {
       port: 2222,
@@ -291,7 +291,7 @@ describe("updateService, what the audit is told changed", () => {
 
     expect(writtenColumns(agentVaultServiceDAL)).not.toHaveProperty("encryptedCredential");
     expect(result.credentialReplaced).toBe(false);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("custom headers read back from an SSH service are not reported as changed", async () => {
@@ -330,7 +330,7 @@ describe("updateService, hooks", () => {
   });
 
   test("a URL-only change keeps the stored secret", async () => {
-    const { service, agentVaultServiceDAL, kmsService } = buildService({
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({
       firstRead: hookedService(),
       locked: hookedService()
     });
@@ -345,7 +345,7 @@ describe("updateService, hooks", () => {
       hookUrl: "https://hooks.example.com/other",
       hookSecretReplaced: false
     });
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("a secret-only change writes the secret and reports no URL", async () => {

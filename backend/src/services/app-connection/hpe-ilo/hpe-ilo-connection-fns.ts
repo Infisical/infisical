@@ -1,6 +1,7 @@
 import { AxiosRequestConfig, HttpStatusCode, isAxiosError } from "axios";
 import net from "net";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
@@ -130,7 +131,7 @@ export const validateHpeIloConnectionCredentials = async (
     const tlsErrorMessage = getHpeIloTlsErrorMessage(error, hostname);
     if (tlsErrorMessage) throw new BadRequestError({ message: `Unable to validate connection: ${tlsErrorMessage}` });
 
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     if (isAxiosError(error)) {
       if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {

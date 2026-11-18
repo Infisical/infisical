@@ -102,7 +102,7 @@ describe("SCIM group to org role mappings", () => {
 
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
 
     // `scim` edit alone: enough for the route's own check, not enough to hand out org roles.
     const [role] = await testDb(TableName.Role)

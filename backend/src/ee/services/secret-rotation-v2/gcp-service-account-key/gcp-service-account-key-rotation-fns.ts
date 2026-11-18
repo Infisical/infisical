@@ -52,7 +52,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
 > = (
   secretRotation,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
   _gatewayV2Service,
   _gatewayPoolService,
   _keyStore,
@@ -66,7 +66,11 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
       });
     }
 
-    return getGcpConnectionAuthToken(secretRotation.connection, { appConnectionDAL, kmsService, oidcIssuerService });
+    return getGcpConnectionAuthToken(secretRotation.connection, {
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    });
   };
 
   const {

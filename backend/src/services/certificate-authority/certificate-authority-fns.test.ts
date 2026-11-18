@@ -592,17 +592,12 @@ describe("rebuildCaCrl", () => {
             : signer
         )
       },
-      projectDAL: {
-        transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb({})),
-        findOne: vi.fn(async () => ({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-1" })),
-        updateById: vi.fn()
-      },
-      kmsService: {
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
+      kmsKeyService: {
         encryptWithKmsKey: vi.fn(async () => async ({ plainText }: { plainText: Buffer }) => ({
           cipherTextBlob: plainText
         })),
-        decryptWithKmsKey: vi.fn(),
-        generateKmsKey: vi.fn()
+        decryptWithKmsKey: vi.fn()
       },
       certificateDAL: {
         find: vi.fn(async () => [
@@ -914,16 +909,8 @@ describe("buildIssuedCertificateChain", () => {
       caCertChain,
       projectId: PROJECT_ID,
       certificateAuthorityCrossSignedCertDAL: { findValidInCaHierarchy },
-      projectDAL: {
-        findOne: vi.fn().mockResolvedValue({
-          id: PROJECT_ID,
-          orgId: "org-1",
-          kmsCertificateKeyId: "kms-key-1"
-        }),
-        updateById: vi.fn(),
-        transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
-      } as never,
-      kmsService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key") } as never,
+      kmsKeyService: { decryptWithKmsKey } as never
     });
 
     return { chain, findValidInCaHierarchy, decryptWithKmsKey };
@@ -1040,7 +1027,7 @@ describe("getActiveCaCertificate", () => {
         internalCa: { dn: storedDn, activeCaCertId },
         kmsId: "kms-key",
         certificateAuthorityCertDAL: { findById: vi.fn().mockResolvedValue(caCertRow) },
-        kmsService: {
+        kmsKeyService: {
           decryptWithKmsKey: vi
             .fn()
             .mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)

@@ -332,7 +332,7 @@ const getWorkloadIdentityTokenRefreshMarginMs = (serviceAccountEmail?: string) =
 
 const getGcpWorkloadIdentityAccessToken = async (
   connectionId: string,
-  { appConnectionDAL, kmsService, oidcIssuerService }: TGcpConnectionAuthDeps
+  { appConnectionDAL, kmsDataKeyService, oidcIssuerService }: TGcpConnectionAuthDeps
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
   if (!appConnection) {
@@ -341,7 +341,7 @@ const getGcpWorkloadIdentityAccessToken = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as TGcpConnectionWorkloadIdentityFederationCredentials;
@@ -371,7 +371,7 @@ const getGcpWorkloadIdentityAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: { ...credentials, ...token },
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     projectId: appConnection.projectId
   });
 
