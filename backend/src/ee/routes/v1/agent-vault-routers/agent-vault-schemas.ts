@@ -559,7 +559,7 @@ const sshKeyCredentialSummarySchema = z
 const oauthCredentialSummarySchema = z
   .object({
     type: z.literal(AgentVaultCredentialType.OAuth),
-    source: z.enum(["service", "member", "variable", "inline"]).describe(AGENT_VAULT.SERVICE.oauthSource),
+    source: z.enum(["service", "member", "variable"]).describe(AGENT_VAULT.SERVICE.oauthSource),
     memberProvidedFields: z
       .enum([AgentVaultVariableReferenceField.CredentialValue])
       .array()

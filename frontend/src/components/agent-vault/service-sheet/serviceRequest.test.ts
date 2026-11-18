@@ -247,6 +247,7 @@ const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
 const memberOAuth = (clientId: string | null = null) =>
   storedMcp({
     type: AgentVaultCredentialType.OAuth,
+    source: "member",
     memberProvidedFields: MEMBER,
     issuer: "https://mcp.linear.app",
     grantedScopes: [],
@@ -257,6 +258,7 @@ const memberOAuth = (clientId: string | null = null) =>
 
 const sharedOAuth = storedMcp({
   type: AgentVaultCredentialType.OAuth,
+  source: "service",
   memberProvidedFields: [],
   status: AgentVaultOauthStatus.Connected,
   issuer: "https://mcp.linear.app",

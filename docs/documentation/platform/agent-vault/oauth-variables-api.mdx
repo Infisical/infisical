@@ -195,7 +195,7 @@ If your app already holds a user's tokens, you can store them in the variable in
 }
 ```
 
-Infisical stores the tokens as you send them, and the provider first checks them when an agent uses the service. Without a `refreshToken`, the variable stops working when the access token expires. Tokens can only be imported into a variable with the endpoints and client ID set as in this example.
+Infisical stores the tokens as you send them, and the provider first checks them when an agent uses the service. Without a `refreshToken`, the variable stops working when the access token expires. Infisical refreshes the tokens it's given, so if the provider rotates refresh tokens, the copy you sent stops working once Infisical renews it. Tokens can only be imported into a variable with the endpoints and client ID set as in this example.
 
 ## Let Infisical register a client
 

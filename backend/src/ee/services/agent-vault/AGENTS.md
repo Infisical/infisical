@@ -981,7 +981,9 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   Infisical's callback page; a machine identity must have a `redirectUri`, since the dashboard callback completes as a user), the actor, and `variableSettingsFingerprint` (`oauthVariableSettingsFingerprintOf` over
   the sign-in fields). Starting needs `edit` on variables, or `create` when it starts with the variable's create
   (`signIn`). Discovery that only guessed the endpoints, or found metadata naming another issuer, sends nothing to them
-  (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A dynamic registration happens on every sign-in,
+  (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A
+  variable set up by hand with no `issuer` records only its authorization endpoint's origin as the issuer, so its record
+  carries `issuerUnchecked` and the callback's `iss` isn't compared (Keycloak issues from a path). A dynamic registration happens on every sign-in,
   as for a service's own, and sends the variable's `clientName` (default: the project's name) and the record's redirect
   URI.
 - **Every finished sign-in writes straight into its variable**, from the public complete route and the dashboard's
@@ -989,7 +991,9 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   runs first, outside any transaction, under `AgentVaultOauthAuthorizationCompleteLock` (a second caller gets a 409).
   `writeVariableSignIn` then re-checks `edit` on variables, locks the variable row, and compares the fingerprint (409
   `AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE` on a mismatch) before writing the tokens. The record is kept with its
-  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. A `state` whose
+  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. A write that
+  fails for any other reason after the code was redeemed saves the record authorized with its sealed tokens
+  (`isUnwrittenVariableSignIn`, read as pending), so completing it again writes them without a second exchange. A `state` whose
   record names another variable is a 400. The public route's statuses are part of its contract: 200 done or already
   done, 400 provider refusal or mismatch with the reason, 404 missing, expired or not yours, 409 in progress or
   settings changed.
@@ -1010,7 +1014,12 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   (host pattern, server URL, and a 409 `AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE` once it no longer names this
   variable). The lock is per variable (`AgentVaultOauthVariableRefreshLock`). Resolve reads the session's OAuth
   variables once and refreshes each at most once, through the first service still pointing where its snapshot says,
-  trying the next on a 409. Its dead-login text names the variable and the Variables page.
+  trying the next on a 409. Its dead-login and not-signed-in texts name the variable but no page, since a variable
+  with an API `redirectUri` is signed in outside the dashboard.
+- **A service whose variable isn't signed in goes out with `credentialNotConnected`** beside `personalValuesMissing`
+  (bundle and session services alike), so a current proxy names the cause and an older one still refuses it. The
+  services list reads the same variables (`findOauthForResolve`, never decrypted, `oauthVariableSignedInOf`) and marks
+  such a service `needs-personal-values` with text that sends it to an admin, not to the member.
 - **A shared variable lives and dies together.** A 401 on any service using it refreshes it for all of them, and a
   dead sign-in is dead for all of them. Accepted: the docs say so.
 

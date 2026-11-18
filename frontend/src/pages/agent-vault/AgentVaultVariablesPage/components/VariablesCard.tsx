@@ -393,8 +393,13 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
     setAuthorizingVariable(null);
   }, [authorizeState]);
 
-  // A variable that needs more settings first opens in its dialog, which says what to fill in.
+  // A variable that needs more settings first opens in its dialog, which says what to fill in. So does an own app's
+  // variable that was never signed in, as only its dialog can send the client secret, which is stored on a sign-in.
   const authorize = (variable: TAgentVaultVariable) => {
+    if (variable.oauth?.clientId && !variable.oauth.connection) {
+      openForm(variable);
+      return;
+    }
     setAuthorizingVariable(variable);
     authorizeVariable(
       async () => ({ variableId: variable.id }),
@@ -420,9 +425,10 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
             </>
           ) : (
             <>
-              A global variable stores one value that any service can use as{" "}
-              <code className="font-mono">{toVariableReference("KEY")}</code>. Managing these and
-              seeing their values each take their own permission.
+              A global variable stores a value that any service can use as{" "}
+              <code className="font-mono">{toVariableReference("KEY")}</code>, or an OAuth sign-in
+              that any service can use as its credential. Managing these and seeing their values
+              each take their own permission.
             </>
           )}
         </CardDescription>

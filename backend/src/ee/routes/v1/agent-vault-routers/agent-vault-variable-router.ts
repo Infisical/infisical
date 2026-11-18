@@ -94,7 +94,8 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       response: {
         200: z.object({
           variable: AgentVaultVariableSchema,
-          signIn: AgentVaultOauthVariableSignInStartSchema.nullable().describe(AGENT_VAULT.VARIABLE.signInStart)
+          signIn: AgentVaultOauthVariableSignInStartSchema.nullable().describe(AGENT_VAULT.VARIABLE.signInStart),
+          signInError: z.string().optional().describe(AGENT_VAULT.VARIABLE.signInError)
         })
       }
     },
@@ -102,7 +103,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
-      const { variable, connected, signIn } = await server.services.agentVaultVariable.createVariable({
+      const { variable, connected, signIn, signInError } = await server.services.agentVaultVariable.createVariable({
         projectId,
         ctx: actorContext(req),
         ...body
@@ -130,7 +131,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
 
       if (connected) await recordOauthVariableConnected(req, projectId, connected);
 
-      return { variable, signIn };
+      return { variable, signIn, ...(signInError ? { signInError } : {}) };
     }
   });
 
@@ -207,7 +208,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "createAgentVaultVariableAuthorization",
       description:
-        "Start a sign-in for an OAuth variable and get the link to send the user to. The link works for 10 minutes and only for the caller who made it. When the variable needs more settings first, `authorization` is null and the response says which.",
+        "Start a sign-in for an OAuth variable and get the link to send the user to. The link works for 10 minutes, and only the caller who made it can complete it. When the variable needs more settings first, `authorization` is null and the response says which.",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
         variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)

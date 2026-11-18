@@ -113,6 +113,7 @@ import {
 import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
 import {
   buildSessionServicesDocument,
+  oauthVariableSignedInOf,
   toBundleServiceFacts,
   toSetPersonalFields
 } from "./agent-vault-session-services-fns";
@@ -1275,7 +1276,7 @@ export const agentVaultProxyServiceFactory = ({
       const refreshed = refreshedVariables.get(variableId);
       if (refreshed) return { credential: refreshed.credential };
       const connection = oauthVariableConnectionOf(variableId);
-      if (!variable.encryptedValue || !connection) return {};
+      if (!variable.encryptedValue || !connection) return { notConnected: true };
       return {
         credential: toResolvedOauthCredential(
           connection as TAgentVaultOauthConfig,
@@ -1284,11 +1285,12 @@ export const agentVaultProxyServiceFactory = ({
       };
     };
     const variableCredentialFields = (variableId: string) => {
-      const { credential, removed } = $oauthVariableCredential(variableId);
+      const { credential, removed, notConnected } = $oauthVariableCredential(variableId);
       return {
         credential: credential ?? { type: AgentVaultCredentialType.Passthrough as const },
         personalValuesMissing: !credential,
-        ...(removed ? { credentialRemoved: true } : {})
+        ...(removed ? { credentialRemoved: true } : {}),
+        ...(notConnected ? { credentialNotConnected: true } : {})
       };
     };
 
@@ -1598,17 +1600,29 @@ export const agentVaultProxyServiceFactory = ({
     // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
     const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
     const serviceIds = rows.map((row) => row.id);
-    const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
+    const [customHeaderRows, substitutionRows, personalValueRows, oauthVariableRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
       agentVaultPersonalValueDAL.findForResolve({
         serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
         owner: personalValuesOwner(session)
       }),
+      // Only to tell whether each variable is signed in, read for the same rows as resolve; nothing sealed is opened.
+      agentVaultVariableDAL.findOauthForResolve({
+        variableIds: [
+          ...new Set(
+            [...rows, ...inlineRows.filter((row) => !row.secretsDeletedAt)]
+              .map(oauthVariableIdOf)
+              .filter((id): id is string => Boolean(id))
+          )
+        ],
+        projectId: session.projectId
+      }),
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 
     const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const isOauthVariableSignedIn = oauthVariableSignedInOf(oauthVariableRows);
 
     // Bundle services before inline ones, the order resolve sends them in.
     const services = [
@@ -1618,11 +1632,12 @@ export const agentVaultProxyServiceFactory = ({
           substitutions: substitutionRows
             .filter((substitution) => substitution.serviceId === row.id)
             .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-          setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
+          setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>(),
+          isOauthVariableSignedIn
         })
       ),
       ...inlineRows.flatMap((row) => {
-        const facts = toInlineServiceFacts(row);
+        const facts = toInlineServiceFacts(row, isOauthVariableSignedIn);
         return facts ? [facts] : [];
       })
     ];

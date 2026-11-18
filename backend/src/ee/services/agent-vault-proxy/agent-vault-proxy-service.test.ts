@@ -1266,7 +1266,7 @@ describe("OAuth variables on resolve", () => {
     expect((services[1].credential as { value: string }).value).toBe("refreshed-access");
   });
 
-  test("a variable that isn't connected is flagged, so the proxy refuses the service", async () => {
+  test("a variable that isn't connected is flagged by name, and as missing values for older proxies", async () => {
     const { service } = setup(noRefresh, [variableService()], [], {
       oauthVariables: [oauthVariable({ connected: false })]
     });
@@ -1275,7 +1275,8 @@ describe("OAuth variables on resolve", () => {
 
     expect(services[0]).toMatchObject({
       credential: { type: AgentVaultCredentialType.Passthrough },
-      personalValuesMissing: true
+      personalValuesMissing: true,
+      credentialNotConnected: true
     });
     expect(services[0].credentialRemoved).toBeUndefined();
   });
@@ -1290,9 +1291,33 @@ describe("OAuth variables on resolve", () => {
 
     expect(services[0]).toMatchObject({
       credential: { type: AgentVaultCredentialType.Passthrough },
-      personalValuesMissing: true
+      personalValuesMissing: true,
+      credentialNotConnected: true
     });
     expect(services[0].credentialRemoved).toBeUndefined();
+  });
+
+  test("the services list says a service whose variable isn't connected is not ready, bundle and session alike", async () => {
+    const { service } = setup(noRefresh, [variableService()], [], {
+      inlineRows: [inlineOauthRow()],
+      oauthVariables: [oauthVariable({ connected: false })]
+    });
+
+    const listed = await service.getSessionServices({ sessionToken: "token" });
+
+    expect(listed.services.map(({ name, status }) => ({ name, status }))).toEqual([
+      { name: "gdrive", status: "needs-personal-values" },
+      { name: "inline-gdrive", status: "needs-personal-values" }
+    ]);
+    expect(listed.services[0].howToUse).toMatch(/isn't connected in Agent Vault/);
+  });
+
+  test("the services list says a service whose variable is signed in is ready", async () => {
+    const { service } = setup(noRefresh, [variableService()], [], { oauthVariables: [oauthVariable()] });
+
+    const listed = await service.getSessionServices({ sessionToken: "token" });
+
+    expect(listed.services[0]).toMatchObject({ status: "ready", credential: { type: "oauth" } });
   });
 
   test("a session's own service sends the variable's token", async () => {
@@ -1320,6 +1345,7 @@ describe("OAuth variables on resolve", () => {
       personalValuesMissing: true,
       credentialRemoved: true
     });
+    expect(services[0].credentialNotConnected).toBeUndefined();
   });
 
   test("tokens sent with the session go out, refreshed in place when they are about to expire", async () => {

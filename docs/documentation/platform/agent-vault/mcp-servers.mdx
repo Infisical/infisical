@@ -254,11 +254,13 @@ To allow or refuse each call with your own rules, such as rules based on the too
   <Accordion title="The agent gets a 502 response from the MCP server">
     If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
-    **The sign-in used by the X service has expired and has to be connected again:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. If the service uses an [OAuth variable](#oauth-variable), [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) instead.
+    **The sign-in used by the service has expired, or is missing a permission it needs, and has to be connected again:** The message names the service. The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. If the service uses an [OAuth variable](#oauth-variable), [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) instead.
 
     <Frame>
       <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
     </Frame>
+
+    **The sign-in used by this service isn't connected in Infisical Agent Vault:** The service uses an [OAuth variable](#oauth-variable) that nobody has authorized yet, or an edit disconnected it. [Authorize the variable](/documentation/platform/agent-vault/oauth-variables#create-an-oauth-variable).
 
     **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
 

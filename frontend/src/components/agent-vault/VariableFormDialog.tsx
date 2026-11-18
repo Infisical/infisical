@@ -60,6 +60,8 @@ import {
   BLANK_OAUTH_VARIABLE_FORM,
   buildOAuthVariableSettings,
   buildOAuthVariableSettingsUpdate,
+  changedVariableFormFields,
+  CREATE_OAUTH_VARIABLE_TITLE,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
   TVariableFormValues
@@ -151,6 +153,7 @@ export type TVariableFormProps = {
   duplicateOf?: TAgentVaultVariable | null;
   /** A sign-in started from the variables list that needs more settings before it can go ahead. */
   signInStart?: TAgentVaultOauthVariableSignInStart | null;
+  /** Called with the new variable once it is created, and again after each later save of it in the same form. */
   onCreated?: (variable: TAgentVaultVariable) => void;
   /** Called once the form has saved, or finished. */
   onClose: () => void;
@@ -172,7 +175,7 @@ export const variableFormTitle = ({
   scope = AgentVaultVariableScope.Global
 }: Pick<TVariableFormProps, "variable" | "duplicateOf" | "type" | "scope">) => {
   if (duplicateOf) return "Duplicate OAuth Variable";
-  if (type === AgentVaultVariableType.OAuth && !variable) return "Create OAuth Variable";
+  if (type === AgentVaultVariableType.OAuth && !variable) return CREATE_OAUTH_VARIABLE_TITLE;
   const scopeLabel = scope === AgentVaultVariableScope.Personal ? "Personal" : "Global";
   return `${variable ? "Edit" : "Add"} ${scopeLabel} Variable`;
 };
@@ -253,6 +256,7 @@ export const VariableForm = ({
     trigger,
     getFieldState,
     getValues,
+    setValue,
     reset,
     formState: { isDirty, isSubmitting }
   } = formMethods;
@@ -341,7 +345,6 @@ export const VariableForm = ({
           ? { sourceVariableId: duplicateOf.id }
           : { oauth: buildOAuthVariableSettings(data) })
       });
-      onCreated?.(created);
       return created;
     }
     const oauth = saved.oauth ? buildOAuthVariableSettingsUpdate(saved.oauth, data) : undefined;
@@ -350,12 +353,18 @@ export const VariableForm = ({
     return updateVariable.mutateAsync({ variableId: saved.id, key: keyChange, oauth });
   };
 
-  // An OAuth sign-in saves first, then signs in, so what is saved becomes the form's new starting point.
+  // An OAuth sign-in saves first, then signs in, so what is saved becomes the form's new starting point. Anything
+  // typed while it saved stays on screen and still counts as a change.
   const persistOAuth = async (data: FormData) => {
     try {
       const result = await saveOAuth(data);
       setSaved(result);
-      reset(getValues());
+      if (!variable) onCreated?.(result);
+      reset(data, { keepValues: true });
+      const current = getValues();
+      changedVariableFormFields(data, current).forEach((field) =>
+        setValue(field, current[field], { shouldDirty: true })
+      );
       return result;
     } catch (error) {
       flagServerKeyError(error);
@@ -409,7 +418,7 @@ export const VariableForm = ({
   let submitLabel = `Add ${isPersonal ? "Personal" : "Global"} Variable`;
   if (duplicateOf) submitLabel = "Duplicate Variable";
   else if (isUpdate) submitLabel = "Save";
-  else if (fixedType === AgentVaultVariableType.OAuth) submitLabel = "Create OAuth Variable";
+  else if (fixedType === AgentVaultVariableType.OAuth) submitLabel = CREATE_OAUTH_VARIABLE_TITLE;
   // A variable an OAuth sign-in already created has nothing left to add unless it was changed since.
   const isDone = isCreatedHere && !isDirty;
 

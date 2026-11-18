@@ -84,6 +84,10 @@ export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionIn
 export const serverUrlOf = (service?: TAgentVaultService | null) =>
   service?.type === AgentVaultServiceType.Mcp ? service.serverUrl : null;
 
+const OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
+
+export const defaultOAuthRedirectUri = () => `${window.location.origin}${OAUTH_CALLBACK_PATH}`;
+
 export const hostOf = (serverUrl: string) => {
   try {
     return new URL(serverUrl.trim()).host;

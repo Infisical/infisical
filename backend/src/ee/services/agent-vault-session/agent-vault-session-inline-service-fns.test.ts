@@ -504,8 +504,8 @@ describe("inline services with a hook", () => {
   });
 
   test("the list an agent reads leaves out a pass-through service with only a hook once its session ended", () => {
-    expect(toInlineServiceFacts(passthroughWithHook())).not.toBeNull();
-    expect(toInlineServiceFacts(passthroughWithHook({ secretsDeletedAt: new Date() }))).toBeNull();
+    expect(toInlineServiceFacts(passthroughWithHook(), () => true)).not.toBeNull();
+    expect(toInlineServiceFacts(passthroughWithHook({ secretsDeletedAt: new Date() }), () => true)).toBeNull();
   });
 });
 
@@ -773,11 +773,19 @@ describe("OAuth sent with a session", () => {
       personalValuesMissing: true
     });
     expect(notConnected?.credentialRemoved).toBeUndefined();
-    expect(toResolvedInlineService(variableRow, null, { removed: true })).toMatchObject({
+    expect(notConnected?.credentialNotConnected).toBeUndefined();
+    expect(toResolvedInlineService(variableRow, null, { notConnected: true })).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    const removed = toResolvedInlineService(variableRow, null, { removed: true });
+    expect(removed).toMatchObject({
       credential: { type: AgentVaultCredentialType.Passthrough },
       personalValuesMissing: true,
       credentialRemoved: true
     });
+    expect(removed?.credentialNotConnected).toBeUndefined();
   });
 
   test("the agent is told the proxy adds an OAuth credential, and the summary never holds a token", () => {
@@ -785,7 +793,12 @@ describe("OAuth sent with a session", () => {
       credentialType: AgentVaultCredentialType.OAuth,
       credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID }
     });
-    expect(toInlineServiceFacts(variableRow)?.credential).toEqual({ type: "oauth" });
+    expect(toInlineServiceFacts(variableRow, () => true)?.credential).toEqual({ type: "oauth" });
+    expect(toInlineServiceFacts(variableRow, () => false)).toMatchObject({
+      credential: { type: "none" },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
     expect(
       toInlineServiceSummary(variableRow, new Map([[VARIABLE_ID, { id: VARIABLE_ID, key: "GDRIVE_U123" }]])).credential
     ).toEqual({

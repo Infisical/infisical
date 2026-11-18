@@ -939,7 +939,7 @@ export const useAgentVaultVariableKeyStatus = (
         found.push(
           ...page.variables.map((variable): [string, AgentVaultVariableType] => [
             variable.key,
-            variable.type ?? AgentVaultVariableType.Text
+            variable.type
           ])
         );
       }

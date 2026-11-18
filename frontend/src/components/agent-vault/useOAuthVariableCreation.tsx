@@ -5,9 +5,8 @@ import { useDiscardChangesGuard } from "@app/hooks";
 import { AgentVaultVariableType } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
+import { CREATE_OAUTH_VARIABLE_TITLE } from "./oauthVariableForm";
 import { VariableForm } from "./VariableFormDialog";
-
-const LABEL = "Create OAuth Variable";
 
 /**
  * The picker's "Create OAuth Variable" row, which opens the variable form set to OAuth and selects the new variable
@@ -20,6 +19,7 @@ export const useOAuthVariableCreation = <TOption,>(
 ): ComboboxDialogCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [isCreated, setIsCreated] = useState(false);
   const createdRef = useRef<TAgentVaultVariable | null>(null);
   const closeRef = useRef<{ complete: VoidFunction; cancel: VoidFunction }>({
     complete: () => {},
@@ -30,6 +30,7 @@ export const useOAuthVariableCreation = <TOption,>(
     const created = createdRef.current;
     createdRef.current = null;
     setIsDirty(false);
+    setIsCreated(false);
     if (created) {
       onCreated(created);
       closeRef.current.complete();
@@ -45,11 +46,11 @@ export const useOAuthVariableCreation = <TOption,>(
 
   return {
     mode: "dialog",
-    title: LABEL,
+    title: CREATE_OAUTH_VARIABLE_TITLE,
     description:
       "Sign in once and use the sign-in as the credential of any HTTP API or MCP server.",
-    emptyLabel: LABEL,
-    formatLabel: () => LABEL,
+    emptyLabel: CREATE_OAUTH_VARIABLE_TITLE,
+    formatLabel: () => CREATE_OAUTH_VARIABLE_TITLE,
     isPending,
     onDismiss: (cancel) => {
       closeRef.current.cancel = cancel;
@@ -64,6 +65,7 @@ export const useOAuthVariableCreation = <TOption,>(
             type={AgentVaultVariableType.OAuth}
             onCreated={(variable) => {
               createdRef.current = variable;
+              setIsCreated(true);
             }}
             onClose={close}
             onCancel={requestDiscard}
@@ -74,7 +76,7 @@ export const useOAuthVariableCreation = <TOption,>(
             open={isDiscardDialogOpen}
             onOpenChange={setIsDiscardDialogOpen}
             onDiscard={confirmDiscard}
-            title="Discard OAuth Variable?"
+            title={isCreated ? "Discard Changes?" : "Discard OAuth Variable?"}
             description="Your changes will be lost."
           />
         </>

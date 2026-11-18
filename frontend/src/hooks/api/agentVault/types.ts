@@ -28,13 +28,12 @@ export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.Cred
 
 export type TAgentVaultOauthRegistration = "manual" | "dynamic";
 
-export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable" | "inline";
+export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable";
 
 // With the sign-in left to each member, the service holds no tokens of its own, so it has no status.
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  // Absent from servers that predate OAuth variables, where it is the service's or each member's.
-  source?: TAgentVaultOauthCredentialSource;
+  source: TAgentVaultOauthCredentialSource;
   memberProvidedFields: TAgentVaultBearerMemberField[];
   // The OAuth variable a service signs in with. Left out for whoever can't read variables.
   variable?: { id: string; key: string };
@@ -931,8 +930,7 @@ export type TAgentVaultVariable = {
   id: string;
   key: string;
   scope: AgentVaultVariableScope;
-  // Absent from servers that predate OAuth variables, where every variable is text.
-  type?: AgentVaultVariableType;
+  type: AgentVaultVariableType;
   oauth?: TAgentVaultOauthVariable | null;
   // Every service that references the variable, across all access bundles. For a personal variable, the services
   // whose personal values, as the caller set them, use it.

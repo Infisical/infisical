@@ -38,6 +38,7 @@ import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls
 import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
+  defaultOAuthRedirectUri,
   hostOf,
   isMemberProvidedOAuthService,
   newOAuthAuthorizationId,
@@ -49,8 +50,6 @@ import {
   TServiceForm
 } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
-
-const CALLBACK_PATH = "/agent-vault/oauth/callback";
 
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
@@ -484,11 +483,11 @@ export const OAuthAuthorizeCard = ({
                     <InputGroupInput
                       id={redirectUriInputId}
                       readOnly
-                      value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                      value={redirectUri ?? defaultOAuthRedirectUri()}
                     />
                     <InputGroupAddon align="inline-end">
                       <CopyButton
-                        value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                        value={redirectUri ?? defaultOAuthRedirectUri()}
                         ariaLabel="Copy redirect URI"
                       />
                     </InputGroupAddon>

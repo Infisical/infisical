@@ -123,6 +123,11 @@ export const OAuthVariableField = ({ projectId, service }: Props) => {
                 )}
                 creation={creation}
               />
+              {selected?.status && selected.status !== AgentVaultOauthStatus.Connected && (
+                <div>
+                  <OAuthStatusBadge status={selected.status} />
+                </div>
+              )}
               {!canList && (
                 <FieldDescription>
                   {storedKey

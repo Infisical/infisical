@@ -9,7 +9,6 @@ export const AgentVaultDocsUrls = {
   memberProvidedValues: `${AGENT_VAULT_DOCS_BASE_URL}/http-apis#member-provided-values`,
   mcpMemberProvidedCredential: `${AGENT_VAULT_DOCS_BASE_URL}/mcp-servers#leave-the-credential-to-each-member`,
   variables: `${AGENT_VAULT_DOCS_BASE_URL}/variables`,
-  oauthVariables: `${AGENT_VAULT_DOCS_BASE_URL}/oauth-variables`,
   skills: `${AGENT_VAULT_DOCS_BASE_URL}/skills`,
   sessions: `${AGENT_VAULT_DOCS_BASE_URL}/sessions`,
   sessionsOnBehalfOfUsers: `${AGENT_VAULT_DOCS_BASE_URL}/sessions-on-behalf-of-users`,

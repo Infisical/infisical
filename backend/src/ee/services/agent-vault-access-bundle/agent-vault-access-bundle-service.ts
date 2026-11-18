@@ -914,12 +914,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const variable = (await agentVaultVariableDAL.findKeys({ projectId, owner: null })).find((row) => row.key === key);
     if (!variable) {
       throw new BadRequestError({
-        message: `There's no global variable named '${key}'. Add it under Variables as an OAuth variable, or correct the name.`
+        message: `There's no global variable named '${key}'. Add it under Variables as an OAuth variable, or correct the name.`,
+        details: { field: "credential.variable" }
       });
     }
     if (variable.type !== AgentVaultVariableType.OAuth) {
       throw new BadRequestError({
-        message: `'${key}' is a text variable, and an OAuth credential takes an OAuth variable. To send a text variable, use a bearer or basic credential with ${toVariableReference(key)}.`
+        message: `'${key}' is a text variable, and an OAuth credential takes an OAuth variable. To send a text variable, use a bearer or basic credential with ${toVariableReference(key)}.`,
+        details: { field: "credential.variable" }
       });
     }
     return { id: variable.id, key: variable.key };

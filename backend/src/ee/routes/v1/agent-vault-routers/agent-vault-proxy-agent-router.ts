@@ -244,6 +244,9 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               // The OAuth variable a session's own service used was deleted. Always with personalValuesMissing, which
               // older proxies refuse on.
               credentialRemoved: z.boolean().optional(),
+              // The OAuth variable the service sends isn't signed in. Always with personalValuesMissing, like
+              // credentialRemoved.
+              credentialNotConnected: z.boolean().optional(),
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.

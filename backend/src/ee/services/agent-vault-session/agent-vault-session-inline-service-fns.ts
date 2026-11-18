@@ -3,7 +3,11 @@ import { z } from "zod";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
-import { isVariableOauth, toResolvedOauthCredential } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  isVariableOauth,
+  oauthVariableIdOf,
+  toResolvedOauthCredential
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultOauthClientAuthMethod,
   TAgentVaultOauthConfig,
@@ -606,17 +610,22 @@ export const openInlineServiceSecrets = (
  * An inline service as the list an agent reads describes it, built without decrypting anything. Left out when resolve
  * would leave it out: a service whose credential, custom headers or substitutions have no stored secrets to send.
  */
-export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): TSessionServiceFacts | null => {
+export const toInlineServiceFacts = (
+  row: TAgentVaultInlineServiceSecretsRow,
+  isOauthVariableSignedIn: (variableId: string) => boolean
+): TSessionServiceFacts | null => {
   const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
   const { customHeaders, substitutions } = row;
   if (needsSecrets(row) && row.secretsDeletedAt) return null;
+  const variableId = oauthVariableIdOf(row);
+  const credentialNotConnected = Boolean(variableId && !isOauthVariableSignedIn(variableId));
 
   let credential: TSessionServiceCredential = { type: "none" };
   if (credentialConfig.type === AgentVaultCredentialType.Bearer) {
     credential = { type: "bearer", headerName: credentialConfig.headerName ?? null };
   } else if (credentialConfig.type === AgentVaultCredentialType.Basic) {
     credential = { type: "basic" };
-  } else if (credentialConfig.type === AgentVaultCredentialType.OAuth) {
+  } else if (credentialConfig.type === AgentVaultCredentialType.OAuth && !credentialNotConnected) {
     credential = { type: "oauth" };
   }
 
@@ -633,7 +642,8 @@ export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): T
     credential,
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-    personalValuesMissing: false,
+    personalValuesMissing: credentialNotConnected,
+    ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: false,
     memberSignsIn: false
   };
@@ -643,7 +653,11 @@ export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): T
  * What resolve worked out for an OAuth credential before building the service: the token it refreshed, or for an OAuth
  * variable, its token (none while it isn't connected) or that it was deleted.
  */
-export type TInlineOauthResolution = { credential?: TResolvedService["credential"]; removed?: boolean };
+export type TInlineOauthResolution = {
+  credential?: TResolvedService["credential"];
+  removed?: boolean;
+  notConnected?: boolean;
+};
 
 export const toResolvedInlineService = (
   row: TAgentVaultInlineServiceRow,
@@ -655,14 +669,16 @@ export const toResolvedInlineService = (
 
   let credential: TResolvedService["credential"];
   // The variable was deleted, or isn't connected, while the session was live. The service still goes out so the proxy
-  // can say why it refuses it; personalValuesMissing makes a proxy that predates credentialRemoved refuse it too, rather
-  // than send it with no credential.
+  // can say why it refuses it; personalValuesMissing makes a proxy that predates credentialRemoved and
+  // credentialNotConnected refuse it too, rather than send it with no credential.
   let credentialRemoved = false;
+  let credentialNotConnected = false;
   let variableCredentialMissing = false;
   if (credentialConfig.type === AgentVaultCredentialType.Passthrough) {
     credential = { type: AgentVaultCredentialType.Passthrough };
   } else if (isVariableOauth(row)) {
     credentialRemoved = Boolean(oauth.removed);
+    credentialNotConnected = !credentialRemoved && Boolean(oauth.notConnected);
     variableCredentialMissing = credentialRemoved || !oauth.credential;
     credential = (!credentialRemoved && oauth.credential) || { type: AgentVaultCredentialType.Passthrough };
   } else if (
@@ -736,6 +752,7 @@ export const toResolvedInlineService = (
     })),
     personalValuesMissing: variableCredentialMissing,
     ...(credentialRemoved ? { credentialRemoved } : {}),
+    ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: false,
     hook: row.hookUrl ? { url: row.hookUrl, secret: secrets!.hookSecret! } : null
   };

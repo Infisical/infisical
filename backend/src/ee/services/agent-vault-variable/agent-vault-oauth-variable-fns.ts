@@ -83,10 +83,11 @@ export const isOauthVariableSignInChanged = (
 ) => OAUTH_VARIABLE_SIGN_IN_FIELDS.some((field) => before[field] !== after[field]);
 
 /**
- * The issuer a variable set up by hand is checked against: the one sent, or else the origin of its authorization
- * endpoint, which is where the provider's sign-in lives. Never the token endpoint's: Google issues tokens from
- * oauth2.googleapis.com but its issuer is https://accounts.google.com, and an id_token a refresh returns is checked
- * against the issuer. Null for a variable that discovers its provider, whose issuer comes from discovery.
+ * The issuer a variable set up by hand records on its sign-in and connection: the one sent, or else the origin of its
+ * authorization endpoint, which is where the provider's sign-in lives and so the closest guess (Google issues tokens
+ * from oauth2.googleapis.com, but its issuer is https://accounts.google.com). Only one that was sent is compared with
+ * the `iss` a callback carries; the guess just names the connection and keys the scopes a service reports missing.
+ * Null for a variable that discovers its provider, whose issuer comes from discovery.
  */
 export const oauthVariableIssuerOf = (
   settings: Pick<TAgentVaultOauthVariableSettings, "issuer" | "authorizationEndpoint">

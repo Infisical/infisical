@@ -4992,7 +4992,7 @@ export const AGENT_VAULT = {
     oauthVariable:
       "The key of a global OAuth variable whose sign-in the service sends, such as `GDRIVE_U123`. Takes `read-value` on variables. Works for HTTP and MCP services, and can't be combined with `authorizationId` or `memberProvidedFields`. Every service using the variable shares its tokens, so a refresh or a revoked sign-in affects them all.",
     oauthSource:
-      "Where the tokens come from: `service` (the service's own sign-in), `member` (each member's), `variable` (an OAuth variable's) or `inline` (sent with the session).",
+      "Where the tokens come from: `service` (the service's own sign-in), `member` (each member's) or `variable` (an OAuth variable's).",
     oauthVariableRead:
       "The OAuth variable whose sign-in the service sends. Present only when `source` is `variable` and you can read variables."
   },
@@ -5126,6 +5126,8 @@ export const AGENT_VAULT = {
       "The client secret of your own OAuth app, for a variable with a `clientId`. Leave it out on a reconnect to keep the stored one, or for an app with no secret.",
     signInStart:
       "The sign-in started with the variable, or null when none was asked for. Its `authorization` is null when the variable needs more settings first.",
+    signInError:
+      "Present only when `signIn` was sent and the variable was created but its sign-in couldn't be started. `signIn` is then null: start a new sign-in for the variable.",
     signInAuthorization:
       "The sign-in, or null when the variable needs `clientId` (`registrationRequired`) or endpoints set by hand (`manualSetupRequired`) first.",
     signInAuthorizationId: "The ID of the sign-in.",

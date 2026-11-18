@@ -362,10 +362,11 @@ describe("a bundle service's facts", () => {
     position: 0,
     ...overrides
   });
-  const context = (setPersonalFields: string[] = []) => ({
+  const context = (setPersonalFields: string[] = [], signedInVariableIds: string[] = ["variable-1"]) => ({
     customHeaderNames: [],
     substitutions: [],
-    setPersonalFields: new Set(setPersonalFields)
+    setPersonalFields: new Set(setPersonalFields),
+    isOauthVariableSignedIn: (variableId: string) => signedInVariableIds.includes(variableId)
   });
 
   test("a stored credential counts, and a service with nothing stored adds nothing", () => {
@@ -405,6 +406,25 @@ describe("a bundle service's facts", () => {
       addedByProxy: true,
       memberProvided: false
     });
+  });
+
+  test("an OAuth variable that isn't signed in makes its service not ready, and an admin has to sign it in", () => {
+    const variableRow = row({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "variable-1" },
+      encryptedCredential: null
+    });
+    const facts = toBundleServiceFacts(variableRow, context([], []));
+    expect(facts).toMatchObject({
+      personalValuesMissing: true,
+      credentialNotConnected: true,
+      memberSignsIn: false,
+      credential: { type: "none" }
+    });
+    const described = describeSessionService(facts);
+    expect(described.status).toBe("needs-personal-values");
+    expect(described.howToUse).toMatch(/^Not usable yet: the sign-in "github" uses isn't connected in Agent Vault/);
+    expect(described.howToUse).not.toMatch(/personal values|connect their account/);
   });
 
   test("a field left to members counts only once the member has set every one of them", () => {

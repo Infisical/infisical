@@ -70,7 +70,7 @@ The proxy attaches the access token of an [OAuth variable](/documentation/platfo
 
 OAuth is the right choice for APIs that take a user's sign-in, such as Google Drive. Under **Credential Type**, select **OAuth**, then pick the variable, or select **Create OAuth Variable** to create one. Several services can use the same variable.
 
-If the provider stops accepting the sign-in, the proxy answers the agent's requests with a `401` response that says the sign-in has expired. If the API needs scopes that the sign-in didn't grant, the proxy answers with a `403` response instead. In either case, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable).
+If the provider stops accepting the sign-in, the proxy answers the agent's requests with a `401` response that says the sign-in has expired. If the API needs scopes that the sign-in didn't grant, the proxy answers with a `403` response instead. In either case, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable). If nobody has authorized the variable yet, or an edit disconnected it, the proxy says the sign-in used by the service isn't connected in Infisical Agent Vault. Authorize the variable to fix it.
 
 <Note>
 For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.

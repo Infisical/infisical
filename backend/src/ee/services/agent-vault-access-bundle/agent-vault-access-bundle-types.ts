@@ -62,9 +62,8 @@ export type TAgentVaultCredentialInput =
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
-// Where the tokens a service sends come from: its own sign-in, each member's, an OAuth variable's, or the ones sent with
-// a session.
-export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable" | "inline";
+// Where the tokens a service sends come from: its own sign-in, each member's, or an OAuth variable's.
+export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable";
 
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;

@@ -48,14 +48,17 @@ import {
 
 import {
   applySignInPrefill,
-  defaultOAuthRedirectUri,
   isOAuthVariableSignInChanged,
   OAUTH_AUTH_METHOD_LABELS,
   TOAuthVariableFormValues,
   TVariableFormValues
 } from "./oauthVariableForm";
 import { Scopes, Status } from "./service-sheet/OAuthAuthorizeCard";
-import { hostOf, OAUTH_STATUS_LABELS } from "./service-sheet/serviceSchema";
+import {
+  defaultOAuthRedirectUri,
+  hostOf,
+  OAUTH_STATUS_LABELS
+} from "./service-sheet/serviceSchema";
 import { useOAuthAuthorize } from "./service-sheet/useOAuthAuthorize";
 
 const ADVANCED_ITEM = "advanced";
@@ -93,7 +96,7 @@ export const OAuthVariableFields = ({
     formState: { errors }
   } = useFormContext<TVariableFormValues>();
   const formValues = useWatch({ control }) as TVariableFormValues;
-  const { serverUrl, authorizationEndpoint, redirectUri } = formValues;
+  const { serverUrl, authorizationEndpoint, tokenEndpoint, redirectUri } = formValues;
   const { permission } = useProjectPermission();
   // Starting a sign-in writes the variable's tokens, which the API allows only to whoever can edit variables.
   const canAuthorize = permission.can(
@@ -114,7 +117,13 @@ export const OAuthVariableFields = ({
     customRedirect: useId()
   };
 
-  const [isOwnApp, setIsOwnApp] = useState(() => Boolean(getValues("clientId")));
+  const [isOwnAppChosen, setIsOwnApp] = useState(() => Boolean(getValues("clientId")));
+  // Endpoints set by hand need a client ID, so its field shows as soon as one is typed, and stays once it was.
+  const hasManualEndpoint = Boolean(authorizationEndpoint.trim() || tokenEndpoint.trim());
+  const isOwnApp = isOwnAppChosen || hasManualEndpoint;
+  useEffect(() => {
+    if (hasManualEndpoint) setIsOwnApp(true);
+  }, [hasManualEndpoint]);
   const [openItem, setOpenItem] = useState(() => {
     const values = getValues();
     return values.authorizationEndpoint ||
@@ -203,6 +212,11 @@ export const OAuthVariableFields = ({
   const hasConnection = Boolean(connection) || authorizedScopes !== null;
   // A sign-in from here would return to the app that hosts the callback, not to Infisical.
   const isAppRedirect = Boolean(redirectUri.trim());
+  // The API takes a client secret only with a sign-in, which can't start here for an app's redirect URI.
+  const typedSecret = formValues.clientSecret;
+  useEffect(() => {
+    if (isAppRedirect && typedSecret) setValue("clientSecret", "", { shouldDirty: true });
+  }, [isAppRedirect, typedSecret, setValue]);
   const registerUri = redirectUri.trim() || startRedirectUri || defaultOAuthRedirectUri();
   const hasStoredSecret =
     Boolean(oauth?.clientId) &&
@@ -401,15 +415,26 @@ export const OAuthVariableFields = ({
             <Field className="flex-1">
               <FieldLabel htmlFor={ids.clientSecret}>Client Secret (optional)</FieldLabel>
               <FieldContent>
-                <Input
-                  type="password"
-                  {...register("clientSecret")}
-                  id={ids.clientSecret}
-                  maxLength={4096}
-                  autoComplete="new-password"
-                  placeholder={hasStoredSecret ? "Leave blank to keep the saved secret" : undefined}
-                  isError={Boolean(errors.clientSecret)}
-                />
+                {isAppRedirect ? (
+                  <>
+                    <Input id={ids.clientSecret} type="password" value="" disabled readOnly />
+                    <FieldDescription>
+                      Send the client secret when you start the sign-in through the API.
+                    </FieldDescription>
+                  </>
+                ) : (
+                  <Input
+                    type="password"
+                    {...register("clientSecret")}
+                    id={ids.clientSecret}
+                    maxLength={4096}
+                    autoComplete="new-password"
+                    placeholder={
+                      hasStoredSecret ? "Leave blank to keep the saved secret" : undefined
+                    }
+                    isError={Boolean(errors.clientSecret)}
+                  />
+                )}
                 <FieldError>{errors.clientSecret?.message}</FieldError>
               </FieldContent>
             </Field>
@@ -417,7 +442,7 @@ export const OAuthVariableFields = ({
         </div>
       )}
 
-      {!isWaiting && (
+      {!isWaiting && !hasManualEndpoint && (
         <div>
           <Button
             type="button"

@@ -22,6 +22,8 @@ import { TAgentVaultVariable } from "./agent-vault-variable-dal";
 import { agentVaultVariableServiceFactory } from "./agent-vault-variable-service";
 import { TAgentVaultOauthVariableConfig, TAgentVaultOauthVariableConnection } from "./agent-vault-variable-types";
 
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
+
 const PROJECT_ID = "project-1";
 const OAUTH_ID = "11111111-1111-4111-8111-111111111111";
 const TEXT_ID = "22222222-2222-4222-8222-222222222222";
@@ -543,5 +545,27 @@ describe("createVariable with a sign-in", () => {
     expect(agentVaultVariableDAL.create).toHaveBeenCalled();
     expect(agentVaultOauthService.saveVariableSignIn).not.toHaveBeenCalled();
     expect(signIn).toMatchObject({ authorization: null, registrationRequired: true });
+  });
+
+  test("a sign-in that can't be saved after the create still returns the variable, with a message to start a new one", async () => {
+    const { service, agentVaultVariableDAL, agentVaultOauthService } = buildService({ rows: [] });
+    agentVaultOauthService.saveVariableSignIn.mockRejectedValueOnce(new Error("redis down"));
+
+    const created = await service.createVariable({
+      projectId: PROJECT_ID,
+      ctx,
+      scope: AgentVaultVariableScope.Global,
+      key: "GDRIVE_U123",
+      type: AgentVaultVariableType.OAuth,
+      oauth: manualOauth,
+      signIn: { clientSecret: "client-secret" }
+    });
+
+    expect(agentVaultVariableDAL.create).toHaveBeenCalled();
+    expect(created.variable.key).toBe("GDRIVE_U123");
+    expect(created.signIn).toBeNull();
+    expect(created.signInError).toBe(
+      "The variable was created, but its sign-in couldn't be started. Start a new sign-in for it."
+    );
   });
 });

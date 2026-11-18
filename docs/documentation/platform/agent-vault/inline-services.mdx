@@ -5,7 +5,7 @@ description: "Services and credentials that you send when you create a session, 
 
 An inline service is a [service](/documentation/platform/agent-vault/services) that you send in the request that creates a [session](/documentation/platform/agent-vault/sessions), instead of adding the service to an [access bundle](/documentation/platform/agent-vault/access-bundles). Only that session can use the inline service. A session can have inline services on their own, or together with one access bundle.
 
-Use inline services when the code that creates sessions, such as an agent orchestrator or a job runner, already knows which APIs an agent needs and holds their credentials. That code sends the services with each session, so nothing has to be set up in the Agent Vault project in advance, and a credential that exists for only one run is deleted when the session ends. You can also use inline services to give one session access to an API that isn't in its access bundle, without giving the API to the other sessions that use the bundle.
+Use inline services when the code that creates sessions, such as an agent orchestrator or a job runner, already knows which APIs an agent needs and holds their credentials. That code sends the services with each session, so nothing has to be set up in the Agent Vault project in advance, and a credential that exists for only one run is deleted when the session ends. Infisical refreshes the tokens it's given, so if the provider rotates refresh tokens, the copy you sent stops working once Infisical renews it. You can also use inline services to give one session access to an API that isn't in its access bundle, without giving the API to the other sessions that use the bundle.
 
 ## Prerequisites
 

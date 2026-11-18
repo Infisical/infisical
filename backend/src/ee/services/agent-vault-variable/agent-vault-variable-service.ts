@@ -10,6 +10,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -454,17 +455,29 @@ export const agentVaultVariableServiceFactory = ({
       throw err;
     }
     let started: TVariableSignInStarted | null = null;
+    let signInError: string | undefined;
     if (signInStart) {
       const { prepared, ...start } = signInStart;
-      started = {
-        ...start,
-        authorization: prepared ? await agentVaultOauthService.saveVariableSignIn(prepared, created.id) : null
-      };
+      // The variable is already saved, so a sign-in that can't be kept is reported beside it rather than failing a
+      // create the caller would then repeat into a duplicate key.
+      try {
+        started = {
+          ...start,
+          authorization: prepared ? await agentVaultOauthService.saveVariableSignIn(prepared, created.id) : null
+        };
+      } catch (error) {
+        logger.error(
+          error,
+          `agentVaultVariable: couldn't save the sign-in started with a new variable [variableId=${created.id}] [projectId=${rest.projectId}]`
+        );
+        signInError = "The variable was created, but its sign-in couldn't be started. Start a new sign-in for it.";
+      }
     }
     return {
       variable: projectVariable(created, [], null),
       connected: tokens ? importedOf(created) : null,
-      signIn: started
+      signIn: started,
+      ...(signInError ? { signInError } : {})
     };
   };
 

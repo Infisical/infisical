@@ -807,8 +807,7 @@ export const ServiceSheet = ({
       if (
         isOAuthVariableCredential(data) &&
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        (serverResponse.message.startsWith("There's no global variable named") ||
-          serverResponse.message.includes("an OAuth credential takes an OAuth variable"))
+        (serverResponse.details as { field?: string } | undefined)?.field === "credential.variable"
       ) {
         setError("oauthVariableKey", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Credential));

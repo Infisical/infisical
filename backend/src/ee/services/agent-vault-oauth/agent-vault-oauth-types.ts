@@ -104,8 +104,6 @@ export type TAgentVaultOauthAuthorization = {
   // `oauthVariableSettingsFingerprintOf` the variable when the sign-in started, so tokens for settings an edit has
   // since changed are never written.
   variableSettingsFingerprint?: string;
-  // Sent as client_name when the sign-in registered a client.
-  clientName?: string;
   // Who started it. Records written before identities could start one hold only `actorUserId`, and read as that user.
   actor?: TAgentVaultOauthAuthorizationActor;
   actorUserId?: string;
@@ -118,6 +116,9 @@ export type TAgentVaultOauthAuthorization = {
   error: string | null;
   issuer: string;
   issParameterSupported: boolean;
+  // An OAuth variable set up by hand with no issuer of its own, whose `issuer` is only its authorization endpoint's
+  // origin. An `iss` on the callback isn't compared to it, since providers such as Keycloak issue from a path under it.
+  issuerUnchecked?: boolean;
   authorizationEndpoint: string;
   tokenEndpoint: string;
   resource: string | null;

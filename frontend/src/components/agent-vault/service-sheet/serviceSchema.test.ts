@@ -88,6 +88,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     allowedTools: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,
+      source: "service",
       memberProvidedFields: [],
       status: AgentVaultOauthStatus.NeedsReauthorization,
       issuer: "https://mcp.linear.app",

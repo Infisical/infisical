@@ -772,11 +772,17 @@ describe("an OAuth credential from an OAuth variable", () => {
     expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
   });
 
-  test("a key naming a text variable, or nothing, is refused", async () => {
+  test("a key naming a text variable, or nothing, is refused on the variable field", async () => {
     const built = buildService({ firstRead: plainService(), locked: plainService(), variableKeys: ["OPENAI_KEY"] });
 
     await expect(createHttp(built.service, "OPENAI_KEY")).rejects.toThrow("'OPENAI_KEY' is a text variable");
     await expect(createHttp(built.service, "MISSING")).rejects.toThrow("no global variable named 'MISSING'");
+    await expect(createHttp(built.service, "OPENAI_KEY")).rejects.toMatchObject({
+      details: { field: "credential.variable" }
+    });
+    await expect(createHttp(built.service, "MISSING")).rejects.toMatchObject({
+      details: { field: "credential.variable" }
+    });
     expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
   });
 

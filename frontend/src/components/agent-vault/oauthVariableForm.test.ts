@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { AgentVaultOauthClientAuthMethod, AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthStatus,
+  AgentVaultVariableType
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultOauthVariable } from "@app/hooks/api/agentVault/types";
 
 import {
@@ -8,6 +12,7 @@ import {
   BLANK_OAUTH_VARIABLE_FORM,
   buildOAuthVariableSettings,
   buildOAuthVariableSettingsUpdate,
+  changedVariableFormFields,
   isOAuthVariableSignInChanged,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
@@ -154,5 +159,20 @@ describe("applySignInPrefill", () => {
       authorizationEndpoint: "https://a.example.com/authorize",
       tokenEndpoint: "https://a.example.com/token"
     });
+  });
+});
+
+describe("changedVariableFormFields", () => {
+  it("lists the fields typed after a save, so they stay changes", () => {
+    const saved = {
+      ...values(),
+      type: AgentVaultVariableType.OAuth,
+      key: "LINEAR",
+      value: ""
+    };
+    expect(changedVariableFormFields(saved, saved)).toEqual([]);
+    expect(
+      changedVariableFormFields(saved, { ...saved, key: "LINEAR_MCP", scopes: "read" })
+    ).toEqual(["scopes", "key"]);
   });
 });

@@ -8,9 +8,7 @@ import {
 
 import { oauthClientIdSchema, oauthClientSecretSchema } from "./service-sheet/serviceSchema";
 
-export const OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
-
-export const defaultOAuthRedirectUri = () => `${window.location.origin}${OAUTH_CALLBACK_PATH}`;
+export const CREATE_OAUTH_VARIABLE_TITLE = "Create OAuth Variable";
 
 /** The OAuth fields of the variable form. Every one is text, so an empty field means "not set". */
 export type TOAuthVariableFormValues = {
@@ -269,3 +267,11 @@ export const applySignInPrefill = (
   ...(values.issuer.trim() || !prefill.issuer ? {} : { issuer: prefill.issuer }),
   ...(values.scopes.trim() || !prefill.scopes.length ? {} : { scopes: prefill.scopes.join(" ") })
 });
+
+export const changedVariableFormFields = (
+  before: TVariableFormValues,
+  after: TVariableFormValues
+): (keyof TVariableFormValues)[] =>
+  (Object.keys(after) as (keyof TVariableFormValues)[]).filter(
+    (field) => before[field] !== after[field]
+  );
