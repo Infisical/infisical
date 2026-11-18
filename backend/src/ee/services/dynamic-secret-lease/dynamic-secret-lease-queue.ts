@@ -1,4 +1,5 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { applyJitter } from "@app/lib/delay";
 import { DisableRotationErrors, NotFoundError } from "@app/lib/errors";
@@ -9,8 +10,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -34,7 +33,7 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findSecretPathByFolderIds">;
 };
 
@@ -58,7 +57,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretProviders,
   dynamicSecretLeaseDAL,
-  kmsService,
+  kmsDataKeyService,
   folderDAL,
   projectMembershipDAL,
   projectDAL,
@@ -195,7 +194,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           return;
         }
 
-        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: folder.projectId
         });
@@ -252,7 +251,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           return;
         }
 
-        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: folder.projectId
         });

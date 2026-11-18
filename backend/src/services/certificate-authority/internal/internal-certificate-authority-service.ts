@@ -6,6 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
@@ -37,11 +38,9 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -163,8 +162,9 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
@@ -194,7 +194,8 @@ export const internalCertificateAuthorityServiceFactory = ({
   pkiCollectionItemDAL,
   internalCertificateAuthorityDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   licenseService,
   usageMeteringService,
@@ -227,9 +228,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityCrlDAL,
       certificateAuthorityCertDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       certificateDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService,
       keyStore
     });
@@ -526,12 +527,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
       const serialNumber = createSerialNumber();
 
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId,
-        projectDAL,
-        kmsService
-      });
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
 
@@ -885,8 +882,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
 
@@ -962,13 +959,9 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const serialNumber = createSerialNumber();
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -976,12 +969,12 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const decryptedCaCert = await kmsDecryptor({
@@ -1075,8 +1068,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           caId: parentCa.id,
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
-          projectDAL,
-          kmsService,
+          kmsDataKeyService,
+          kmsKeyService,
           caKeySourceService
         });
 
@@ -1139,8 +1132,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           caCertId: parentCa.internalCa.activeCaCertId,
           certificateAuthorityDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
-          kmsService
+          kmsDataKeyService,
+          kmsKeyService
         });
 
         certificateChain = `${parentCaCertificate}\n${parentCaCertChain}`.trim();
@@ -1223,8 +1216,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -1245,8 +1238,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -1282,8 +1275,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -1309,8 +1302,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -1336,13 +1329,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const ca = await certificateAuthorityDAL.findById(caId);
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: keyId
     });
 
@@ -1397,8 +1386,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: certId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     let notBefore: Date | undefined;
@@ -1454,8 +1443,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: certId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     let notBefore: Date | undefined;
@@ -1525,12 +1514,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "CA is expired" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -1576,8 +1561,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
 
@@ -1613,8 +1598,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -1735,13 +1720,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const resolvedParentCaId = parentCaId ?? parentCa?.id;
     const isParentChanging = Boolean(resolvedParentCaId) && resolvedParentCaId !== ca.internalCa.parentCaId;
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
     if (caCert) {
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
       const currentCaCertObj = new x509.X509Certificate(
         await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate })
       );
@@ -1752,7 +1733,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -1770,8 +1751,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
     const { caPublicKey } = signer;
@@ -1851,8 +1832,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId,
-    tx
+    actorOrgId
   }: {
     caId: string;
     parentCaId: string;
@@ -1863,12 +1843,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actor: ActorType;
     actorOrgId: string;
-    tx?: Knex.Transaction;
   }) => {
-    const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+    const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!intermediateCa.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId, tx);
+    const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId);
     if (!parentCa.internalCa) throw new NotFoundError({ message: `Parent CA with ID '${parentCaId}' not found` });
 
     if (intermediateCa.projectId !== parentCa.projectId) {
@@ -1901,8 +1880,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: intermediateCa.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
 
@@ -1960,7 +1939,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+    const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!updatedCa.internalCa?.activeCaCertId) {
       throw new Error("Failed to get certificate ID after import");
     }
@@ -2007,7 +1986,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     locality,
     ou,
     domainComponents,
-    tx,
     onPersisted
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
@@ -2064,7 +2042,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId, tx);
+    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId);
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2086,12 +2064,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -2173,8 +2147,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService,
       signatureAlgorithm: signingAlg
     });
@@ -2333,7 +2307,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
     }
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -2349,8 +2323,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
@@ -2418,12 +2392,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       return cert;
     };
 
-    let cert;
-    if (tx) {
-      cert = await executeIssueCertOperations(tx);
-    } else {
-      cert = await certificateDAL.transaction(executeIssueCertOperations);
-    }
+    const cert = await certificateDAL.transaction(executeIssueCertOperations);
 
     usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
     usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
@@ -2467,16 +2436,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       basicConstraints,
       pathLength,
       subjectOverride,
-      customExtensions,
-      tx
+      customExtensions
     } = dto;
 
     let collectionId = pkiCollectionId;
 
     if (caId) {
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     } else if (certificateTemplateId) {
-      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId, tx);
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
       if (!certificateTemplate) {
         throw new NotFoundError({
           message: `Certificate template with ID '${certificateTemplateId}' not found`
@@ -2484,7 +2452,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
 
       collectionId = certificateTemplate.pkiCollectionId as string;
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId, tx);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
     if (!ca) {
@@ -2518,7 +2486,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId, tx) : dto.actorOrgId;
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId) : dto.actorOrgId;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2535,18 +2503,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check PKI collection
     if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId, tx);
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
       if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -2604,8 +2568,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService,
       signatureAlgorithm: alg
     });
@@ -2835,7 +2799,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       extensions
     });
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -2848,8 +2812,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
@@ -2916,12 +2880,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       return newCert;
     };
 
-    let cert;
-    if (tx) {
-      cert = await persist(tx);
-    } else {
-      cert = await certificateDAL.transaction(persist);
-    }
+    const cert = await certificateDAL.transaction(persist);
 
     usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
     usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
@@ -3008,13 +2967,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const notAfterDate = new Date(notAfter);
     const serialNumber = createSerialNumber();
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -3024,8 +2979,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService
     });
 

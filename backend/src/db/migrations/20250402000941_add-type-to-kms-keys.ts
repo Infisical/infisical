@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
+import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 
 import { TableName } from "../schemas";
 

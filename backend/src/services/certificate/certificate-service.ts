@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalRequests } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -77,7 +78,6 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -92,7 +92,6 @@ import {
   triggerSyncsForDeletedCertificate
 } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSignerDALFactory } from "@app/services/signer/signer-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -150,6 +149,7 @@ import {
   CertKeyUsage,
   CertStatus,
   CrlReason,
+  PlatformRevocationOutcome,
   TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
@@ -195,8 +195,9 @@ type TCertificateServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "find">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
@@ -243,7 +244,8 @@ export const certificateServiceFactory = ({
   pkiCollectionDAL,
   pkiCollectionItemDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   certificateSyncDAL,
   certificateRequestDAL,
@@ -328,12 +330,8 @@ export const certificateServiceFactory = ({
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
     if (!certBody?.encryptedCertificate) return undefined;
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKeyId });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKeyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
 
     return parseCertificateBody(decryptedCert);
@@ -545,8 +543,8 @@ export const certificateServiceFactory = ({
       certId: cert.id,
       projectId: cert.projectId,
       certificateSecretDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -675,8 +673,8 @@ export const certificateServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const leaf = new x509.X509Certificate(certificatePem);
@@ -745,51 +743,58 @@ export const certificateServiceFactory = ({
 
   type TRevocableCertificate = Awaited<ReturnType<typeof $findCertificateToRevoke>>;
 
-  const $loadRevocationCa = async (cert: TRevocableCertificate) => {
+  const $resolveRevocableCa = async (cert: TRevocableCertificate) => {
     if (!cert.caId) {
-      throw new BadRequestError({
-        message: "Cannot revoke imported certificates"
-      });
+      return { notRevocableReason: "Cannot revoke imported certificates" } as const;
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
     if (!caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES)) {
-      throw new BadRequestError({
-        message: "Certificate revocation is not supported by this certificate authority type"
-      });
+      return {
+        notRevocableReason: "Certificate revocation is not supported by this certificate authority type"
+      } as const;
     }
 
-    return ca;
+    return { ca } as const;
+  };
+
+  const $loadRevocationCa = async (cert: TRevocableCertificate) => {
+    const revocableCa = await $resolveRevocableCa(cert);
+    if ("notRevocableReason" in revocableCa) {
+      throw new BadRequestError({ message: revocableCa.notRevocableReason });
+    }
+    return revocableCa.ca;
   };
 
   type TRevocationCa = Awaited<ReturnType<typeof $loadRevocationCa>>;
 
-  const $assertCertificateRevocable = async (cert: TRevocableCertificate, ca: TRevocationCa) => {
-    if (cert.status === CertStatus.REVOKED) {
-      throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
-    }
+  const $alreadyRevokedError = (cert: TRevocableCertificate) =>
+    new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
 
-    if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
-      if (cert.deletedAt) {
-        throw new BadRequestError({
-          message: `Certificate '${getCertificateDisplayName(cert)}' can't be revoked because it was imported and then deleted on ${cert.deletedAt.toISOString()}.`
-        });
-      }
+  const $assertImportedCertificateIssuedByCa = async (cert: TRevocableCertificate, ca: TRevocationCa) => {
+    if (!(ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported)) return;
 
-      const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
-      if (!certBody) {
-        throw new NotFoundError({ message: "Certificate body not found" });
-      }
-
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: await getProjectKmsCertificateKeyId({ projectId: ca.projectId, projectDAL, kmsService })
+    if (cert.deletedAt) {
+      throw new BadRequestError({
+        message: `Certificate '${getCertificateDisplayName(cert)}' can't be revoked because it was imported and then deleted on ${cert.deletedAt.toISOString()}.`
       });
-      const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
-      await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
     }
 
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+    if (!certBody) {
+      throw new NotFoundError({ message: "Certificate body not found" });
+    }
+
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+      kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId)
+    });
+    const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
+    await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
+  };
+
+  const $validateRevocationPqcLicense = async (ca: TRevocationCa) => {
     if (ca.internalCa) {
       await validatePqcLicense({
         keyAlgorithm: ca.internalCa.keyAlgorithm,
@@ -799,6 +804,45 @@ export const certificateServiceFactory = ({
       });
     }
   };
+
+  const $assertCertificateRevocable = async (cert: TRevocableCertificate, ca: TRevocationCa) => {
+    if (cert.status === CertStatus.REVOKED) throw $alreadyRevokedError(cert);
+    await $assertImportedCertificateIssuedByCa(cert, ca);
+    await $validateRevocationPqcLicense(ca);
+  };
+
+  const $rebuildCrlAfterRevocation = async (ca: TRevocationCa) => {
+    if (ca.externalCa?.id || getInternalCaExpiredAt(ca.internalCa?.notAfter)) return undefined;
+
+    const crlRegeneration = await rebuildCaCrlAfterChange({
+      caId: ca.id,
+      trigger: CaCrlRegenerationTrigger.Revocation,
+      auditLogService,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthoritySecretDAL,
+      certificateDAL,
+      kmsDataKeyService,
+      kmsKeyService,
+      caKeySourceService,
+      keyStore
+    });
+    return crlRegeneration.isRegenerated ? undefined : crlRegeneration.reason;
+  };
+
+  const $toRevokedCertificateCa = (ca: TRevocationCa) =>
+    ca.externalCa?.id
+      ? {
+          id: ca.id,
+          name: ca.name,
+          projectId: ca.projectId,
+          status: ca.status,
+          enableDirectIssuance: ca.enableDirectIssuance,
+          type: ca.externalCa.type,
+          externalCa: ca.externalCa
+        }
+      : expandInternalCa(ca);
 
   type TRevocationArgs = {
     cert: TRevocableCertificate;
@@ -828,8 +872,15 @@ export const certificateServiceFactory = ({
 
   // Returns null when the certificate was already revoked by the time the row was locked: a CA that treats
   // revoking an already revoked certificate as success can't tell a racing revocation apart, and recording
-  // this one would overwrite the first revocation's date and reason.
-  const $completeRevocation = async ({ cert, ca, revocationReason, orgId }: TRevocationArgs) => {
+  // this one would overwrite the first revocation's date and reason. A platform revocation batch passes
+  // `rebuildCrl: false` and rebuilds each CA's CRL once afterwards.
+  const $completeRevocation = async ({
+    cert,
+    ca,
+    revocationReason,
+    orgId,
+    rebuildCrl
+  }: TRevocationArgs & { rebuildCrl: boolean }) => {
     const revokedAt = new Date();
     const revokedCertId = cert.id;
     const revokedCertApplicationId = cert.applicationId ?? null;
@@ -856,6 +907,8 @@ export const certificateServiceFactory = ({
     });
     if (!recorded) return null;
 
+    const crlWarning = rebuildCrl ? await $rebuildCrlAfterRevocation(ca) : undefined;
+
     if (!cert.deletedAt) {
       await certificateAlertEventEmitter.notify({
         certificateId: revokedCertId,
@@ -880,25 +933,6 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    let crlWarning: string | undefined;
-    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
-      const crlRegeneration = await rebuildCaCrlAfterChange({
-        caId: ca.id,
-        trigger: CaCrlRegenerationTrigger.Revocation,
-        auditLogService,
-        certificateAuthorityDAL,
-        certificateAuthorityCertDAL,
-        certificateAuthorityCrlDAL,
-        certificateAuthoritySecretDAL,
-        projectDAL,
-        certificateDAL,
-        kmsService,
-        caKeySourceService,
-        keyStore
-      });
-      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
-    }
-
     if (!cert.deletedAt) {
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
@@ -916,12 +950,8 @@ export const certificateServiceFactory = ({
   };
 
   const $completeRevocationOrThrow = async (args: TRevocationArgs) => {
-    const completed = await $completeRevocation(args);
-    if (!completed) {
-      throw new BadRequestError({
-        message: `Certificate '${getCertificateDisplayName(args.cert)}' is already revoked.`
-      });
-    }
+    const completed = await $completeRevocation({ ...args, rebuildCrl: true });
+    if (!completed) throw $alreadyRevokedError(args.cert);
     return completed;
   };
 
@@ -1041,17 +1071,7 @@ export const certificateServiceFactory = ({
     await $assertCertificateRevocable(cert, ca);
 
     const applicationName = await $resolveApplicationName(cert.applicationId);
-    const caResult = ca.externalCa?.id
-      ? {
-          id: ca.id,
-          name: ca.name,
-          projectId: ca.projectId,
-          status: ca.status,
-          enableDirectIssuance: ca.enableDirectIssuance,
-          type: ca.externalCa.type,
-          externalCa: ca.externalCa
-        }
-      : expandInternalCa(ca);
+    const caResult = $toRevokedCertificateCa(ca);
 
     if (approval && cert.applicationId) {
       const { policy, profile } = approval;
@@ -1177,6 +1197,64 @@ export const certificateServiceFactory = ({
       ca: caResult,
       crlWarning
     };
+  };
+
+  const revokeCertAsPlatform = async ({
+    certificateId,
+    revocationReason
+  }: {
+    certificateId: string;
+    revocationReason: CrlReason;
+  }) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      return { outcome: PlatformRevocationOutcome.NotRevocable, reason: "The certificate no longer exists." } as const;
+    }
+    if (cert.status === CertStatus.REVOKED) return { outcome: PlatformRevocationOutcome.AlreadyRevoked } as const;
+
+    const revocableCa = await $resolveRevocableCa(cert);
+    if ("notRevocableReason" in revocableCa) {
+      return { outcome: PlatformRevocationOutcome.NotRevocable, reason: revocableCa.notRevocableReason } as const;
+    }
+    const { ca } = revocableCa;
+
+    const project = await projectDAL.findById(ca.projectId);
+    if (!project) {
+      return { outcome: PlatformRevocationOutcome.NotRevocable, reason: "The issuing CA no longer exists." } as const;
+    }
+
+    const applicationName = await $resolveApplicationName(cert.applicationId);
+    await $assertImportedCertificateIssuedByCa(cert, ca);
+    await $revokeAtUpstreamCa({ cert, ca, revocationReason });
+    const revocation = await $completeRevocation({
+      cert,
+      ca,
+      revocationReason,
+      orgId: project.orgId,
+      rebuildCrl: false
+    });
+    if (!revocation) return { outcome: PlatformRevocationOutcome.AlreadyRevoked } as const;
+    return {
+      outcome: PlatformRevocationOutcome.Revoked,
+      revokedAt: revocation.revokedAt,
+      cert,
+      applicationName,
+      ca: $toRevokedCertificateCa(ca),
+      crlWarning: revocation.crlWarning
+    } as const;
+  };
+
+  const rebuildCrlsAfterPlatformRevocations = async (caIds: string[]) => {
+    for (const caId of new Set(caIds)) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await $rebuildCrlAfterRevocation(await certificateAuthorityDAL.findByIdWithAssociatedCa(caId));
+      } catch (err) {
+        logger.error(
+          `Failed to rebuild the CRL after a platform revocation, the hourly CRL rebuild job will retry [caId=${caId}] [error=${err instanceof Error ? err.message : String(err)}]`
+        );
+      }
+    }
   };
 
   type TApprovedRevocationOutcome =
@@ -1305,7 +1383,8 @@ export const certificateServiceFactory = ({
         cert,
         ca,
         revocationReason,
-        orgId: approvalRequest.organizationId
+        orgId: approvalRequest.organizationId,
+        rebuildCrl: true
       });
       if (!completed) return { kind: ApprovedRevocationOutcomeKind.AlreadyRevoked };
       return { kind: ApprovedRevocationOutcomeKind.Revoked, cert, crlWarning: completed.crlWarning };
@@ -1474,13 +1553,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate data not available" });
     }
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -1503,8 +1578,8 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       certificateChain = `${caCert}\n${caCertChain}`.trim();
@@ -1999,12 +2074,8 @@ export const certificateServiceFactory = ({
     });
 
     // Encrypt certificate for storage
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
 
@@ -2208,13 +2279,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate data not available" });
     }
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -2238,8 +2305,8 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       certificateChain = `${caCert}\n${caCertChain}`.trim();
@@ -2251,8 +2318,8 @@ export const certificateServiceFactory = ({
         certId: cert.id,
         projectId: cert.projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       privateKey = certPrivateKey;
     } catch (e) {
@@ -2422,6 +2489,8 @@ export const certificateServiceFactory = ({
     deleteCert,
     revokeCert,
     revokeApprovedCertificate,
+    revokeCertAsPlatform,
+    rebuildCrlsAfterPlatformRevocations,
     revokeOwnedCertificate,
     completeOwnedCertificateRevocation,
     getCertBody,

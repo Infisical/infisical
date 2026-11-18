@@ -1,0 +1,65 @@
+version: v0.167.12
+releasedAt: 2026-11-17T16:34:29-03:00
+sourceTag: v0.167.12
+previousTag: v0.167.11
+impactLevel: low
+summary: Startup runs four additive database migrations. No self-hosted
+  configuration or deployment changes need operator action.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Approval policy AI schema
+    description: Adds organization AI settings columns, a prompt column for
+      auto-approval conditions, and a new condition-contexts table for approval
+      policies.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261110120000_ai-auto-approval.ts
+        path: backend/src/db/migrations/20261110120000_ai-auto-approval.ts
+        description: Adds AI columns, prompt, and contexts table
+  - title: Secret sync failure alerts
+    description: Backfills alert records and email channels for existing secret
+      syncs. The migration runs outside a transaction and processes syncs in
+      batches.
+    action: If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261113120000_add-secret-sync-failure-alerts.ts
+        path: backend/src/db/migrations/20261113120000_add-secret-sync-failure-alerts.ts
+        description: Backfills alerts in batches without transaction
+  - title: Signer revocation tracking
+    description: Adds signer certificate revocation tracking, plus nullable columns
+      for issuance cancel reason and next auto-renewal time.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261113164712_signer-revoke-tracking.ts
+        path: backend/src/db/migrations/20261113164712_signer-revoke-tracking.ts
+        description: Creates revocation table and nullable signer columns
+  - title: Agent Vault session metadata
+    description: Adds an Agent Vault session foreign key to resource metadata and
+      builds a partial index concurrently to reduce write blocking on large
+      tables.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261117120000_agent-vault-session-metadata.ts
+        path: backend/src/db/migrations/20261117120000_agent-vault-session-metadata.ts
+        description: Adds session metadata column, FK, concurrent index
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-17T20:20:08.862Z
+  sourceRange:
+    from: v0.167.11
+    to: v0.167.12

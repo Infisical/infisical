@@ -37,8 +37,19 @@ vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal
   decryptAppConnection: vi.fn(async () => ({}))
 }));
 
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: vi.fn(async () => ({ generateBlindIndexes: vi.fn(async () => []) }))
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: vi.fn(
+    async ({
+      kmsDataKeyService,
+      projectId
+    }: {
+      kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+      projectId: string;
+    }) => ({
+      secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+      blindIndexer: { generateBlindIndexes: vi.fn(async () => []) }
+    })
+  )
 }));
 
 vi.mock("@app/services/secret-v2-bridge/secret-v2-bridge-fns", async (importOriginal) => ({
@@ -120,7 +131,7 @@ const createService = ({
         return { release };
       })
     },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("encrypted") })
       }))

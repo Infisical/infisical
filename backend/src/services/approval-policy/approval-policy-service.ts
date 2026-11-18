@@ -10,6 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -27,9 +28,9 @@ import {
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
@@ -106,7 +107,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -154,7 +155,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  kmsService,
+  kmsDataKeyService,
   notificationService,
   permissionService,
   licenseService,
@@ -182,7 +183,7 @@ export const approvalPolicyServiceFactory = ({
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    kmsService
+    kmsDataKeyService
   };
 
   const $notify = (args: {
@@ -1662,6 +1663,15 @@ export const approvalPolicyServiceFactory = ({
     return { request: { ...decorated, canReview, ...approversCanNoLongerApprove } };
   };
 
+  const $assertNotScopeNarrowed = () => {
+    if (isScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message:
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+      });
+    }
+  };
+
   const approveRequest = async (
     requestId: string,
     { comment, bypassReason }: { comment?: string; bypassReason?: string },
@@ -1671,6 +1681,8 @@ export const approvalPolicyServiceFactory = ({
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -1892,6 +1904,8 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     policyType: ApprovalPolicyType
   ) => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -2767,10 +2781,13 @@ export const approvalPolicyServiceFactory = ({
     });
     if (!isApprover) return null;
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
+      status: ApprovalRequestStatus.Pending
+    });
     const candidates = requests.filter((request) => {
-      if (request.status !== ApprovalRequestStatus.Pending) return false;
       if (scopeId && request.scopeId !== scopeId) return false;
+      if ($isRequester(request, actor)) return false;
+      if (isApprovalRequestExpired(request)) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
       return Boolean(currentStep && $namesApprover(currentStep.approvers, actor.id, userGroupIds));

@@ -2,6 +2,7 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import crypto from "crypto";
 import https from "https";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -234,7 +235,7 @@ export const validateChefConnectionCredentials = async (
   } catch (error: unknown) {
     // withGatewayV2Proxy re-throws callback failures as BadRequestError, so wrap
     // both error types to preserve the Chef operation context in the message
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to validate Chef credentials: ${error.message || "Unknown error"}`
       });
@@ -275,7 +276,7 @@ export const listChefDataBags = async (
       name
     }));
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to list Chef data bags: ${error.message || "Unknown error"}`
       });
@@ -315,7 +316,7 @@ export const listChefDataBagItems = async (
       name
     }));
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to list Chef data bag items: ${error.message || "Unknown error"}`
       });
@@ -347,7 +348,7 @@ export const getChefDataBagItem = async (
 
     return res.data;
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to get Chef data bag item: ${error.message || "Unknown error"}`
       });
@@ -386,7 +387,7 @@ export const createChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to create Chef data bag item: ${error.message || "Unknown error"}`
       });
@@ -417,7 +418,7 @@ export const updateChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to update Chef data bag item: ${error.message || "Unknown error"}`
       });
@@ -455,7 +456,7 @@ export const removeChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError || error instanceof BadRequestError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Failed to remove Chef data bag item: ${error.message || "Unknown error"}`
       });

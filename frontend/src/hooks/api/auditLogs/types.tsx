@@ -1,6 +1,6 @@
 import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CertStatus, CrlReason } from "../certificates/enums";
+import { CertificateRevocationSource, CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -744,6 +744,7 @@ interface RevokeCert {
     requesterName?: string;
     requesterEmail?: string;
     crlWarning?: string;
+    source?: CertificateRevocationSource;
   };
 }
 
