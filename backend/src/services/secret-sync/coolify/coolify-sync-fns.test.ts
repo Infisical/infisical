@@ -44,6 +44,8 @@ const gatewayPoolService = { resolveEffectiveGatewayId: vi.fn() };
 const API_URL = "https://app.coolify.io/api/v1";
 const APPLICATION_ENVS = `${API_URL}/applications/res-uuid/envs`;
 
+const PLACEHOLDER = "infisical-sync-pending";
+
 const syncWith = (
   resourceType: CoolifyResourceType = CoolifyResourceType.Application,
   syncOptions: Record<string, unknown> = {},
@@ -141,39 +143,46 @@ describe("CoolifySyncFns", () => {
     });
   });
 
-  it("creates a new production variable empty and deletes Coolify's preview copy before writing its value", async () => {
+  it("creates a new production variable with a placeholder and deletes Coolify's preview copy before writing its value", async () => {
     stubCoolify(
       [envVar("USER_PREVIEW", "p", { isPreview: true })],
-      [envVar("NEW", null), envVar("NEW", null, { isPreview: true }), envVar("USER_PREVIEW", "p", { isPreview: true })]
+      [
+        envVar("NEW", PLACEHOLDER),
+        envVar("NEW", PLACEHOLDER, { isPreview: true }),
+        envVar("USER_PREVIEW", "p", { isPreview: true })
+      ]
     );
 
     await sync(syncWith(), payloadOf({ NEW: "secret" }));
 
     expect(requestMethods()).toEqual(["GET", "PATCH", "GET", "DELETE", "PATCH"]);
     expect(requestsWith("PATCH").map(({ data }) => data)).toEqual([
-      { data: [{ key: "NEW", value: "", is_literal: true }] },
+      { data: [{ key: "NEW", value: PLACEHOLDER, is_literal: true }] },
       { data: [{ key: "NEW", value: "secret", is_literal: true }] }
     ]);
     expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-NEW`]);
   });
 
-  it("finishes deleting the preview copy of a variable an earlier run left empty", async () => {
-    stubCoolify([envVar("KEY", null), envVar("KEY", null, { isPreview: true })]);
+  it("deletes the placeholder copy a stopped run left behind before writing the value", async () => {
+    stubCoolify([envVar("KEY", PLACEHOLDER), envVar("KEY", PLACEHOLDER, { isPreview: true })]);
 
     await sync(syncWith(), payloadOf({ KEY: "secret" }));
 
-    expect(requestMethods()).toEqual(["GET", "PATCH", "GET", "DELETE", "PATCH"]);
+    expect(requestMethods()).toEqual(["GET", "DELETE", "PATCH"]);
     expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-KEY`]);
   });
 
-  it("never empties a production variable whose value Coolify withheld", async () => {
-    stubCoolify([envVar("KEY"), envVar("KEY", undefined, { isPreview: true })]);
-
-    await sync(syncWith(), payloadOf({ KEY: "secret" }));
-
-    expect(requestsWith("PATCH").map(({ data }) => data)).toEqual([
-      { data: [{ key: "KEY", value: "secret", is_literal: true }] }
+  it("never deletes a preview variable that isn't a placeholder copy, such as a locked or empty one", async () => {
+    stubCoolify([
+      envVar("LOCKED", "x"),
+      envVar("LOCKED", undefined, { isPreview: true }),
+      envVar("EMPTY", null),
+      envVar("EMPTY", null, { isPreview: true })
     ]);
+
+    await sync(syncWith(), payloadOf({ LOCKED: "x", EMPTY: "now-set" }));
+
+    expect(requestMethods()).toEqual(["GET", "PATCH"]);
     expect(deletedUrls()).toHaveLength(0);
   });
 

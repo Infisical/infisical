@@ -123,19 +123,24 @@ const deleteCoolifyEnvVar = async ({ connection, envsPath, deps }: TCoolifyEnvVa
 
 // Coolify copies a production variable of an application into its preview variables when it creates it, and never
 // copies a later value, which would hand production secrets to the code of a pull request. New variables are created
-// empty and their copies deleted before any value is written, so a run that stops part way leaves nothing secret in
-// preview deployments.
-const createProductionEnvVarsWithoutPreviewCopies = async (api: TCoolifyEnvVarsApi, keys: string[]) => {
-  if (!keys.length) return;
+// with this placeholder and the preview variables holding it deleted before any value is written, so a run that stops
+// part way leaves only the placeholder in preview deployments, for the next run to delete.
+const COOLIFY_PLACEHOLDER_VALUE = "infisical-sync-pending";
 
-  await upsertCoolifyEnvVars(
-    api,
-    keys.map((key) => ({ key, value: "", is_literal: true }))
-  );
+const createProductionEnvVarsWithoutPreviewCopies = async (
+  api: TCoolifyEnvVarsApi,
+  envVars: TCoolifyEnvVar[],
+  newKeys: string[]
+) => {
+  if (newKeys.length) {
+    await upsertCoolifyEnvVars(
+      api,
+      newKeys.map((key) => ({ key, value: COOLIFY_PLACEHOLDER_VALUE, is_literal: true }))
+    );
+  }
 
-  const newKeys = new Set(keys);
-  const copies = (await listCoolifyEnvVars(api)).filter(
-    (envVar) => envVar.is_preview && newKeys.has(envVar.key) && !envVar.value
+  const copies = (newKeys.length ? await listCoolifyEnvVars(api) : envVars).filter(
+    (envVar) => envVar.is_preview && envVar.value === COOLIFY_PLACEHOLDER_VALUE
   );
 
   for (const copy of copies) {
@@ -210,13 +215,11 @@ export const CoolifySyncFns = {
 
     if (resourceType === CoolifyResourceType.Application && !isPreview) {
       const keysWithVars = new Set(envVars.map(({ key }) => key));
+      // A key that already has a preview variable gets no copy
       await createProductionEnvVarsWithoutPreviewCopies(
         api,
-        upserts
-          // New to the application, or still empty because an earlier run stopped before writing the value. A key
-          // that already has a preview variable gets no copy.
-          .filter(({ key, value }) => !keysWithVars.has(key) || (value && existingVars.get(key)?.value === null))
-          .map(({ key }) => key)
+        envVars,
+        upserts.map(({ key }) => key).filter((key) => !keysWithVars.has(key))
       );
     }
 
