@@ -164,7 +164,7 @@ const accessItemLabel = (item: TSessionAccessItem) => {
 const accessItemTooltip = (item: TSessionAccessItem) => {
   if (item.kind === "bundle" && !item.bundle.id) return `${item.bundle.name} (deleted)`;
   if (item.kind === "service")
-    return item.service.description ?? "A project service this session names";
+    return item.service.description ?? "A project service picked when this session was created";
   if (item.kind === "skill") return item.skill.description;
   return undefined;
 };
@@ -415,8 +415,7 @@ export const AgentVaultSessionsPage = () => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
             </CardTitle>
             <CardDescription>
-              A session names the actor who holds it, the services it can reach, and when it
-              expires.
+              A session defines who holds it, the services it can reach, and when it expires.
             </CardDescription>
             <CardAction>
               <Button

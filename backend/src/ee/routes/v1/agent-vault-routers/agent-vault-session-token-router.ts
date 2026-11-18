@@ -97,7 +97,7 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "listAgentVaultSessionSkills",
       description:
-        "Get the files of every skill an agent in a session should have: the latest version of each skill on the session's access bundle and each project skill the session names, the skills sent with the session, and the built-in infisical-agent-vault skill, ordered by name. Authenticate with the session token as `Authorization: Bearer agv_...`. Use it to install skills where an agent runs without `infisical agent-vault run`, such as in a sandbox you create from code.",
+        "Get the files of every skill an agent in a session should have: the latest version of each skill on the session's access bundle and of each project skill the session was created with, the skills sent with the session, and the built-in infisical-agent-vault skill, ordered by name. Authenticate with the session token as `Authorization: Bearer agv_...`. Use it to install skills where an agent runs without `infisical agent-vault run`, such as in a sandbox you create from code.",
       tags: [ApiDocsTags.AgentVaultSkills],
       querystring: z.object({
         includeBuiltin: z

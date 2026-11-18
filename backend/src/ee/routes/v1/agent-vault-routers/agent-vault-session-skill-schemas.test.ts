@@ -49,7 +49,7 @@ describe("a session's skills request schema", () => {
     const names = Array.from({ length: 21 }, (_, index) => `skill-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",
-      message: "A session can name at most 20 of the project's skills."
+      message: "A session can have at most 20 of the project's skills."
     });
     expect(issuesOf(names.slice(0, 20))).toEqual([]);
 

@@ -41,7 +41,7 @@ describe("a session's services request schema", () => {
     const names = Array.from({ length: 51 }, (_, index) => `service-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",
-      message: "A session can name at most 50 of the project's services."
+      message: "A session can have at most 50 of the project's services."
     });
     expect(issuesOf(names.slice(0, 50))).toEqual([]);
   });

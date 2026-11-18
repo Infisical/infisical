@@ -1043,7 +1043,7 @@ export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
     if (namedCount > AGENT_VAULT_MAX_SESSION_NAMED_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can name at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services.`
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services.`
       });
     }
     if (entries.length - namedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
@@ -1861,7 +1861,7 @@ export const AgentVaultSessionSkillsInputSchema = sessionEntriesSchema({
     if (namedSkillCount > AGENT_VAULT_MAX_SESSION_NAMED_SKILLS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can name at most ${AGENT_VAULT_MAX_SESSION_NAMED_SKILLS} of the project's skills.`
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_NAMED_SKILLS} of the project's skills.`
       });
     }
     if (entries.length - namedSkillCount > AGENT_VAULT_MAX_SESSION_INLINE_SKILLS) {

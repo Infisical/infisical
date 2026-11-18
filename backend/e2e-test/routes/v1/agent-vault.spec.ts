@@ -5072,12 +5072,12 @@ describe("Agent Vault V1 Router", async () => {
           const outside = await member.as("POST", sessionsUrl, { services: ["ns-outside"] });
           expect(outside.statusCode).toBe(400);
           expect(outside.json().message).toBe(
-            "You can't name a service called 'ns-outside'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+            "You can't use a service called 'ns-outside'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
           );
           // An unknown name reads exactly like one out of reach.
           const unknown = await member.as("POST", sessionsUrl, { services: ["ns-no-such-service"] });
           expect(unknown.json().message).toBe(
-            "You can't name a service called 'ns-no-such-service'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+            "You can't use a service called 'ns-no-such-service'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
           );
 
           const minted = await member.as("POST", sessionsUrl, { services: ["ns-granted"] });
@@ -5127,7 +5127,7 @@ describe("Agent Vault V1 Router", async () => {
           services: ["ns-dup", inline("ns-dup-direct", "ns-dup.example.com")]
         });
         expect(overlapping.statusCode).toBe(400);
-        expect(overlapping.json().message).toContain("which 'ns-dup', a service this session names, already covers");
+        expect(overlapping.json().message).toContain("which 'ns-dup', a project service in this session, already covers");
 
         await bearerService("ns-dup-mirror", "ns-dup.example.com");
         const twoNamed = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup-mirror"] });
@@ -6764,7 +6764,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const loose = await mintNamed(`obo-ns-loose-${stamp}`);
         expect(loose.statusCode).toBe(400);
-        expect(loose.json().message).toContain(`This machine identity can't name a service called 'obo-ns-loose-${stamp}'`);
+        expect(loose.json().message).toContain(`This machine identity can't use a service called 'obo-ns-loose-${stamp}'`);
 
         const botsOwn = await mintNamed(`obo-ns-bot-${stamp}`);
         expect(botsOwn.statusCode).toBe(400);
@@ -7291,7 +7291,7 @@ describe("Agent Vault V1 Router", async () => {
 
           const loose = await mintNamed(`obo-sk-loose-${stamp}`);
           expect(loose.statusCode).toBe(400);
-          expect(loose.json().message).toContain(`This machine identity can't name a skill called 'obo-sk-loose-${stamp}'`);
+          expect(loose.json().message).toContain(`This machine identity can't use a skill called 'obo-sk-loose-${stamp}'`);
 
           const botsOwn = await mintNamed(`obo-sk-bot-${stamp}`);
           expect(botsOwn.statusCode).toBe(400);
@@ -8579,7 +8579,7 @@ describe("Agent Vault V1 Router", async () => {
       const res = await inject("POST", sessionsUrl, { ttl: "1h" });
       expect(res.statusCode).toBe(400);
       expect(res.json().message).toBe(
-        "Name the access bundle this session should carry, or the services or skills it should have."
+        "Set the access bundle this session should carry, or list the services or skills it should have."
       );
     });
 
@@ -10539,13 +10539,13 @@ describe("Agent Vault V1 Router", async () => {
           const outside = await member.as("POST", sessionsUrl, { skills: ["ss-outside"] });
           expect(outside.statusCode).toBe(400);
           expect(outside.json().message).toBe(
-            "You can't name a skill called 'ss-outside'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+            "You can't use a skill called 'ss-outside'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
           );
           // An unknown name reads exactly like one out of reach.
           const unknown = await member.as("POST", sessionsUrl, { skills: ["ss-no-such-skill"] });
           expect(unknown.statusCode).toBe(400);
           expect(unknown.json().message).toBe(
-            "You can't name a skill called 'ss-no-such-skill'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+            "You can't use a skill called 'ss-no-such-skill'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
           );
 
           // Unlike a service, a member may send a skill of its own.
@@ -10663,7 +10663,7 @@ describe("Agent Vault V1 Router", async () => {
         const named = await inject("POST", sessionsUrl, { skills: ["ss-private"] });
         expect(named.statusCode).toBe(400);
         expect(named.json().message).toBe(
-          "You can't name a skill called 'ss-private'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+          "You can't use a skill called 'ss-private'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
         );
       });
 

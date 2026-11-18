@@ -98,7 +98,7 @@ const SkillsDetail = ({
             <TooltipContent className="max-w-sm">
               {isInline
                 ? "Sent with this session when it was created"
-                : "A project skill this session names"}
+                : "A project skill picked when this session was created"}
               <span className="block">{skill.description}</span>
             </TooltipContent>
           </Tooltip>
@@ -279,7 +279,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-sm">
-                                A project service this session names
+                                A project service picked when this session was created
                                 {service.description && (
                                   <span className="block">{service.description}</span>
                                 )}

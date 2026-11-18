@@ -152,13 +152,13 @@ In your Agent Vault project, go to **Sessions** and select **All Sessions**. Fin
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
     The machine identity doesn't have a grant on the access bundle, the name in `accessBundle` is wrong, or `projectId` names a different project than the one the access bundle is in. Check the name on the project's **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;You can't name a service called ...&quot;">
+  <Accordion title="Creating the session fails with &quot;You can't use a service called ...&quot;">
     No access bundle granted to the machine identity holds the service, or no service in the project has that name. Check the name on the project's **Services** page, and [grant the machine identity](#step-1-set-up-a-machine-identity) an access bundle that holds the service.
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one service in this session is named ...&quot;">
     Two entries in `services` have the same name. This happens if you list a service twice, or if you list a service from the project and an inline service with the same name. Remove one of the two entries, or give the inline service a different name.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;You can't name a skill called ...&quot;">
+  <Accordion title="Creating the session fails with &quot;You can't use a skill called ...&quot;">
     No access bundle granted to the machine identity holds the skill, or no skill in the project has that name. Check the name on the project's **Skills** page, and [grant the machine identity](#step-1-set-up-a-machine-identity) an access bundle that holds the skill.
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one skill in this session is named ...&quot;">

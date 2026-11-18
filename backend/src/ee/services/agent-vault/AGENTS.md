@@ -401,6 +401,10 @@ Mint's `services` also takes a project service's name as a plain string, beside 
 inline objects. `agent_vault_session_services` links the session to each one with the `position` it was sent at, which
 inline services share, so reads (`withSessionServices`) return both kinds in the order sent.
 
+"Named" is the code's word only. In docs, UI copy and API messages and descriptions, a user picks services and skills
+in the dashboard, lists them in `services` and `skills` through the API, and a refusal says they can't use one (`You
+can't use a skill called '...'`), because naming a service or skill also means giving it a name.
+
 - **A named service has to be in a bundle the owner could carry.** An admin (a role in
   `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can name any project service, even one in no bundle; anyone else only a
   service in a bundle granted to them, directly or through a group; an on-behalf-of session only one in a bundle both the

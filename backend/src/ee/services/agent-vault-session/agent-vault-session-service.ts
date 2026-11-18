@@ -303,7 +303,7 @@ export const agentVaultSessionServiceFactory = ({
 
     if (!accessBundles.length && !services.length && !skills.length) {
       throw new BadRequestError({
-        message: "Name the access bundle this session should carry, or the services or skills it should have."
+        message: "Set the access bundle this session should carry, or list the services or skills it should have."
       });
     }
 
@@ -425,14 +425,14 @@ export const agentVaultSessionServiceFactory = ({
       if (serviceOutOfIdentityReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `This machine identity can't name a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can name only services in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
+          message: `This machine identity can't use a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can use only services in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
         });
       }
       const skillOutOfIdentityReach = await firstUnreachableSkill(identityReach);
       if (skillOutOfIdentityReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `This machine identity can't name a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can name only skills in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
+          message: `This machine identity can't use a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can use only skills in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
         });
       }
       // A request with only inline skills names nothing the checks above refuse, so without this an identity granted no
@@ -481,14 +481,14 @@ export const agentVaultSessionServiceFactory = ({
       if (serviceOutOfSharedReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `The service '${serviceOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can name only services in an access bundle granted to both.`
+          message: `The service '${serviceOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can use only services in an access bundle granted to both.`
         });
       }
       const skillOutOfSharedReach = await firstUnreachableSkill(ownerReach);
       if (skillOutOfSharedReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `The skill '${skillOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can name only skills in an access bundle granted to both.`
+          message: `The skill '${skillOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can use only skills in an access bundle granted to both.`
         });
       }
     } else {
@@ -508,14 +508,14 @@ export const agentVaultSessionServiceFactory = ({
       if (serviceOutOfReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `You can't name a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+          message: `You can't use a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
         });
       }
       const skillOutOfReach = await firstUnreachableSkill(accessBundleIds);
       if (skillOutOfReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `You can't name a skill called '${skillOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+          message: `You can't use a skill called '${skillOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
         });
       }
     }
@@ -537,7 +537,7 @@ export const agentVaultSessionServiceFactory = ({
         if (!fresh) {
           throw new BadRequestError({
             name: "ServiceNotGranted",
-            message: `You can't name a service called '${service.name}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+            message: `You can't use a service called '${service.name}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
           });
         }
         return { ...service, hostPattern: fresh.hostPattern ?? null };

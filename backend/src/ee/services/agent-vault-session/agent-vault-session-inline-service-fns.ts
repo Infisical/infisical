@@ -345,13 +345,13 @@ export const assertNoNamedServiceConflicts = (prepared: TPreparedInlineService[]
     const [conflict] = findHostPatternConflicts(service.hostPattern, named);
     if (conflict) {
       throw new BadRequestError({
-        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a service this session names, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
+        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a project service in this session, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
       });
     }
     const displayName = inlineServiceDisplayName(service);
     if (named.some((candidate) => candidate.name === displayName)) {
       throw new BadRequestError({
-        message: `The service ${label} goes by its first host, '${displayName}', which is the name of a service this session names. Give it a name.`
+        message: `The service ${label} goes by its first host, '${displayName}', which is the name of a project service in this session. Give it a name.`
       });
     }
   });

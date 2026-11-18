@@ -97,7 +97,7 @@ const schema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["services"],
-        message: `A session can name up to ${MAX_NAMED_SERVICES} services. Remove ${
+        message: `You can pick up to ${MAX_NAMED_SERVICES} services. Remove ${
           data.services.length - MAX_NAMED_SERVICES
         } to continue.`
       });
@@ -106,7 +106,7 @@ const schema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["skills"],
-        message: `A session can name up to ${MAX_NAMED_SKILLS} skills. Remove ${
+        message: `You can pick up to ${MAX_NAMED_SKILLS} skills. Remove ${
           data.skills.length - MAX_NAMED_SKILLS
         } to continue.`
       });
@@ -127,10 +127,10 @@ export type TDashboardSessionInput = {
   skills: string[];
 };
 
-// The API's refusals of a service the session names: one that shares a host with another service in the session, or
-// one the caller can't use, which includes one deleted since it was picked.
+// The API's refusals of a picked service: one that shares a host with another service in the session, or one the
+// caller can't use, which includes one deleted since it was picked.
 export const isSessionServicesError = (message: string) =>
-  message.includes("both cover") || message.includes("can't name a service");
+  message.includes("both cover") || message.includes("can't use a service");
 
 const PICK_SOMETHING_ERROR = "pickSomething";
 

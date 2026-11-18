@@ -267,14 +267,14 @@ describe("mintSession, project services named in services", () => {
 
     await expect(mintWith(service, ["github"])).resolves.toBeDefined();
     await expect(mintWith(service, ["linear"])).rejects.toThrow(
-      "You can't name a service called 'linear'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a service called 'linear'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
     );
   });
 
   test("an unknown name is refused like one out of reach, so it doesn't confirm what exists", async () => {
     const { service } = buildNamingService({ isAdmin: true });
 
-    await expect(mintWith(service, ["nope"])).rejects.toThrow("You can't name a service called 'nope'.");
+    await expect(mintWith(service, ["nope"])).rejects.toThrow("You can't use a service called 'nope'.");
   });
 
   test("a Member still can't send a service inline", async () => {
@@ -298,7 +298,7 @@ describe("mintSession, project services named in services", () => {
     const { service } = buildNamingService({ isAdmin: true });
 
     await expect(mintWith(service, ["github", inline("api.github.com", "gh-direct")])).rejects.toThrow(
-      "which 'github', a service this session names, already covers"
+      "which 'github', a project service in this session, already covers"
     );
   });
 
@@ -331,7 +331,7 @@ describe("mintSession, project services named in services", () => {
     const { service, insertNamed } = buildNamingService({ isAdmin: true, deletedOnPrimary: [GITHUB.id] });
 
     await expect(mintWith(service, ["github"])).rejects.toThrow(
-      "You can't name a service called 'github'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a service called 'github'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
     );
     expect(insertNamed).not.toHaveBeenCalled();
   });
@@ -658,14 +658,14 @@ describe("mintSession, skills", () => {
 
     await expect(mintSkills(service, ["code-review"])).resolves.toBeDefined();
     await expect(mintSkills(service, ["release-notes"])).rejects.toThrow(
-      "You can't name a skill called 'release-notes'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a skill called 'release-notes'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
     );
   });
 
   test("an unknown name is refused like one out of reach, so it doesn't confirm what exists", async () => {
     const { service } = buildSkillService({ isAdmin: true });
 
-    await expect(mintSkills(service, ["nope"])).rejects.toThrow("You can't name a skill called 'nope'.");
+    await expect(mintSkills(service, ["nope"])).rejects.toThrow("You can't use a skill called 'nope'.");
   });
 
   test("a Member sends a skill inline, and without the action no one can", async () => {
