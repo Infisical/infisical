@@ -23,6 +23,8 @@ const INTUNE_FAILURE_HRESULT = -2147467259;
 
 type TIntuneAccess = { serviceUri: string; intuneToken: string; expiresAt: number };
 
+type TIntuneConnection = NonNullable<Awaited<ReturnType<TScepValidationHandlerDeps["appConnectionDAL"]["findById"]>>>;
+
 const intuneAccessCache = new Map<string, TIntuneAccess>();
 const intuneAccessInFlight = new Map<string, Promise<TIntuneAccess>>();
 
@@ -35,12 +37,7 @@ const toThumbprint = async (cert: x509.X509Certificate) => {
 };
 
 export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepValidationHandler => {
-  const acquireIntuneAccess = async (connectionId: string): Promise<TIntuneAccess> => {
-    const connection = await deps.appConnectionDAL.findById(connectionId);
-    if (!connection || connection.app !== AppConnection.MicrosoftIntune) {
-      throw new BadRequestError({ message: "The configured Microsoft Intune connection could not be found." });
-    }
-
+  const acquireIntuneAccess = async (connection: TIntuneConnection): Promise<TIntuneAccess> => {
     const cacheKey = KeyStorePrefixes.ScepIntuneAccess(connection.id, connection.updatedAt);
     const connectionKeyPrefix = cacheKey.slice(0, cacheKey.lastIndexOf(":") + 1);
     const cached = intuneAccessCache.get(cacheKey);
@@ -121,7 +118,12 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
       });
     }
 
-    return acquireIntuneAccess(connectionId);
+    const connection = await deps.appConnectionDAL.findById(connectionId);
+    if (!connection || connection.app !== AppConnection.MicrosoftIntune) {
+      throw new BadRequestError({ message: "The configured Microsoft Intune connection could not be found." });
+    }
+
+    return { ...(await acquireIntuneAccess(connection)), orgId: connection.orgId };
   };
 
   return {
@@ -140,7 +142,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
     },
 
     reportIssued: async (ctx) => {
-      const { serviceUri, intuneToken } = await resolveIntune(ctx.validationConnectionId);
+      const { serviceUri, intuneToken, orgId } = await resolveIntune(ctx.validationConnectionId);
       const cert = new x509.X509Certificate(asNonSharedBuffer(ctx.certificateDer));
 
       await intuneSendSuccessNotification({
@@ -152,7 +154,8 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
           certificateThumbprint: await toThumbprint(cert),
           certificateSerialNumber: cert.serialNumber,
           certificateExpirationDateUtc: cert.notAfter.toISOString(),
-          issuingCertificateAuthority: cert.issuer
+          issuingCertificateAuthority: cert.issuer,
+          caConfiguration: orgId
         }
       });
     },

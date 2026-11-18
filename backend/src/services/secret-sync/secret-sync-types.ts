@@ -125,6 +125,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TConvexSync, TConvexSyncInput, TConvexSyncListItem, TConvexSyncWithCredentials } from "./convex";
 import {
   TDaytonaSync,
   TDaytonaSyncInput,
@@ -292,6 +293,7 @@ export type TSecretSync =
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
   | TCloudflareSecretsStoreSync
+  | TConvexSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
@@ -345,6 +347,7 @@ export type TSecretSyncWithCredentials =
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
   | TCloudflareSecretsStoreSyncWithCredentials
+  | TConvexSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
@@ -400,6 +403,7 @@ export type TSecretSyncInput =
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
   | TCloudflareSecretsStoreSyncInput
+  | TConvexSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
@@ -456,6 +460,7 @@ export type TSecretSyncListItem =
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
   | TCloudflareSecretsStoreSyncListItem
+  | TConvexSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem

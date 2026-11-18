@@ -27,7 +27,8 @@ export enum NotificationType {
   AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
   NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated",
   LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated",
-  SIGNER_REVOKE_REFUSED = "signer-revoke-refused"
+  SIGNER_REVOKE_REFUSED = "signer-revoke-refused",
+  HONEY_TOKEN_TRIGGERED = "honey-token-triggered"
 }
 
 export interface TCreateUserNotificationDTO {

@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
 import {
   BoxIcon,
   ExternalLinkIcon,
@@ -54,8 +55,13 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
-import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
+import {
+  DashboardSessionForm,
+  isSessionServicesError,
+  TDashboardSessionInput
+} from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
 import {
   CopyPromptButton,
@@ -216,19 +222,29 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, metadata, ttl }: TDashboardSessionInput) => {
-    if (!accessBundle) return;
+  const onCreateNowSubmit = async ({ label, metadata, ttl, services }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
+        accessBundle: accessBundle?.name,
+        services: services.length ? services : undefined,
         ttl,
         label,
         metadata
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      return undefined;
+    } catch (error) {
+      // The global request handler toasts every failure but a 400, which this dialog reports itself.
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as TApiErrors | undefined)
+        : undefined;
+      if (serverResponse?.error !== ApiErrorTypes.BadRequestError) return undefined;
+      if (services.length && isSessionServicesError(serverResponse.message)) {
+        return { servicesError: serverResponse.message };
+      }
+      createNotification({ title: "Bad Request", text: serverResponse.message, type: "error" });
+      return undefined;
     }
   };
 
@@ -283,7 +299,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           // The created session keeps the bundle it was made with.
           isDisabled={isLocked}
         />
-        <FieldDescription>The services an agent can reach with this session.</FieldDescription>
+        <FieldDescription>
+          {isCreateNow
+            ? "Optional when you pick services below."
+            : "The services an agent can reach with this session."}
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
@@ -448,8 +468,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <DialogHeader>
             <DialogTitle>Create Session</DialogTitle>
             <DialogDescription>
-              An agent running with this session can only reach the hosts in the session&apos;s
-              associated access bundle.
+              An agent running with this session can only reach the services it was created with.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -559,7 +578,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
                 type="submit"
                 form={CREATE_NOW_FORM_ID}
                 variant="av"
-                isDisabled={!accessBundle}
                 isPending={createSession.isPending}
               >
                 Create Session
