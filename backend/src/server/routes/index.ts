@@ -29,6 +29,7 @@ import {
   agentVaultDelegationSubjectDALFactory
 } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-dal";
 import { agentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
+import { agentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
@@ -48,6 +49,7 @@ import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service-dal";
 import { agentVaultSessionStatsDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-stats-dal";
 import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
 import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
@@ -262,6 +264,8 @@ import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/
 import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/cert-manager-signer-alert-dal";
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
+import { honeyTokenAlertDALFactory } from "@app/services/alert/providers/honey-token-alert-dal";
+import { honeyTokenAlertProviderFactory } from "@app/services/alert/providers/honey-token-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-folder-alert-dal";
@@ -1006,19 +1010,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
-    honeyTokenDAL,
-    honeyTokenConfigDAL,
-    appConnectionDAL,
-    kmsDataKeyService
-  });
-
-  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
-    honeyTokenDAL,
-    honeyTokenCleanupService,
-    queueService
-  });
-
   const resourceMetadataService = resourceMetadataServiceFactory({
     db,
     resourceMetadataDAL,
@@ -1081,6 +1072,13 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     secretRotationAlertProviderFactory({
       secretRotationAlertDAL: secretRotationAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    honeyTokenAlertProviderFactory({
+      honeyTokenAlertDAL: honeyTokenAlertDALFactory(db),
       folderDAL,
       permissionService
     })
@@ -1180,6 +1178,19 @@ export const registerRoutes = async (
     kmsDataKeyService,
     alertProviderRegistry,
     alertHistoryDAL
+  });
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsDataKeyService,
+    alertService
+  });
+  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
+    honeyTokenDAL,
+    honeyTokenCleanupService,
+    alertService,
+    queueService
   });
   const alertChannelTestService = alertChannelTestServiceFactory({
     alertChannelDAL,
@@ -2004,6 +2015,7 @@ export const registerRoutes = async (
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultSessionInlineServiceDAL = agentVaultSessionInlineServiceDALFactory(db);
+  const agentVaultSessionServiceDAL = agentVaultSessionServiceDALFactory(db);
   const agentVaultSessionStatsDAL = agentVaultSessionStatsDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
@@ -2081,10 +2093,12 @@ export const registerRoutes = async (
     agentVaultSessionDAL,
     agentVaultSessionAccessBundleDAL,
     agentVaultSessionInlineServiceDAL,
+    agentVaultSessionServiceDAL,
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
     resourceMetadataDAL,
+    agentVaultResolveDAL,
     membershipDAL,
     userDAL,
     orgDAL,
@@ -3403,6 +3417,13 @@ export const registerRoutes = async (
       .catch((error) => logger.error(error, "objectStorage: could not check default storage"));
   }
 
+  const agentVaultFreeUsageNoticeService = agentVaultFreeUsageNoticeServiceFactory({
+    agentVaultUsageService: domains.agentVault.agentVaultUsageService,
+    orgDAL,
+    smtpService,
+    telemetryService
+  });
+
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
@@ -3495,9 +3516,7 @@ export const registerRoutes = async (
     licenseService,
     kmsDataKeyService,
     appConnectionDAL,
-    orgDAL,
     projectDAL,
-    smtpService,
     folderDAL,
     projectBotService,
     secretDAL: secretV2BridgeDAL,
@@ -3512,7 +3531,12 @@ export const registerRoutes = async (
     appConnectionService,
     telemetryService,
     auditLogService,
-    keyStore
+    keyStore,
+    alertService,
+    notificationService,
+    projectMembershipDAL,
+    orgDAL,
+    userDAL
   });
 
   const proxiedServiceService = proxiedServiceServiceFactory({
@@ -4922,6 +4946,7 @@ export const registerRoutes = async (
     agentVaultProxy: agentVaultProxyService,
     agentVaultAccessService: domains.agentVault.agentVaultAccessService,
     agentVaultUsageService: domains.agentVault.agentVaultUsageService,
+    agentVaultFreeUsageNotice: agentVaultFreeUsageNoticeService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
     agentVaultMembership: agentVaultMembershipService,

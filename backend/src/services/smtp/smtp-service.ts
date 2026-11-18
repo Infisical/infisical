@@ -14,6 +14,8 @@ import {
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
+  AgentVaultFreeUsageLimitTemplate,
+  AgentVaultFreeUsageWarningTemplate,
   AlertNotificationTemplate,
   AuditLogMigrationAlertTemplate,
   AuditReportTemplate,
@@ -26,7 +28,6 @@ import {
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
   HealthAlertTemplate,
-  HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
   LegacyPkiDeprecationTemplate,
   MfaRecoveryCodeUsedTemplate,
@@ -110,6 +111,8 @@ export enum SmtpTemplates {
   WorkspaceInvite = "workspaceInvitation",
   ScimUserProvisioned = "scimUserProvisioned",
   ScimTokenExpired = "scimTokenExpired",
+  AgentVaultFreeUsageWarning = "agentVaultFreeUsageWarning",
+  AgentVaultFreeUsageLimit = "agentVaultFreeUsageLimit",
   PkiExpirationAlert = "pkiExpirationAlert",
   IntegrationSyncFailed = "integrationSyncFailed",
   ExternalImportSuccessful = "externalImportSuccessful",
@@ -128,7 +131,6 @@ export enum SmtpTemplates {
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
-  HoneyTokenTriggered = "honeyTokenTriggered",
   AuditReport = "auditReport",
   AlertNotification = "alertNotification"
 }
@@ -174,6 +176,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.WorkspaceInvite]: ProjectInvitationTemplate,
   [SmtpTemplates.ScimUserProvisioned]: ScimUserProvisionedTemplate,
   [SmtpTemplates.ScimTokenExpired]: ScimTokenExpiryNoticeTemplate,
+  [SmtpTemplates.AgentVaultFreeUsageWarning]: AgentVaultFreeUsageWarningTemplate,
+  [SmtpTemplates.AgentVaultFreeUsageLimit]: AgentVaultFreeUsageLimitTemplate,
   [SmtpTemplates.SecretRequestCompleted]: SecretRequestCompletedTemplate,
   [SmtpTemplates.UnlockAccount]: UnlockAccountTemplate,
   [SmtpTemplates.ServiceTokenExpired]: ServiceTokenExpiryNoticeTemplate,
@@ -193,7 +197,6 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
-  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
   [SmtpTemplates.AuditReport]: AuditReportTemplate,
   [SmtpTemplates.AlertNotification]: AlertNotificationTemplate
 };

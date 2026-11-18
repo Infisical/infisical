@@ -34,9 +34,8 @@ export const orgProductStatsServiceFactory = ({
       accountsCount,
       accountTemplatesCount,
       foldersCount,
-      accessBundlesCount,
       servicesCount,
-      proxiesCount,
+      skillsCount,
       projectCounts
     ] = await Promise.all([
       orgProductStatsDAL.countSecretsForOrg(actorOrgId),
@@ -58,9 +57,8 @@ export const orgProductStatsServiceFactory = ({
       orgProductStatsDAL.countPamAccountsForOrg(actorOrgId),
       orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
       orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
-      orgProductStatsDAL.countAgentVaultAccessBundlesForOrg(actorOrgId),
       orgProductStatsDAL.countAgentVaultServicesForOrg(actorOrgId),
-      orgProductStatsDAL.countAgentVaultProxiesForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultSkillsForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
 
@@ -92,9 +90,8 @@ export const orgProductStatsServiceFactory = ({
         foldersCount
       },
       agentVault: {
-        accessBundlesCount,
         servicesCount,
-        proxiesCount,
+        skillsCount,
         projectsCount: projectCounts[ProjectType.AgentVault] || 0
       }
     };

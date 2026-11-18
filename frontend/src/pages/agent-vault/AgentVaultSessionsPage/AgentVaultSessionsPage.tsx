@@ -11,6 +11,7 @@ import {
   MoreHorizontalIcon,
   PackageIcon,
   PencilIcon,
+  PlugIcon,
   PlusIcon,
   SearchIcon,
   TriangleAlertIcon
@@ -68,7 +69,6 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
-  ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub,
   useOrganization,
@@ -77,7 +77,10 @@ import {
   useProject,
   useUser
 } from "@app/context";
-import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
+import {
+  canActOnAgentVaultSession,
+  canManageAgentVaultServices
+} from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -92,6 +95,7 @@ import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
   useListAgentVaultAccessBundles,
+  useListAgentVaultServices,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
@@ -131,8 +135,30 @@ const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Expired
 ];
 
-const accessItemIcon = (item: TSessionAccessItem) =>
-  item.kind === "bundle" ? <PackageIcon /> : <GlobeIcon />;
+const accessItemIcon = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return <PackageIcon />;
+  if (item.kind === "service") return <PlugIcon />;
+  return <GlobeIcon />;
+};
+
+const accessItemKey = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return `bundle:${item.bundle.id ?? item.bundle.name}`;
+  if (item.kind === "service") return `service:${item.service.id}`;
+  return "inline";
+};
+
+const accessItemLabel = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle") return item.bundle.name;
+  if (item.kind === "service") return item.service.name;
+  return inlineServicesLabel(item.services.length);
+};
+
+const accessItemTooltip = (item: TSessionAccessItem) => {
+  if (item.kind === "bundle" && !item.bundle.id) return `${item.bundle.name} (deleted)`;
+  if (item.kind === "service")
+    return item.service.description ?? "A project service this session names";
+  return undefined;
+};
 
 const accessItemHoverCard = (item: TSessionAccessItem) =>
   item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
@@ -150,10 +176,7 @@ export const AgentVaultSessionsPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canCreateBundles = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Create,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
+  const canManageServices = canManageAgentVaultServices(permission);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -205,7 +228,10 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
+  // A session needs a bundle the caller reaches or a service they can name. A member can name only the services in
+  // their bundles, so only someone who reaches every bundle can have services and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
+  const { data: nameableServices } = useListAgentVaultServices(projectId, { limit: 1 });
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
     projectId,
     canReadSessionLogSettings
@@ -240,18 +266,19 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered =
     Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
-  const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
+  const canStartSession =
+    (accessBundles?.totalCount ?? 0) > 0 || (nameableServices?.totalCount ?? 0) > 0;
+  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), canStartSession);
 
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
     emptyTitle = "No sessions match these filters";
     emptyDescription = "Try a different search term, status or metadata.";
-  } else if (!hasReachableBundles) {
-    emptyTitle = canCreateBundles ? "No sessions yet" : "No access bundles granted to you";
-    emptyDescription = canCreateBundles
-      ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
+  } else if (!canStartSession) {
+    emptyTitle = canManageServices ? "No sessions yet" : "No access bundles granted to you";
+    emptyDescription = canManageServices
+      ? "Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   } else {
     emptyTitle = "No sessions yet";
@@ -265,13 +292,13 @@ export const AgentVaultSessionsPage = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !hasReachableBundles && canCreateBundles && (
+        {!isFiltered && !canStartSession && canManageServices && (
           <Button variant="av" asChild>
             <Link
-              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+              to="/organizations/$orgId/projects/agent-vault/$projectId/services"
               params={{ orgId: currentOrg.id, projectId }}
             >
-              Go to Access Bundles
+              Go to Services
             </Link>
           </Button>
         )}
@@ -370,7 +397,7 @@ export const AgentVaultSessionsPage = () => {
             <CardAction>
               <Button
                 variant="av"
-                isDisabled={!hasReachableBundles}
+                isDisabled={!canStartSession}
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <PlusIcon />
@@ -535,26 +562,14 @@ export const AgentVaultSessionsPage = () => {
                         <div className="max-w-72">
                           <OverflowBadgeList
                             items={toAccessItems(session)}
-                            getKey={(item) =>
-                              item.kind === "bundle"
-                                ? `bundle:${item.bundle.id ?? item.bundle.name}`
-                                : "inline"
-                            }
-                            getLabel={(item) =>
-                              item.kind === "bundle"
-                                ? item.bundle.name
-                                : inlineServicesLabel(item.services.length)
-                            }
+                            getKey={accessItemKey}
+                            getLabel={accessItemLabel}
                             getIcon={accessItemIcon}
                             getClassName={(item) =>
                               item.kind === "bundle" && !item.bundle.id ? "text-muted" : undefined
                             }
                             getHoverCard={accessItemHoverCard}
-                            getTooltip={(item) =>
-                              item.kind === "bundle" && !item.bundle.id
-                                ? `${item.bundle.name} (deleted)`
-                                : undefined
-                            }
+                            getTooltip={accessItemTooltip}
                             getLinkProps={(item) =>
                               item.kind === "bundle" && item.bundle.id
                                 ? linkOptions({

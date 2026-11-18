@@ -178,6 +178,23 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The project's own services with these names, never one sent with a session. Reads the primary even without a tx.
+  const findCatalogByNames = async (
+    { projectId, names }: { projectId: string; names: string[] },
+    tx?: Knex
+  ): Promise<TAgentVaultCatalogService[]> => {
+    if (!names.length) return [];
+    try {
+      return (await (tx || db)(TableName.AgentVaultService)
+        .where({ projectId })
+        .whereNull("sessionId")
+        .whereIn("name", names)
+        .select("*")) as TAgentVaultCatalogService[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault services by name" });
+    }
+  };
+
   /**
    * The bundles each service is in, by service, ordered by name. `accessBundleIds` null returns every bundle;
    * otherwise only those of them. Reads the primary even without a tx, so a link made a moment ago is listed.
@@ -363,6 +380,7 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     findByNameInProject,
     findForList,
     findIdsInBundles,
+    findCatalogByNames,
     findBundlesForServices,
     findLink,
     insertLinks,
