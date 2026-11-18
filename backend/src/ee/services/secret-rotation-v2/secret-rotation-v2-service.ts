@@ -85,6 +85,7 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -187,6 +188,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -267,7 +269,8 @@ export const secretRotationV2ServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
-  secretValidationRuleService
+  secretValidationRuleService,
+  oidcIssuerService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $resolvePasswordValidationContext = async ({
     projectId,
@@ -650,7 +653,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
-      passwordValidationContext
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -1048,7 +1052,8 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        passwordValidationContext
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1415,7 +1420,8 @@ export const secretRotationV2ServiceFactory = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
-        passwordValidationContext
+        passwordValidationContext,
+        oidcIssuerService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1780,7 +1786,9 @@ export const secretRotationV2ServiceFactory = ({
       kmsService,
       gatewayV2Service,
       gatewayPoolService,
-      keyStore
+      keyStore,
+      undefined,
+      oidcIssuerService
     );
 
     if (!rotationFactory.checkActiveCredentials)
@@ -2181,7 +2189,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
-      passwordValidationContext
+      passwordValidationContext,
+      oidcIssuerService
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

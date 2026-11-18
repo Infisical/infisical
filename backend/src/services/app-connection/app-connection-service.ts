@@ -1503,7 +1503,7 @@ export const appConnectionServiceFactory = ({
       kmsService
     }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
-    gcp: gcpConnectionService(connectAppConnectionById),
+    gcp: gcpConnectionService(connectAppConnectionById, { appConnectionDAL, kmsService, oidcIssuerService }),
     databricks: databricksConnectionService(
       connectAppConnectionById,
       appConnectionDAL,

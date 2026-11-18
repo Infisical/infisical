@@ -46,6 +46,7 @@ import {
   CertStatus
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
@@ -148,7 +149,7 @@ const calculateFinalRenewBeforeDays = (
 };
 
 type TAcmeCertificateAuthorityFnsDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -170,10 +171,11 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type TOrderCertificateDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
@@ -188,6 +190,7 @@ type TOrderCertificateDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type DBConfigurationColumn = {
@@ -389,7 +392,8 @@ export const executeAcmeOrder = async (
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
-    keyStore
+    keyStore,
+    oidcIssuerService
   } = deps;
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
@@ -554,6 +558,7 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsInsertTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsService, oidcIssuerService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
@@ -645,6 +650,7 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsDeleteTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsService, oidcIssuerService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
@@ -781,7 +787,8 @@ export const AcmeCertificateAuthorityFns = ({
   certificateProfileDAL,
   gatewayV2Service,
   gatewayPoolService,
-  keyStore
+  keyStore,
+  oidcIssuerService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1034,7 +1041,8 @@ export const AcmeCertificateAuthorityFns = ({
         projectDAL,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       }
     );
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
@@ -1107,7 +1115,8 @@ export const AcmeCertificateAuthorityFns = ({
         certificateProfileDAL,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       }
     );
   };

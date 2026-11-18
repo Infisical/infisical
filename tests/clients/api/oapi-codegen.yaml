@@ -740,6 +740,9 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createGcpAppConnection
+    - updateGcpAppConnection
+    - getGcpAppConnection
     - createKmsKey
     - updateKmsKey
     - rotateKmsKey

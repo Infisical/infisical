@@ -2,7 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
-import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
+import { getGcpConnectionAuthToken, TGcpConnectionAuthDeps } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -124,10 +124,14 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 };
 
 export const GcpSyncFns = {
-  syncSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+  syncSecrets: async (
+    secretSync: TGcpSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    authDeps: TGcpConnectionAuthDeps
+  ) => {
     const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
 
@@ -230,18 +234,22 @@ export const GcpSyncFns = {
     }
   },
 
-  getSecrets: async (secretSync: TGcpSyncWithCredentials): Promise<TSecretMap> => {
+  getSecrets: async (secretSync: TGcpSyncWithCredentials, authDeps: TGcpConnectionAuthDeps): Promise<TSecretMap> => {
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
     return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+  removeSecrets: async (
+    secretSync: TGcpSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    authDeps: TGcpConnectionAuthDeps
+  ) => {
     const secretMap = payload.flatten();
     const { connection } = secretSync;
-    const accessToken = await getGcpConnectionAuthToken(connection);
+    const accessToken = await getGcpConnectionAuthToken(connection, authDeps);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
     for await (const [key] of Object.entries(gcpSecrets)) {

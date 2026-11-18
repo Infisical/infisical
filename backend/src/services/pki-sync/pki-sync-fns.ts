@@ -476,7 +476,12 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
         const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gcpAuthDeps: {
+            appConnectionDAL: dependencies.appConnectionDAL,
+            kmsService: dependencies.kmsService,
+            oidcIssuerService: dependencies.oidcIssuerService
+          }
         });
         return gcpCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -788,7 +793,12 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
         const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gcpAuthDeps: {
+            appConnectionDAL: dependencies.appConnectionDAL,
+            kmsService: dependencies.kmsService,
+            oidcIssuerService: dependencies.oidcIssuerService
+          }
         });
         await gcpCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

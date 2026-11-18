@@ -117,6 +117,7 @@ provider that checks it.
 | `kubernetes` | `api.kubernetes.test` | reviewer JWT | machine identity Kubernetes auth (TokenReview) |
 | `aws` | `sts.amazonaws.com`, `sts.us-east-1.amazonaws.com` | access key id | AWS IAM auth (JSON when asked) |
 | `azure` | `login.microsoftonline.com/<tenant>` | tenant id | Azure auth signing keys |
+| `gcp` | `sts.googleapis.com`, `iamcredentials.googleapis.com` | workload identity pool id (from the STS audience, then the federated token) | GCP App Connection workload identity federation; verifies Infisical's token against the org's real JWKS, which it fetches at exchange time through the provider's `DialOrigin` |
 | `alicloud` | `sts.aliyuncs.com` | access key id | Alibaba Cloud auth (checks the signature) |
 | `oci` | `identity.us-ashburn-1.oraclecloud.com` | signature key id | OCI auth (checks the signature) |
 | `ldap` | LDAP on port 389, any name | `dc=<scope>,dc=ldap,dc=test` | LDAP SSO and machine identity LDAP auth |
