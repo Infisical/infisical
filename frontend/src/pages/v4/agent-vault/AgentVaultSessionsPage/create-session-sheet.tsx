@@ -7,11 +7,12 @@ import { Code } from "@infisical/cipher/ui/code";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DurationInput } from "@infisical/cipher/ui/duration-input";
-import { Field } from "@infisical/cipher/ui/field";
+import { Field, FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { List, ListFooter, ListRow } from "@infisical/cipher/ui/list";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
 import {
@@ -27,6 +28,7 @@ import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
+import { isAxiosError } from "axios";
 import ms from "ms";
 import { z } from "zod";
 
@@ -42,10 +44,12 @@ import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession,
+  TAgentVaultProjectService,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { MetadataEditor } from "../../access/org/metadata-editor";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
@@ -54,7 +58,7 @@ import { isNoUniversalAuthError } from "../../data/agent-vault/contract";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
-import { ServiceIcon } from "../resources/shared";
+import { ServiceGlyph, ServiceIcon } from "../resources/shared";
 import { useIdentityCreation } from "./create-identity-dialog";
 import {
   codeLanguageForFile,
@@ -70,7 +74,14 @@ import {
   setupPrompt,
   SnippetLanguage
 } from "./sandbox";
-import { currentSiteUrl, formatSessionExpiry, sessionLabelSchema } from "./sessions";
+import {
+  currentSiteUrl,
+  formatSessionExpiry,
+  isSessionServicesError,
+  metadataRowsToRecord,
+  sessionLabelSchema,
+  sessionMetadataRowsSchema
+} from "./sessions";
 
 const OWN_SANDBOX = "own";
 type TPlatform = ScriptProvider | typeof OWN_SANDBOX;
@@ -276,9 +287,27 @@ const IdentityDescription = ({
   );
 };
 
+const MAX_NAMED_SERVICES = 50;
+const SERVICE_PICKER_LIMIT = 50;
+const PICK_SOMETHING_ERROR = "pickSomething";
+
 const createNowSchema = z
-  .object({ label: sessionLabelSchema, ttlPreset: z.string(), customTtl: z.string() })
-  .superRefine(({ ttlPreset, customTtl }, ctx) => {
+  .object({
+    services: z.custom<TAgentVaultProjectService[]>(),
+    label: sessionLabelSchema,
+    metadata: sessionMetadataRowsSchema,
+    ttlPreset: z.string(),
+    customTtl: z.string()
+  })
+  .superRefine(({ services, ttlPreset, customTtl }, ctx) => {
+    if (services.length > MAX_NAMED_SERVICES)
+      ctx.addIssue({
+        code: "custom",
+        path: ["services"],
+        message: `A session can name up to ${MAX_NAMED_SERVICES} services. Remove ${
+          services.length - MAX_NAMED_SERVICES
+        } to continue.`
+      });
     if (ttlPreset !== CUSTOM_TTL) return;
     const message = customTtlError(customTtl);
     if (message) ctx.addIssue({ code: "custom", path: ["customTtl"], message });
@@ -286,7 +315,224 @@ const createNowSchema = z
 
 type TCreateNowForm = z.infer<typeof createNowSchema>;
 
-const CREATE_NOW_DEFAULTS: TCreateNowForm = { label: "", ttlPreset: "7d", customTtl: "" };
+const CREATE_NOW_DEFAULTS: TCreateNowForm = {
+  services: [],
+  label: "",
+  metadata: [],
+  ttlPreset: "7d",
+  customTtl: ""
+};
+
+type TCreateNowValues = {
+  ttl: string;
+  label?: string;
+  metadata?: Record<string, string>;
+  services: string[];
+};
+
+type TCreateNowResult = { servicesError?: string } | undefined;
+
+const ServicesField = ({
+  projectId,
+  value,
+  error,
+  onChange
+}: {
+  projectId: string;
+  value: TAgentVaultProjectService[];
+  error?: string;
+  onChange: (services: TAgentVaultProjectService[]) => void;
+}) => {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const { data, isFetching } = useV4Adapter("agentVaultResources").useServices(projectId, {
+    search: debouncedSearch.trim() || undefined,
+    orderBy: "name",
+    orderDirection: "asc",
+    limit: SERVICE_PICKER_LIMIT
+  });
+  const listed = data?.services ?? [];
+  const selectedIds = new Set(value.map((service) => service.id));
+  const known = [...value, ...listed.filter((service) => !selectedIds.has(service.id))];
+  return (
+    <Field
+      label="Services"
+      error={error}
+      description="The project's services this session reaches, beside or instead of an access bundle."
+    >
+      <MultiSelect
+        label="Services"
+        placeholder="Pick services"
+        searchPlaceholder="Search services"
+        invalid={Boolean(error)}
+        loading={isFetching}
+        onSearch={setSearch}
+        options={known.map((service) => ({
+          value: service.id,
+          label: service.name,
+          description: service.description ?? undefined,
+          media: <ServiceGlyph hostPattern={hostPatternOf(service)} serviceType={service.type} />
+        }))}
+        value={value.map((service) => service.id)}
+        onChange={(ids) => {
+          const picked = new Set(ids);
+          onChange(known.filter((service) => picked.has(service.id)));
+        }}
+      />
+    </Field>
+  );
+};
+
+const useServicesNeedingSetup = (
+  projectId: string,
+  accessBundle: TAgentVaultAccessBundleListItem | null,
+  selectedServices: TAgentVaultProjectService[]
+) => {
+  const { data: servicesRequiringSetup } = useV4Adapter(
+    "agentVaultResources"
+  ).useAllServicesRequiringSetup(projectId, { enabled: selectedServices.length > 0 });
+  const details = useV4Adapter("agentVaultResources").useAccessBundle(
+    projectId,
+    accessBundle?.id ?? ""
+  );
+  const detailedNeedsSetup =
+    accessBundle && details.data?.id === accessBundle.id
+      ? details.data.services.filter(
+          (service) => service.personalValues && !service.personalValues.isConfigured
+        )
+      : undefined;
+  const isDetailsFailed = !detailedNeedsSetup && Boolean(details.error);
+  const bundleNeedsSetup: (Pick<TAgentVaultService, "id" | "name"> &
+    Partial<TAgentVaultService>)[] =
+    detailedNeedsSetup ?? accessBundle?.servicesRequiringSetup ?? [];
+  const pickedIds = new Set(selectedServices.map((service) => service.id));
+  const bundleIds = new Set(bundleNeedsSetup.map((service) => service.id));
+  const pickedNeedsSetup = (servicesRequiringSetup ?? []).filter(
+    (service) => pickedIds.has(service.id) && !bundleIds.has(service.id)
+  );
+  const needsSetup = [...bundleNeedsSetup, ...pickedNeedsSetup];
+  return { details, detailedNeedsSetup, isDetailsFailed, needsSetup, pickedNeedsSetup };
+};
+
+const NeedsSetupNotice = ({
+  orgId,
+  projectId,
+  accessBundle,
+  selectedServices
+}: {
+  orgId: string;
+  projectId: string;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  selectedServices: TAgentVaultProjectService[];
+}) => {
+  const { details, detailedNeedsSetup, isDetailsFailed, needsSetup, pickedNeedsSetup } =
+    useServicesNeedingSetup(projectId, accessBundle, selectedServices);
+  const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
+  const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
+  const [settingUp, setSettingUp] = useState<TAgentVaultService>();
+  const setUpBlockedReason = (type?: TAgentVaultService["type"]) => {
+    if (type) return undefined;
+    return isDetailsFailed ? "Couldn't load this service" : "Loading this service";
+  };
+
+  if (!needsSetup.length) return null;
+  return (
+    <>
+      <Stack gap={8}>
+        <Alert
+          tone="warn"
+          title={
+            needsSetup.length === 1
+              ? "1 service requires your personal values"
+              : `${needsSetup.length} services require your personal values`
+          }
+        >
+          {needsSetup.length === 1
+            ? "Until you set it up, this session can't reach it."
+            : "Until you set them up, this session can't reach them."}
+        </Alert>
+        {isDetailsFailed && (
+          <Alert
+            tone="bad"
+            actions={
+              <Button
+                variant="outline"
+                size="sm"
+                loading={details.isFetching}
+                onClick={() => details.refetch?.()}
+              >
+                Retry
+              </Button>
+            }
+          >
+            Couldn&apos;t load these services, so they can&apos;t be set up here yet.
+          </Alert>
+        )}
+        <List label="Services that require your personal values" variant="framed" size="sm">
+          {shownNeedsSetup.map((service) => (
+            <ListRow
+              key={service.id}
+              value={service.id}
+              label={service.name}
+              title={service.name}
+              media={
+                service.type ? (
+                  <ServiceIcon
+                    hostPattern={hostPatternOf(service as TAgentVaultService)}
+                    serviceType={service.type}
+                  />
+                ) : (
+                  <Skeleton width={24} height={24} />
+                )
+              }
+              actions={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabledReason={setUpBlockedReason(service.type)}
+                  onClick={() => service.type && setSettingUp(service as TAgentVaultService)}
+                >
+                  Set up
+                </Button>
+              }
+            />
+          ))}
+          {hiddenNeedsSetupCount > 0 && (
+            <ListFooter>
+              <Button variant="link" underline="hover" asChild>
+                {accessBundle && !pickedNeedsSetup.length ? (
+                  <Link
+                    to={v4Path(
+                      "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                    )}
+                    params={{ orgId, projectId, accessBundleId: accessBundle.id }}
+                  >
+                    {`${hiddenNeedsSetupCount} more in ${accessBundle.name}`}
+                  </Link>
+                ) : (
+                  <Link
+                    to={v4Path("/organizations/$orgId/projects/agent-vault/$projectId/services")}
+                    params={{ orgId, projectId }}
+                    search={{ requiresSetup: true }}
+                  >
+                    {`${hiddenNeedsSetupCount} more on the Services page`}
+                  </Link>
+                )}
+              </Button>
+            </ListFooter>
+          )}
+        </List>
+      </Stack>
+      <PersonalValuesDialog
+        projectId={projectId}
+        service={
+          settingUp && (detailedNeedsSetup?.find(({ id }) => id === settingUp.id) ?? settingUp)
+        }
+        onOpenChange={(isOpen) => !isOpen && setSettingUp(undefined)}
+      />
+    </>
+  );
+};
 
 const CreateNowForm = ({
   form,
@@ -299,182 +545,126 @@ const CreateNowForm = ({
   orgId: string;
   projectId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onCreate: (values: { ttl: string; label?: string }) => Promise<void>;
+  onCreate: (values: TCreateNowValues) => Promise<TCreateNowResult>;
 }) => {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors }
   } = form;
   const ttlPreset = useWatch({ control, name: "ttlPreset" });
-  const details = useV4Adapter("agentVaultResources").useAccessBundle(
-    projectId,
-    accessBundle?.id ?? ""
-  );
-  const detailedNeedsSetup =
-    accessBundle && details.data?.id === accessBundle.id
-      ? details.data.services.filter(
-          (service) => service.personalValues && !service.personalValues.isConfigured
-        )
-      : undefined;
-  const isDetailsFailed = !detailedNeedsSetup && Boolean(details.error);
-  const needsSetup: (Pick<TAgentVaultService, "id" | "name"> & Partial<TAgentVaultService>)[] =
-    detailedNeedsSetup ?? accessBundle?.servicesRequiringSetup ?? [];
-  const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
-  const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
-  const [settingUp, setSettingUp] = useState<TAgentVaultService>();
-  const setUpBlockedReason = (type?: TAgentVaultService["type"]) => {
-    if (type) return undefined;
-    return isDetailsFailed ? "Couldn't load this service" : "Loading this service";
-  };
-
-  const submit = (values: TCreateNowForm) =>
-    onCreate({
+  const selectedServices = useWatch({ control, name: "services" });
+  const submit = async (values: TCreateNowForm) => {
+    if (!accessBundle && !values.services.length) {
+      setError("services", {
+        type: PICK_SOMETHING_ERROR,
+        message: "Pick an access bundle or at least one service."
+      });
+      return;
+    }
+    const metadata = metadataRowsToRecord(values.metadata);
+    const result = await onCreate({
+      services: values.services.map((service) => service.name),
       ttl: values.ttlPreset === CUSTOM_TTL ? values.customTtl.trim() : values.ttlPreset,
-      label: values.label || undefined
+      label: values.label || undefined,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined
     });
+    if (result?.servicesError)
+      setError("services", { type: "server", message: result.servicesError });
+  };
+  const metadataRowErrors = Array.isArray(errors.metadata)
+    ? errors.metadata.map((row) => ({ key: row?.key?.message, value: row?.value?.message }))
+    : undefined;
+  const metadataListError =
+    errors.metadata?.root?.message ??
+    errors.metadata?.message ??
+    metadataRowErrors?.map((row) => row.key ?? row.value).find(Boolean);
 
   return (
-    <>
-      <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
-        <Stack gap={16}>
-          <Controller
-            control={control}
-            name="label"
-            render={({ field, fieldState }) => (
-              <Field label="Label" optional error={fieldState.error?.message}>
-                <Input
-                  {...field}
-                  placeholder="Nightly deploy"
-                  invalid={Boolean(fieldState.error)}
+    <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
+      <Stack gap={16}>
+        <Controller
+          control={control}
+          name="services"
+          render={({ field, fieldState }) => (
+            <ServicesField
+              projectId={projectId}
+              value={field.value}
+              error={fieldState.error?.message}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="label"
+          render={({ field, fieldState }) => (
+            <Field label="Label" optional error={fieldState.error?.message}>
+              <Input {...field} placeholder="Nightly deploy" invalid={Boolean(fieldState.error)} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="metadata"
+          render={({ field }) => (
+            <Field>
+              <MetadataEditor
+                addLabel="Add metadata"
+                entries={field.value}
+                errors={metadataRowErrors}
+                onChange={field.onChange}
+              />
+              {metadataListError && <FieldError>{metadataListError}</FieldError>}
+            </Field>
+          )}
+        />
+        <Field
+          label="Expires"
+          error={errors.customTtl?.message}
+          description={
+            ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
+          }
+        >
+          <Stack gap={8}>
+            <Controller
+              control={control}
+              name="ttlPreset"
+              render={({ field }) => (
+                <Select
+                  label="Expires"
+                  value={field.value}
+                  options={TTL_PRESETS}
+                  onChange={field.onChange}
                 />
-              </Field>
-            )}
-          />
-          <Field
-            label="Expires"
-            error={errors.customTtl?.message}
-            description={
-              ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
-            }
-          >
-            <Stack gap={8}>
+              )}
+            />
+            {ttlPreset === CUSTOM_TTL && (
               <Controller
                 control={control}
-                name="ttlPreset"
-                render={({ field }) => (
-                  <Select
-                    label="Expires"
+                name="customTtl"
+                render={({ field, fieldState }) => (
+                  <DurationInput
+                    aria-label="Custom expiry"
                     value={field.value}
-                    options={TTL_PRESETS}
+                    invalid={Boolean(fieldState.error)}
+                    placeholder="90"
                     onChange={field.onChange}
                   />
                 )}
               />
-              {ttlPreset === CUSTOM_TTL && (
-                <Controller
-                  control={control}
-                  name="customTtl"
-                  render={({ field, fieldState }) => (
-                    <DurationInput
-                      aria-label="Custom expiry"
-                      value={field.value}
-                      invalid={Boolean(fieldState.error)}
-                      placeholder="90"
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              )}
-            </Stack>
-          </Field>
-          {needsSetup.length > 0 && accessBundle && (
-            <Stack gap={8}>
-              <Alert
-                tone="warn"
-                title={
-                  needsSetup.length === 1
-                    ? "1 service requires your personal values"
-                    : `${needsSetup.length} services require your personal values`
-                }
-              >
-                {needsSetup.length === 1
-                  ? "Until you set it up, this session can't reach it."
-                  : "Until you set them up, this session can't reach them."}
-              </Alert>
-              {isDetailsFailed && (
-                <Alert
-                  tone="bad"
-                  actions={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      loading={details.isFetching}
-                      onClick={() => details.refetch?.()}
-                    >
-                      Retry
-                    </Button>
-                  }
-                >
-                  Couldn&apos;t load these services, so they can&apos;t be set up here yet.
-                </Alert>
-              )}
-              <List label="Services that require your personal values" variant="framed" size="sm">
-                {shownNeedsSetup.map((service) => (
-                  <ListRow
-                    key={service.id}
-                    value={service.id}
-                    label={service.name}
-                    title={service.name}
-                    media={
-                      service.type ? (
-                        <ServiceIcon
-                          hostPattern={hostPatternOf(service as TAgentVaultService)}
-                          serviceType={service.type}
-                        />
-                      ) : (
-                        <Skeleton width={24} height={24} />
-                      )
-                    }
-                    actions={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabledReason={setUpBlockedReason(service.type)}
-                        onClick={() => service.type && setSettingUp(service as TAgentVaultService)}
-                      >
-                        Set up
-                      </Button>
-                    }
-                  />
-                ))}
-                {hiddenNeedsSetupCount > 0 && (
-                  <ListFooter>
-                    <Button variant="link" underline="hover" asChild>
-                      <Link
-                        to={v4Path(
-                          "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                        )}
-                        params={{ orgId, projectId, accessBundleId: accessBundle.id }}
-                      >
-                        {`${hiddenNeedsSetupCount} more in ${accessBundle.name}`}
-                      </Link>
-                    </Button>
-                  </ListFooter>
-                )}
-              </List>
-            </Stack>
-          )}
-        </Stack>
-      </form>
-      <PersonalValuesDialog
-        projectId={projectId}
-        service={
-          settingUp && (detailedNeedsSetup?.find(({ id }) => id === settingUp.id) ?? settingUp)
-        }
-        onOpenChange={(isOpen) => !isOpen && setSettingUp(undefined)}
-      />
-    </>
+            )}
+          </Stack>
+        </Field>
+        <NeedsSetupNotice
+          orgId={orgId}
+          projectId={projectId}
+          accessBundle={accessBundle}
+          selectedServices={selectedServices}
+        />
+      </Stack>
+    </form>
   );
 };
 
@@ -646,12 +836,14 @@ const AccessBundleField = ({
   projectId,
   accessBundle,
   disabled,
+  isCreateNow,
   onChange
 }: {
   orgId: string;
   projectId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
   disabled: boolean;
+  isCreateNow: boolean;
   onChange: (accessBundle: TAgentVaultAccessBundleListItem | null) => void;
 }) => {
   const agentVault = useV4Adapter("agentVault");
@@ -675,7 +867,14 @@ const AccessBundleField = ({
     bundleOptions.unshift({ value: accessBundle.id, label: accessBundle.name });
 
   return (
-    <Field label="Access bundle" description="The services an agent can reach with this session.">
+    <Field
+      label="Access bundle"
+      description={
+        isCreateNow
+          ? "Optional when you pick services below."
+          : "The services an agent can reach with this session."
+      }
+    >
       <Combobox
         label="Access bundle"
         placeholder="Pick an access bundle"
@@ -726,8 +925,7 @@ const PlatformPicker = ({ onPick }: { onPick: (platform: TPlatform) => void }) =
     <SheetHeader>
       <SheetTitle>Create session</SheetTitle>
       <SheetDescription>
-        An agent running with this session can only reach the hosts in the session&apos;s access
-        bundle.
+        An agent running with this session can only reach the services it was created with.
       </SheetDescription>
     </SheetHeader>
     <SheetBody>
@@ -880,6 +1078,7 @@ const SessionFields = ({
         projectId={projectId}
         accessBundle={accessBundle}
         disabled={isLocked}
+        isCreateNow={isCreateNow}
         onChange={onAccessBundleChange}
       />
       {isCreateNow && (
@@ -918,7 +1117,6 @@ const CreateSessionFooter = ({
   isCreateNow,
   created,
   isPending,
-  hasAccessBundle,
   prompt,
   onBack,
   onDone
@@ -928,7 +1126,6 @@ const CreateSessionFooter = ({
   isCreateNow: boolean;
   created: boolean;
   isPending: boolean;
-  hasAccessBundle: boolean;
   prompt: React.ComponentProps<typeof GuideActions>["prompt"];
   onBack: () => void;
   onDone: () => void;
@@ -943,13 +1140,7 @@ const CreateSessionFooter = ({
       <Inline gap={8} justify="end">
         {platform !== OWN_SANDBOX && <GuideActions platform={platform} prompt={prompt} />}
         {isCreateNow && !created && (
-          <Button
-            variant="accent"
-            type="submit"
-            form={FORM_ID}
-            loading={isPending}
-            disabledReason={hasAccessBundle ? undefined : "Pick an access bundle first"}
-          >
+          <Button variant="accent" type="submit" form={FORM_ID} loading={isPending}>
             Create session
           </Button>
         )}
@@ -990,7 +1181,7 @@ const OwnSandboxBody = ({
   orgId: string;
   projectId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onCreate: (values: { ttl: string; label?: string }) => Promise<void>;
+  onCreate: (values: TCreateNowValues) => Promise<TCreateNowResult>;
 }) => (
   <Stack gap={16}>
     {fields}
@@ -1103,17 +1294,30 @@ export const CreateSessionSheet = ({
     storeTab(value);
   };
 
-  const onCreate = async (values: { ttl: string; label?: string }) => {
-    if (!accessBundle) return;
+  const onAccessBundleChange = (next: TAgentVaultAccessBundleListItem | null) => {
+    setAccessBundle(next);
+    if (next && createNowForm.getFieldState("services").error?.type === PICK_SOMETHING_ERROR)
+      createNowForm.clearErrors("services");
+  };
+
+  const onCreate = async ({ services, ...values }: TCreateNowValues): Promise<TCreateNowResult> => {
     try {
       const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
+        accessBundle: accessBundle?.name,
+        services: services.length ? services : undefined,
         ...values
       });
       saved("Session created");
       setCreated(session);
+      return undefined;
     } catch (error) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.status === 400 && error.response.data?.message
+        : undefined;
+      if (services.length && message && isSessionServicesError(message))
+        return { servicesError: message };
       failed("Failed to create session", error);
+      return undefined;
     }
   };
 
@@ -1126,7 +1330,7 @@ export const CreateSessionSheet = ({
       open={open}
       isLocked={isLocked}
       accessBundle={accessBundle}
-      onAccessBundleChange={setAccessBundle}
+      onAccessBundleChange={onAccessBundleChange}
       identity={identity}
       onIdentityChange={setIdentity}
       universalAuthError={universalAuth.error}
@@ -1198,7 +1402,6 @@ export const CreateSessionSheet = ({
               isCreateNow={isCreateNow}
               created={Boolean(created)}
               isPending={createSession.isPending}
-              hasAccessBundle={Boolean(accessBundle)}
               prompt={{
                 language: scriptLanguage,
                 siteUrl,

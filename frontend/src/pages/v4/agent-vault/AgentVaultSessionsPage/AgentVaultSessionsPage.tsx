@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import {
+  FilterBar,
+  type FilterBarField,
+  type FilterBarFilter
+} from "@infisical/cipher/patterns/filter-bar";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -23,10 +28,10 @@ import { format } from "date-fns";
 
 import {
   ProjectPermissionActions,
-  ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -37,7 +42,11 @@ import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
-import type { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import type {
+  TAgentVaultSession,
+  TAgentVaultSessionInlineService,
+  TAgentVaultSessionNamedService
+} from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -52,14 +61,49 @@ import { SessionLogAlerts } from "./session-log-alerts";
 import {
   actorName as displayName,
   AGENT_VAULT_DOCS,
-  canEditSessionLabel,
+  canEditSession,
   describeActor,
   formatSessionExpiry,
   formatTimestamp,
   inlineServicesLabel,
+  metadataRowsToRecord,
   SESSION_STATUS as STATUS,
+  sessionMetadataErrors,
+  sessionInlineServices,
+  sessionNamedServices,
   useCanActOnSession
 } from "./sessions";
+
+const METADATA_FIELD = "metadata";
+
+const FILTER_FIELDS: FilterBarField[] = [
+  {
+    key: "status",
+    label: "Status",
+    type: "multi-select",
+    options: Object.values(AgentVaultSessionStatus).map((status) => ({
+      value: status,
+      label: STATUS[status].label
+    }))
+  },
+  { key: METADATA_FIELD, label: "Metadata", type: "text", placeholder: "key=value", verb: "is" }
+];
+
+const parseMetadataFilter = (filters: FilterBarFilter[]) => {
+  const query = filters.find((filter) => filter.field === METADATA_FIELD)?.values[0];
+  if (!query?.trim()) return { metadataFilter: undefined, metadataFilterError: undefined };
+  const separator = query.indexOf("=");
+  if (separator === -1)
+    return {
+      metadataFilter: undefined,
+      metadataFilterError: "Filter metadata as key=value, such as env=production."
+    };
+  const rows = [{ key: query.slice(0, separator), value: query.slice(separator + 1) }];
+  const errors = sessionMetadataErrors(rows);
+  const error = errors && (errors.rows[0].key ?? errors.rows[0].value ?? errors.list);
+  if (error) return { metadataFilter: undefined, metadataFilterError: error };
+  return { metadataFilter: metadataRowsToRecord(rows), metadataFilterError: undefined };
+};
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/sessions");
 const TABLE = "agentVaultSessionsTable";
@@ -85,6 +129,85 @@ const Identity = ({ session }: { session: TAgentVaultSession }) => (
   </Stack>
 );
 
+type TAccessItem =
+  | { kind: "bundle"; bundle: NonNullable<TAgentVaultSession["accessBundle"]> }
+  | { kind: "service"; service: TAgentVaultSessionNamedService }
+  | { kind: "inline"; services: TAgentVaultSessionInlineService[] };
+
+const ACCESS_ITEMS_SHOWN = 2;
+
+const toAccessItems = (session: TAgentVaultSession): TAccessItem[] => {
+  const inline = sessionInlineServices(session);
+  return [
+    ...(session.accessBundle ? [{ kind: "bundle" as const, bundle: session.accessBundle }] : []),
+    ...sessionNamedServices(session).map((service) => ({ kind: "service" as const, service })),
+    ...(inline.length ? [{ kind: "inline" as const, services: inline }] : [])
+  ];
+};
+
+const accessItemKey = (item: TAccessItem) => {
+  if (item.kind === "bundle") return `bundle:${item.bundle.id ?? item.bundle.name}`;
+  if (item.kind === "service") return `service:${item.service.id}`;
+  return "inline";
+};
+
+const accessItemLabel = (item: TAccessItem) => {
+  if (item.kind === "bundle") return item.bundle.name;
+  if (item.kind === "service") return item.service.name;
+  return inlineServicesLabel(item.services.length);
+};
+
+const AccessBadge = ({
+  item,
+  orgId,
+  projectId
+}: {
+  item: TAccessItem;
+  orgId: string;
+  projectId: string;
+}) => {
+  if (item.kind === "bundle" && item.bundle.id)
+    return (
+      <Badge tone="outline" asChild style={{ minWidth: 0 }} title={item.bundle.name}>
+        <Link
+          to={v4Path(
+            "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+          )}
+          params={{ orgId, projectId, accessBundleId: item.bundle.id }}
+        >
+          <Icon name="package" className="shrink-0" />
+          <span className="truncate">{item.bundle.name}</span>
+        </Link>
+      </Badge>
+    );
+  if (item.kind === "bundle")
+    return (
+      <Tooltip content={`${item.bundle.name} (deleted)`}>
+        <Badge tone="soft" tabIndex={0} style={{ minWidth: 0 }}>
+          <Icon name="package" className="shrink-0" />
+          <span className="truncate">{item.bundle.name}</span>
+        </Badge>
+      </Tooltip>
+    );
+  if (item.kind === "service")
+    return (
+      <Tooltip content={item.service.description ?? "A project service this session names"}>
+        <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
+          <Icon name="link" className="shrink-0" />
+          <span className="truncate">{item.service.name}</span>
+        </Badge>
+      </Tooltip>
+    );
+  return (
+    <Tooltip content={item.services.map((service) => service.name).join(", ")}>
+      <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
+        <Icon name="globe" className="shrink-0" />
+        <span className="truncate">{accessItemLabel(item)}</span>
+      </Badge>
+    </Tooltip>
+  );
+};
+
 const Access = ({
   session,
   orgId,
@@ -94,37 +217,17 @@ const Access = ({
   orgId: string;
   projectId: string;
 }) => {
-  const { accessBundle, services } = session;
-  if (!accessBundle && !services.length) return <Meta>-</Meta>;
+  const items = toAccessItems(session);
+  if (!items.length) return <Meta>-</Meta>;
+  const hidden = items.slice(ACCESS_ITEMS_SHOWN);
   return (
-    <Inline gap={4} align="center" style={{ minWidth: 0 }}>
-      {accessBundle?.id && (
-        <Badge tone="outline" asChild style={{ maxWidth: "100%" }} title={accessBundle.name}>
-          <Link
-            to={v4Path(
-              "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-            )}
-            params={{ orgId, projectId, accessBundleId: accessBundle.id }}
-          >
-            <Icon name="package" className="shrink-0" />
-            <span className="truncate">{accessBundle.name}</span>
-          </Link>
-        </Badge>
-      )}
-      {accessBundle && !accessBundle.id && (
-        <Tooltip content={`${accessBundle.name} (deleted)`}>
-          <Badge tone="soft" tabIndex={0} style={{ maxWidth: "100%" }}>
-            <Icon name="package" className="shrink-0" />
-            <span className="truncate">{accessBundle.name}</span>
-          </Badge>
-        </Tooltip>
-      )}
-      {services.length > 0 && (
-        <Tooltip content={services.map((service) => service.name).join(", ")}>
-          <Badge tone="outline" tabIndex={0}>
-            <Icon name="globe" />
-            {inlineServicesLabel(services.length)}
-          </Badge>
+    <Inline gap={4} align="center" wrap={false} style={{ minWidth: 0 }}>
+      {items.slice(0, ACCESS_ITEMS_SHOWN).map((item) => (
+        <AccessBadge key={accessItemKey(item)} item={item} orgId={orgId} projectId={projectId} />
+      ))}
+      {hidden.length > 0 && (
+        <Tooltip content={hidden.map(accessItemLabel).join(", ")}>
+          <Meta tabIndex={0}>+{hidden.length}</Meta>
         </Tooltip>
       )}
     </Inline>
@@ -143,17 +246,17 @@ const Expiry = ({ session }: { session: TAgentVaultSession }) => {
 
 const SessionMenu = ({
   session,
-  canEditLabel,
+  canEdit,
   canRevoke,
   onView,
-  onEditLabel,
+  onEdit,
   onRevoke
 }: {
   session: TAgentVaultSession;
-  canEditLabel: boolean;
+  canEdit: boolean;
   canRevoke: boolean;
   onView: () => void;
-  onEditLabel: () => void;
+  onEdit: () => void;
   onRevoke: () => void;
 }) => {
   const isActive = session.status === AgentVaultSessionStatus.Active;
@@ -163,10 +266,10 @@ const SessionMenu = ({
         <Icon name="file-text" />
         View details
       </DropdownMenuItem>
-      {canEditSessionLabel(session) && canEditLabel && (
-        <DropdownMenuItem onSelect={onEditLabel}>
+      {canEditSession(session) && canEdit && (
+        <DropdownMenuItem onSelect={onEdit}>
           <Icon name="pencil" />
-          {session.label ? "Edit label" : "Add label"}
+          Edit session
         </DropdownMenuItem>
       )}
       {canRevoke && (
@@ -210,16 +313,16 @@ const ScopeToggle = ({
 const SessionsEmpty = ({
   orgId,
   projectId,
-  canCreateBundles,
+  canManageServices,
   isFiltered,
-  hasReachableBundles,
+  canStartSession,
   onClearFilters
 }: {
   orgId: string;
   projectId: string;
-  canCreateBundles: boolean;
+  canManageServices: boolean;
   isFiltered: boolean;
-  hasReachableBundles: boolean;
+  canStartSession: boolean;
   onClearFilters: () => void;
 }) => {
   if (isFiltered)
@@ -236,7 +339,7 @@ const SessionsEmpty = ({
         }
       />
     );
-  if (hasReachableBundles)
+  if (canStartSession)
     return (
       <EmptyState
         size="sm"
@@ -246,7 +349,7 @@ const SessionsEmpty = ({
         description="Create a session to get a token an agent can run with."
       />
     );
-  if (!canCreateBundles)
+  if (!canManageServices)
     return (
       <EmptyState
         size="sm"
@@ -262,20 +365,104 @@ const SessionsEmpty = ({
       media="bare"
       icon="agent"
       title="No sessions yet"
-      description="Sessions need an access bundle, and agents need a proxy to route through."
+      description="Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
       actions={
         <Button variant="outline" asChild>
           <Link
-            to={v4Path("/organizations/$orgId/projects/agent-vault/$projectId/access-bundles")}
+            to={v4Path("/organizations/$orgId/projects/agent-vault/$projectId/services")}
             params={{ orgId, projectId }}
           >
-            Go to access bundles
+            Go to services
           </Link>
         </Button>
       }
     />
   );
 };
+
+const useCanStartSession = (orgId: string, projectId: string) => {
+  const { data: accessBundles } = useV4Adapter("agentVault").useAccessBundles(orgId, projectId, {
+    limit: 1
+  });
+  const { data: nameableServices } = useV4Adapter("agentVaultResources").useServices(projectId, {
+    limit: 1
+  });
+  return (accessBundles?.totalCount ?? 0) > 0 || (nameableServices?.totalCount ?? 0) > 0;
+};
+
+const sessionColumns = ({
+  orgId,
+  projectId,
+  onOpen
+}: {
+  orgId: string;
+  projectId: string;
+  onOpen: (sessionId: string) => void;
+}): DataTableColumn<TAgentVaultSession>[] => [
+  {
+    id: "label",
+    header: "Label",
+    primary: true,
+    width: 224,
+    text: (row) => row.label ?? "",
+    render: (row) => (
+      <Button
+        variant="link"
+        underline="hover"
+        onClick={() => onOpen(row.id)}
+        title={row.label ?? undefined}
+        style={{ maxWidth: "100%" }}
+      >
+        {row.label ? (
+          <span className="truncate">{row.label}</span>
+        ) : (
+          <Meta mono={false}>No label</Meta>
+        )}
+      </Button>
+    )
+  },
+  {
+    id: "identity",
+    header: "Identity",
+    grow: true,
+    minWidth: 208,
+    text: (row) => displayName(row.actor),
+    render: (row) => <Identity session={row} />
+  },
+  {
+    id: "access",
+    header: "Access",
+    width: 264,
+    render: (row) => <Access session={row} orgId={orgId} projectId={projectId} />
+  },
+  {
+    id: "created",
+    header: "Created",
+    width: 176,
+    render: (row) => (
+      <Meta mono={false}>{format(new Date(row.createdAt), "MMM dd, yyyy hh:mm a")}</Meta>
+    )
+  },
+  {
+    id: "expires",
+    header: "Expires",
+    width: 112,
+    render: (row) => <Expiry session={row} />
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: 112,
+    render: (row) => {
+      const { label, tone, icon } = STATUS[row.status];
+      return (
+        <StatusText tone={tone} icon={icon}>
+          {label}
+        </StatusText>
+      );
+    }
+  }
+];
 
 const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const agentVault = useV4Adapter("agentVault");
@@ -302,10 +489,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canCreateBundles = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Create,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
+  const canManageServices = canManageAgentVaultServices(permission);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -327,15 +511,17 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
 
   const statuses = (filters.find((filter) => filter.field === "status")?.values ??
     []) as AgentVaultSessionStatus[];
+  const { metadataFilter, metadataFilterError } = parseMetadataFilter(filters);
 
   const { data, isPending } = agentVault.useSessions(orgId, projectId, {
     scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
+    metadata: metadataFilter,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const { data: accessBundles } = agentVault.useAccessBundles(orgId, projectId, { limit: 1 });
+  const canStartSession = useCanStartSession(orgId, projectId);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -345,85 +531,21 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     if (!isPending && page > lastPage) setPage(lastPage);
   }, [totalCount, page, perPage, isPending]);
 
-  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
-  const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateOpen(true), hasReachableBundles);
+  const isFiltered =
+    Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), canStartSession);
 
-  const columns: DataTableColumn<TAgentVaultSession>[] = [
-    {
-      id: "label",
-      header: "Label",
-      primary: true,
-      width: 224,
-      text: (row) => row.label ?? "",
-      render: (row) => (
-        <Button
-          variant="link"
-          underline="hover"
-          onClick={() => setSessionId(row.id)}
-          title={row.label ?? undefined}
-          style={{ maxWidth: "100%" }}
-        >
-          {row.label ? (
-            <span className="truncate">{row.label}</span>
-          ) : (
-            <Meta mono={false}>No label</Meta>
-          )}
-        </Button>
-      )
-    },
-    {
-      id: "identity",
-      header: "Identity",
-      grow: true,
-      minWidth: 208,
-      text: (row) => displayName(row.actor),
-      render: (row) => <Identity session={row} />
-    },
-    {
-      id: "access",
-      header: "Access",
-      width: 264,
-      render: (row) => <Access session={row} orgId={orgId} projectId={projectId} />
-    },
-    {
-      id: "created",
-      header: "Created",
-      width: 176,
-      render: (row) => (
-        <Meta mono={false}>{format(new Date(row.createdAt), "MMM dd, yyyy hh:mm a")}</Meta>
-      )
-    },
-    {
-      id: "expires",
-      header: "Expires",
-      width: 112,
-      render: (row) => <Expiry session={row} />
-    },
-    {
-      id: "status",
-      header: "Status",
-      width: 112,
-      render: (row) => {
-        const { label, tone, icon } = STATUS[row.status];
-        return (
-          <StatusText tone={tone} icon={icon}>
-            {label}
-          </StatusText>
-        );
-      }
-    }
-  ];
+  const columns = sessionColumns({ orgId, projectId, onOpen: (id) => setSessionId(id) });
 
   const rowActions: DataTableRowActions<TAgentVaultSession> = {
     menuLabel: "Session options",
     renderMenu: (row) => (
       <SessionMenu
         session={row}
-        canEditLabel={canActOn(row, "edit")}
+        canEdit={canActOn(row, "edit")}
         canRevoke={canActOn(row, "revoke")}
         onView={() => setSessionId(row.id)}
-        onEditLabel={() => setSessionId(row.id, true)}
+        onEdit={() => setSessionId(row.id, true)}
         onRevoke={() => setSessionToRevoke(row)}
       />
     )
@@ -440,7 +562,9 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
               variant="accent"
               icon="plus"
               disabledReason={
-                hasReachableBundles ? undefined : "Sessions need an access bundle you can use"
+                canStartSession
+                  ? undefined
+                  : "Sessions need an access bundle or a service you can use"
               }
               onClick={() => setIsCreateOpen(true)}
             >
@@ -451,17 +575,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
         {canReadSessionLogSettings && <SessionLogAlerts orgId={orgId} projectId={projectId} />}
         <FilterBar
           label="Session filters"
-          fields={[
-            {
-              key: "status",
-              label: "Status",
-              type: "multi-select",
-              options: Object.values(AgentVaultSessionStatus).map((status) => ({
-                value: status,
-                label: STATUS[status].label
-              }))
-            }
-          ]}
+          fields={FILTER_FIELDS}
           value={filters}
           onChange={(next) => {
             setFilters(next);
@@ -494,6 +608,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             ) : undefined
           }
         />
+        {metadataFilterError && <Alert tone="bad">{metadataFilterError}</Alert>}
         <DataTable
           filtered={isFiltered}
           label="Sessions"
@@ -509,9 +624,9 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             <SessionsEmpty
               orgId={orgId}
               projectId={projectId}
-              canCreateBundles={canCreateBundles}
+              canManageServices={canManageServices}
               isFiltered={isFiltered}
-              hasReachableBundles={hasReachableBundles}
+              canStartSession={canStartSession}
               onClearFilters={() => {
                 setSearch("");
                 setFilters([]);

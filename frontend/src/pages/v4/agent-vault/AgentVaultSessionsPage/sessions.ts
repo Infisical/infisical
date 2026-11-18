@@ -13,6 +13,7 @@ import type {
   TAgentVaultSessionInlineService
 } from "@app/hooks/api/agentVault/types";
 
+import type { MetadataEntry } from "../../access/org/metadata-editor";
 import { useProjectPermission } from "../../access/permissions";
 import { useV4Session } from "../../data/session/contract";
 
@@ -59,7 +60,7 @@ export const describeSession = (session: TAgentVaultSession) =>
     ? `"${session.label}" for "${actorName(session.actor)}"`
     : `for "${actorName(session.actor)}"`;
 
-export const canEditSessionLabel = (session: TAgentVaultSession) =>
+export const canEditSession = (session: TAgentVaultSession) =>
   session.actor.id !== null && session.onBehalfOf?.id !== null;
 
 export const useCanActOnSession = (projectId: string) => {
@@ -95,9 +96,111 @@ export const inlineServiceTarget = (service: TAgentVaultSessionInlineService) =>
 export const inlineServicesLabel = (count: number) =>
   count === 1 ? "1 inline service" : `${count} inline services`;
 
+export const sessionInlineServices = (session: Pick<TAgentVaultSession, "services">) =>
+  session.services.flatMap((service) => (service.isInline ? [service] : []));
+
+export const sessionNamedServices = (session: Pick<TAgentVaultSession, "services">) =>
+  session.services.flatMap((service) => (service.isInline ? [] : [service]));
+
+export const isSessionServicesError = (message: string) =>
+  message.includes("both cover") || message.includes("can't name a service");
+
 export const SESSION_LABEL_MAX_LENGTH = 128;
 
 const DISALLOWED_LABEL_CHARS_RE = /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}]/u;
+
+const SESSION_METADATA_MAX_KEYS = 20;
+const SESSION_METADATA_KEY_MAX_LENGTH = 255;
+const SESSION_METADATA_VALUE_MAX_LENGTH = 1020;
+
+const isBlankRow = (row: MetadataEntry) => !row.key.trim() && !row.value.trim();
+
+export const sessionMetadataRowsSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .max(
+        SESSION_METADATA_KEY_MAX_LENGTH,
+        `A key can be at most ${SESSION_METADATA_KEY_MAX_LENGTH} characters`
+      )
+      .refine(
+        (key) => !DISALLOWED_LABEL_CHARS_RE.test(key),
+        "A key can't contain line breaks, tabs, or invisible characters."
+      )
+      .refine((key) => !key.includes("="), "A key can't contain ="),
+    value: z
+      .string()
+      .trim()
+      .max(
+        SESSION_METADATA_VALUE_MAX_LENGTH,
+        `A value can be at most ${SESSION_METADATA_VALUE_MAX_LENGTH} characters`
+      )
+      .refine(
+        (value) => !DISALLOWED_LABEL_CHARS_RE.test(value),
+        "A value can't contain line breaks, tabs, or invisible characters."
+      )
+  })
+  .array()
+  .superRefine((rows, ctx) => {
+    const seenKeys = new Set<string>();
+    let filledCount = 0;
+    rows.forEach((row, index) => {
+      if (isBlankRow(row)) return;
+      filledCount += 1;
+      if (!row.key) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index, "key"],
+          message: "Enter a key, or remove this row."
+        });
+        return;
+      }
+      if (!row.value)
+        ctx.addIssue({ code: "custom", path: [index, "value"], message: "Enter a value" });
+      if (seenKeys.has(row.key))
+        ctx.addIssue({
+          code: "custom",
+          path: [index, "key"],
+          message: `The metadata key '${row.key}' appears more than once. Each key can be used once per session.`
+        });
+      seenKeys.add(row.key);
+    });
+    if (filledCount > SESSION_METADATA_MAX_KEYS)
+      ctx.addIssue({
+        code: "custom",
+        message: `A session can have at most ${SESSION_METADATA_MAX_KEYS} metadata keys.`
+      });
+  });
+
+export type TMetadataErrors = {
+  rows: { key?: string; value?: string }[];
+  list?: string;
+};
+
+export const sessionMetadataErrors = (rows: MetadataEntry[]): TMetadataErrors | undefined => {
+  const result = sessionMetadataRowsSchema.safeParse(rows);
+  if (result.success) return undefined;
+  const errors: TMetadataErrors = { rows: rows.map(() => ({})) };
+  result.error.issues.forEach(({ path: [row, field], message }) => {
+    if (typeof row !== "number") errors.list ??= message;
+    else if (field === "key" || field === "value") errors.rows[row][field] ??= message;
+  });
+  return errors;
+};
+
+export const metadataRowsToRecord = (rows: MetadataEntry[]): Record<string, string> =>
+  Object.fromEntries(
+    rows.filter((row) => !isBlankRow(row)).map((row) => [row.key.trim(), row.value.trim()])
+  );
+
+export const metadataRecordToRows = (metadata: Record<string, string>): MetadataEntry[] =>
+  Object.entries(metadata).map(([key, value]) => ({ key, value }));
+
+export const isSameSessionMetadata = (a: Record<string, string>, b: Record<string, string>) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => b[key] === a[key]);
+};
 
 export const sessionLabelSchema = z
   .string()

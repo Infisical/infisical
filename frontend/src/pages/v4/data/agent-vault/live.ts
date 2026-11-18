@@ -305,15 +305,21 @@ export const agentVaultLive: AgentVaultAdapter = {
       placeholderData: keepPreviousInProject(projectId),
       queryKey: agentVaultKeys.sessionList(orgId, projectId, params),
       queryFn: async () => {
-        const { statuses, ...rest } = params;
+        const { statuses, metadata, ...rest } = params;
+        const metadataFilter = Object.entries(metadata ?? {}).map(
+          ([key, value]) => `${key}=${value}`
+        );
         const { data } = await apiRequest.get<TAgentVaultSessionList>(
           "/api/v1/agent-vault/sessions",
           {
             params: {
               ...rest,
               projectId,
-              status: statuses?.length ? statuses.join(",") : undefined
-            }
+              status: statuses?.length ? statuses.join(",") : undefined,
+              metadata: metadataFilter.length ? metadataFilter : undefined
+            },
+            // The API reads a repeated metadata=key=value, not axios's default metadata[]=.
+            paramsSerializer: { indexes: null }
           }
         );
         return data;
@@ -345,13 +351,13 @@ export const agentVaultLive: AgentVaultAdapter = {
       onSuccess: invalidate
     });
   },
-  useUpdateSessionLabel: (orgId, projectId) => {
+  useUpdateSession: (orgId, projectId) => {
     const invalidate = useInvalidateSessions(orgId, projectId);
     return useMutation({
-      mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionDTO) => {
+      mutationFn: async ({ sessionId, label, metadata }: TUpdateAgentVaultSessionDTO) => {
         const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
           `/api/v1/agent-vault/sessions/${sessionId}`,
-          { label }
+          { label, metadata }
         );
         return data.session;
       },
