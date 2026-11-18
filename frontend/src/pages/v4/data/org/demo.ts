@@ -123,9 +123,8 @@ const productStats = (): TOrgProductStats => ({
   secretScanning: secretScanningDemoCounts(),
   pam: { accountsCount: 0, accountTemplatesCount: 0, foldersCount: 0 },
   agentVault: {
-    accessBundlesCount: 0,
     servicesCount: 0,
-    proxiesCount: 0,
+    skillsCount: 0,
     projectsCount: demoProjectCount(ProjectType.AgentVault)
   }
 });

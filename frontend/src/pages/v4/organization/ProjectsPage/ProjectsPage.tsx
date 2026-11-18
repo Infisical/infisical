@@ -59,9 +59,9 @@ const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][
       ];
     case ProjectType.AgentVault:
       return [
-        [stats.agentVault.accessBundlesCount, "access bundles"],
         [stats.agentVault.servicesCount, "services"],
-        [stats.agentVault.proxiesCount, "proxies"]
+        [stats.agentVault.skillsCount, "skills"],
+        [stats.agentVault.projectsCount, "projects"]
       ];
     default:
       return [];
