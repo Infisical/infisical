@@ -49,7 +49,7 @@ An inline service can also have a [hook](/documentation/platform/agent-vault/hoo
 
 A session can have up to 20 inline services, and no two of its services can have the same name, including the services in its access bundle and the services you name. A service sent without a name counts as its first host. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
 
-Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
+[Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) from the response. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
 
 <Tip>
   A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user doesn't need the **Admin** role, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
@@ -65,7 +65,7 @@ To use a sign-in stored in Infisical, name an [OAuth variable](/documentation/pl
 "credential": {"type": "oauth", "variable": "GDRIVE_U123"}
 ```
 
-This is how an app runs agents as each of its users' accounts, as [Connect your users' accounts through the API](/documentation/platform/agent-vault/oauth-variables-api) describes. If someone deletes the variable while the session is live, the proxy refuses the agent's requests to the service.
+This is how an app [runs agents as each of its users' accounts](/documentation/platform/agent-vault/oauth-variables-api). If someone deletes the variable while the session is live, the proxy refuses the agent's requests to the service.
 
 To use tokens your code already has, send them with the provider's endpoints, your OAuth app's client ID, and the scopes the tokens were granted:
 

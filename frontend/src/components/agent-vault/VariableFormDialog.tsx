@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -40,7 +41,7 @@ import {
   VARIABLE_KEY_RE,
   VARIABLE_VALUE_MAX_LENGTH
 } from "@app/helpers/agentVaultVariables";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
 import {
   AgentVaultOauthClientAuthMethod,
   AgentVaultVariableScope,
@@ -600,8 +601,18 @@ export const VariableFormDialog = ({
   ...formProps
 }: DialogProps) => {
   const [isPending, setIsPending] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const close = () => onOpenChange(false);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: close });
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) onOpenChange(true);
+        else requestDiscard();
+      }}
+    >
       <DialogContent
         isPending={isPending}
         // The form focuses the value itself when the key arrives filled in.
@@ -610,15 +621,25 @@ export const VariableFormDialog = ({
         }}
         onCloseAutoFocus={(event) => {
           setIsPending(false);
+          setIsDirty(false);
           onCloseAutoFocus?.(event);
         }}
       >
         <VariableForm
           showHeader
           isOpen={isOpen}
-          onClose={() => onOpenChange(false)}
+          onClose={close}
+          onCancel={requestDiscard}
           onPendingChange={setIsPending}
+          onDirtyChange={setIsDirty}
           {...formProps}
+        />
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="Your changes will be lost."
         />
       </DialogContent>
     </Dialog>

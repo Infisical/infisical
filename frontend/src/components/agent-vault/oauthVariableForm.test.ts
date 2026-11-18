@@ -10,6 +10,7 @@ import { TAgentVaultOauthVariable } from "@app/hooks/api/agentVault/types";
 import {
   applySignInPrefill,
   BLANK_OAUTH_VARIABLE_FORM,
+  parseOAuthScopes,
   buildOAuthVariableSettings,
   buildOAuthVariableSettingsUpdate,
   changedVariableFormFields,
@@ -85,11 +86,17 @@ describe("oauthVariableFormIssues", () => {
   });
 });
 
+describe("parseOAuthScopes", () => {
+  it("splits on whitespace only, since a scope can contain commas", () => {
+    expect(parseOAuthScopes("a,b  c\nc")).toEqual(["a,b", "c"]);
+  });
+});
+
 describe("buildOAuthVariableSettings", () => {
   it("sends what was typed, never the client secret, and endpoints only by hand", () => {
     expect(
       buildOAuthVariableSettings(
-        values({ scopes: "read, write read", clientId: " app ", clientSecret: "s", issuer: "" })
+        values({ scopes: "read\n write read", clientId: " app ", clientSecret: "s", issuer: "" })
       )
     ).toEqual({
       serverUrl: "https://mcp.example.com/mcp",

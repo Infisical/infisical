@@ -7,7 +7,7 @@ An OAuth variable is a [global variable](/documentation/platform/agent-vault/var
 
 Infisical stores the tokens the provider returns and renews the access token before it expires. The [proxy](/documentation/platform/agent-vault/proxies) sends the access token to the service's hosts as `Authorization: Bearer <access-token>`, and the agent never receives any token.
 
-Use an OAuth variable when several services need the same sign-in, or when an HTTP API needs OAuth. If your own app needs a sign-in for each of its users, create the variables through the API, as [Connect your users' accounts through the API](/documentation/platform/agent-vault/oauth-variables-api) describes.
+Use an OAuth variable when several services need the same sign-in, or when an HTTP API needs OAuth. If your own app needs a sign-in for each of its users, [create the variables through the API](/documentation/platform/agent-vault/oauth-variables-api).
 
 <Info>
   Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update OAuth variables.
@@ -100,7 +100,7 @@ If a variable shows **Needs Reauthorization** or **Missing Scopes**, sign in aga
 
 The services that use the variable get the new token within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
 
-If the variable has a redirect URI of your own app, the actions menu doesn't show **Reauthorize**. Send the user through your app's sign-in again, as [Connect your users' accounts through the API](/documentation/platform/agent-vault/oauth-variables-api#reconnect-an-account) describes.
+If the variable has a redirect URI of your own app, the actions menu doesn't show **Reauthorize**. [Send the user through your app's sign-in again](/documentation/platform/agent-vault/oauth-variables-api#reconnect-an-account).
 
 ## Edits that disconnect a variable
 

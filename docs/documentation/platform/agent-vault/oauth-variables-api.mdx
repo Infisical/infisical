@@ -147,7 +147,7 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   }'
 ```
 
-The proxy sends the variable's access token to `www.googleapis.com` as `Authorization: Bearer <access-token>`. Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
+The proxy sends the variable's access token to `www.googleapis.com` as `Authorization: Bearer <access-token>`. [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) from the response.
 
 <Warning>
   Anyone with the **Admin** role in the project can make a service send a variable's access token to any host, through the project's services or a session's inline services. Give the **Admin** role only to the people and machine identities you trust with every user's account.

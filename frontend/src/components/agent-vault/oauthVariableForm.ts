@@ -77,9 +77,7 @@ const OAUTH_SCOPE_TOKEN_RE = /^[\x21\x23-\x5b\x5d-\x7e]+$/;
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/;
 
-export const parseOAuthScopes = (text: string) => [
-  ...new Set(text.split(/[\s,]+/).filter(Boolean))
-];
+export const parseOAuthScopes = (text: string) => [...new Set(text.split(/\s+/).filter(Boolean))];
 
 const isManual = (values: Pick<TOAuthVariableFormValues, "authorizationEndpoint">) =>
   Boolean(values.authorizationEndpoint.trim());
