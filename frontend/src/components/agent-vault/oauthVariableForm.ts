@@ -1,4 +1,8 @@
-import { AgentVaultOauthClientAuthMethod, AgentVaultVariableType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthStatus,
+  AgentVaultVariableType
+} from "@app/hooks/api/agentVault";
 import {
   TAgentVaultOauthVariable,
   TAgentVaultOauthVariableSettingsInput,
@@ -262,8 +266,10 @@ export const OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE =
   "Enter the client secret again. Changing sign-in settings clears it.";
 
 /**
- * Whether saving these values would drop a client secret the variable's own OAuth app signs in with. Without a new
- * one, the next sign-in would fail. A redirect URI set for an app means the secret comes with that app's sign-in.
+ * Whether a sign-in from these values has to send the client secret: the variable's own OAuth app needs one, and the
+ * stored one is gone or about to be, since a changed sign-in setting clears it and a variable that isn't connected
+ * has none. Checked on Authorize only, so settings can still be saved on their own. A redirect URI set for an app
+ * means the secret comes with that app's sign-in.
  */
 export const isOAuthClientSecretRequired = (
   current: TAgentVaultOauthVariable,
@@ -278,7 +284,7 @@ export const isOAuthClientSecretRequired = (
   values.tokenEndpointAuthMethod !== AgentVaultOauthClientAuthMethod.None &&
   !values.redirectUri.trim() &&
   !values.clientSecret &&
-  isOAuthVariableSignInChanged(current, values);
+  (current.status === AgentVaultOauthStatus.NotConnected || isOAuthVariableSignInChanged(current, values));
 
 /**
  * Fills the fields a sign-in found it needs, leaving anything typed alone: guessed endpoints are only a suggestion,

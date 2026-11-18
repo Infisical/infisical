@@ -1067,6 +1067,9 @@ export const agentVaultProxyServiceFactory = ({
     // By service, for a service's own tokens, a member's and those sent with the session; by variable for the rest.
     const refreshedCredentials = new Map<string, TRefreshed>();
     const refreshedVariables = new Map<string, TRefreshed>();
+    // Services whose refresh was refused because they moved or switched variables: a token refreshed through a
+    // sibling must not reach the host this snapshot still holds for them.
+    const refusedVariableServices = new Set<string>();
     const isDue = (oauth: Pick<TAgentVaultOauthConfig, "status" | "expiresAt">) =>
       oauth.status !== AgentVaultOauthStatus.NeedsReauthorization &&
       Boolean(oauth.expiresAt) &&
@@ -1189,6 +1192,7 @@ export const agentVaultProxyServiceFactory = ({
                 );
                 return;
               }
+              refusedVariableServices.add(service.id);
             }
           }
           logger.info(
@@ -1271,11 +1275,11 @@ export const agentVaultProxyServiceFactory = ({
 
     // An OAuth variable's token as resolve sends it: the one just refreshed, else the stored one. A service whose
     // variable is gone or isn't connected is flagged so the proxy refuses it rather than send it without a token.
-    const $oauthVariableCredential = (variableId: string): TInlineOauthResolution => {
+    const $oauthVariableCredential = (variableId: string, serviceId: string): TInlineOauthResolution => {
       const variable = oauthVariableById.get(variableId);
       if (!variable) return { removed: true };
       const refreshed = refreshedVariables.get(variableId);
-      if (refreshed) return { credential: refreshed.credential };
+      if (refreshed && !refusedVariableServices.has(serviceId)) return { credential: refreshed.credential };
       const connection = oauthVariableConnectionOf(variableId);
       if (!variable.encryptedValue || !connection) return { notConnected: true };
       return {
@@ -1285,8 +1289,8 @@ export const agentVaultProxyServiceFactory = ({
         )
       };
     };
-    const variableCredentialFields = (variableId: string) => {
-      const { credential, removed, notConnected } = $oauthVariableCredential(variableId);
+    const variableCredentialFields = (variableId: string, serviceId: string) => {
+      const { credential, removed, notConnected } = $oauthVariableCredential(variableId, serviceId);
       return {
         credential: credential ?? { type: AgentVaultCredentialType.Passthrough as const },
         personalValuesMissing: !credential,
@@ -1322,7 +1326,7 @@ export const agentVaultProxyServiceFactory = ({
       personalValuesMissing: false,
       memberProvided: Boolean(row.memberProvidedFields?.length),
       hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null,
-      ...(isVariableOauth(row) ? variableCredentialFields(oauthVariableIdOf(row)!) : {})
+      ...(isVariableOauth(row) ? variableCredentialFields(oauthVariableIdOf(row)!, row.id) : {})
     }));
 
     const bundleServices = await $applyPersonalValues({
@@ -1349,7 +1353,9 @@ export const agentVaultProxyServiceFactory = ({
       const resolved = toResolvedInlineService(
         row,
         openInlineServiceSecrets(row, $decryptJson),
-        variableId ? $oauthVariableCredential(variableId) : { credential: refreshedCredentials.get(row.id)?.credential }
+        variableId
+          ? $oauthVariableCredential(variableId, row.id)
+          : { credential: refreshedCredentials.get(row.id)?.credential }
       );
       if (!resolved) {
         logger.warn(

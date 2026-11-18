@@ -51,11 +51,7 @@ import {
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
-import {
-  TAgentVaultOauthVariable,
-  TAgentVaultOauthVariableSignInStart,
-  TAgentVaultVariable
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultOauthVariableSignInStart, TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { OAuthVariableFields } from "./OAuthVariableFields";
@@ -65,9 +61,7 @@ import {
   buildOAuthVariableSettingsUpdate,
   changedVariableFormFields,
   CREATE_OAUTH_VARIABLE_TITLE,
-  isOAuthClientSecretRequired,
   isOAuthVariableSignInChanged,
-  OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
   TVariableFormValues
@@ -83,11 +77,9 @@ const TYPE_LABELS: Record<AgentVaultVariableType, string> = {
 };
 
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
-// when the form validates, as the lookup of the typed key answers after it was typed. So is the saved OAuth
-// variable, since a sign-in can save it before the form closes.
+// when the form validates, as the lookup of the typed key answers after it was typed.
 const buildSchema = (
   getTakenKeys: () => ReadonlySet<string>,
-  getSavedOAuth: () => TAgentVaultOauthVariable | null,
   isValueRequired: boolean,
   isPersonal: boolean
 ) =>
@@ -128,14 +120,6 @@ const buildSchema = (
       if (data.type === AgentVaultVariableType.OAuth) {
         const issues = oauthVariableFormIssues(data);
         issues.forEach(({ field, message }) => issue(field, message));
-        const savedOAuth = getSavedOAuth();
-        if (
-          savedOAuth &&
-          !issues.some(({ field }) => field === "clientSecret") &&
-          isOAuthClientSecretRequired(savedOAuth, data)
-        ) {
-          issue("clientSecret", OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE);
-        }
         return;
       }
       const { value } = data;
@@ -234,13 +218,10 @@ export const VariableForm = ({
   const canChooseType = !variable && !fixedType && !isPersonal && !initialKey;
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
-  const savedOAuthRef = useRef<TAgentVaultOauthVariable | null>(null);
-  savedOAuthRef.current = saved?.oauth ?? null;
   const schema = useMemo(
     () =>
       buildSchema(
         () => takenKeysRef.current,
-        () => savedOAuthRef.current,
         !variable,
         isPersonal
       ),

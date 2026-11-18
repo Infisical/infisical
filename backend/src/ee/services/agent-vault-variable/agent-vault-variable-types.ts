@@ -47,6 +47,9 @@ export type TAgentVaultOauthVariableSettings = {
 // the same way. `serverUrl` is null for a variable set up by hand.
 export type TAgentVaultOauthVariableConnection = Omit<TAgentVaultOauthConfig, "serverUrl"> & {
   serverUrl: string | null;
+  // The sign-in whose tokens this connection was written from, so a retry of it never writes them again over a
+  // refresh. Absent on connections written by an import or before it was kept.
+  authorizationId?: string;
 };
 
 // `oauthConfig` of an OAuth variable. `connection` is null exactly when `encryptedValue` is: not connected yet, or

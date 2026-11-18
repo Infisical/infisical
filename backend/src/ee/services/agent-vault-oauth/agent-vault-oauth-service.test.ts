@@ -3002,6 +3002,36 @@ describe("completing an OAuth variable's sign-in", () => {
     });
   });
 
+  test("a retry of a sign-in already written leaves tokens a refresh replaced since", async () => {
+    const env = setup();
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+    const { authorization } = await startVariableSignIn(env);
+    const state = stateOf(authorization!.authorizeUrl);
+    let saves = 0;
+    env.onSetItem((key) => {
+      if (key !== AUTHORIZATION_KEY(authorization!.id)) return;
+      saves += 1;
+      if (saves === 2) throw new Error("OOM command not allowed");
+    });
+    await expect(completeVariableSignIn(env, state)).rejects.toThrow("OOM command not allowed");
+    const row = env.variableRows.get(VARIABLE_ID)!;
+    expect(row.oauthConfig!.connection!.authorizationId).toBe(authorization!.id);
+
+    const refreshed = Buffer.from("refreshed-tokens");
+    row.encryptedValue = refreshed;
+    row.oauthConfig = {
+      ...row.oauthConfig!,
+      connection: { ...row.oauthConfig!.connection!, accessTokenHash: "refreshed" }
+    };
+
+    const retried = await completeVariableSignIn(env, state);
+
+    expect(retried.variableConnected).not.toBeNull();
+    expect(row.encryptedValue).toBe(refreshed);
+    expect(row.oauthConfig!.connection!.accessTokenHash).toBe("refreshed");
+    expect(env.tokenRequests).toHaveLength(1);
+  });
+
   test("the dashboard's callback retries a failed record save without redeeming the code again", async () => {
     const env = setup();
     addVariable(env, { serverUrl: SERVER_URL });

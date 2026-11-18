@@ -1264,6 +1264,10 @@ describe("OAuth variables on resolve", () => {
 
     expect(refreshServiceToken.mock.calls.map(([dto]) => dto.serviceId)).toEqual([SERVICE_ID, "service-2"]);
     expect((services[1].credential as { value: string }).value).toBe("refreshed-access");
+    // The moved service's snapshot still names its old host, so it keeps the token it had until the next poll.
+    const moved = services[0].credential as { value?: string };
+    expect(moved.value).toBeDefined();
+    expect(moved.value).not.toBe("refreshed-access");
   });
 
   test("a variable that isn't connected is flagged by name, and as missing values for older proxies", async () => {

@@ -49,8 +49,10 @@ import {
 import {
   applySignInPrefill,
   hasCommaSeparatedScope,
+  isOAuthClientSecretRequired,
   isOAuthVariableSignInChanged,
   OAUTH_AUTH_METHOD_LABELS,
+  OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE,
   TOAuthVariableFormValues,
   TVariableFormValues
 } from "./oauthVariableForm";
@@ -94,6 +96,7 @@ export const OAuthVariableFields = ({
     setValue,
     getValues,
     resetField,
+    setError,
     formState: { errors }
   } = useFormContext<TVariableFormValues>();
   const formValues = useWatch({ control }) as TVariableFormValues;
@@ -218,6 +221,10 @@ export const OAuthVariableFields = ({
   const handleAuthorize = () => {
     const values = getValidValues();
     if (!values) return;
+    if (variable?.oauth && isOAuthClientSecretRequired(variable.oauth, values)) {
+      setError("clientSecret", { message: OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE }, { shouldFocus: true });
+      return;
+    }
     setAuthorizedScopes(null);
     const clientSecret = values.clientId.trim() ? values.clientSecret : "";
     sentSecretRef.current = clientSecret;

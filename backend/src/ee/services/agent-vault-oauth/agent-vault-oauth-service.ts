@@ -857,13 +857,28 @@ export const agentVaultOauthServiceFactory = ({
         });
       }
       const { settings, connection: previous, disconnects } = locked.oauthConfig as TAgentVaultOauthVariableConfig;
+      // Already written, and a refresh may have replaced the tokens since: writing this sign-in's again would put back
+      // a refresh token the provider has already rotated away.
+      if (previous?.authorizationId === record.id) {
+        return {
+          variableId: locked.id,
+          key: locked.key,
+          method: AgentVaultOauthVariableConnectMethod.SignIn,
+          issuer: previous.issuer,
+          scopes: previous.grantedScopes
+        };
+      }
       if (oauthVariableSettingsFingerprintOf(settings, disconnects) !== record.variableSettingsFingerprint) {
         throw new ConflictError({ message: AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE });
       }
       const { config, encryptedCredential } = buildCredentialFromAuthorization(record, {
         previousRequiredScopes: previous?.issuer === record.issuer ? previous.requiredScopes : []
       });
-      const connection: TAgentVaultOauthVariableConnection = { ...config, serverUrl: settings.serverUrl };
+      const connection: TAgentVaultOauthVariableConnection = {
+        ...config,
+        serverUrl: settings.serverUrl,
+        authorizationId: record.id
+      };
       await agentVaultVariableDAL.updateById(
         locked.id,
         {

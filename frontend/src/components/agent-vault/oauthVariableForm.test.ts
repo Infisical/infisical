@@ -240,6 +240,12 @@ describe("isOAuthClientSecretRequired", () => {
     ).toBe(false);
   });
 
+  it("asks for a variable that isn't connected, which has no stored secret", () => {
+    const disconnected = { ...ownApp, status: AgentVaultOauthStatus.NotConnected };
+    expect(isOAuthClientSecretRequired(disconnected, edit({}))).toBe(true);
+    expect(isOAuthClientSecretRequired(disconnected, edit({ clientSecret: "s" }))).toBe(false);
+  });
+
   it("doesn't ask when the method is Automatic, since the app may be public", () => {
     const automatic = { ...ownApp, tokenEndpointAuthMethod: null };
     expect(
