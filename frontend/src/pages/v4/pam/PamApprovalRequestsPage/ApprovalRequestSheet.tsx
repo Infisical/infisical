@@ -126,7 +126,15 @@ const AutoApprovalResults = ({ outcome }: { outcome: TAutoApprovalOutcome }) => 
   );
 };
 
-const RequestBody = ({ request, onClose }: { request: TPamAccessRequest; onClose: () => void }) => {
+const RequestBody = ({
+  request,
+  onClose,
+  canRevokeGrants
+}: {
+  request: TPamAccessRequest;
+  onClose: () => void;
+  canRevokeGrants: boolean;
+}) => {
   const pam = useV4Adapter("pam");
   const { user } = useV4Session();
   const review = pam.useReviewAccessRequest();
@@ -140,7 +148,7 @@ const RequestBody = ({ request, onClose }: { request: TPamAccessRequest; onClose
   const requestData = request.requestData?.requestData;
   const isPending = request.status === PamAccessRequestStatus.Pending;
   const isOwnRequest = Boolean(request.requesterId && request.requesterId === user.id);
-  const canRevoke = isGrantActive(request);
+  const canRevoke = canRevokeGrants && isGrantActive(request);
   const isCredential = request.accessType === PamAccessType.Credential;
 
   const handleReview = async (next: PamAccessRequestDecision) => {
@@ -346,16 +354,25 @@ const RequestBody = ({ request, onClose }: { request: TPamAccessRequest; onClose
 
 export const ApprovalRequestSheet = ({
   request,
-  onOpenChange
+  onOpenChange,
+  canRevokeGrants = true
 }: {
   request: TPamAccessRequest | undefined;
   onOpenChange: (open: boolean) => void;
+  canRevokeGrants?: boolean;
 }) => {
   const [shown, setShown] = useState(request);
   if (request && request !== shown) setShown(request);
   return (
     <Sheet open={Boolean(request)} onOpenChange={onOpenChange}>
-      {shown && <RequestBody key={shown.id} request={shown} onClose={() => onOpenChange(false)} />}
+      {shown && (
+        <RequestBody
+          key={shown.id}
+          request={shown}
+          canRevokeGrants={canRevokeGrants}
+          onClose={() => onOpenChange(false)}
+        />
+      )}
     </Sheet>
   );
 };

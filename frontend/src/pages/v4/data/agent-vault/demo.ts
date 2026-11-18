@@ -32,6 +32,7 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
+import { DEMO_SELF_USER_ID } from "../access/fixtures";
 import {
   agentVaultDemoStore,
   demoBundleListItem,
@@ -67,7 +68,7 @@ const machine = (id: string | null, name: string): TAgentVaultSessionActor => ({
   name
 });
 
-const sarah = seedUser(uuid("a1", 1), "Sarah", "Lin");
+const sarah = seedUser(DEMO_SELF_USER_ID, "Sarah", "Lin");
 const people = [
   sarah,
   seedUser(uuid("a1", 2), "Marcus", "Webb"),
@@ -613,11 +614,6 @@ const slice = <T>(rows: T[], limit = 20, offset = 0) => ({
 });
 
 export const agentVaultDemo: AgentVaultAdapter = {
-  useProjectPermission: () => ({
-    data: { memberships: [{ roles: [{ role: "admin" }] }] },
-    isPending: false,
-    error: null
-  }),
   useSessions: (_, projectId, { scope, statuses, search, limit = 20, offset = 0 }) => {
     const term = search?.toLowerCase();
     const project = demoProject(agentVaultDemoStore.use(), projectId);

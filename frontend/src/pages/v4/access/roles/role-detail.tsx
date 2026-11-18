@@ -40,6 +40,7 @@ import { sanitizeDuplicateRolePermissions } from "@app/pages/project/RoleDetails
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
@@ -161,9 +162,8 @@ export const RoleEditor = ({
     setErrors(undefined);
   };
 
-  const copy = (value: string, title: string) => {
-    navigator.clipboard?.writeText(value).catch(() => undefined);
-    toast({ tone: "neutral", title });
+  const copy = async (value: string, title: string) => {
+    if (await copyText(value)) toast({ tone: "neutral", title });
   };
 
   const closeOverlay = (next: boolean) => !next && setOverlay(undefined);

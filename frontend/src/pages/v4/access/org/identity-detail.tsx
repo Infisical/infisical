@@ -42,6 +42,7 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
@@ -214,9 +215,9 @@ const IdentityHeaderActions = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          onSelect={() => {
-            navigator.clipboard?.writeText(identity.id);
-            toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
+          onSelect={async () => {
+            if (await copyText(identity.id))
+              toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
           }}
         >
           <Icon name="copy" />

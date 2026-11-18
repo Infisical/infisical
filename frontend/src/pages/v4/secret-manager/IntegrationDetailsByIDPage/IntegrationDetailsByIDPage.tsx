@@ -39,6 +39,7 @@ import { useProjectScope } from "../../access/project/scope";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -368,9 +369,9 @@ const IntegrationDetails = ({
                   Sync now
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(integration.id);
-                    toast({ tone: "ok", title: "Integration ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(integration.id))
+                      toast({ tone: "ok", title: "Integration ID copied to clipboard" });
                   }}
                 >
                   <Icon name="copy" />

@@ -34,6 +34,7 @@ import type { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2/
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { DataSourceStatus } from "../components/data-source-status";
@@ -132,9 +133,9 @@ const DataSource = ({ dataSource }: { dataSource: TSecretScanningDataSource }) =
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard.writeText(dataSource.id);
-                    toast({ tone: "ok", title: "Data source ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(dataSource.id))
+                      toast({ tone: "ok", title: "Data source ID copied to clipboard" });
                   }}
                 >
                   <Icon name="copy" />

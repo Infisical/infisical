@@ -18,6 +18,7 @@ import type { TAnnouncement } from "@app/hooks/api/announcement/types";
 
 import { accessLinks } from "../access/links";
 import { failed, toast } from "../access/toast";
+import { copyText } from "../clipboard";
 import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { useGo, v4Path } from "../links";
@@ -110,11 +111,8 @@ export const useShellChrome = () => {
     orgPermission?.permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member)
   );
   const copyToken = async () => {
-    try {
-      await window.navigator.clipboard.writeText(org.getSessionToken());
+    if (await copyText(org.getSessionToken(), "Failed to copy user token to clipboard")) {
       toast({ tone: "ok", title: "Copied current login session token to clipboard" });
-    } catch (error) {
-      failed("Failed to copy user token to clipboard", error);
     }
   };
   const logOut = async () => {

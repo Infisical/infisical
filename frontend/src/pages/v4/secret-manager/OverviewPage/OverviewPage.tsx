@@ -96,6 +96,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
 import { dismissToast, errorMessage, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -169,6 +170,7 @@ import { ResourceSearchInput, SearchAllFoldersSheet } from "./secrets/search/sea
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
+import { useAddSyncFailureAlert } from "./secrets/secret-sync/failure-alert";
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
@@ -672,6 +674,7 @@ export const OverviewPage = () => {
     syncOptions: sync.syncOptions as Record<string, unknown>
   }));
   const createSecretSync = adapter.useCreateSecretSync();
+  const addSyncFailureAlert = useAddSyncFailureAlert();
   const refetchProjectRef = useRef(projectQuery.refetch);
   const refetchOverviewRef = useRef(overview.refetch);
   useLayoutEffect(() => {
@@ -1220,8 +1223,9 @@ export const OverviewPage = () => {
       .join("\n")}\n`;
     try {
       if (action === "clipboard") {
-        await navigator.clipboard.writeText(text);
-        toast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
+        if (await copyText(text)) {
+          toast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
+        }
         return;
       }
       const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -1485,11 +1489,8 @@ export const OverviewPage = () => {
         return lines.join("\n");
       })
       .join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text, "Failed to copy selected secrets to clipboard")) {
       toast({ tone: "ok", title: "Selected secrets copied to clipboard" });
-    } catch {
-      toast({ tone: "bad", title: "Failed to copy selected secrets to clipboard" });
     }
   };
   const clearFilters = () => {
@@ -1721,11 +1722,8 @@ export const OverviewPage = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={async () => {
-            try {
-              await navigator.clipboard.writeText(environment.value);
+            if (await copyText(environment.value, "Failed to copy the environment slug")) {
               toast({ tone: "ok", title: "Environment slug copied to clipboard" });
-            } catch {
-              toast({ tone: "bad", title: "Failed to copy the environment slug" });
             }
           }}
         >
@@ -1993,14 +1991,18 @@ export const OverviewPage = () => {
                                 <div className={`${styles.headLine} ${styles.valueHead}`}>
                                   Value
                                   <span className={styles.push}>
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon="eye"
-                                      onClick={() => setRevealAll(!revealAll)}
-                                    >
-                                      {revealAll ? "Hide values" : "Reveal all"}
-                                    </Button>
+                                    {windowRows.some(([, entries]) =>
+                                      ["secret", "import"].includes(entries[0].kind)
+                                    ) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon="eye"
+                                        onClick={() => setRevealAll(!revealAll)}
+                                      >
+                                        {revealAll ? "Hide values" : "Reveal all"}
+                                      </Button>
+                                    )}
                                     <SecretSyncStatusBadge
                                       syncs={syncs}
                                       project={project}
@@ -2425,7 +2427,7 @@ export const OverviewPage = () => {
             scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
             initial={single ? { environment: activeEnvironment, path } : undefined}
             syncs={syncs}
-            onCreate={(sync, feedback) =>
+            onCreate={(sync, feedback, failureAlertChannels) =>
               createSecretSync
                 .mutateAsync({
                   projectId,
@@ -2440,7 +2442,8 @@ export const OverviewPage = () => {
                   syncOptions: sync.syncOptions
                 } as TCreateSecretSyncDTO)
                 .then(
-                  () => {
+                  async (created) => {
+                    await addSyncFailureAlert(created, failureAlertChannels);
                     setSyncOpen(false);
                     toast({ tone: "ok", ...feedback });
                   },

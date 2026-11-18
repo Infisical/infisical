@@ -42,6 +42,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { errorMessage, failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { ApprovalRequestSheet } from "../PamApprovalRequestsPage/ApprovalRequestSheet";
 import { isGrantActive, requesterSubtitle, requestStatus } from "../PamApprovalRequestsPage/status";
 import { AutoApprovalCard } from "./auto-approval";
 import {
@@ -232,6 +233,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
   );
   const [status, setStatus] = useState("all");
   const [revoking, setRevoking] = useState<TPamAccessRequest | null>(null);
+  const [selected, setSelected] = useState<TPamAccessRequest>();
   const { data, isPending } = pamAccess.useFolderAccessRequests({
     folderId,
     status: status === "all" ? undefined : status,
@@ -328,7 +330,10 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
                   icon="lock"
                   iconOnly
                   aria-label="Revoke access"
-                  onClick={() => setRevoking(request)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setRevoking(request);
+                  }}
                 />
               ) : null
           }
@@ -363,6 +368,18 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
           loadingRows={3}
           getRowId={(request) => request.id}
           rowLabel={(request) => `${request.requesterName}, ${request.accountName ?? "account"}`}
+          rowProps={(request) =>
+            request.status === PamAccessRequestStatus.Approved
+              ? {
+                  tabIndex: 0,
+                  onClick: () => setSelected(request),
+                  onKeyDown: (event) => {
+                    if (event.key === "Enter" && event.target === event.currentTarget)
+                      setSelected(request);
+                  }
+                }
+              : {}
+          }
           empty={
             <EmptyState
               size="sm"
@@ -391,6 +408,11 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
           }
         />
       </Card>
+      <ApprovalRequestSheet
+        request={selected}
+        canRevokeGrants={canRevoke}
+        onOpenChange={(open) => !open && setSelected(undefined)}
+      />
       <ConfirmAction
         open={Boolean(revoking)}
         onOpenChange={(open) => !open && setRevoking(null)}

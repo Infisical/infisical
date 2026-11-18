@@ -14,9 +14,6 @@ import type {
   TAgentVaultProductActor,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-
-import { useV4Adapter } from "../../data/adapters";
 
 const DOCS = "https://infisical.com/docs/documentation/platform/agent-vault";
 
@@ -29,20 +26,6 @@ export const AgentVaultDocs = {
   skills: `${DOCS}/skills`,
   proxies: `${DOCS}/proxies`
 } as const;
-
-export const useIsAgentVaultAdmin = (projectId: string) => {
-  const { data, isPending } = useV4Adapter("agentVault").useProjectPermission({
-    projectId
-  });
-  return {
-    isAdmin: Boolean(
-      data?.memberships.some((membership) =>
-        membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)
-      )
-    ),
-    isPending
-  };
-};
 
 export const formatDay = (value: string) => format(new Date(value), "MMM d, yyyy");
 export const formatMoment = (value: string) => format(new Date(value), "MMM d, yyyy h:mm a");

@@ -1,6 +1,7 @@
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { z } from "zod";
 
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import {
   AgentVaultMemberType,
   AgentVaultServiceType,
@@ -11,6 +12,9 @@ import type {
   TAgentVaultSessionActor,
   TAgentVaultSessionInlineService
 } from "@app/hooks/api/agentVault/types";
+
+import { useProjectPermission } from "../../access/permissions";
+import { useV4Session } from "../../data/session/contract";
 
 const DOCS = "https://infisical.com/docs/documentation/platform/agent-vault";
 
@@ -57,6 +61,13 @@ export const describeSession = (session: TAgentVaultSession) =>
 
 export const canEditSessionLabel = (session: TAgentVaultSession) =>
   session.actor.id !== null && session.onBehalfOf?.id !== null;
+
+export const useCanActOnSession = (projectId: string) => {
+  const { permission } = useProjectPermission(projectId);
+  const { user } = useV4Session();
+  return (session: TAgentVaultSession, change: "edit" | "revoke") =>
+    canActOnAgentVaultSession(permission, user.id, session, change);
+};
 
 export const formatTimestamp = (value: string) => format(new Date(value), "MMM d, yyyy h:mm a");
 

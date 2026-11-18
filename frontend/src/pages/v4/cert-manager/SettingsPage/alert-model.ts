@@ -550,6 +550,11 @@ export const WEBHOOK_AUTH_COPY: Record<WebhookAuthType, { label: string; descrip
 
 export const KEEP_PLACEHOLDER = "Leave blank to keep the saved value";
 
+export const PROJECT_RECIPIENT_LABELS: Record<string, string> = {
+  [AlertPrincipalType.ProjectMembers]: "All project members",
+  [AlertPrincipalType.ProjectAdmins]: "Project admins"
+};
+
 export const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
   switch (channel.channelType) {
     case AlertChannelType.Email: {
@@ -557,6 +562,9 @@ export const describeChannel = (channel: TChannelForm, members: TMemberEmails): 
         (recipient) => recipient.principalType === AlertPrincipalType.Group
       ).length;
       return [
+        ...channel.recipients.flatMap(({ principalType }) =>
+          PROJECT_RECIPIENT_LABELS[principalType] ? [PROJECT_RECIPIENT_LABELS[principalType]] : []
+        ),
         ...toRecipientEmails(channel.recipients, members),
         ...(groupCount ? [pluralize(groupCount, "group")] : [])
       ].join(", ");

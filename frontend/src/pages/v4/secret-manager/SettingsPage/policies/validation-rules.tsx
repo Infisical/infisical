@@ -44,6 +44,7 @@ import type { Project } from "@app/hooks/api/projects/types";
 import type { TSecretValidationRule } from "@app/hooks/api/secretValidationRules/types";
 
 import { saved } from "../../../access/toast";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 import { ConstraintCard } from "./constraint-card";
 import {
@@ -538,9 +539,8 @@ export const ValidationRulesSection = ({
               {
                 label: "Copy rule ID",
                 icon: "copy",
-                onSelect: (rule) => {
-                  navigator.clipboard?.writeText(rule.id).catch(() => undefined);
-                  saved("Rule ID copied");
+                onSelect: async (rule) => {
+                  if (await copyText(rule.id)) saved("Rule ID copied");
                 }
               }
             ],

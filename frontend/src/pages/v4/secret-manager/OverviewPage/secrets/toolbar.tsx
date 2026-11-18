@@ -31,6 +31,7 @@ import {
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
+import { copyText } from "../../../clipboard";
 import { ProviderIcon } from "../../../components/provider-icon";
 import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
@@ -323,11 +324,8 @@ export function FolderBreadcrumbBar({
   const copyPath = (
     <DropdownMenuItem
       onSelect={async () => {
-        try {
-          await navigator.clipboard.writeText(path);
+        if (await copyText(path, "Failed to copy folder path to clipboard.")) {
           report("Folder path copied to clipboard.", "ok");
-        } catch {
-          report("Failed to copy folder path to clipboard.", "bad");
         }
       }}
     >

@@ -43,6 +43,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { useOrgPermission } from "../../access/permissions";
 import { saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import {
   ALERT_EVENT_LABELS,
@@ -226,9 +227,8 @@ export const AlertsTab = () => {
     renderMenu: (alert) => (
       <>
         <DropdownMenuItem
-          onSelect={() => {
-            navigator.clipboard?.writeText(alert.id).catch(() => undefined);
-            saved("Alert ID copied");
+          onSelect={async () => {
+            if (await copyText(alert.id)) saved("Alert ID copied");
           }}
         >
           <Icon name="copy" />

@@ -33,6 +33,7 @@ import { secretScanningV2Keys } from "@app/hooks/api/secretScanningV2/queries";
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { failed, saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 
@@ -77,8 +78,8 @@ const CopyTrailing = ({ value, label, done }: { value: string; label: string; do
         size="icon-sm"
         icon={copied ? "check" : "copy"}
         iconOnly
-        onClick={() => {
-          navigator.clipboard?.writeText(value).catch(() => undefined);
+        onClick={async () => {
+          if (!(await copyText(value))) return;
           saved(done);
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1200);
@@ -379,16 +380,20 @@ const DeleteProject = ({ project, canDelete }: { project: Project; canDelete: bo
 };
 
 export const ProjectGeneralSettings = ({
-  adminOnlyDanger = false
+  dangerNeedsDeletePermission = false
 }: {
-  adminOnlyDanger?: boolean;
+  dangerNeedsDeletePermission?: boolean;
 }) => {
   const { projectId } = useProjectScope();
   const { data: project } = useV4Adapter("projectSettings").useProject(projectId);
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: facts } = useV4Adapter("projectSettings").useMembershipFacts(projectId);
   if (!project || isPending) return <SettingsCard title="Project details" loading onSave={noop} />;
-  const showDanger = !adminOnlyDanger || Boolean(facts?.isAdmin);
+  const canDeleteProject = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Project
+  );
+  const showDanger = !dangerNeedsDeletePermission || canDeleteProject;
   return (
     <Stack gap={24}>
       <ProjectDetails
@@ -403,13 +408,7 @@ export const ProjectGeneralSettings = ({
             canEdit={permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)}
           />
           <LeaveProject project={project} isDirectMember={Boolean(facts?.isDirectMember)} />
-          <DeleteProject
-            project={project}
-            canDelete={permission.can(
-              ProjectPermissionActions.Delete,
-              ProjectPermissionSub.Project
-            )}
-          />
+          <DeleteProject project={project} canDelete={canDeleteProject} />
         </>
       )}
     </Stack>

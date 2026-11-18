@@ -46,6 +46,7 @@ import {
 } from "@app/hooks/api/ca/types";
 
 import { failed, saved, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
@@ -390,9 +391,8 @@ export const CrlList = ({ ca, plan }: { ca: TInternalCertificateAuthority; plan?
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onSelect={() => {
-                        navigator.clipboard.writeText(url);
-                        saved("CRL URL copied");
+                      onSelect={async () => {
+                        if (await copyText(url)) saved("CRL URL copied");
                       }}
                     >
                       <Icon name="copy" />

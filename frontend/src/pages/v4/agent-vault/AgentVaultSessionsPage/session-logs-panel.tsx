@@ -12,7 +12,12 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { endOfDay, format, startOfDay, subHours, subMinutes } from "date-fns";
 
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { hostPatternCovers } from "@app/helpers/agentVaultHostPattern";
+import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
 import {
   isInfisicalLogHost,
   isInfisicalSessionEndpointRequest
@@ -37,6 +42,7 @@ import {
   useAgentVaultSessionLogTimeline
 } from "@app/hooks/api/agentVault/useAgentVaultSessionLogTimeline";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { UpgradeDialog } from "../AgentVaultSettingsPage/session-logs/upgrade-dialog";
@@ -46,7 +52,6 @@ import { SessionLogDetailsDialog } from "./session-log-details-dialog";
 import {
   chunkIdTime,
   countSessionLogArrivals,
-  DECISION_PRESENTATION,
   decisionPresentation,
   GAP_EXPLANATION,
   groupSessionLogGaps,
@@ -56,8 +61,10 @@ import {
   isSessionEndpoint,
   matchesSessionLogSearch,
   nativeSessionLogSearchTerm,
+  SESSION_LOG_OUTCOMES,
   sessionEndTailDeadline,
   sessionLogMethodLabel,
+  sessionLogOutcome,
   sessionLogRequestSummary,
   sessionLogSearchTerm,
   type TLogRange
@@ -334,24 +341,28 @@ const SettingsLink = ({
 export const SessionLogsPanel = ({
   orgId,
   projectId,
-  session,
-  isAdmin
+  session
 }: {
   orgId: string;
   projectId: string;
   session: TAgentVaultSession;
-  isAdmin: boolean;
 }) => {
+  const { permission } = useProjectPermission(projectId);
+  const canEditSessionLogSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
+  const canAddService = canManageAgentVaultServices(permission);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [opened, setOpened] = useState<TAgentVaultSessionLogRecord | null>(null);
   const [serviceRequest, setServiceRequest] = useState<{ host: string; path: string } | null>(null);
   const bundle = session.accessBundle;
   const { data: bundleDetail } = useV4Adapter("agentVaultResources").useAccessBundle(
     projectId,
-    isAdmin ? (bundle?.id ?? "") : ""
+    canAddService ? (bundle?.id ?? "") : ""
   );
   const columns = useMemo(() => {
-    if (!isAdmin || !bundle?.id || !bundleDetail) return LOG_COLUMNS;
+    if (!canAddService || !bundle?.id || !bundleDetail) return LOG_COLUMNS;
     const covered = bundleDetail.services.flatMap((service) =>
       "hostPattern" in service ? service.hostPattern.split(",").map((host) => host.trim()) : []
     );
@@ -385,7 +396,7 @@ export const SessionLogsPanel = ({
         ) : null
     };
     return [...LOG_COLUMNS, addColumn];
-  }, [isAdmin, bundle, bundleDetail]);
+  }, [canAddService, bundle, bundleDetail]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date }>();
@@ -469,7 +480,7 @@ export const SessionLogsPanel = ({
     () =>
       records.filter(
         (record) =>
-          (!decisionFilter || record.decision === decisionFilter) &&
+          (!decisionFilter || sessionLogOutcome(record.decision) === decisionFilter) &&
           matchesSessionLogSearch(record, search)
       ),
     [records, search, decisionFilter]
@@ -567,6 +578,10 @@ export const SessionLogsPanel = ({
   const isStillLoading = !isFiltered && records.length === 0 && isWalkingBack;
   const isUnreachable =
     gaps.length > 0 && !hasOpenedRecords && gaps.every((gap) => gap.reason === "fetch");
+  // Hidden until the first page says there are logs to search, since logs that are off, off-plan or unreadable
+  // replace the whole panel. An active filter keeps it so the filter can always be cleared.
+  const canSearch =
+    !isPending && (isFiltered || (!isLoadError && (hasChunks || Boolean(hasNextPage))));
 
   const retryButton = (
     <Button
@@ -589,7 +604,9 @@ export const SessionLogsPanel = ({
         actions={
           <Inline gap={8}>
             {retryButton}
-            {isAdmin && !isDefaultStorage && <SettingsLink orgId={orgId} projectId={projectId} />}
+            {canEditSessionLogSettings && !isDefaultStorage && (
+              <SettingsLink orgId={orgId} projectId={projectId} />
+            )}
           </Inline>
         }
       />
@@ -603,12 +620,12 @@ export const SessionLogsPanel = ({
           icon="lock"
           title="Session logs aren't on your plan"
           description={
-            isAdmin
+            canEditSessionLogSettings
               ? "Upgrade to see recorded logs and record what your agents reach."
               : "Ask a project admin about upgrading."
           }
           actions={
-            isAdmin ? (
+            canEditSessionLogSettings ? (
               <Button variant="accent" onClick={() => setIsUpgradeOpen(true)}>
                 Upgrade
               </Button>
@@ -633,12 +650,12 @@ export const SessionLogsPanel = ({
         icon="history"
         title="Session logs are off"
         description={
-          isAdmin
+          canEditSessionLogSettings
             ? "Turn them on in Settings to record what your agents do."
             : "Ask a project admin to turn them on."
         }
         actions={
-          isAdmin && isActive ? (
+          canEditSessionLogSettings && isActive ? (
             <SettingsLink orgId={orgId} projectId={projectId} variant="accent" />
           ) : undefined
         }
@@ -754,48 +771,53 @@ export const SessionLogsPanel = ({
     );
   else if (!hasNextPage && visible.length * ROW_HEIGHT > TABLE_HEIGHT) end = "No more requests";
 
-  const settingsLink = isAdmin && !isDefaultStorage && (
+  const settingsLink = canEditSessionLogSettings && !isDefaultStorage && (
     <SettingsLink orgId={orgId} projectId={projectId} />
   );
 
   return (
     <Stack gap={12}>
-      <FilterBar
-        label="Session log filters"
-        width="fill"
-        searchLabel="Search requests"
-        searchPlaceholder="Search host, path, method, tool, service, statement or output"
-        searchValue={search}
-        onSearchChange={setSearch}
-        fields={[
-          {
-            key: OUTCOME_FIELD,
-            label: "Outcome",
-            type: "select",
-            options: Object.entries(DECISION_PRESENTATION).map(([value, { label }]) => ({
-              value,
-              label
-            }))
+      {canSearch && (
+        <FilterBar
+          label="Session log filters"
+          width="fill"
+          searchLabel="Search requests"
+          searchPlaceholder="Search host, path, method, tool, service, statement or output"
+          searchValue={search}
+          onSearchChange={setSearch}
+          fields={[
+            {
+              key: OUTCOME_FIELD,
+              label: "Outcome",
+              type: "select",
+              options: SESSION_LOG_OUTCOMES.map(({ decision, label }) => ({
+                value: decision,
+                label
+              }))
+            }
+          ]}
+          value={filters}
+          onChange={setFilters}
+          actions={
+            <DateRangePicker
+              aria-label="Time range"
+              placeholder="Entire session"
+              align="end"
+              value={rangeDraft?.from ? { from: rangeDraft.from, to: rangeDraft.to } : undefined}
+              presets={isActive ? livePresets() : undefined}
+              disabled={[
+                { before: startOfDay(new Date(session.createdAt)) },
+                { after: new Date() }
+              ]}
+              onValueChange={(next) => {
+                setRangeDraft(next);
+                const picked = rangeOf(next);
+                if (picked || !next) applyRange(picked);
+              }}
+            />
           }
-        ]}
-        value={filters}
-        onChange={setFilters}
-        actions={
-          <DateRangePicker
-            aria-label="Time range"
-            placeholder="Entire session"
-            align="end"
-            value={rangeDraft?.from ? { from: rangeDraft.from, to: rangeDraft.to } : undefined}
-            presets={isActive ? livePresets() : undefined}
-            disabled={[{ before: startOfDay(new Date(session.createdAt)) }, { after: new Date() }]}
-            onValueChange={(next) => {
-              setRangeDraft(next);
-              const picked = rangeOf(next);
-              if (picked || !next) applyRange(picked);
-            }}
-          />
-        }
-      />
+        />
+      )}
 
       {isUnreachable && (
         <Alert
@@ -809,7 +831,7 @@ export const SessionLogsPanel = ({
         >
           {isDefaultStorage
             ? `Your browser couldn't download this session's logs. Your network may be blocking them. Try again, or contact ${isInfisicalCloud() ? "Infisical support" : "your server administrator"} if it keeps happening.`
-            : `None of this session's logs could be downloaded from the bucket. The bucket's CORS rule may not allow this origin, or this network may block the bucket.${isAdmin ? "" : " Ask a project admin to check the bucket's CORS rule."}`}
+            : `None of this session's logs could be downloaded from the bucket. The bucket's CORS rule may not allow this origin, or this network may block the bucket.${canEditSessionLogSettings ? "" : " Ask a project admin to check the bucket's CORS rule."}`}
         </Alert>
       )}
 

@@ -31,6 +31,12 @@ import ms from "ms";
 import { z } from "zod";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useTimedReset } from "@app/hooks";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
@@ -40,7 +46,9 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { isNoUniversalAuthError } from "../../data/agent-vault/contract";
@@ -143,9 +151,8 @@ const CopyPromptButton = ({ prompt }: { prompt: string }) => {
     <Button
       variant="accent"
       icon={isCopied ? "check" : "copy"}
-      onClick={() => {
-        navigator.clipboard.writeText(prompt);
-        setCopied("copied");
+      onClick={async () => {
+        if (await copyText(prompt)) setCopied("copied");
       }}
     >
       {isCopied ? "Copied" : "Copy prompt"}
@@ -483,15 +490,28 @@ const GrantAccessAlert = ({
   accessBundle: TAgentVaultAccessBundleListItem;
 }) => {
   const agentVault = useV4Adapter("agentVault");
+  const { permission } = useProjectPermission(projectId);
+  // The grant check reads the bundle's members, which takes ManageMembers, as does granting from the warning.
+  const canManageBundleMembers = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
   const { data: isGranted } = agentVault.useIsAccessBundleMember(
     orgId,
     projectId,
     accessBundle.id,
-    { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
+    canManageBundleMembers
+      ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
+      : null
   );
   const grant = agentVault.useGrantAccessBundle(orgId, projectId);
 
-  if (isGranted !== false || identity.role === ProjectMembershipRole.Admin) return null;
+  if (
+    !canManageBundleMembers ||
+    isGranted !== false ||
+    identity.role === ProjectMembershipRole.Admin
+  )
+    return null;
 
   const onGrant = async () => {
     try {
@@ -824,7 +844,6 @@ const GuideActions = ({
 const SessionFields = ({
   orgId,
   projectId,
-  isAdmin,
   isCreateNow,
   isOwnSandbox,
   open,
@@ -837,7 +856,6 @@ const SessionFields = ({
 }: {
   orgId: string;
   projectId: string;
-  isAdmin: boolean;
   isCreateNow: boolean;
   isOwnSandbox: boolean;
   open: boolean;
@@ -849,6 +867,12 @@ const SessionFields = ({
   universalAuthError: unknown;
 }) => {
   const { user } = useV4Session();
+  const { permission } = useProjectPermission(projectId);
+  // The picker lists the project's machine identities, which takes Read on them.
+  const canPickIdentity = permission.can(
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionSub.Identity
+  );
   return (
     <Stack gap={16}>
       <AccessBundleField
@@ -866,13 +890,13 @@ const SessionFields = ({
           </Inline>
         </Field>
       )}
-      {!isCreateNow && !isAdmin && (
+      {!isCreateNow && !canPickIdentity && (
         <Field
           label="Machine identity"
           description="Your code creates sessions as a machine identity. Ask an Agent Vault admin for the client ID and client secret of one that's granted this access bundle."
         />
       )}
-      {!isCreateNow && isAdmin && (
+      {!isCreateNow && canPickIdentity && (
         <MachineIdentityFields
           orgId={orgId}
           projectId={projectId}
@@ -1016,17 +1040,21 @@ const createView = (platform: TPlatform | null, tab: TCreateTab) => {
 export const CreateSessionSheet = ({
   orgId,
   projectId,
-  isAdmin,
   open,
   onOpenChange
 }: {
   orgId: string;
   projectId: string;
-  isAdmin: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
   const agentVault = useV4Adapter("agentVault");
+  const { permission } = useProjectPermission(projectId);
+  // The no-proxy notice reads the proxy list, so without Read on proxies it stays hidden.
+  const canReadProxies = permission.can(
+    ProjectPermissionAgentVaultProxyActions.Read,
+    ProjectPermissionSub.AgentVaultProxies
+  );
   const [platform, setPlatform] = useState<TPlatform | null>(null);
   const [tab, setTab] = useState<TCreateTab>(readStoredTab);
   const [created, setCreated] = useState<TAgentVaultMintedSession | null>(null);
@@ -1054,7 +1082,7 @@ export const CreateSessionSheet = ({
     orgId,
     projectId,
     { limit: 1 },
-    { enabled: open, refetchOnWindowFocus: "always" }
+    { enabled: open && canReadProxies, refetchOnWindowFocus: "always" }
   );
   const universalAuth = agentVault.useIdentityUniversalAuth(identity?.id ?? "");
   const createSession = agentVault.useCreateSession(orgId, projectId);
@@ -1093,7 +1121,6 @@ export const CreateSessionSheet = ({
     <SessionFields
       orgId={orgId}
       projectId={projectId}
-      isAdmin={isAdmin}
       isCreateNow={isCreateNow}
       isOwnSandbox={isOwnSandbox}
       open={open}

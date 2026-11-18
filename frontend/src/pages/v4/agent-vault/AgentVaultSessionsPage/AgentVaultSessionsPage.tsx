@@ -22,6 +22,12 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { format } from "date-fns";
 
 import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
@@ -32,10 +38,10 @@ import {
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { useProjectPermission } from "../../access/permissions";
 import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
@@ -51,7 +57,8 @@ import {
   formatSessionExpiry,
   formatTimestamp,
   inlineServicesLabel,
-  SESSION_STATUS as STATUS
+  SESSION_STATUS as STATUS,
+  useCanActOnSession
 } from "./sessions";
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/sessions");
@@ -136,11 +143,15 @@ const Expiry = ({ session }: { session: TAgentVaultSession }) => {
 
 const SessionMenu = ({
   session,
+  canEditLabel,
+  canRevoke,
   onView,
   onEditLabel,
   onRevoke
 }: {
   session: TAgentVaultSession;
+  canEditLabel: boolean;
+  canRevoke: boolean;
   onView: () => void;
   onEditLabel: () => void;
   onRevoke: () => void;
@@ -152,62 +163,61 @@ const SessionMenu = ({
         <Icon name="file-text" />
         View details
       </DropdownMenuItem>
-      {canEditSessionLabel(session) && (
+      {canEditSessionLabel(session) && canEditLabel && (
         <DropdownMenuItem onSelect={onEditLabel}>
           <Icon name="pencil" />
           {session.label ? "Edit label" : "Add label"}
         </DropdownMenuItem>
       )}
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={!isActive}
-        description={isActive ? undefined : "Only an active session can be revoked"}
-        onSelect={onRevoke}
-      >
-        <Icon name="x" />
-        Revoke session
-      </DropdownMenuItem>
+      {canRevoke && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!isActive}
+            description={isActive ? undefined : "Only an active session can be revoked"}
+            onSelect={onRevoke}
+          >
+            <Icon name="x" />
+            Revoke session
+          </DropdownMenuItem>
+        </>
+      )}
     </>
   );
 };
 
 const ScopeToggle = ({
-  isAdmin,
   scope,
   onChange
 }: {
-  isAdmin: boolean;
   scope: AgentVaultSessionScope;
   onChange: (next: AgentVaultSessionScope) => void;
 }) => (
-  <Tooltip content={isAdmin ? undefined : "Only admins can see every session"}>
-    <ToggleGroup
-      type="single"
-      aria-label="Session scope"
-      value={isAdmin ? scope : AgentVaultSessionScope.Mine}
-      disabled={!isAdmin}
-      onValueChange={(next) => {
-        if (next) onChange(next as AgentVaultSessionScope);
-      }}
-    >
-      <ToggleGroupItem value={AgentVaultSessionScope.All}>All sessions</ToggleGroupItem>
-      <ToggleGroupItem value={AgentVaultSessionScope.Mine}>My sessions</ToggleGroupItem>
-    </ToggleGroup>
-  </Tooltip>
+  <ToggleGroup
+    type="single"
+    aria-label="Session scope"
+    value={scope}
+    onValueChange={(next) => {
+      if (next) onChange(next as AgentVaultSessionScope);
+    }}
+  >
+    <ToggleGroupItem value={AgentVaultSessionScope.All}>All sessions</ToggleGroupItem>
+    <ToggleGroupItem value={AgentVaultSessionScope.Mine}>My sessions</ToggleGroupItem>
+  </ToggleGroup>
 );
 
 const SessionsEmpty = ({
   orgId,
   projectId,
-  isAdmin,
+  canCreateBundles,
   isFiltered,
   hasReachableBundles,
   onClearFilters
 }: {
   orgId: string;
   projectId: string;
-  isAdmin: boolean;
+  canCreateBundles: boolean;
   isFiltered: boolean;
   hasReachableBundles: boolean;
   onClearFilters: () => void;
@@ -236,7 +246,7 @@ const SessionsEmpty = ({
         description="Create a session to get a token an agent can run with."
       />
     );
-  if (!isAdmin)
+  if (!canCreateBundles)
     return (
       <EmptyState
         size="sm"
@@ -282,11 +292,19 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       search: (prev) => ({ ...prev, sessionId: next })
     });
   };
-  const { data: permission } = agentVault.useProjectPermission({ projectId });
-  const isAdmin = Boolean(
-    permission?.memberships.some((membership) =>
-      membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)
-    )
+  const { permission } = useProjectPermission(projectId);
+  const canActOn = useCanActOnSession(projectId);
+  const canReadAnySession = permission.can(
+    ProjectPermissionAgentVaultSessionActions.ReadAny,
+    ProjectPermissionSub.AgentVaultSessions
+  );
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canCreateBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Create,
+    ProjectPermissionSub.AgentVaultAccessBundles
   );
 
   const [search, setSearch] = useState("");
@@ -311,7 +329,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     []) as AgentVaultSessionStatus[];
 
   const { data, isPending } = agentVault.useSessions(orgId, projectId, {
-    scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
+    scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
@@ -402,6 +420,8 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     renderMenu: (row) => (
       <SessionMenu
         session={row}
+        canEditLabel={canActOn(row, "edit")}
+        canRevoke={canActOn(row, "revoke")}
         onView={() => setSessionId(row.id)}
         onEditLabel={() => setSessionId(row.id, true)}
         onRevoke={() => setSessionToRevoke(row)}
@@ -428,7 +448,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             </Button>
           }
         />
-        {isAdmin && <SessionLogAlerts orgId={orgId} projectId={projectId} />}
+        {canReadSessionLogSettings && <SessionLogAlerts orgId={orgId} projectId={projectId} />}
         <FilterBar
           label="Session filters"
           fields={[
@@ -462,15 +482,16 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             />
           }
           actions={
-            <ScopeToggle
-              isAdmin={isAdmin}
-              scope={scope}
-              onChange={(next) => {
-                setScope(next);
-                setPage(1);
-                setUserTablePreference(TABLE, PreferenceKey.SessionScope, next);
-              }}
-            />
+            canReadAnySession ? (
+              <ScopeToggle
+                scope={scope}
+                onChange={(next) => {
+                  setScope(next);
+                  setPage(1);
+                  setUserTablePreference(TABLE, PreferenceKey.SessionScope, next);
+                }}
+              />
+            ) : undefined
           }
         />
         <DataTable
@@ -488,7 +509,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             <SessionsEmpty
               orgId={orgId}
               projectId={projectId}
-              isAdmin={isAdmin}
+              canCreateBundles={canCreateBundles}
               isFiltered={isFiltered}
               hasReachableBundles={hasReachableBundles}
               onClearFilters={() => {
@@ -523,7 +544,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           sessionId={sessionId}
           loaded={sessions.find((session) => session.id === sessionId)}
           focusLabel={focusLabel}
-          isAdmin={isAdmin}
           onClose={() => setSessionId(undefined)}
           onRevoke={setSessionToRevoke}
         />
@@ -536,7 +556,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
         <CreateSessionSheet
           orgId={orgId}
           projectId={projectId}
-          isAdmin={isAdmin}
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
         />

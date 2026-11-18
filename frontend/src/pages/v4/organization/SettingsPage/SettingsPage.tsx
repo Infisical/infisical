@@ -43,6 +43,7 @@ import { GenericResourceNameSchema } from "@app/lib/schemas";
 import { useOrgPermission } from "../../access/permissions";
 import { failed, saved as savedToast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -132,8 +133,8 @@ const OrganizationDetails = ({
                   size="icon-sm"
                   icon={copied ? "check" : "copy"}
                   iconOnly
-                  onClick={() => {
-                    navigator.clipboard?.writeText(organization.id).catch(() => undefined);
+                  onClick={async () => {
+                    if (!(await copyText(organization.id))) return;
                     setCopied(true);
                     window.setTimeout(() => setCopied(false), 1200);
                   }}

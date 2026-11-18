@@ -34,6 +34,7 @@ import type { THsmConnector } from "@app/hooks/api/hsmConnectors/types";
 import { formatDate } from "../../access/roles";
 import { failed, saved, toast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { HsmPlan } from "../../data/cert-manager-settings/contract-hsm";
 import { orgHref, useGo } from "../../links";
@@ -222,9 +223,8 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
     renderMenu: (connector) => (
       <>
         <DropdownMenuItem
-          onSelect={() => {
-            navigator.clipboard?.writeText(connector.id).catch(() => undefined);
-            saved("Connector ID copied");
+          onSelect={async () => {
+            if (await copyText(connector.id)) saved("Connector ID copied");
           }}
         >
           <Icon name="copy" />

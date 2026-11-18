@@ -31,6 +31,7 @@ import { EMAIL_LIST_DELIMITER, isValidEmail } from "@app/helpers/email";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 
 import { errorMessage } from "../../../../access/toast";
+import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
 import { DiscardDialog } from "../flows/shared";
 
@@ -185,7 +186,7 @@ export function ShareSecretSheet({
                         size="icon-xs"
                         iconOnly
                         icon="copy"
-                        onClick={() => navigator.clipboard.writeText(result.url ?? "")}
+                        onClick={() => copyText(result.url ?? "")}
                       >
                         Copy link
                       </Button>

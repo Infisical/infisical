@@ -39,14 +39,6 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
 import {
-  OrgPermissionMemberActions,
-  OrgPermissionSubjects
-} from "@app/context/OrgPermissionContext/types";
-import {
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
-import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_RESOURCE_EVENT_TYPES,
@@ -65,18 +57,17 @@ import {
 } from "@app/hooks/api/alerts/utils";
 
 import { ChannelsStep } from "../../cert-manager/SettingsPage/alert-channels";
+import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
 import {
   MAX_CHANNELS,
   type TDraftChannel,
   type TFieldErrors,
   toDraftChannel,
   toFieldErrors,
-  toMemberEmails,
   validateChannels,
   withoutErrors
 } from "../../cert-manager/SettingsPage/alert-model";
 import { useV4Adapter } from "../../data/adapters";
-import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
 import { failed, readableFailure, saved } from "../toast";
 import { Gate } from "../ui";
 
@@ -143,37 +134,10 @@ const AlertSheet = ({
   used: AlertEventType[];
   onOpenChange: (open: boolean) => void;
 }) => {
-  const orgId = useOrgId();
-  const { permission } = useOrgPermission();
   const settings = useV4Adapter("certManagerSettings");
   const createAlert = settings.useCreateAlert();
   const updateAlert = settings.useUpdateAlert();
-  const canReadMembers = permission.can(
-    OrgPermissionMemberActions.Read,
-    OrgPermissionSubjects.Member
-  );
-  const orgUsers = settings.useAlertOrgUsers(orgId, { enabled: canReadMembers });
-  const { permission: projectPermission } = useProjectPermission(projectId ?? "");
-  const canReadProjectMembers =
-    !projectId ||
-    projectPermission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
-  const projectUsers = useV4Adapter("access").useProjectUsers(projectId ?? "", true, undefined, {
-    enabled: Boolean(projectId) && canReadProjectMembers
-  });
-  const projectUserIds = new Set(projectUsers.data?.map((membership) => membership.user.id));
-  const recipients = projectId
-    ? projectUsers.data &&
-      orgUsers.data?.filter((membership) => projectUserIds.has(membership.user.id))
-    : orgUsers.data;
-  const recipientsUnavailable = (() => {
-    if (!projectId && !canReadMembers)
-      return "You need permission to read organization members to choose recipients.";
-    if (!canReadMembers || !canReadProjectMembers)
-      return "You need permission to read organization and project members to choose recipients.";
-    if (orgUsers.error || projectUsers.error)
-      return `Couldn't load ${projectId ? "project" : "organization"} members. Close the editor and try again.`;
-    return undefined;
-  })();
+  const members = useAlertMembers(projectId);
   const firstFree = EVENT_TYPES.find((event) => !used.includes(event)) ?? EVENT_TYPES[0];
   const [initial] = useState((): TDraft => ({
     eventType: (alert?.eventType as AlertEventType) ?? firstFree,
@@ -361,10 +325,7 @@ const AlertSheet = ({
                 onErrorsChange={setChannelErrors}
                 projectId={projectId}
                 alertId={alert?.id}
-                members={{
-                  ...toMemberEmails(recipients),
-                  unavailableReason: recipientsUnavailable
-                }}
+                members={members}
                 allowEmailAddresses={false}
                 hasEnterprise
                 resource={{

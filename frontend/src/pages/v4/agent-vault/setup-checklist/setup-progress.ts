@@ -1,9 +1,10 @@
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 
+import { canSetUpAgentVault } from "@app/helpers/agentVaultPermissions";
 import { useLocalStorageState } from "@app/hooks";
 import { AgentVaultSessionScope } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -22,41 +23,33 @@ export enum AgentVaultSetupStep {
 
 export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => {
   const agentVault = useV4Adapter("agentVault");
-  const { data: permission, error: permissionError } = agentVault.useProjectPermission({
-    projectId
-  });
-  const isPermissionLoaded = Boolean(permission) || Boolean(permissionError);
-  const isAdmin =
-    Boolean(projectId) &&
-    Boolean(
-      permission?.memberships.some((membership) =>
-        membership.roles.some(({ role }) => role === ProjectMembershipRole.Admin)
-      )
-    );
+  const { permission, isPending: isPermissionPending } = useProjectPermission(projectId);
+  const isPermissionLoaded = !isPermissionPending;
+  const canSetUp = Boolean(projectId) && canSetUpAgentVault(permission);
 
   const proxies = agentVault.useProxies(
     orgId,
     projectId,
     { limit: PROXY_PAGE_SIZE },
-    { enabled: isAdmin, pollUntil: (data) => data.proxies.some((proxy) => proxy.heartbeat) }
+    { enabled: canSetUp, pollUntil: (data) => data.proxies.some((proxy) => proxy.heartbeat) }
   );
   const newestBundles = agentVault.useAccessBundles(
     orgId,
     projectId,
     { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const fullestBundles = agentVault.useAccessBundles(
     orgId,
     projectId,
     { orderBy: "serviceCount", orderDirection: "desc", limit: 1 },
-    { enabled: isAdmin }
+    { enabled: canSetUp }
   );
   const sessions = agentVault.useSessions(
     orgId,
     projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
-    { enabled: isAdmin, pollUntil: (data) => data.totalCount > 0 }
+    { enabled: canSetUp, pollUntil: (data) => data.totalCount > 0 }
   );
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
@@ -80,11 +73,11 @@ export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => 
   else if (!hasService) nextStep = AgentVaultSetupStep.Service;
   else if (!hasSession) nextStep = AgentVaultSetupStep.Session;
 
-  const isIncomplete = isAdmin && isLoaded && completedCount < 4;
+  const isIncomplete = canSetUp && isLoaded && completedCount < 4;
 
   return {
     isPermissionLoaded,
-    isAdmin,
+    canSetUp,
     isLoaded,
     isFailed,
     isVisible: isIncomplete && !isDismissed,

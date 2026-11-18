@@ -1,5 +1,5 @@
 import type { IconSource } from "@infisical/cipher/ui/icon";
-import { ArrowRightIcon, CircleXIcon, ListIcon, ShieldBanIcon } from "lucide-react";
+import { ArrowRightIcon, CircleXIcon, ShieldBanIcon } from "lucide-react";
 
 import {
   AgentVaultServiceType,
@@ -23,29 +23,31 @@ export type TLogRange = { from: Date; to: Date };
 
 export type TDecisionTone = "ok" | "outline" | "warn" | "bad";
 
-export const DECISION_PRESENTATION: Record<
-  AgentVaultSessionLogDecision,
-  { label: string; tone: TDecisionTone; icon: IconSource }
-> = {
+type TDecisionPresentation = { label: string; tone: TDecisionTone; icon: IconSource };
+
+const PASSTHROUGH_PRESENTATION: TDecisionPresentation = {
+  label: "Passthrough",
+  tone: "outline",
+  icon: ArrowRightIcon
+};
+
+// Listing services and fetching skills are forwarded to Infisical with nothing brokered, so they show and filter as
+// Passthrough, and the outcome description says what the agent asked for.
+const DECISION_PRESENTATION: Record<AgentVaultSessionLogDecision, TDecisionPresentation> = {
   [AgentVaultSessionLogDecision.Brokered]: { label: "Brokered", tone: "ok", icon: "key" },
-  [AgentVaultSessionLogDecision.Passthrough]: {
-    label: "Passthrough",
-    tone: "outline",
-    icon: ArrowRightIcon
-  },
+  [AgentVaultSessionLogDecision.Passthrough]: PASSTHROUGH_PRESENTATION,
   [AgentVaultSessionLogDecision.Blocked]: { label: "Blocked", tone: "warn", icon: ShieldBanIcon },
   [AgentVaultSessionLogDecision.Error]: { label: "Error", tone: "bad", icon: CircleXIcon },
-  [AgentVaultSessionLogDecision.Discovery]: {
-    label: "Listed services",
-    tone: "outline",
-    icon: ListIcon
-  },
-  [AgentVaultSessionLogDecision.Skills]: {
-    label: "Fetched skills",
-    tone: "outline",
-    icon: "book-open"
-  }
+  [AgentVaultSessionLogDecision.Discovery]: PASSTHROUGH_PRESENTATION,
+  [AgentVaultSessionLogDecision.Skills]: PASSTHROUGH_PRESENTATION
 };
+
+export const SESSION_LOG_OUTCOMES = [
+  AgentVaultSessionLogDecision.Brokered,
+  AgentVaultSessionLogDecision.Passthrough,
+  AgentVaultSessionLogDecision.Blocked,
+  AgentVaultSessionLogDecision.Error
+].map((decision) => ({ decision, ...DECISION_PRESENTATION[decision] }));
 
 export const decisionPresentation = (decision: AgentVaultSessionLogDecision) =>
   DECISION_PRESENTATION[decision] ?? {
@@ -305,6 +307,9 @@ export const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
 export const isSessionEndpoint = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Discovery ||
   decision === AgentVaultSessionLogDecision.Skills;
+
+export const sessionLogOutcome = (decision: AgentVaultSessionLogDecision) =>
+  isSessionEndpoint(decision) ? AgentVaultSessionLogDecision.Passthrough : decision;
 
 export const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
   if (record.decision === AgentVaultSessionLogDecision.Discovery)

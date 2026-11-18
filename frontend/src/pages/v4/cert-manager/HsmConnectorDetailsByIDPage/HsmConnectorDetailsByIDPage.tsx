@@ -37,6 +37,7 @@ import type {
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
@@ -294,9 +295,8 @@ const ConnectorDetail = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(connector.id).catch(() => undefined);
-                    saved("Connector ID copied");
+                  onSelect={async () => {
+                    if (await copyText(connector.id)) saved("Connector ID copied");
                   }}
                 >
                   <Icon name="copy" />

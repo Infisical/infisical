@@ -27,7 +27,7 @@ import type {
 } from "@app/hooks/api/pkiSyncs/types";
 
 import { formatDateTime } from "../../../access/roles";
-import { failed, saved, toast } from "../../../access/toast";
+import { failed, saved } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
 import {
@@ -496,11 +496,6 @@ export const PkiSyncDialog = ({
       </AlertDialog>
     </>
   );
-};
-
-export const copySyncId = (sync: TPkiSync) => {
-  navigator.clipboard?.writeText(sync.id).catch(() => undefined);
-  toast({ title: "Sync ID copied" });
 };
 
 export { usePkiSyncPermissions };

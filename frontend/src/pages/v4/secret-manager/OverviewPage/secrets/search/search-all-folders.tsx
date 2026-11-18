@@ -36,6 +36,7 @@ import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/t
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { errorMessage, failed, toast } from "../../../../access/toast";
+import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
 import { v4Path } from "../../../../links";
 import type { ResourceKind } from "../../secrets-model";
@@ -539,8 +540,9 @@ function ResultsTable({
         });
         return;
       }
-      await navigator.clipboard.writeText(value);
-      toast({ tone: "ok", title: "Secret value copied" });
+      if (await copyText(value, "Couldn't copy the secret value")) {
+        toast({ tone: "ok", title: "Secret value copied" });
+      }
     } catch (error) {
       failed("Couldn't copy the secret value", error);
     }

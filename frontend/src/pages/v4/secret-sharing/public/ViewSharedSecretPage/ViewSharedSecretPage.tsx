@@ -15,6 +15,7 @@ import type { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing/t
 
 import { toast } from "../../../access/toast";
 import { AuthPage } from "../../../auth/components/AuthPage";
+import { copyText } from "../../../clipboard";
 import { v4Path } from "../../../links";
 import { resolveV4Href } from "../../../resolveV4Href";
 import { BrandedLayout } from "../BrandedLayout";
@@ -88,14 +89,13 @@ const SecretView = ({ secret }: { secret: TAccessSharedSecretResponse }) => {
         size="lg"
         icon="copy"
         onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(secret.secretValue);
+          if (
+            await copyText(
+              secret.secretValue,
+              "Your browser blocked clipboard access. Reveal the value and copy it manually."
+            )
+          ) {
             toast({ tone: "ok", title: "Secret value copied to clipboard" });
-          } catch {
-            toast({
-              tone: "bad",
-              title: "Your browser blocked clipboard access. Reveal the value and copy it manually."
-            });
           }
         }}
       >

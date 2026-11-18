@@ -66,7 +66,6 @@ import {
   useListProjectIdentityMemberships
 } from "@app/hooks/api/projectIdentityMembership/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { useGetUserProjectPermissions } from "@app/hooks/api/roles/queries";
 
 import {
   type AgentVaultAdapter,
@@ -298,7 +297,6 @@ const keepPreviousInProject =
     prevQuery?.queryKey[2] === projectId ? prev : undefined;
 
 export const agentVaultLive: AgentVaultAdapter = {
-  useProjectPermission: useGetUserProjectPermissions,
   useSessions: (orgId, projectId, params, options) =>
     useQuery({
       enabled: options?.enabled ?? true,

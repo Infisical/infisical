@@ -24,6 +24,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { formatDate } from "../../access/roles";
 import { saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
@@ -139,9 +140,8 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
             return (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(policy.id).catch(() => undefined);
-                    saved("Policy ID copied");
+                  onSelect={async () => {
+                    if (await copyText(policy.id)) saved("Policy ID copied");
                   }}
                 >
                   <Icon name="copy" />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject as caslSubject } from "@casl/ability";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -8,10 +9,14 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { UserCogIcon, UsersRoundIcon } from "lucide-react";
 
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { AgentVaultDelegationScope } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../../data/adapters";
+import { useProjectPermission } from "../../permissions";
 import { useProjectScope } from "../../project/scope";
 import { formatDate } from "../../roles";
 import { Muted } from "../../ui";
@@ -35,16 +40,20 @@ export const AgentVaultIdentityDelegationSection = ({
 }) => {
   const { projectId } = useProjectScope();
   const av = useV4Adapter("agentVault");
-  const permission = av.useProjectPermission({ projectId });
-  const isAdmin = Boolean(
-    permission.data?.memberships.some((membership) =>
-      membership.roles.some((entry) => entry.role === ProjectMembershipRole.Admin)
-    )
+  const { permission } = useProjectPermission(projectId);
+  const identitySubject = caslSubject(ProjectPermissionSub.Identity, {
+    identityId: machineIdentityId
+  });
+  const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
+  const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
+  const { data, isPending, error } = av.useDelegation(
+    projectId,
+    machineIdentityId,
+    canReadDelegation
   );
-  const { data, isPending, error } = av.useDelegation(projectId, machineIdentityId, isAdmin);
   const [managing, setManaging] = useState(false);
 
-  if (!isAdmin) return null;
+  if (!canReadDelegation) return null;
 
   const delegation = data ?? null;
   const loadFailed = Boolean(error) && data === undefined;
@@ -125,6 +134,7 @@ export const AgentVaultIdentityDelegationSection = ({
         }
         flush={Boolean(rows.length) && !loadFailed}
         action={
+          canEditDelegation &&
           !isPending &&
           !loadFailed && (
             <Button variant="outline" onClick={() => setManaging(true)}>

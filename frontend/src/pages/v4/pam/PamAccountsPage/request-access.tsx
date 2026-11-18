@@ -52,6 +52,7 @@ import {
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, readableFailure, saved, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { PamAccessAdapter } from "../../data/pam-access/contract";
 
@@ -195,14 +196,16 @@ const announceSubmission = (
       passedCount: rule.conditions.filter(({ passed }) => passed).length
     }))
     .sort((a, b) => a.failedCount - b.failedCount || b.passedCount - a.passedCount)[0]?.rule;
-  const firstFailure = closest?.conditions.find(({ passed }) => !passed)?.reason;
+  const firstFailure = closest?.conditions.find(({ passed, reason }) => !passed && reason)?.reason;
   const submitted = isCredential
     ? "Credential access request submitted"
     : "Access request submitted";
-  if (firstFailure)
+  if (outcome && closest)
     toast({
       title: submitted,
-      description: `It wasn't auto-approved: ${firstFailure}`
+      description: firstFailure
+        ? `It wasn't auto-approved: ${firstFailure}`
+        : "It wasn't auto-approved"
     });
   else saved(submitted);
 };
@@ -803,9 +806,8 @@ const CredentialValue = ({
               iconOnly
               icon="copy"
               aria-label={`Copy ${label}`}
-              onClick={() => {
-                navigator.clipboard.writeText(value);
-                saved(`${label} copied to clipboard`);
+              onClick={async () => {
+                if (await copyText(value)) saved(`${label} copied to clipboard`);
               }}
             />
           </Inline>

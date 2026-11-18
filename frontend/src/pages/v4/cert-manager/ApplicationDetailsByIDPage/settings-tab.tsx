@@ -76,6 +76,7 @@ import { useOrgPermission, useProjectPermission } from "../../access/permissions
 import { formatDate } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
@@ -92,7 +93,7 @@ import {
 } from "../SettingsPage/alert-model";
 import { AlertWizard } from "../SettingsPage/alert-sheet";
 import { type EnrollmentMethod, EnrollmentSheet, METHOD_LABELS } from "./enrollment-sheet";
-import { APPLICATION_DOCS, appCan, copyId, formatAlertBefore } from "./shared";
+import { APPLICATION_DOCS, appCan, formatAlertBefore } from "./shared";
 
 const methodsOf = (profile: TPkiApplicationProfile) => {
   const methods: EnrollmentMethod[] = [];
@@ -592,9 +593,8 @@ const PoliciesCard = ({
             renderMenu: (policy) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    copyId(policy.id);
-                    saved("Approval policy ID copied");
+                  onSelect={async () => {
+                    if (await copyText(policy.id)) saved("Approval policy ID copied");
                   }}
                 >
                   <Icon name="copy" />
@@ -835,9 +835,8 @@ const AlertsCard = ({
             renderMenu: (alert) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    copyId(alert.id);
-                    saved("Alert ID copied");
+                  onSelect={async () => {
+                    if (await copyText(alert.id)) saved("Alert ID copied");
                   }}
                 >
                   <Icon name="copy" />

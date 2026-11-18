@@ -36,7 +36,8 @@ import {
   formatTimestamp,
   inlineServiceTarget,
   SESSION_STATUS,
-  sessionLabelSchema
+  sessionLabelSchema,
+  useCanActOnSession
 } from "./sessions";
 
 const ActorValue = ({ actor }: { actor: TAgentVaultSessionActor }) => {
@@ -67,6 +68,7 @@ const LabelField = ({
   inputRef: React.Ref<HTMLInputElement>;
 }) => {
   const update = useV4Adapter("agentVault").useUpdateSessionLabel(orgId, projectId);
+  const canActOn = useCanActOnSession(projectId);
   const stored = session.label ?? "";
   const [draft, setDraft] = useState(stored);
   const [syncedLabel, setSyncedLabel] = useState(stored);
@@ -77,7 +79,7 @@ const LabelField = ({
     if (draft === syncedLabel) setDraft(stored);
   }
 
-  if (!canEditSessionLabel(session))
+  if (!canEditSessionLabel(session) || !canActOn(session, "edit"))
     return (
       <Detail>
         <DetailLabel>Label</DetailLabel>
@@ -270,13 +272,34 @@ const Details = ({
   );
 };
 
+const RevokeFooter = ({
+  projectId,
+  session,
+  onRevoke
+}: {
+  projectId: string;
+  session: TAgentVaultSession;
+  onRevoke: (session: TAgentVaultSession) => void;
+}) => {
+  const canActOn = useCanActOnSession(projectId);
+  if (!canActOn(session, "revoke")) return null;
+  return (
+    <SheetFooter>
+      <Inline gap={8} justify="end">
+        <Button variant="destructive" icon="x" onClick={() => onRevoke(session)}>
+          Revoke session
+        </Button>
+      </Inline>
+    </SheetFooter>
+  );
+};
+
 export const SessionDetailsSheet = ({
   orgId,
   projectId,
   sessionId,
   loaded,
   focusLabel,
-  isAdmin,
   onClose,
   onRevoke
 }: {
@@ -285,7 +308,6 @@ export const SessionDetailsSheet = ({
   sessionId: string | undefined;
   loaded: TAgentVaultSession | undefined;
   focusLabel: boolean;
-  isAdmin: boolean;
   onClose: () => void;
   onRevoke: (session: TAgentVaultSession) => void;
 }) => {
@@ -349,7 +371,6 @@ export const SessionDetailsSheet = ({
                 orgId={orgId}
                 projectId={projectId}
                 session={session}
-                isAdmin={isAdmin}
               />
             ) : (
               <Details orgId={orgId} projectId={projectId} session={session} inputRef={labelRef} />
@@ -366,13 +387,7 @@ export const SessionDetailsSheet = ({
           )}
         </SheetBody>
         {session?.status === AgentVaultSessionStatus.Active && (
-          <SheetFooter>
-            <Inline gap={8} justify="end">
-              <Button variant="destructive" icon="x" onClick={() => onRevoke(session)}>
-                Revoke session
-              </Button>
-            </Inline>
-          </SheetFooter>
+          <RevokeFooter projectId={projectId} session={session} onRevoke={onRevoke} />
         )}
       </SheetContent>
     </Sheet>

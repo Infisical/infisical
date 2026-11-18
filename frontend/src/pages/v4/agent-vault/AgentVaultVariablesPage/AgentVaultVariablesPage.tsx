@@ -31,7 +31,12 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
+import {
+  ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -43,10 +48,11 @@ import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent"
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
+import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
+import { AgentVaultDocs } from "../resources/agent-vault-utils";
 import { DateCell } from "../resources/shared";
 import { VariableDialog } from "../resources/variable-dialog";
 
@@ -77,10 +83,81 @@ const UsedBy = ({ variable }: { variable: TAgentVaultVariable }) => {
   );
 };
 
+const VariableValue = ({
+  variableKey,
+  value,
+  canReveal,
+  isRevealing,
+  onToggle
+}: {
+  variableKey: string;
+  value: string | undefined;
+  canReveal: boolean;
+  isRevealing: boolean;
+  onToggle: () => void;
+}) => (
+  <Inline gap={4} align="center" wrap={false}>
+    <Meta mono title={value}>
+      {value ?? MASK}
+    </Meta>
+    {canReveal && (
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        iconOnly
+        icon={value === undefined ? "eye" : "eye-off"}
+        loading={isRevealing}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+      >
+        {`${value === undefined ? "Reveal" : "Hide"} ${variableKey}`}
+      </Button>
+    )}
+  </Inline>
+);
+
+const VariableMenu = ({
+  canCopy,
+  canDelete,
+  onCopy,
+  onDelete
+}: {
+  canCopy: boolean;
+  canDelete: boolean;
+  onCopy: () => void;
+  onDelete: () => void;
+}) => (
+  <>
+    {canCopy && (
+      <DropdownMenuItem onSelect={onCopy}>
+        <Icon name="copy" />
+        Copy value
+      </DropdownMenuItem>
+    )}
+    {canCopy && canDelete && <DropdownMenuSeparator />}
+    {canDelete && (
+      <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+        <Icon name="trash" />
+        Delete variable
+      </DropdownMenuItem>
+    )}
+  </>
+);
+
 const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultVariableScope }) => {
   const resources = useV4Adapter("agentVaultResources");
   const reveal = resources.useRevealVariableValue();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
+  const { permission } = useProjectPermission(projectId);
+  // Personal variables are the caller's own, so only global ones take a permission per action.
+  const canGlobal = (action: ProjectPermissionAgentVaultVariableActions) =>
+    isPersonal || permission.can(action, ProjectPermissionSub.AgentVaultVariables);
+  const canCreate = canGlobal(ProjectPermissionAgentVaultVariableActions.Create);
+  const canEdit = canGlobal(ProjectPermissionAgentVaultVariableActions.Edit);
+  const canDelete = canGlobal(ProjectPermissionAgentVaultVariableActions.Delete);
+  const canReadValue = canGlobal(ProjectPermissionAgentVaultVariableActions.ReadValue);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [sort, setSort] = useState<{
@@ -124,7 +201,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
   const openCreate = () => {
     if (!isAtLimit) setDialog({});
   };
-  useAgentVaultCreateIntent(openCreate, Boolean(unfiltered));
+  useAgentVaultCreateIntent(openCreate, canCreate && Boolean(unfiltered));
 
   const toggleReveal = async (variable: TAgentVaultVariable) => {
     const slot = revealSlot(variable);
@@ -146,9 +223,10 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
   const copyValue = async (variable: TAgentVaultVariable) => {
     let request: Promise<string> | undefined;
     try {
+      const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       request = reveal.mutateAsync(variable.id);
-      if (typeof ClipboardItem === "undefined") {
-        await navigator.clipboard.writeText(await request);
+      if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
+        await copyToClipboard(await request, trigger);
       } else {
         const blob = request.then((value) => new Blob([value], { type: "text/plain" }));
         await navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);
@@ -181,29 +259,15 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
       header: "Value",
       grow: true,
       minWidth: 200,
-      render: (variable) => {
-        const value = revealed[revealSlot(variable)];
-        return (
-          <Inline gap={4} align="center" wrap={false}>
-            <Meta mono title={value}>
-              {value ?? MASK}
-            </Meta>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              iconOnly
-              icon={value === undefined ? "eye" : "eye-off"}
-              loading={revealingId === variable.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleReveal(variable);
-              }}
-            >
-              {`${value === undefined ? "Reveal" : "Hide"} ${variable.key}`}
-            </Button>
-          </Inline>
-        );
-      }
+      render: (variable) => (
+        <VariableValue
+          variableKey={variable.key}
+          value={revealed[revealSlot(variable)]}
+          canReveal={canReadValue}
+          isRevealing={revealingId === variable.id}
+          onToggle={() => toggleReveal(variable)}
+        />
+      )
     },
     {
       id: "serviceCount",
@@ -220,29 +284,32 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     }
   ];
 
-  const rowActions: DataTableRowActions<TAgentVaultVariable> = {
-    menuLabel: "Variable options",
-    inline: [
-      {
-        label: "Edit variable",
-        icon: PencilIcon,
-        onSelect: (variable) => setDialog({ variable })
-      }
-    ],
-    renderMenu: (variable) => (
-      <>
-        <DropdownMenuItem onSelect={() => copyValue(variable)}>
-          <Icon name="copy" />
-          Copy value
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(variable)}>
-          <Icon name="trash" />
-          Delete variable
-        </DropdownMenuItem>
-      </>
-    )
-  };
+  const hasMenu = canReadValue || canDelete;
+  const rowActions: DataTableRowActions<TAgentVaultVariable> | undefined =
+    canEdit || hasMenu
+      ? {
+          menuLabel: "Variable options",
+          inline: canEdit
+            ? [
+                {
+                  label: "Edit variable",
+                  icon: PencilIcon,
+                  onSelect: (variable) => setDialog({ variable })
+                }
+              ]
+            : undefined,
+          renderMenu: hasMenu
+            ? (variable) => (
+                <VariableMenu
+                  canCopy={canReadValue}
+                  canDelete={canDelete}
+                  onCopy={() => copyValue(variable)}
+                  onDelete={() => setDeleting(variable)}
+                />
+              )
+            : undefined
+        }
+      : undefined;
 
   const usedBy = deleting?.usedByServices ?? [];
   const inUse = usedBy.length > 0;
@@ -267,14 +334,16 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
             setPage(1);
           }}
         />
-        <Button
-          variant="accent"
-          icon="plus"
-          disabledReason={isAtLimit ? limitReason : undefined}
-          onClick={openCreate}
-        >
-          {`Add ${isPersonal ? "personal" : "global"} variable`}
-        </Button>
+        {canCreate && (
+          <Button
+            variant="accent"
+            icon="plus"
+            disabledReason={isAtLimit ? limitReason : undefined}
+            onClick={openCreate}
+          >
+            {`Add ${isPersonal ? "personal" : "global"} variable`}
+          </Button>
+        )}
       </Inline>
       <DataTable
         filtered={Boolean(searchTerm)}
@@ -379,9 +448,13 @@ export const AgentVaultVariablesPage = () => {
   const { orgId, projectId } = useParams({ from: route });
   const { selectedTab } = useSearch({ from: route });
   const navigate = useNavigate();
-  const { isAdmin, isPending } = useIsAgentVaultAdmin(projectId);
+  const { permission, isPending } = useProjectPermission(projectId);
+  const canReadGlobalVariables = permission.can(
+    ProjectPermissionAgentVaultVariableActions.Read,
+    ProjectPermissionSub.AgentVaultVariables
+  );
   const scope =
-    isAdmin && selectedTab !== AgentVaultVariableScope.Personal
+    canReadGlobalVariables && selectedTab !== AgentVaultVariableScope.Personal
       ? AgentVaultVariableScope.Global
       : AgentVaultVariableScope.Personal;
 
@@ -393,7 +466,7 @@ export const AgentVaultVariablesPage = () => {
           title="Variables"
           badges={<DocumentationLink href={AgentVaultDocs.variables} subject="variables" />}
           actions={
-            isAdmin ? (
+            canReadGlobalVariables ? (
               <ToggleGroup
                 type="single"
                 aria-label="Variable scope"

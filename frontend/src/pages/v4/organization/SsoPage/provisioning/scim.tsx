@@ -47,6 +47,7 @@ import type { ScimTokenData } from "@app/hooks/api/scim/types";
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
 import { failed, saved, toast } from "../../../access/toast";
 import { Gate } from "../../../access/ui";
+import { copyText } from "../../../clipboard";
 import { NoExpiry } from "../../../components/no-expiry";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license";
@@ -80,9 +81,9 @@ const CopyField = ({
             size="icon-sm"
             icon="copy"
             iconOnly
-            onClick={() => {
-              navigator.clipboard?.writeText(value).catch(() => undefined);
-              toast({ tone: "neutral", title: `${label} copied to clipboard` });
+            onClick={async () => {
+              if (await copyText(value))
+                toast({ tone: "neutral", title: `${label} copied to clipboard` });
             }}
           >
             {copyLabel}

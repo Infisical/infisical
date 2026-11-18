@@ -26,6 +26,7 @@ import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { useOrgPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED, usePagedList } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmDialog } from "../../networking/confirm-dialog";
@@ -284,9 +285,9 @@ export const GatewaysPanel = ({
             renderMenu: (gateway) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(gateway.id);
-                    toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(gateway.id))
+                      toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
                   }}
                 >
                   <Icon name="copy" />

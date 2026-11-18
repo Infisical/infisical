@@ -39,6 +39,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 import type { HoneyTokenConnectionTest } from "../../../data/product-settings/contract";
 
@@ -224,11 +225,15 @@ const HoneyTokenSheet = ({
                         variant="outline"
                         icon="copy"
                         iconOnly
-                        onClick={() => {
-                          navigator.clipboard
-                            ?.writeText(draft.webhookSigningKey)
-                            .then(() => toast({ tone: "neutral", title: "Signing key copied" }))
-                            .catch((error) => failed("Failed to copy the signing key", error));
+                        onClick={async () => {
+                          if (
+                            await copyText(
+                              draft.webhookSigningKey,
+                              "Failed to copy the signing key"
+                            )
+                          ) {
+                            toast({ tone: "neutral", title: "Signing key copied" });
+                          }
                         }}
                       >
                         Copy signing key

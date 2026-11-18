@@ -58,6 +58,7 @@ import {
 import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
@@ -477,9 +478,9 @@ export const OrgGroupDetail = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(group.id);
-                      toast({ tone: "neutral", title: "Group ID copied to clipboard" });
+                    onSelect={async () => {
+                      if (await copyText(group.id))
+                        toast({ tone: "neutral", title: "Group ID copied to clipboard" });
                     }}
                   >
                     <Icon name="copy" />
