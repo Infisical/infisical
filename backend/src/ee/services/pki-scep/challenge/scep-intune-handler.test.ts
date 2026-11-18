@@ -40,7 +40,7 @@ describe("intuneDelegatedHandler.reportIssued", () => {
         })
       },
       keyStore: { getItem: vi.fn().mockResolvedValue(null), setItemWithExpiry: vi.fn().mockResolvedValue("OK") },
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: vi.fn().mockResolvedValue({
           encryptor: () => ({ cipherTextBlob: Buffer.from("x") }),
           decryptor: () => Buffer.from("{}")

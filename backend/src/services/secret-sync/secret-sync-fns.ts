@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -39,7 +40,6 @@ import {
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
@@ -230,7 +230,7 @@ export const preSaveTransformDestinationConfig = async (
 
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -326,7 +326,7 @@ export const SecretSyncFns = {
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
     {
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL,
       gitHubAppDAL,
       gatewayV2Service,
@@ -343,14 +343,14 @@ export const SecretSyncFns = {
       case SecretSync.GitHub:
         return GithubSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService, {
           gitHubAppDAL,
-          kmsService
+          kmsDataKeyService
         });
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -358,18 +358,18 @@ export const SecretSyncFns = {
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService
         }).syncSecrets(secretSync, payload);
@@ -380,10 +380,10 @@ export const SecretSyncFns = {
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Heroku:
-        return HerokuSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
+        return HerokuSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
       case SecretSync.Vercel:
         return VercelSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Windmill:
@@ -403,7 +403,7 @@ export const SecretSyncFns = {
       case SecretSync.TriggerDev:
         return TriggerDevSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.GitLab:
-        return GitLabSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
+        return GitLabSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
@@ -445,7 +445,7 @@ export const SecretSyncFns = {
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
-        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
+        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
       case SecretSync.ExternalInfisical:
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OVH:
@@ -476,7 +476,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService, oidcIssuerService }: TSyncSecretDeps
+    { kmsDataKeyService, appConnectionDAL, gatewayV2Service, gatewayPoolService, oidcIssuerService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -498,7 +498,7 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -507,20 +507,20 @@ export const SecretSyncFns = {
       case SecretSync.AzureAppConfiguration:
         secretMap = await azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureDevOps:
         secretMap = await azureDevOpsSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).getSecrets(secretSync);
         break;
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService
         }).getSecrets(secretSync);
@@ -533,7 +533,7 @@ export const SecretSyncFns = {
       case SecretSync.Camunda:
         secretMap = await camundaSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).getSecrets(secretSync);
         break;
       case SecretSync.Vercel:
@@ -555,7 +555,7 @@ export const SecretSyncFns = {
         secretMap = await OnePassSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Heroku:
-        secretMap = await HerokuSyncFns.getSecrets(secretSync, { appConnectionDAL, kmsService });
+        secretMap = await HerokuSyncFns.getSecrets(secretSync, { appConnectionDAL, kmsDataKeyService });
         break;
       case SecretSync.Render:
         secretMap = await RenderSyncFns.getSecrets(secretSync);
@@ -679,7 +679,7 @@ export const SecretSyncFns = {
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
     {
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL,
       gitHubAppDAL,
       gatewayV2Service,
@@ -695,14 +695,14 @@ export const SecretSyncFns = {
       case SecretSync.GitHub:
         return GithubSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService, {
           gitHubAppDAL,
-          kmsService
+          kmsDataKeyService
         });
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -710,18 +710,18 @@ export const SecretSyncFns = {
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           oidcIssuerService
         }).removeSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).removeSecrets(secretSync);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService
         }).removeSecrets(secretSync, payload);
@@ -732,7 +732,7 @@ export const SecretSyncFns = {
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         }).removeSecrets(secretSync, payload);
       case SecretSync.Vercel:
         return VercelSyncFns.removeSecrets(secretSync, payload);
@@ -747,7 +747,7 @@ export const SecretSyncFns = {
       case SecretSync.OnePass:
         return OnePassSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Heroku:
-        return HerokuSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsService });
+        return HerokuSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
       case SecretSync.Render:
         return RenderSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Flyio:
@@ -755,7 +755,7 @@ export const SecretSyncFns = {
       case SecretSync.TriggerDev:
         return TriggerDevSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.GitLab:
-        return GitLabSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsService });
+        return GitLabSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:

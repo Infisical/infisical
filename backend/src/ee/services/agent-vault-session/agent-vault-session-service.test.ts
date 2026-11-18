@@ -36,7 +36,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
   };
-  const kmsService = {
+  const kmsDataKeyService = {
     wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")),
     // The "sealed" bytes are the plaintext behind a marker, so a test can read what was sealed.
     createCipherPairWithDataKey: vi.fn().mockResolvedValue({
@@ -64,7 +64,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
         memberships: []
       })
     },
-    kmsService,
+    kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
   return { service, transaction, insertForSession, licenseService, resourceMetadataDAL };
@@ -218,7 +218,7 @@ const buildNamingService = ({
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
     },
-    kmsService: { wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")) },
+    kmsDataKeyService: { wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")) },
     licenseService: { getPlan: vi.fn() }
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
   return { service, insertNamed, findNamedServiceOverrides };

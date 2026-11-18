@@ -6,6 +6,7 @@ import {
   TSecretScanningFindings,
   TSecretScanningResourcesInsert
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   assertClonedRepositoryWithinSizeLimit,
@@ -30,7 +31,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -68,7 +68,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
@@ -107,7 +107,7 @@ export const secretScanningV2QueueServiceFactory = ({
   projectMembershipDAL,
   projectDAL,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   auditLogService,
   keyStore,
   appConnectionDAL,
@@ -126,7 +126,7 @@ export const secretScanningV2QueueServiceFactory = ({
     scanId: string;
   }) => {
     const project = await projectDAL.findById(projectId);
-    const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsService });
+    const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsDataKeyService });
 
     return (findings: TFindingsPayload) =>
       Promise.all(
@@ -260,7 +260,7 @@ export const secretScanningV2QueueServiceFactory = ({
       const { type } = dataSource;
 
       const factory = SECRET_SCANNING_FACTORY_MAP[type]({
-        kmsService,
+        kmsDataKeyService,
         appConnectionDAL
       });
 
@@ -414,10 +414,10 @@ export const secretScanningV2QueueServiceFactory = ({
       }
 
       let connection: TAppConnection | null = null;
-      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
 
       const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
-        kmsService,
+        kmsDataKeyService,
         appConnectionDAL
       });
 
@@ -700,7 +700,7 @@ export const secretScanningV2QueueServiceFactory = ({
     isDiscovered?: boolean;
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL
     });
 
@@ -796,7 +796,7 @@ export const secretScanningV2QueueServiceFactory = ({
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL
     });
 
@@ -860,7 +860,7 @@ export const secretScanningV2QueueServiceFactory = ({
       await report?.start();
 
       let connection: TAppConnection | null = null;
-      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
 
       const config = await secretScanningV2DAL.configs.findOne({
         projectId: dataSource.projectId
@@ -1166,7 +1166,10 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!dataSource) return;
 
-      await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({ kmsService, appConnectionDAL })
+      await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+        kmsDataKeyService,
+        appConnectionDAL
+      })
         .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
         ?.fail({ reason: statusMessage, isTimedOut: true });
 
@@ -1374,14 +1377,14 @@ export const secretScanningV2QueueServiceFactory = ({
         logger.error(markError, `secretScanningV2Queue: Failed to mark reported realtime scan as failed ${logDetails}`);
       }
 
-      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL })
+      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL })
         .getRealtimeScanReport?.(payload)
         ?.fail({ reason: statusMessage });
     }
   };
 
   const processDataSourceEvent = async ({ dataSourceType, event }: TQueueSecretScanningDataSourceEvent) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL });
 
     if (!factory.processEvent) {
       logger.error(`secretScanningV2Queue: Data source has no event processing [dataSourceType=${dataSourceType}]`);
@@ -1436,7 +1439,7 @@ export const secretScanningV2QueueServiceFactory = ({
     payload: TQueueSecretScanningResourceDiffScanPayload["payload"];
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL
     });
 

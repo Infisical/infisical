@@ -1,6 +1,7 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
 import { ProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -9,28 +10,24 @@ import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export const createAcmClient = async ({
   appConnectionId,
   region,
   appConnectionDAL,
-  kmsService
+  kmsDataKeyService
 }: {
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
     throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
   }
 
-  const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
+  const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
   const awsConfig = await getAwsConnectionConfig(
     { ...decryptedConnection, projectType: ProjectType.CertificateManager },
     region
@@ -47,18 +44,15 @@ export const createAcmClient = async ({
 export const resolveDnsAwsConnection = async ({
   dnsAppConnectionId,
   appConnectionDAL,
-  kmsService
+  kmsDataKeyService
 }: {
   dnsAppConnectionId: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const dnsAppConnection = await appConnectionDAL.findById(dnsAppConnectionId);
   if (!dnsAppConnection) {
     throw new NotFoundError({ message: `DNS app connection with ID '${dnsAppConnectionId}' not found` });
   }
-  return (await decryptAppConnection(dnsAppConnection, kmsService)) as TAwsConnection;
+  return (await decryptAppConnection(dnsAppConnection, kmsDataKeyService)) as TAwsConnection;
 };

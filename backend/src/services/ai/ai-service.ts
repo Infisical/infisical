@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { isAxiosError } from "axios";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -17,7 +18,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { runAiJudge } from "./ai-judge-fns";
@@ -31,7 +31,7 @@ type TAiServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TAiServiceFactory = ReturnType<typeof aiServiceFactory>;
@@ -41,7 +41,7 @@ export const aiServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   permissionService,
-  kmsService
+  kmsDataKeyService
 }: TAiServiceFactoryDep) => {
   const $getOrgPermission = (actor: OrgServiceActor) =>
     permissionService.getOrgPermission({
@@ -151,7 +151,7 @@ export const aiServiceFactory = ({
 
       const raw = await appConnectionDAL.findById(configured.connectionId);
       if (!raw) return fail("The organization's AI connection is no longer available");
-      connection = (await decryptAppConnection(raw, kmsService)) as TAnthropicConnection;
+      connection = (await decryptAppConnection(raw, kmsDataKeyService)) as TAnthropicConnection;
       model = configured.model;
     } catch (error) {
       logger.error(error, `Failed to load the organization's AI model [orgId=${orgId}]`);

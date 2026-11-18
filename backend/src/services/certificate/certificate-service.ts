@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType, TCertificates } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -59,7 +60,6 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -74,7 +74,6 @@ import {
   triggerSyncsForDeletedCertificate
 } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSignerDALFactory } from "@app/services/signer/signer-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -172,8 +171,9 @@ type TCertificateServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "find">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
@@ -208,7 +208,8 @@ export const certificateServiceFactory = ({
   pkiCollectionDAL,
   pkiCollectionItemDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   certificateSyncDAL,
   certificateRequestDAL,
@@ -290,12 +291,8 @@ export const certificateServiceFactory = ({
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
     if (!certBody?.encryptedCertificate) return undefined;
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKeyId });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKeyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
 
     return parseCertificateBody(decryptedCert);
@@ -507,8 +504,8 @@ export const certificateServiceFactory = ({
       certId: cert.id,
       projectId: cert.projectId,
       certificateSecretDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {
@@ -637,8 +634,8 @@ export const certificateServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const leaf = new x509.X509Certificate(certificatePem);
@@ -716,9 +713,9 @@ export const certificateServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityCrlDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
       certificateDAL,
-      kmsService,
+      kmsDataKeyService,
+      kmsKeyService,
       caKeySourceService,
       keyStore
     });
@@ -750,8 +747,8 @@ export const certificateServiceFactory = ({
         throw new NotFoundError({ message: "Certificate body not found" });
       }
 
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: await getProjectKmsCertificateKeyId({ projectId: ca.projectId, projectDAL, kmsService })
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
+        kmsId: await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId)
       });
       const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
       await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
@@ -1095,13 +1092,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate data not available" });
     }
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -1124,8 +1117,8 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       certificateChain = `${caCert}\n${caCertChain}`.trim();
@@ -1620,12 +1613,8 @@ export const certificateServiceFactory = ({
     });
 
     // Encrypt certificate for storage
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
 
@@ -1829,13 +1818,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate data not available" });
     }
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -1859,8 +1844,8 @@ export const certificateServiceFactory = ({
         caCertId: cert.caCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       certificateChain = `${caCert}\n${caCertChain}`.trim();
@@ -1872,8 +1857,8 @@ export const certificateServiceFactory = ({
         certId: cert.id,
         projectId: cert.projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       privateKey = certPrivateKey;
     } catch (e) {

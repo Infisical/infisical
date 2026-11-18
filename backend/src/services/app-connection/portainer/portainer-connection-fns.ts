@@ -1,5 +1,6 @@
 import { AxiosRequestConfig, isAxiosError } from "axios";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
@@ -184,7 +185,7 @@ export const validatePortainerConnectionCredentials = async (
   try {
     await portainerRequest(config, { method: "GET", path: "/users/me" }, { gatewayV2Service });
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), "Failed to validate Portainer connection credentials");
     throw new BadRequestError({
@@ -209,7 +210,7 @@ export const listPortainerEnvironments = async (
 
     return environments.map((environment) => ({ id: environment.Id, name: environment.Name }));
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), "Failed to list Portainer environments");
     throw new BadRequestError({
@@ -242,7 +243,7 @@ export const listPortainerStacks = async (
         }))
     );
   } catch (error) {
-    if (error instanceof BadRequestError) throw error;
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
 
     logger.error(toLoggableError(error), "Failed to list Portainer stacks");
     throw new BadRequestError({
