@@ -317,7 +317,7 @@ function AccessRow({
       <div className={styles.actorRow}>
         <ActorIdentity actor={actor} />
         <Button variant="ghost" size="sm" disabled>
-          Full access on all folders
+          <span className={styles.adminLabel}>Full access on all folders</span>
           <Badge tone="outline">
             <Icon icon={ShieldIcon} size={12} />
             Admin
