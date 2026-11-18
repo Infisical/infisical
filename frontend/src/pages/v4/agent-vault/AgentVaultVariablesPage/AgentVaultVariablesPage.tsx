@@ -147,9 +147,10 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
   const copyValue = async (variable: TAgentVaultVariable) => {
     let request: Promise<string> | undefined;
     try {
+      const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       request = reveal.mutateAsync(variable.id);
       if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
-        await copyToClipboard(await request);
+        await copyToClipboard(await request, trigger);
       } else {
         const blob = request.then((value) => new Blob([value], { type: "text/plain" }));
         await navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);

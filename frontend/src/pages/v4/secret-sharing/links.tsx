@@ -26,7 +26,10 @@ export const writeLink = async (
   copy: { copied: string; blocked?: string } = { copied: "Link copied to clipboard" }
 ) => {
   try {
-    await copyToClipboard(value);
+    await copyToClipboard(
+      value,
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    );
     toast({ tone: "ok", title: copy.copied });
   } catch {
     toast({
