@@ -30,9 +30,6 @@ const getMicrosoftEntraToken = vi.fn<(...args: unknown[]) => Promise<unknown>>()
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isSecondaryInstance: false }) }));
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
-}));
 vi.mock("@peculiar/x509", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@peculiar/x509")>()),
   X509Certificate: class {
@@ -147,10 +144,12 @@ const runSync = async ({
         )
       )
     },
-    kmsService: {
+    kmsDataKeyService: {
+      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1")
+    },
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
-    projectDAL: {},
     certificateDAL,
     certificateBodyDAL: {
       findOne: vi
