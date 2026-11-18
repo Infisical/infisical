@@ -1,9 +1,24 @@
 # Agent Vault domain
 
-Holds Agent Vault billing: the free monthly tier, who may broker credentials, and turning proxy usage reports into
-metering events. The rules and services are in `ee/`; `ce/` holds only the types other code imports. Built after
-License in `domains.ts`. The rest of Agent Vault still lives in `src/ee/services/agent-vault-*` (read
-`src/ee/services/agent-vault/AGENTS.md`).
+Holds Agent Vault billing (the free monthly tier, who may broker credentials, and turning proxy usage reports into
+metering events) and the Agent Vault roles and permission. The rules and services are in `ee/`; `ce/` holds only the
+types other code imports (and `ce/testing/` the fakes for them). Built after License in `domains.ts`. The rest of
+Agent Vault still lives in `src/ee/services/agent-vault-*` (read `src/ee/services/agent-vault/AGENTS.md`).
+
+- **Project roles** (`AgentVaultProjectRoles` in `ee/models/`, which `domains.ts` passes to Projects in
+  `projectRoles`): the built-in `admin` gets the written-out admin set (never the generic project admin: no CMEKs,
+  service tokens or secret syncs); every other slug, a custom role included, is a member. The admin-only actions
+  (`ReadAny`, `EditAny`, `RevokeAny` and `CreateWithInlineServices` on sessions, `AgentVaultVariables`, settings,
+  bundle members) replaced role checks, so no other role may hold them.
+- **Every Agent Vault check** goes through `accessBundlePermissionService`: `getAgentVaultPermission` for the
+  permission alone, `getAccessBundlePermission` (legacy `getAgentVaultReachability`) for the bundles the actor
+  reaches too, `getGrantedAccessBundlePermission` (legacy `getAgentVaultGrantedReachability`) for the granted ones
+  as well. Reaching a bundle is a filter the services apply, not a CASL rule: a role slugged `admin` (a custom one
+  included, as legacy `hasRole` matched it) reaches every bundle (`accessBundleIds: null`); anyone else reaches the
+  bundles granted to it directly or through a group that holds a live role in the project. Bundle memberships come
+  from Access Control's `listResourceMemberships`, so this domain reads no tables.
+- **Access bundle roles** (`AccessBundleRoles`): `consumer` carries no rules; any other slug is
+  `AgentVaultRoleInvalid`. A project admin gets nothing on a bundle through them.
 
 - **Access** (`AgentVaultAccess.decide`, cloud only): an org whose root org plan says `agentVault: false` brokers
   for free up to `AGENT_VAULT_FREE_MONTHLY_REQUESTS` a calendar month (UTC), then is refused with a

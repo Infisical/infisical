@@ -5,11 +5,13 @@ import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 
-import { AgentVaultEeModule } from "./agent-vault/agent-vault/ee/module";
+import { AgentVaultEeModule, AgentVaultProjectRoles } from "./agent-vault/agent-vault/ee/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { CodeSigningModule } from "./certificates/code-signing/ce/module";
+import { KmsModule, kmsProjectRoles } from "./kms/kms/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
-import { PamModule } from "./pam/pam/ce/module";
+import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
@@ -130,13 +132,16 @@ export const createDomains = async (deps: TDomainDeps) => {
     roleService: accessControl.roleService,
     groupService: accessControl.groupService,
     orgPermissionService: organizations.orgPermissionService,
-    projectRoles: [],
+    projectRoles: [new PamProjectRoles(), new AgentVaultProjectRoles(), kmsProjectRoles],
     cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
   const { projectsService } = projects;
   const secrets = new SecretsModule({ projectsService });
-  const pam = new PamModule({ projectsService });
-  const certManager = new CertManagerModule({ db: deps.db, organizationsService });
+  const { projectPermissionService, projectResourcePermissionService } = projects;
+  const pam = new PamModule({ projectsService, projectResourcePermissionService });
+  const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
+  const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
+  const kms = new KmsModule({ projectPermissionService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = await LicenseModule.create({
@@ -159,7 +164,9 @@ export const createDomains = async (deps: TDomainDeps) => {
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
     usageMeteringService: license.usageMeteringService,
-    organizationsService
+    organizationsService,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService
   });
 
   // Before KMS Core writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot before
@@ -198,7 +205,10 @@ export const createDomains = async (deps: TDomainDeps) => {
     instanceConfigCore,
     organizations,
     projects,
+    pam,
     certManager,
+    codeSigning,
+    kms,
     agentVault
   };
 };
