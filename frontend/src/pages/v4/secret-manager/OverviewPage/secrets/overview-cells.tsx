@@ -18,13 +18,13 @@ import { replaceEqualDeep } from "@tanstack/react-query";
 import {
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
-  CircleIcon,
   FingerprintIcon,
   GitBranchIcon,
   HexagonIcon,
   ImportIcon,
   type LucideIcon,
   SaveIcon,
+  SquareIcon,
   Undo2Icon
 } from "lucide-react";
 
@@ -139,7 +139,7 @@ export function KindIcon({ kind, overlay }: { kind: ResourceKind; overlay?: Kind
 const statusMeta: Record<EnvironmentStatus, Glyph & { label: string }> = {
   present: { label: "Present in environment", name: "check" },
   missing: { label: "Missing from environment", name: "minus" },
-  empty: { label: "Empty value in environment", icon: CircleIcon },
+  empty: { label: "Empty value in environment", icon: SquareIcon },
   imported: { label: "Imported into environment", icon: ImportIcon },
   "no-access": { label: "You do not have permission to view this resource", icon: BanIcon }
 };
