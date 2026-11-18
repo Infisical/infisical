@@ -62,7 +62,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .boolean()
             .default(false)
             .describe(
-              "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
             ),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -152,7 +152,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .boolean()
           .optional()
           .describe(
-            "When true, same-project secret imports into the folders this policy governs are replication imports, so their values change only through approved change requests. Turning it on converts the existing ones once and keeps their current values. Cross-project imports are not affected."
+            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
           ),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
@@ -334,7 +334,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listSecretApprovalPolicyDirectImports",
       description:
-        "List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as a replicated import.",
+        "List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.",
       querystring: z.object({
         projectId: z.string().trim().min(1),
         environments: z

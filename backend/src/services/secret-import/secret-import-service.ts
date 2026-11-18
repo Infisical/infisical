@@ -72,7 +72,7 @@ type TSecretImportServiceFactoryDep = {
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
 const ERR_DIRECT_IMPORT_UNDER_POLICY = (policyName: string) =>
   new BadRequestError({
-    message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect it. Create the import with replication enabled instead.`
+    message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect approval policies. Create an import that respects approval policies instead.`
   });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
