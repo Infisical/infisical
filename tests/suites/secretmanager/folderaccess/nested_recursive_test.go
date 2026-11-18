@@ -207,6 +207,61 @@ func TestFolderAccess_NestedRecursive(t *testing.T) {
 		require.True(t, grants[0].IsPermissionRecursive)
 	})
 
+	t.Run("should let an edit holder on one folder create and rename folders in it when manage access applied from the root reaches it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := newProject(t, h.NewTenant(t))
+		oldID := secretmanager.CreateFolder(t, proj, "dev", "/payments/old")
+		member := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
+		grantRecursive(t, proj, member, "/", secretmanager.FolderManage)
+		secretmanager.GrantFolderAccess(t, proj, member, at("/payments"), secretmanager.FolderEdit)
+
+		// Action
+		created, err := member.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/payments"), Name: "new",
+		})
+		require.NoError(t, err)
+		renamed, err := member.API.UpdateSecretFolderWithResponse(t.Context(), oldID, api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/payments"), Name: "renamed",
+		})
+		require.NoError(t, err)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, created.StatusCode(), "creating under /payments: %s", created.Body)
+		require.Equalf(t, http.StatusOK, renamed.StatusCode(), "renaming under /payments: %s", renamed.Body)
+		require.ElementsMatch(t, []string{"new", "renamed"}, folderNamesAt(t, proj, "/payments"))
+	})
+
+	t.Run("should let an edit holder on one folder create folders in it only when manage access applied from a folder above reaches it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := newProject(t, h.NewTenant(t))
+		secretmanager.CreateFolder(t, proj, "dev", "/apps/payments")
+		secretmanager.CreateFolder(t, proj, "dev", "/infra/db")
+		member := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
+		grantRecursive(t, proj, member, "/apps", secretmanager.FolderManage)
+		secretmanager.GrantFolderAccess(t, proj, member, at("/apps/payments"), secretmanager.FolderEdit)
+		secretmanager.GrantFolderAccess(t, proj, member, at("/infra/db"), secretmanager.FolderEdit)
+
+		// Action
+		reached, err := member.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/apps/payments"), Name: "new",
+		})
+		require.NoError(t, err)
+		notReached, err := member.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/infra/db"), Name: "new",
+		})
+		require.NoError(t, err)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, reached.StatusCode(), "creating under /apps/payments: %s", reached.Body)
+		require.Equalf(t, http.StatusForbidden, notReached.StatusCode(), "creating under /infra/db: %s", notReached.Body)
+		require.Equal(t, []string{"new"}, folderNamesAt(t, proj, "/apps/payments"))
+		require.Empty(t, folderNamesAt(t, proj, "/infra/db"))
+	})
+
 	t.Run("should let an edit holder create folders across the subtree its access applies to and refuse them outside it", func(t *testing.T) {
 		t.Parallel()
 
