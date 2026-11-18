@@ -264,7 +264,7 @@ export const GcpSyncFns = {
 
     const gcpSecretKeys = await listGcpSecretKeys(accessToken, secretSync);
     for await (const key of gcpSecretKeys) {
-      if (key in secretMap) {
+      if (Object.hasOwn(secretMap, key)) {
         await request.delete(`${getProjectUrl(secretSync)}/secrets/${key}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
