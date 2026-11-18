@@ -414,14 +414,14 @@ describe("a bundle service's facts", () => {
       credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "variable-1" },
       encryptedCredential: null
     });
-    const facts = toBundleServiceFacts(variableRow, context([], []));
-    expect(facts).toMatchObject({
+    const variableFacts = toBundleServiceFacts(variableRow, context([], []));
+    expect(variableFacts).toMatchObject({
       personalValuesMissing: true,
       credentialNotConnected: true,
       memberSignsIn: false,
       credential: { type: "none" }
     });
-    const described = describeSessionService(facts);
+    const described = describeSessionService(variableFacts);
     expect(described.status).toBe("needs-personal-values");
     expect(described.howToUse).toMatch(/^Not usable yet: the sign-in "github" uses isn't connected in Agent Vault/);
     expect(described.howToUse).not.toMatch(/personal values|connect their account/);

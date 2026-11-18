@@ -3043,6 +3043,216 @@ describe("Agent Vault V1 Router", async () => {
         await deleteUaIdentity(member.id);
       }
     });
+
+    describe("OAuth variables", async () => {
+      const manualOauth = {
+        authorizationEndpoint: "https://auth.example.com/authorize",
+        tokenEndpoint: "https://auth.example.com/token",
+        clientId: "client-123",
+        scopes: ["read", "write"],
+        redirectUri: "https://app.example.com/oauth/callback"
+      };
+
+      type TOauthVariable = { id: string; key: string; type: string; oauth: { status: string } | null };
+
+      const createOauthVariable = async (key: string, extra: Record<string, unknown> = {}) => {
+        const res = await inject("POST", variablesUrl, {
+          scope: "global",
+          type: "oauth",
+          key,
+          oauth: manualOauth,
+          ...extra
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return res;
+      };
+
+      const startSignIn = async (variableId: string) => {
+        const res = await inject("POST", `${variablesUrl}/${variableId}/authorizations`, {
+          clientSecret: "client-secret-value"
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return res.json().authorization as { id: string; authorizeUrl: string };
+      };
+
+      test("an OAuth variable set up by hand starts not connected and shows no token", async () => {
+        const res = await createOauthVariable("MANUAL_OAUTH");
+        const { variable, signIn } = res.json() as { variable: TOauthVariable; signIn: unknown };
+        expect(variable).toMatchObject({ key: "MANUAL_OAUTH", type: "oauth", oauth: { status: "not-connected" } });
+        expect(signIn).toBeNull();
+        expect(res.payload).not.toMatch(/accessToken|refreshToken|clientSecret/);
+      });
+
+      test("an OAuth variable is refused when personal, over http, or asked for its value", async () => {
+        const personal = await inject("POST", variablesUrl, {
+          scope: "personal",
+          type: "oauth",
+          key: "PERSONAL_OAUTH",
+          oauth: manualOauth
+        });
+        expect(personal.statusCode).toBe(422);
+
+        const insecure = await inject("POST", variablesUrl, {
+          scope: "global",
+          type: "oauth",
+          key: "INSECURE_OAUTH",
+          oauth: { ...manualOauth, tokenEndpoint: "http://auth.example.com/token" }
+        });
+        expect(insecure.statusCode).toBe(422);
+
+        const { variable } = (await createOauthVariable("REFUSED_OAUTH")).json() as { variable: TOauthVariable };
+
+        const value = await inject("GET", `${variablesUrl}/${variable.id}/value`);
+        expect(value.statusCode).toBe(400);
+        expect(value.json().message).toContain("its tokens can't be read");
+
+        const setValue = await inject("PATCH", `${variablesUrl}/${variable.id}`, { value: "x" });
+        expect(setValue.statusCode).toBe(400);
+        expect(setValue.json().message).toContain("holds OAuth tokens");
+
+        const bundle = await createAccessBundle("oauth-var-text-ref");
+        const textReference = await inject("POST", "/api/v1/agent-vault/services", {
+          accessBundleIds: [bundle.id],
+          type: "http",
+          name: "oauth-text-ref",
+          hostPattern: "api.example.com",
+          credential: { type: "bearer", value: "{{REFUSED_OAUTH}}" }
+        });
+        expect(textReference.statusCode).toBe(400);
+        expect(textReference.json().message).toContain("is an OAuth variable, which can't be used in text");
+      });
+
+      test("imported tokens connect an OAuth variable, on update or on create", async () => {
+        const { variable } = (await createOauthVariable("IMPORTED_OAUTH")).json() as { variable: TOauthVariable };
+        const imported = await inject("PATCH", `${variablesUrl}/${variable.id}`, {
+          tokens: { accessToken: "imported-access-token", clientSecret: "imported-client-secret" }
+        });
+        expect(imported.statusCode, imported.payload).toBe(200);
+        expect(imported.json().variable.oauth.status).toBe("connected");
+        expect(imported.payload).not.toContain("imported-access-token");
+        expect(imported.payload).not.toContain("imported-client-secret");
+
+        const created = await createOauthVariable("CREATED_CONNECTED_OAUTH", {
+          tokens: { accessToken: "created-access-token", clientSecret: "created-client-secret" }
+        });
+        expect(created.json().variable.oauth.status).toBe("connected");
+        expect(created.payload).not.toContain("created-access-token");
+        expect(created.payload).not.toContain("created-client-secret");
+      });
+
+      test("the list filters variables by type", async () => {
+        await createVariable({ key: "PLAIN_TEXT", value: "plain" });
+        await createOauthVariable("FILTERED_OAUTH");
+
+        const oauthOnly = await inject("GET", `${variablesUrl}?type=oauth`);
+        expect(oauthOnly.statusCode).toBe(200);
+        expect((oauthOnly.json().variables as TOauthVariable[]).map((row) => row.key)).toEqual(["FILTERED_OAUTH"]);
+
+        const textOnly = await inject("GET", `${variablesUrl}?type=text`);
+        expect(textOnly.statusCode).toBe(200);
+        expect((textOnly.json().variables as TOauthVariable[]).map((row) => row.key)).toEqual(["PLAIN_TEXT"]);
+      });
+
+      test("a sign-in gives a link with the redirect URI, state and PKCE challenge", async () => {
+        const { variable } = (await createOauthVariable("SIGN_IN_OAUTH")).json() as { variable: TOauthVariable };
+        const authorization = await startSignIn(variable.id);
+
+        const link = new URL(authorization.authorizeUrl);
+        expect(`${link.origin}${link.pathname}`).toBe(manualOauth.authorizationEndpoint);
+        expect(link.searchParams.get("redirect_uri")).toBe(manualOauth.redirectUri);
+        expect(link.searchParams.get("state")).toBeTruthy();
+        expect(link.searchParams.get("code_challenge")).toBeTruthy();
+      });
+
+      test("completing a sign-in refuses another variable's state, an unknown state and a provider refusal", async () => {
+        const { variable } = (await createOauthVariable("COMPLETE_OAUTH")).json() as { variable: TOauthVariable };
+        const { variable: other } = (await createOauthVariable("OTHER_OAUTH")).json() as { variable: TOauthVariable };
+        const state = new URL((await startSignIn(variable.id)).authorizeUrl).searchParams.get("state")!;
+
+        const wrongVariable = await inject("POST", `${variablesUrl}/${other.id}/authorizations/complete`, {
+          state,
+          code: "some-code"
+        });
+        expect(wrongVariable.statusCode).toBe(400);
+        expect(wrongVariable.json().message).toContain("started for a different variable");
+
+        const unknown = await inject("POST", `${variablesUrl}/${variable.id}/authorizations/complete`, {
+          state: "garbage",
+          code: "some-code"
+        });
+        expect(unknown.statusCode).toBe(404);
+
+        const denied = await inject("POST", `${variablesUrl}/${variable.id}/authorizations/complete`, {
+          state,
+          error: "access_denied"
+        });
+        expect(denied.statusCode).toBe(400);
+        expect(denied.json().message).toBe("Access to 'auth.example.com' was denied, so nothing was connected.");
+      });
+
+      test("a service uses an OAuth variable as its credential, which keeps the variable from being deleted", async () => {
+        const { variable } = (await createOauthVariable("SERVICE_OAUTH")).json() as { variable: TOauthVariable };
+        const bundle = await createAccessBundle("oauth-var-service");
+
+        const created = await inject("POST", "/api/v1/agent-vault/services", {
+          accessBundleIds: [bundle.id],
+          type: "http",
+          name: "oauth-var-service",
+          hostPattern: "api.example.com",
+          credential: { type: "oauth", variable: "SERVICE_OAUTH" }
+        });
+        expect(created.statusCode, created.payload).toBe(200);
+        expect(created.json().service.credential).toMatchObject({
+          type: "oauth",
+          source: "variable",
+          variable: { id: variable.id, key: "SERVICE_OAUTH" }
+        });
+
+        const deleted = await inject("DELETE", `${variablesUrl}/${variable.id}`);
+        expect(deleted.statusCode).toBe(409);
+      });
+
+      test("a text variable can't be an OAuth credential", async () => {
+        await createVariable({ key: "TEXT_NOT_OAUTH", value: "plain" });
+        const bundle = await createAccessBundle("oauth-var-text-credential");
+
+        const res = await inject("POST", "/api/v1/agent-vault/services", {
+          accessBundleIds: [bundle.id],
+          type: "http",
+          name: "oauth-text-credential",
+          hostPattern: "api.example.com",
+          credential: { type: "oauth", variable: "TEXT_NOT_OAUTH" }
+        });
+        expect(res.statusCode).toBe(400);
+        expect(res.json().details).toMatchObject({ field: "credential.variable" });
+      });
+
+      test("an inline service in a session uses an OAuth variable by key", async () => {
+        const { variable } = (await createOauthVariable("INLINE_OAUTH")).json() as { variable: TOauthVariable };
+
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+          ttl: "1h",
+          services: [
+            {
+              type: "http",
+              name: "inline-oauth",
+              hostPattern: "api.example.com",
+              credential: { type: "oauth", variable: "INLINE_OAUTH" }
+            }
+          ]
+        });
+        expect(mint.statusCode, mint.payload).toBe(200);
+        const sessionId = mint.json().session.id as string;
+
+        const read = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}`);
+        expect(read.statusCode).toBe(200);
+        expect(read.json().session.services[0].credential).toMatchObject({
+          type: "oauth",
+          source: "variable",
+          variable: { id: variable.id, key: "INLINE_OAUTH" }
+        });
+      });
+    });
   });
 
   describe("member-provided values", async () => {
