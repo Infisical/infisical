@@ -1752,7 +1752,7 @@ const OverviewPageContent = () => {
         environmentSlug: singleEnvSlug
       });
       analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "folder_row",
+        source: "overview_folder_row",
         projectId
       });
     },
@@ -1771,7 +1771,7 @@ const OverviewPageContent = () => {
   const handleCurrentFolderAccessOpen = useCallback(() => {
     setIsCurrentFolderAccessOpen(true);
     analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "breadcrumb",
+      source: "overview_breadcrumb",
       projectId
     });
   }, [orgId, projectId]);
@@ -5534,6 +5534,7 @@ const OverviewPageContent = () => {
               ?.name ?? folderAccessTarget.environmentSlug
           }
           onManageRootAccess={handleManageRootAccess}
+          source="overview_folder_row"
         />
       )}
       {isCurrentFolderAccessOpen && (
@@ -5545,6 +5546,7 @@ const OverviewPageContent = () => {
           folderPath={secretPath}
           environmentName={singleEnvName}
           onManageRootAccess={handleManageRootAccess}
+          source="overview_breadcrumb"
         />
       )}
       <ConfirmationAlertDialog
