@@ -12,6 +12,7 @@ import { TCertificateServiceFactory } from "@app/services/certificate/certificat
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -39,6 +40,7 @@ import {
 } from "./cert-revocation-policy-types";
 
 type TCertRevocationApprovalResourceDep = TOrgAccessDALs & {
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
@@ -139,12 +141,30 @@ const findLiveApproverEntries = async <T extends TApproverEntry>(
   tx?: Knex
 ): Promise<T[]> => (await $findLiveEntries(deps, scope, approvers, tx)).live;
 
+// Signing in to a sub-org also takes an active membership in its root organization (validateTokenOrgScope), so a
+// sub-org user deactivated there can't approve, however their sub-org access looks.
+const $keepRootOrgMembers = async (
+  { orgDAL }: Pick<TCertRevocationApprovalResourceDep, "orgDAL">,
+  orgId: string,
+  userIds: Set<string>,
+  tx?: Knex
+) => {
+  if (userIds.size === 0) return userIds;
+  const org = await orgDAL.findById(orgId, tx);
+  if (!org?.rootOrgId || org.rootOrgId === orgId) return userIds;
+  const { userIds: inRoot } = await orgDAL.findActorsWithActiveOrgAccess(
+    { orgId: org.rootOrgId, userIds: [...userIds], identityIds: [] },
+    tx
+  );
+  return new Set([...userIds].filter((userId) => inRoot.has(userId)));
+};
+
 // The people who can approve through each live entry, counted only while they can sign in to the organization. A user
 // entry's user may reach it through a group linked into it, as everyone in a sub-org does. A group entry's member
 // approves through the group only with an active, accepted organization membership of their own, since that is the
 // row the group lookup at review time joins on. An empty group names nobody.
 const resolveApprovingPeople = async (
-  deps: TMembershipDeps & TOrgAccessDALs,
+  deps: TMembershipDeps & Pick<TCertRevocationApprovalResourceDep, "orgDAL" | "userDAL">,
   scope: { projectId: string; applicationId: string },
   approvers: TApproverEntry[],
   tx?: Knex
@@ -158,24 +178,35 @@ const resolveApprovingPeople = async (
   const namedUserIds = [...new Set(live.filter((a) => a.type === ApproverType.User).map((a) => a.id))];
   const groupMemberIds = [...new Set(groupLinks.map((link) => link.userId))];
   const namedUsersWithAccess = orgId
-    ? await findUsersWithOrgAccess(deps, { orgId, userIds: namedUserIds }, tx)
+    ? await $keepRootOrgMembers(
+        deps,
+        orgId,
+        await findUsersWithOrgAccess(deps, { orgId, userIds: namedUserIds }, tx),
+        tx
+      )
     : new Set<string>();
-  const groupMembersWithAccess = new Set(
+  const groupMembersWithAccess =
     orgId && groupMemberIds.length
-      ? (
-          await deps.membershipDAL.find(
-            {
-              scope: AccessScope.Organization,
-              scopeOrgId: orgId,
-              isActive: true,
-              status: OrgMembershipStatus.Accepted,
-              $in: { actorUserId: groupMemberIds }
-            },
-            { tx }
-          )
-        ).flatMap((m) => (m.actorUserId ? [m.actorUserId] : []))
-      : []
-  );
+      ? await $keepRootOrgMembers(
+          deps,
+          orgId,
+          new Set(
+            (
+              await deps.membershipDAL.find(
+                {
+                  scope: AccessScope.Organization,
+                  scopeOrgId: orgId,
+                  isActive: true,
+                  status: OrgMembershipStatus.Accepted,
+                  $in: { actorUserId: groupMemberIds }
+                },
+                { tx }
+              )
+            ).flatMap((m) => (m.actorUserId ? [m.actorUserId] : []))
+          ),
+          tx
+        )
+      : new Set<string>();
 
   return new Map(
     live.map((entry) => [

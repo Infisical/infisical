@@ -144,7 +144,11 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
         )
       },
       userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
-      orgDAL: { findMembership: vi.fn().mockResolvedValue([]), findActorsWithActiveOrgAccess: vi.fn() },
+      orgDAL: {
+        findMembership: vi.fn().mockResolvedValue([]),
+        findActorsWithActiveOrgAccess: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ id: "org-1", rootOrgId: null })
+      },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
     const service = approvalPolicyServiceFactory({
@@ -393,7 +397,11 @@ describe("approvalPolicyService rechecks a revocation approver under the request
         )
       },
       userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
-      orgDAL: { findMembership: vi.fn().mockResolvedValue([]), findActorsWithActiveOrgAccess: vi.fn() },
+      orgDAL: {
+        findMembership: vi.fn().mockResolvedValue([]),
+        findActorsWithActiveOrgAccess: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ id: "org-1", rootOrgId: null })
+      },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
     const service = approvalPolicyServiceFactory({
@@ -524,7 +532,8 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
         findMembership: vi
           .fn()
           .mockResolvedValue([{ actorUserId: "approver-1", isActive: true, status: OrgMembershipStatus.Accepted }]),
-        findActorsWithActiveOrgAccess: vi.fn()
+        findActorsWithActiveOrgAccess: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ id: "org-1", rootOrgId: null })
       },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
