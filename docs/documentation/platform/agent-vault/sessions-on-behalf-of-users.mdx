@@ -121,7 +121,7 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
 - In `accessBundle`, name a bundle that both the user and the machine identity can use
-- In `services`, name services instead of an access bundle or alongside one, from [a bundle that both of them can use](#access-bundles-and-personal-values)
+- In `services`, name services from [a bundle that both of them can use](#access-bundles-and-personal-values)
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
 <Tip>
@@ -160,7 +160,7 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an admin of the project, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-If you name services in `services`, each service has to be in an access bundle that both the user and the machine identity can use. If both are admins of the project, you can name any of its services.
+Each service you name in `services` also has to be in a bundle that both of them can use.
 
 If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
 
@@ -182,7 +182,7 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 
 If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
 
-If the user or the machine identity can no longer use the access bundle, the session [stops getting credentials](/documentation/platform/agent-vault/sessions#access-changes) for the bundle. If you named services, the session also stops getting a service's credential once no access bundle that both the user and the machine identity can use holds the service.
+If the user or the machine identity can no longer use the access bundle, the session [stops getting credentials](/documentation/platform/agent-vault/sessions#access-changes) for the bundle. The same goes for each service you named.
 
 ## Track sessions created on behalf of users
 

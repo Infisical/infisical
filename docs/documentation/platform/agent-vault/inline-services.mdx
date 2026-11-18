@@ -101,15 +101,15 @@ For the full reference of every field, check out the [Create session](/api-refer
 ### Limits
 
 - A session can have up to 20 inline services
-- No two of a session's services can have the same name, including the services in its access bundle and the services you name (a service without a name counts as its first host)
+- No two of a session's services can have the same name (a service without a name counts as its first host)
 
 ## Combine with services in the project
 
 To give a session an access bundle as well as inline services, name the access bundle in `accessBundle` in the same request. A session can have only one access bundle.
 
-To give the session services from the project one by one, put their names in `services` next to the inline services, as in `"services": ["linear", {"type": "http", ...}]`. As an admin of the project, the machine identity can name any of the project's services.
+To add other services from the project, put their names in `services` next to the inline services, such as `"services": ["linear", {"type": "http", ...}]`.
 
-When you create the session, Infisical compares the host patterns of the inline services with each other, with the access bundle's services, and with the services you name, using the same [host conflict rules](/documentation/platform/agent-vault/http-apis#host-conflicts) as for the services in one access bundle:
+When you create the session, Infisical checks its services for [host conflicts](/documentation/platform/agent-vault/http-apis#host-conflicts), the same as for the services in one access bundle:
 
 - If two of the services use the same host pattern, creating the session fails
 - If an inline service and a service from the project cover the same host with different patterns, such as `api.github.com` and `*.github.com`, requests to that host use the service with the more specific pattern

@@ -6,7 +6,7 @@ description: "Create a session and start an agent with its token."
 
 import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
 
-A [session](/documentation/platform/agent-vault/sessions) gives an agent access to the services in an [access bundle](/documentation/platform/agent-vault/access-bundles), or to [services you name](#session-options), in an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session).
+A [session](/documentation/platform/agent-vault/sessions) gives an agent access to services in an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session).
 
 You can create a session in the [Infisical dashboard](#create-a-session-in-the-dashboard), with the [Infisical CLI](#create-a-session-with-the-cli), through the [API](#create-a-session-with-the-api), or with the [Python](#create-a-session-with-the-python-sdk) or [Node.js](#create-a-session-with-the-node-js-sdk) SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
 
@@ -143,7 +143,7 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
       -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
-    To give the session services by name, instead of an access bundle or alongside one, list their names in `services`, as in `"services": ["github", "linear"]`.
+    To give the session other services from the project, list their names in `services`, such as `"services": ["github", "linear"]`.
 
     The response includes the session's ID, project ID, label, token, and expiry time:
 
@@ -221,10 +221,10 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
 
 ## Session options
 
-The API can set every option in this section, and both SDKs can set every option except services. The dashboard can set only the access bundle, services, the duration, the label, and metadata. The CLI can set only the access bundle, the duration, the label, and metadata.
+The API can set every option in this section. The other ways to create a session can set only some of them.
 
 - **Access bundle:** the bundle of services the agent can use (a session has at most one, and you can't change it after you create the session)
-- **Services:** services in the project that the agent can use, which you name instead of an access bundle or alongside one (admins of the project can name any of its services, and anyone else can name only the services in the access bundles granted to them, directly or through a group)
+- **Services:** services in the project that the agent can use, from any access bundle granted to you (admins of the project can pick any service)
 - **Label:** a short description of what the session is for, such as `nightly deploy`, which you can search for on the **Sessions** page (you can [change it later](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata))
 - **Metadata:** keys and values that record which run the session belongs to, such as a run ID or a ticket, which you can [list sessions by](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata)
 - **On behalf of a user:** the user whose [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) the session uses, if a machine identity creates the session for that person (see [Sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users))
