@@ -897,7 +897,7 @@ const OverviewPageContent = () => {
     )
   );
   const canCreateSecretSyncs = Boolean(secretSyncSourceEnv);
-  const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
+  const { pathPolicies, hasPathPolicies, policies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
   });
@@ -4526,31 +4526,33 @@ const OverviewPageContent = () => {
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="-mr-1.5 flex items-center gap-2">
-                              <Badge variant="ghost" asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    overviewTelemetry.interaction({
-                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
-                                      source: "header",
-                                      resourceType: "secret"
-                                    });
-                                    setIsSingleEnvSecretsVisible.toggle();
-                                  }}
-                                >
-                                  {isSingleEnvSecretsVisible ? (
-                                    <>
-                                      <EyeOffIcon />
-                                      Hide Values
-                                    </>
-                                  ) : (
-                                    <>
-                                      <EyeIcon />
-                                      Reveal All
-                                    </>
-                                  )}
-                                </button>
-                              </Badge>
+                              {(mergedSecKeys.length > 0 || sortableImportItems.length > 0) && (
+                                <Badge variant="ghost" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      overviewTelemetry.interaction({
+                                        action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                        source: "header",
+                                        resourceType: "secret"
+                                      });
+                                      setIsSingleEnvSecretsVisible.toggle();
+                                    }}
+                                  >
+                                    {isSingleEnvSecretsVisible ? (
+                                      <>
+                                        <EyeOffIcon />
+                                        Hide Values
+                                      </>
+                                    ) : (
+                                      <>
+                                        <EyeIcon />
+                                        Reveal All
+                                      </>
+                                    )}
+                                  </button>
+                                </Badge>
+                              )}
                               {isProtectedBranch && (
                                 <Tooltip>
                                   <TooltipTrigger>
@@ -5415,6 +5417,7 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
       <EditHoneyTokenModal
+        secretPath={secretPath}
         isOpen={popUp.editHoneyToken.isOpen}
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
@@ -5592,13 +5595,13 @@ const OverviewPageContent = () => {
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       {!!pathPolicies && pathPolicies.length > 0 && (
         <RequestAccessModal
-          policies={pathPolicies}
+          policies={policies}
           isOpen={popUp.requestAccess.isOpen}
           onOpenChange={() => {
             handlePopUpClose("requestAccess");
           }}
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
-          secretPath={pathPolicies[0].secretPath}
+          secretPath={secretPath}
           environment={singleEnvSlug}
         />
       )}

@@ -7,13 +7,20 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { RootKeyEncryptionStrategy, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  InstanceFeature,
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -37,14 +44,6 @@ import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/valida
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import {
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities
-} from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
@@ -54,10 +53,6 @@ import { ActorType, AuthMethod } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
-import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
-import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -109,19 +104,15 @@ type TSuperAdminServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
-  kmsRootConfigDAL: TKmsRootConfigDALFactory;
+  kmsRootKeyService: TKmsRootKeyService;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<
-    TLicenseServiceFactory,
-    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
-  >;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   tokenService: TAuthTokenServiceFactory;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -172,9 +163,9 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
-  kmsRootConfigDAL,
-  kmsService,
+  kmsRootKeyService,
   licenseService,
+  usageMeteringService,
   identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
@@ -184,7 +175,6 @@ export const superAdminServiceFactory = ({
   membershipIdentityDAL,
   membershipUserDAL,
   membershipRoleDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -245,7 +235,7 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
     }
 
-    const decrypt = kmsService.decryptWithRootKey();
+    const decrypt = kmsRootKeyService.decryptWithRootKey();
 
     const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
     const slackClientSecret = serverCfg.encryptedSlackClientSecret
@@ -313,7 +303,7 @@ export const superAdminServiceFactory = ({
       return {};
     }
 
-    const decrypt = kmsService.decryptWithRootKey();
+    const decrypt = kmsRootKeyService.decryptWithRootKey();
 
     const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
 
@@ -414,7 +404,7 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
     if (data.slackClientId) {
       const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
 
@@ -537,7 +527,7 @@ export const superAdminServiceFactory = ({
       updatedServerCfg.encryptedMicrosoftTeamsBotId &&
       microsoftTeamsSettingsUpdated
     ) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
+      const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
       decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID
       const decryptedAppId = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsAppId);
       const decryptedAppPassword = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsClientSecret);
@@ -757,11 +747,10 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, IdentitiesMeter.key);
-      usageMeteringService.emit(orgId, UserIdentities.key);
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities);
+      usageMeteringService.emit(orgId, Meter.UserIdentities);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     });
   };
 
@@ -916,7 +905,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
+    const instancePlan = licenseService.getInstanceEntitlements().plan();
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -941,18 +930,18 @@ export const superAdminServiceFactory = ({
       });
     }
 
+    if (instancePlan.isLimited(PlanLimit.Identities)) {
+      const { identitiesUsed } = await licenseService.getSeatUsage(null);
+      if (instancePlan.exceeds(PlanLimit.Identities, identitiesUsed)) {
+        throw new BadRequestError({
+          name: "InviteUser",
+          message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+        });
+      }
+    }
+
     const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
       const org = await orgService.createOrganization({ orgName: name }, tx);
-
-      if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
-        if (identitiesUsed >= identityLimit) {
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
-        }
-      }
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
@@ -1015,7 +1004,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1096,7 +1085,7 @@ export const superAdminServiceFactory = ({
       orgId: organizationId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actorType === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1105,9 +1094,8 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    usageMeteringService.emit(organizationId, SecretIdentities.key);
-    usageMeteringService.emit(organizationId, PamIdentities.key);
-    usageMeteringService.emit(organizationId, AgentVaultIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.SecretIdentities);
+    usageMeteringService.emit(organizationId, Meter.PamIdentities);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
@@ -1232,7 +1220,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+    if (!licenseService.getInstanceEntitlements().has(InstanceFeature.InstanceUserManagement)) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1240,48 +1228,14 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getConfiguredEncryptionStrategies = async () => {
-    const appCfg = getConfig();
-
-    const kmsRootCfg = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    if (!kmsRootCfg) {
-      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
-    }
-
-    const selectedStrategy = kmsRootCfg.encryptionStrategy;
-    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy }[] = [];
-
-    if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
-      const basicStrategy = RootKeyEncryptionStrategy.Software;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === basicStrategy,
-        strategy: basicStrategy
-      });
-    }
-    if (appCfg.isHsmConfigured) {
-      const hsmStrategy = RootKeyEncryptionStrategy.HSM;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === hsmStrategy,
-        strategy: hsmStrategy
-      });
-    }
-
-    return {
-      strategies: enabledStrategies
-    };
-  };
-
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseService.onPremFeatures.hsm) {
+    if (!licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
     }
 
-    const configuredStrategies = await getConfiguredEncryptionStrategies();
+    const configuredStrategies = await kmsRootKeyService.listEncryptionStrategies();
 
     const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
 
@@ -1293,7 +1247,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
     }
 
-    await kmsService.updateEncryptionStrategy(strategy);
+    await kmsRootKeyService.updateEncryptionStrategy(strategy);
   };
 
   const invalidateCache = async (type: CacheType) => {
@@ -1341,8 +1295,9 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseService.onPremFeatures;
-      const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+      const plan = licenseService.getInstanceEntitlements().plan();
+      const canEmailDomainVerification =
+        plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
       if (!canEmailDomainVerification) {
         throw new BadRequestError({
           message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
@@ -1404,7 +1359,6 @@ export const superAdminServiceFactory = ({
     getIdentities,
     getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
     deleteUserSuperAdminAccess,

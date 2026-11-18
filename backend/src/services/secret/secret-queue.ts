@@ -11,8 +11,9 @@ import {
   SecretType,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -42,8 +43,6 @@ import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { buildNativeIntegrationsUrl } from "../integration/integration-deprecation-fns";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -112,7 +111,7 @@ type TSecretQueueFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
@@ -125,7 +124,7 @@ type TSecretQueueFactoryDep = {
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -178,7 +177,7 @@ export const secretQueueFactory = ({
   secretVersionTagDAL,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
-  kmsService,
+  kmsDataKeyService,
   secretVersionTagV2BridgeDAL,
 
   keyStore,
@@ -311,7 +310,7 @@ export const secretQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -329,7 +328,7 @@ export const secretQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -369,7 +368,7 @@ export const secretQueueFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService
     });
     // process secrets in current folder
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId });
@@ -419,7 +418,7 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      kmsService
+      kmsDataKeyService
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -585,7 +584,7 @@ export const secretQueueFactory = ({
 
     const plan = await licenseService.getPlan(dto.orgId);
 
-    if (event && plan.eventSubscriptions) {
+    if (event && plan.has(PlanFeature.EventSubscriptions)) {
       for await (const singleEvent of event) {
         await projectEventsService.publish(singleEvent);
       }
@@ -812,7 +811,7 @@ export const secretQueueFactory = ({
         );
       }
       const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -1264,7 +1263,7 @@ export const secretQueueFactory = ({
     if (!botKey) throw new NotFoundError({ message: `Project bot not found for project ${projectId}` });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       projectId,
       type: KmsDataKey.SecretManager
     });
@@ -1568,7 +1567,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: job.data.payload.projectId
     });

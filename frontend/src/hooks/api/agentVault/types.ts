@@ -141,6 +141,13 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
+export type TAgentVaultServiceHook = { url: string };
+
+export type TAgentVaultServiceHookInput = { url: string; signingSecret: string };
+
+// signingSecret left out keeps the saved one.
+export type TAgentVaultServiceHookUpdate = { url: string; signingSecret?: string };
+
 export type TAgentVaultVariableReference = {
   variableId: string;
   key: string;
@@ -228,6 +235,8 @@ export type TAgentVaultService = (
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
+  // Left out for a member. null when the service has no hook.
+  hook?: TAgentVaultServiceHook | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -390,7 +399,7 @@ export type TAgentVaultSessionInlineService = (
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
       substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
     })
-  | (Omit<TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp>, "allowedTools"> & {
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp> & {
       credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Bearer>;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
@@ -407,7 +416,24 @@ export type TAgentVaultSessionInlineService = (
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  hook?: TAgentVaultServiceHook | null;
 };
+
+/** A project service a session names. Only what identifies it is returned. */
+export type TAgentVaultSessionNamedService = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  description: string | null;
+  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+  hostPattern: string | null;
+  isInline: false;
+};
+
+/** A session's service: a project service it names, or one sent with it. */
+export type TAgentVaultSessionService =
+  | (TAgentVaultSessionInlineService & { isInline: true })
+  | TAgentVaultSessionNamedService;
 
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
@@ -426,6 +452,7 @@ export type TAgentVaultSessionOnBehalfOf = Extract<
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
@@ -433,7 +460,8 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  services: TAgentVaultSessionService[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -487,12 +515,13 @@ export type TSetAgentVaultDelegationDTO = {
 export type TAgentVaultMintedSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   token: string;
   expiresAt: string | null;
   createdAt: string;
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  services: TAgentVaultSessionService[];
 };
 
 export type TAgentVaultProxy = {
@@ -529,6 +558,7 @@ export type TListAgentVaultSessionsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  metadata?: Record<string, string>;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {
@@ -545,6 +575,7 @@ export type TUpdateAgentVaultAccessBundleDTO = {
 export type TCreateAgentVaultServiceDTO = {
   // Access bundles to add the new service to in the same request.
   accessBundleIds?: string[];
+  hook?: TAgentVaultServiceHookInput;
 } & (
   | {
       type: AgentVaultServiceType.Http;
@@ -608,6 +639,8 @@ export type TUpdateAgentVaultServiceDTO = {
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  // null removes the hook and its signing secret.
+  hook?: TAgentVaultServiceHookUpdate | null;
 };
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
@@ -667,15 +700,21 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
+// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
+// services defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
-  accessBundle: string;
+  accessBundle?: string;
+  services?: string[];
   ttl: string;
   label?: string;
+  metadata?: Record<string, string>;
 };
 
-export type TUpdateAgentVaultSessionLabelDTO = {
+export type TUpdateAgentVaultSessionDTO = {
   sessionId: string;
-  label: string | null;
+  label?: string | null;
+  /** Replaces the session's whole metadata set; an empty object clears it. */
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultProxySettingsDTO = {
@@ -802,6 +841,16 @@ export type TAgentVaultSessionLogNativeDetail = {
   truncated?: boolean;
 };
 
+// The hook's part in a request the proxy refused or couldn't check. Written by the proxy; field names match the CLI's
+// hookOutcome JSON tags.
+export type TAgentVaultSessionLogHookOutcome = {
+  decision: string;
+  reason?: string;
+  cause?: string;
+  durationMs?: number;
+  deliveryId?: string;
+};
+
 export type TAgentVaultSessionLogRecord = {
   ts: string;
   seq: number;
@@ -818,6 +867,7 @@ export type TAgentVaultSessionLogRecord = {
   serviceType?: AgentVaultServiceType | null;
   mcp?: TAgentVaultSessionLogMcpDetail;
   native?: TAgentVaultSessionLogNativeDetail;
+  hook?: TAgentVaultSessionLogHookOutcome;
 };
 
 export type TAgentVaultSessionLogGapReason =
@@ -1003,4 +1053,21 @@ export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   skillId: string;
   /** The version the files were edited from. The server refuses the save when a newer one was published since. */
   baseVersion?: number;
+};
+
+export type TAgentVaultFreeUsage = {
+  used: number;
+  limit: number;
+  resetsAt: string;
+};
+
+export type TAgentVaultAccess = {
+  /** `free` and `limit-reached` are orgs without Agent Vault on their plan, counted against the free monthly requests. */
+  state: "self-hosted" | "plan" | "open" | "free" | "limit-reached";
+  /** False once the free requests are used: proxies refuse agent requests until a payment method is added or the month resets. */
+  allowed: boolean;
+  /** Only for an org on the free tier. Org-wide: sub-organizations share their root's count. */
+  freeUsage: TAgentVaultFreeUsage | null;
+  /** True from 80% of the free requests. */
+  warn: boolean;
 };

@@ -1,5 +1,6 @@
 import { Job } from "bullmq";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TChefSync,
@@ -50,7 +51,6 @@ import {
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnection } from "../app-connection/app-connection-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
   TOnePassSync,
@@ -125,6 +125,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TConvexSync, TConvexSyncInput, TConvexSyncListItem, TConvexSyncWithCredentials } from "./convex";
 import {
   TDaytonaSync,
   TDaytonaSyncInput,
@@ -298,6 +299,7 @@ export type TSecretSync =
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
   | TCloudflareSecretsStoreSync
+  | TConvexSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
@@ -352,6 +354,7 @@ export type TSecretSyncWithCredentials =
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
   | TCloudflareSecretsStoreSyncWithCredentials
+  | TConvexSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
@@ -408,6 +411,7 @@ export type TSecretSyncInput =
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
   | TCloudflareSecretsStoreSyncInput
+  | TConvexSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
@@ -465,6 +469,7 @@ export type TSecretSyncListItem =
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
   | TCloudflareSecretsStoreSyncListItem
+  | TConvexSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
@@ -667,7 +672,7 @@ export type DestinationDuplicateCheckFn = (opts: {
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TPreSaveTransformSyncOptionsParams = {

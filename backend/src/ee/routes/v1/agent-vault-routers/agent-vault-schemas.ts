@@ -37,6 +37,10 @@ import {
   AgentVaultVariableScope,
   TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultHookSigningSecretSchema,
+  AgentVaultHookUrlSchema
+} from "@app/ee/services/agent-vault/agent-vault-hook-fns";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import {
   AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH,
@@ -548,6 +552,24 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
+const hookInputSchema = z.object({
+  url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
+  signingSecret: AgentVaultHookSigningSecretSchema.describe(AGENT_VAULT.SERVICE.hookSigningSecret)
+});
+const hookCreateField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SERVICE.hook) };
+const hookUpdateField = {
+  hook: z
+    .object({
+      url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
+      signingSecret: AgentVaultHookSigningSecretSchema.optional().describe(AGENT_VAULT.SERVICE.updateHookSigningSecret)
+    })
+    .nullable()
+    .optional()
+    .describe(AGENT_VAULT.SERVICE.updateHook)
+};
+const inlineHookField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SESSION.inlineHook) };
+const hookResponseSchema = z.object({ url: z.string().describe(AGENT_VAULT.SERVICE.hookUrlRead) });
+
 // Checked fully when the service builds its config; bounded here so nothing unreasonable reaches it.
 const AgentVaultNativeHostSchema = z
   .string()
@@ -660,7 +682,8 @@ const nativeCreateArm = <T extends TNativeServiceType>(type: T) =>
       name: AgentVaultNativeNameSchema.describe(AGENT_VAULT.SERVICE.nativeName),
       description: AgentVaultServiceDescriptionSchema.optional().describe(AGENT_VAULT.SERVICE.description),
       ...nativeCreateFields(type),
-      credential: nativeCredentialInputSchema({ ssh: type === AgentVaultServiceType.Ssh })
+      credential: nativeCredentialInputSchema({ ssh: type === AgentVaultServiceType.Ssh }),
+      ...hookCreateField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -695,7 +718,8 @@ const nativeUpdateArm = <T extends TNativeServiceType>(type: T) =>
               .optional()
               .describe(AGENT_VAULT.SERVICE.updateTls)
           }),
-      credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional()
+      credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional(),
+      ...hookUpdateField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -713,6 +737,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       credential: AgentVaultCredentialInputSchema,
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultSubstitutionsInputSchema.optional(),
+      ...hookCreateField,
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
       transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -729,6 +754,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
       allowedTools: AgentVaultAllowedToolsSchema.optional(),
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      ...hookCreateField,
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
@@ -759,6 +785,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         credential: AgentVaultCredentialUpdateSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
+        ...hookUpdateField,
         serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
         transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden()),
         allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -777,6 +804,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
         allowedTools: AgentVaultAllowedToolsSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        ...hookUpdateField,
         hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
         allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
         allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
@@ -905,7 +933,8 @@ const nativeInlineArm = <T extends TNativeServiceType>(type: T) =>
         ssh: type === AgentVaultServiceType.Ssh
       }).describe(
         type === AgentVaultServiceType.Ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential
-      )
+      ),
+      ...inlineHookField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -923,6 +952,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       credential: inlineCredentialInputSchema({ mcp: false }),
       customHeaders: AgentVaultInlineCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional(),
+      ...inlineHookField,
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
       transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -938,12 +968,12 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       transport: AgentVaultMcpTransportSchema,
       credential: inlineCredentialInputSchema({ mcp: true }).describe(AGENT_VAULT.SESSION.inlineMcpCredential),
       customHeaders: AgentVaultInlineCustomHeadersInputSchema.optional(),
+      ...inlineHookField,
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden()),
-      // Refused by the session service with a message, rather than dropped, so nobody believes the tools are limited.
-      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
     .describe(JSON.stringify({ title: "MCP" })),
@@ -952,26 +982,78 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
   nativeInlineArm(AgentVaultServiceType.Ssh)
 ]);
 
-export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputSchema.array()
-  .max(
-    AGENT_VAULT_MAX_SESSION_INLINE_SERVICES,
-    `A session can have at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} services. Add the others to an access bundle and name it in accessBundles.`
-  )
-  .superRefine((services, ctx) => {
-    const seen = new Set<string>();
-    services.forEach((service, index) => {
-      if (!service.name) return;
-      if (seen.has(service.name)) {
+export const AGENT_VAULT_MAX_SESSION_NAMED_SERVICES = 50;
+
+const AgentVaultSessionServiceNameSchema = slugSchema({ max: 64, field: "Service" }).describe(
+  JSON.stringify({ title: "Project service", description: AGENT_VAULT.SESSION.serviceName })
+);
+
+const AgentVaultSessionInlineServiceSchema = AgentVaultInlineServiceInputSchema.describe(
+  JSON.stringify({ title: "Inline service", description: AGENT_VAULT.SESSION.inlineServices })
+);
+
+// Each entry names a project service or defines one inline. It is checked against the schema its kind calls for before
+// the union parses it, so a mistake in an inline service is reported field by field rather than as a union nothing
+// matched.
+export const AgentVaultSessionServicesInputSchema = z
+  .preprocess(
+    (input, ctx) => {
+      if (!Array.isArray(input)) return input;
+      const entries: unknown[] = input;
+      // Checked before any entry is parsed, so an oversized list is refused without parsing every entry in it.
+      if (entries.length > AGENT_VAULT_MAX_SESSION_NAMED_SERVICES + AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: [index, "name"],
-          message: `More than one inline service is named "${service.name}". Give each a different name.`
+          message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services and ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services.`,
+          fatal: true
+        });
+        return entries;
+      }
+      entries.forEach((entry, index) => {
+        let schema: z.ZodTypeAny | null = null;
+        if (typeof entry === "string") schema = AgentVaultSessionServiceNameSchema;
+        else if (entry !== null && typeof entry === "object") schema = AgentVaultSessionInlineServiceSchema;
+        if (!schema) return;
+        const result = schema.safeParse(entry);
+        if (result.success) return;
+        result.error.issues.forEach((issue) => ctx.addIssue({ ...issue, path: [index, ...issue.path], fatal: true }));
+      });
+      return entries;
+    },
+    z.union([AgentVaultSessionServiceNameSchema, AgentVaultSessionInlineServiceSchema]).array()
+  )
+  .superRefine((entries, ctx) => {
+    const namedCount = entries.filter((entry) => typeof entry === "string").length;
+    if (namedCount > AGENT_VAULT_MAX_SESSION_NAMED_SERVICES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can name at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services.`
+      });
+    }
+    if (entries.length - namedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services. Add the others to the project and name them instead.`
+      });
+    }
+    // The agent, the proxy and the session logs tell a session's services apart by name. One sent inline without a name
+    // goes by its first host, which this check skips: a one-word host such as `localhost` is also a valid service name,
+    // so the mint checks it against the services the session names (`assertNoNamedServiceConflicts`).
+    const seen = new Set<string>();
+    entries.forEach((entry, index) => {
+      const name = typeof entry === "string" ? entry : entry.name;
+      if (!name) return;
+      if (seen.has(name)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: typeof entry === "string" ? [index] : [index, "name"],
+          message: `More than one service in this session is named "${name}". Give each a different name, or leave one out.`
         });
       }
-      seen.add(service.name);
+      seen.add(name);
     });
   })
-  .describe(AGENT_VAULT.SESSION.inlineServices);
+  .describe(AGENT_VAULT.SESSION.services);
 
 // Each type returns only its own fields, read the same way by bundle services and a session's own services.
 const serviceResponseTlsSchema = z
@@ -993,7 +1075,8 @@ const serviceResponseTypeFields = {
     type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
     serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrlRead),
     transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transportRead),
-    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead)
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead),
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
   },
   [AgentVaultServiceType.Postgres]: {
     type: z.literal(AgentVaultServiceType.Postgres).describe(AGENT_VAULT.SERVICE.type),
@@ -1020,7 +1103,8 @@ const serviceResponseTypeFields = {
 const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
-  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead)
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+  hook: hookResponseSchema.nullable().describe(AGENT_VAULT.SESSION.inlineHookRead)
 };
 
 const inlineBearerCredentialSummarySchema = z
@@ -1124,6 +1208,28 @@ export const AgentVaultInlineServiceSchema = serviceResponseUnion(
   inlineServiceResponseTypeExtras
 );
 
+const AgentVaultSessionNamedServiceSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.SESSION.namedServiceId),
+    name: z.string().describe(AGENT_VAULT.SESSION.namedServiceName),
+    type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SESSION.namedServiceType),
+    description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+    hostPattern: z.string().nullable().describe(AGENT_VAULT.SESSION.namedServiceHostPattern),
+    isInline: z.literal(false).describe(AGENT_VAULT.SESSION.serviceIsInline)
+  })
+  .describe(JSON.stringify({ title: "Project service" }));
+
+// A session's services as read back. A project service it names carries only what identifies it; an inline one carries
+// its settings without their secrets, as it was sent. isInline tells the two apart, which is also how the response
+// serializer picks the right shape for each.
+export const AgentVaultSessionServiceSchema = z.union([
+  AgentVaultSessionNamedServiceSchema,
+  serviceResponseUnion(
+    { ...inlineServiceResponseBase, isInline: z.literal(true).describe(AGENT_VAULT.SESSION.serviceIsInline) },
+    inlineServiceResponseTypeExtras
+  )
+]);
+
 // The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
 // names the saved service whose stored values fill in what is left out.
 export const AgentVaultListMcpToolsBodySchema = z.object({
@@ -1208,7 +1314,8 @@ const serviceResponseBase = {
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
-  updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
+  updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt),
+  hook: hookResponseSchema.nullable().optional().describe(AGENT_VAULT.SERVICE.hookRead)
 };
 
 const customHeadersResponseSchema = z
@@ -1237,7 +1344,6 @@ const serviceResponseTypeExtras = <TOptional extends boolean>(optionalReferences
   [AgentVaultServiceType.Mcp]: {
     credential: credentialSummarySchemas[AgentVaultServiceType.Mcp],
     customHeaders: customHeadersResponseSchema,
-    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
     variableReferences: variableReferencesField(AgentVaultServiceType.Mcp, optionalReferences)
   },
   [AgentVaultServiceType.Postgres]: {
@@ -1306,53 +1412,79 @@ export const AgentVaultVariableSchema = z.object({
 
 const personalValueFieldSchema = z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.PERSONAL_VALUE.field);
 
+const personalValueVariableReferencesSchema = z
+  .object({
+    variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+    key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+  })
+  .array();
+
+const personalValueOauthSchema = z
+  .object({
+    status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
+    issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+    requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
+    expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
+    authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
+    lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
+  })
+  .nullable();
+
+const personalValueFieldStatusSchema = z.object({
+  field: personalValueFieldSchema,
+  isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
+  updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
+  variableReferences: personalValueVariableReferencesSchema.describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
+  oauth: personalValueOauthSchema.describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
+});
+
 // The caller's own values for one service. Fields are listed as descriptors, so a custom header or substitution left
 // to members can join them with its id and no change to this shape.
 export const AgentVaultPersonalValuesSchema = z
   .object({
     isConfigured: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isConfigured),
-    fields: z
-      .object({
-        field: personalValueFieldSchema,
-        isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
-        updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
-        variableReferences: z
-          .object({
-            variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
-            key: z.string().describe(AGENT_VAULT.VARIABLE.key)
-          })
-          .array()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
-        oauth: z
-          .object({
-            status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
-            issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
-            grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
-            requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
-            expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
-            authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
-            lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
-          })
-          .nullable()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
-      })
-      .array()
-      .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+    fields: personalValueFieldStatusSchema.array().describe(AGENT_VAULT.PERSONAL_VALUE.fields)
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
+
+// On a user's behalf, the services list says which of the user's values are set, and leaves out the variables those
+// values use and the user's OAuth connection.
+const AgentVaultListedPersonalValuesSchema = AgentVaultPersonalValuesSchema.extend({
+  fields: personalValueFieldStatusSchema
+    .extend({
+      variableReferences: personalValueVariableReferencesSchema
+        .optional()
+        .describe(AGENT_VAULT.PERSONAL_VALUE.serviceVariableReferences),
+      oauth: personalValueOauthSchema.optional().describe(AGENT_VAULT.PERSONAL_VALUE.serviceOauth)
+    })
+    .array()
+    .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+});
+
+const projectServiceAccessBundlesSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
+    name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
+  })
+  .array()
+  .describe(AGENT_VAULT.SERVICE.accessBundles);
 
 // A service in the project, with the access bundles it is in. Only reads carry the caller's own setup status, and only
 // an admin's carry variableReferences.
 export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
   {
-    accessBundles: z
-      .object({
-        id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
-        name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
-      })
-      .array()
-      .describe(AGENT_VAULT.SERVICE.accessBundles),
+    accessBundles: projectServiceAccessBundlesSchema,
     personalValues: AgentVaultPersonalValuesSchema.nullable().optional()
+  },
+  { optionalVariableReferences: true }
+);
+
+// The services list alone can answer on a user's behalf, so only it may leave fields out of personalValues.
+export const AgentVaultListedProjectServiceSchema = agentVaultServiceResponseSchema(
+  {
+    accessBundles: projectServiceAccessBundlesSchema,
+    personalValues: AgentVaultListedPersonalValuesSchema.nullable().optional()
   },
   { optionalVariableReferences: true }
 );

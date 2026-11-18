@@ -7,6 +7,8 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -22,10 +24,6 @@ import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -39,7 +37,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
@@ -379,7 +376,7 @@ export const assertGithubGroupMembersLinked = ({
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
@@ -389,10 +386,10 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
@@ -409,15 +406,15 @@ export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServic
 export const githubOrgSyncServiceFactory = ({
   githubOrgSyncDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
+  usageMeteringService,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
   membershipGroupDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   auditLogService,
   orgDAL,
@@ -470,7 +467,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to create github organization team sync due to plan restriction. Upgrade plan to create github organization sync."
@@ -495,7 +492,7 @@ export const githubOrgSyncServiceFactory = ({
     if (data.login.toLowerCase() !== githubOrgName.toLowerCase())
       throw new BadRequestError({ message: "Invalid GitHub organisation" });
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -529,7 +526,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to update github organization team sync due to plan restriction. Upgrade plan to update github organization sync."
@@ -542,7 +539,7 @@ export const githubOrgSyncServiceFactory = ({
         message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
       });
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -595,7 +592,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to delete github organization team sync due to plan restriction. Upgrade plan to delete github organization sync."
@@ -856,9 +853,8 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     }
   };
 
@@ -875,7 +871,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to validate GitHub token due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -965,7 +961,7 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to sync all GitHub teams due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -977,7 +973,7 @@ export const githubOrgSyncServiceFactory = ({
       throw new BadRequestError({ message: "GitHub organization sync is not configured or not active" });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -1315,9 +1311,8 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
-      usageMeteringService.emit(orgPermission.orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgPermission.orgId, Meter.PamIdentities);
     }
 
     if (unmatchedGithubUsers.size) {

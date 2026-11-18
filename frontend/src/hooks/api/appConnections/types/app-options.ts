@@ -403,6 +403,10 @@ export type TClickHouseConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ClickHouse;
 };
 
+export type TIncidentIoConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.IncidentIo;
+};
+
 export type TJenkinsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Jenkins;
 };
@@ -505,6 +509,7 @@ export type TAppConnectionOption =
   | TS3CompatibleConnectionOption
   | TJiraConnectionOption
   | TClickHouseConnectionOption
+  | TIncidentIoConnectionOption
   | TJenkinsConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -605,5 +610,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
   [AppConnection.Jira]: TJiraConnectionOption;
   [AppConnection.ClickHouse]: TClickHouseConnectionOption;
+  [AppConnection.IncidentIo]: TIncidentIoConnectionOption;
   [AppConnection.Jenkins]: TJenkinsConnectionOption;
 };

@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import dns from "node:dns/promises";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -10,7 +11,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isValidEmailDomain } from "@app/lib/validator";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TEmailDomainDALFactory } from "./email-domain-dal";
 import {
   EmailDomainStatus,
@@ -26,7 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFactory>;
@@ -62,7 +62,8 @@ export const emailDomainServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgId);
-    const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+    const canEmailDomainVerification =
+      plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
         message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
@@ -143,7 +144,8 @@ export const emailDomainServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgId);
-    const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+    const canEmailDomainVerification =
+      plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
         message: "Failed to verify email domain due to plan restriction. Upgrade plan to use email domain verification."

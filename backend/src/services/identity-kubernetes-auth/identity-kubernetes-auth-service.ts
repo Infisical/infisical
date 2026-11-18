@@ -13,6 +13,8 @@ import {
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -23,7 +25,6 @@ import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -64,8 +65,6 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -116,8 +115,8 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: TLicenseService;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
@@ -156,7 +155,7 @@ export const identityKubernetesAuthServiceFactory = ({
   licenseService,
   gatewayV2Service,
   gatewayV2DAL,
-  kmsService,
+  kmsDataKeyService,
   gatewayPoolService,
   gatewayPoolDAL,
   orgDAL,
@@ -347,7 +346,7 @@ export const identityKubernetesAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: identity.orgId
       });
@@ -869,14 +868,14 @@ export const identityKubernetesAuthServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
 
     let template: TIdentityAuthTemplates | undefined;
     if (templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -935,7 +934,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -965,7 +964,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
 
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1020,7 +1019,7 @@ export const identityKubernetesAuthServiceFactory = ({
         }
       }
     } else if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -1210,7 +1209,7 @@ export const identityKubernetesAuthServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -1220,7 +1219,7 @@ export const identityKubernetesAuthServiceFactory = ({
     // link CHANGE requires the attach-template permission; a re-assert must stay editable
     // for actors that hold identity EditAuth alone
     if (templateId && templateId !== identityKubernetesAuth.templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -1322,7 +1321,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -1338,7 +1337,7 @@ export const identityKubernetesAuthServiceFactory = ({
     });
 
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1377,7 +1376,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Handle gateway pool permission check
     if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -1674,7 +1673,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });

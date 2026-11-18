@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
+import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
@@ -89,6 +91,9 @@ const buildService = ({
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, plan as Partial<TPlanFeatures>);
+  vi.spyOn(licenseService, "getPlan");
+
   const deps = {
     approvalPolicyDAL: {
       findByIdForUpdate: vi.fn((id: string) => Promise.resolve(rows.find((row) => row.id === id))),
@@ -151,7 +156,7 @@ const buildService = ({
       )
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    licenseService: { getPlan: vi.fn().mockResolvedValue(plan) }
+    licenseService
   };
 
   const service = secretChangePolicyServiceFactory(

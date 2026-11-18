@@ -1,8 +1,8 @@
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { buildCertificateQuotaKey, certificateHasWildcard } from "./certificate-quota-key";
@@ -12,11 +12,8 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
-  >;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -41,7 +38,7 @@ const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Prom
     logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
-  const counts = await deps.usageCounterDAL.countActiveCertificateQuotaKeysByOrg(
+  const counts = await deps.certManagerService.countActiveCertificateQuota(
     orgId === PKI_INSTANCE_QUOTA_SCOPE ? undefined : orgId
   );
 
@@ -98,25 +95,24 @@ export const assertCertificateQuota = async ({
   const plan = await deps.licenseService.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 
-  const { maxCertificates, maxWildcardCertificates } = plan;
-  const hasWildcardCap = isWildcard && typeof maxWildcardCertificates === "number";
-  if (typeof maxCertificates !== "number" && !hasWildcardCap) return unlimited;
+  const hasWildcardCap = isWildcard && plan.isLimited(PlanLimit.WildcardCertificates);
+  if (!plan.isLimited(PlanLimit.Certificates) && !hasWildcardCap) return unlimited;
 
   // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
   // certs expire.
   const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
-  const isAlreadyActive = await deps.usageCounterDAL.isCertificateQuotaKeyActiveInOrg(
+  const isAlreadyActive = await deps.certManagerService.isCertificateQuotaKeyActive(
     isInstanceWide ? undefined : orgId,
     quotaKey
   );
-  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.usageCounterDAL.resolveRootOrgId(orgId);
+  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManagerService.resolveRootOrgId(orgId);
   if (isAlreadyActive) return { quotaKey, isNewQuotaKey: false, quotaOrgId, isWildcard };
   const scopeNote = isInstanceWide ? " across this instance" : "";
   const holder = isInstanceWide ? "this instance" : "your organization";
 
   // 0 is how a plan says it has no wildcard support at all.
-  if (isWildcard && maxWildcardCertificates === 0) {
+  if (isWildcard && plan.limit(PlanLimit.WildcardCertificates) === 0) {
     throw new BadRequestError({
       message: `Failed to issue certificate with a wildcard name due to plan restriction. Upgrade plan to issue wildcard certificates.`
     });
@@ -124,7 +120,7 @@ export const assertCertificateQuota = async ({
 
   const counts = await $getQuotaCounts(quotaOrgId, deps);
 
-  const refuse = (used: number, cap: number, subject: string) => {
+  const refuse = (used: number, cap: number | null, subject: string) => {
     if (isApprovedRequest) {
       throw new BadRequestError({
         message: `This certificate request was approved, but ${holder} has since reached its plan limit of ${cap} ${subject} (${used} of ${cap} in use). Upgrade plan or revoke an unused certificate, then submit the request again.`
@@ -136,12 +132,12 @@ export const assertCertificateQuota = async ({
   };
 
   // Before the total, so the refusal names the limit the caller actually hit.
-  if (hasWildcardCap && counts.wildcard >= maxWildcardCertificates) {
-    refuse(counts.wildcard, maxWildcardCertificates, "active wildcard certificates");
+  if (isWildcard && plan.exceeds(PlanLimit.WildcardCertificates, counts.wildcard)) {
+    refuse(counts.wildcard, plan.limit(PlanLimit.WildcardCertificates), "active wildcard certificates");
   }
 
-  if (typeof maxCertificates === "number" && counts.total >= maxCertificates) {
-    refuse(counts.total, maxCertificates, "active certificates");
+  if (plan.exceeds(PlanLimit.Certificates, counts.total)) {
+    refuse(counts.total, plan.limit(PlanLimit.Certificates), "active certificates");
   }
 
   return { quotaKey, isNewQuotaKey: true, quotaOrgId, isWildcard };

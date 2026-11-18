@@ -4,6 +4,9 @@ import { randomBytes } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -55,16 +58,12 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { convertRawCertsToPkcs7 } from "../certificate-est/certificate-est-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { getScepValidationHandler, IScepValidationHandler, ScepChallengeType } from "./challenge";
 import { TScepDynamicChallengeDALFactory } from "./pki-scep-dynamic-challenge-dal";
 import {
@@ -101,15 +100,13 @@ type TPkiScepServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
-  >;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -141,11 +138,12 @@ export const pkiScepServiceFactory = ({
   certificateRequestDAL,
   certificateBodyDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   keyStore,
   licenseService,
-  usageCounterDAL,
+  certManagerService,
   certificatePolicyDAL,
   certificatePolicyService,
   certificateRequestService,
@@ -210,18 +208,14 @@ export const pkiScepServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiScep) {
+    if (!plan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to perform SCEP operation due to plan restriction. Upgrade to the Enterprise plan."
       });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const raPrivateKeyDer = await kmsDecryptor({ cipherTextBlob: scepConfig.encryptedRaPrivateKey });
 
     const raCert = new x509.X509Certificate(scepConfig.raCertificate);
@@ -274,8 +268,8 @@ export const pkiScepServiceFactory = ({
         caCertId: ca.internalCa.activeCaCertId,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       const caCertObj = new x509.X509Certificate(caCert);
@@ -304,7 +298,7 @@ export const pkiScepServiceFactory = ({
       scepEnrollmentConfigDAL,
       scepDynamicChallengeDAL,
       appConnectionDAL,
-      kmsService,
+      kmsDataKeyService,
       keyStore
     });
 
@@ -484,8 +478,8 @@ export const pkiScepServiceFactory = ({
           certificateDAL,
           certificateAuthorityCertDAL,
           certificateAuthorityDAL,
-          projectDAL,
-          kmsService
+          kmsDataKeyService,
+          kmsKeyService
         });
         if (isRenewalViaPKCSReq) {
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -675,8 +669,8 @@ export const pkiScepServiceFactory = ({
         certificateDAL,
         certificateAuthorityCertDAL,
         certificateAuthorityDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       }));
 
     const storedSignerCert =
@@ -995,7 +989,7 @@ export const pkiScepServiceFactory = ({
       projectId: profile.projectId,
       projectDAL,
       licenseService,
-      quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
@@ -1244,12 +1238,8 @@ export const pkiScepServiceFactory = ({
           });
         }
 
-        const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-          projectId: profile.projectId,
-          projectDAL,
-          kmsService
-        });
-        const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+        const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+        const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
         const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
 
         const issuedCertDer = Buffer.from(new x509.X509Certificate(decryptedCert).rawData);
@@ -1371,7 +1361,7 @@ export const pkiScepServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiScep) {
+    if (!plan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."
       });

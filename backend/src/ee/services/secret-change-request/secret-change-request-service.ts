@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -19,8 +21,7 @@ import {
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -81,7 +82,7 @@ export const secretChangeRequestServiceFactory = ({
   folderDAL,
   projectDAL,
   projectEnvDAL,
-  kmsService,
+  kmsDataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -105,7 +106,7 @@ export const secretChangeRequestServiceFactory = ({
     permissionService,
     folderDAL,
     projectDAL,
-    kmsService,
+    kmsDataKeyService,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -141,7 +142,7 @@ export const secretChangeRequestServiceFactory = ({
       identityDAL,
       projectDAL,
       projectEnvDAL,
-      kmsService,
+      kmsDataKeyService,
       projectSlackConfigDAL,
       projectMicrosoftTeamsConfigDAL,
       microsoftTeamsService,
@@ -527,8 +528,11 @@ export const secretChangeRequestServiceFactory = ({
       folderId: folder.id,
       commits
     });
-    const cipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const { secretManager: cipher, blindIndexer } = await prepareSecretWriteCiphers({
+      kmsDataKeyService,
+      projectId,
+      orgId: actorOrgId
+    });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
@@ -721,7 +725,7 @@ export const secretChangeRequestServiceFactory = ({
     status
   }) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval && status === RequestState.Open) {
+    if (!plan.has(PlanFeature.SecretApproval) && status === RequestState.Open) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
@@ -929,7 +933,10 @@ export const secretChangeRequestServiceFactory = ({
       : toDeletedSecretChangePolicyStub(approvalRequest, steps);
 
     const commits = await secretChangeRequestDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     return {
       ...toSecretChangeRequestBase({ approvalRequest, secretChangeRequest }),

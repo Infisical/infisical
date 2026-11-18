@@ -89,6 +89,16 @@ const SessionLogRecordsSchema = z.array(
         truncated: z.boolean().optional()
       })
       .optional()
+      .catch(undefined),
+    hook: z
+      .object({
+        decision: z.string(),
+        reason: z.string().optional(),
+        cause: z.string().optional(),
+        durationMs: z.number().optional(),
+        deliveryId: z.string().optional()
+      })
+      .optional()
       .catch(undefined)
   })
 );

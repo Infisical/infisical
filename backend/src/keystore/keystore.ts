@@ -14,11 +14,12 @@ import { TKeyValueStoreDALFactory } from "./key-value-store-dal";
 export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
-  KmsRootKeyInit: 2025,
+  // 2025 is taken by KMS Core's root key lock (KMS_LOCK_IDS in kms-core-locks.ts).
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  OrgInviteSeats: (orgId: string) => pgAdvisoryLockHashText(`org-invite-seats:${orgId}`),
   CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
@@ -28,7 +29,6 @@ export const PgSqlLock = {
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
-  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
@@ -40,10 +40,6 @@ export const PgSqlLock = {
   ClearAgentVaultPersonalValues: (projectId: string) =>
     pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
-  KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
-  KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
-  KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
-  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
   OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
@@ -78,6 +74,7 @@ export const KeyStorePrefixes = {
     `cloudflare-worker-version-mutex-${accountId}-${scriptId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
+  SignerCertificateLock: (signerId: string) => `signer-certificate-mutex-${signerId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
@@ -145,8 +142,6 @@ export const KeyStorePrefixes = {
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
 
-  KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
-
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
@@ -210,11 +205,15 @@ export const KeyStorePrefixes = {
     `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
+  // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).
+  OrgInviteDailyCount: (orgId: string, day: string) => `org-invite:daily-count:${orgId}:${day}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
+  SigningActivityTrend: (projectId: string, range: string, signerId?: string) =>
+    `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
@@ -241,24 +240,12 @@ export const KeyStorePrefixes = {
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
-  LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
-  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
-  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
-  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
   AuditLogProjectSettings: (orgId: string, projectId: string) =>
     `audit-log-settings-project-${orgId}-${projectId}` as const,
   AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
   AuditLogCollapseCount: (key: string, windowStart: string) =>
     `audit-log-collapse-count-${key}-${windowStart}` as const,
-  // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
-  LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
-  // Single-flight guard so only one background revalidation runs per org per lock window.
-  LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
-  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
-  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
-  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
-    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
   PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -329,26 +316,15 @@ export const KeyStoreTtls = {
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
-  LicenseCloudPlanInSeconds: 900, // 15 minutes
-  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
-  // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
-  LicenseCachePassThroughInSeconds: 180, // 3 minutes
-  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
-  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
-  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
-  // Throttle window for the single-flight background revalidation.
-  LicenseCacheRevalidateLockInSeconds: 10,
-  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
-  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
-  LicenseUsageLastReportedInSeconds: 604800, // 7 days
   // Short: the count drifts high as certificates expire and low when an ungated path such as a
   // discovery scan inserts rows, and only this expiry corrects either.
   PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
+  SigningActivityTrendInSeconds: 60,
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
   StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts

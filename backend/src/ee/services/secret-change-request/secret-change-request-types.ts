@@ -8,6 +8,8 @@ import {
   TSecretApprovalRequestsSecretsV2Insert,
   TSecretFolders
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
@@ -22,7 +24,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -46,7 +47,6 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSecretChangePolicyServiceFactory } from "../secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
@@ -336,12 +336,12 @@ export type TSecretChangeRequestServiceFactoryDep = {
     "findSecretChangePolicyById" | "getSecretApprovalPolicy"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "insertMany"

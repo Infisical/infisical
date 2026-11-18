@@ -1,7 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -10,8 +11,6 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -74,9 +73,9 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -92,7 +91,7 @@ export const pkiAlertV2ServiceFactory = ({
   permissionService,
   licenseService,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   notificationService,
   projectMembershipDAL,
   projectDAL,
@@ -255,7 +254,7 @@ export const pkiAlertV2ServiceFactory = ({
     const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (nonEmailChannel) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         throw new BadRequestError({
           message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
         });
@@ -288,7 +287,7 @@ export const pkiAlertV2ServiceFactory = ({
     }
 
     // Create encryptor/decryptor for webhook configs
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -351,7 +350,7 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -383,7 +382,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     const { alerts, total } = await pkiAlertV2DAL.findByProjectIdWithCount(projectId, filters);
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -446,7 +445,7 @@ export const pkiAlertV2ServiceFactory = ({
     const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (addedChannelTypes?.length) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
         const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));
         const newChannel = addedChannelTypes.find((channel) => !existingTypes.has(channel.channelType));
@@ -495,7 +494,7 @@ export const pkiAlertV2ServiceFactory = ({
     }
 
     // Create encryptor/decryptor for webhook configs
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -588,7 +587,7 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -746,7 +745,7 @@ export const pkiAlertV2ServiceFactory = ({
     const webhookEventType = alertEventTypeToWebhookEventType[eventType];
 
     // Get decryptor for channel configs
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

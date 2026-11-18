@@ -10,6 +10,7 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultHookInput } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
@@ -30,7 +31,6 @@ export type TAgentVaultInlineServiceInput = {
   tls?: { enabled?: boolean; verify?: boolean; ca?: string | null };
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
-  // Accepted only to be refused by name: an inline MCP server can't be limited to some of its tools.
   allowedTools?: string[] | null;
   credential:
     | {
@@ -51,6 +51,7 @@ export type TAgentVaultInlineServiceInput = {
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
+  hook?: TAgentVaultHookInput;
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {
@@ -75,6 +76,7 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  hook: { url: string } | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
@@ -96,20 +98,39 @@ export type TAgentVaultInlineServiceSummary = {
     })
 );
 
+/** A project service a session names, as every read returns it: only what identifies it. */
+export type TAgentVaultSessionNamedServiceSummary = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  description: string | null;
+  // The host an HTTP or MCP service matches. Null for database and SSH services, which have none.
+  hostPattern: string | null;
+  isInline: false;
+};
+
+/** A session's services as every read returns them, the ones it names and the ones sent inline, in the order sent. */
+export type TAgentVaultSessionServiceSummary =
+  | TAgentVaultSessionNamedServiceSummary
+  | (TAgentVaultInlineServiceSummary & { isInline: true });
+
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  // Leave it out for a session with services of its own only.
+  // Leave it out for a session with only the services it names or sends.
   accessBundle?: string;
-  // Inline services, which the API calls the session's services.
-  services?: TAgentVaultInlineServiceInput[];
+  // Each one the name of a project service, or a service sent inline.
+  services?: (string | TAgentVaultInlineServiceInput)[];
   /** The caller's name and email, snapshotted from the request. */
   actorName: string;
   actorEmail: string | null;
   ttl?: string;
   onBehalfOf?: TOnBehalfOfUser;
   label: string | null;
+  metadata?: Record<string, string>;
 };
+
+export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: string }>;
 
 export type TListSessionsDTO = {
   projectId: string;
@@ -119,6 +140,7 @@ export type TListSessionsDTO = {
   limit: number;
   offset: number;
   search?: string;
+  metadataFilter?: TAgentVaultSessionMetadataFilter;
 };
 
 export type TRevokeSessionDTO = {
@@ -129,8 +151,10 @@ export type TRevokeSessionDTO = {
 
 export type TGetSessionByIdDTO = TRevokeSessionDTO;
 
-export type TUpdateSessionLabelDTO = TRevokeSessionDTO & {
-  label: string | null;
+// A field left out keeps its value. Metadata replaces the whole set.
+export type TUpdateSessionDTO = TRevokeSessionDTO & {
+  label?: string | null;
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultSessionActor =

@@ -13,6 +13,9 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -64,15 +67,11 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { assertCertificateMaterialAvailable } from "@app/services/certificate/certificate-fns";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -145,7 +144,7 @@ const assertAcmeCaSupportsCustomExtensions = (caType: CaType, count: number): vo
 };
 
 type TPkiAcmeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
@@ -177,15 +176,10 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
-  >;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -215,8 +209,9 @@ export const pkiAcmeServiceFactory = ({
   acmeChallengeDAL,
   keyStore,
   licenseService,
-  usageCounterDAL,
-  kmsService,
+  certManagerService,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateV3Service,
   certificatePolicyService,
   certificateRequestService,
@@ -679,12 +674,8 @@ export const pkiAcmeServiceFactory = ({
       if (!effectiveAcmeConfig?.encryptedEabSecret) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
       }
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: profile.projectId,
-        projectDAL,
-        kmsService
-      });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
       const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
@@ -1125,7 +1116,7 @@ export const pkiAcmeServiceFactory = ({
       projectId: profile.projectId,
       projectDAL,
       licenseService,
-      quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({
@@ -1655,13 +1646,9 @@ export const pkiAcmeServiceFactory = ({
     if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({

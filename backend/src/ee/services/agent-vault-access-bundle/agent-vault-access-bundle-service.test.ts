@@ -1,11 +1,27 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultServices } from "@app/db/schemas";
-import { ConflictError } from "@app/lib/errors";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType
+} from "../agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE,
+  AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
+  AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
+} from "../agent-vault/agent-vault-hook-fns";
 import { agentVaultAccessBundleServiceFactory } from "./agent-vault-access-bundle-service";
 
 const PROJECT_ID = "project-1";
@@ -40,7 +56,23 @@ const sshService = ({ hasCertificate, secret }: { hasCertificate: boolean; secre
 });
 
 // The first read and the row locked in the transaction differ when another save committed in between.
-const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; locked: TAgentVaultServices }) => {
+const buildService = ({
+  firstRead,
+  locked,
+  hooksOnPlan = true,
+  member = false,
+  rules,
+  variableKeys = []
+}: {
+  firstRead: TAgentVaultServices;
+  locked: TAgentVaultServices;
+  hooksOnPlan?: boolean;
+  // A member reads the bundle's services but can't edit them.
+  member?: boolean;
+  // A role of its own, in place of admin or member.
+  rules?: RawRuleOf<MongoAbility>[];
+  variableKeys?: string[];
+}) => {
   const tx = {};
   const agentVaultServiceDAL = {
     findByIdInProject: vi.fn().mockResolvedValue(firstRead),
@@ -49,6 +81,16 @@ const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; l
     findByNameInProject: vi.fn().mockResolvedValue(undefined),
     findBundlesForServices: vi.fn().mockResolvedValue(new Map([[SERVICE_ID, [{ id: BUNDLE_ID, name: "infra" }]]])),
     updateById: vi.fn(async (_id: string, columns: Partial<TAgentVaultServices>) => ({ ...locked, ...columns })),
+    create: vi.fn(async (columns: Partial<TAgentVaultServices>) => ({
+      ...firstRead,
+      ...columns,
+      id: SERVICE_ID,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })),
+    insertLinks: vi.fn(),
+    findForList: vi.fn().mockResolvedValue({ services: [firstRead], totalCount: 1 }),
+    findIdsInBundles: vi.fn().mockResolvedValue([SERVICE_ID]),
     transaction: vi.fn(async (fn: (trx: unknown) => Promise<unknown>) => fn(tx))
   };
   // The advisory lock the transaction takes first.
@@ -59,7 +101,21 @@ const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; l
     updateById: vi.fn(),
     delete: vi.fn()
   });
-  const kmsService = { createCipherPairWithDataKey: vi.fn() };
+  // The "sealed" bytes are the plaintext behind a marker, so a test can read what was sealed.
+  const kmsDataKeyService = {
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({
+      encryptor: ({ plainText }: { plainText: Buffer }) => ({
+        cipherTextBlob: Buffer.concat([Buffer.from("sealed:"), plainText])
+      })
+    })
+  };
+  const licenseService = {
+    getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
+  const agentVaultVariableDAL = {
+    findKeys: vi.fn().mockResolvedValue(variableKeys.map((key) => ({ id: `variable-${key}`, key }))),
+    lockForReference: vi.fn()
+  };
   const service = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL: {
       findByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID }),
@@ -73,18 +129,33 @@ const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; l
       delete: vi.fn(),
       insertMany: vi.fn()
     },
-    agentVaultVariableDAL: { findKeys: vi.fn().mockResolvedValue([]), lockForReference: vi.fn() },
+    agentVaultVariableDAL,
     agentVaultPersonalValueDAL: { delete: vi.fn(), deleteForServiceExceptFields: vi.fn() },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
-        hasRole: () => true,
+        permission: createMongoAbility(
+          rules ??
+            (member
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                  }
+                ]
+              : [{ action: "manage", subject: "all" }])
+        ),
+        hasRole: () => !member,
         memberships: []
       })
     },
-    kmsService
+    membershipDAL: {
+      findResourceMembershipsForActor: vi.fn().mockResolvedValue([{ isActive: true, scopeResourceId: BUNDLE_ID }])
+    },
+    agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
+    kmsDataKeyService,
+    licenseService
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
-  return { service, agentVaultServiceDAL, kmsService };
+  return { service, agentVaultServiceDAL, agentVaultVariableDAL, kmsDataKeyService, licenseService };
 };
 
 const updatePort = (
@@ -169,7 +240,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
 
   test("with no concurrent save, writes no secret and replaces no credential", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
-    const { service, agentVaultServiceDAL, kmsService } = buildService({ firstRead: stored, locked: stored });
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
     const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey, certificate: null });
 
@@ -177,7 +248,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
     expect(columns).not.toHaveProperty("encryptedCredential");
     expect(columns.credentialConfig).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: false });
     expect(result.credentialReplaced).toBe(false);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 });
 
@@ -199,6 +270,7 @@ describe("updateService, the service it returns", () => {
         "port",
         "credential",
         "variableReferences",
+        "hook",
         "createdAt",
         "updatedAt"
       ].sort()
@@ -210,7 +282,7 @@ describe("updateService, the service it returns", () => {
 describe("updateService, what the audit is told changed", () => {
   test("an empty certificate with none stored writes no secret and replaces no credential", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
-    const { service, agentVaultServiceDAL, kmsService } = buildService({ firstRead: stored, locked: stored });
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
     const result = await updateSsh(service, {
       port: 2222,
@@ -219,7 +291,7 @@ describe("updateService, what the audit is told changed", () => {
 
     expect(writtenColumns(agentVaultServiceDAL)).not.toHaveProperty("encryptedCredential");
     expect(result.credentialReplaced).toBe(false);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("custom headers read back from an SSH service are not reported as changed", async () => {
@@ -229,5 +301,321 @@ describe("updateService, what the audit is told changed", () => {
     const result = await updateSsh(service, { port: 2222, customHeaders: [] });
 
     expect(result.update.customHeaders).toBeUndefined();
+  });
+});
+
+const HOOK_URL = "https://hooks.example.com/agent-vault";
+const SECRET = "s".repeat(32);
+const sealedSecret = (secret: string) =>
+  Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: secret }))]);
+const hookedService = (hookUrl: string | null = HOOK_URL, secret = "old-secret"): TAgentVaultServices => ({
+  ...sshService({ hasCertificate: false, secret: "key" }),
+  hookUrl,
+  encryptedHookSecret: hookUrl ? sealedSecret(secret) : null
+});
+const plainService = () => hookedService(null);
+
+describe("updateService, hooks", () => {
+  test("sets a hook on a service with none", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const result = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } });
+
+    const columns = writtenColumns(agentVaultServiceDAL);
+    expect(columns.hookUrl).toBe(HOOK_URL);
+    expect(columns.encryptedHookSecret).toEqual(sealedSecret(SECRET));
+    expect(result.update).toMatchObject({ hookChanged: "set", hookUrl: HOOK_URL, hookSecretReplaced: true });
+    expect(result.service.hook).toEqual({ url: HOOK_URL });
+    expect(JSON.stringify(result)).not.toContain(SECRET);
+  });
+
+  test("a URL-only change keeps the stored secret", async () => {
+    const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({
+      firstRead: hookedService(),
+      locked: hookedService()
+    });
+
+    const result = await updateSsh(service, { hook: { url: "https://hooks.example.com/other" } });
+
+    const columns = writtenColumns(agentVaultServiceDAL);
+    expect(columns.hookUrl).toBe("https://hooks.example.com/other");
+    expect(columns).not.toHaveProperty("encryptedHookSecret");
+    expect(result.update).toMatchObject({
+      hookChanged: "updated",
+      hookUrl: "https://hooks.example.com/other",
+      hookSecretReplaced: false
+    });
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+
+  test("a secret-only change writes the secret and reports no URL", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+
+    const result = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } });
+
+    expect(writtenColumns(agentVaultServiceDAL).encryptedHookSecret).toEqual(sealedSecret(SECRET));
+    expect(result.update.hookUrl).toBeUndefined();
+    expect(result.update).toMatchObject({ hookChanged: "updated", hookSecretReplaced: true });
+  });
+
+  test("null removes the hook and its secret", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+
+    const result = await updateSsh(service, { hook: null });
+
+    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({ hookUrl: null, encryptedHookSecret: null });
+    expect(result.update).toMatchObject({ hookChanged: "removed", hookSecretReplaced: false });
+    expect(result.service.hook).toBeNull();
+  });
+
+  test("an echo of the stored hook is not an update on its own, and checks no plan", async () => {
+    const { service, agentVaultServiceDAL, licenseService } = buildService({
+      firstRead: hookedService(),
+      locked: hookedService()
+    });
+
+    await expect(updateSsh(service, { hook: { url: HOOK_URL } })).rejects.toThrow(
+      "Provide at least one field besides 'type' to update"
+    );
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+  });
+
+  test("null on a service with no hook writes no hook columns and reports nothing", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const result = await updateSsh(service, { port: 2222, hook: null });
+
+    const columns = writtenColumns(agentVaultServiceDAL);
+    expect(columns).not.toHaveProperty("hookUrl");
+    expect(columns).not.toHaveProperty("encryptedHookSecret");
+    expect(result.update).not.toHaveProperty("hookChanged");
+    expect(result.update).not.toHaveProperty("hookSecretReplaced");
+  });
+
+  test("setting a hook without a secret is refused", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const error = await updateSsh(service, { hook: { url: HOOK_URL } }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as Error).message).toBe(AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("with hooks off the plan, setting or changing one is refused and removing one is allowed", async () => {
+    const off = (stored: TAgentVaultServices) =>
+      buildService({ firstRead: stored, locked: stored, hooksOnPlan: false });
+
+    await expect(
+      updateSsh(off(plainService()).service, { hook: { url: HOOK_URL, signingSecret: SECRET } })
+    ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+    await expect(
+      updateSsh(off(hookedService()).service, { hook: { url: "https://hooks.example.com/other" } })
+    ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+
+    const removal = off(hookedService());
+    const result = await updateSsh(removal.service, { hook: null });
+    expect(result.update.hookChanged).toBe("removed");
+    expect(removal.licenseService.getPlan).not.toHaveBeenCalled();
+  });
+
+  test("refuses to set a hook another save set while this one was in progress", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: hookedService() });
+
+    const error = await updateSsh(service, { hook: { url: HOOK_URL, signingSecret: SECRET } }).catch(
+      (err: unknown) => err
+    );
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe(AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    { why: "change", hook: { url: "https://hooks.example.com/other" } },
+    { why: "remove", hook: null }
+  ])("refuses to $why a hook another save removed while this one was in progress", async ({ hook }) => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: plainService() });
+
+    await expect(updateSsh(service, { hook })).rejects.toThrow(AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("a hook-only update reaches the row", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: hookedService(), locked: hookedService() });
+
+    await updateSsh(service, { hook: { url: "https://hooks.example.com/other" } });
+
+    expect(agentVaultServiceDAL.updateById).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("createService, hooks", () => {
+  const create = (service: ReturnType<typeof buildService>["service"]) =>
+    service.createService({
+      projectId: PROJECT_ID,
+      ctx,
+      type: AgentVaultServiceType.Ssh,
+      name: "bastion",
+      host: "bastion.internal",
+      port: 22,
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" },
+      hook: { url: HOOK_URL, signingSecret: SECRET }
+    });
+
+  test("stores the URL and the sealed secret, and returns only the URL", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const result = await create(service);
+
+    const columns = agentVaultServiceDAL.create.mock.calls[0][0];
+    expect(columns.hookUrl).toBe(HOOK_URL);
+    expect(columns.encryptedHookSecret).toEqual(sealedSecret(SECRET));
+    expect(result.service.hook).toEqual({ url: HOOK_URL });
+    expect(JSON.stringify(result)).not.toContain(SECRET);
+  });
+
+  test("is refused with hooks off the plan", async () => {
+    const { service, agentVaultServiceDAL } = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      hooksOnPlan: false
+    });
+
+    await expect(create(service)).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+    expect(agentVaultServiceDAL.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("service reads, hooks", () => {
+  test("an admin sees the hook's URL and a member doesn't see the hook", async () => {
+    const admin = buildService({ firstRead: hookedService(), locked: hookedService() });
+    expect(
+      (await admin.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).service.hook
+    ).toEqual({ url: HOOK_URL });
+    expect(
+      (await admin.service.listServices({ projectId: PROJECT_ID, ctx, limit: 50, offset: 0 })).services[0].hook
+    ).toEqual({
+      url: HOOK_URL
+    });
+
+    const member = buildService({ firstRead: hookedService(), locked: hookedService(), member: true });
+    const read = await member.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+    expect(read.service.hook).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(read.service))).not.toHaveProperty("hook");
+    const list = await member.service.listServices({ projectId: PROJECT_ID, ctx, limit: 50, offset: 0 });
+    expect(list.services[0].hook).toBeUndefined();
+  });
+});
+
+describe("global variable references", () => {
+  const bundleEditor = [
+    {
+      action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    }
+  ];
+  const withReadValue = [
+    ...bundleEditor,
+    {
+      action: ProjectPermissionAgentVaultVariableActions.ReadValue,
+      subject: ProjectPermissionSub.AgentVaultVariables
+    }
+  ];
+  const create = (service: ReturnType<typeof buildService>["service"], password: string) =>
+    service.createService({
+      projectId: PROJECT_ID,
+      ctx,
+      type: AgentVaultServiceType.Ssh,
+      name: "bastion",
+      host: "bastion.internal",
+      port: 22,
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password }
+    });
+
+  test.each(["{{DB_PASSWORD}}", "{{NOT_DEFINED}}"])(
+    "a bundle editor without read-value can't save %s, and the key is never looked up",
+    async (password) => {
+      const built = buildService({
+        firstRead: plainService(),
+        locked: plainService(),
+        rules: bundleEditor,
+        variableKeys: ["DB_PASSWORD"]
+      });
+
+      await expect(create(built.service, password)).rejects.toBeInstanceOf(ForbiddenError);
+      expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
+      expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+    }
+  );
+
+  test("a bundle editor without read-value can save a value that names no variable", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService(), rules: bundleEditor });
+
+    await create(built.service, "plain-password");
+    expect(built.agentVaultServiceDAL.create).toHaveBeenCalled();
+  });
+
+  test("with read-value, a reference is checked and stored", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: withReadValue,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await create(built.service, "{{DB_PASSWORD}}");
+    expect(built.agentVaultServiceDAL.create).toHaveBeenCalled();
+    await expect(create(built.service, "{{NOT_DEFINED}}")).rejects.toThrow("no global variable named 'NOT_DEFINED'");
+  });
+
+  test("an update that sends no new text needs no read-value", async () => {
+    const built = buildService({
+      firstRead: sshService({ hasCertificate: false, secret: "key" }),
+      locked: sshService({ hasCertificate: false, secret: "key" }),
+      rules: bundleEditor
+    });
+
+    await updatePort(built.service, undefined);
+    expect(built.agentVaultServiceDAL.updateById).toHaveBeenCalled();
+  });
+
+  test("an update that types a reference needs read-value", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: bundleEditor,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await expect(
+      updatePort(built.service, {
+        type: AgentVaultCredentialType.Basic,
+        username: "agent",
+        password: "{{DB_PASSWORD}}"
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(built.agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("loading an MCP server's tools with a typed reference needs read-value", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: bundleEditor,
+      variableKeys: ["DB_PASSWORD"]
+    });
+
+    await expect(
+      built.service.listMcpTools({
+        projectId: PROJECT_ID,
+        ctx,
+        serverUrl: "https://mcp.example.com/mcp",
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        credential: { type: AgentVaultCredentialType.Bearer, value: "{{DB_PASSWORD}}" }
+      })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
   });
 });

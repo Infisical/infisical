@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretStatusChangeMetric,
@@ -76,7 +77,7 @@ const createService = ({ revocationFailing = false } = {}) => {
       unsetLeaseRevocation: vi.fn(async () => undefined),
       queueFailedRevocation: vi.fn(async () => undefined)
     } as never,
-    licenseService: { getPlan: vi.fn(async () => ({ dynamicSecret: true })) } as never,
+    licenseService: new FakeLicenseService().setPlan("org-1", { dynamicSecret: true }),
     folderDAL: { findBySecretPath: vi.fn(async () => ({ id: "folder-1", envId: "env-1" })) } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
@@ -84,7 +85,7 @@ const createService = ({ revocationFailing = false } = {}) => {
       }))
     } as never,
     projectDAL: { findProjectBySlug: vi.fn(async () => ({ id: "project-1" })) } as never,
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("") }),
         decryptor: () => Buffer.from("{}")

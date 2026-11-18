@@ -2,7 +2,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -20,8 +21,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
@@ -50,11 +49,11 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
@@ -69,7 +68,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   licenseService,
-  kmsService,
+  kmsDataKeyService,
   userDAL,
   identityDAL,
   secretValidationRuleService
@@ -107,7 +106,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
@@ -141,7 +140,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -275,13 +274,13 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
@@ -380,7 +379,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

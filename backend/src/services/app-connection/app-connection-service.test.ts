@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   ProjectPermissionAppConnectionActions,
@@ -51,13 +52,13 @@ const buildService = (
       }))
     },
     projectDAL: { findProjectById: vi.fn(async (id: string) => ({ id, type: "cert-manager" })) },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       }))
     },
     permissionService,
-    licenseService: { getPlan: vi.fn(async () => ({})) }
+    licenseService: new FakeLicenseService()
   };
 
   const deps = new Proxy(overrides, {

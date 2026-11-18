@@ -23,6 +23,7 @@ export enum SecretSync {
   CloudflarePages = "cloudflare-pages",
   CloudflareWorkers = "cloudflare-workers",
   CloudflareSecretsStore = "cloudflare-secrets-store",
+  Convex = "convex",
   Supabase = "supabase",
   Zabbix = "zabbix",
   Railway = "railway",

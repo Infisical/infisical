@@ -17,6 +17,16 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -25,7 +35,6 @@ import {
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
@@ -68,8 +77,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -80,8 +87,8 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { resolveCurrentCertificateStatus } from "../certificate/certificate-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -150,6 +157,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  organizationsProjectsService: TOrganizationsProjectsService;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -192,28 +200,20 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    | "updateProjectSecretManagerKmsKey"
-    | "getProjectKeyBackup"
-    | "loadProjectKeyBackup"
-    | "getKmsById"
-    | "getProjectSecretManagerKmsKeyId"
-    | "deleteInternalKms"
-    | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectAccessRequestDAL: Pick<
     TProjectAccessRequestDALFactory,
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
@@ -240,6 +240,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
+  organizationsProjectsService,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -249,6 +250,7 @@ export const projectServiceFactory = ({
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
+  usageMeteringService,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
@@ -256,7 +258,8 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   pkiSubscriberDAL,
   keyStore,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
@@ -272,7 +275,6 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL,
   projectAccessRequestDAL,
-  usageMeteringService,
   honeyTokenCleanupService,
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
@@ -338,17 +340,19 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
-    // Read before the transaction: a plan cache miss queries on its own connection.
+    // Before the transaction: a plan cache miss calls the License Server.
     const plan = await licenseService.getPlan(organization.id);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
-      // Check workspace limit inside the transaction after acquiring the lock
-      // We count directly from the database to get the accurate count, not the cached plan value
-      if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
-        if (currentProjectCount >= plan.workspaceLimit) {
+      // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
+      // together, and an import creating many projects in one transaction counts the ones it already made.
+      if (plan.isLimited(PlanLimit.Projects) && type === ProjectType.SecretManager) {
+        const currentProjectCount = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountWorkspaces(organization.id);
+        if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
@@ -373,7 +377,7 @@ export const projectServiceFactory = ({
           throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
         }
 
-        const kms = await kmsService.getKmsById(kmsKeyId, tx);
+        const kms = await kmsKeyService.within(sealKnexTransaction(tx)).getKmsById(kmsKeyId);
 
         if (kms.orgId !== organization.id) {
           throw new ForbiddenRequestError({
@@ -799,10 +803,6 @@ export const projectServiceFactory = ({
         );
       }
 
-      // no need to invalidate if there was no limit
-      if (plan.workspaceLimit) {
-        await licenseService.invalidateGetPlan(organization.id);
-      }
       return {
         ...project,
         environments: envs,
@@ -828,13 +828,11 @@ export const projectServiceFactory = ({
       };
     });
 
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-    // A new project seeds its creator (plus any template members/identities); emit so a new
-    // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
-    // the just-committed row; the counter filters by project type.
-    usageMeteringService.emit(results.orgId, SecretIdentities.key);
-    usageMeteringService.emit(results.orgId, PamIdentities.key);
-    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
+    // The plan caches the project count, so drop it after commit (the caller's commit, if it passed a tx).
+    if (!trx) await licenseService.invalidatePlan(actorOrgId);
+    // New projects seed members, so re-meter seats. The counters filter by project type.
+    usageMeteringService.emit(results.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(results.orgId, Meter.PamIdentities);
     return results;
   };
 
@@ -943,15 +941,13 @@ export const projectServiceFactory = ({
         throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
       }
 
-      // refresh the cached plan so the freed workspace slot is reflected immediately
-      // (countOfOrgProjects now excludes soft-deleted projects)
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+      // The plan caches the project count, which leaves out soft-deleted projects, so drop it.
+      await licenseService.invalidatePlan(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      usageMeteringService.emit(project.orgId, SecretIdentities.key);
-      usageMeteringService.emit(project.orgId, PamIdentities.key);
-      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1038,16 +1034,15 @@ export const projectServiceFactory = ({
 
       let restoredProject: TProjects;
       try {
-        // Read before the transaction: a plan cache miss queries on its own connection.
         const plan = await licenseService.getPlan(project.orgId);
 
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
         // exceed them.
-        if (plan.honeyTokenLimit !== null) {
+        if (plan.isLimited(PlanLimit.HoneyTokens)) {
           const projectHoneyTokenCount = await honeyTokenDAL.countByProjectIdIncludingDeletedEnvironments(project.id);
           if (
             projectHoneyTokenCount &&
-            (await honeyTokenDAL.countByOrgId(project.orgId)) + projectHoneyTokenCount > plan.honeyTokenLimit
+            plan.exceeds(PlanLimit.HoneyTokens, await honeyTokenDAL.countByOrgId(project.orgId), projectHoneyTokenCount)
           ) {
             throw new BadRequestError({
               message:
@@ -1056,11 +1051,11 @@ export const projectServiceFactory = ({
           }
         }
 
-        if (typeof plan.secretSyncLimit === "number") {
+        if (plan.isLimited(PlanLimit.SecretSyncs)) {
           const projectSecretSyncCount = await secretSyncDAL.countByProjectId(project.id);
           if (
             projectSecretSyncCount &&
-            (await secretSyncDAL.countByOrgId(project.orgId)) + projectSecretSyncCount > plan.secretSyncLimit
+            plan.exceeds(PlanLimit.SecretSyncs, await secretSyncDAL.countByOrgId(project.orgId), projectSecretSyncCount)
           ) {
             throw new BadRequestError({
               message:
@@ -1070,11 +1065,11 @@ export const projectServiceFactory = ({
         }
 
         const restored = await projectDAL.transaction(async (tx) => {
-          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
-
-          if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-            const currentProjectCount = await projectDAL.countOfBillableOrgProjects(project.orgId, tx);
-            if (currentProjectCount >= plan.workspaceLimit) {
+          if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
+            const currentProjectCount = await organizationsProjectsService
+              .within(sealKnexTransaction(tx))
+              .lockAndCountWorkspaces(project.orgId);
+            if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
               throw new BadRequestError({
                 message:
                   "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
@@ -1099,12 +1094,11 @@ export const projectServiceFactory = ({
         throw error;
       }
 
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
+      await licenseService.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
-      usageMeteringService.emit(project.orgId, SecretIdentities.key);
-      usageMeteringService.emit(project.orgId, PamIdentities.key);
-      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
       return restoredProject;
     } finally {
       await lock.release();
@@ -1304,7 +1298,7 @@ export const projectServiceFactory = ({
 
       const plan = await licenseService.getPlan(project.orgId);
 
-      if (!plan.auditLogs) {
+      if (!plan.has(PlanFeature.AuditLogs)) {
         throw new BadRequestError({
           message:
             "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
@@ -1467,7 +1461,7 @@ export const projectServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
+    if (!plan.has(PlanFeature.AuditLogs) || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -1678,6 +1672,9 @@ export const projectServiceFactory = ({
     applicationIds,
     sortBy,
     sortOrder,
+    sortByCurrentStatus,
+    statusAt,
+    excludeFriendlyNameFromSearch,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1728,6 +1725,7 @@ export const projectServiceFactory = ({
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName }),
       ...(search && { search }),
+      ...(search && excludeFriendlyNameFromSearch && { excludeFriendlyNameFromSearch }),
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
@@ -1780,18 +1778,38 @@ export const projectServiceFactory = ({
           {
             offset,
             limit,
-            sort: [[validatedSortBy, validatedSortOrder]]
+            sort: [[validatedSortBy, validatedSortOrder]],
+            sortByCurrentStatus,
+            statusAt
           },
           permissionFilters
         );
 
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
-      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters, statusAt);
 
     return {
       certificates,
       totalCount: count
+    };
+  };
+
+  const searchCertificatesWithCurrentStatus = async (
+    dto: Omit<TListProjectCertsDTO, "sortByCurrentStatus" | "statusAt">
+  ) => {
+    const statusAt = new Date();
+    const { certificates, totalCount } = await listProjectCertificates({
+      ...dto,
+      sortByCurrentStatus: true,
+      statusAt
+    });
+    return {
+      certificates: certificates.map((certificate) => ({
+        ...certificate,
+        status: resolveCurrentCertificateStatus(certificate, statusAt)
+      })),
+      totalCount
     };
   };
 
@@ -2038,7 +2056,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey({
+    const secretManagerKmsKey = await kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId,
       kms
     });
@@ -2067,13 +2085,13 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
     }
 
-    const kmsBackup = await kmsService.getProjectKeyBackup(projectId);
+    const kmsBackup = await kmsDataKeyService.getProjectKeyBackup(projectId);
     return kmsBackup;
   };
 
@@ -2097,13 +2115,13 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
     }
 
-    const kmsBackup = await kmsService.loadProjectKeyBackup(projectId, backup);
+    const kmsBackup = await kmsDataKeyService.loadProjectKeyBackup(projectId, backup);
     return kmsBackup;
   };
 
@@ -2117,8 +2135,8 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId, undefined, true);
-    const kmsKey = await kmsService.getKmsById(kmsKeyId);
+    const kmsKeyId = await kmsDataKeyService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsKeyService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
   };
@@ -2665,6 +2683,7 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    searchCertificatesWithCurrentStatus,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend,

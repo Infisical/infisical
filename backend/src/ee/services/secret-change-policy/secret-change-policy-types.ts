@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TProjectEnvironments, TSecretApprovalPolicies } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import {
@@ -17,7 +18,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretChangePolicyDALFactory } from "./secret-change-policy-dal";
 
 export type TCreateSapDTO = {
@@ -123,5 +123,5 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };

@@ -1,4 +1,4 @@
-export const dynamicSecretCategories = ['All', 'Databases', 'Cloud Providers', 'Message Queues', 'Caches', 'Directory Services', 'CI/CD', 'Container Orchestration', 'Authentication'];
+export const dynamicSecretCategories = ['All', 'Databases', 'Cloud Providers', 'Message Queues', 'Caches', 'Directory Services', 'CI/CD', 'Container Orchestration', 'Authentication', 'AI & LLM'];
 
 export const dynamicSecrets = [
   {"name": "AWS IAM", "slug": "aws-iam", "path": "/documentation/platform/dynamic-secrets/aws-iam", "description": "Learn how to generate dynamic AWS IAM credentials on-demand.", "category": "Cloud Providers"},
@@ -33,4 +33,5 @@ export const dynamicSecrets = [
   {"name": "Tailscale", "slug": "tailscale", "path": "/documentation/platform/dynamic-secrets/tailscale", "description": "Learn how to generate dynamic Tailscale credentials on-demand.", "category": "Authentication"},
   {"name": "SSH", "slug": "ssh", "path": "/documentation/platform/dynamic-secrets/ssh", "description": "Learn how to generate dynamic SSH credentials on-demand.", "category": "Authentication"},
   {"name": "OAuth 2.0", "slug": "oauth2", "path": "/documentation/platform/dynamic-secrets/oauth2", "description": "Learn how to issue short-lived OAuth 2.0 access tokens on-demand.", "category": "Authentication"},
+  {"name": "OpenRouter", "slug": "openrouter", "path": "/documentation/platform/dynamic-secrets/openrouter", "description": "Learn how to issue short-lived OpenRouter API keys on-demand.", "category": "AI & LLM"},
 ];

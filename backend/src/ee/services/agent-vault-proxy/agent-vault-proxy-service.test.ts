@@ -1,11 +1,13 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
-  ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
+import { ConflictError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
@@ -34,6 +36,7 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   id: SERVICE_ID,
   name: "linear",
   description: null,
+  accessBundleId: "bundle-1",
   accessBundleName: "bundle",
   type: AgentVaultServiceType.Mcp,
   hostPattern: "mcp.linear.app",
@@ -49,8 +52,18 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   allowedPathPrefixes: null,
   allowedTools: null,
   memberProvidedFields: null,
+  hookUrl: null,
+  encryptedHookSecret: null,
   position: 0,
   ...overrides
+});
+
+const agentVaultAccess = (freeLimitReached = false) => ({
+  assertCanBroker: vi.fn(async () => {
+    if (freeLimitReached) {
+      throw new RuleViolationError({ name: "AgentVaultFreeLimitReached", message: "free limit reached" });
+    }
+  })
 });
 
 const sessionLogConfig = {
@@ -73,6 +86,8 @@ const setup = (
     label = null,
     onlyOnPrimary = false,
     personalRows = [],
+    session = {},
+    freeLimitReached = false,
     proxy = {
       projectId: PROJECT_ID,
       orgId: "org-1",
@@ -87,7 +102,9 @@ const setup = (
     label?: string | null;
     // The session was minted a moment ago and hasn't reached the replica.
     onlyOnPrimary?: boolean;
+    freeLimitReached?: boolean;
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
+    session?: Record<string, unknown>;
     proxy?: {
       projectId: string;
       orgId: string;
@@ -114,13 +131,15 @@ const setup = (
     userId: "user-1",
     revokedAt,
     expiresAt: null,
-    label
+    label,
+    ...session
   };
   const findSession = async () => (onlyOnPrimary ? undefined : sessionRow) as never;
   const findSessionOnPrimary = vi.fn(async () => sessionRow as never);
   const createCipherPairWithDataKey = vi.fn(
     async () => ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
   );
+  const agentVaultAccessService = agentVaultAccess(freeLimitReached);
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => proxy,
@@ -152,18 +171,16 @@ const setup = (
     permissionService: {
       getProjectPermission: async () =>
         ({
-          permission: createMongoAbility([
-            {
-              action: ProjectPermissionAgentVaultSessionActions.Read,
-              subject: ProjectPermissionSub.AgentVaultSessions
-            }
-          ]),
+          permission: createMongoAbility(
+            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+          ),
           hasRole: () => isOwnerAdmin,
           memberships: []
         }) as never
     },
-    kmsService: { createCipherPairWithDataKey },
-    licenseService: {} as never,
+    kmsDataKeyService: { createCipherPairWithDataKey } as never,
+    licenseService: new FakeLicenseService(),
+    agentVaultAccessService,
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -180,7 +197,8 @@ const setup = (
     findResolvableServices,
     findReachableBundles,
     createCipherPairWithDataKey,
-    findCaFingerprintsByProjectId
+    findCaFingerprintsByProjectId,
+    agentVaultAccessService
   };
 };
 
@@ -219,6 +237,54 @@ describe("credential refresh", () => {
       refreshed
     );
     expect(refreshServiceToken.mock.calls[0][0].destination).toEqual({ hostPattern: "mcp.linear.app" });
+  });
+});
+
+describe("an org past its free Agent Vault requests", () => {
+  test("resolve refuses with AgentVaultFreeLimitReached and hands out no credential", async () => {
+    const { service, refreshServiceToken, createCipherPairWithDataKey } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true
+    });
+    const result = service.resolveSession({
+      proxyId: "proxy-1",
+      orgId: "org-1",
+      sessionToken: "token",
+      hasSessionLogKey: false
+    });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+    expect(createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+
+  test("credential refresh refuses before refreshing", async () => {
+    const { service, refreshServiceToken } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
+    const result = service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+  });
+
+  test("the heartbeat never checks the free limit, so the proxy keeps running", async () => {
+    const { service, recordHeartbeat, agentVaultAccessService } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true
+    });
+    await service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 });
+    expect(recordHeartbeat).toHaveBeenCalled();
+    expect(agentVaultAccessService.assertCanBroker).not.toHaveBeenCalled();
+  });
+
+  test("a session the proxy doesn't own is a 404, not the free limit refusal", async () => {
+    const { service, agentVaultAccessService } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true,
+      proxy: { projectId: "other-project", orgId: "org-1", pollInterval: 60, name: "theirs", trafficPolicy: "any-host" }
+    });
+    const result = service.resolveSession({
+      proxyId: "proxy-1",
+      orgId: "org-1",
+      sessionToken: "token",
+      hasSessionLogKey: false
+    });
+    await expect(result).rejects.toThrow(NotFoundError);
+    expect(agentVaultAccessService.assertCanBroker).not.toHaveBeenCalled();
   });
 });
 
@@ -555,22 +621,22 @@ describe("resolve for a session on a user's behalf", () => {
               message: "Not a member of the project"
             });
           }
-          const read = {
-            action: ProjectPermissionAgentVaultSessionActions.Read,
-            subject: ProjectPermissionSub.AgentVaultSessions
-          };
+          const roleRules = actor(actorId).isAdmin
+            ? agentVaultProjectAdminPermissions
+            : agentVaultProjectMemberPermissions;
           return {
-            permission: createMongoAbility(actor(actorId).canRead === false ? [] : [read]),
+            permission: createMongoAbility(actor(actorId).canRead === false ? [] : roleRules),
             hasRole: () => Boolean(actor(actorId).isAdmin),
             memberships: []
           } as never;
         }
       },
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: async () =>
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
-      },
-      licenseService: {} as never,
+      } as never,
+      licenseService: new FakeLicenseService(),
+      agentVaultAccessService: agentVaultAccess(),
       resourceAuthMethodService: {} as never,
       agentVaultOauthService: {
         refreshServiceToken: vi.fn() as never,
@@ -763,6 +829,105 @@ describe("resolve with inline services", () => {
     const sealed = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
     await resolve(sealed.service);
     expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  test("an inline service sends its hook with no bundle id, and a pass-through one with only a hook is sealed", async () => {
+    const hooked = inlineRow({
+      credentialType: AgentVaultCredentialType.Passthrough,
+      credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+      encryptedCredential: null,
+      hookUrl: "https://hooks.example.com/agent-vault",
+      encryptedHookSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) }))
+    });
+    const { service, createCipherPairWithDataKey } = setup(noRefresh, [], [], { inlineRows: [hooked] });
+    const { services } = await resolve(service);
+    expect(services).toHaveLength(1);
+    expect(services[0]).toMatchObject({
+      accessBundleId: null,
+      hook: { url: "https://hooks.example.com/agent-vault", secret: "s".repeat(32) }
+    });
+    expect(createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  test("leaves out an inline service whose hook lost its secret when the session ended", async () => {
+    const { service } = setup(noRefresh, [], [], {
+      inlineRows: [
+        inlineRow({
+          credentialType: AgentVaultCredentialType.Passthrough,
+          credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+          encryptedCredential: null,
+          hookUrl: "https://hooks.example.com/agent-vault",
+          encryptedHookSecret: null,
+          secretsDeletedAt: new Date()
+        })
+      ]
+    });
+    expect((await resolve(service)).services).toHaveLength(0);
+  });
+});
+
+describe("hooks on resolve", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+  const noRefresh = async () => {
+    throw new Error("nothing here needs a refresh");
+  };
+  const hookedRow = serviceRow({
+    name: "stripe",
+    type: AgentVaultServiceType.Http,
+    hostPattern: "api.stripe.com",
+    config: {},
+    credentialType: AgentVaultCredentialType.Passthrough,
+    credentialConfig: {},
+    encryptedCredential: null,
+    hookUrl: "https://hooks.example.com/agent-vault",
+    // The test's decryptor hands the sealed bytes back as they are.
+    encryptedHookSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) }))
+  });
+
+  test("a bundle service sends its hook with the secret and its bundle's id", async () => {
+    const { service, createCipherPairWithDataKey } = setup(noRefresh, [hookedRow]);
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({
+      accessBundleId: "bundle-1",
+      hook: { url: "https://hooks.example.com/agent-vault", secret: "s".repeat(32) }
+    });
+    // A pass-through service with a hook still has something sealed.
+    expect(createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  test("a service without a hook sends null", async () => {
+    const { service } = setup(noRefresh, [{ ...hookedRow, hookUrl: null, encryptedHookSecret: null }]);
+    const { services } = await resolve(service);
+    expect(services[0].hook).toBeNull();
+  });
+
+  test("the session names a machine identity actor when an older row has no actorType", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      label: "Nightly refunds",
+      session: {
+        userId: null,
+        identityId: "identity-1",
+        actorType: null,
+        actorName: "support-agent",
+        actorEmail: null
+      }
+    });
+    const { session } = await resolve(service);
+    expect(session).toEqual({
+      label: "Nightly refunds",
+      actor: { type: "machineIdentity", id: "identity-1", name: "support-agent", email: null },
+      onBehalfOf: null
+    });
+  });
+
+  test("the session names a user actor, and no one it acts for without a name", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { actorType: null, actorName: "Ana Silva", actorEmail: "ana@acme.com", onBehalfOfUserId: "user-2" }
+    });
+    const { session } = await resolve(service);
+    expect(session.actor).toEqual({ type: "user", id: "user-1", name: "Ana Silva", email: "ana@acme.com" });
+    expect(session.onBehalfOf).toBeNull();
   });
 });
 

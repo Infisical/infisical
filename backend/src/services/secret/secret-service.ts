@@ -14,9 +14,10 @@ import {
   SecretType,
   TableName
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission,
@@ -47,8 +48,6 @@ import {
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -134,11 +133,11 @@ type TSecretServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "generateSecretApprovalRequestV2Bridge">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -166,7 +165,7 @@ export const secretServiceFactory = ({
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
-  kmsService,
+  kmsDataKeyService,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   orgDAL,
@@ -1361,7 +1360,7 @@ export const secretServiceFactory = ({
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (!plan.secretAccessInsights) {
+    if (!plan.has(PlanFeature.SecretAccessInsights)) {
       throw new BadRequestError({
         message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."
       });
@@ -3387,7 +3386,7 @@ export const secretServiceFactory = ({
       }
     }
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

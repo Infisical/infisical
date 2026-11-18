@@ -33,7 +33,6 @@ import { UserProjectRow } from "./UserProjectRow";
 
 type Props = {
   membershipId: string;
-  username: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeUserFromProject", "addUserToProduct"]>,
     data?: object
@@ -53,12 +52,7 @@ export const getUserProjectsFirstPageParams = (): TListActorProjectMembershipsPa
   orderDirection: OrderByDirection.ASC
 });
 
-export const UserProjectsTable = ({
-  membershipId,
-  username,
-  handlePopUpOpen,
-  canAddToProduct
-}: Props) => {
+export const UserProjectsTable = ({ membershipId, handlePopUpOpen, canAddToProduct }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {
@@ -180,11 +174,7 @@ export const UserProjectsTable = ({
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
-                  onClick={() =>
-                    handlePopUpOpen("addUserToProduct", {
-                      username
-                    })
-                  }
+                  onClick={() => handlePopUpOpen("addUserToProduct")}
                 >
                   <PlusIcon />
                   Add to Product

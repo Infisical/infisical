@@ -2,13 +2,14 @@ import net from "node:net";
 
 import type WebSocket from "ws";
 
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
-import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
+import { outputMaskingGatewayOptions, resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -18,8 +19,6 @@ import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
@@ -86,7 +85,7 @@ type TPamWebAccessServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "runWithPoolFailover" | "assertGatewayBindingInOrg"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
@@ -126,7 +125,7 @@ export const pamWebAccessServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   gatewayPoolService,
-  kmsService,
+  kmsDataKeyService,
   userDAL,
   mfaSessionService,
   orgDAL,
@@ -135,7 +134,10 @@ export const pamWebAccessServiceFactory = ({
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
@@ -544,7 +546,8 @@ export const pamWebAccessServiceFactory = ({
       });
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,
-        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+        ...outputMaskingGatewayOptions(account)
       });
       if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this account" });
@@ -609,7 +612,8 @@ export const pamWebAccessServiceFactory = ({
       const attempt = await gatewayPoolService.runWithPoolFailover(
         {
           gatewayId: account.gatewayId ?? account.templateGatewayId,
-          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+          ...outputMaskingGatewayOptions(account)
         },
         async (gatewayId) => {
           const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({

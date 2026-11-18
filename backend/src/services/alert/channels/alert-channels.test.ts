@@ -3,7 +3,8 @@ import { validateHeaderValue } from "node:http";
 import { render } from "@react-email/components";
 import React from "react";
 
-import { safeRequest } from "@app/lib/validator";
+import { BadRequestError } from "@app/lib/errors";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
 import { AlertNotificationTemplate } from "@app/services/smtp/emails/AlertNotificationTemplate";
 
 import {
@@ -31,6 +32,12 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
 }));
+
+const { configState } = vi.hoisted(() => ({
+  configState: { isCloud: false, ALERT_WEBHOOK_ALLOW_HTTP: false, ALERT_WEBHOOK_ALLOW_INTERNAL_IP: false }
+}));
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => configState }));
 
 vi.mock("@app/lib/validator", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/validator")>()),
@@ -500,6 +507,76 @@ describe("sendWebhookNotification", () => {
       authHeaderValue: "k"
     });
     expect(header?.headers).toMatchObject({ "X-API-Key": "k" });
+  });
+});
+
+describe("webhook alert self-hosting flags", () => {
+  beforeEach(() => {
+    configState.isCloud = false;
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = false;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = false;
+  });
+
+  const schemeError = (url: string) =>
+    WebhookChannelConfigSchema.safeParse({ url }).error?.issues.map((issue) => issue.message);
+
+  test("refuses HTTP by default and names the flag on self-hosted", () => {
+    expect(schemeError("http://example.com/hook")).toEqual([expect.stringContaining("'ALERT_WEBHOOK_ALLOW_HTTP'")]);
+  });
+
+  test("refuses HTTP on Cloud without mentioning environment variables", () => {
+    configState.isCloud = true;
+    expect(schemeError("http://example.com/hook")).toEqual(["Webhook URL must use HTTPS."]);
+  });
+
+  test("accepts HTTP with ALERT_WEBHOOK_ALLOW_HTTP, but no other scheme", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    expect(WebhookChannelConfigSchema.safeParse({ url: "http://example.com/hook" }).success).toBe(true);
+    expect(WebhookChannelConfigSchema.safeParse({ url: "ftp://example.com/hook" }).success).toBe(false);
+  });
+
+  test("leaves Slack strict with both flags on", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "http://hooks.slack.com/services/T/B/x" }).success).toBe(
+      false
+    );
+  });
+
+  test("passes ALERT_WEBHOOK_ALLOW_INTERNAL_IP to the request", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook" } });
+    expect(post.mock.calls[0][2]).toMatchObject({ allowPrivateIps: true });
+  });
+
+  test("names ALERT_WEBHOOK_ALLOW_INTERNAL_IP when a private address is refused on self-hosted", async () => {
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow(/'ALERT_WEBHOOK_ALLOW_INTERNAL_IP'/);
+  });
+
+  test("does not mention environment variables for a refused private address on Cloud", async () => {
+    configState.isCloud = true;
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow("Webhook URL points to a private or local address, which is not allowed.");
+  });
+
+  test("fails a stored HTTP channel readably once the HTTP flag is off", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    const result = sendWebhookNotification({ ...baseCtx(), config: { url: "http://example.com/hook" } });
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow(/^Webhook URL must use HTTPS\. If you are self-hosting/);
+    expect(post).not.toHaveBeenCalled();
   });
 });
 

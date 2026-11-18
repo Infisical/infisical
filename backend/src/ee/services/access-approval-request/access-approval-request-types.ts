@@ -1,5 +1,6 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
@@ -14,7 +15,6 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -81,7 +81,7 @@ export type TNotifyDelegatedDecisionDTO = {
 };
 
 export type TSecretAccessApprovalRequestServiceFactoryDep = {
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug" | "checkProjectUpgradeStatus">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -113,7 +113,7 @@ export type TSecretAccessApprovalRequestServiceFactoryDep = {
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;

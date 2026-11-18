@@ -59,7 +59,8 @@ const InlineServiceSecretsSchema = z.object({
     ])
     .nullable(),
   customHeaders: z.string().array(),
-  substitutions: z.string().array()
+  substitutions: z.string().array(),
+  hookSecret: z.string().nullable()
 });
 
 export type TInlineServiceSecrets = z.infer<typeof InlineServiceSecretsSchema>;
@@ -73,10 +74,12 @@ export type TPreparedInlineService = {
   hostPattern: string | null;
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credentialConfig: TInlineCredentialConfig;
   customHeaders: TInlineCustomHeader[];
   substitutions: TInlineSubstitution[];
-  // Null when there is nothing to seal: a pass-through service with no custom headers or substitutions.
+  hookUrl: string | null;
+  // Null when there is nothing to seal: a pass-through service with no custom headers, substitutions or hook.
   secrets: TInlineServiceSecrets | null;
 };
 
@@ -95,14 +98,25 @@ export const inlineServiceDisplayName = ({
  * A session's own service wins over a bundle service of the same name: the bundle's is left out of that session, so
  * the agent, the proxy and its logs each see one service per name. Admins can add or rename bundle services freely
  * while sessions are live, and only the sessions that sent a service by that name keep their own.
+ *
+ * An override is the exception, and wins over a session's own service of its name instead: it only ever narrows what a
+ * named service allows on its hosts, so a service sent with the session must never switch it off by taking its name.
  */
-export const withoutShadowedBundleServices = <T extends { name: string }>(
+export const withoutShadowedServices = <
+  T extends { name: string; isOverride?: boolean },
+  I extends { name?: string | null; hostPattern?: string | null }
+>(
   bundleServices: T[],
-  inlineServices: { name?: string | null; hostPattern?: string | null }[]
+  inlineServices: I[]
 ) => {
-  if (!inlineServices.length) return bundleServices;
-  const inlineNames = new Set(inlineServices.map(inlineServiceDisplayName));
-  return bundleServices.filter((service) => !inlineNames.has(service.name));
+  if (!inlineServices.length) return { bundleServices, inlineServices };
+  const overrideNames = new Set(bundleServices.filter((service) => service.isOverride).map(({ name }) => name));
+  const keptInline = inlineServices.filter((service) => !overrideNames.has(inlineServiceDisplayName(service)));
+  const inlineNames = new Set(keptInline.map(inlineServiceDisplayName));
+  return {
+    bundleServices: bundleServices.filter((service) => service.isOverride || !inlineNames.has(service.name)),
+    inlineServices: keptInline
+  };
 };
 
 const toInlineCredential = (
@@ -161,12 +175,6 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     tls: input.tls,
     allowedTools: input.allowedTools
   });
-  if (input.allowedTools?.length) {
-    throw new BadRequestError({
-      message:
-        "Services sent with a session can't limit an MCP server's tools, so leave out allowedTools. Add the MCP server to an access bundle to limit its tools."
-    });
-  }
 
   const { credential } = input;
   if (credential.type === AgentVaultCredentialType.OAuth) {
@@ -220,18 +228,21 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     hostPattern,
     allowedMethods: input.allowedMethods ?? null,
     allowedPathPrefixes: input.allowedPathPrefixes ?? null,
+    allowedTools: input.allowedTools ?? null,
     credentialConfig,
     customHeaders: customHeaders.map((header) => ({ name: header.name, prefix: header.prefix ?? "" })),
     substitutions: substitutions.map((substitution) => ({
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces
     })),
+    hookUrl: input.hook?.url ?? null,
     secrets:
-      secret || customHeaders.length || substitutions.length
+      secret || customHeaders.length || substitutions.length || input.hook
         ? {
             credential: secret,
             customHeaders: customHeaders.map((header) => header.value),
-            substitutions: substitutions.map((substitution) => substitution.value)
+            substitutions: substitutions.map((substitution) => substitution.value),
+            hookSecret: input.hook?.signingSecret ?? null
           }
         : null
   };
@@ -252,8 +263,14 @@ const toConflictCandidate = (service: TPreparedInlineService): TConflictCandidat
  * same host rule as one bundle's services: an exact host may sit beside a wildcard that contains it, but two services
  * covering the same pattern would leave the proxy's choice to the order they were sent in.
  */
-export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): TPreparedInlineService[] => {
-  const prepared = inputs.map((input, position) => {
+// `positions` places each service in the session's list of services, which an error also names it by. Its index among
+// the inline services otherwise.
+export const prepareInlineServices = (
+  inputs: TAgentVaultInlineServiceInput[],
+  positions?: number[]
+): TPreparedInlineService[] => {
+  const prepared = inputs.map((input, index) => {
+    const position = positions?.[index] ?? index;
     try {
       return prepareInlineService(input, position);
     } catch (error) {
@@ -319,6 +336,44 @@ export const assertNoAccessBundleConflicts = (
   });
 };
 
+// A service sent inline can't cover a host a project service the session names covers, or go by that service's name.
+// One with a name of its own was already checked against the names the session sends, so only a service that goes by
+// its first host can match here.
+export const assertNoNamedServiceConflicts = (prepared: TPreparedInlineService[], named: TConflictCandidate[]) => {
+  prepared.forEach((service) => {
+    const label = inlineServiceLabel(service);
+    const [conflict] = findHostPatternConflicts(service.hostPattern, named);
+    if (conflict) {
+      throw new BadRequestError({
+        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a service this session names, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
+      });
+    }
+    const displayName = inlineServiceDisplayName(service);
+    if (named.some((candidate) => candidate.name === displayName)) {
+      throw new BadRequestError({
+        message: `The service ${label} goes by its first host, '${displayName}', which is the name of a service this session names. Give it a name.`
+      });
+    }
+  });
+};
+
+// Resolve lets an override win over an inline service of its name, so a mint refuses the name rather than send a
+// service the session would never carry.
+export const assertNoOverrideConflicts = (prepared: TPreparedInlineService[], overrides: { name: string }[]) => {
+  if (!overrides.length) return;
+  const overrideNames = new Set(overrides.map(({ name }) => name));
+  prepared.forEach((service) => {
+    const displayName = inlineServiceDisplayName(service);
+    if (overrideNames.has(displayName)) {
+      throw new BadRequestError({
+        message: service.name
+          ? `The service ${inlineServiceLabel(service)} has the same name as '${displayName}', a service this session gets from an access bundle alongside a service it names. Give it a different name.`
+          : `The service ${inlineServiceLabel(service)} goes by its first host, '${displayName}', which is the name of a service this session gets from an access bundle alongside a service it names. Give it a name.`
+      });
+    }
+  });
+};
+
 export type TAgentVaultSessionInlineServiceSummaryRow = TAgentVaultInlineServiceRow;
 
 const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig => {
@@ -336,7 +391,12 @@ const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCred
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow
 ): TAgentVaultInlineServiceSummary => {
-  const base = { id: row.id, name: inlineServiceDisplayName(row), description: row.description ?? null };
+  const base = {
+    id: row.id,
+    name: inlineServiceDisplayName(row),
+    description: row.description ?? null,
+    hook: row.hookUrl ? { url: row.hookUrl } : null
+  };
   const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig);
   // Every mint checks the credential against the type, so this means a row written some other way.
   const unsupportedCredential = () =>
@@ -376,11 +436,13 @@ export const toInlineServiceSummary = (
   }
 };
 
-// Whether the service needs a sealed value to go out. One that does and has none had its session end.
+// Whether the service needs a sealed value to go out, its hook's signing secret included. One that does and has none
+// had its session end.
 const needsSecrets = (row: TAgentVaultInlineServiceRow) =>
   (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough ||
   row.customHeaders.length > 0 ||
-  row.substitutions.length > 0;
+  row.substitutions.length > 0 ||
+  Boolean(row.hookUrl);
 
 /**
  * The service's sealed values, opened, in the order of the names and placeholders beside them. Null once its session
@@ -393,13 +455,15 @@ export const openInlineServiceSecrets = (
   if (row.secretsDeletedAt || !needsSecrets(row)) return null;
   const isPassthrough = (row.credentialConfig as TInlineCredentialConfig).type === AgentVaultCredentialType.Passthrough;
   if (!isPassthrough && !row.encryptedCredential) return null;
+  if (row.hookUrl && !row.encryptedHookSecret) return null;
   const values = [...row.customHeaders, ...row.substitutions].map((entry) => entry.encryptedValue);
   if (values.some((value) => !value)) return null;
   const valueOf = (encrypted: Buffer | null) => (decryptJson(encrypted!) as { value: string }).value;
   return InlineServiceSecretsSchema.parse({
     credential: row.encryptedCredential ? decryptJson(row.encryptedCredential) : null,
     customHeaders: row.customHeaders.map((header) => valueOf(header.encryptedValue)),
-    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue))
+    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue)),
+    hookSecret: row.encryptedHookSecret ? valueOf(row.encryptedHookSecret) : null
   });
 };
 
@@ -433,8 +497,7 @@ export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): T
     transport: getServiceTransport(row.config),
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
-    allowedTools: null,
+    allowedTools: row.allowedTools ?? null,
     credential,
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
@@ -496,18 +559,19 @@ export const toResolvedInlineService = (
   ) {
     return null;
   }
+  if (row.hookUrl && !secrets?.hookSecret) return null;
 
   return {
     id: row.id,
     name: inlineServiceDisplayName(row),
     accessBundleName: null,
+    accessBundleId: null,
     type: row.type as AgentVaultServiceType,
     hostPattern: row.hostPattern ?? null,
     native: toResolvedNativeTarget(row.type, row.config),
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
-    allowedTools: null,
+    allowedTools: row.allowedTools ?? null,
     credential,
     customHeaders: customHeaders.map((header, index) => ({ ...header, value: secrets!.customHeaders[index] })),
     substitutions: substitutions.map((substitution, index) => ({
@@ -515,6 +579,7 @@ export const toResolvedInlineService = (
       value: secrets!.substitutions[index]
     })),
     personalValuesMissing: false,
-    memberProvided: false
+    memberProvided: false,
+    hook: row.hookUrl ? { url: row.hookUrl, secret: secrets!.hookSecret! } : null
   };
 };

@@ -73,9 +73,7 @@ type TServiceTypeReportFields = {
 };
 
 // What the audit log and telemetry report of a service's own type. Another type's fields are absent.
-export const serviceTypeReportFieldsOf = (
-  service: TAgentVaultServiceTypeFields & { allowedTools?: string[] | null }
-): TServiceTypeReportFields => {
+export const serviceTypeReportFieldsOf = (service: TAgentVaultServiceTypeFields): TServiceTypeReportFields => {
   switch (service.type) {
     case AgentVaultServiceType.Http:
       return pick(service, ["hostPattern", "allowedMethods", "allowedPathPrefixes"]);

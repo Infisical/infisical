@@ -9,8 +9,9 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { InstanceType, TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -80,6 +81,7 @@ vi.mock("@app/lib/logger", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
+  let licenseService: FakeLicenseService;
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
@@ -185,6 +187,14 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
+  // issueCertFromCa persists in its own transaction and passes the new row to onPersisted. Here that row is
+  // whatever certificateDAL.findById returns for the issued id.
+  const mockIssueCertFromCaResult = (result: { certificateId?: string; [key: string]: unknown }) =>
+    vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+      await dto.onPersisted?.(await mockCertificateDAL.findById(result.certificateId as string), {});
+      return result;
+    }) as any);
+
   const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
@@ -209,23 +219,21 @@ describe("CertificateV3Service", () => {
     })
   };
 
-  const mockUsageCounterDAL = {
+  const mockCertManagerService = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
-    countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string | undefined, quotaKey: string) =>
+    countActiveCertificateQuota: vi.fn(async () => ({ total: 0, wildcard: 0 })),
+    isCertificateQuotaKeyActive: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
-    )
+    ),
+    getInternalCaOrgBreakdown: vi.fn(async () => []),
+    getActiveCertificateOrgBreakdown: vi.fn(async () => []),
+    getPkiUsageByRootOrg: vi.fn(async () => [])
   };
 
   const mockKeyStore = {
     getItem: vi.fn(async () => null),
     setItemWithExpiry: vi.fn(async () => "OK" as const),
     deleteItem: vi.fn(async () => 1)
-  };
-
-  const mockLicenseService = {
-    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true }),
-    getInstanceType: vi.fn(() => InstanceType.OnPrem)
   };
 
   const mockCertificateIssuanceQueue = {
@@ -272,13 +280,15 @@ describe("CertificateV3Service", () => {
     vi.resetAllMocks();
     // These three are shared across tests rather than rebuilt per test, so resetAllMocks strips their
     // implementations and they have to be re-established here.
-    mockUsageCounterDAL.resolveRootOrgId.mockImplementation(async (id: string) => id);
-    mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg.mockResolvedValue({ total: 0, wildcard: 0 });
-    mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mockResolvedValue(false);
+    mockCertManagerService.resolveRootOrgId.mockImplementation(async (id: string) => id);
+    mockCertManagerService.countActiveCertificateQuota.mockResolvedValue({ total: 0, wildcard: 0 });
+    mockCertManagerService.isCertificateQuotaKeyActive.mockResolvedValue(false);
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
-    mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true });
+    licenseService = new FakeLicenseService();
+    licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
@@ -380,15 +390,18 @@ describe("CertificateV3Service", () => {
         queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
       certificateBodyDAL: mockCertificateBodyDAL,
-      kmsService: {
-        generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
-        encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
-        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted"))),
+      kmsDataKeyService: {
+        getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
         createCipherPairWithDataKey: vi.fn().mockResolvedValue({
           cipherTextBlob: Buffer.from("encrypted"),
           plainTextKey: Buffer.from("plainkey")
         })
-      },
+      } as never,
+      kmsKeyService: {
+        generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
+        encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
+        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted")))
+      } as never,
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),
         findById: vi.fn().mockResolvedValue({ id: "project-123", orgId: "org-123" }),
@@ -420,9 +433,9 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
-      usageCounterDAL: mockUsageCounterDAL,
+      certManagerService: mockCertManagerService,
       keyStore: mockKeyStore,
-      licenseService: mockLicenseService,
+      licenseService,
       telemetryService: mockTelemetryService,
       auditLogService: mockAuditLogService
     });
@@ -587,7 +600,7 @@ describe("CertificateV3Service", () => {
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
+      mockIssueCertFromCaResult(mockCertificateResult as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord);
@@ -739,7 +752,7 @@ describe("CertificateV3Service", () => {
         });
         vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA as any);
         vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
-        vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
+        mockIssueCertFromCaResult(mockCertificateResult as any);
         vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
@@ -1144,7 +1157,7 @@ describe("CertificateV3Service", () => {
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResultWithCa as any);
+      mockIssueCertFromCaResult(mockCertificateResultWithCa as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1510,7 +1523,7 @@ describe("CertificateV3Service", () => {
         defaults: { subjectAltNames: [{ type: "dns_name", value: "profile-default.example.com" }] }
       };
 
-      mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null });
+      licenseService.defaultPlan = { ...licenseService.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
       vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
         permission: {
           throwUnlessCan: vi.fn(),
@@ -1544,7 +1557,7 @@ describe("CertificateV3Service", () => {
         })
         .catch(() => undefined);
 
-      const [, probedKey] = mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mock.calls[0];
+      const [, probedKey] = mockCertManagerService.isCertificateQuotaKeyActive.mock.calls[0];
       expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
       expect(probedKey).not.toBe(
         buildCertificateQuotaKey({
@@ -1853,7 +1866,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaResult({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2029,7 +2042,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaResult({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2205,7 +2218,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaResult({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2381,7 +2394,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       });
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaPolicy);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+      mockIssueCertFromCaResult({
         certificate: "cert",
         certificateChain: "chain",
         issuingCaCertificate: "ca-cert",
@@ -2617,13 +2630,13 @@ describe("CertificateV3Service", () => {
     // quota key the org has never held. Renewal is exempt from the caps only while the names are
     // unchanged, because refusing that would let a live certificate expire.
     describe("certificate quota on renewal", () => {
-      const AT_CAP = { pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null };
+      const AT_CAP = { maxCertificates: 5, maxWildcardCertificates: null };
 
-      const atCap = (plan: Record<string, unknown> = AT_CAP, total = 5, wildcard = 0) => {
+      const atCap = (plan: Partial<TPlanFeatures> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
-        vi.mocked(mockLicenseService.getPlan).mockResolvedValue(plan as never);
-        vi.mocked(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).mockResolvedValue({ total, wildcard });
-        vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg).mockResolvedValue(false);
+        licenseService.defaultPlan = { ...licenseService.defaultPlan, ...plan };
+        vi.mocked(mockCertManagerService.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
+        vi.mocked(mockCertManagerService.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };
 
       it("refuses a renewal that changes the SANs once the certificate cap is reached", async () => {
@@ -2653,7 +2666,7 @@ describe("CertificateV3Service", () => {
       });
 
       it("refuses a renewal that introduces a wildcard on a plan without wildcard support", async () => {
-        atCap({ pkiPqc: true, maxCertificates: null, maxWildcardCertificates: 0 }, 0, 0);
+        atCap({ maxCertificates: null, maxWildcardCertificates: 0 }, 0, 0);
 
         await expect(
           service.renewCertificate({
@@ -2670,7 +2683,7 @@ describe("CertificateV3Service", () => {
         // Fails later for want of the issuance mocks; the point is that it gets past the quota gate.
         await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
 
-        expect(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalled();
+        expect(mockCertManagerService.countActiveCertificateQuota).not.toHaveBeenCalled();
       });
     });
 
@@ -3568,7 +3581,7 @@ describe("CertificateV3Service", () => {
           errors: [],
           warnings: []
         } as never);
-        vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+        mockIssueCertFromCaResult({
           certificate: "cert",
           certificateChain: "chain",
           issuingCaCertificate: "issuing-ca",
@@ -4064,6 +4077,35 @@ describe("CertificateV3Service", () => {
       });
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
+    });
+
+    it("refuses to link the renewal when the certificate is revoked while it is being issued", async () => {
+      let isIssuing = false;
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateDAL.findByIdForUpdate).mockImplementation((async () =>
+        isIssuing ? { ...mockOriginalCert, revokedAt: new Date() } : mockOriginalCert) as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        isIssuing = true;
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return { certificateId: "cert-456" };
+      }) as any);
+
+      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
+        /renewed or revoked while this renewal was in progress/
+      );
+      expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith(
+        "cert-123",
+        expect.objectContaining({ renewedByCertificateId: "cert-456" }),
+        expect.anything()
+      );
     });
   });
 

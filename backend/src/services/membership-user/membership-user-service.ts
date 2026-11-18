@@ -6,12 +6,13 @@ import {
   OrgMembershipStatus,
   ProjectMembershipRole,
   TemporaryPermissionMode,
-  TMembershipRolesInsert
+  TMembershipRolesInsert,
+  TUsers
 } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
@@ -24,9 +25,8 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -83,7 +83,8 @@ type TMembershipUserServiceFactoryDep = {
     | "getOrgPermissionByRoles"
     | "getResourcePermission"
   >;
-  licenseService: TLicenseServiceFactory;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -100,9 +101,9 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit" | "getSeatPlan" | "assertSeatsForInvites">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -116,6 +117,7 @@ export const membershipUserServiceFactory = ({
   orgDAL,
   userAliasDAL,
   licenseService,
+  usageMeteringService,
   smtpService,
   tokenService,
   userGroupMembershipDAL,
@@ -128,9 +130,9 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
-  eventEmitter
+  eventEmitter,
+  orgInviteQuota
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -144,7 +146,8 @@ export const membershipUserServiceFactory = ({
       membershipUserDAL,
       emailDomainDAL,
       oidcConfigDAL,
-      samlConfigDAL
+      samlConfigDAL,
+      orgInviteQuota
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,
@@ -157,7 +160,7 @@ export const membershipUserServiceFactory = ({
     })
   };
 
-  const $getUsers = async (usernames: string[], orgId: string, rootOrgId?: string | null) => {
+  const $resolveUsers = async (usernames: string[], orgId: string, rootOrgId?: string | null) => {
     const existingUsers = await userDAL.find({ $in: { username: usernames } });
     const unmatched = usernames.filter((username) => !existingUsers.some((el) => el.username === username));
 
@@ -191,64 +194,61 @@ export const membershipUserServiceFactory = ({
       existingUsers.push(...resolved.values());
     }
 
-    const stillUnmatched = unmatched.filter((username) => !aliasResolvedIdentifiers.includes(username));
-    if (stillUnmatched.length) {
-      const newUserEmails = stillUnmatched.map((el) => el.toLowerCase());
-
-      const invalidEmails = newUserEmails.filter((el) => {
-        try {
-          validateEmail(el);
-          return false;
-        } catch (err) {
-          return true;
-        }
-      });
-      if (invalidEmails.length > 0) {
-        throw new BadRequestError({ message: `Invalid emails: ${invalidEmails.join(", ")}` });
+    const newUserEmails = unique(
+      unmatched.filter((username) => !aliasResolvedIdentifiers.includes(username)).map((el) => el.toLowerCase()),
+      (email) => email
+    );
+    const invalidEmails = newUserEmails.filter((el) => {
+      try {
+        validateEmail(el);
+        return false;
+      } catch (err) {
+        return true;
       }
-
-      await userDAL.transaction(async (tx) => {
-        for await (const inviteeEmail of newUserEmails) {
-          let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
-          // if the user doesn't exist we create the user with the email
-          if (!inviteeUser) {
-            inviteeUser = await userDAL.create(
-              {
-                isAccepted: false,
-                email: inviteeEmail,
-                username: inviteeEmail,
-                authMethods: [AuthMethod.EMAIL],
-                isGhost: false
-              },
-              tx
-            );
-          }
-
-          existingUsers.push(inviteeUser);
-          const inviteeUserId = inviteeUser?.id;
-          const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
-
-          // when user is missing the encrytion keys
-          // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
-          // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
-          // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
-          if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncryptionKey)) {
-            await userDAL.createUserEncryption(
-              {
-                userId: inviteeUserId,
-                encryptionVersion: 2
-              },
-              tx
-            );
-          }
-        }
-      });
+    });
+    if (invalidEmails.length > 0) {
+      throw new BadRequestError({ message: `Invalid emails: ${invalidEmails.join(", ")}` });
     }
 
-    // A person can now arrive twice in one request, once by username and once by alias. Callers
-    // count this list against memberships and insert from it, so a dupe trips
-    // membership_unique_user_org.
-    return unique(existingUsers, (user) => user.id);
+    return { existingUsers: unique(existingUsers, (user) => user.id), newUserEmails };
+  };
+
+  const $createInvitedUsers = async (newUserEmails: string[], tx: Knex) => {
+    const users: TUsers[] = [];
+    for await (const inviteeEmail of newUserEmails) {
+      let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
+      // if the user doesn't exist we create the user with the email
+      if (!inviteeUser) {
+        inviteeUser = await userDAL.create(
+          {
+            isAccepted: false,
+            email: inviteeEmail,
+            username: inviteeEmail,
+            authMethods: [AuthMethod.EMAIL],
+            isGhost: false
+          },
+          tx
+        );
+      }
+
+      users.push(inviteeUser);
+      const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUser.id, tx);
+
+      // when user is missing the encrytion keys
+      // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
+      // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
+      // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
+      if (!inviteeUser.isAccepted && !existingEncryptionKey) {
+        await userDAL.createUserEncryption(
+          {
+            userId: inviteeUser.id,
+            encryptionVersion: 2
+          },
+          tx
+        );
+      }
+    }
+    return users;
   };
 
   const createMembership = async (dto: TCreateMembershipUserDTO) => {
@@ -320,7 +320,11 @@ export const membershipUserServiceFactory = ({
     }
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
-    const users = await $getUsers(sanitizedEmails, dto.permission.orgId, orgDetails.rootOrgId);
+    const { existingUsers: users, newUserEmails } = await $resolveUsers(
+      sanitizedEmails,
+      dto.permission.orgId,
+      orgDetails.rootOrgId
+    );
     const existingMemberships = await membershipUserDAL.find({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
@@ -338,16 +342,16 @@ export const membershipUserServiceFactory = ({
       withOrgAccess.userIds.forEach((userId) => existingUserIds.add(userId));
     }
 
-    if (users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
+    if (!newUserEmails.length && users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
     const serverCfg = await getServerCfg();
     const isEmailLoginEnabled =
       !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
 
-    const newMembershipUsers = users.filter((user) => !existingUserIds.has(user.id));
-    await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
-    const newMemberships = newMembershipUsers.map((user) => {
+    const newExistingUsers = users.filter((user) => !existingUserIds.has(user.id));
+    await factory.onCreateMembershipUserGuard(dto, newExistingUsers, newUserEmails);
+    const toMembership = (user: { id: string; email?: string | null }) => {
       let status: OrgMembershipStatus | undefined;
       if (scopeData.scope === AccessScope.Organization) {
         if (isSubOrganization || !isEmailLoginEnabled) {
@@ -364,13 +368,13 @@ export const membershipUserServiceFactory = ({
         status,
         inviteEmail: status === OrgMembershipStatus.Invited ? user.email : undefined
       };
-    });
+    };
 
     const customInputRoles = rolesToUse.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -390,14 +394,37 @@ export const membershipUserServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+    const reservation = await factory.onCreateMembershipReserve?.(dto, newExistingUsers.length + newUserEmails.length);
+    const createMemberships = membershipUserDAL.transaction(async (tx) => {
+      await reservation?.checkInTransaction(tx);
+      const candidates = unique(
+        [...newExistingUsers, ...(await $createInvitedUsers(newUserEmails, tx))],
+        (user) => user.id
+      );
+
+      const alreadyMemberIds = new Set(
+        (
+          await membershipUserDAL.find(
+            {
+              scope: scopeData.scope,
+              ...scopeDatabaseFields,
+              $in: { actorUserId: candidates.map((user) => user.id) }
+            },
+            { tx }
+          )
+        ).map((el) => el.actorUserId as string)
+      );
+      const members = candidates.filter((user) => !alreadyMemberIds.has(user.id));
+      const dropped = newExistingUsers.length + newUserEmails.length - members.length;
+      if (!members.length) return { docs: [], members, dropped };
+
       if (scopeData.scope === AccessScope.Project) {
         await lockAndAssertActiveOrgAccess(
-          { orgDAL, orgId: scopeData.orgId, userIds: newMembershipUsers.map((user) => user.id) },
+          { orgDAL, orgId: scopeData.orgId, userIds: members.map((user) => user.id) },
           tx
         );
       }
-      const docs = await membershipUserDAL.insertMany(newMemberships, tx);
+      const docs = await membershipUserDAL.insertMany(members.map(toMembership), tx);
 
       const roleDocs: TMembershipRolesInsert[] = [];
       docs.forEach((membership) => {
@@ -431,16 +458,24 @@ export const membershipUserServiceFactory = ({
         });
       });
       await membershipRoleDAL.insertMany(roleDocs, tx);
-      return docs;
+      return { docs, members, dropped };
     });
+    const {
+      docs: membershipDoc,
+      members: newMembershipUsers,
+      dropped
+    } = await createMemberships.catch(async (error: unknown) => {
+      await reservation?.release();
+      throw error;
+    });
+    if (dropped) await reservation?.release(dropped);
 
     const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
 
     // Adding a user to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -455,7 +490,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -620,7 +655,7 @@ export const membershipUserServiceFactory = ({
           orgId: dto.permission.orgId,
           orgDAL,
           userAliasDAL,
-          licenseService,
+          usageMeteringService,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
@@ -675,15 +710,8 @@ export const membershipUserServiceFactory = ({
 
     // Removing a user from a project drops a direct member; removing them from the org cascades their
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
-    } else {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
-    }
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
     return { membership: membershipDoc };
   };
 

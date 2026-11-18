@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
-  ProjectMembershipRole,
   RESOURCE_SCOPE,
   ResourceType,
   TableName,
@@ -19,7 +18,10 @@ import {
   compareAndSwapOauthTokens,
   TOauthTokenColumns
 } from "../agent-vault-oauth/agent-vault-oauth-token-dal-fns";
-import { AgentVaultVariableReferenceField } from "../agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
+  AgentVaultVariableReferenceField
+} from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner, whereOwner } from "../agent-vault/agent-vault-owner-fns";
 
 export type TAgentVaultPersonalValueDALFactory = ReturnType<typeof agentVaultPersonalValueDALFactory>;
@@ -308,7 +310,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
             .where(`${TableName.Membership}.scope`, AccessScope.Project)
             .where(`${TableName.Membership}.scopeProjectId`, projectId)
             .where(`${TableName.Membership}.isActive`, true)
-            .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+            .whereIn(`${TableName.MembershipRole}.role`, AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE)
             .where((live) => {
               void live
                 .where(`${TableName.MembershipRole}.isTemporary`, false)
@@ -377,11 +379,11 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * The owner's live project admin roles, direct or through a group they are in, taken FOR SHARE with their membership
-   * rows. A demotion or a removal deletes these rows in its own transaction, so this waits for one in flight and then
-   * sees the rows gone.
+   * The owner's live roles that reach every bundle, direct or through a group they are in, taken FOR SHARE with their
+   * membership rows. A demotion or a removal deletes these rows in its own transaction, so this waits for one in flight
+   * and then sees the rows gone.
    */
-  const lockAdminRolesForOwner = async (
+  const lockRolesReachingEveryBundleForOwner = async (
     { projectId, owner }: { projectId: string; owner: TAgentVaultOwner },
     tx: Knex
   ): Promise<{ id: string }[]> => {
@@ -391,7 +393,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.isActive`, true)
-        .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+        .whereIn(`${TableName.MembershipRole}.role`, AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE)
         .where((live) => {
           void live
             .where(`${TableName.MembershipRole}.isTemporary`, false)
@@ -575,7 +577,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     findProjectIdsWithAnyValues,
     deleteForActorsWithoutGrant,
     lockGrantsForOwner,
-    lockAdminRolesForOwner
+    lockRolesReachingEveryBundleForOwner
   };
 };
 

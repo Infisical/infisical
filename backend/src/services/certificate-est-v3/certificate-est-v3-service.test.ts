@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -76,16 +77,13 @@ vi.mock("@app/services/certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn().mockReturnValue({ commonName: "different.example.com" })
 }));
 
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn(() => Promise.resolve("mock-kms-id"))
-}));
-
 vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
   convertRawCertsToPkcs7: vi.fn(() => "mocked-pkcs7-response")
 }));
 
 describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
+  let licenseService: FakeLicenseService;
 
   const mockCertificateV3Service = {
     signCertificateFromProfile: vi.fn()
@@ -113,12 +111,9 @@ describe("CertificateEstV3Service", () => {
   };
 
   const mockKmsService = {
+    getProjectCertificateKmsKeyId: vi.fn(() => Promise.resolve("mock-kms-id")),
     decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn(() => Promise.resolve(Buffer.from("mock-decrypted")))),
     generateKmsKey: vi.fn()
-  };
-
-  const mockLicenseService = {
-    getPlan: vi.fn()
   };
 
   const mockCertificateProfileDAL = {
@@ -173,14 +168,16 @@ describe("CertificateEstV3Service", () => {
   const mockPkiApplicationDAL = { findById: vi.fn() };
 
   beforeEach(async () => {
+    licenseService = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
-      kmsService: mockKmsService,
-      licenseService: mockLicenseService,
+      kmsDataKeyService: mockKmsService as never,
+      kmsKeyService: mockKmsService as never,
+      licenseService,
       certificateProfileDAL: mockCertificateProfileDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
@@ -191,7 +188,6 @@ describe("CertificateEstV3Service", () => {
     mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
     mockEstEnrollmentConfigDAL.findById.mockResolvedValue(mockEstConfig);
     mockProjectDAL.findOne.mockResolvedValue(mockProject);
-    mockLicenseService.getPlan.mockResolvedValue(mockPlan);
     mockCertificatePolicyDAL.findById.mockResolvedValue(mockPolicy);
     mockCertificateDAL.findOne.mockResolvedValue(null);
   });
@@ -289,7 +285,7 @@ describe("CertificateEstV3Service", () => {
     });
 
     it("should throw error when PKI EST is not available in plan", async () => {
-      mockLicenseService.getPlan.mockResolvedValue({ pkiEst: false });
+      licenseService.setPlan(mockProject.orgId, { pkiEst: false });
 
       await expect(
         service.simpleEnrollByProfile({

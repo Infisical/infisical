@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -42,7 +42,7 @@ const projectScopedDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsService"
+  | "kmsDataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -83,9 +83,9 @@ const projectScopedDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsService: {
-    createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
-  }
+  kmsDataKeyService: {
+    createCipherPairWithDataKey: unreachable("kmsDataKeyService.createCipherPairWithDataKey")
+  } as never
 };
 
 const fakeProject = (index: number): TSecretsProjectWarning => ({
@@ -126,9 +126,7 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
-      getPlan: async () => ({ secretAccessInsights: true }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true }),
     keyStore: {
       getItem: async () => null,
       setItemWithExpiry: async () => "OK",
@@ -266,9 +264,7 @@ describe("project access insights audit log store", () => {
         }),
         getOrgPermission: unreachable("permissionService.getOrgPermission")
       } as unknown as TInsightsServiceFactoryDep["permissionService"],
-      licenseService: {
-        getPlan: async () => ({ secretAccessInsights: true }) as unknown as TFeatureSet
-      } as TInsightsServiceFactoryDep["licenseService"],
+      licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true }),
       keyStore: {
         getItem: async () => null,
         setItemWithExpiry: async () => "OK",

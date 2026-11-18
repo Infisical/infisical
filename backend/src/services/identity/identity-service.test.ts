@@ -2,6 +2,10 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
+import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
+
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
 
@@ -63,6 +67,8 @@ const createService = ({
     })
   };
 
+  const licenseService = new FakeLicenseService();
+
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
     identityMetadataDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
@@ -77,13 +83,14 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
+    organizationsProjectsService: new FakeOrganizationsProjectsService(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
-    usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never,
     identityAccessTokenService: {
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),

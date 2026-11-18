@@ -2,13 +2,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowRightIcon,
-  BookOpenTextIcon,
-  ChevronRightIcon,
   CircleHelpIcon,
   CircleXIcon,
   InfoIcon,
   KeyIcon,
-  ListIcon,
   type LucideIcon,
   PlusIcon,
   ServerIcon,
@@ -16,6 +13,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { McpIcon } from "@app/components/agent-vault/McpIcon";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Badge,
@@ -45,34 +43,38 @@ import {
   nativeSessionLogSummary,
   sessionLogMcpCalls,
   sessionLogMcpCallsTruncated,
-  sessionLogMethodLabel
+  sessionLogMethodLabel,
+  sessionLogNativeMeta
 } from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
 
 export const SESSION_LOG_COLUMN_COUNT = 7;
 
-export const DECISION_PRESENTATION: Record<
-  AgentVaultSessionLogDecision,
-  {
-    label: string;
-    variant: "success" | "neutral" | "warning" | "danger";
-    icon: LucideIcon;
-    iconClassName: string;
-  }
-> = {
+type DecisionPresentation = {
+  label: string;
+  variant: "success" | "neutral" | "warning" | "danger";
+  icon: LucideIcon;
+  iconClassName: string;
+};
+
+const PASSTHROUGH_PRESENTATION: DecisionPresentation = {
+  label: "Passthrough",
+  variant: "neutral",
+  icon: ArrowRightIcon,
+  iconClassName: "text-neutral"
+};
+
+// Listing services and fetching skills are forwarded to Infisical with nothing brokered, so they show and filter as
+// Passthrough, and the outcome's hover says what the agent asked for.
+const DECISION_PRESENTATION: Record<AgentVaultSessionLogDecision, DecisionPresentation> = {
   [AgentVaultSessionLogDecision.Brokered]: {
     label: "Brokered",
     variant: "success",
     icon: KeyIcon,
     iconClassName: "text-success"
   },
-  [AgentVaultSessionLogDecision.Passthrough]: {
-    label: "Passthrough",
-    variant: "neutral",
-    icon: ArrowRightIcon,
-    iconClassName: "text-neutral"
-  },
+  [AgentVaultSessionLogDecision.Passthrough]: PASSTHROUGH_PRESENTATION,
   [AgentVaultSessionLogDecision.Blocked]: {
     label: "Blocked",
     variant: "warning",
@@ -85,19 +87,16 @@ export const DECISION_PRESENTATION: Record<
     icon: CircleXIcon,
     iconClassName: "text-danger"
   },
-  [AgentVaultSessionLogDecision.Discovery]: {
-    label: "Listed Services",
-    variant: "neutral",
-    icon: ListIcon,
-    iconClassName: "text-neutral"
-  },
-  [AgentVaultSessionLogDecision.Skills]: {
-    label: "Fetched Skills",
-    variant: "neutral",
-    icon: BookOpenTextIcon,
-    iconClassName: "text-neutral"
-  }
+  [AgentVaultSessionLogDecision.Discovery]: PASSTHROUGH_PRESENTATION,
+  [AgentVaultSessionLogDecision.Skills]: PASSTHROUGH_PRESENTATION
 };
+
+export const SESSION_LOG_OUTCOMES = [
+  AgentVaultSessionLogDecision.Brokered,
+  AgentVaultSessionLogDecision.Passthrough,
+  AgentVaultSessionLogDecision.Blocked,
+  AgentVaultSessionLogDecision.Error
+].map((decision) => ({ decision, ...DECISION_PRESENTATION[decision] }));
 
 const decisionPresentation = (decision: AgentVaultSessionLogDecision) =>
   DECISION_PRESENTATION[decision] ?? {
@@ -118,10 +117,13 @@ const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Error;
 
 // Discovery and Skills requests go to the session's Infisical, so their status is Infisical's own answer and shows like
-// any host's, while the outcome says what the agent asked for.
+// any host's, while the outcome's hover says what the agent asked for.
 const isSessionEndpoint = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Discovery ||
   decision === AgentVaultSessionLogDecision.Skills;
+
+export const sessionLogOutcome = (decision: AgentVaultSessionLogDecision) =>
+  isSessionEndpoint(decision) ? AgentVaultSessionLogDecision.Passthrough : decision;
 
 const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
   if (record.decision === AgentVaultSessionLogDecision.Discovery) {
@@ -133,6 +135,14 @@ const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
     return record.status === 200
       ? "Agent Vault got this session's skills from Infisical"
       : `Agent Vault asked Infisical for this session's skills, and Infisical returned ${httpStatusLabel(record.status)}`;
+  }
+  if (record.hook && record.decision === AgentVaultSessionLogDecision.Error) {
+    return "The hook didn't give a usable answer, so the request wasn't sent.";
+  }
+  if (record.hook && record.decision === AgentVaultSessionLogDecision.Blocked) {
+    return record.hook.reason
+      ? `The hook refused this request: ${record.hook.reason}`
+      : "The hook refused this request.";
   }
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
   return record.decision === AgentVaultSessionLogDecision.Blocked
@@ -171,10 +181,6 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <Badge variant="info">
-        <ServerIcon />
-        MCP
-      </Badge>
       {first ? (
         <McpCallText call={first} path={record.path} />
       ) : (
@@ -244,13 +250,6 @@ const NativeSummary = ({
       }}
       className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <ChevronRightIcon
-        aria-hidden
-        className={twMerge(
-          "size-3.5 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
-          isExpanded && "rotate-90 text-foreground"
-        )}
-      />
       <span className="min-w-0 truncate font-mono text-xs">
         {summary || <span className="font-sans text-muted">Show details</span>}
       </span>
@@ -286,6 +285,25 @@ const NativeDetailPanel = ({ native }: { native: TAgentVaultSessionLogNativeDeta
     )}
   </div>
 );
+
+// Every row leads with one, so the requests line up whatever their type.
+const RequestTypeIcon = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  const native = sessionLogNativeMeta(record);
+  const isMcp = record.serviceType === AgentVaultServiceType.Mcp;
+  const label = native?.label ?? (isMcp ? "MCP" : "HTTP");
+  const Icon = native?.icon ?? (isMcp ? McpIcon : ServerIcon);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} className="flex shrink-0 text-muted">
+          <Icon className="size-3.5" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
   record.serviceType === AgentVaultServiceType.Mcp ? (
@@ -422,16 +440,21 @@ export const SessionLogRow = ({
           )}
         </TableCell>
         <TableCell>
-          {isNative ? (
-            <NativeSummary
-              record={record}
-              detailId={detailId}
-              isExpanded={isOpen}
-              onToggle={isExpandable ? onToggleExpanded : undefined}
-            />
-          ) : (
-            <RequestDetail record={record} />
-          )}
+          <span className="flex min-w-0 items-center gap-2">
+            <RequestTypeIcon record={record} />
+            <span className="min-w-0 flex-1">
+              {isNative ? (
+                <NativeSummary
+                  record={record}
+                  detailId={detailId}
+                  isExpanded={isOpen}
+                  onToggle={isExpandable ? onToggleExpanded : undefined}
+                />
+              ) : (
+                <RequestDetail record={record} />
+              )}
+            </span>
+          </span>
         </TableCell>
         <TableCell className="font-mono text-xs">
           {hasHttpStatus ? (
@@ -451,7 +474,7 @@ export const SessionLogRow = ({
           {outcomeHover ? (
             <Tooltip>
               <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-              <TooltipContent className="max-w-sm">{outcomeHover}</TooltipContent>
+              <TooltipContent className="max-w-sm break-words">{outcomeHover}</TooltipContent>
             </Tooltip>
           ) : (
             outcome

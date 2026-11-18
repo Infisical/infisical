@@ -345,6 +345,7 @@ describe("a bundle service's facts", () => {
     id: "service-1",
     name: "github",
     description: null,
+    accessBundleId: "bundle-1",
     accessBundleName: "engineering",
     type: AgentVaultServiceType.Http,
     hostPattern: "api.github.com",
@@ -356,6 +357,8 @@ describe("a bundle service's facts", () => {
     allowedPathPrefixes: null,
     allowedTools: null,
     memberProvidedFields: null,
+    hookUrl: null,
+    encryptedHookSecret: null,
     position: 0,
     ...overrides
   });

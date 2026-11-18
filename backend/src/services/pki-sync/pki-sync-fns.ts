@@ -1,15 +1,15 @@
 import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
@@ -108,14 +108,10 @@ const PKI_SYNC_LIST_OPTIONS = {
 };
 
 // Creation path only, never pki-sync-queue, so existing syncs keep running after a downgrade.
-export const assertPkiSyncLicense = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  orgId: string,
-  errorMessage?: string
-) => {
+export const assertPkiSyncLicense = async (licenseService: TLicenseService, orgId: string, errorMessage?: string) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (!plan.pkiSyncs) {
+  if (!plan.has(PlanFeature.PkiSyncs)) {
     throw new BadRequestError({
       message:
         errorMessage ||
@@ -242,7 +238,7 @@ export const PkiSyncFns = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
     }
@@ -324,7 +320,7 @@ export const PkiSyncFns = {
     certificateMap: TCertificateMap,
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
@@ -338,7 +334,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault as PkiSync);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
           oidcIssuerService: dependencies.oidcIssuerService
@@ -349,7 +345,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager as PkiSync);
         const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
@@ -377,7 +373,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsElasticLoadBalancer as PkiSync);
         const awsElasticLoadBalancerPkiSync = awsElasticLoadBalancerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
@@ -590,7 +586,7 @@ export const PkiSyncFns = {
     certificateNames: string[],
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
@@ -606,7 +602,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault as PkiSync);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
           oidcIssuerService: dependencies.oidcIssuerService
@@ -621,7 +617,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager as PkiSync);
         const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
@@ -658,7 +654,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsElasticLoadBalancer as PkiSync);
         const awsElasticLoadBalancerPkiSync = awsElasticLoadBalancerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
-          kmsService: dependencies.kmsService,
+          kmsDataKeyService: dependencies.kmsDataKeyService,
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL
         });

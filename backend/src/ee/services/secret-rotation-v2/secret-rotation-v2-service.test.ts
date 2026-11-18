@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -36,8 +37,19 @@ vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal
   decryptAppConnection: vi.fn(async () => ({}))
 }));
 
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: vi.fn(async () => ({ generateBlindIndexes: vi.fn(async () => []) }))
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: vi.fn(
+    async ({
+      kmsDataKeyService,
+      projectId
+    }: {
+      kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+      projectId: string;
+    }) => ({
+      secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+      blindIndexer: { generateBlindIndexes: vi.fn(async () => []) }
+    })
+  )
 }));
 
 vi.mock("@app/services/secret-v2-bridge/secret-v2-bridge-fns", async (importOriginal) => ({
@@ -119,12 +131,12 @@ const createService = ({
         return { release };
       })
     },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("encrypted") })
       }))
     },
-    licenseService: { getPlan: vi.fn(async () => ({ secretRotation: true })) },
+    licenseService: new FakeLicenseService().setPlan("org-1", { secretRotation: true }),
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility([{ action: "manage", subject: "all" }])

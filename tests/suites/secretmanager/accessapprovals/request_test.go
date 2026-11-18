@@ -54,7 +54,39 @@ func TestAccessApprovalRequest_Create(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusNotFound, res.status)
-		require.Equal(t, "No policy in environment with slug 'dev' and with secret path '/other' was found.", res.message(t))
+		require.Equal(t, "Access requests aren't enabled for secret path '/other' in environment 'Development'. Ask a project admin to add an access policy that covers this path.", res.message(t))
+		require.Empty(t, listRequests(t, g.proj))
+	})
+
+	t.Run("should open the request on the most specific policy when several cover the path", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newProject(t)
+		newPolicy(t, g.proj, policyFor(g.proj, guardedPath+"/**", userApprover(g.approver)))
+		narrow := newPolicy(t, g.proj, policyFor(g.proj, guardedPath+"/api/**", userApprover(g.approver)))
+
+		// Action
+		requestID := openRequest(t, g.requester, g.proj, guardedPath+"/api/db", nil)
+
+		// Assert
+		opened := requestByID(t, g.proj, requestID)
+		require.NotNil(t, opened.PolicyID)
+		require.Equal(t, narrow, *opened.PolicyID)
+	})
+
+	t.Run("should refuse a path with an empty folder name and open nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t, func(b policyBody) { b["secretPath"] = guardedPath + "/**" })
+
+		// Action
+		res := openAs(t, g.requester, g.proj, guardedPath+"//api", nil)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.status)
+		require.Equal(t, "Secret path '/app//api' is not valid. Use a path like '/folder/subfolder', with no trailing '/', empty, '.' or '..' folder names, or spaces around folder names.", res.message(t))
 		require.Empty(t, listRequests(t, g.proj))
 	})
 

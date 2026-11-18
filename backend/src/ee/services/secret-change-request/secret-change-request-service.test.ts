@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -44,8 +45,17 @@ vi.mock("./secret-change-request-merge-fns", async (importOriginal) => ({
     notifySecretApprovalBypass
   })
 }));
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: async () => BLIND_INDEXER
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: async ({
+    kmsDataKeyService,
+    projectId
+  }: {
+    kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+    projectId: string;
+  }) => ({
+    secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+    blindIndexer: BLIND_INDEXER
+  })
 }));
 vi.mock("./secret-change-request-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./secret-change-request-fns")>()),
@@ -157,6 +167,8 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
+  const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true });
+  vi.spyOn(licenseService, "getPlan");
   const deps = {
     approvalRequestDAL: {
       findById: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
@@ -231,12 +243,12 @@ const buildService = ({
         { id: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Smith" }
       ])
     },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
+    licenseService,
     userGroupMembershipDAL: {
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue(undefined) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
     folderDAL: {
@@ -562,7 +574,7 @@ describe("secretChangeRequest reviewApproval", () => {
 
   test("reviews an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(review(service)).resolves.toMatchObject({ status: ApprovalStatus.APPROVED });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -675,7 +687,7 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
 
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
     expect(detectSecretApprovalCommitConflicts).toHaveBeenCalledWith({ folderId: "folder-1", commits: COMMIT_ROWS });
-    expect(deps.kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(deps.kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
     expect(applySecretApprovalCommitsV2Bridge).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: "project-1",
@@ -885,7 +897,7 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
 
   test("merges an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(merge(service)).resolves.toMatchObject({ isMergedViaBypass: false });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -1116,7 +1128,7 @@ describe("secretChangeRequest updateApprovalStatus", () => {
 
   test("closes a request when the plan lacks secret approvals and refuses reopening one", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("plan restriction");
     expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
@@ -1438,7 +1450,6 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
     statusChangedByUserId: null,
     environment: "dev",
     environmentName: "Development",
-    requestFolderPath: "app",
     policyName: "dev-policy",
     policyEnforcementLevel: "soft",
     policyConstraints: { constraints: { allowedSelfApprovals: false } },
