@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,12 +20,22 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import FileSaver from "file-saver";
 
-import type { TSigner } from "@app/hooks/api/signers/types";
+import { CaType } from "@app/hooks/api/ca/enums";
+import { crlReasons } from "@app/hooks/api/certificates/constants";
+import { CrlReason } from "@app/hooks/api/certificates/enums";
+import {
+  getNextDigicertOrderId,
+  getOpenCertificateRequest,
+  SignerStatus,
+  type TSigner
+} from "@app/hooks/api/signers/types";
 
 import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -94,18 +105,17 @@ export const ExportSignerCertificateDialog = ({
 export const DeleteSignerDialog = ({
   signer,
   open,
-  isDigicert,
   onClose,
   onDeleted
 }: {
   signer: TSigner;
   open: boolean;
-  isDigicert: boolean;
   onClose: () => void;
   onDeleted: () => void;
 }) => {
   const remove = useV4Adapter("codeSigning").useDeleteSigner();
   const [pending, setPending] = useState(false);
+  const nextDigicertOrderId = getNextDigicertOrderId(signer);
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
       <AlertDialogContent tone="danger" confirmText={signer.name} pending={pending}>
@@ -114,8 +124,11 @@ export const DeleteSignerDialog = ({
           <AlertDialogDescription>
             This removes the signer, its policy, members, requests and signing history. The
             certificate is kept for audit, but signing stops immediately.
-            {isDigicert &&
-              " It also revokes the certificate's DigiCert order, so the certificate can't sign anywhere."}
+            {signer.caType === CaType.DIGICERT &&
+              " It also revokes the certificate on DigiCert, so it can't sign anywhere. Other certificates on the same order stay valid."}
+            {signer.caType === CaType.DIGICERT &&
+              nextDigicertOrderId &&
+              ` DigiCert order #${nextDigicertOrderId} is canceled too.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -138,6 +151,193 @@ export const DeleteSignerDialog = ({
             }}
           >
             Delete signer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const REVOCATION_REASONS = crlReasons.filter(({ value }) => value !== CrlReason.CERTIFICATE_HOLD);
+
+const ADCS_UNSUPPORTED_REASONS: CrlReason[] = [
+  CrlReason.PRIVILEGE_WITHDRAWN,
+  CrlReason.A_A_COMPROMISE
+];
+
+const revocationReasonsFor = (caType?: CaType | null) =>
+  caType === CaType.ADCS
+    ? REVOCATION_REASONS.filter(({ value }) => !ADCS_UNSUPPORTED_REASONS.includes(value))
+    : REVOCATION_REASONS;
+
+export const RevokeSignerCertificateDialog = ({
+  signer,
+  open,
+  onClose
+}: {
+  signer: TSigner;
+  open: boolean;
+  onClose: () => void;
+}) => {
+  const revoke = useV4Adapter("codeSigning").useRevokeSignerCertificate();
+  const [reason, setReason] = useState<CrlReason>(CrlReason.UNSPECIFIED);
+  const [pending, setPending] = useState(false);
+  const openDigicertOrderId = getNextDigicertOrderId(signer);
+  const close = () => {
+    setReason(CrlReason.UNSPECIFIED);
+    onClose();
+  };
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !next && !pending && close()}>
+      <AlertDialogContent tone="danger" icon="shield" pending={pending}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Revoke the certificate for ${signer.name}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            The signer stops signing right away. To sign again, use Reissue certificate, which
+            issues the certificate with a new key. Signatures made before the revocation may stop
+            validating.
+            {getOpenCertificateRequest(signer) &&
+              (openDigicertOrderId
+                ? ` This also cancels the pending certificate request, including DigiCert order #${openDigicertOrderId}.`
+                : " This also cancels the pending certificate request.")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Stack gap={16}>
+          {signer.caType === CaType.DIGICERT && (
+            <Alert tone="warn">
+              If your CertCentral account requires approval for revocations, the certificate stays
+              valid until an administrator approves the request in CertCentral. The signer
+              can&apos;t sign in the meantime, and goes back to its earlier status if the request is
+              rejected.
+            </Alert>
+          )}
+          <Field label="Revocation reason">
+            <Select
+              aria-label="Revocation reason"
+              options={revocationReasonsFor(signer.caType)}
+              value={reason}
+              onChange={(next) => setReason(next as CrlReason)}
+            />
+          </Field>
+        </Stack>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            loading={pending}
+            onClick={async () => {
+              setPending(true);
+              try {
+                await revoke.mutateAsync({ signerId: signer.id, revocationReason: reason });
+              } catch (error) {
+                failed(`Couldn't revoke the certificate for ${signer.name}`, error);
+              } finally {
+                setPending(false);
+              }
+              close();
+            }}
+          >
+            Revoke certificate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+export const RenewSignerCertificateDialog = ({
+  signer,
+  open,
+  onClose
+}: {
+  signer: TSigner;
+  open: boolean;
+  onClose: () => void;
+}) => {
+  const renew = useV4Adapter("codeSigning").useRenewSignerCertificate();
+  const [pending, setPending] = useState(false);
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
+      <AlertDialogContent pending={pending}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Renew the certificate for ${signer.name}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            This requests a new certificate from the signer&apos;s certificate authority.
+            {signer.status === SignerStatus.Active &&
+              " The signer keeps signing with its current certificate until the new one is issued."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {signer.caType === CaType.DIGICERT && (
+          <Alert tone="warn">
+            This places a renewal order on DigiCert. If your account has no unused code signing
+            subscription, the current order is reissued instead, and DigiCert revokes the current
+            certificate within 72 hours.
+          </Alert>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            loading={pending}
+            onClick={async () => {
+              setPending(true);
+              try {
+                await renew.mutateAsync(signer.id);
+                onClose();
+              } catch (error) {
+                failed(`Couldn't renew the certificate for ${signer.name}`, error);
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            Renew certificate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+export const ReissueSignerCertificateDialog = ({
+  signer,
+  open,
+  onClose
+}: {
+  signer: TSigner;
+  open: boolean;
+  onClose: () => void;
+}) => {
+  const reissue = useV4Adapter("codeSigning").useReissueSignerCertificate();
+  const [pending, setPending] = useState(false);
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
+      <AlertDialogContent pending={pending}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Reissue the certificate for ${signer.name}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            This issues a new certificate with a new key from the signer&apos;s certificate
+            authority, so the signer can sign again.
+            {signer.caType === CaType.DIGICERT && " This places a new DigiCert order."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            loading={pending}
+            onClick={async () => {
+              if (!signer.caId) return;
+              setPending(true);
+              try {
+                await reissue.mutateAsync({ signerId: signer.id, caId: signer.caId });
+                onClose();
+              } catch (error) {
+                failed(`Couldn't reissue the certificate for ${signer.name}`, error);
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            Reissue certificate
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -32,6 +32,8 @@ import type {
   TRemoveSignerIdentityDTO,
   TRemoveSignerUserDTO,
   TRequestToSignDTO,
+  TRevokeSignerCertificateDTO,
+  TRevokeSignerCertificateResponse,
   TRevokeSignerRequestDTO,
   TSigner,
   TSignerMember,
@@ -111,6 +113,11 @@ export type CodeSigningAdapter = {
   useEnableSigner: V4Mutation<TEnableSignerDTO, TSigner>;
   useDisableSigner: V4Mutation<TDisableSignerDTO, TSigner>;
   useReissueSignerCertificate: V4Mutation<TReissueSignerCertificateDTO, TSigner>;
+  useRenewSignerCertificate: V4Mutation<string, TSigner>;
+  useRevokeSignerCertificate: V4Mutation<
+    TRevokeSignerCertificateDTO,
+    TRevokeSignerCertificateResponse
+  >;
   useImportSignerCertificate: V4Mutation<TImportSignerCertificateDTO, TSigner>;
   useCheckSignerCertificateImport: V4Mutation<TCheckSignerCertificateImportDTO, unknown>;
   useCheckSignerIssuance: V4Mutation<string, TSigner>;

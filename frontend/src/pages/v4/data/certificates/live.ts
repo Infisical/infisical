@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import FileSaver from "file-saver";
 
 import { apiRequest } from "@app/config/request";
@@ -10,7 +10,10 @@ import {
   useListCertificateInventoryViews,
   useUpdateCertificateInventoryView
 } from "@app/hooks/api/certificateInventoryViews";
-import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles/queries";
+import {
+  certificateProfileKeys,
+  useListCertificateProfiles
+} from "@app/hooks/api/certificateProfiles/queries";
 import {
   useAssignCertificateToApplication,
   useDeleteCert,
@@ -24,17 +27,21 @@ import {
   useUpdateRenewalConfig
 } from "@app/hooks/api/certificates/mutations";
 import {
+  certKeys,
   useGetCertActivityTrend,
   useGetCertDashboardStats,
   useGetCertificateById,
   useGetCertificateRenewalPreview,
   useGetCertPqcTrend
 } from "@app/hooks/api/certificates/queries";
+import type { TRevokeCertDTO } from "@app/hooks/api/certificates/types";
 import {
   certManagerInstanceKeys,
   fetchCertManagerInstanceState
 } from "@app/hooks/api/certManagerInstance";
 import { useListPkiInstallations } from "@app/hooks/api/pkiDiscovery/queries";
+import { pkiSubscriberKeys } from "@app/hooks/api/pkiSubscriber/queries";
+import { projectKeys } from "@app/hooks/api/projects";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects/queries";
 import { useGetUserProjectPermissions } from "@app/hooks/api/roles/queries";
 import { useListSigners, useListSigningOperations } from "@app/hooks/api/signers/queries";
@@ -72,6 +79,25 @@ const useExportCertificate = () => {
   };
 };
 
+const useRevokeCertificate = () => {
+  const queryClient = useQueryClient();
+  const revoke = useRevokeCert();
+  return {
+    isPending: revoke.isPending,
+    mutateAsync: (dto: TRevokeCertDTO) =>
+      revoke.mutateAsync(dto).catch((error: unknown) => {
+        [
+          certKeys.getCertificateById(dto.id),
+          certificateProfileKeys.lists(),
+          pkiSubscriberKeys.allPkiSubscriberCertificates(),
+          projectKeys.allProjectCertificates(),
+          ["cert-dashboard-stats"]
+        ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+        throw error;
+      })
+  };
+};
+
 export const certificatesLive: CertificatesAdapter = {
   useInstanceState: (orgId) =>
     useQuery({
@@ -90,7 +116,7 @@ export const certificatesLive: CertificatesAdapter = {
   useCertificateProfiles: useListCertificateProfiles,
   useInstallations: useListPkiInstallations,
   useDeleteCertificate: useDeleteCert,
-  useRevokeCertificate: useRevokeCert,
+  useRevokeCertificate,
   useRenewalPreview: useGetCertificateRenewalPreview,
   useRenewCertificate,
   useUpdateRenewalConfig,

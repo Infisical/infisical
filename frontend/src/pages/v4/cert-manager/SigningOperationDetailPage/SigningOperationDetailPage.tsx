@@ -67,7 +67,7 @@ const Page = () => {
     signerId,
     operationId
   );
-  const signerHref = orgHref(orgId, `/cert-manager/code-signing/${signerId}?selectedTab=activity`);
+  const signerHref = orgHref(orgId, `/cert-manager/code-signing/${signerId}?selectedTab=overview`);
   if (isPending) return <Loader size="page" label="Loading signing operation" />;
   if (!data)
     return (

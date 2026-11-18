@@ -16,6 +16,7 @@ import {
   signingAlgorithmLabels,
   SigningOperationStatus,
   signingOperationStatusLabels,
+  SignerStatus,
   type TSigner,
   type TSigningOperation
 } from "@app/hooks/api/signers/types";
@@ -140,9 +141,12 @@ export const ActivityTab = ({
       variant="framed"
       title="Signing history"
       action={
-        <Button variant="outline" icon="terminal" onClick={() => setConnecting(true)}>
-          Set up signing
-        </Button>
+        signer.status !== SignerStatus.Revoked &&
+        signer.status !== SignerStatus.RevocationPending && (
+          <Button variant="outline" icon="terminal" onClick={() => setConnecting(true)}>
+            Set up signing
+          </Button>
+        )
       }
       flush
     >

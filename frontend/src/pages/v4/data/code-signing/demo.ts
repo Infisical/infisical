@@ -5,12 +5,16 @@ import {
   SignerPermissionSub
 } from "@app/context/SignerPermissionContext/types";
 import { parseDurationMs } from "@app/helpers/datetime";
+import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 import {
   CertKeySource,
+  SignerCertificateRequestStatus,
   SignerKeyAlgorithm,
   SignerMemberRole,
   SignerRequestStatus,
+  SignerRevocationStatus,
   SignerStatus,
   SigningActorType,
   SigningOperationStatus,
@@ -23,7 +27,7 @@ import {
 } from "@app/hooks/api/signers/types";
 import type { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
 
-import { saved } from "../../access/toast";
+import { saved, toast } from "../../access/toast";
 import { createFixtureStore } from "../fixture-store";
 import { demoMemberSeeds } from "../pki-applications/demo-store";
 import type { CodeSigningAdapter } from "./contract";
@@ -34,6 +38,14 @@ const RELEASE = "5b1f7c3a-8e2d-4a69-b0c4-9d6e3f2a1b85";
 const FIRMWARE = "c3a8e041-6d7b-4f12-9e5c-2b4f8a0d6e93";
 const MOBILE = "7e4d2a91-0c5b-4f38-a6e1-3b9d8c2f5a17";
 const INSTALLER = "a2f60c3e-9b17-4d85-8e4a-6c1d0f7b3e29";
+const DESKTOP = "e9b4d702-5c3a-4f61-8d27-1a6f0e3c9b48";
+const DRIVER = "4c7a1e95-2d6b-4b08-9f3e-8e5d0a2c7f16";
+const LEGACY = "b81f3d6a-7e20-4c95-a4d1-5f9c2e0b6a73";
+const MACOS = "92d5f1e7-0a4c-4b36-8e19-3c7b6d2a5f04";
+const DIGICERT_CA = "f2c6a9d4-1b8e-4e73-9a05-7d3b6c1e8f20";
+const DIGICERT_EV_CA = "c7e0b5a2-9f41-4d36-8a1c-5b2e7d9f0c83";
+const ADCS_CA = "6a3e9c12-4f7d-4a58-b1e6-0c8d2f5a9b34";
+const DIGICERT_REVOCATION_REQUEST_ID = 1288431;
 
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 36e5).toISOString();
 const daysFromNow = (days: number) => new Date(Date.now() + days * 864e5).toISOString();
@@ -52,6 +64,13 @@ const signer = (id: string, name: string, extra: Partial<TSigner>): TSigner => (
   certificateRenewBeforeDays: 14,
   keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
   certificateKeySource: CertKeySource.Infisical,
+  caType: CaType.INTERNAL,
+  certificateAuthority: {
+    id: ISSUING_CA,
+    name: "Acme Issuing CA G2",
+    status: CaStatus.ACTIVE,
+    type: CaType.INTERNAL
+  },
   createdAt: hoursAgo(24 * 120),
   updatedAt: hoursAgo(24),
   ...extra
@@ -75,6 +94,7 @@ const signers = createFixtureStore<TSigner[]>([
     keyAlgorithm: SignerKeyAlgorithm.RSA_4096,
     certificateKeySource: CertKeySource.Hsm,
     certificateHsmConnectorId: "hsm-luna-primary",
+    certificateHsmKeyLabel: "firmware-rsa4096-2026",
     certificateCommonName: "Acme Devices Firmware",
     certificateSerialNumber: "4E:90:1A:C7:2B:65:D3:08",
     certificateNotAfter: daysFromNow(12),
@@ -92,6 +112,88 @@ const signers = createFixtureStore<TSigner[]>([
     certificateFailureReason:
       "The CA rejected the request: the key algorithm is not allowed by the code signing template.",
     createdAt: hoursAgo(30)
+  }),
+  signer(DESKTOP, "acme-desktop-suite-windows-authenticode-production-ev-signer", {
+    description:
+      "Signs every Windows desktop build shipped to enterprise customers, including the installer, the auto-updater and the bundled command line tools",
+    caId: DIGICERT_EV_CA,
+    caType: CaType.DIGICERT,
+    certificateAuthority: {
+      id: DIGICERT_EV_CA,
+      name: "DigiCert CertCentral EV Code Signing for Acme Software International Holdings",
+      status: CaStatus.DISABLED,
+      type: CaType.DIGICERT
+    },
+    commonName: "Acme Software International Holdings, Inc. (Desktop Applications Division)",
+    certificateId: "0d7e3b91-6a2c-4f58-b4e0-9c1a5d8f2e67",
+    keyAlgorithm: SignerKeyAlgorithm.RSA_4096,
+    certificateKeySource: CertKeySource.Hsm,
+    certificateHsmConnectorId: "hsm-luna-primary",
+    certificateHsmKeyLabel:
+      "acme-desktop-authenticode-ev-2026-primary-luna-partition-07-signing-key",
+    certificateCommonName:
+      "Acme Software International Holdings, Inc. (Desktop Applications Division)",
+    certificateSerialNumber: "0C:7F:3A:91:5E:D2:48:B6:0A:1C:E4:7D:93:2F:68:C5:B0:4E:19:A7",
+    certificateNotAfter: daysFromNow(9),
+    externalOrder: { provider: "digicert", orderId: 48190233, status: "issued" },
+    certificateRequest: {
+      status: SignerCertificateRequestStatus.Pending,
+      failureReason: null,
+      externalOrder: { provider: "digicert", orderId: 48377120, status: "pending" }
+    },
+    hasOpenCertificateRequest: true,
+    lastSignedAt: hoursAgo(2),
+    createdAt: hoursAgo(24 * 340)
+  }),
+  signer(MACOS, "macos-app-signer", {
+    description: "Signs the macOS desktop app",
+    caId: DIGICERT_CA,
+    caType: CaType.DIGICERT,
+    certificateAuthority: {
+      id: DIGICERT_CA,
+      name: "DigiCert Code Signing",
+      status: CaStatus.ACTIVE,
+      type: CaType.DIGICERT
+    },
+    certificateId: "5f1c8a3e-2d7b-4e90-b6a4-1e3d9c0f7b52",
+    certificateKeySource: CertKeySource.Hsm,
+    certificateHsmConnectorId: "hsm-luna-primary",
+    certificateHsmKeyLabel: "macos-app-2026",
+    certificateCommonName: "Acme Software, Inc.",
+    certificateSerialNumber: "0A:4E:91:C2:7D:38:F5:16",
+    certificateNotAfter: daysFromNow(212),
+    externalOrder: { provider: "digicert", orderId: 48201114, status: "issued" },
+    lastSignedAt: hoursAgo(9),
+    createdAt: hoursAgo(24 * 95)
+  }),
+  signer(DRIVER, "driver-signer", {
+    description: "Signs kernel drivers through the corporate AD CS",
+    caId: ADCS_CA,
+    caType: CaType.ADCS,
+    certificateAuthority: {
+      id: ADCS_CA,
+      name: "Acme Corp Enterprise CA",
+      status: CaStatus.ACTIVE,
+      type: CaType.ADCS
+    },
+    externalCaConfig: { caType: CaType.ADCS, template: "AcmeCodeSigning" },
+    certificateId: "7a2c9e14-3b6d-4f80-a5c1-2e9d7b4f0a63",
+    certificateCommonName: "Acme Drivers",
+    certificateSerialNumber: "61:00:00:00:2A:9F:C3:7E:15:B0",
+    certificateNotAfter: daysFromNow(301),
+    lastSignedAt: hoursAgo(70),
+    createdAt: hoursAgo(24 * 64)
+  }),
+  signer(LEGACY, "legacy-tools-signer", {
+    description: "Signed the retired 3.x command line tools",
+    status: SignerStatus.Revoked,
+    certificateId: "3e8b0f52-9d1a-4c67-b2e4-6a5f1c9d0e38",
+    certificateStatus: CertStatus.REVOKED,
+    certificateCommonName: "Acme Software, Inc.",
+    certificateSerialNumber: "2D:5B:E8:04:7C:91:A6:3F",
+    certificateNotAfter: daysFromNow(88),
+    lastSignedAt: hoursAgo(24 * 21),
+    createdAt: hoursAgo(24 * 410)
   })
 ]);
 
@@ -547,6 +649,74 @@ export const codeSigningDemo: CodeSigningAdapter = {
     "Signer switched to the order's certificate",
     ({ signerId }) => patchSigner(signerId, { status: SignerStatus.Active })
   ),
+  useRenewSignerCertificate: () => ({
+    mutateAsync: async (signerId: string) => {
+      const previous = requireSigner(signerId);
+      const renewed =
+        previous.caType === CaType.DIGICERT
+          ? patchSigner(signerId, {
+              certificateRequest: {
+                status: SignerCertificateRequestStatus.Pending,
+                failureReason: null,
+                externalOrder: {
+                  provider: "digicert",
+                  orderId: (previous.externalOrder?.orderId ?? 48190000) + 1,
+                  status: "pending"
+                }
+              },
+              hasOpenCertificateRequest: true
+            })
+          : patchSigner(signerId, {
+              certificateId: crypto.randomUUID(),
+              certificateSerialNumber: Array.from({ length: 8 }, () =>
+                Math.floor(Math.random() * 256)
+                  .toString(16)
+                  .toUpperCase()
+                  .padStart(2, "0")
+              ).join(":"),
+              certificateNotAfter: daysFromNow(previous.certificateTtlDays ?? 365),
+              certificateFailureReason: null
+            });
+      if (renewed.certificateId !== previous.certificateId) saved("Certificate renewed");
+      else if (previous.status === SignerStatus.Active)
+        saved(
+          "Renewal requested. The signer keeps signing with its current certificate until the new one is issued."
+        );
+      else
+        saved("Renewal requested. The signer can sign again once the new certificate is issued.");
+      return renewed;
+    },
+    isPending: false
+  }),
+  useRevokeSignerCertificate: () => ({
+    mutateAsync: async ({ signerId }) => {
+      const closed = { certificateRequest: null, hasOpenCertificateRequest: false };
+      if (requireSigner(signerId).caType === CaType.DIGICERT) {
+        const pending = patchSigner(signerId, {
+          ...closed,
+          status: SignerStatus.RevocationPending,
+          revocation: {
+            status: SignerRevocationStatus.AwaitingApproval,
+            caRequestId: DIGICERT_REVOCATION_REQUEST_ID,
+            failureReason: null
+          }
+        });
+        toast({
+          title: "Revocation waiting for approval",
+          description: `DigiCert request #${DIGICERT_REVOCATION_REQUEST_ID} needs an administrator to approve it in CertCentral. The signer can't sign while it waits.`
+        });
+        return pending;
+      }
+      const revoked = patchSigner(signerId, {
+        ...closed,
+        status: SignerStatus.Revoked,
+        certificateStatus: CertStatus.REVOKED
+      });
+      saved("Certificate revoked");
+      return revoked;
+    },
+    isPending: false
+  }),
   useCheckSignerCertificateImport: announce("", () => ({ hsmKeyId: null })),
   useCheckSignerIssuance: announce("Issuance still pending. Checked just now.", (signerId) =>
     requireSigner(signerId)
