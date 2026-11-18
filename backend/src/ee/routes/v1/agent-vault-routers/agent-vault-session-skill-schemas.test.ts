@@ -56,7 +56,8 @@ describe("a session's skills request schema", () => {
     const inlineSkills = Array.from({ length: 6 }, (_, index) => inline(`inline-${index}`));
     expect(issuesOf(inlineSkills)[0]).toMatchObject({
       code: "custom",
-      message: "A session can carry at most 5 inline skills. Add the others to the project and name them instead."
+      message:
+        "A session can carry at most 5 inline skills. Add the others to the project and list them by name instead."
     });
     expect(issuesOf(inlineSkills.slice(0, 5))).toEqual([]);
   });

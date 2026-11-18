@@ -5119,7 +5119,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(twoServices.json().message).toContain("both cover ns-dup.example.com");
       });
 
-      test("a Member naming a wildcard service gets the more specific services its bundle uses for some of its hosts", async () => {
+      test("a Member listing a wildcard service by name gets the more specific services its bundle uses for some of its hosts", async () => {
         const member = await createMemberIdentity(`ns-override-member-${Date.now()}`);
         try {
           const bundle = await createAccessBundle(`ns-override-bundle-${Date.now()}`);

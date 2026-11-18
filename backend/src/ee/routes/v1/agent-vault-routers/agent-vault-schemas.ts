@@ -1049,7 +1049,7 @@ export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
     if (entries.length - listedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services. Add the others to the project and name them instead.`
+        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services. Add the others to the project and list them by name instead.`
       });
     }
     // The agent, the proxy and the session logs tell a session's services apart by name. One sent inline without a name
@@ -1855,17 +1855,17 @@ export const AgentVaultSessionSkillsInputSchema = sessionEntriesSchema({
   tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills and ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills.`
 })
   .superRefine((entries, ctx) => {
-    const namedSkillCount = entries.filter((entry) => typeof entry === "string").length;
-    if (namedSkillCount > AGENT_VAULT_MAX_SESSION_SKILLS) {
+    const listedSkillCount = entries.filter((entry) => typeof entry === "string").length;
+    if (listedSkillCount > AGENT_VAULT_MAX_SESSION_SKILLS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills.`
       });
     }
-    if (entries.length - namedSkillCount > AGENT_VAULT_MAX_SESSION_INLINE_SKILLS) {
+    if (entries.length - listedSkillCount > AGENT_VAULT_MAX_SESSION_INLINE_SKILLS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills. Add the others to the project and name them instead.`
+        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills. Add the others to the project and list them by name instead.`
       });
     }
     // Each skill installs as a folder of its name, so two by one name would overwrite each other. An inline skill's name

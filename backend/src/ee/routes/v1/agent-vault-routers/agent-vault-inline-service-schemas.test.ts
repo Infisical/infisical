@@ -115,7 +115,8 @@ describe("inline services request schema", () => {
     );
     expect(issuesOf(services)[0]).toMatchObject({
       code: "custom",
-      message: "A session can carry at most 20 inline services. Add the others to the project and name them instead."
+      message:
+        "A session can carry at most 20 inline services. Add the others to the project and list them by name instead."
     });
   });
 
