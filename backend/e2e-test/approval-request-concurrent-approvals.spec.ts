@@ -82,7 +82,7 @@ const buildService = () => {
       approvalRequestStepsDAL,
       approvalRequestApprovalsDAL,
       userGroupMembershipDAL,
-      permissionService: { getOrgPermission: async () => ({}) },
+      orgPermissionService: { getOrgPermission: async () => ({}) },
       notificationService: {
         createUserNotifications: async (rows: { userId: string; title: string }[]) => {
           delivered.push(...rows.map(({ userId, title }) => ({ userId, title })));
