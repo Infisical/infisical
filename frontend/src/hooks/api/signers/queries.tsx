@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { SignerPermissionSet } from "@app/context/SignerPermissionContext/types";
 import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
-import { DASHBOARD_STALE_TIME } from "@app/hooks/api/reactQuery";
 
 import {
   SignerStatus,
@@ -149,7 +148,10 @@ export const useGetSignerPublicKey = (signerId: string) => {
   });
 };
 
-export const useGetSigningActivityTrend = (dto: TGetSigningActivityTrendDTO) => {
+export const useGetSigningActivityTrend = (
+  dto: TGetSigningActivityTrendDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
   return useQuery({
     queryKey: signerKeys.activityTrend(dto),
     queryFn: async () => {
@@ -161,8 +163,7 @@ export const useGetSigningActivityTrend = (dto: TGetSigningActivityTrendDTO) => 
       );
       return data.periods;
     },
-    enabled: Boolean(dto.projectId),
-    staleTime: DASHBOARD_STALE_TIME,
+    enabled: enabled && Boolean(dto.projectId),
     placeholderData: (previousData) => previousData
   });
 };

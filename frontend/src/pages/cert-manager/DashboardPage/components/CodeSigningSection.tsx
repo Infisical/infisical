@@ -52,11 +52,15 @@ export const CodeSigningSection = ({ projectId }: Props) => {
   const [selectedSignerId, setSelectedSignerId] = useState<string>(ALL_SIGNERS);
   const [currentRange, setCurrentRange] = useState<TGetSigningActivityTrendDTO["range"]>("30d");
 
-  const { data: trendData = [] } = useGetSigningActivityTrend({
-    projectId,
-    range: currentRange,
-    signerId: selectedSignerId === ALL_SIGNERS ? undefined : selectedSignerId
-  });
+  const { data: trendData = [] } = useGetSigningActivityTrend(
+    {
+      projectId,
+      range: currentRange,
+      signerId: selectedSignerId === ALL_SIGNERS ? undefined : selectedSignerId
+    },
+    { enabled: signers.length > 0 }
+  );
+  const hasAnyData = trendData.some((d) => d.success > 0 || d.failed > 0);
 
   if (signers.length === 0) {
     return null;
@@ -95,10 +99,10 @@ export const CodeSigningSection = ({ projectId }: Props) => {
         </div>
       </CardHeader>
       <CardContent>
-        {trendData.length === 0 ? (
+        {!hasAnyData ? (
           <Empty className="h-[250px]">
             <EmptyHeader>
-              <EmptyTitle>No signing operations yet</EmptyTitle>
+              <EmptyTitle>No signing activity in this period</EmptyTitle>
             </EmptyHeader>
           </Empty>
         ) : (

@@ -34,8 +34,6 @@ export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
 export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
 
-export const DASHBOARD_STALE_TIME = 5 * 60 * 1000;
-
 function ValidationErrorModal({
   serverResponse,
   requestBody,

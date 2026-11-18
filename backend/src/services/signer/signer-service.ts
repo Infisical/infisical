@@ -2994,15 +2994,16 @@ export const signerServiceFactory = ({
       return signerPermission.can(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
     };
 
+    const isCacheable = Boolean(dto.signerId) || hasRole(ProjectMembershipRole.Admin);
+
     let signerIds: string[] | undefined;
-    let isCacheable = true;
     if (dto.signerId) {
       const signer = await signerDAL.findById(dto.signerId);
       if (!signer || signer.projectId !== dto.projectId) {
         throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
       }
       if (!(await canReadSigner(signer.id))) {
-        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${signer.name}'` });
+        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${dto.signerId}'` });
       }
       signerIds = [signer.id];
     } else if (!hasRole(ProjectMembershipRole.Admin)) {
@@ -3017,7 +3018,6 @@ export const signerServiceFactory = ({
       );
       const readable = await Promise.all(memberSignerIds.map(canReadSigner));
       signerIds = memberSignerIds.filter((_, i) => readable[i]);
-      isCacheable = false;
     }
 
     const daysBackByRange: Record<SigningActivityRange, number> = {
@@ -3037,7 +3037,7 @@ export const signerServiceFactory = ({
       ? await withCache({
           keyStore,
           key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, dto.signerId),
-          ttlSeconds: KeyStoreTtls.DashboardCacheInSeconds,
+          ttlSeconds: KeyStoreTtls.SigningActivityTrendInSeconds,
           fetcher: fetchPeriods
         })
       : await fetchPeriods();

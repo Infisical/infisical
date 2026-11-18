@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { DASHBOARD_STALE_TIME } from "@app/hooks/api/reactQuery";
 
 import {
   TActivityTrendResponse,
@@ -160,6 +159,8 @@ export const useGetCertificateRequest = (requestId: string) => {
     enabled: Boolean(requestId)
   });
 };
+
+const DASHBOARD_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 export const useGetCertDashboardStats = (projectId: string) => {
   return useQuery({
