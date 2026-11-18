@@ -26,47 +26,75 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
-import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
+import {
+  InlineServicesList,
+  NamedServicesList,
+  ServicesHoverCard
+} from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
-import { inlineServiceTarget } from "./sessionInlineServices";
+import {
+  inlineServiceTarget,
+  sessionInlineServices,
+  sessionNamedServices
+} from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
+const SHOWN_NAMED_SERVICES = 2;
+
+// An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
+// One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
+const moreButton = (count: number) => (
+  <button
+    type="button"
+    className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+  >
+    <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
+  </button>
+);
 
 type Props = {
   session: TAgentVaultSession | undefined;
   isPending?: boolean;
   onRevoke: (session: TAgentVaultSession) => void;
-  onEditLabel: (session: TAgentVaultSession) => void;
+  onEdit: (session: TAgentVaultSession) => void;
 };
 
-export const SessionDetailSheet = ({
-  session,
-  isPending = false,
-  onRevoke,
-  onEditLabel
-}: Props) => {
+export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdit }: Props) => {
   const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
 
   const isOwnerDeleted = session?.actor.id === null;
-  // The API refuses label edits once the owner, or the user it acts on behalf of, is deleted.
-  const canEditLabel = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
+  // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEdit =
+    !isOwnerDeleted &&
+    session?.onBehalfOf?.id !== null &&
+    Boolean(session && canActOnAgentVaultSession(permission, user.id, session, "edit"));
+  const canRevoke = Boolean(
+    session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
+  );
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
-  const services = session?.services ?? [];
-  const shownServices = services.slice(0, SHOWN_INLINE_SERVICES);
-  const moreServices = services.slice(SHOWN_INLINE_SERVICES);
+  const metadataEntries = Object.entries(session?.metadata ?? {});
+  const inlineServices = session ? sessionInlineServices(session) : [];
+  const shownServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
+  const moreServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
+  const namedServices = session ? sessionNamedServices(session) : [];
+  const shownNamedServices = namedServices.slice(0, SHOWN_NAMED_SERVICES);
+  const moreNamedServices = namedServices.slice(SHOWN_NAMED_SERVICES);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -180,7 +208,41 @@ export const SessionDetailSheet = ({
                         </DetailValue>
                       </Detail>
                     )}
-                    {session.services.length > 0 && (
+                    {namedServices.length > 0 && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Services</DetailLabel>
+                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {shownNamedServices.map((service) => (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={service.hostPattern}
+                                    serviceType={service.type}
+                                    className="size-5"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                A project service this session names
+                                {service.description && (
+                                  <span className="block">{service.description}</span>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {moreNamedServices.length > 0 && (
+                            <ServicesHoverCard
+                              content={<NamedServicesList services={moreNamedServices} />}
+                            >
+                              {moreButton(moreNamedServices.length)}
+                            </ServicesHoverCard>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {inlineServices.length > 0 && (
                       <Detail className="min-w-0">
                         <DetailLabel>Inline Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -208,17 +270,11 @@ export const SessionDetailSheet = ({
                             </Tooltip>
                           ))}
                           {moreServices.length > 0 && (
-                            <InlineServicesHoverCard services={moreServices}>
-                              <button
-                                type="button"
-                                className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                              >
-                                {/* One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam. */}
-                                <span className="underline decoration-dotted underline-offset-2">
-                                  {`+${moreServices.length} more`}
-                                </span>
-                              </button>
-                            </InlineServicesHoverCard>
+                            <ServicesHoverCard
+                              content={<InlineServicesList services={moreServices} />}
+                            >
+                              {moreButton(moreServices.length)}
+                            </ServicesHoverCard>
                           )}
                         </DetailValue>
                       </Detail>
@@ -258,7 +314,7 @@ export const SessionDetailSheet = ({
                       <SessionStatusBadge status={session.status} />
                     </Detail>
                   </div>
-                  {session.status === AgentVaultSessionStatus.Active && (
+                  {session.status === AgentVaultSessionStatus.Active && canRevoke && (
                     <Button
                       variant="danger"
                       size="sm"
@@ -271,20 +327,39 @@ export const SessionDetailSheet = ({
                   )}
                 </div>
                 <div className="flex items-start gap-2 border-t border-border px-4 py-3">
-                  <Detail className="min-w-0 flex-1">
-                    <DetailLabel>Label</DetailLabel>
-                    <DetailValue
-                      className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
-                    >
-                      {session.label ?? "No label"}
-                    </DetailValue>
-                  </Detail>
-                  {canEditLabel && (
+                  <div className="flex min-w-0 flex-1 flex-col gap-3">
+                    <Detail>
+                      <DetailLabel>Label</DetailLabel>
+                      <DetailValue
+                        className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
+                      >
+                        {session.label ?? "No label"}
+                      </DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Metadata</DetailLabel>
+                      <DetailValue className="min-w-0">
+                        {metadataEntries.length > 0 ? (
+                          <dl className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                            {metadataEntries.map(([key, value]) => (
+                              <div key={key} className="flex min-w-0 gap-2">
+                                <dt className="max-w-1/2 shrink-0 text-muted">{key}</dt>
+                                <dd className="min-w-0 break-words">{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <span className="text-muted">No metadata</span>
+                        )}
+                      </DetailValue>
+                    </Detail>
+                  </div>
+                  {canEdit && (
                     <IconButton
                       variant="ghost"
                       size="xs"
-                      aria-label={session.label ? "Edit label" : "Add label"}
-                      onClick={() => onEditLabel(session)}
+                      aria-label="Edit session"
+                      onClick={() => onEdit(session)}
                     >
                       <PencilIcon />
                     </IconButton>

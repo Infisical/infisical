@@ -6,7 +6,7 @@ description: "Detect unauthorized access to your secrets by planting decoy AWS c
 
 Honey tokens are decoy credentials that act as tripwires. When an attacker gains access to your secrets and attempts to use a honey token, Infisical detects the activity and immediately alerts you and your team.
 
-Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert and notifies organization admins.
+Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert, which notifies the people and channels you [choose for that honey token](/documentation/platform/honey-tokens/aws/usage#get-alerted-when-a-honey-token-is-triggered).
 
 At this time, we only support [AWS IAM](/documentation/platform/honey-tokens/aws/usage) credentials as honey tokens, but we're planning to support more providers in the near future.
 

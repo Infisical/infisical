@@ -185,7 +185,7 @@ describe("identityAccessTokenServiceFactory", () => {
   beforeAll(async () => {
     previousFipsEnabled = process.env.FIPS_ENABLED;
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   afterAll(() => {
@@ -1198,7 +1198,7 @@ describe("certificate-bound access tokens", () => {
   beforeAll(async () => {
     previousFipsEnabled = process.env.FIPS_ENABLED;
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
     x509.cryptoProvider.set(globalThis.crypto);
     boundPem = await makeCertificatePem("bound-client");
     otherPem = await makeCertificatePem("other-client");

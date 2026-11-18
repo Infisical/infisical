@@ -26,11 +26,9 @@ describe("GitLab list retry handling", () => {
     }
   } as TGitLabConnection;
   const fetchMock = vi.fn<typeof fetch>();
-  const service = gitlabConnectionService(
-    vi.fn().mockResolvedValue(connection),
-    { updateById: vi.fn() },
-    { createCipherPairWithDataKey: vi.fn() }
-  );
+  const service = gitlabConnectionService(vi.fn().mockResolvedValue(connection), { updateById: vi.fn() }, {
+    createCipherPairWithDataKey: vi.fn()
+  } as never);
 
   beforeEach(() => {
     vi.useFakeTimers();
