@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError } from "@app/lib/errors";
 import { defineAiTool } from "@app/services/ai/ai-types";
 
@@ -120,7 +121,7 @@ export const JIRA_AI_TOOLS = {
       try {
         approvals = await listJiraIssueApprovals(conn, key, deps);
       } catch (error) {
-        if (error instanceof BadRequestError) throw error;
+        if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
         if (isJiraNotFoundError(error)) {
           throw new BadRequestError({
             message: `${key} isn't a Jira Service Management request, doesn't exist, or the Jira connection can't see it`

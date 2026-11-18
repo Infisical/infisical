@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -32,9 +33,6 @@ import {
   PlatformRevocationOutcome
 } from "@app/services/certificate/certificate-types";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { ScepChallengeType } from "./challenge/scep-challenge-types";
 
@@ -59,8 +57,8 @@ type TScepIntuneRevocationSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "find">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey" | "getProjectCertificateKmsKeyId">;
+  kmsKeyService: Pick<TKmsKeyService, "decryptWithKmsKey">;
   certificateDAL: Pick<TCertificateDALFactory, "findScepCertsByValidationConnectionsAndSerials" | "primaryNode">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
@@ -101,8 +99,8 @@ export const scepIntuneRevocationSyncQueueFactory = ({
   cronJob,
   scepEnrollmentConfigDAL,
   appConnectionDAL,
-  kmsService,
-  projectDAL,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateDAL,
   certificateBodyDAL,
   certificateAuthorityCertDAL,
@@ -138,8 +136,8 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     const getDecryptor = async (projectId: string) => {
       let decryptor = decryptorsByProjectId.get(projectId);
       if (!decryptor) {
-        const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-        decryptor = await kmsService.decryptWithKmsKey({ kmsId });
+        const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+        decryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
         decryptorsByProjectId.set(projectId, decryptor);
       }
       return decryptor;
@@ -373,7 +371,7 @@ export const scepIntuneRevocationSyncQueueFactory = ({
           orgId: connection.orgId,
           projectId: connection.projectId,
           encryptedCredentials: connection.encryptedCredentials,
-          kmsService
+          kmsDataKeyService
         })) as TMicrosoftIntuneConnectionCredentials;
 
         const tenantId = credentials.tenantId.toLowerCase();

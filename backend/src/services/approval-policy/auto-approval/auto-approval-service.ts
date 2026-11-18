@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -20,7 +21,6 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TApprovalPolicyAutoApprovalDALFactory } from "./auto-approval-dal";
 import {
@@ -83,7 +83,7 @@ type TAutoApprovalServiceFactoryDep = {
     "validateAppConnectionUsageById" | "listAvailableAppConnectionsForUser"
   >;
   aiService: Pick<TAiServiceFactory, "getOrgAiModel" | "runJudge">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
@@ -120,7 +120,7 @@ export const autoApprovalServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   aiService,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService
 }: TAutoApprovalServiceFactoryDep) => {
@@ -137,7 +137,7 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAppConnection | null> => {
     const raw = await appConnectionDAL.findById(connectionId);
     if (!raw || raw.orgId !== orgId || (raw.projectId && raw.projectId !== projectId)) return null;
-    return decryptAppConnection(raw, kmsService);
+    return decryptAppConnection(raw, kmsDataKeyService);
   };
 
   const validateConfig = async ({

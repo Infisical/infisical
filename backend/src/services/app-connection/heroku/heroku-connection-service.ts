@@ -1,6 +1,6 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -16,12 +16,12 @@ type TGetAppConnectionFunc = (
 export const herokuConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);
     try {
-      const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsService });
+      const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsDataKeyService });
       return apps;
     } catch (error) {
       logger.error(error, `Failed to establish connection with Heroku for app ${connectionId}`);

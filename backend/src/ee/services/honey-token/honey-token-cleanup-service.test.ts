@@ -41,7 +41,7 @@ const buildService = (tokens: ReturnType<typeof token>[]) => {
       }
     },
     honeyTokenConfigDAL: { findOne: async () => null },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: async () => ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
