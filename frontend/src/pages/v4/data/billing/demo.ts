@@ -296,7 +296,8 @@ const catalog: BillingCatalogProduct[] = [
             noun: "1,000 requests",
             monthly: 2,
             annual: 0,
-            included: 0
+            included: 0,
+            meteredMonthly: true
           }
         ]
       }),
