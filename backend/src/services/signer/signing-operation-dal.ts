@@ -147,5 +147,72 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId };
+  const getActivityTrend = async (
+    { projectId, signerIds, daysBack }: { projectId: string; signerIds?: string[]; daysBack: number },
+    tx?: Knex
+  ) => {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      startDate.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      const useDaily = daysBack <= 30;
+      if (!useDaily) {
+        startDate.setDate(1);
+      }
+
+      const formatPeriod = (date: Date) => {
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        return useDaily ? `${month}-${String(date.getDate()).padStart(2, "0")}` : month;
+      };
+
+      const counts = new Map<string, { success: number; failed: number }>();
+
+      if (!signerIds || signerIds.length) {
+        let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
+          .where(`${TableName.PkiSigningOperations}.projectId`, projectId)
+          .where(`${TableName.PkiSigningOperations}.createdAt`, ">=", startDate)
+          .where(`${TableName.PkiSigningOperations}.createdAt`, "<=", now);
+
+        if (signerIds) {
+          query = query.whereIn(`${TableName.PkiSigningOperations}.signerId`, signerIds);
+        }
+
+        const rows = (await query
+          .select(
+            db.raw(`to_char(date_trunc(?, "${TableName.PkiSigningOperations}"."createdAt"), ?) as period`, [
+              useDaily ? "day" : "month",
+              useDaily ? "YYYY-MM-DD" : "YYYY-MM"
+            ]),
+            db.raw("count(*) filter (where status = ?)::int as success", [SigningOperationStatus.Success]),
+            db.raw("count(*) filter (where status in (?, ?))::int as failed", [
+              SigningOperationStatus.Failed,
+              SigningOperationStatus.Denied
+            ])
+          )
+          .groupBy("period")) as unknown as { period: string; success: number; failed: number }[];
+
+        rows.forEach((row) => counts.set(row.period, { success: Number(row.success), failed: Number(row.failed) }));
+      }
+
+      const periods: { period: string; success: number; failed: number }[] = [];
+      const cursor = new Date(startDate);
+      while (cursor <= now) {
+        const period = formatPeriod(cursor);
+        periods.push({ period, ...(counts.get(period) ?? { success: 0, failed: 0 }) });
+        if (useDaily) {
+          cursor.setDate(cursor.getDate() + 1);
+        } else {
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      return periods;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetSigningOperationActivityTrend" });
+    }
+  };
+
+  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId, getActivityTrend };
 };

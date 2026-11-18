@@ -135,6 +135,7 @@ import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import { TSignerRevocationDALFactory } from "./signer-revocation-dal";
 import {
   SignerExternalCaConfigSchema,
+  SigningActivityRange,
   TCheckCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
@@ -143,6 +144,7 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  TGetSigningActivityTrendDTO,
   TGetSigningOperationDTO,
   TImportCertificateDTO,
   TListSignersDTO,
@@ -2964,6 +2966,72 @@ export const signerServiceFactory = ({
     };
   };
 
+  const getActivityTrend = async (dto: TGetSigningActivityTrendDTO) => {
+    const { permission, hasRole } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCodeSigningActions.Read,
+      ProjectPermissionSub.CodeSigners
+    );
+
+    const canReadSigner = async (signerId: string) => {
+      const { permission: signerPermission } = await $loadSignerResourcePermission(
+        signerId,
+        dto.projectId,
+        dto.actor,
+        dto.actorId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
+      return signerPermission.can(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    };
+
+    let signerIds: string[] | undefined;
+    if (dto.signerId) {
+      const signer = await signerDAL.findById(dto.signerId);
+      if (!signer || signer.projectId !== dto.projectId) {
+        throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+      }
+      if (!(await canReadSigner(signer.id))) {
+        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${signer.name}'` });
+      }
+      signerIds = [signer.id];
+    } else if (!hasRole(ProjectMembershipRole.Admin)) {
+      const memberships = await membershipDAL.findResourceMembershipsForActor({
+        projectId: dto.projectId,
+        resourceType: ResourceType.Signer,
+        actorType: dto.actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+        actorId: dto.actorId
+      });
+      const memberSignerIds = Array.from(
+        new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+      );
+      const readable = await Promise.all(memberSignerIds.map(canReadSigner));
+      signerIds = memberSignerIds.filter((_, i) => readable[i]);
+    }
+
+    const daysBackByRange: Record<SigningActivityRange, number> = {
+      [SigningActivityRange.SevenDays]: 7,
+      [SigningActivityRange.ThirtyDays]: 30,
+      [SigningActivityRange.SixMonths]: 180
+    };
+
+    const periods = await signingOperationDAL.getActivityTrend({
+      projectId: dto.projectId,
+      signerIds,
+      daysBack: daysBackByRange[dto.range]
+    });
+
+    return { periods };
+  };
+
   const listOperations = async (dto: TListSigningOperationsDTO) => {
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) {
@@ -3114,6 +3182,7 @@ export const signerServiceFactory = ({
     exportCertificate,
     sign,
     getPublicKey,
+    getActivityTrend,
     listOperations,
     getOperationById,
     autoRenewCertificate,
