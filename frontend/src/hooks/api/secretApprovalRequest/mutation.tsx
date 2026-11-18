@@ -13,6 +13,7 @@ import {
   TBulkActOnSecretApprovalRequestsDTO,
   TBulkChangeRequestResult,
   TPerformSecretApprovalRequestMerge,
+  TSecretApprovalRequest,
   TUpdateSecretApprovalRequestStatusDTO,
   TUpdateSecretApprovalReviewStatusDTO
 } from "./types";
@@ -97,6 +98,10 @@ export const usePerformSecretApprovalRequestMerge = () => {
 };
 
 type TBatchFailure = { approvalRequestId: string; message: string };
+type TBatchResponse = {
+  failures: TBatchFailure[];
+  approvals?: Pick<TSecretApprovalRequest, "id" | "hasMerged" | "conflicts">[];
+};
 
 export const useBulkActOnSecretApprovalRequests = () => {
   const queryClient = useQueryClient();
@@ -107,11 +112,11 @@ export const useBulkActOnSecretApprovalRequests = () => {
       try {
         const { data } =
           action === BulkChangeRequestAction.Merge
-            ? await apiRequest.post<{ failures: TBatchFailure[] }>(
+            ? await apiRequest.post<TBatchResponse>(
                 "/api/v1/secret-approval-requests/batch/merge",
                 { approvalRequestIds: requestIds }
               )
-            : await apiRequest.post<{ failures: TBatchFailure[] }>(
+            : await apiRequest.post<TBatchResponse>(
                 "/api/v1/secret-approval-requests/batch/review",
                 {
                   approvalRequestIds: requestIds,
@@ -123,6 +128,12 @@ export const useBulkActOnSecretApprovalRequests = () => {
                 }
               );
         failures = data.failures;
+        data.approvals?.forEach(({ id, hasMerged, conflicts }) =>
+          queryClient.setQueryData<TSecretApprovalRequest>(
+            secretApprovalRequestKeys.detail({ id }),
+            (details) => details && { ...details, hasMerged, conflicts }
+          )
+        );
       } catch (error) {
         const message = isAxiosError(error) ? error.response?.data?.message : undefined;
         return requestIds.map((id) => ({
