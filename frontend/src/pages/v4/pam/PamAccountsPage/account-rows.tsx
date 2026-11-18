@@ -24,6 +24,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AccountSheet } from "./account-sheet";
@@ -267,9 +268,8 @@ export const AccountName = ({
   );
 };
 
-const copyId = (kind: "Folder" | "Account", id: string) => {
-  navigator.clipboard.writeText(id);
-  toast({ tone: "ok", title: `${kind} ID copied to clipboard` });
+const copyId = async (kind: "Folder" | "Account", id: string) => {
+  if (await copyText(id)) toast({ tone: "ok", title: `${kind} ID copied to clipboard` });
 };
 
 export const AccountMenu = ({

@@ -32,6 +32,7 @@ import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -147,8 +148,8 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     let request: Promise<string> | undefined;
     try {
       request = reveal.mutateAsync(variable.id);
-      if (typeof ClipboardItem === "undefined") {
-        await navigator.clipboard.writeText(await request);
+      if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
+        await copyToClipboard(await request);
       } else {
         const blob = request.then((value) => new Blob([value], { type: "text/plain" }));
         await navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);

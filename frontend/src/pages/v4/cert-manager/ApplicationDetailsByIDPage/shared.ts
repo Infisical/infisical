@@ -3,6 +3,7 @@ import {
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
 
+import { copyText } from "../../clipboard";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 
 export type ApplicationTab = "certificates" | "requests" | "syncs" | "members" | "settings";
@@ -16,7 +17,7 @@ export const appCan = (
 export const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
-export const copyId = (id: string) => navigator.clipboard?.writeText(id).catch(() => undefined);
+export const copyId = (id: string) => copyText(id);
 
 export const APP_ROLES = [
   { value: "admin", label: "Admin", description: "Manage members, profiles and policies" },

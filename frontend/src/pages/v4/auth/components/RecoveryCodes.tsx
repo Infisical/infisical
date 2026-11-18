@@ -4,6 +4,7 @@ import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { toast } from "@infisical/cipher/ui/sonner";
 
+import { copyText } from "../../clipboard";
 import { AuthPage } from "./AuthPage";
 
 import styles from "../auth.module.css";
@@ -22,11 +23,13 @@ export const RecoveryCodesPanel = ({ recoveryCodes }: { recoveryCodes: string[] 
   };
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(recoveryCodes.join("\n"));
+    if (
+      await copyText(
+        recoveryCodes.join("\n"),
+        "Failed to copy recovery codes. Please download them instead."
+      )
+    ) {
       toast.success("Recovery codes copied");
-    } catch {
-      toast.error("Failed to copy recovery codes. Please download them instead.");
     }
   };
 

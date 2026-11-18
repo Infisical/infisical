@@ -19,10 +19,9 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 import { RESTRICTED, type Sort } from "../../../access/ui";
 import { ProviderIcon } from "../../../components/provider-icon";
 import { orgHref, useGo } from "../../../links";
-import { destinationNameOf, usePkiSyncOption, usePkiSyncPermissions } from "./shared";
+import { copySyncId, destinationNameOf, usePkiSyncOption, usePkiSyncPermissions } from "./shared";
 import {
   AutoSyncOff,
-  copySyncId,
   PkiSyncDialog,
   type PkiSyncDialogKind,
   PkiSyncMenuItems,

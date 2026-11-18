@@ -42,6 +42,7 @@ import type { Identity } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
@@ -260,8 +261,8 @@ const CopyIdButton = ({ id }: { id: string }) => {
         size="icon-xs"
         icon={copied ? "check" : "copy"}
         iconOnly
-        onClick={() => {
-          navigator.clipboard?.writeText(id).catch(() => undefined);
+        onClick={async () => {
+          if (!(await copyText(id))) return;
           setCopied(true);
           window.setTimeout(() => setCopied(false), 2000);
         }}
@@ -497,9 +498,12 @@ export const ProjectIdentityDetail = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(identity.id).catch(() => undefined);
-                      toast({ tone: "neutral", title: "Machine identity ID copied to clipboard" });
+                    onSelect={async () => {
+                      if (await copyText(identity.id))
+                        toast({
+                          tone: "neutral",
+                          title: "Machine identity ID copied to clipboard"
+                        });
                     }}
                   >
                     <Icon name="copy" />

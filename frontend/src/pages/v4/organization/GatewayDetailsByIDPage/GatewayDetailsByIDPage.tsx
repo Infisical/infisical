@@ -32,6 +32,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { saved, toast } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import {
@@ -194,9 +195,9 @@ export const GatewayDetailsByIDPage = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard?.writeText(gateway.id);
-                    toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(gateway.id))
+                      toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
                   }}
                 >
                   <Icon name="copy" />

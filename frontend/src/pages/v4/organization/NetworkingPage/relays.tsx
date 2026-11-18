@@ -32,6 +32,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { useOrgPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED, usePagedList } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmDialog } from "../../networking/confirm-dialog";
@@ -286,9 +287,9 @@ export const RelaysPanel = ({
             {
               label: "Copy relay ID",
               icon: "copy",
-              onSelect: (relay) => {
-                navigator.clipboard?.writeText(relay.id);
-                toast({ tone: "neutral", title: "Relay ID copied to clipboard" });
+              onSelect: async (relay) => {
+                if (await copyText(relay.id))
+                  toast({ tone: "neutral", title: "Relay ID copied to clipboard" });
               }
             }
           ],

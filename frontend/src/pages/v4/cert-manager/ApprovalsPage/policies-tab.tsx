@@ -28,6 +28,7 @@ import {
 } from "@app/hooks/api/approvalPolicies/types";
 
 import { failed, saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { requestedAgo } from "../components/approval";
 import { PolicySheet } from "./policy-sheet";
@@ -155,9 +156,8 @@ export const PoliciesTab = ({ projectId }: { projectId: string }) => {
           renderMenu: (policy) => (
             <>
               <DropdownMenuItem
-                onSelect={() => {
-                  navigator.clipboard?.writeText(policy.id).catch(() => undefined);
-                  saved("Approval policy ID copied");
+                onSelect={async () => {
+                  if (await copyText(policy.id)) saved("Approval policy ID copied");
                 }}
               >
                 <Icon name="copy" />

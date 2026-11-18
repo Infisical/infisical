@@ -13,6 +13,8 @@ import type { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 import { useProjectPermission } from "../../../access/permissions";
+import { toast } from "../../../access/toast";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 
 export type PkiSyncScope = {
@@ -123,4 +125,8 @@ export const usePkiSyncPermissions = (
       PkiApplicationResourceActions.RemoveCertificates
     )
   };
+};
+
+export const copySyncId = async (sync: TPkiSync) => {
+  if (await copyText(sync.id)) toast({ title: "Sync ID copied" });
 };

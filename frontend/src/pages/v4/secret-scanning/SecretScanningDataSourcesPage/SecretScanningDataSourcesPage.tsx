@@ -54,6 +54,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { UpgradeGate } from "../../license";
 import { v4Path } from "../../links";
@@ -525,9 +526,9 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             renderMenu: (row) => (
               <>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    navigator.clipboard.writeText(row.id);
-                    toast({ tone: "ok", title: "Data source ID copied to clipboard" });
+                  onSelect={async () => {
+                    if (await copyText(row.id))
+                      toast({ tone: "ok", title: "Data source ID copied to clipboard" });
                   }}
                 >
                   Copy data source ID

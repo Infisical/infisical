@@ -1,3 +1,5 @@
+import { copyText } from "../../../clipboard";
+
 export type ExportFormat = "csv" | "json";
 
 const FORMULA_PREFIXES = new Set(["=", "+", "-", "@"]);
@@ -52,6 +54,6 @@ export const copyRows = async (
   columns: string[],
   format: ExportFormat
 ) => {
-  if (rows.length === 0) return;
-  await navigator.clipboard.writeText(serialize(rows, columns, format));
+  if (rows.length === 0) return false;
+  return copyText(serialize(rows, columns, format), "Couldn't copy rows");
 };

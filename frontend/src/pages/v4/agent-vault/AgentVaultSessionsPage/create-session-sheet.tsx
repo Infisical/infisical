@@ -41,6 +41,7 @@ import type {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { failed, saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { isNoUniversalAuthError } from "../../data/agent-vault/contract";
@@ -143,9 +144,8 @@ const CopyPromptButton = ({ prompt }: { prompt: string }) => {
     <Button
       variant="accent"
       icon={isCopied ? "check" : "copy"}
-      onClick={() => {
-        navigator.clipboard.writeText(prompt);
-        setCopied("copied");
+      onClick={async () => {
+        if (await copyText(prompt)) setCopied("copied");
       }}
     >
       {isCopied ? "Copied" : "Copy prompt"}

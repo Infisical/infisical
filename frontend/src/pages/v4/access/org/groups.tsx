@@ -33,6 +33,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -88,9 +89,9 @@ const GroupRowMenu = ({
 }) => (
   <>
     <DropdownMenuItem
-      onSelect={() => {
-        navigator.clipboard?.writeText(group.id);
-        toast({ tone: "neutral", title: "Copied group ID to clipboard" });
+      onSelect={async () => {
+        if (await copyText(group.id))
+          toast({ tone: "neutral", title: "Copied group ID to clipboard" });
       }}
     >
       <Icon name="copy" />

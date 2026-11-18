@@ -5,6 +5,7 @@ import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Toaster, toast } from "@infisical/cipher/ui/sonner";
 import { Link, useSearch } from "@tanstack/react-router";
 
+import { copyText } from "../../clipboard";
 import { orgHref } from "../../links";
 import { canPreviewV4States } from "../../mode";
 import { resolveV4Href } from "../../resolveV4Href";
@@ -23,10 +24,7 @@ export const CliRedirectPage = () => {
 
   const handleCopy = async () => {
     if (!cliToken) return;
-    try {
-      await navigator.clipboard.writeText(cliToken);
-    } catch {
-      toast.error("Failed to copy the token. Select it and copy it manually.");
+    if (!(await copyText(cliToken, "Failed to copy the token. Select it and copy it manually."))) {
       return;
     }
     toast.success("Token copied");

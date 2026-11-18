@@ -3,6 +3,8 @@ import { Icon, type IconName } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { SmallText } from "@infisical/cipher/ui/text";
 
+import { copyToClipboard } from "@app/helpers/clipboard";
+
 import { toast } from "../access/toast";
 
 import styles from "./secret-sharing.module.css";
@@ -24,7 +26,7 @@ export const writeLink = async (
   copy: { copied: string; blocked?: string } = { copied: "Link copied to clipboard" }
 ) => {
   try {
-    await navigator.clipboard.writeText(value);
+    await copyToClipboard(value);
     toast({ tone: "ok", title: copy.copied });
   } catch {
     toast({

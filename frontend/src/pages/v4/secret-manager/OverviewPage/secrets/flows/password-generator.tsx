@@ -10,6 +10,8 @@ import {
 } from "@infisical/cipher/ui/popover";
 import { Slider } from "@infisical/cipher/ui/slider";
 
+import { copyText } from "../../../../clipboard";
+
 import styles from "./password-generator.module.css";
 
 const CHARSET = {
@@ -95,12 +97,7 @@ export function PasswordGenerator({
               size="icon-xs"
               iconOnly
               icon={copied === "Copied" ? "check" : "copy"}
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(password)
-                  .then(() => setCopied("Copied"))
-                  .catch(() => setCopied("Copy failed"))
-              }
+              onClick={async () => setCopied((await copyText(password)) ? "Copied" : "Copy failed")}
             >
               {copied ?? "Copy"}
             </Button>

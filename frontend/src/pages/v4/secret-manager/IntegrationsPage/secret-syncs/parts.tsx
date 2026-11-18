@@ -37,6 +37,7 @@ import { useProjectPermission } from "../../../access/permissions";
 import { formatDateTime } from "../../../access/roles";
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 import { destinationNameOf, messageOf, SYNC_STATE, syncStateOf } from "./model";
 
@@ -201,9 +202,8 @@ export const useSyncActions = (projectId: string) => {
 
 export type SyncActions = ReturnType<typeof useSyncActions>;
 
-export const copySyncId = (sync: TSecretSync) => {
-  navigator.clipboard?.writeText(sync.id);
-  toast({ tone: "ok", title: "Sync ID copied to clipboard" });
+const copySyncId = async (sync: TSecretSync) => {
+  if (await copyText(sync.id)) toast({ tone: "ok", title: "Sync ID copied to clipboard" });
 };
 
 export const SyncMenuItems = ({

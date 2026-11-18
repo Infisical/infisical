@@ -68,6 +68,7 @@ import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/git
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -464,9 +465,12 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
           renderMenu: (row) => (
             <>
               <DropdownMenuItem
-                onSelect={() => {
-                  navigator.clipboard.writeText(row.id);
-                  toast({ tone: "ok", title: `${resource.singularTitle} ID copied to clipboard` });
+                onSelect={async () => {
+                  if (await copyText(row.id))
+                    toast({
+                      tone: "ok",
+                      title: `${resource.singularTitle} ID copied to clipboard`
+                    });
                 }}
               >
                 Copy {resource.singularNoun} ID

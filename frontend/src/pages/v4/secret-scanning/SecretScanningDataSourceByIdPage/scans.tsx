@@ -26,6 +26,7 @@ import type {
 import { useProjectPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
@@ -213,9 +214,9 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
             {
               label: "Copy scan ID",
               icon: "copy",
-              onSelect: (row) => {
-                navigator.clipboard.writeText(row.id);
-                toast({ tone: "ok", title: "Scan ID copied to clipboard" });
+              onSelect: async (row) => {
+                if (await copyText(row.id))
+                  toast({ tone: "ok", title: "Scan ID copied to clipboard" });
               }
             }
           ]

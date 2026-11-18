@@ -47,6 +47,7 @@ import { AppConnectionForm } from "@app/pages/v4/components/app-connection-form"
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";
+import { copyText } from "../../../clipboard";
 import { useV4Adapter } from "../../../data/adapters";
 import { CONNECTION_PRESETS } from "../../../data/integrations/connection-presets";
 
@@ -472,9 +473,8 @@ export const SessionLogConnections = ({ inUseId }: { inUseId: string | null }) =
               return (
                 <>
                   <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(row.id).catch(() => undefined);
-                      saved("Connection ID copied");
+                    onSelect={async () => {
+                      if (await copyText(row.id)) saved("Connection ID copied");
                     }}
                   >
                     <Icon name="copy" />

@@ -26,6 +26,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { PageLoader } from "../../shell/project-gate";
@@ -57,8 +58,8 @@ const CopyValue = ({ value, what }: { value: string; what: string }) => {
           size="icon-xs"
           icon={copied ? "check" : "copy"}
           iconOnly
-          onClick={() => {
-            navigator.clipboard?.writeText(value).catch(() => undefined);
+          onClick={async () => {
+            if (!(await copyText(value))) return;
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
           }}
@@ -169,9 +170,9 @@ export const ProjectMemberDetail = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onSelect={() => {
-                      navigator.clipboard?.writeText(user.id).catch(() => undefined);
-                      toast({ tone: "neutral", title: "User ID copied to clipboard" });
+                    onSelect={async () => {
+                      if (await copyText(user.id))
+                        toast({ tone: "neutral", title: "User ID copied to clipboard" });
                     }}
                   >
                     <Icon name="copy" />

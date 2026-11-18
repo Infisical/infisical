@@ -52,6 +52,7 @@ import {
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, readableFailure, saved, toast } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { PamAccessAdapter } from "../../data/pam-access/contract";
 
@@ -803,9 +804,8 @@ const CredentialValue = ({
               iconOnly
               icon="copy"
               aria-label={`Copy ${label}`}
-              onClick={() => {
-                navigator.clipboard.writeText(value);
-                saved(`${label} copied to clipboard`);
+              onClick={async () => {
+                if (await copyText(value)) saved(`${label} copied to clipboard`);
               }}
             />
           </Inline>

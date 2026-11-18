@@ -33,6 +33,7 @@ import { secretScanningV2Keys } from "@app/hooks/api/secretScanningV2/queries";
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { failed, saved } from "../../access/toast";
+import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 
@@ -77,8 +78,8 @@ const CopyTrailing = ({ value, label, done }: { value: string; label: string; do
         size="icon-sm"
         icon={copied ? "check" : "copy"}
         iconOnly
-        onClick={() => {
-          navigator.clipboard?.writeText(value).catch(() => undefined);
+        onClick={async () => {
+          if (!(await copyText(value))) return;
           saved(done);
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1200);
