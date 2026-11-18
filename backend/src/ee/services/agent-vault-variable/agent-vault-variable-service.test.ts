@@ -156,7 +156,7 @@ const buildService = ({
         memberships: []
       })
     },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({
           cipherTextBlob: Buffer.concat([Buffer.from("sealed:"), plainText])

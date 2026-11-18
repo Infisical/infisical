@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
 
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -13,8 +14,6 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -125,7 +124,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TKeyStoreFactory,
     "getItemPrimary" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem" | "ttl" | "acquireLock"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
     | "findByIdInProject"
@@ -160,7 +159,7 @@ type TAgentVaultOauthServiceFactoryDep = {
 
 export type TAgentVaultOauthServiceFactory = ReturnType<typeof agentVaultOauthServiceFactory>;
 
-type TProjectCipher = Awaited<ReturnType<TKmsServiceFactory["createCipherPairWithDataKey"]>>;
+type TProjectCipher = Awaited<ReturnType<TKmsDataKeyService["createCipherPairWithDataKey"]>>;
 
 type TLoadedOauthService = {
   // The row the tokens were read from, which every write is made against.
@@ -357,7 +356,7 @@ const toView = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthAuthoriz
 
 export const agentVaultOauthServiceFactory = ({
   keyStore,
-  kmsService,
+  kmsDataKeyService,
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
   permissionService,
@@ -368,7 +367,7 @@ export const agentVaultOauthServiceFactory = ({
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const sealWith = ({ encryptor }: TProjectCipher, value: unknown) =>
     encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;

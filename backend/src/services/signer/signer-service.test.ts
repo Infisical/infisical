@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResourceMembershipRole, TPkiSignerCertificateRevocations } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import {
   ResourcePermissionSet,
   ResourcePermissionSignerActions,
@@ -585,6 +586,19 @@ describe("signerService.revokeCertificate", () => {
     }
   );
 
+  it.each([
+    ["RuleViolationError", new RuleViolationError({ message: "The project's certificate key is disabled." })],
+    ["EntityNotFoundError", new EntityNotFoundError({ message: "The project's certificate key was not found." })]
+  ])("treats a KMS %s during the revoke as a refusal", async (_name, kmsError) => {
+    const { service, deps, signer, revocation } = buildService();
+    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(kmsError);
+
+    await expect(revoke(service)).rejects.toBe(kmsError);
+
+    expect(signer().status).toBe(SignerStatus.Active);
+    expect(revocation()).toMatchObject({ status: SignerRevocationStatus.Rejected, failureReason: kmsError.message });
+  });
+
   it("leaves the signer RevocationPending with a failed row on an unknown outcome, and revoking again reuses the row", async () => {
     const { service, deps, signer, revocation, revocationRows } = buildService();
     deps.certificateService.revokeOwnedCertificate.mockRejectedValueOnce(
@@ -991,6 +1005,18 @@ describe("signerService pending DigiCert revocation that DigiCert won't report o
 
     expect(revocation().status).toBe(SignerRevocationStatus.Failed);
     expect(revocation().failureReason).toContain("Request 41 not found.");
+  });
+
+  it("stops tracking the request when the KMS refuses to decrypt the DigiCert credentials", async () => {
+    const { service, deps, revocation } = awaiting();
+    deps.digicertFns.getRevocationRequestStatus.mockRejectedValue(
+      new RuleViolationError({ message: "The KMS key is disabled" })
+    );
+
+    await service.syncPendingRevocations();
+
+    expect(revocation().status).toBe(SignerRevocationStatus.Failed);
+    expect(revocation().failureReason).toContain("DigiCert refused the status check (The KMS key is disabled)");
   });
 
   it("keeps waiting after a transient error", async () => {

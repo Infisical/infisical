@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -12,8 +13,6 @@ import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } 
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import {
@@ -67,7 +66,7 @@ type TAgentVaultVariableServiceFactoryDep = {
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "prepareVariableSignIn" | "saveVariableSignIn">;
 };
 
@@ -119,11 +118,11 @@ export const agentVaultVariableServiceFactory = ({
   agentVaultPersonalValueDAL,
   membershipDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   agentVaultOauthService
 }: TAgentVaultVariableServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   /**
    * Global variables take their own permission, reads included: a member can use a service without seeing what it is

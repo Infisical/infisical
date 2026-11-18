@@ -118,7 +118,7 @@ Your backend can create OAuth variables and send people through the provider's s
 
 You need:
 
-- A machine identity with the **Admin** role in the Agent Vault project, and an access token for it (follow [Step 1](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and [Step 2](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) of Create sessions with the API, and choose **Admin** in **Role**)
+- A machine identity with the **Admin** role in the Agent Vault project, and an access token for it (set it up and log in as the **API** tab of [Create a session](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api) describes, but choose **Admin** in **Role**)
 - An OAuth app with the provider, whose redirect URI points at a page of your app, such as `https://app.example.com/oauth/google/callback`
 
 <Warning>
@@ -231,7 +231,7 @@ The variable needs `authorizationEndpoint`, `tokenEndpoint`, and `clientId` set,
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
+  <Card title="Create a session" icon="code" href="/documentation/platform/agent-vault/create-a-session">
     Create a session for each agent run from your own code.
   </Card>
   <Card title="Inline services" icon="plug" href="/documentation/platform/agent-vault/inline-services">

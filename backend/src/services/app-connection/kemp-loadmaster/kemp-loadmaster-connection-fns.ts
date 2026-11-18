@@ -2,6 +2,7 @@ import { AxiosError, AxiosRequestConfig } from "axios";
 import { XMLParser } from "fast-xml-parser";
 import https from "https";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -219,7 +220,7 @@ export const validateKempLoadMasterConnectionCredentials = async (
       }
     );
   } catch (error: unknown) {
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw error;
     }
 

@@ -4,7 +4,7 @@ sidebarTitle: "Microsoft Intune"
 description: "Learn how to configure a Microsoft Intune Connection for Infisical."
 ---
 
-Infisical's Microsoft Intune Connection lets you validate SCEP certificate requests against Microsoft Intune using Client Secrets. When a device enrolls through a [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep) configured with Intune validation, Infisical asks Intune to confirm the device's challenge before issuing the certificate, then reports the outcome back to Intune.
+Infisical's Microsoft Intune Connection lets you validate SCEP certificate requests against Microsoft Intune using Client Secrets. When a device enrolls through a [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep) configured with Intune validation, Infisical asks Intune to confirm the device's challenge before issuing the certificate, then reports the outcome back to Intune. The connection is also used to revoke a device's certificate when Intune queues a revocation for it.
 
 <Note>
   Microsoft Intune is an enterprise App Connection and requires a paid plan.

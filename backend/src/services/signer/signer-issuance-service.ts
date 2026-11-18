@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
 import { TCertificates, TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -33,9 +34,7 @@ import {
 } from "../certificate/certificate-types";
 import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TSignerDALFactory } from "./signer-dal";
 import {
   CertKeySource,
@@ -136,8 +135,8 @@ type TSignerIssuanceServiceDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateIssuanceQueue: Pick<
     TCertificateIssuanceQueueFactory,
     "awsPcaFns" | "azureAdCsFns" | "adcsFns" | "digicertFns"
@@ -146,6 +145,7 @@ type TSignerIssuanceServiceDeps = {
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign" | "assertAttachPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "updateById" | "findById" | "findByIdForUpdate">;
   certificateService: Pick<TCertificateServiceFactory, "revokeOwnedCertificate" | "completeOwnedCertificateRevocation">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
 };
 
 type TRequestIssuanceInput = {
@@ -174,13 +174,14 @@ export const signerIssuanceServiceFactory = ({
   certificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateIssuanceQueue,
   cronJob,
   hsmConnectorService,
   certificateDAL,
-  certificateService
+  certificateService,
+  projectDAL
 }: TSignerIssuanceServiceDeps) => {
   const { awsPcaFns, azureAdCsFns, adcsFns, digicertFns } = certificateIssuanceQueue;
 
@@ -211,15 +212,15 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const encryptForProject = async (projectId: string, plain: Buffer): Promise<Buffer> => {
-    const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const encryptor = await kmsService.encryptWithKmsKey({ kmsId });
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const encryptor = await kmsKeyService.encryptWithKmsKey({ kmsId });
     const { cipherTextBlob } = await encryptor({ plainText: plain });
     return cipherTextBlob;
   };
 
   const decryptForProject = async (projectId: string, cipher: Buffer): Promise<Buffer> => {
-    const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const decryptor = await kmsService.decryptWithKmsKey({ kmsId });
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const decryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
     return decryptor({ cipherTextBlob: cipher });
   };
 
@@ -774,7 +775,10 @@ export const signerIssuanceServiceFactory = ({
     projectId: string
   ): Promise<void> => {
     try {
-      await verifyCodeSigningEku({ certificateBodyDAL, projectDAL, kmsService }, { certificateId, projectId });
+      await verifyCodeSigningEku(
+        { certificateBodyDAL, kmsDataKeyService, kmsKeyService },
+        { certificateId, projectId }
+      );
     } catch (ekuErr) {
       const reason = formatSignerIssuanceErrorReason(ekuErr, "Issued certificate failed code-signing EKU verification");
       await markJobFailed(job, reason);
