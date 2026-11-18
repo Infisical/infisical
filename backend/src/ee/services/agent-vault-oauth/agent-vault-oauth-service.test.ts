@@ -2526,6 +2526,27 @@ describe("starting an OAuth variable's sign-in", () => {
     expect(new URL(authorization!.authorizeUrl).searchParams.get("scope")).toBe("offline_access");
   });
 
+  test("a variable's own scopes skip the advertised list, so a provider listing too many still signs in", async () => {
+    const env = setup({
+      metadata: {
+        ...LINEAR_JSON,
+        "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
+          resource: SERVER_URL,
+          authorization_servers: ["https://mcp.linear.app"]
+        },
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+          ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+          scopes_supported: Array.from({ length: 250 }, (_, i) => `scope${i}`)
+        }
+      }
+    });
+    addVariable(env, { serverUrl: SERVER_URL, scopes: ["openid"], redirectUri: API_REDIRECT_URI });
+
+    const start = await startVariableSignIn(env);
+
+    expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("openid");
+  });
+
   test("a variable discovers an issuer under its server URL's path (Keycloak)", async () => {
     const realm = "https://sso.example.com/realms/acme";
     const env = setup({
