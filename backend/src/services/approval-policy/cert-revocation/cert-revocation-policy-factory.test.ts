@@ -716,9 +716,10 @@ describe("certRevocationApprovalResourceFactory.verifyPolicyActors", () => {
     await expect(result).rejects.toThrow(
       "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users Ada Auditor, sso-handle, outsider; groups auditor-group name, outsider-group."
     );
-    const lookedUp = [...deps.userDAL.find.mock.calls, ...deps.groupDAL.find.mock.calls].flatMap(
-      ([filter]) => filter.$in.id
-    );
+    const lookups = [...deps.userDAL.find.mock.calls, ...deps.groupDAL.find.mock.calls] as [
+      { $in: { id: string[] } }
+    ][];
+    const lookedUp = lookups.flatMap(([filter]) => filter.$in.id);
     expect(lookedUp).not.toContain("outsider");
     expect(lookedUp).not.toContain("outsider-group");
   });

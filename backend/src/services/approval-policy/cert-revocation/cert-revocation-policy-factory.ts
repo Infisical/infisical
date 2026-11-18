@@ -345,21 +345,34 @@ export const certRevocationApprovalResourceFactory = ({
 
       const userIds = unable.filter((entry) => entry.type === ApproverType.User).map((entry) => entry.id);
       const groupIds = unable.filter((entry) => entry.type === ApproverType.Group).map((entry) => entry.id);
-      // Named the way the approver picker shows them, so the admin can find each one in the form.
+      // Approver IDs come from the caller, so only those with a membership in this Application (in any role) are
+      // looked up and named; any other ID is returned as sent, or the refusal would name another organization's users
+      // and groups. Names follow the approver picker's order (name, username, email).
+      const applicationMemberships = await membershipDAL.find(
+        {
+          scope: RESOURCE_SCOPE,
+          scopeProjectId: projectId,
+          scopeResourceType: ResourceType.CertificateApplication,
+          scopeResourceId: scopeId
+        },
+        { tx: approvalPolicyDAL.primaryNode() }
+      );
+      const memberUserIds = userIds.filter((id) => applicationMemberships.some((m) => m.actorUserId === id));
+      const memberGroupIds = groupIds.filter((id) => applicationMemberships.some((m) => m.actorGroupId === id));
       const [users, groups] = await Promise.all([
-        userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
-        groupIds.length ? groupDAL.find({ $in: { id: groupIds } }) : []
+        memberUserIds.length ? userDAL.find({ $in: { id: memberUserIds } }) : [],
+        memberGroupIds.length ? groupDAL.find({ $in: { id: memberGroupIds } }) : []
       ]);
       const userLabels = new Map(
         users.map((user) => [
           user.id,
-          [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || user.username
+          [user.firstName, user.lastName].filter((part) => part?.trim()).join(" ") || user.username || user.email
         ])
       );
       const groupLabels = new Map(groups.map((group) => [group.id, group.name]));
       const parts = [
-        ...(userIds.length ? [`users ${userIds.map((id) => userLabels.get(id) ?? id).join(", ")}`] : []),
-        ...(groupIds.length ? [`groups ${groupIds.map((id) => groupLabels.get(id) ?? id).join(", ")}`] : [])
+        ...(userIds.length ? [`users ${userIds.map((id) => userLabels.get(id) || id).join(", ")}`] : []),
+        ...(groupIds.length ? [`groups ${groupIds.map((id) => groupLabels.get(id) || id).join(", ")}`] : [])
       ];
       throw new BadRequestError({
         message: `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${parts.join("; ")}.`
