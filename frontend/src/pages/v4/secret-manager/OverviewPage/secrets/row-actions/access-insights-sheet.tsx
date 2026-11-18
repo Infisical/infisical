@@ -1,44 +1,27 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
+import { useIsMobile } from "@infisical/cipher/hooks/use-mobile";
+import { FrameScope } from "@infisical/cipher/lib/frame-context";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@infisical/cipher/ui/dropdown-menu";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetSubheader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { Switch } from "@infisical/cipher/ui/switch";
-import {
-  RowActions,
-  RowContextMenu,
-  Table,
-  TableActionsCell,
-  TableActionsHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@infisical/cipher/ui/table";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
-import { BanIcon, FilterIcon, HardDriveIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { HardDriveIcon, UsersIcon } from "lucide-react";
 
 import {
   OrgPermissionMemberActions,
@@ -59,7 +42,6 @@ import type { TSecretAccessList } from "../../../../data/secrets/contract-flows"
 import { useV4Session } from "../../../../data/session/contract";
 import { useGo } from "../../../../links";
 import type { Secret } from "../../secrets-model";
-import type { RowActionProps } from "../overview-cells";
 import { GrantAccessDialog } from "./access-grant-dialog";
 import { AdditionalPrivilegeSheet, type PrivilegeTarget } from "./access-privilege-sheet";
 
@@ -78,7 +60,7 @@ type AccessRow = {
   groups?: string[];
 };
 
-const columns: { action: Action; label: string }[] = [
+const permissionColumns: { action: Action; label: string }[] = [
   { action: "describe", label: "Describe" },
   { action: "read", label: "Read Value" },
   { action: "create", label: "Create" },
@@ -93,8 +75,9 @@ const typeConfig: Record<RowType, { label: string; icon?: typeof UsersIcon; name
 const typeOrder: RowType[] = ["user", "identity", "group"];
 
 const actionsOf = (allowed: ProjectPermissionSecretActions[]): Action[] => {
+  const allowedSet = new Set(allowed);
   const has = (...actions: ProjectPermissionSecretActions[]) =>
-    actions.some((action) => allowed.includes(action));
+    actions.some((action) => allowedSet.has(action));
   const actions: Action[] = [];
   if (
     has(
@@ -124,10 +107,11 @@ const toRows = (list?: TSecretAccessList): AccessRow[] => {
     (type: "user" | "identity", key: "userIds" | "identityIds") =>
     (entry: TSecretAccessList["users"][number]): AccessRow => {
       const actions = actionsOf(entry.allowedActions);
+      const direct = new Set(actions);
       const groups = groupsOf(entry.id, key);
       const inherited = [
         ...new Set(groups.flatMap((group) => actionsOf(group.allowedActions)))
-      ].filter((action) => !actions.includes(action));
+      ].filter((action) => !direct.has(action));
       return {
         id: `${type}-${entry.id}`,
         entityId: entry.id,
@@ -208,16 +192,21 @@ const useAccessRowControls = (secret: Secret) => {
       </DropdownMenuItem>
     </>
   );
+  const canGrantAccess =
+    orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
+    permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
+    permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Member
+    ) &&
+    permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+  let grantBlock: string | undefined;
+  if (!canGrantAccess)
+    grantBlock =
+      "You do not have permission to add members to this project and manage their permissions";
+  else if (!privilegesEnabled) grantBlock = "Additional privileges are turned off for this project";
   return {
-    canGrantAccess:
-      privilegesEnabled &&
-      orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
-      permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
-      permission.can(
-        ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-        ProjectPermissionSub.Member
-      ) &&
-      permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member),
+    grantBlock,
     canAddParentOrgUsers:
       session.organization.isSubOrganization &&
       orgPermission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member),
@@ -236,12 +225,16 @@ export function AccessInsightsSheet({
   environmentLabel: string;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
   const [search, setSearch] = useState("");
-  const [types, setTypes] = useState<RowType[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [granting, setGranting] = useState(false);
   const [privilegeTarget, setPrivilegeTarget] = useState<PrivilegeTarget>();
-  const { canGrantAccess, canAddParentOrgUsers, menu } = useAccessRowControls(secret);
+  const isMobile = useIsMobile();
+  const { grantBlock, canAddParentOrgUsers, menu } = useAccessRowControls(secret);
+  const showAll = filters.some(
+    (filter) => filter.field === "members" && filter.values[0] === "all"
+  );
+  const types = new Set(filters.find((filter) => filter.field === "type")?.values);
   const { data: accessList, isPending } = useV4Adapter("secrets").useSecretAccessList({
     projectId: secret.project,
     environment: secret.environment,
@@ -252,196 +245,168 @@ export function AccessInsightsSheet({
   const rows = toRows(accessList).filter(
     (row) =>
       (showAll || row.actions.length > 0 || Boolean(row.inherited?.length)) &&
-      (!types.length || types.includes(row.type)) &&
+      (!types.size || types.has(row.type)) &&
       row.name.toLowerCase().includes(search.trim().toLowerCase())
   );
-  const loading = open && isPending;
+  const filtered = Boolean(search.trim()) || types.size > 0;
+  let empty = (
+    <EmptyState
+      icon={UsersIcon}
+      title="No one has access to this secret"
+      actions={
+        <Button
+          variant="outline"
+          onClick={() =>
+            setFilters([
+              ...filters.filter((filter) => filter.field !== "members"),
+              { field: "members", values: ["all"] }
+            ])
+          }
+        >
+          Show all members
+        </Button>
+      }
+    />
+  );
+  if (showAll) empty = <EmptyState icon={UsersIcon} title="This project has no members" />;
+  if (filtered) empty = <EmptyState icon="search" title="No matching members" />;
+  const columns: DataTableColumn<AccessRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      grow: true,
+      minWidth: 200,
+      text: (row) => row.name,
+      render: (row) => (
+        <span className={styles.member}>
+          <span className={styles.memberIcon}>
+            <Icon
+              name={typeConfig[row.type].name}
+              icon={typeConfig[row.type].icon}
+              label={typeConfig[row.type].label}
+            />
+          </span>
+          <span className={styles.truncate} title={row.name}>
+            {row.name}
+          </span>
+          {row.groups && !isMobile && (
+            <Tooltip content={`Access through group: ${row.groups.join(", ")}`}>
+              <span className={styles.groupCount} data-row-interactive>
+                <Icon icon={UsersIcon} size={12} />
+                {row.groups.length}
+              </span>
+            </Tooltip>
+          )}
+        </span>
+      )
+    },
+    ...permissionColumns.map((column): DataTableColumn<AccessRow> => ({
+      id: column.action,
+      header: column.label,
+      width: 96,
+      align: "center",
+      render: (row) => {
+        if (row.actions.includes(column.action))
+          return (
+            <span className={styles.permissionYes}>
+              <Icon name="check" label="Allowed" />
+            </span>
+          );
+        if (row.inherited?.includes(column.action))
+          return (
+            <Tooltip content="Inherited from group">
+              <span className={styles.permissionYes} data-row-interactive>
+                <Icon icon={UsersIcon} label="Inherited from group" />
+              </span>
+            </Tooltip>
+          );
+        return (
+          <span className={styles.permissionNone}>
+            <Icon name="minus" label="No access" />
+          </span>
+        );
+      }
+    }))
+  ];
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className={styles.accessSheet}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-      >
+      <SheetContent size="xl" onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Secret access insights</SheetTitle>
-          <SheetDescription>
-            Users, groups, and identities that can access this secret.
+          <SheetDescription className={styles.subjectLine}>
+            <span className={styles.subjectName} data-mono>
+              {secret.name}
+            </span>
+            <Badge tone="outline">{environmentLabel}</Badge>
           </SheetDescription>
         </SheetHeader>
-        <SheetSubheader className={styles.subject}>
-          <span className={styles.subjectName} data-mono>
-            {secret.name}
-          </span>
-          <Badge tone="outline">{environmentLabel}</Badge>
-        </SheetSubheader>
         <SheetBody>
-          <div className={styles.accessBody}>
-            <div className={styles.accessToolbar}>
-              <span className={styles.toggleLabel}>
-                <Switch id="access-show-all" checked={showAll} onCheckedChange={setShowAll} />
-                <FieldLabel htmlFor="access-show-all">Show all members</FieldLabel>
-                <Tooltip content="When enabled, all project members are shown including those without any access to this secret.">
-                  <span className={styles.hint}>
-                    <Icon name="info" size={14} label="About showing all members" />
-                  </span>
-                </Tooltip>
-              </span>
-              <Input
-                icon="search"
-                className={styles.grow}
-                aria-label="Search by name"
-                placeholder="Search by name..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <DropdownMenu>
-                <Tooltip content="Filter by type">
-                  <DropdownMenuTrigger asChild>
-                    <Button variant={types.length ? "default" : "outline"} size="icon-sm" iconOnly>
-                      <Icon icon={FilterIcon} />
-                      <span className="sr-only">Filter by type</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {typeOrder.map((type) => (
-                    <DropdownMenuCheckboxItem
-                      key={type}
-                      checked={types.includes(type)}
-                      onCheckedChange={() =>
-                        setTypes((current) =>
-                          current.includes(type)
-                            ? current.filter((entry) => entry !== type)
-                            : [...current, type]
-                        )
-                      }
-                    >
-                      <Icon name={typeConfig[type].name} icon={typeConfig[type].icon} />
-                      {typeConfig[type].label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                icon={UserPlusIcon}
-                disabledReason={
-                  canGrantAccess
-                    ? undefined
-                    : "You do not have permission to add members to this project and manage their permissions"
+          <Stack gap={16}>
+            <FilterBar
+              label="Access filters"
+              searchValue={search}
+              search={
+                <Input
+                  icon="search"
+                  width={isMobile ? undefined : "md"}
+                  aria-label="Search by name"
+                  placeholder={isMobile ? "Search..." : "Search by name..."}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape" || !search) return;
+                    event.preventDefault();
+                    setSearch("");
+                  }}
+                />
+              }
+              fields={[
+                {
+                  key: "type",
+                  label: "Type",
+                  type: "multi-select",
+                  options: typeOrder.map((type) => ({ value: type, label: typeConfig[type].label }))
+                },
+                {
+                  key: "members",
+                  label: "Members",
+                  type: "select",
+                  options: [
+                    { value: "access", label: "With access" },
+                    { value: "all", label: "All members" }
+                  ]
                 }
-                onClick={() => setGranting(true)}
-              >
-                Grant organization user access
-              </Button>
-            </div>
-            {loading && (
-              <span role="status" className="sr-only">
-                Loading access
-              </span>
-            )}
-            {!loading && rows.length === 0 && <EmptyState icon="search" title="No results found" />}
-            {(loading || rows.length > 0) && (
-              <Table aria-busy={loading || undefined}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className={styles.typeColumn}>Type</TableHead>
-                    <TableHead>Name</TableHead>
-                    {columns.map((column) => (
-                      <TableHead key={column.action} className={styles.permissionColumn}>
-                        {column.label}
-                      </TableHead>
-                    ))}
-                    <TableActionsHead slots={1} />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading &&
-                    [0, 1, 2, 3].map((index) => (
-                      <TableRow key={index} aria-hidden>
-                        <TableCell>
-                          <Skeleton width={96} />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton width={160} />
-                        </TableCell>
-                        {columns.map((column) => (
-                          <TableCell key={column.action} className={styles.permissionColumn}>
-                            <Skeleton
-                              width="var(--cipher-size-glyph)"
-                              height="var(--cipher-size-glyph)"
-                            />
-                          </TableCell>
-                        ))}
-                        <TableActionsCell slots={1} />
-                      </TableRow>
-                    ))}
-                  {rows.map((row) => {
-                    const rowActions: RowActionProps = {
-                      label: row.name,
-                      menu: menu(row, setPrivilegeTarget)
-                    };
-                    return (
-                      <RowContextMenu key={row.id} {...rowActions}>
-                        <TableRow>
-                          <TableCell>
-                            <span className={styles.typeCell}>
-                              <Icon
-                                name={typeConfig[row.type].name}
-                                icon={typeConfig[row.type].icon}
-                              />
-                              {typeConfig[row.type].label}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={styles.typeCell}>
-                              <span className={styles.truncate}>{row.name}</span>
-                              {row.groups && (
-                                <Tooltip content={`Access through group: ${row.groups.join(", ")}`}>
-                                  <span className={styles.groupCount}>
-                                    <Icon icon={UsersIcon} size={12} />
-                                    {row.groups.length}
-                                  </span>
-                                </Tooltip>
-                              )}
-                            </span>
-                          </TableCell>
-                          {columns.map((column) => {
-                            let mark = (
-                              <span className={styles.permissionNone}>
-                                <Icon icon={BanIcon} label="No access" />
-                              </span>
-                            );
-                            if (row.inherited?.includes(column.action))
-                              mark = (
-                                <Tooltip content="Inherited from group">
-                                  <span className={styles.permissionYes}>
-                                    <Icon icon={UsersIcon} label="Inherited from group" />
-                                  </span>
-                                </Tooltip>
-                              );
-                            if (row.actions.includes(column.action))
-                              mark = (
-                                <span className={styles.permissionYes}>
-                                  <Icon name="check" label="Allowed" />
-                                </span>
-                              );
-                            return (
-                              <TableCell key={column.action} className={styles.permissionColumn}>
-                                {mark}
-                              </TableCell>
-                            );
-                          })}
-                          <TableActionsCell slots={1}>
-                            <RowActions {...rowActions} />
-                          </TableActionsCell>
-                        </TableRow>
-                      </RowContextMenu>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+              ]}
+              value={filters}
+              onChange={setFilters}
+              actions={
+                <Button
+                  icon={isMobile ? "user-plus" : undefined}
+                  iconOnly={isMobile}
+                  disabledReason={grantBlock}
+                  onClick={() => setGranting(true)}
+                >
+                  Grant access
+                </Button>
+              }
+            />
+            <FrameScope framed>
+              <DataTable
+                label={`Access to ${secret.name}`}
+                rows={rows}
+                columns={columns}
+                getRowId={(row) => row.id}
+                rowLabel={(row) => row.name}
+                loading={open && isPending}
+                loadingRows={4}
+                rowActions={{ renderMenu: (row) => menu(row, setPrivilegeTarget) }}
+                empty={empty}
+                filtered={filtered}
+                ghost={false}
+              />
+            </FrameScope>
+          </Stack>
         </SheetBody>
       </SheetContent>
       {granting && (
