@@ -18,7 +18,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
-import { COOLIFY_ENV_VAR_NAME_RULE, isManagedByCoolify, isValidCoolifyEnvVarName } from "./coolify-sync-schemas";
+import { COOLIFY_ENV_VAR_NAME_RULE, isManagedByCoolify, isValidCoolifyEnvVarName } from "./coolify-sync-constants";
 import { TCoolifyEnvVar, TCoolifyEnvVarUpsert, TCoolifySyncWithCredentials } from "./coolify-sync-types";
 
 type TCoolifyEnvVarsApi = { connection: TCoolifyConnection; envsPath: string; deps: TCoolifyGatewayDeps };

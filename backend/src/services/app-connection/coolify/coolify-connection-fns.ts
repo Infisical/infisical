@@ -182,15 +182,49 @@ export const coolifyRequest = async <T>(
   );
 };
 
+// Coolify checks a token's permissions before it looks up the resource, so a request for an application that can't
+// exist changes nothing, and answers 404 when the token has the permission or 403 when it doesn't
+const COOLIFY_MISSING_APPLICATION_PATH = "/applications/infisical-permission-check";
+
+const assertCoolifyPermission = async (
+  config: TCoolifyRequestConfig,
+  coolifyRequestParams: TCoolifyRequest,
+  deps: TCoolifyGatewayDeps
+) => {
+  try {
+    await coolifyRequest(config, coolifyRequestParams, deps);
+  } catch (error) {
+    if (!isAxiosError(error) || error.response?.status !== 404) throw error;
+  }
+};
+
 export const validateCoolifyConnectionCredentials = async (
   config: TCoolifyConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  let projects: unknown;
+  const deps = { gatewayV2Service };
 
   try {
     // Projects need only the read permission, and tokens limited to selected resources can still list them
-    projects = await coolifyRequest<unknown>(config, { method: "GET", path: "/projects" }, { gatewayV2Service });
+    const projects = await coolifyRequest<unknown>(config, { method: "GET", path: "/projects" }, deps);
+
+    if (!Array.isArray(projects)) {
+      throw new BadRequestError({
+        message: "Unable to validate Coolify connection: the instance URL did not respond like a Coolify instance"
+      });
+    }
+
+    // Every sync writes and deletes variables, so a token that can't is refused here rather than on its first sync
+    await assertCoolifyPermission(
+      config,
+      { method: "PATCH", path: `${COOLIFY_MISSING_APPLICATION_PATH}/envs/bulk`, data: { data: [] } },
+      deps
+    );
+    await assertCoolifyPermission(
+      config,
+      { method: "DELETE", path: `${COOLIFY_MISSING_APPLICATION_PATH}/envs/infisical-permission-check` },
+      deps
+    );
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
@@ -201,12 +235,6 @@ export const validateCoolifyConnectionCredentials = async (
           ? "the instance URL did not respond like a Coolify instance. Use the URL of the Coolify dashboard, without a path such as /api/v1"
           : getCoolifyErrorMessage(error, "verify the instance URL and API token")
       }`
-    });
-  }
-
-  if (!Array.isArray(projects)) {
-    throw new BadRequestError({
-      message: "Unable to validate Coolify connection: the instance URL did not respond like a Coolify instance"
     });
   }
 
@@ -238,21 +266,37 @@ export const listCoolifyResources = async (
     ]);
 
     // A resource only names its environment's ID, so names come from each project's environments to tell
-    // apart resources that share a name across environments. Projects are read one at a time to stay
-    // within Coolify's rate limit.
-    const environments = new Map<number, { projectName: string; environmentName: string }>();
-    for (const project of projects) {
-      // eslint-disable-next-line no-await-in-loop
-      const projectEnvironments = await coolifyRequest<TCoolifyApiEnvironment[]>(
-        connection,
-        { method: "GET", path: `/projects/${encodeURIComponent(project.uuid)}/environments` },
-        deps
-      );
+    // apart resources that share a name across environments
+    const results = await Promise.allSettled(
+      projects.map((project) =>
+        coolifyRequest<TCoolifyApiEnvironment[]>(
+          connection,
+          { method: "GET", path: `/projects/${encodeURIComponent(project.uuid)}/environments` },
+          deps
+        )
+      )
+    );
 
-      projectEnvironments.forEach((environment) =>
+    // One project that can't be read should not hide the others; only fail when every project does
+    const environments = new Map<number, { projectName: string; environmentName: string }>();
+    results.forEach((result, index) => {
+      const project = projects[index];
+
+      if (result.status === "rejected") {
+        logger.warn(
+          toLoggableError(result.reason),
+          `Failed to list environments of Coolify project [projectUuid=${project.uuid}] [appConnectionId=${appConnection.id}]`
+        );
+        return;
+      }
+
+      result.value.forEach((environment) =>
         environments.set(environment.id, { projectName: project.name, environmentName: environment.name })
       );
-    }
+    });
+
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failures.length && failures.length === results.length) throw failures[0].reason;
 
     return resources
       .flatMap((resource) => {

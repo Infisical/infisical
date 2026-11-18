@@ -4,6 +4,7 @@ sidebarTitle: "Coolify"
 description: "Learn how to configure a Coolify sync for Infisical."
 ---
 
+import CreateApiToken from "/snippets/app-connections/coolify/create-api-token.mdx";
 import ConnectionFormFields from "/snippets/app-connections/coolify/form-fields.mdx";
 
 A Coolify Secret Sync pushes secrets from Infisical into the environment variables of a Coolify application, service, or database, where Coolify passes them to the resource's containers. Each Infisical secret becomes an environment variable with the same name, unless you customize key names to add a prefix or suffix.
@@ -16,11 +17,16 @@ A Coolify Secret Sync pushes secrets from Infisical into the environment variabl
 
 - A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
 - The Owner or Admin role in the Coolify team that owns the resource you plan to sync to
-- An [API token](/integrations/app-connections/coolify#step-1-create-a-coolify-api-token) for that team with the `read`, `read:sensitive`, `write`, and `delete` permissions
 - If you self-host Coolify, API access turned on under **Settings** > **Advanced** in Coolify
 - If your Coolify instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
 
-## Step 1: Set up the sync in Infisical
+## Step 1: Create a Coolify API token
+
+Infisical needs a Coolify API token that can read, write, and delete environment variables.
+
+<CreateApiToken />
+
+## Step 2: Set up the sync in Infisical
 
 <Tip>
     To create the sync using the API, use the Coolify [Create](/api-reference/endpoints/secret-syncs/coolify/create) endpoint.
@@ -122,7 +128,7 @@ A Coolify Secret Sync pushes secrets from Infisical into the environment variabl
     </Step>
 </Steps>
 
-## Step 2: Restart the resource in Coolify
+## Step 3: Restart the resource in Coolify
 
 Coolify passes environment variables to a resource's containers when they start, so the containers keep the old values until the resource restarts. After each sync that changes a value, open the resource in Coolify and restart it. If an application reads the variable while it builds, redeploy the application instead.
 

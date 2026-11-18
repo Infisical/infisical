@@ -63,7 +63,12 @@ import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns"
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { CONVEX_ENV_VAR_NAME_RULE, CONVEX_SYNC_LIST_OPTION, ConvexSyncFns, isValidConvexEnvVarName } from "./convex";
-import { COOLIFY_SYNC_LIST_OPTION, CoolifySyncFns } from "./coolify";
+import {
+  COOLIFY_ENV_VAR_NAME_RULE,
+  COOLIFY_SYNC_LIST_OPTION,
+  CoolifySyncFns,
+  isValidCoolifyEnvVarName
+} from "./coolify";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -186,7 +191,8 @@ const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPre
 const SECRET_SYNC_KEY_NAME_RULES: Partial<
   Record<SecretSync, { isValidName: (name: string) => boolean; rule: string }>
 > = {
-  [SecretSync.Convex]: { isValidName: isValidConvexEnvVarName, rule: CONVEX_ENV_VAR_NAME_RULE }
+  [SecretSync.Convex]: { isValidName: isValidConvexEnvVarName, rule: CONVEX_ENV_VAR_NAME_RULE },
+  [SecretSync.Coolify]: { isValidName: isValidCoolifyEnvVarName, rule: COOLIFY_ENV_VAR_NAME_RULE }
 };
 
 export const assertKeySchemaProducesValidNames = ({
