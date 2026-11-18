@@ -63,7 +63,7 @@ export const OAuthVariableField = ({ projectId, service }: Props) => {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 200);
-  const { data, isPending } = useListAgentVaultVariables(
+  const { data, isPending, isError } = useListAgentVaultVariables(
     projectId,
     {
       scope: AgentVaultVariableScope.Global,
@@ -110,7 +110,11 @@ export const OAuthVariableField = ({ projectId, service }: Props) => {
                 includeMissingSelectedOptions
                 onSearchChange={setSearch}
                 placeholder="Select an OAuth variable..."
-                emptyMessage="No OAuth variables found."
+                emptyMessage={
+                  isError
+                    ? "Could not load OAuth variables. Close this panel and open it again to retry."
+                    : "No OAuth variables found."
+                }
                 getOptionLabel={(option) => option.key}
                 getOptionValue={(option) => option.key}
                 renderOption={(option) => (
@@ -121,13 +125,8 @@ export const OAuthVariableField = ({ projectId, service }: Props) => {
                     )}
                   </div>
                 )}
-                creation={creation}
+                creation={isError ? undefined : creation}
               />
-              {selected?.status && selected.status !== AgentVaultOauthStatus.Connected && (
-                <div>
-                  <OAuthStatusBadge status={selected.status} />
-                </div>
-              )}
               {!canList && (
                 <FieldDescription>
                   {storedKey
@@ -135,12 +134,19 @@ export const OAuthVariableField = ({ projectId, service }: Props) => {
                     : "Choosing one takes permission to read variables and their values."}
                 </FieldDescription>
               )}
-              {canList && (
-                <FieldDescription>
-                  The service sends the variable&apos;s access token, and refreshes it when it
-                  expires.
-                </FieldDescription>
-              )}
+              {canList &&
+                (selected?.status && selected.status !== AgentVaultOauthStatus.Connected ? (
+                  <FieldDescription>
+                    Agents can&apos;t use this service until{" "}
+                    <code className="font-mono">{selected.key}</code> is authorized on the Variables
+                    page.
+                  </FieldDescription>
+                ) : (
+                  <FieldDescription>
+                    The service sends the variable&apos;s access token, and refreshes it when it
+                    expires.
+                  </FieldDescription>
+                ))}
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>

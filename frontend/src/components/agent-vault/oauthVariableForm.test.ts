@@ -14,6 +14,8 @@ import {
   buildOAuthVariableSettings,
   buildOAuthVariableSettingsUpdate,
   changedVariableFormFields,
+  hasCommaSeparatedScope,
+  isOAuthClientSecretRequired,
   isOAuthVariableSignInChanged,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
@@ -92,6 +94,13 @@ describe("parseOAuthScopes", () => {
   });
 });
 
+describe("hasCommaSeparatedScope", () => {
+  it("flags a scope that ends with a comma", () => {
+    expect(hasCommaSeparatedScope("read, write")).toBe(true);
+    expect(hasCommaSeparatedScope("read write a,b")).toBe(false);
+  });
+});
+
 describe("buildOAuthVariableSettings", () => {
   it("sends what was typed, never the client secret, and endpoints only by hand", () => {
     expect(
@@ -117,6 +126,38 @@ describe("buildOAuthVariableSettingsUpdate", () => {
         values({ scopes: "read write" })
       )
     ).toEqual({ clientName: null, scopes: ["read", "write"] });
+  });
+
+  it("clears the resource when the endpoints are cleared for discovery", () => {
+    const manual: TAgentVaultOauthVariable = {
+      ...stored,
+      serverUrl: null,
+      authorizationEndpoint: "https://auth.example.com/authorize",
+      tokenEndpoint: "https://auth.example.com/token",
+      clientId: "app",
+      registration: "manual",
+      resource: "https://mcp.example.com/mcp"
+    };
+    expect(
+      buildOAuthVariableSettingsUpdate(manual, values({ clientId: "app", scopes: "read" }))
+    ).toEqual({
+      serverUrl: "https://mcp.example.com/mcp",
+      authorizationEndpoint: null,
+      tokenEndpoint: null,
+      resource: null
+    });
+    expect(
+      buildOAuthVariableSettingsUpdate(
+        manual,
+        values({
+          serverUrl: "",
+          authorizationEndpoint: "https://auth.example.com/authorize",
+          tokenEndpoint: "https://auth.example.com/token/v2",
+          clientId: "app",
+          scopes: "read"
+        })
+      )
+    ).toEqual({ tokenEndpoint: "https://auth.example.com/token/v2" });
   });
 });
 
@@ -150,6 +191,63 @@ describe("isOAuthVariableSignInChanged", () => {
         })
       )
     ).toBe(true);
+  });
+});
+
+describe("isOAuthClientSecretRequired", () => {
+  const ownApp: TAgentVaultOauthVariable = {
+    ...stored,
+    clientId: "client-1",
+    registration: "manual",
+    tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
+  };
+  const edit = (overrides: Partial<TOAuthVariableFormValues> = {}) =>
+    values({
+      clientId: "client-1",
+      scopes: "read",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic,
+      ...overrides
+    });
+
+  it("asks for the secret again when a sign-in setting changes", () => {
+    expect(
+      isOAuthClientSecretRequired(ownApp, edit({ serverUrl: "https://other.example.com/mcp" }))
+    ).toBe(true);
+  });
+
+  it("doesn't ask when nothing the sign-in is bound to changes, or a secret is typed", () => {
+    expect(isOAuthClientSecretRequired(ownApp, edit({ scopes: "read write" }))).toBe(false);
+    expect(
+      isOAuthClientSecretRequired(
+        ownApp,
+        edit({ serverUrl: "https://other.example.com/mcp", clientSecret: "s" })
+      )
+    ).toBe(false);
+  });
+
+  it("doesn't ask for an app without a secret", () => {
+    expect(
+      isOAuthClientSecretRequired(
+        ownApp,
+        edit({
+          serverUrl: "https://other.example.com/mcp",
+          tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None
+        })
+      )
+    ).toBe(false);
+    expect(
+      isOAuthClientSecretRequired(stored, values({ serverUrl: "https://other.example.com/mcp" }))
+    ).toBe(false);
+  });
+
+  it("doesn't ask when the method is Automatic, since the app may be public", () => {
+    const automatic = { ...ownApp, tokenEndpointAuthMethod: null };
+    expect(
+      isOAuthClientSecretRequired(
+        automatic,
+        edit({ serverUrl: "https://other.example.com/mcp", tokenEndpointAuthMethod: "" })
+      )
+    ).toBe(false);
   });
 });
 

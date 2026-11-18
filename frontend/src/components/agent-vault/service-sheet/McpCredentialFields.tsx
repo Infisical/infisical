@@ -26,6 +26,7 @@ import { OAuthVariableField } from "./OAuthVariableField";
 import { SendsPreview } from "./SendsPreview";
 import {
   isCredentialMemberProvided,
+  memberFieldsAfterTypeSwitch,
   storedMemberFields,
   TServiceForm,
   UNCHANGED_SECRET
@@ -84,14 +85,14 @@ export const McpCredentialFields = ({
   const storedType = service?.credential.type;
   const storedFields = storedMemberFields(service);
 
-  // Who provides the credential belongs to the type it was saved under, so a switch starts from the stored setting
-  // of the new type, or from off.
   const selectType = (type: AgentVaultCredentialType) => {
     if (type === credentialType) return;
     setValue("credentialType", type, { shouldDirty: true });
-    setValue("memberProvidedFields", type === storedType ? storedFields : [], {
-      shouldDirty: true
-    });
+    setValue(
+      "memberProvidedFields",
+      memberFieldsAfterTypeSwitch(type, service, Boolean(oauthUsesVariable)),
+      { shouldDirty: true }
+    );
     clearErrors(["secret", "oauthAuthorizationId", "headerName", "headerPrefix"]);
   };
 

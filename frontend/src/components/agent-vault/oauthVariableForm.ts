@@ -79,6 +79,10 @@ const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/;
 
 export const parseOAuthScopes = (text: string) => [...new Set(text.split(/\s+/).filter(Boolean))];
 
+// A comma is valid in a scope, so "read, write" is not refused, but it is rarely meant.
+export const hasCommaSeparatedScope = (text: string) =>
+  parseOAuthScopes(text).some((scope) => scope.endsWith(","));
+
 const isManual = (values: Pick<TOAuthVariableFormValues, "authorizationEndpoint">) =>
   Boolean(values.authorizationEndpoint.trim());
 
@@ -228,6 +232,10 @@ export const buildOAuthVariableSettingsUpdate = (
   });
   const scopes = next.scopes ?? [];
   if (scopes.join(" ") !== current.scopes.join(" ")) update.scopes = scopes;
+  // The form has no resource field, and the API takes one only with endpoints set by hand, so switching to discovery
+  // has to clear it too.
+  if (current.resource && !next.authorizationEndpoint && !next.tokenEndpoint)
+    update.resource = null;
   return Object.keys(update).length ? update : undefined;
 };
 
@@ -249,6 +257,28 @@ export const isOAuthVariableSignInChanged = (
   const update = buildOAuthVariableSettingsUpdate(current, values);
   return Boolean(update) && SIGN_IN_FIELDS.some((field) => update?.[field] !== undefined);
 };
+
+export const OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE =
+  "Enter the client secret again. Changing sign-in settings clears it.";
+
+/**
+ * Whether saving these values would drop a client secret the variable's own OAuth app signs in with. Without a new
+ * one, the next sign-in would fail. A redirect URI set for an app means the secret comes with that app's sign-in.
+ */
+export const isOAuthClientSecretRequired = (
+  current: TAgentVaultOauthVariable,
+  values: TOAuthVariableFormValues
+) =>
+  // Only an explicit method says a secret exists: with Automatic the app may be public, and the view can't tell.
+  Boolean(current.clientId) &&
+  Boolean(current.tokenEndpointAuthMethod) &&
+  current.tokenEndpointAuthMethod !== AgentVaultOauthClientAuthMethod.None &&
+  Boolean(values.clientId.trim()) &&
+  Boolean(values.tokenEndpointAuthMethod) &&
+  values.tokenEndpointAuthMethod !== AgentVaultOauthClientAuthMethod.None &&
+  !values.redirectUri.trim() &&
+  !values.clientSecret &&
+  isOAuthVariableSignInChanged(current, values);
 
 /**
  * Fills the fields a sign-in found it needs, leaving anything typed alone: guessed endpoints are only a suggestion,

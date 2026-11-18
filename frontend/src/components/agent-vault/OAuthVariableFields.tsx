@@ -48,6 +48,7 @@ import {
 
 import {
   applySignInPrefill,
+  hasCommaSeparatedScope,
   isOAuthVariableSignInChanged,
   OAUTH_AUTH_METHOD_LABELS,
   TOAuthVariableFormValues,
@@ -133,6 +134,34 @@ export const OAuthVariableFields = ({
       ? ADVANCED_ITEM
       : "";
   });
+  // Its fields unmount while it is closed, so an error on one would otherwise never show.
+  const {
+    authorizationEndpoint: authorizationEndpointError,
+    tokenEndpoint: tokenEndpointError,
+    issuer: issuerError,
+    tokenEndpointAuthMethod: authMethodError,
+    clientName: clientNameError,
+    redirectUri: redirectUriError
+  } = errors;
+  useEffect(() => {
+    if (
+      authorizationEndpointError ||
+      tokenEndpointError ||
+      issuerError ||
+      authMethodError ||
+      clientNameError ||
+      redirectUriError
+    ) {
+      setOpenItem(ADVANCED_ITEM);
+    }
+  }, [
+    authorizationEndpointError,
+    tokenEndpointError,
+    issuerError,
+    authMethodError,
+    clientNameError,
+    redirectUriError
+  ]);
   const [notice, setNotice] = useState<TNotice | null>(null);
   const [authorizedScopes, setAuthorizedScopes] = useState<string[] | null>(null);
   const sentSecretRef = useRef("");
@@ -376,9 +405,15 @@ export const OAuthVariableFields = ({
             spellCheck={false}
             isError={Boolean(errors.scopes)}
           />
-          <FieldDescription>
-            Separate scopes with spaces. Leave empty to ask for the ones the server lists.
-          </FieldDescription>
+          {hasCommaSeparatedScope(formValues.scopes) ? (
+            <FieldDescription className="text-warning">
+              Separate scopes with spaces.
+            </FieldDescription>
+          ) : (
+            <FieldDescription>
+              Separate scopes with spaces. Leave empty to ask for the ones the server lists.
+            </FieldDescription>
+          )}
           <FieldError>{errors.scopes?.message}</FieldError>
         </FieldContent>
       </Field>

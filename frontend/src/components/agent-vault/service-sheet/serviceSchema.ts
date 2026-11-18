@@ -563,6 +563,21 @@ type TOAuthFormState = {
 };
 
 /** For an MCP service, credential-value stands for the whole credential: the bearer token or the OAuth sign-in. */
+/**
+ * Who provides the credential after the credential type switches: the stored setting of the new type, or off. An OAuth
+ * variable's sign-in is shared, so a switch back to OAuth while one is chosen stays off, and saving then asks before it
+ * removes the members' connections.
+ */
+export const memberFieldsAfterTypeSwitch = (
+  type: AgentVaultCredentialType,
+  service: TAgentVaultService | null | undefined,
+  oauthUsesVariable: boolean
+): TAgentVaultMemberProvidedField[] => {
+  if (type !== service?.credential.type) return [];
+  if (type === AgentVaultCredentialType.OAuth && oauthUsesVariable) return [];
+  return storedMemberFields(service);
+};
+
 export const isCredentialMemberProvided = (form: {
   memberProvidedFields: TAgentVaultMemberProvidedField[];
 }) => form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue);

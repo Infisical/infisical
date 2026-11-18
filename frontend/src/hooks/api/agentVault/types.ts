@@ -991,8 +991,6 @@ export type TCreateAgentVaultVariableDTO =
       type: AgentVaultVariableType.OAuth;
       key: string;
       oauth?: TAgentVaultOauthVariableSettingsInput;
-      // Copies another OAuth variable's settings, never its sign-in.
-      sourceVariableId?: string;
     };
 
 export type TUpdateAgentVaultVariableDTO = {

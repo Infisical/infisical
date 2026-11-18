@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDownIcon,
   CopyIcon,
-  CopyPlusIcon,
   EyeIcon,
   EyeOffIcon,
   KeyRoundIcon,
@@ -254,7 +253,6 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [variableToEdit, setVariableToEdit] = useState<TAgentVaultVariable | null>(null);
-  const [variableToDuplicate, setVariableToDuplicate] = useState<TAgentVaultVariable | null>(null);
   const [signInStart, setSignInStart] = useState<TAgentVaultOauthVariableSignInStart | null>(null);
   const [authorizingVariable, setAuthorizingVariable] = useState<TAgentVaultVariable | null>(null);
   const [variableToDelete, setVariableToDelete] = useState<TAgentVaultVariable | null>(null);
@@ -353,16 +351,9 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
 
   const openForm = (
     variable: TAgentVaultVariable | null,
-    {
-      duplicateOf = null,
-      start = null
-    }: {
-      duplicateOf?: TAgentVaultVariable | null;
-      start?: TAgentVaultOauthVariableSignInStart | null;
-    } = {}
+    { start = null }: { start?: TAgentVaultOauthVariableSignInStart | null } = {}
   ) => {
     setVariableToEdit(variable);
-    setVariableToDuplicate(duplicateOf);
     setSignInStart(start);
     setIsFormOpen(true);
   };
@@ -427,8 +418,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
             <>
               A global variable stores a value that any service can use as{" "}
               <code className="font-mono">{toVariableReference("KEY")}</code>, or an OAuth sign-in
-              that any service can use as its credential. Managing these and seeing their values
-              each take their own permission.
+              that any service can use as its credential.
             </>
           )}
         </CardDescription>
@@ -611,15 +601,6 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                                 {variable.oauth?.connection ? "Reauthorize" : "Authorize"}
                               </DropdownMenuItem>
                             )}
-                            {isOAuth && canCreate && (
-                              <DropdownMenuItem
-                                isDisabled={isAtLimit}
-                                onClick={() => openForm(null, { duplicateOf: variable })}
-                              >
-                                <CopyPlusIcon />
-                                Duplicate
-                              </DropdownMenuItem>
-                            )}
                             {canEdit && (
                               <DropdownMenuItem onClick={() => openForm(variable)}>
                                 <PencilIcon />
@@ -667,7 +648,6 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         variable={variableToEdit}
-        duplicateOf={variableToDuplicate}
         signInStart={signInStart}
       />
 

@@ -21,6 +21,8 @@ export const useOAuthVariableCreation = <TOption,>(
   const [isPending, setIsPending] = useState(false);
   const [isCreated, setIsCreated] = useState(false);
   const createdRef = useRef<TAgentVaultVariable | null>(null);
+  // Bumped on every close, so a save that resolves after the dialog closed can't select its variable.
+  const attemptRef = useRef(0);
   const closeRef = useRef<{ complete: VoidFunction; cancel: VoidFunction }>({
     complete: () => {},
     cancel: () => {}
@@ -29,6 +31,7 @@ export const useOAuthVariableCreation = <TOption,>(
   const close = () => {
     const created = createdRef.current;
     createdRef.current = null;
+    attemptRef.current += 1;
     setIsDirty(false);
     setIsCreated(false);
     if (created) {
@@ -43,6 +46,8 @@ export const useOAuthVariableCreation = <TOption,>(
     useDiscardChangesGuard({ isDirty, onDiscard: close });
 
   if (!canCreate) return undefined;
+
+  const attempt = attemptRef.current;
 
   return {
     mode: "dialog",
@@ -64,6 +69,7 @@ export const useOAuthVariableCreation = <TOption,>(
             isOpen
             type={AgentVaultVariableType.OAuth}
             onCreated={(variable) => {
+              if (attempt !== attemptRef.current) return;
               createdRef.current = variable;
               setIsCreated(true);
             }}

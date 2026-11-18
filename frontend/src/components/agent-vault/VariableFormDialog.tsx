@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -44,6 +44,7 @@ import {
 import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
 import {
   AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthStatus,
   AgentVaultVariableScope,
   AgentVaultVariableType,
   useAgentVaultVariableKeyStatus,
@@ -51,6 +52,7 @@ import {
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
 import {
+  TAgentVaultOauthVariable,
   TAgentVaultOauthVariableSignInStart,
   TAgentVaultVariable
 } from "@app/hooks/api/agentVault/types";
@@ -63,6 +65,9 @@ import {
   buildOAuthVariableSettingsUpdate,
   changedVariableFormFields,
   CREATE_OAUTH_VARIABLE_TITLE,
+  isOAuthClientSecretRequired,
+  isOAuthVariableSignInChanged,
+  OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE,
   oauthVariableFormIssues,
   oauthVariableFormValuesOf,
   TVariableFormValues
@@ -78,13 +83,13 @@ const TYPE_LABELS: Record<AgentVaultVariableType, string> = {
 };
 
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
-// when the form validates, as the lookup of the typed key answers after it was typed. A duplicate takes its
-// settings from the variable it copies, so only its key is checked.
+// when the form validates, as the lookup of the typed key answers after it was typed. So is the saved OAuth
+// variable, since a sign-in can save it before the form closes.
 const buildSchema = (
   getTakenKeys: () => ReadonlySet<string>,
+  getSavedOAuth: () => TAgentVaultOauthVariable | null,
   isValueRequired: boolean,
-  isPersonal: boolean,
-  isDuplicate: boolean
+  isPersonal: boolean
 ) =>
   z
     .object({
@@ -121,8 +126,15 @@ const buildSchema = (
       const issue = (path: keyof TVariableFormValues, message: string) =>
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
       if (data.type === AgentVaultVariableType.OAuth) {
-        if (!isDuplicate) {
-          oauthVariableFormIssues(data).forEach(({ field, message }) => issue(field, message));
+        const issues = oauthVariableFormIssues(data);
+        issues.forEach(({ field, message }) => issue(field, message));
+        const savedOAuth = getSavedOAuth();
+        if (
+          savedOAuth &&
+          !issues.some(({ field }) => field === "clientSecret") &&
+          isOAuthClientSecretRequired(savedOAuth, data)
+        ) {
+          issue("clientSecret", OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE);
         }
         return;
       }
@@ -150,8 +162,6 @@ export type TVariableFormProps = {
   initialKey?: string;
   /** Fixes the type of a new variable, as for a picker that lists only OAuth variables. */
   type?: AgentVaultVariableType;
-  /** An OAuth variable whose provider settings a new one copies. Its sign-in is never copied. */
-  duplicateOf?: TAgentVaultVariable | null;
   /** A sign-in started from the variables list that needs more settings before it can go ahead. */
   signInStart?: TAgentVaultOauthVariableSignInStart | null;
   /** Called with the new variable once it is created, and again after each later save of it in the same form. */
@@ -160,7 +170,7 @@ export type TVariableFormProps = {
   onClose: () => void;
   /** Cancel and Close, which leave without saving. Defaults to onClose. */
   onCancel?: () => void;
-  /** True while a sign-in is in progress, when closing would drop it. */
+  /** True while a save or a sign-in is in progress, when closing would drop it. */
   onPendingChange?: (isPending: boolean) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   /** Personal for one of the caller's own variables, which only their personal values use. */
@@ -171,11 +181,9 @@ export type TVariableFormProps = {
 
 export const variableFormTitle = ({
   variable,
-  duplicateOf,
   type,
   scope = AgentVaultVariableScope.Global
-}: Pick<TVariableFormProps, "variable" | "duplicateOf" | "type" | "scope">) => {
-  if (duplicateOf) return "Duplicate OAuth Variable";
+}: Pick<TVariableFormProps, "variable" | "type" | "scope">) => {
   if (type === AgentVaultVariableType.OAuth && !variable) return CREATE_OAUTH_VARIABLE_TITLE;
   const scopeLabel = scope === AgentVaultVariableScope.Personal ? "Personal" : "Global";
   return `${variable ? "Edit" : "Add"} ${scopeLabel} Variable`;
@@ -183,13 +191,9 @@ export const variableFormTitle = ({
 
 export const variableFormDescription = ({
   variable,
-  duplicateOf,
   type,
   scope = AgentVaultVariableScope.Global
-}: Pick<TVariableFormProps, "variable" | "duplicateOf" | "type" | "scope">) => {
-  if (duplicateOf) {
-    return `Copies the provider settings of ${duplicateOf.key}. The copy has its own sign-in, so it starts out not connected.`;
-  }
+}: Pick<TVariableFormProps, "variable" | "type" | "scope">) => {
   if ((variable?.type ?? type) === AgentVaultVariableType.OAuth) {
     return "Sign in once and use the sign-in as the credential of any HTTP API or MCP server.";
   }
@@ -205,7 +209,6 @@ export const VariableForm = ({
   variable,
   initialKey,
   type: fixedType,
-  duplicateOf,
   signInStart,
   onCreated,
   onClose,
@@ -228,21 +231,26 @@ export const VariableForm = ({
   const isUpdate = Boolean(saved);
   const usedByCount = saved?.usedByServices.length ?? 0;
   // A text variable created from a reference, or a personal one, can only be text.
-  const canChooseType = !variable && !duplicateOf && !fixedType && !isPersonal && !initialKey;
+  const canChooseType = !variable && !fixedType && !isPersonal && !initialKey;
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
+  const savedOAuthRef = useRef<TAgentVaultOauthVariable | null>(null);
+  savedOAuthRef.current = saved?.oauth ?? null;
   const schema = useMemo(
-    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal, Boolean(duplicateOf)),
-    [variable, isPersonal, duplicateOf]
+    () =>
+      buildSchema(
+        () => takenKeysRef.current,
+        () => savedOAuthRef.current,
+        !variable,
+        isPersonal
+      ),
+    [variable, isPersonal]
   );
 
   const formMethods = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      type:
-        variable?.type ??
-        (duplicateOf ? AgentVaultVariableType.OAuth : fixedType) ??
-        AgentVaultVariableType.Text,
+      type: variable?.type ?? fixedType ?? AgentVaultVariableType.Text,
       key: variable?.key ?? initialKey ?? "",
       value: "",
       ...(variable ? oauthVariableFormValuesOf(variable.oauth) : BLANK_OAUTH_VARIABLE_FORM)
@@ -263,9 +271,18 @@ export const VariableForm = ({
   } = formMethods;
 
   const [key, type, clientSecret] = useWatch({ control, name: ["key", "type", "clientSecret"] });
+  const formValues = useWatch({ control }) as TVariableFormValues;
   const isOAuth = type === AgentVaultVariableType.OAuth;
   // The API takes a client secret only with a sign-in, so saving one typed here would drop it.
-  const isSecretUnsent = isOAuth && !duplicateOf && Boolean(clientSecret);
+  const isSecretUnsent = isOAuth && Boolean(clientSecret);
+  // The API disconnects a variable whose sign-in settings change, and every service on it with it.
+  const savedOAuth = saved?.oauth;
+  const isSignOutOnSave = Boolean(
+    isOAuth &&
+    savedOAuth &&
+    savedOAuth.status !== AgentVaultOauthStatus.NotConnected &&
+    isOAuthVariableSignInChanged(savedOAuth, formValues)
+  );
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -342,9 +359,7 @@ export const VariableForm = ({
         scope: AgentVaultVariableScope.Global,
         type: AgentVaultVariableType.OAuth,
         key: data.key,
-        ...(duplicateOf
-          ? { sourceVariableId: duplicateOf.id }
-          : { oauth: buildOAuthVariableSettings(data) })
+        oauth: buildOAuthVariableSettings(data)
       });
       return created;
     }
@@ -387,6 +402,7 @@ export const VariableForm = ({
   };
 
   const onSubmit = async (data: FormData) => {
+    onPendingChange?.(true);
     try {
       if (isOAuth) {
         const result = await persistOAuth(data);
@@ -413,17 +429,18 @@ export const VariableForm = ({
       onClose();
     } catch (error) {
       if (!isOAuth) flagServerKeyError(error);
+    } finally {
+      onPendingChange?.(false);
     }
   };
 
   let submitLabel = `Add ${isPersonal ? "Personal" : "Global"} Variable`;
-  if (duplicateOf) submitLabel = "Duplicate Variable";
-  else if (isUpdate) submitLabel = "Save";
+  if (isUpdate) submitLabel = "Save";
   else if (fixedType === AgentVaultVariableType.OAuth) submitLabel = CREATE_OAUTH_VARIABLE_TITLE;
   // A variable an OAuth sign-in already created has nothing left to add unless it was changed since.
   const isDone = isCreatedHere && !isDirty;
 
-  const headerProps = { variable, duplicateOf, scope };
+  const headerProps = { variable, scope };
 
   return (
     <FormProvider {...formMethods}>
@@ -541,7 +558,7 @@ export const VariableForm = ({
             )}
           />
         )}
-        {isOAuth && !duplicateOf && (
+        {isOAuth && (
           <OAuthVariableFields
             variable={saved}
             getValidValues={getValidValues}
@@ -550,6 +567,18 @@ export const VariableForm = ({
             onSignInChange={changeSigningIn}
             initialSignInStart={signInStart}
           />
+        )}
+        {isSignOutOnSave && saved && (
+          <p className="flex items-start gap-1.5 text-xs text-warning">
+            <TriangleAlertIcon className="mt-0.5 size-3 shrink-0" />
+            <span>
+              Saving signs {saved.key} out.
+              {usedByCount === 1 &&
+                " The service that uses it stops working until it is signed in again."}
+              {usedByCount > 1 &&
+                ` The ${usedByCount} services that use it stop working until it is signed in again.`}
+            </span>
+          </p>
         )}
 
         <DialogFooter className="items-center justify-between">
@@ -569,7 +598,12 @@ export const VariableForm = ({
               </Button>
             ) : (
               <>
-                <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSigningIn}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={onCancel}
+                  isDisabled={isSigningIn || isSubmitting}
+                >
                   {isCreatedHere ? "Close" : "Cancel"}
                 </Button>
                 <Button

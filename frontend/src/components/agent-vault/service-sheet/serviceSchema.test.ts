@@ -22,6 +22,7 @@ import {
   isOAuthAuthorizationMissing,
   MAX_ALLOWED_TOOLS,
   McpToolScope,
+  memberFieldsAfterTypeSwitch,
   nativeDatabaseError,
   nativeHostError,
   newOAuthAuthorizationId,
@@ -208,6 +209,31 @@ describe("storedOAuthCredential", () => {
     } satisfies TAgentVaultService;
     expect(storedOAuthCredential(bearer, SERVER_URL)).toBeNull();
     expect(storedOAuthCredential(undefined, SERVER_URL)).toBeNull();
+  });
+});
+
+describe("memberFieldsAfterTypeSwitch", () => {
+  const memberProvided = {
+    ...storedOAuthService(),
+    credential: {
+      ...storedOAuthService().credential,
+      memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+    }
+  } satisfies TAgentVaultService;
+
+  it("restores the stored setting when switching back to the stored type", () => {
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.OAuth, memberProvided, false)
+    ).toEqual([AgentVaultVariableReferenceField.CredentialValue]);
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.Bearer, memberProvided, false)
+    ).toEqual([]);
+  });
+
+  it("keeps it off when switching back to OAuth with an OAuth variable chosen", () => {
+    expect(
+      memberFieldsAfterTypeSwitch(AgentVaultCredentialType.OAuth, memberProvided, true)
+    ).toEqual([]);
   });
 });
 
