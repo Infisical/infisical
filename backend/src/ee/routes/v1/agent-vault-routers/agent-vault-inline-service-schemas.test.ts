@@ -26,7 +26,7 @@ describe("a session's services request schema", () => {
     ]);
   });
 
-  test("refuses a name used twice, whether named or sent inline, at the second one", () => {
+  test("refuses a name used twice, whether listed by name or sent inline, at the second one", () => {
     expect(issuesOf(["github", "github"])).toEqual([
       expect.objectContaining({
         path: [1],
@@ -37,7 +37,7 @@ describe("a session's services request schema", () => {
     expect(issuesOf(["github", bearer("one", { name: "github" })])[0].path).toEqual([1, "name"]);
   });
 
-  test("caps the project services a session names at 50", () => {
+  test("caps the services a session lists by name at 50", () => {
     const names = Array.from({ length: 51 }, (_, index) => `service-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",

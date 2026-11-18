@@ -5326,10 +5326,10 @@ export const AGENT_VAULT = {
       "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
       "The services from the project and the services sent with this session, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
-    namedServiceId: "The ID of the project service.",
-    namedServiceName: "The name of the project service.",
-    namedServiceType: "The type of the project service.",
-    namedServiceHostPattern:
+    serviceIdRead: "The ID of the project service.",
+    serviceNameRead: "The name of the project service.",
+    serviceTypeRead: "The type of the project service.",
+    serviceHostPatternRead:
       "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
     serviceIsInline: "Whether the service was sent with this session (true) or is a service from the project (false).",
     skills:

@@ -123,7 +123,7 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx, so a skill created a moment ago can be named.
+  // Reads the primary even without a tx, so a skill created a moment ago can be listed in a session.
   const findByNamesInProject = async (
     { projectId, names }: { projectId: string; names: string[] },
     tx?: Knex

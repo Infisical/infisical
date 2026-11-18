@@ -11,7 +11,7 @@ import {
 } from "@app/components/v3";
 import {
   TAgentVaultSessionInlineService,
-  TAgentVaultSessionNamedService,
+  TAgentVaultSessionService,
   TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 
@@ -67,7 +67,11 @@ export const InlineServicesList = ({
   </ServiceListFrame>
 );
 
-export const NamedServicesList = ({ services }: { services: TAgentVaultSessionNamedService[] }) => (
+export const ServicesList = ({
+  services
+}: {
+  services: Extract<TAgentVaultSessionService, { isInline: false }>[];
+}) => (
   <ServiceListFrame
     caption="The project's services, picked when the session was created."
     label="Services"

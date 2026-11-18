@@ -41,7 +41,7 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
   InlineServicesList,
-  NamedServicesList,
+  ServicesList,
   ServicesHoverCard,
   SessionSkillsList
 } from "./InlineServicesHoverCard";
@@ -50,15 +50,15 @@ import {
   inlineServiceTarget,
   sessionInlineServices,
   sessionInlineSkills,
-  sessionNamedServices,
-  sessionNamedSkills
+  sessionServices,
+  sessionSkills
 } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
-const SHOWN_NAMED_SERVICES = 2;
+const SHOWN_SERVICES = 2;
 const SHOWN_SKILLS = 2;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
@@ -72,7 +72,7 @@ const moreButton = (count: number) => (
   </button>
 );
 
-// A session's named or inline skills: the first few by name, with the rest behind a hover card.
+// A session's skills, listed by name or inline: the first few by name, with the rest behind a hover card.
 const SkillsDetail = ({
   label,
   skills,
@@ -142,12 +142,12 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   );
   const metadataEntries = Object.entries(session?.metadata ?? {});
   const inlineServices = session ? sessionInlineServices(session) : [];
-  const shownServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
-  const moreServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
-  const namedServices = session ? sessionNamedServices(session) : [];
-  const shownNamedServices = namedServices.slice(0, SHOWN_NAMED_SERVICES);
-  const moreNamedServices = namedServices.slice(SHOWN_NAMED_SERVICES);
-  const namedSkills = session ? sessionNamedSkills(session) : [];
+  const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
+  const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
+  const listedServices = session ? sessionServices(session) : [];
+  const shownServices = listedServices.slice(0, SHOWN_SERVICES);
+  const moreServices = listedServices.slice(SHOWN_SERVICES);
+  const listedSkills = session ? sessionSkills(session) : [];
   const inlineSkills = session ? sessionInlineSkills(session) : [];
 
   return (
@@ -262,11 +262,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                         </DetailValue>
                       </Detail>
                     )}
-                    {namedServices.length > 0 && (
+                    {listedServices.length > 0 && (
                       <Detail className="min-w-0">
                         <DetailLabel>Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownNamedServices.map((service) => (
+                          {shownServices.map((service) => (
                             <Tooltip key={service.id}>
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
@@ -286,11 +286,9 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                               </TooltipContent>
                             </Tooltip>
                           ))}
-                          {moreNamedServices.length > 0 && (
-                            <ServicesHoverCard
-                              content={<NamedServicesList services={moreNamedServices} />}
-                            >
-                              {moreButton(moreNamedServices.length)}
+                          {moreServices.length > 0 && (
+                            <ServicesHoverCard content={<ServicesList services={moreServices} />}>
+                              {moreButton(moreServices.length)}
                             </ServicesHoverCard>
                           )}
                         </DetailValue>
@@ -300,7 +298,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       <Detail className="min-w-0">
                         <DetailLabel>Inline Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownServices.map((service) => (
+                          {shownInlineServices.map((service) => (
                             <Tooltip key={service.id}>
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
@@ -323,18 +321,18 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                               </TooltipContent>
                             </Tooltip>
                           ))}
-                          {moreServices.length > 0 && (
+                          {moreInlineServices.length > 0 && (
                             <ServicesHoverCard
-                              content={<InlineServicesList services={moreServices} />}
+                              content={<InlineServicesList services={moreInlineServices} />}
                             >
-                              {moreButton(moreServices.length)}
+                              {moreButton(moreInlineServices.length)}
                             </ServicesHoverCard>
                           )}
                         </DetailValue>
                       </Detail>
                     )}
-                    {namedSkills.length > 0 && (
-                      <SkillsDetail label="Skills" skills={namedSkills} isInline={false} />
+                    {listedSkills.length > 0 && (
+                      <SkillsDetail label="Skills" skills={listedSkills} isInline={false} />
                     )}
                     {inlineSkills.length > 0 && (
                       <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />

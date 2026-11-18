@@ -4982,7 +4982,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    describe("named in a session", async () => {
+    describe("listed in a session", async () => {
       const sessionsUrl = "/api/v1/agent-vault/sessions";
       const bearerService = (name: string, host: string, bundleIds: string[] = []) =>
         createService(bundleIds, { name, hostPattern: host, credential: { type: "bearer", value: `sk-${name}` } });
@@ -5018,7 +5018,7 @@ describe("Agent Vault V1 Router", async () => {
         return (res.json().services as { name: string }[]).map((entry) => entry.name).sort();
       };
 
-      test("an Admin names a service in no bundle beside an inline one; reads keep the order sent and resolve sends both", async () => {
+      test("an Admin lists a service in no bundle beside an inline one; reads keep the order sent and resolve sends both", async () => {
         const loose = await bearerService("ns-loose", "ns-loose.example.com");
 
         const minted = await inject("POST", sessionsUrl, {
@@ -5068,9 +5068,9 @@ describe("Agent Vault V1 Router", async () => {
           expect(minted.statusCode, minted.payload).toBe(200);
           const { token, id: sessionId } = minted.json().session as { token: string; id: string };
           expect(await sessionServiceNames(token)).toEqual(["ns-granted"]);
-          const namedIn = async (read: Promise<{ json: () => { session: { services: { name: string }[] } } }>) =>
+          const servicesIn = async (read: Promise<{ json: () => { session: { services: { name: string }[] } } }>) =>
             (await read).json().session.services.map((entry) => entry.name);
-          expect(await namedIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
+          expect(await servicesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
 
           const revoked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
             machineIdentityIds: [member.id]
@@ -5078,7 +5078,7 @@ describe("Agent Vault V1 Router", async () => {
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await sessionServiceNames(token)).toEqual([]);
 
-          // Session reads show a named service only while the reader reaches it, so its later changes stay with the
+          // Session reads show a listed service only while the reader reaches it, so its later changes stay with the
           // services API.
           const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as { id: string };
           expect(
@@ -5094,13 +5094,13 @@ describe("Agent Vault V1 Router", async () => {
             (row) => row.id === sessionId
           );
           expect(listed?.services).toEqual([]);
-          expect(await namedIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
+          expect(await servicesIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
         } finally {
           await member.cleanup();
         }
       });
 
-      test("a name sent twice is refused, and so is a service covering a host one the session names already covers", async () => {
+      test("a name sent twice is refused, and so is a service covering a host one the session lists already covers", async () => {
         await bearerService("ns-dup", "ns-dup.example.com");
 
         const twice = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup"] });
@@ -5114,9 +5114,9 @@ describe("Agent Vault V1 Router", async () => {
         expect(overlapping.json().message).toContain("which 'ns-dup', a project service in this session, already covers");
 
         await bearerService("ns-dup-mirror", "ns-dup.example.com");
-        const twoNamed = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup-mirror"] });
-        expect(twoNamed.statusCode).toBe(400);
-        expect(twoNamed.json().message).toContain("both cover ns-dup.example.com");
+        const twoServices = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup-mirror"] });
+        expect(twoServices.statusCode).toBe(400);
+        expect(twoServices.json().message).toContain("both cover ns-dup.example.com");
       });
 
       test("a Member naming a wildcard service gets the more specific services its bundle uses for some of its hosts", async () => {
@@ -5148,7 +5148,7 @@ describe("Agent Vault V1 Router", async () => {
           const minted = await member.as("POST", sessionsUrl, { services: ["ns-ov-wild"] });
           expect(minted.statusCode, minted.payload).toBe(200);
           const { token, services } = minted.json().session as { token: string; services: { name: string }[] };
-          // Reads keep what the session names; resolve adds the overrides last, credited to the bundle that pairs them.
+          // Reads keep what the session lists; resolve adds the overrides last, credited to the bundle that pairs them.
           expect(services.map((entry) => entry.name)).toEqual(["ns-ov-wild"]);
           expect(await resolved(token)).toEqual([
             "ns-ov-wild@-",
@@ -5171,7 +5171,7 @@ describe("Agent Vault V1 Router", async () => {
         }
       });
 
-      test("a deleted service drops out of the sessions that named it", async () => {
+      test("a deleted service drops out of the sessions that listed it", async () => {
         const doomed = await bearerService("ns-deleted", "ns-deleted.example.com");
         const minted = await inject("POST", sessionsUrl, { services: ["ns-deleted"] });
         expect(minted.statusCode, minted.payload).toBe(200);
@@ -6714,12 +6714,12 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("on a user's behalf, a named service has to be in a bundle granted to both the user and the identity", async () => {
+    test("on a user's behalf, a listed service has to be in a bundle granted to both the user and the identity", async () => {
       const projectId = await getProjectId();
       const stamp = Date.now();
-      const shared = await createAccessBundle(`obo-named-shared-${stamp}`);
-      const botOnly = await createAccessBundle(`obo-named-bot-${stamp}`);
-      const userOnly = await createAccessBundle(`obo-named-user-${stamp}`);
+      const shared = await createAccessBundle(`obo-listed-shared-${stamp}`);
+      const botOnly = await createAccessBundle(`obo-listed-bot-${stamp}`);
+      const userOnly = await createAccessBundle(`obo-listed-user-${stamp}`);
       const service = async (name: string, bundleIds: string[]) => {
         const res = await inject("POST", "/api/v1/agent-vault/services", {
           type: "http",
@@ -6734,28 +6734,28 @@ describe("Agent Vault V1 Router", async () => {
       await service(`obo-ns-bot-${stamp}`, [botOnly.id]);
       await service(`obo-ns-split-${stamp}`, [botOnly.id, userOnly.id]);
       await service(`obo-ns-loose-${stamp}`, []);
-      const bot = await createMemberIdentity(`obo-named-bot-${stamp}`);
-      const alice = await createAgentVaultUser("obo-named-alice", projectId);
+      const bot = await createMemberIdentity(`obo-listed-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-listed-alice", projectId);
       try {
         await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
         await grantBundle(botOnly.id, { machineIdentityIds: [bot.id] });
         await grantBundle(userOnly.id, { userIds: [alice.userId] });
         await delegate(bot, { scope: "selected", userIds: [alice.userId] });
-        const mintNamed = (name: string) =>
+        const mintWith = (name: string) =>
           bot.as("POST", sessionsUrl, { services: [name], onBehalfOf: { userId: alice.userId } });
 
-        expect((await mintNamed(`obo-ns-shared-${stamp}`)).statusCode).toBe(200);
+        expect((await mintWith(`obo-ns-shared-${stamp}`)).statusCode).toBe(200);
 
-        const loose = await mintNamed(`obo-ns-loose-${stamp}`);
+        const loose = await mintWith(`obo-ns-loose-${stamp}`);
         expect(loose.statusCode).toBe(400);
         expect(loose.json().message).toContain(`This machine identity can't use a service called 'obo-ns-loose-${stamp}'`);
 
-        const botsOwn = await mintNamed(`obo-ns-bot-${stamp}`);
+        const botsOwn = await mintWith(`obo-ns-bot-${stamp}`);
         expect(botsOwn.statusCode).toBe(400);
         expect(botsOwn.json().message).toContain(`can't use a service called 'obo-ns-bot-${stamp}'`);
 
         // Each reaches it, through different bundles, and resolve reaches only bundles granted to both.
-        const split = await mintNamed(`obo-ns-split-${stamp}`);
+        const split = await mintWith(`obo-ns-split-${stamp}`);
         expect(split.statusCode).toBe(400);
         expect(split.json().message).toContain("isn't in an access bundle granted to both");
       } finally {
@@ -6764,7 +6764,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a service sent with the session can't switch off an override that a named service brings", async () => {
+    test("a service sent with the session can't switch off an override that a listed service brings", async () => {
       const projectId = await getProjectId();
       const stamp = Date.now();
       const bundle = await createAccessBundle(`obo-ov-${stamp}`);
@@ -7099,11 +7099,11 @@ describe("Agent Vault V1 Router", async () => {
         expect(listed(byEmail)).toEqual(listed(byId));
 
         // The list offers exactly what a session on her behalf accepts.
-        const mintNaming = (name: string) =>
+        const mintWith = (name: string) =>
           bot.as("POST", sessionsUrl, { services: [name], onBehalfOf: { userId: alice.userId } });
-        expect((await mintNaming(sharedService.name)).statusCode).toBe(200);
-        expect((await mintNaming(userService.name)).statusCode).toBe(400);
-        expect((await mintNaming(botService.name)).statusCode).toBe(400);
+        expect((await mintWith(sharedService.name)).statusCode).toBe(200);
+        expect((await mintWith(userService.name)).statusCode).toBe(400);
+        expect((await mintWith(botService.name)).statusCode).toBe(400);
 
         // Without onBehalfOf the identity still lists the services in its own bundles.
         const own = await bot.as("GET", servicesUrl("orderBy=name&orderDirection=asc"));
@@ -7248,7 +7248,7 @@ describe("Agent Vault V1 Router", async () => {
         return (res.json().skills as { name: string }[]).map((skill) => skill.name);
       };
 
-      test("on a user's behalf, a named skill has to be in a bundle granted to both the user and the identity", async () => {
+      test("on a user's behalf, a listed skill has to be in a bundle granted to both the user and the identity", async () => {
         const projectId = await getProjectId();
         const stamp = Date.now();
         const shared = await createAccessBundle(`obo-sk-shared-${stamp}`);
@@ -7267,22 +7267,22 @@ describe("Agent Vault V1 Router", async () => {
           await grantBundle(botOnly.id, { machineIdentityIds: [bot.id] });
           await grantBundle(userOnly.id, { userIds: [alice.userId] });
           await delegate(bot, { scope: "selected", userIds: [alice.userId] });
-          const mintNamed = (name: string) =>
+          const mintWith = (name: string) =>
             bot.as("POST", sessionsUrl, { skills: [name], onBehalfOf: { userId: alice.userId } });
 
-          const minted = await mintNamed(`obo-sk-shared-${stamp}`);
+          const minted = await mintWith(`obo-sk-shared-${stamp}`);
           expect(minted.statusCode, minted.payload).toBe(200);
 
-          const loose = await mintNamed(`obo-sk-loose-${stamp}`);
+          const loose = await mintWith(`obo-sk-loose-${stamp}`);
           expect(loose.statusCode).toBe(400);
           expect(loose.json().message).toContain(`This machine identity can't use a skill called 'obo-sk-loose-${stamp}'`);
 
-          const botsOwn = await mintNamed(`obo-sk-bot-${stamp}`);
+          const botsOwn = await mintWith(`obo-sk-bot-${stamp}`);
           expect(botsOwn.statusCode).toBe(400);
           expect(botsOwn.json().message).toContain(`can't use a skill called 'obo-sk-bot-${stamp}'`);
 
           // Each reaches it, through different bundles, and an agent gets only skills in bundles granted to both.
-          const split = await mintNamed(`obo-sk-split-${stamp}`);
+          const split = await mintWith(`obo-sk-split-${stamp}`);
           expect(split.statusCode).toBe(400);
           expect(split.json().message).toContain("isn't in an access bundle granted to both");
 
@@ -7336,11 +7336,11 @@ describe("Agent Vault V1 Router", async () => {
           expect(listed(byEmail)).toEqual(listed(byId));
 
           // The list offers exactly what a session on her behalf accepts.
-          const mintNaming = (name: string) =>
+          const mintWith = (name: string) =>
             bot.as("POST", sessionsUrl, { skills: [name], onBehalfOf: { userId: alice.userId } });
-          expect((await mintNaming(sharedSkill.name)).statusCode).toBe(200);
-          expect((await mintNaming(userSkill.name)).statusCode).toBe(400);
-          expect((await mintNaming(botSkill.name)).statusCode).toBe(400);
+          expect((await mintWith(sharedSkill.name)).statusCode).toBe(200);
+          expect((await mintWith(userSkill.name)).statusCode).toBe(400);
+          expect((await mintWith(botSkill.name)).statusCode).toBe(400);
 
           // Without onBehalfOf the identity still lists the skills in its own bundles.
           expect(listed(await bot.as("GET", listUrl("")))).toEqual([botSkill.name, sharedSkill.name]);
@@ -10376,7 +10376,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    describe("named and sent with a session", async () => {
+    describe("listed and sent with a session", async () => {
       const sessionsUrl = "/api/v1/agent-vault/sessions";
       const inlineSkill = (name: string, body = "Inline.", extra: TFile[] = []) => ({
         files: skillFiles(name, body, extra)
@@ -10398,7 +10398,7 @@ describe("Agent Vault V1 Router", async () => {
       const deliveredNames = async (token: string) => (await deliveredTo(token)).map((skill) => skill.name);
       type TSessionSkill = { id: string; name: string; description: string; isInline: boolean; sha256?: string };
 
-      test("an Admin names a skill in no bundle beside inline ones, and the agent gets them with the bundle's, an inline one in place of the bundle's of its name", async () => {
+      test("an Admin lists a skill in no bundle beside inline ones, and the agent gets them with the bundle's, an inline one in place of the bundle's of its name", async () => {
         const bundle = await createAccessBundle(`ss-bundle-${Date.now()}`);
         const { skill: onBundle, version: onBundleV1 } = await createSkill("ss-on-bundle");
         const { skill: shadowed } = await createSkill("ss-shadowed");
@@ -10422,17 +10422,18 @@ describe("Agent Vault V1 Router", async () => {
               event: expect.objectContaining({
                 type: "agent-vault-session-mint",
                 metadata: expect.objectContaining({
-                  namedSkills: [{ skillId: loose.id, name: "ss-loose" }],
                   skills: [
                     {
                       skillId: mintedSkills[0].id,
                       name: "ss-scratch",
+                      isInline: true,
                       description: "Scratch.",
                       sha256: mintedSkills[0].sha256,
                       sizeBytes: expect.any(Number),
                       fileCount: 1
                     },
-                    expect.objectContaining({ skillId: mintedSkills[2].id, name: "ss-shadowed" })
+                    { skillId: loose.id, name: "ss-loose", isInline: false },
+                    expect.objectContaining({ skillId: mintedSkills[2].id, name: "ss-shadowed", isInline: true })
                   ]
                 })
               })
@@ -10526,7 +10527,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(mine.sha256).toBe(crypto.createHash("sha256").update(JSON.stringify(mine.files)).digest("hex"));
       });
 
-      test("a Member names only skills in a bundle granted to them, sends its own, and loses the named one when the grant goes", async () => {
+      test("a Member lists only skills in a bundle granted to them, sends its own, and loses the listed one when the grant goes", async () => {
         const member = await createMemberIdentity(`ss-member-${Date.now()}`);
         try {
           const bundle = await createAccessBundle(`ss-member-bundle-${Date.now()}`);
@@ -10564,7 +10565,7 @@ describe("Agent Vault V1 Router", async () => {
           });
           expect(revoked.statusCode, revoked.payload).toBe(200);
           expect(await deliveredNames(token)).toEqual(["ss-member-own"]);
-          // Session reads show a named skill only while the reader reaches it; an admin still sees it.
+          // Session reads show a listed skill only while the reader reaches it; an admin still sees it.
           expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-member-own"]);
           expect(await skillNamesIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ss-granted", "ss-member-own"]);
         } finally {
@@ -10572,7 +10573,7 @@ describe("Agent Vault V1 Router", async () => {
         }
       });
 
-      test("a deleted skill drops out of the sessions that named it", async () => {
+      test("a deleted skill drops out of the sessions that listed it", async () => {
         const { skill } = await createSkill("ss-deleted");
         const minted = await inject("POST", sessionsUrl, { skills: ["ss-deleted"] });
         expect(minted.statusCode, minted.payload).toBe(200);
@@ -10591,9 +10592,9 @@ describe("Agent Vault V1 Router", async () => {
         expect(twice.statusCode).toBe(422);
         expect(twice.payload).toContain('More than one skill in this session is named \\"ss-dup\\"');
 
-        const namedAndInline = await inject("POST", sessionsUrl, { skills: ["ss-dup", inlineSkill("ss-dup")] });
-        expect(namedAndInline.statusCode).toBe(422);
-        expect(namedAndInline.payload).toContain('More than one skill in this session is named \\"ss-dup\\"');
+        const listedAndInline = await inject("POST", sessionsUrl, { skills: ["ss-dup", inlineSkill("ss-dup")] });
+        expect(listedAndInline.statusCode).toBe(422);
+        expect(listedAndInline.payload).toContain('More than one skill in this session is named \\"ss-dup\\"');
       });
 
       test("an inline skill is checked like an upload, may be as large as one, and can't take the built-in skill's name", async () => {
@@ -10659,9 +10660,9 @@ describe("Agent Vault V1 Router", async () => {
         }
         expect(await testDb("agent_vault_access_bundle_skills").where({ skillId: inlineId })).toHaveLength(0);
 
-        const named = await inject("POST", sessionsUrl, { skills: ["ss-private"] });
-        expect(named.statusCode).toBe(400);
-        expect(named.json().message).toBe(
+        const refused = await inject("POST", sessionsUrl, { skills: ["ss-private"] });
+        expect(refused.statusCode).toBe(400);
+        expect(refused.json().message).toBe(
           "You can't use a skill called 'ss-private'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
         );
       });

@@ -243,13 +243,13 @@ export const AgentVaultSessionsPage = () => {
   // A session needs a bundle the caller reaches or a service or skill they can name. A member can name only the
   // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
-  const { data: nameableServices } = useListAgentVaultServices(projectId, { limit: 1 });
+  const { data: pickableServices } = useListAgentVaultServices(projectId, { limit: 1 });
   // Without Read on skills the caller can name none, and the list would only answer 403.
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
     ProjectPermissionSub.AgentVaultSkills
   );
-  const { data: nameableSkills } = useListAgentVaultSkills(
+  const { data: pickableSkills } = useListAgentVaultSkills(
     projectId,
     { limit: 1 },
     { enabled: canReadSkills }
@@ -290,8 +290,8 @@ export const AgentVaultSessionsPage = () => {
     Boolean(debouncedSearch.trim()) || statuses.length > 0 || Boolean(metadataFilter);
   const canStartSession =
     (accessBundles?.totalCount ?? 0) > 0 ||
-    (nameableServices?.totalCount ?? 0) > 0 ||
-    (nameableSkills?.totalCount ?? 0) > 0;
+    (pickableServices?.totalCount ?? 0) > 0 ||
+    (pickableSkills?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), canStartSession);
 
   let emptyTitle: string;

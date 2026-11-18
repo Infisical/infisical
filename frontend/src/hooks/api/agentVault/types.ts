@@ -243,7 +243,7 @@ export type TAgentVaultService = (
 
 export type TAgentVaultBundleRef = { id: string; name: string };
 
-// A service or skill an add request named that was already in the access bundle.
+// A service or skill in an add request that was already in the access bundle.
 export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
@@ -419,24 +419,24 @@ export type TAgentVaultSessionInlineService = (
   hook?: TAgentVaultServiceHook | null;
 };
 
-/** A project service a session names. Only what identifies it is returned. */
-export type TAgentVaultSessionNamedService = {
-  id: string;
-  name: string;
-  type: AgentVaultServiceType;
-  description: string | null;
-  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
-  hostPattern: string | null;
-  isInline: false;
-};
-
-/** A session's service: a project service it names, or one sent with it. */
+/**
+ * A session's service: one it lists by name, which carries only what identifies it, or one sent with it. isInline tells
+ * them apart.
+ */
 export type TAgentVaultSessionService =
   | (TAgentVaultSessionInlineService & { isInline: true })
-  | TAgentVaultSessionNamedService;
+  | {
+      id: string;
+      name: string;
+      type: AgentVaultServiceType;
+      description: string | null;
+      /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+      hostPattern: string | null;
+      isInline: false;
+    };
 
 /**
- * A session's skill: a project skill it names, which carries only what identifies it, or one sent with it, which also
+ * A session's skill: one it lists by name, which carries only what identifies it, or one sent with it, which also
  * carries the hash and size of its files.
  */
 export type TAgentVaultSessionSkill =
@@ -476,9 +476,9 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  /** Its services, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
   services: TAgentVaultSessionService[];
-  /** The skills it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  /** Its skills, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
   skills: TAgentVaultSessionSkill[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;

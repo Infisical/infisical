@@ -1359,7 +1359,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles and
-  // every project skill it names that its owner still reaches, and the files of the skills sent with it. The session
+  // every skill it lists that its owner still reaches, and the files of the skills sent with it. The session
   // token is the only credential, so an unknown one gets the same 401 as any other refusal.
   const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
     const { session } = await $findSessionByToken(sessionToken);
@@ -1502,7 +1502,7 @@ export const agentVaultProxyServiceFactory = ({
         setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
       });
 
-    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
+    // The order resolve sends them in: bundle and listed services, inline ones, then overrides.
     const services = [
       ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {

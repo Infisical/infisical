@@ -28,7 +28,7 @@ describe("a session's skills request schema", () => {
     ]);
   });
 
-  test("refuses a name used twice, whether named or in an inline skill's SKILL.md, at the second one", () => {
+  test("refuses a name used twice, whether listed by name or in an inline skill's SKILL.md, at the second one", () => {
     const message =
       'More than one skill in this session is named "code-review". Give each a different name, or leave one out.';
     expect(issuesOf(["code-review", "code-review"])).toEqual([expect.objectContaining({ path: [1], message })]);
@@ -45,7 +45,7 @@ describe("a session's skills request schema", () => {
     expect(issuesOf(["code-review", broken, broken])).toEqual([]);
   });
 
-  test("caps the project skills a session names at 20 and the inline ones at 5", () => {
+  test("caps the skills a session lists by name at 20 and the inline ones at 5", () => {
     const names = Array.from({ length: 21 }, (_, index) => `skill-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",

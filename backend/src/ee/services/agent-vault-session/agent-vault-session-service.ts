@@ -50,7 +50,7 @@ import {
 } from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
-  assertNoNamedServiceConflicts,
+  assertNoServiceConflicts,
   assertNoOverrideConflicts,
   prepareInlineServices,
   toInlineServiceSummary
@@ -103,7 +103,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSkillBundleDAL: Pick<TAgentVaultSkillBundleDALFactory, "findSkillIdsInBundles">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
-  agentVaultResolveDAL: Pick<TAgentVaultResolveDALFactory, "findNamedServiceOverrides">;
+  agentVaultResolveDAL: Pick<TAgentVaultResolveDALFactory, "findServiceOverrides">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -114,7 +114,7 @@ type TAgentVaultSessionServiceFactoryDep = {
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
 
-const namedServiceHostPattern = (type: AgentVaultServiceType, hostPattern?: string | null) =>
+const readHostPattern = (type: AgentVaultServiceType, hostPattern?: string | null) =>
   type === AgentVaultServiceType.Http || type === AgentVaultServiceType.Mcp ? (hostPattern ?? null) : null;
 
 export const agentVaultSessionServiceFactory = ({
@@ -199,29 +199,29 @@ export const agentVaultSessionServiceFactory = ({
     );
   };
 
-  // The services each session names and the ones sent with it, as one list in the order they were sent. A named service
+  // Each session's services, listed by name or sent inline, as one list in the order they were sent. A listed service
   // is read from the live catalog, so one the reader no longer reaches is left out, the same as a deleted one: its
   // later name, description and hosts are the services API's to show, not the session's.
   const findSessionServices = async (sessionIds: string[], readerAccessBundleIds: string[] | null) => {
-    const [inlineRows, allNamedRows, reachableServiceIds] = await Promise.all([
+    const [inlineRows, allListedRows, reachableServiceIds] = await Promise.all([
       agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(sessionIds),
       agentVaultSessionServiceDAL.findSummariesBySessionIds(sessionIds),
       serviceIdsReachedThrough(agentVaultServiceDAL, readerAccessBundleIds)
     ]);
     const reachable = reachableServiceIds === null ? null : new Set(reachableServiceIds);
-    const namedRows = reachable ? allNamedRows.filter((row) => reachable.has(row.id)) : allNamedRows;
+    const listedRows = reachable ? allListedRows.filter((row) => reachable.has(row.id)) : allListedRows;
     const bySession = new Map<string, { position: number; service: TAgentVaultSessionServiceSummary }[]>();
     const add = (sessionId: string, position: number, service: TAgentVaultSessionServiceSummary) => {
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, service }]);
     };
     inlineRows.forEach((row) => add(row.sessionId, row.position, { ...toInlineServiceSummary(row), isInline: true }));
-    namedRows.forEach(({ sessionId, position, id, name, type, description, hostPattern }) =>
+    listedRows.forEach(({ sessionId, position, id, name, type, description, hostPattern }) =>
       add(sessionId, position, {
         id,
         name,
         type,
         description,
-        hostPattern: namedServiceHostPattern(type, hostPattern),
+        hostPattern: readHostPattern(type, hostPattern),
         isInline: false
       })
     );
@@ -229,21 +229,21 @@ export const agentVaultSessionServiceFactory = ({
       (bySession.get(sessionId) ?? []).sort((a, b) => a.position - b.position).map(({ service }) => service);
   };
 
-  // The skills each session names and the ones sent with it, the same way, named ones only while the reader reaches them.
+  // Each session's skills, the same way, listed ones only while the reader reaches them.
   const findSessionSkills = async (sessionIds: string[], readerAccessBundleIds: string[] | null) => {
-    const [inlineRows, allNamedRows, reachableSkillIds] = await Promise.all([
+    const [inlineRows, allListedRows, reachableSkillIds] = await Promise.all([
       agentVaultSessionInlineSkillDAL.findSummariesBySessionIds(sessionIds),
       agentVaultSessionSkillDAL.findSummariesBySessionIds(sessionIds),
       skillIdsReachedThrough(agentVaultSkillBundleDAL, readerAccessBundleIds)
     ]);
     const reachable = reachableSkillIds === null ? null : new Set(reachableSkillIds);
-    const namedRows = reachable ? allNamedRows.filter((row) => reachable.has(row.id)) : allNamedRows;
+    const listedRows = reachable ? allListedRows.filter((row) => reachable.has(row.id)) : allListedRows;
     const bySession = new Map<string, { position: number; skill: TAgentVaultSessionSkillSummary }[]>();
     const add = (sessionId: string, position: number, skill: TAgentVaultSessionSkillSummary) => {
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, skill }]);
     };
     inlineRows.forEach((row) => add(row.sessionId, row.position, toInlineSkillSummary(row)));
-    namedRows.forEach(({ sessionId, position, id, name, description }) =>
+    listedRows.forEach(({ sessionId, position, id, name, description }) =>
       add(sessionId, position, { id, name, description, isInline: false })
     );
     return (sessionId: string) =>
@@ -306,9 +306,9 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    // A string names a project service and an object is a service sent inline. Each keeps its place in the list: the
+    // A string is a service's name and an object is a service sent inline. Each keeps its place in the list: the
     // session reads its services back in that order, and an inline service's errors point at it.
-    const namedEntries = services.flatMap((entry, position) =>
+    const serviceEntries = services.flatMap((entry, position) =>
       typeof entry === "string" ? [{ name: entry, position }] : []
     );
     const inlineEntries = services.flatMap((entry, position) =>
@@ -329,7 +329,7 @@ export const agentVaultSessionServiceFactory = ({
     }
 
     // Skills the same way, with positions of their own.
-    const namedSkillEntries = skills.flatMap((entry, position) =>
+    const skillEntries = skills.flatMap((entry, position) =>
       typeof entry === "string" ? [{ name: entry, position }] : []
     );
     const inlineSkillEntries = skills.flatMap((entry, position) =>
@@ -370,33 +370,33 @@ export const agentVaultSessionServiceFactory = ({
         return !bundle || (reachable !== null && !reachable.includes(bundle.id));
       });
 
-    const namedServices = namedEntries.length
-      ? await agentVaultServiceDAL.findCatalogByNames({ projectId, names: namedEntries.map(({ name }) => name) })
+    const listedServices = serviceEntries.length
+      ? await agentVaultServiceDAL.findCatalogByNames({ projectId, names: serviceEntries.map(({ name }) => name) })
       : [];
-    const namedByName = new Map(namedServices.map((service) => [service.name, service]));
-    // A service is named through the bundles it is in, the same reach a session's bundle needs. An unknown name reads
+    const servicesByName = new Map(listedServices.map((service) => [service.name, service]));
+    // A service is listed through the bundles it is in, the same reach a session's bundle needs. An unknown name reads
     // like one out of reach, so the error never confirms that a service exists.
     const firstUnreachableService = async (reachableBundleIds: string[] | null) => {
-      if (!namedEntries.length) return undefined;
+      if (!serviceEntries.length) return undefined;
       const reachableIds = await serviceIdsReachedThrough(agentVaultServiceDAL, reachableBundleIds);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
-      return namedEntries.find(({ name }) => {
-        const service = namedByName.get(name);
+      return serviceEntries.find(({ name }) => {
+        const service = servicesByName.get(name);
         return !service || (reachable !== null && !reachable.has(service.id));
       })?.name;
     };
 
-    const namedSkills = namedSkillEntries.length
-      ? await agentVaultSkillDAL.findByNamesInProject({ projectId, names: namedSkillEntries.map(({ name }) => name) })
+    const listedSkills = skillEntries.length
+      ? await agentVaultSkillDAL.findByNamesInProject({ projectId, names: skillEntries.map(({ name }) => name) })
       : [];
-    const namedSkillsByName = new Map(namedSkills.map((skill) => [skill.name, skill]));
-    // The same reach as a service the session names.
+    const skillsByName = new Map(listedSkills.map((skill) => [skill.name, skill]));
+    // The same reach as a listed service.
     const firstUnreachableSkill = async (reachableBundleIds: string[] | null) => {
-      if (!namedSkillEntries.length) return undefined;
+      if (!skillEntries.length) return undefined;
       const reachableIds = await skillIdsReachedThrough(agentVaultSkillBundleDAL, reachableBundleIds);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
-      return namedSkillEntries.find(({ name }) => {
-        const skill = namedSkillsByName.get(name);
+      return skillEntries.find(({ name }) => {
+        const skill = skillsByName.get(name);
         return !skill || (reachable !== null && !reachable.has(skill.id));
       })?.name;
     };
@@ -523,13 +523,16 @@ export const agentVaultSessionServiceFactory = ({
     // names that its bundle also holds is the same service, and resolve sends it once. A fast failure off the replica,
     // like the inline check below: the check that counts runs again in the transaction, under the lock that adding a
     // service to a bundle and changing a service's hosts take.
-    const orderedNamed = namedEntries.map(({ name, position }) => ({ service: namedByName.get(name)!, position }));
-    const assertNoNamedServiceHostConflicts = async (tx?: Knex) => {
-      if (!orderedNamed.length) return;
+    const orderedServices = serviceEntries.map(({ name, position }) => ({
+      service: servicesByName.get(name)!,
+      position
+    }));
+    const assertNoServiceHostConflicts = async (tx?: Knex) => {
+      if (!orderedServices.length) return;
       const current = tx
-        ? await agentVaultServiceDAL.find({ $in: { id: orderedNamed.map(({ service }) => service.id) } }, { tx })
+        ? await agentVaultServiceDAL.find({ $in: { id: orderedServices.map(({ service }) => service.id) } }, { tx })
         : [];
-      const named = orderedNamed.map(({ service }) => {
+      const freshServices = orderedServices.map(({ service }) => {
         if (!tx) return service;
         const fresh = current.find((currentService) => currentService.id === service.id);
         // Deleted since the catalog read, so it reads like any name the caller can't use.
@@ -547,7 +550,7 @@ export const agentVaultSessionServiceFactory = ({
         )
       ).flat();
       const throughBundleIds = new Set(sessionServices.map(({ id }) => id));
-      named.forEach((service) => {
+      freshServices.forEach((service) => {
         const [conflict] = findHostPatternConflicts(
           service.hostPattern ?? null,
           sessionServices.filter((other) => other.id !== service.id)
@@ -559,16 +562,16 @@ export const agentVaultSessionServiceFactory = ({
         }
         sessionServices.push(service);
       });
-      assertNoNamedServiceConflicts(preparedInlineServices, named);
+      assertNoServiceConflicts(preparedInlineServices, freshServices);
       // Resolve lets an override win over an inline service of its name, so one that takes the name is refused here
-      // rather than left out of the session without a word. A named service the session's bundle also holds is sent as
+      // rather than left out of the session without a word. A listed service that the session's bundle also holds is sent as
       // the bundle's, whose services the bundle check below covers.
       if (preparedInlineServices.length && ownerReach !== null) {
-        const overrides = await agentVaultResolveDAL.findNamedServiceOverrides(
+        const overrides = await agentVaultResolveDAL.findServiceOverrides(
           {
             projectId,
             accessBundleIds: ownerReach,
-            services: named
+            services: freshServices
               .filter(({ id }) => !throughBundleIds.has(id))
               .map(({ id, hostPattern }) => ({ id, hostPattern: hostPattern ?? null }))
           },
@@ -577,7 +580,7 @@ export const agentVaultSessionServiceFactory = ({
         assertNoOverrideConflicts(preparedInlineServices, overrides);
       }
     };
-    await assertNoNamedServiceHostConflicts();
+    await assertNoServiceHostConflicts();
 
     // A fast failure only: the check that counts runs again in the transaction, under the lock renames take.
     const assertNoBundleConflicts = async (tx?: Knex) => {
@@ -630,8 +633,8 @@ export const agentVaultSessionServiceFactory = ({
       sizeBytes: skill.sizeBytes,
       fileCount: skill.fileCount
     }));
-    const orderedNamedSkills = namedSkillEntries.map(({ name, position }) => ({
-      skill: namedSkillsByName.get(name)!,
+    const orderedSkills = skillEntries.map(({ name, position }) => ({
+      skill: skillsByName.get(name)!,
       position
     }));
 
@@ -664,10 +667,10 @@ export const agentVaultSessionServiceFactory = ({
 
     const { session, insertedInlineServices, insertedInlineSkills } = await agentVaultSessionDAL.transaction(
       async (tx) => {
-        if ((preparedInlineServices.length && accessBundles.length) || orderedNamed.length) {
+        if ((preparedInlineServices.length && accessBundles.length) || orderedServices.length) {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
           await assertNoBundleConflicts(tx);
-          await assertNoNamedServiceHostConflicts(tx);
+          await assertNoServiceHostConflicts(tx);
         }
         const created = await agentVaultSessionDAL.createWithId(
           {
@@ -692,9 +695,13 @@ export const agentVaultSessionServiceFactory = ({
           tx
         );
 
-        if (orderedNamed.length) {
+        if (orderedServices.length) {
           await agentVaultSessionServiceDAL.insertMany(
-            orderedNamed.map(({ service, position }) => ({ sessionId: created.id, serviceId: service.id, position })),
+            orderedServices.map(({ service, position }) => ({
+              sessionId: created.id,
+              serviceId: service.id,
+              position
+            })),
             tx
           );
         }
@@ -704,9 +711,9 @@ export const agentVaultSessionServiceFactory = ({
           tx
         );
 
-        if (orderedNamedSkills.length) {
+        if (orderedSkills.length) {
           await agentVaultSessionSkillDAL.insertMany(
-            orderedNamedSkills.map(({ skill, position }) => ({ sessionId: created.id, skillId: skill.id, position })),
+            orderedSkills.map(({ skill, position }) => ({ sessionId: created.id, skillId: skill.id, position })),
             tx
           );
         }
@@ -730,14 +737,14 @@ export const agentVaultSessionServiceFactory = ({
         createdAt: session.createdAt,
         accessBundle: accessBundle ? { id: bundlesByName.get(accessBundle)!.id, name: accessBundle } : null,
         services: [
-          ...orderedNamed.map(({ service, position }) => ({
+          ...orderedServices.map(({ service, position }) => ({
             position,
             service: {
               id: service.id,
               name: service.name,
               type: service.type as AgentVaultServiceType,
               description: service.description ?? null,
-              hostPattern: namedServiceHostPattern(service.type as AgentVaultServiceType, service.hostPattern),
+              hostPattern: readHostPattern(service.type as AgentVaultServiceType, service.hostPattern),
               isInline: false as const
             }
           })),
@@ -749,7 +756,7 @@ export const agentVaultSessionServiceFactory = ({
           .sort((a, b) => a.position - b.position)
           .map(({ service }): TAgentVaultSessionServiceSummary => service),
         skills: [
-          ...orderedNamedSkills.map(({ skill, position }) => ({
+          ...orderedSkills.map(({ skill, position }) => ({
             position,
             skill: { id: skill.id, name: skill.name, description: skill.description, isInline: false as const }
           })),

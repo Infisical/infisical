@@ -60,9 +60,9 @@ const TTL_PRESETS = [
 const DEFAULT_TTL_PRESET = "7d";
 
 // The most of the project's services and skills the API takes on one session.
-const MAX_NAMED_SERVICES = 50;
+const MAX_SERVICES = 50;
 const SERVICE_PICKER_LIMIT = 50;
-const MAX_NAMED_SKILLS = 20;
+const MAX_SKILLS = 20;
 const SKILL_PICKER_LIMIT = 50;
 
 const MIN_TTL_MS = 60 * 1000;
@@ -93,21 +93,21 @@ const schema = z
     customTtl: z.string()
   })
   .superRefine((data, ctx) => {
-    if (data.services.length > MAX_NAMED_SERVICES) {
+    if (data.services.length > MAX_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["services"],
-        message: `You can pick up to ${MAX_NAMED_SERVICES} services. Remove ${
-          data.services.length - MAX_NAMED_SERVICES
+        message: `You can pick up to ${MAX_SERVICES} services. Remove ${
+          data.services.length - MAX_SERVICES
         } to continue.`
       });
     }
-    if (data.skills.length > MAX_NAMED_SKILLS) {
+    if (data.skills.length > MAX_SKILLS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["skills"],
-        message: `You can pick up to ${MAX_NAMED_SKILLS} skills. Remove ${
-          data.skills.length - MAX_NAMED_SKILLS
+        message: `You can pick up to ${MAX_SKILLS} skills. Remove ${
+          data.skills.length - MAX_SKILLS
         } to continue.`
       });
     }
@@ -170,7 +170,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   // list returns to each.
   const [serviceSearch, setServiceSearch] = useState("");
   const [debouncedServiceSearch] = useDebounce(serviceSearch);
-  const { data: nameableServices, isFetching: isSearchingServices } = useListAgentVaultServices(
+  const { data: pickableServices, isFetching: isSearchingServices } = useListAgentVaultServices(
     projectId,
     {
       search: debouncedServiceSearch.trim() || undefined,
@@ -183,7 +183,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   // The same for skills: an admin can name any of them, and a member only those in their bundles.
   const [skillSearch, setSkillSearch] = useState("");
   const [debouncedSkillSearch] = useDebounce(skillSearch);
-  const { data: nameableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
+  const { data: pickableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
     projectId,
     {
       search: debouncedSkillSearch.trim() || undefined,
@@ -255,7 +255,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <Combobox<TAgentVaultProjectService>
                 id="agent-vault-session-services"
                 multiple
-                options={nameableServices?.services ?? []}
+                options={pickableServices?.services ?? []}
                 value={field.value}
                 isLoading={isSearchingServices}
                 onSearchChange={setServiceSearch}
@@ -301,7 +301,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <Combobox<TAgentVaultSkill>
                 id="agent-vault-session-skills"
                 multiple
-                options={nameableSkills?.skills ?? []}
+                options={pickableSkills?.skills ?? []}
                 value={field.value}
                 isLoading={isSearchingSkills}
                 onSearchChange={setSkillSearch}

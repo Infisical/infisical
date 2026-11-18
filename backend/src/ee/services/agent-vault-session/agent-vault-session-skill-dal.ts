@@ -18,7 +18,7 @@ export type TAgentVaultSessionProjectSkillRow = {
 export const agentVaultSessionSkillDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSessionSkill);
 
-  // The project skills each session names, as they are named now. A deleted skill is gone from the list.
+  // The skills each session lists by name, as they are named now. A deleted skill is gone from the list.
   const findSummariesBySessionIds = async (
     sessionIds: string[],
     tx?: Knex

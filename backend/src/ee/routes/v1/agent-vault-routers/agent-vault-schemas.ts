@@ -985,7 +985,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
   nativeInlineArm(AgentVaultServiceType.Ssh)
 ]);
 
-export const AGENT_VAULT_MAX_SESSION_NAMED_SERVICES = 50;
+export const AGENT_VAULT_MAX_SESSION_SERVICES = 50;
 
 const AgentVaultSessionServiceNameSchema = slugSchema({ max: 64, field: "Service" }).describe(
   JSON.stringify({ title: "Project service", description: AGENT_VAULT.SESSION.serviceName })
@@ -1035,18 +1035,18 @@ const sessionEntriesSchema = <TName extends z.ZodTypeAny, TInline extends z.ZodT
 export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
   nameSchema: AgentVaultSessionServiceNameSchema,
   inlineSchema: AgentVaultSessionInlineServiceSchema,
-  maxEntries: AGENT_VAULT_MAX_SESSION_NAMED_SERVICES + AGENT_VAULT_MAX_SESSION_INLINE_SERVICES,
-  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services and ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services.`
+  maxEntries: AGENT_VAULT_MAX_SESSION_SERVICES + AGENT_VAULT_MAX_SESSION_INLINE_SERVICES,
+  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_SERVICES} of the project's services and ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services.`
 })
   .superRefine((entries, ctx) => {
-    const namedCount = entries.filter((entry) => typeof entry === "string").length;
-    if (namedCount > AGENT_VAULT_MAX_SESSION_NAMED_SERVICES) {
+    const listedCount = entries.filter((entry) => typeof entry === "string").length;
+    if (listedCount > AGENT_VAULT_MAX_SESSION_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_NAMED_SERVICES} of the project's services.`
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_SERVICES} of the project's services.`
       });
     }
-    if (entries.length - namedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
+    if (entries.length - listedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services. Add the others to the project and name them instead.`
@@ -1054,7 +1054,7 @@ export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
     }
     // The agent, the proxy and the session logs tell a session's services apart by name. One sent inline without a name
     // goes by its first host, which this check skips: a one-word host such as `localhost` is also a valid service name,
-    // so the mint checks it against the services the session names (`assertNoNamedServiceConflicts`).
+    // so the mint checks it against the services the session lists by name (`assertNoServiceConflicts`).
     const seen = new Set<string>();
     entries.forEach((entry, index) => {
       const name = typeof entry === "string" ? entry : entry.name;
@@ -1224,22 +1224,20 @@ export const AgentVaultInlineServiceSchema = serviceResponseUnion(
   inlineServiceResponseTypeExtras
 );
 
-const AgentVaultSessionNamedServiceSchema = z
-  .object({
-    id: z.string().uuid().describe(AGENT_VAULT.SESSION.namedServiceId),
-    name: z.string().describe(AGENT_VAULT.SESSION.namedServiceName),
-    type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SESSION.namedServiceType),
-    description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-    hostPattern: z.string().nullable().describe(AGENT_VAULT.SESSION.namedServiceHostPattern),
-    isInline: z.literal(false).describe(AGENT_VAULT.SESSION.serviceIsInline)
-  })
-  .describe(JSON.stringify({ title: "Project service" }));
-
-// A session's services as read back. A project service it names carries only what identifies it; an inline one carries
+// A session's services as read back. One it lists by name carries only what identifies it; an inline one carries
 // its settings without their secrets, as it was sent. isInline tells the two apart, which is also how the response
 // serializer picks the right shape for each.
 export const AgentVaultSessionServiceSchema = z.union([
-  AgentVaultSessionNamedServiceSchema,
+  z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.SESSION.serviceIdRead),
+      name: z.string().describe(AGENT_VAULT.SESSION.serviceNameRead),
+      type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SESSION.serviceTypeRead),
+      description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+      hostPattern: z.string().nullable().describe(AGENT_VAULT.SESSION.serviceHostPatternRead),
+      isInline: z.literal(false).describe(AGENT_VAULT.SESSION.serviceIsInline)
+    })
+    .describe(JSON.stringify({ title: "Project service" })),
   serviceResponseUnion(
     { ...inlineServiceResponseBase, isInline: z.literal(true).describe(AGENT_VAULT.SESSION.serviceIsInline) },
     inlineServiceResponseTypeExtras
@@ -1837,9 +1835,9 @@ export const AgentVaultSkillUploadSchema = z.object({
 });
 
 // A skill can hold 1 MB, and an agent gets every skill of its session in one response, which released CLIs and proxies
-// read up to 64 MB of. Its bundle's 25 skills, 20 more it names and the 2 MB request its inline skills share stay under
+// read up to 64 MB of. Its bundle's 25 skills, 20 more it lists by name and the 2 MB request its inline skills share stay under
 // that however large each skill is.
-export const AGENT_VAULT_MAX_SESSION_NAMED_SKILLS = 20;
+export const AGENT_VAULT_MAX_SESSION_SKILLS = 20;
 
 const AgentVaultSessionSkillNameSchema = slugSchema({
   max: AGENT_VAULT_SKILL_NAME_MAX_LENGTH,
@@ -1853,15 +1851,15 @@ const AgentVaultSessionInlineSkillSchema = AgentVaultSkillUploadSchema.describe(
 export const AgentVaultSessionSkillsInputSchema = sessionEntriesSchema({
   nameSchema: AgentVaultSessionSkillNameSchema,
   inlineSchema: AgentVaultSessionInlineSkillSchema,
-  maxEntries: AGENT_VAULT_MAX_SESSION_NAMED_SKILLS + AGENT_VAULT_MAX_SESSION_INLINE_SKILLS,
-  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_NAMED_SKILLS} of the project's skills and ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills.`
+  maxEntries: AGENT_VAULT_MAX_SESSION_SKILLS + AGENT_VAULT_MAX_SESSION_INLINE_SKILLS,
+  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills and ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills.`
 })
   .superRefine((entries, ctx) => {
     const namedSkillCount = entries.filter((entry) => typeof entry === "string").length;
-    if (namedSkillCount > AGENT_VAULT_MAX_SESSION_NAMED_SKILLS) {
+    if (namedSkillCount > AGENT_VAULT_MAX_SESSION_SKILLS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_NAMED_SKILLS} of the project's skills.`
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills.`
       });
     }
     if (entries.length - namedSkillCount > AGENT_VAULT_MAX_SESSION_INLINE_SKILLS) {
@@ -1894,7 +1892,7 @@ const sessionSkillResponseBase = {
   description: z.string().describe(AGENT_VAULT.SESSION.skillDescription)
 };
 
-// A session's skills as read back. A project skill it names carries only what identifies it; an inline one also the
+// A session's skills as read back. One it lists by name carries only what identifies it; an inline one also the
 // hash and size of the files it was sent with, never the files. isInline tells the two apart, which is also how the
 // response serializer picks the right shape for each.
 export const AgentVaultSessionSkillSchema = z.union([

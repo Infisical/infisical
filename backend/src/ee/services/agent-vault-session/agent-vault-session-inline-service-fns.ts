@@ -100,7 +100,7 @@ export const inlineServiceDisplayName = ({
  * while sessions are live, and only the sessions that sent a service by that name keep their own.
  *
  * An override is the exception, and wins over a session's own service of its name instead: it only ever narrows what a
- * named service allows on its hosts, so a service sent with the session must never switch it off by taking its name.
+ * listed service allows on its hosts, so a service sent with the session must never switch it off by taking its name.
  */
 export const withoutShadowedServices = <
   T extends { name: string; isOverride?: boolean },
@@ -336,20 +336,20 @@ export const assertNoAccessBundleConflicts = (
   });
 };
 
-// A service sent inline can't cover a host a project service the session names covers, or go by that service's name.
+// A service sent inline can't cover a host a service the session lists covers, or go by that service's name.
 // One with a name of its own was already checked against the names the session sends, so only a service that goes by
 // its first host can match here.
-export const assertNoNamedServiceConflicts = (prepared: TPreparedInlineService[], named: TConflictCandidate[]) => {
+export const assertNoServiceConflicts = (prepared: TPreparedInlineService[], listedServices: TConflictCandidate[]) => {
   prepared.forEach((service) => {
     const label = inlineServiceLabel(service);
-    const [conflict] = findHostPatternConflicts(service.hostPattern, named);
+    const [conflict] = findHostPatternConflicts(service.hostPattern, listedServices);
     if (conflict) {
       throw new BadRequestError({
         message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a project service in this session, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
       });
     }
     const displayName = inlineServiceDisplayName(service);
-    if (named.some((candidate) => candidate.name === displayName)) {
+    if (listedServices.some((candidate) => candidate.name === displayName)) {
       throw new BadRequestError({
         message: `The service ${label} goes by its first host, '${displayName}', which is the name of a project service in this session. Give it a name.`
       });

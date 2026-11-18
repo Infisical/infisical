@@ -5,7 +5,7 @@ import {
   TAgentVaultSession,
   TAgentVaultSessionAccessBundle,
   TAgentVaultSessionInlineService,
-  TAgentVaultSessionNamedService,
+  TAgentVaultSessionService,
   TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 
@@ -24,7 +24,7 @@ export const inlineServicesLabel = (count: number) =>
 export const sessionInlineServices = (session: Pick<TAgentVaultSession, "services">) =>
   session.services.flatMap((service) => (service.isInline ? [service] : []));
 
-export const sessionNamedServices = (session: Pick<TAgentVaultSession, "services">) =>
+export const sessionServices = (session: Pick<TAgentVaultSession, "services">) =>
   session.services.flatMap((service) => (service.isInline ? [] : [service]));
 
 export const inlineSkillsLabel = (count: number) =>
@@ -33,7 +33,7 @@ export const inlineSkillsLabel = (count: number) =>
 // Optional because an API pod from before session skills, during a rolling upgrade, sends sessions without them.
 type TSessionWithSkills = Partial<Pick<TAgentVaultSession, "skills">>;
 
-export const sessionNamedSkills = (session: TSessionWithSkills) =>
+export const sessionSkills = (session: TSessionWithSkills) =>
   (session.skills ?? []).filter((skill) => !skill.isInline);
 
 export const sessionInlineSkills = (session: TSessionWithSkills) =>
@@ -41,12 +41,12 @@ export const sessionInlineSkills = (session: TSessionWithSkills) =>
 
 export type TSessionAccessItem =
   | { kind: "bundle"; bundle: TAgentVaultSessionAccessBundle }
-  | { kind: "service"; service: TAgentVaultSessionNamedService }
+  | { kind: "service"; service: Extract<TAgentVaultSessionService, { isInline: false }> }
   | { kind: "inline"; services: TAgentVaultSessionInlineService[] }
   | { kind: "skill"; skill: TAgentVaultSessionSkill }
   | { kind: "inline-skills"; skills: TAgentVaultSessionSkill[] };
 
-// A session's bundle, each project service it names, one more badge for the services it was sent with, then the same
+// A session's bundle, each service it lists by name, one more badge for the services it was sent with, then the same
 // for its skills.
 export const toAccessItems = (
   session: Pick<TAgentVaultSession, "accessBundle" | "services" | "skills">
@@ -55,9 +55,9 @@ export const toAccessItems = (
   const inlineSkills = sessionInlineSkills(session);
   return [
     ...(session.accessBundle ? [{ kind: "bundle" as const, bundle: session.accessBundle }] : []),
-    ...sessionNamedServices(session).map((service) => ({ kind: "service" as const, service })),
+    ...sessionServices(session).map((service) => ({ kind: "service" as const, service })),
     ...(inline.length ? [{ kind: "inline" as const, services: inline }] : []),
-    ...sessionNamedSkills(session).map((skill) => ({ kind: "skill" as const, skill })),
+    ...sessionSkills(session).map((skill) => ({ kind: "skill" as const, skill })),
     ...(inlineSkills.length ? [{ kind: "inline-skills" as const, skills: inlineSkills }] : [])
   ];
 };
