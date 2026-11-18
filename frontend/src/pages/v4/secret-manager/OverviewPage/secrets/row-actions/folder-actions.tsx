@@ -103,37 +103,41 @@ export function FolderActions({
   if (!last) return null;
 
   const key = grantKey(target.environmentSlug, folderPath);
-  const fromUser = (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
-    {
-      type: "user",
-      id: user.userId,
-      name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-      subtitle: user.email ?? user.username,
-      isProjectAdmin: user.membership.isProjectAdmin,
-      roles: user.membership.roles.map((role) => role.name),
-      inProject: true
-    },
-    toGrant(user.folderRBACAccess)
-  ];
-  const fromIdentity = (
-    identity: TFolderAccessIdentity
-  ): [AccessMember, FolderGrant | undefined] => [
-    {
-      type: "identity",
-      id: identity.identityId,
-      name: identity.name,
-      subtitle: "Machine identity",
-      isProjectAdmin: identity.membership.isProjectAdmin,
-      roles: identity.membership.roles.map((role) => role.name),
-      inProject: true
-    },
-    toGrant(identity.folderRBACAccess)
-  ];
+  const fromUser =
+    (hasAccess: boolean) =>
+    (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
+      {
+        type: "user",
+        id: user.userId,
+        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
+        subtitle: user.email ?? user.username,
+        isProjectAdmin: user.membership.isProjectAdmin,
+        roles: user.membership.roles.map((role) => role.name),
+        inProject: true,
+        hasAccess
+      },
+      toGrant(user.folderRBACAccess)
+    ];
+  const fromIdentity =
+    (hasAccess: boolean) =>
+    (identity: TFolderAccessIdentity): [AccessMember, FolderGrant | undefined] => [
+      {
+        type: "identity",
+        id: identity.identityId,
+        name: identity.name,
+        subtitle: "Machine identity",
+        isProjectAdmin: identity.membership.isProjectAdmin,
+        roles: identity.membership.roles.map((role) => role.name),
+        inProject: true,
+        hasAccess
+      },
+      toGrant(identity.folderRBACAccess)
+    ];
   const entries = [
-    ...[...(users?.users ?? []), ...(users?.usersWithoutAccess ?? [])].map(fromUser),
-    ...[...(identities?.identities ?? []), ...(identities?.identitiesWithoutAccess ?? [])].map(
-      fromIdentity
-    )
+    ...(users?.users ?? []).map(fromUser(true)),
+    ...(users?.usersWithoutAccess ?? []).map(fromUser(false)),
+    ...(identities?.identities ?? []).map(fromIdentity(true)),
+    ...(identities?.identitiesWithoutAccess ?? []).map(fromIdentity(false))
   ];
   const access: AccessState = {
     members: entries.map(([member]) => member),

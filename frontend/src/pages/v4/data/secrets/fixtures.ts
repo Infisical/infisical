@@ -646,7 +646,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     leases: seedLeases(dynamicSecrets),
     secretSyncs: seedSecretSyncs(envOf),
     commits: seedDemoCommits(secrets),
-    folderAccess: seedFolderAccess(),
+    folderAccess: seedFolderAccess(large),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",

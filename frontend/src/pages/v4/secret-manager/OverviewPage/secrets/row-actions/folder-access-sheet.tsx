@@ -85,6 +85,7 @@ export type AccessMember = {
   isProjectAdmin: boolean;
   roles: string[];
   inProject: boolean;
+  hasAccess: boolean;
 };
 export type AccessState = {
   members: AccessMember[];
@@ -94,7 +95,6 @@ type Actor = AccessMember & { access: FolderGrant | null; listed: boolean };
 type Kind = "admin" | "project-role" | "folder-grant" | "override" | "temporary";
 type Filter = { types: AccessMember["type"][]; kinds: Kind[] };
 
-const ROLES_GRANTING_FOLDERS = ["Admin", "Developer", "Viewer"];
 const FOLDER_ROLE_TIERS = [
   {
     value: SecretFolderRole.List,
@@ -144,8 +144,6 @@ export const grantKey = (environment: string, path: string) => `${environment}:$
 export const memberKey = (member: Pick<AccessMember, "type" | "id">) =>
   `${member.type}:${member.id}`;
 
-const grantingRoles = (member: AccessMember) =>
-  member.roles.filter((role) => ROLES_GRANTING_FOLDERS.includes(role));
 const grantStateOf = (access: FolderGrant | null) => {
   if (!access?.isTemporary || !access.temporaryAccessEndTime) return "permanent" as const;
   return new Date(access.temporaryAccessEndTime).getTime() <= Date.now()
@@ -247,6 +245,29 @@ function TierDropdown({
   );
 }
 
+function AccessValue({
+  value,
+  more = 0,
+  scope,
+  children
+}: {
+  value: string;
+  more?: number;
+  scope: string;
+  children?: ReactNode;
+}) {
+  return (
+    <span className={styles.accessValue}>
+      <span className={styles.accessText}>
+        <span className={styles.accessRole}>{value}</span>
+        {more > 0 && <span className={styles.accessMore}>+{more}</span>}
+        <span className={styles.accessScope}>, {scope}</span>
+      </span>
+      {children}
+    </span>
+  );
+}
+
 function ActorIdentity({ actor }: { actor: Actor }) {
   return (
     <div className={styles.actor}>
@@ -316,12 +337,13 @@ function AccessRow({
     return (
       <div className={styles.actorRow}>
         <ActorIdentity actor={actor} />
-        <Button variant="ghost" size="sm" disabled>
-          <span className={styles.adminLabel}>Full access on all folders</span>
-          <Badge tone="outline">
-            <Icon icon={ShieldIcon} size={12} />
-            Admin
-          </Badge>
+        <Button
+          layout="trigger"
+          variant="ghost"
+          size="sm"
+          disabledReason="Admins have full access to every folder"
+        >
+          <AccessValue value="Full access" scope="Admin" />
         </Button>
       </div>
     );
@@ -334,25 +356,29 @@ function AccessRow({
           <DropdownMenuTrigger asChild disabled={Boolean(block)}>
             {access ? (
               <Button layout="trigger" variant="ghost" size="sm">
-                {tierLabel(access.permission)}
-                {isOverride && <Badge tone="warn">Override</Badge>}
-                {remainingTime && (
-                  <Tooltip
-                    content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                  >
-                    <span className={styles.badgeSlot}>
-                      <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
-                        <Icon name="clock" size={12} />
-                        {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                      </Badge>
-                    </span>
-                  </Tooltip>
-                )}
+                <AccessValue value={tierLabel(access.permission)} scope="Folder">
+                  {isOverride && <Badge tone="warn">Override</Badge>}
+                  {remainingTime && (
+                    <Tooltip
+                      content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                    >
+                      <span className={styles.badgeSlot}>
+                        <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
+                          <Icon name="clock" size={12} />
+                          {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                        </Badge>
+                      </span>
+                    </Tooltip>
+                  )}
+                </AccessValue>
               </Button>
             ) : (
               <Button layout="trigger" variant="ghost" size="sm" title={roleNames || undefined}>
-                <span className={styles.roleNames}>{roleNames || "Role"}</span>
-                <Badge tone="soft">Project</Badge>
+                <AccessValue
+                  value={actor.roles[0] ?? "Role"}
+                  more={actor.roles.length - 1}
+                  scope="Project"
+                />
               </Button>
             )}
           </DropdownMenuTrigger>
@@ -672,9 +698,8 @@ export function FolderAccessSheet({
   const projectMembers = state.members.filter((member) => member.inProject);
   const toActor = (member: AccessMember): Actor => {
     const access = grants[memberKey(member)] ?? null;
-    const roles = grantingRoles(member);
-    const listed = member.isProjectAdmin || Boolean(access) || roles.length > 0;
-    return { ...member, roles: listed ? roles : member.roles, access, listed };
+    const listed = member.isProjectAdmin || Boolean(access) || member.hasAccess;
+    return { ...member, access, listed };
   };
   const roster = projectMembers.filter(matchesQuery).map(toActor);
   const actors = roster

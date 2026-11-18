@@ -1,11 +1,11 @@
 import type { TFolderAccess, TFolderGrantType } from "@app/hooks/api/folderAccess/types";
 
 import type { SecretsAccessAdapter } from "./contract-access";
-import type { DemoAccessActor, DemoFolderAccess } from "./demo-access-seed";
+import { type DemoAccessActor, type DemoFolderAccess, STRESSED_ROLE } from "./demo-access-seed";
 import { demoMutation, type DemoStore, now, useStore } from "./demo-store";
 
 const key = (type: string, id: string) => `${type}:${id}`;
-const GRANTING = ["Admin", "Developer", "Viewer"];
+const GRANTING = ["Admin", "Developer", "Viewer", STRESSED_ROLE];
 
 const grantsFor = (
   state: DemoFolderAccess,
