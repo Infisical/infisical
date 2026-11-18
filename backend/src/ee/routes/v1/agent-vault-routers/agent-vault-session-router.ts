@@ -99,9 +99,9 @@ const mapLegacyAccessBundles = (body: unknown) => {
   return accessBundles.length ? { ...rest, accessBundle: accessBundles[0] as unknown } : rest;
 };
 
-// Whole-body examples, so the docs show the usual session, one access bundle and no services or skills of its own,
-// rather than one generated from every optional field. Responses always carry services and skills, so the examples
-// show them empty.
+// Whole-body examples, so the docs show a usual session rather than one generated from every optional field. The create
+// example lists two services and a skill by name with no access bundle; the read examples carry an access bundle and no
+// services or skills of their own, which responses always carry, so they show them empty.
 const EXAMPLE_PROJECT_ID = "5f2c8a7e-1b3d-4e6f-9a0c-8d7b6e5f4a3c";
 
 const EXAMPLE_ACCESS_BUNDLE = { id: "3c90c3cc-0d44-4b50-8888-8dd25736052a", name: "prod-deploy" };
@@ -138,6 +138,16 @@ const EXAMPLE_SERVICES = [
     type: "mcp",
     description: "Linear MCP server",
     hostPattern: "mcp.linear.app",
+    isInline: false
+  }
+];
+
+// What a session that lists a skill by name reads back, matching the create example's request.
+const EXAMPLE_SKILLS = [
+  {
+    id: "6f1c3a9e-2d4b-4c7a-8e1f-9b3d5a7c0e24",
+    name: "code-review",
+    description: "Review a pull request against the team's checklist.",
     isInline: false
   }
 ];
@@ -346,7 +356,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 createdAt: EXAMPLE_SESSION.createdAt,
                 accessBundle: null,
                 services: EXAMPLE_SERVICES,
-                skills: []
+                skills: EXAMPLE_SKILLS
               }
             })
           )

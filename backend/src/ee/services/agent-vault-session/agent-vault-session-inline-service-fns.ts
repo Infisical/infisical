@@ -286,6 +286,7 @@ export const prepareInlineServices = (
     const [conflict] = findHostPatternConflicts(service.hostPattern, prepared.slice(0, index).map(toConflictCandidate));
     if (conflict) {
       throw new BadRequestError({
+        name: "ServiceHostConflict",
         message: `The service ${conflict.serviceName} and the service ${inlineServiceLabel(service)} both cover ${conflict.patterns.join(", ")}. Remove it from one of them.`
       });
     }

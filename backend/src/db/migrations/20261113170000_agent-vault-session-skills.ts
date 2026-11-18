@@ -31,7 +31,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
 
       t.unique(["sessionId", "skillId"]);
+      t.unique(["sessionId", "position"], { indexName: "agent_vault_session_skills_session_position" });
     });
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultSessionSkill}" ADD CONSTRAINT "agent_vault_session_skills_position_check" CHECK ("position" >= 0)`
+    );
   }
 
   // A skill sent with a session is a row of agent_vault_skills with sessionId set, and its files are its one version,

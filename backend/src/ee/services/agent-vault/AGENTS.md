@@ -452,10 +452,13 @@ each with one `agent_vault_skill_versions` row holding its files, so reads retur
   `SKILL.md` (`skillNameOf`).
 - **A session lists at most 20 skills by name** (`AGENT_VAULT_MAX_SESSION_SKILLS`): with the bundle's 25 and the 2 MB of
   inline files, every skill at 1 MB still fits the 64 MB that released CLIs and proxies read from `GET /session/skills`.
-  Raise it only with those read limits.
+  Raise it only with those read limits; `agent-vault-session-skills-response.test.ts` works the worst case out from the
+  limits and fails if a change passes them.
 - **Delivery:** `getSessionSkills` returns bundle and listed skills (a skill in both once, as the bundle's), plus inline
-  skills while the owner holds `create-with-inline-skills`. An inline skill replaces any project skill of its name, since
-  each installs as a folder of its name; it is delivered as version 1 with its own row id.
+  skills while the owner holds `create-with-inline-skills`, each as version 1 with its own row id. Each skill installs as a
+  folder of its name, so mint refuses an inline skill named like one in the session's bundle (`SkillConflict`, as inline
+  services refuse a bundle's), and at fetch a project skill wins over an inline one of its name: one that joined the
+  bundle, or took the name, after the session was made.
 - **Files go when the session ends; the row stays.** The version's `encryptedFiles` is set to NULL and the skill's
   `filesDeletedAt` set at revoke (both revoke routes) and by the hourly `deleteFilesOfEndedSessions`, the same predicate
   and cron as inline service secrets. Only an inline skill's version may have no files, so a project read that opens

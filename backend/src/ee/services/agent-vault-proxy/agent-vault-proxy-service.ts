@@ -1379,13 +1379,15 @@ export const agentVaultProxyServiceFactory = ({
       }),
       ownerCanUseInlineSkills ? agentVaultSessionInlineSkillDAL.findWithFilesBySessionId(session.id) : []
     ]);
-    // A skill sent with the session wins over a project skill of the same name, as an inline service does: each skill
-    // installs as a folder of its name, so the agent can have only one by that name.
-    const inlineNames = new Set(inlineRows.map((row) => row.name));
-    const rows = projectRows.filter((row) => !inlineNames.has(row.name));
+    // The project's skill wins over one sent with the session that has its name. Creating the session refuses that clash,
+    // so it only arises when a skill of the name joins the session's bundle, or a project skill takes the name, after the
+    // session exists, and the project's copy is the one an admin put there. Each skill installs as a folder of its name,
+    // so the agent can have only one by that name.
+    const projectNames = new Set(projectRows.map((row) => row.name));
+    const sentRows = inlineRows.filter((row) => !projectNames.has(row.name));
 
     const decryptor =
-      rows.length || inlineRows.length
+      projectRows.length || sentRows.length
         ? (
             await kmsDataKeyService.createCipherPairWithDataKey({
               type: KmsDataKey.SecretManager,
@@ -1396,7 +1398,7 @@ export const agentVaultProxyServiceFactory = ({
     const filesOf = (encryptedFiles: Buffer) => deserializeSkillFiles(decryptor!({ cipherTextBlob: encryptedFiles }));
 
     const skills = [
-      ...rows.map((row) => ({
+      ...projectRows.map((row) => ({
         id: row.id,
         name: row.name,
         version: row.version,
@@ -1407,7 +1409,7 @@ export const agentVaultProxyServiceFactory = ({
         isInline: false
       })),
       // An inline skill has one version, the files it was sent with.
-      ...inlineRows.map((row) => ({
+      ...sentRows.map((row) => ({
         id: row.id,
         name: row.name,
         version: 1,

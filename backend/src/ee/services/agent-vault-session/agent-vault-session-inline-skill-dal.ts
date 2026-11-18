@@ -124,7 +124,7 @@ export const agentVaultSessionInlineSkillDALFactory = (db: TDbClient) => {
   // session's last logs.
   const deleteFilesOf = async (skillIds: string[], tx: Knex) => {
     if (!skillIds.length) return;
-    await tx(SKILL).whereIn("id", skillIds).update({ filesDeletedAt: new Date() });
+    await tx(SKILL).whereIn("id", skillIds).whereNull("filesDeletedAt").update({ filesDeletedAt: new Date() });
     await tx(VERSION).whereIn("skillId", skillIds).update({ encryptedFiles: null });
   };
 

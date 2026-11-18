@@ -651,7 +651,7 @@ describe("mintSession, skills", () => {
     expect(JSON.parse(sealed)).toEqual(skillFolder("scratch", "Secret steps.").files);
     expect(row.sha256).toBe(sha256Hex(sealed));
     expect(session.skills[0]).toMatchObject({ isInline: true, sha256: row.sha256, sizeBytes: row.sizeBytes });
-    expect(JSON.stringify(session)).not.toContain(Buffer.from("Secret steps.").toString("base64"));
+    expect(session.skills[0]).not.toHaveProperty("files");
   });
 
   test("a Member lists a skill in an access bundle granted to them, and no other", async () => {

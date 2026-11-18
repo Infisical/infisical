@@ -7406,7 +7406,7 @@ describe("Agent Vault V1 Router", async () => {
           replies.forEach((reply) => {
             expect(reply.statusCode).toBe(400);
             expect(reply.json().message).toBe(
-              "No access bundle in this project is granted to this machine identity. A session on behalf of a user needs at least one, even with only inline skills, so ask an Agent Vault admin to grant the machine identity a bundle."
+              "No access bundle in this project is granted to this machine identity. A session on behalf of a user needs at least one, even when it sends its own services or skills, so ask an Agent Vault admin to grant the machine identity a bundle."
             );
           });
 
@@ -8626,7 +8626,7 @@ describe("Agent Vault V1 Router", async () => {
         const refused = await member.as("POST", sessionsUrl, { ttl: "1h", services: [openai] });
         expect(refused.statusCode).toBe(403);
         expect(refused.json().message).toBe(
-          "You are not allowed to create-with-inline-services on agent-vault-sessions. Name an access bundle or the project's services instead."
+          "You are not allowed to create-with-inline-services on agent-vault-sessions. Use an access bundle or list the project's services by name instead."
         );
       } finally {
         await member.cleanup();
@@ -10398,21 +10398,32 @@ describe("Agent Vault V1 Router", async () => {
       const deliveredNames = async (token: string) => (await deliveredTo(token)).map((skill) => skill.name);
       type TSessionSkill = { id: string; name: string; description: string; isInline: boolean; sha256?: string };
 
-      test("an Admin lists a skill in no bundle beside inline ones, and the agent gets them with the bundle's, an inline one in place of the bundle's of its name", async () => {
+      test("an Admin lists a skill in no bundle beside inline ones, an inline one can't take a bundle skill's name, and a bundle skill that takes one later wins", async () => {
         const bundle = await createAccessBundle(`ss-bundle-${Date.now()}`);
         const { skill: onBundle, version: onBundleV1 } = await createSkill("ss-on-bundle");
-        const { skill: shadowed } = await createSkill("ss-shadowed");
+        const { skill: shadowed, version: shadowedV1 } = await createSkill("ss-shadowed");
         const { skill: loose, version: looseV1 } = await createSkill("ss-loose", "Loose.");
         expect(
           (await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [onBundle.id, shadowed.id] })).statusCode
         ).toBe(200);
+
+        const clash = await inject("POST", sessionsUrl, {
+          accessBundle: bundle.name,
+          skills: [inlineSkill("ss-shadowed", "Mine.")],
+          ttl: "1h"
+        });
+        expect(clash.statusCode).toBe(400);
+        expect(clash.json()).toMatchObject({
+          error: "SkillConflict",
+          message: `The skill 'ss-shadowed' you sent has the same name as one in the access bundle '${bundle.name}', and an agent can install only one skill by a name. Give the one you send another name in its SKILL.md.`
+        });
 
         const mintAuditLogs = recordAuditLogs();
         let minted: Awaited<ReturnType<typeof inject>>;
         try {
           minted = await inject("POST", sessionsUrl, {
             accessBundle: bundle.name,
-            skills: [inlineSkill("ss-scratch", "Scratch."), "ss-loose", inlineSkill("ss-shadowed", "Mine.")],
+            skills: [inlineSkill("ss-scratch", "Scratch."), "ss-loose", inlineSkill("ss-late", "Mine.")],
             ttl: "1h"
           });
           expect(minted.statusCode, minted.payload).toBe(200);
@@ -10433,7 +10444,7 @@ describe("Agent Vault V1 Router", async () => {
                       fileCount: 1
                     },
                     { skillId: loose.id, name: "ss-loose", isInline: false },
-                    expect.objectContaining({ skillId: mintedSkills[2].id, name: "ss-shadowed", isInline: true })
+                    expect.objectContaining({ skillId: mintedSkills[2].id, name: "ss-late", isInline: true })
                   ]
                 })
               })
@@ -10454,7 +10465,7 @@ describe("Agent Vault V1 Router", async () => {
             isInline: true
           },
           { id: loose.id, name: "ss-loose", description: "Loose.", isInline: false },
-          expect.objectContaining({ name: "ss-shadowed", description: "Mine.", isInline: true })
+          expect.objectContaining({ name: "ss-late", description: "Mine.", isInline: true })
         ]);
 
         const read = await inject("GET", `${sessionsUrl}/${session.id}`);
@@ -10466,18 +10477,22 @@ describe("Agent Vault V1 Router", async () => {
             ?.skills
         ).toEqual(session.skills);
 
+        // A skill with an inline one's name that joins the bundle after the session exists is the one the agent gets.
+        const { skill: late, version: lateV1 } = await createSkill("ss-late", "The bundle's.");
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [late.id] })).statusCode).toBe(200);
+
         const auditLogs = recordAuditLogs();
         let delivered: TDelivered[];
         try {
           delivered = await deliveredTo(session.token);
-          const inlineAudit = (index: number, skillName: string) => ({
-            skillId: session.skills[index].id,
-            skillName,
+          const bundleAudit = (skill: { id: string; name: string }, sha256: string) => ({
+            skillId: skill.id,
+            skillName: skill.name,
             version: 1,
-            sha256: session.skills[index].sha256,
-            accessBundleId: null,
-            accessBundleName: null,
-            isInline: true
+            sha256,
+            accessBundleId: bundle.id,
+            accessBundleName: bundle.name,
+            isInline: false
           });
           expect(auditLogs).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -10488,6 +10503,7 @@ describe("Agent Vault V1 Router", async () => {
                   accessBundleId: bundle.id,
                   accessBundleName: bundle.name,
                   skills: [
+                    bundleAudit(late, lateV1.sha256),
                     {
                       skillId: loose.id,
                       skillName: "ss-loose",
@@ -10497,17 +10513,17 @@ describe("Agent Vault V1 Router", async () => {
                       accessBundleName: null,
                       isInline: false
                     },
+                    bundleAudit(onBundle, onBundleV1.sha256),
                     {
-                      skillId: onBundle.id,
-                      skillName: "ss-on-bundle",
+                      skillId: session.skills[0].id,
+                      skillName: "ss-scratch",
                       version: 1,
-                      sha256: onBundleV1.sha256,
-                      accessBundleId: bundle.id,
-                      accessBundleName: bundle.name,
-                      isInline: false
+                      sha256: session.skills[0].sha256,
+                      accessBundleId: null,
+                      accessBundleName: null,
+                      isInline: true
                     },
-                    inlineAudit(0, "ss-scratch"),
-                    inlineAudit(2, "ss-shadowed")
+                    bundleAudit(shadowed, shadowedV1.sha256)
                   ]
                 }
               }
@@ -10516,25 +10532,92 @@ describe("Agent Vault V1 Router", async () => {
         } finally {
           auditLogs.mockRestore();
         }
-        expect(delivered.map((skill) => skill.name)).toEqual(["ss-loose", "ss-on-bundle", "ss-scratch", "ss-shadowed"]);
-        const mine = delivered.find((skill) => skill.name === "ss-shadowed")!;
-        expect(mine).toMatchObject({
-          id: session.skills[2].id,
+        expect(delivered.map((skill) => skill.name)).toEqual([
+          "ss-late",
+          "ss-loose",
+          "ss-on-bundle",
+          "ss-scratch",
+          "ss-shadowed"
+        ]);
+        expect(delivered.find((skill) => skill.name === "ss-late")).toMatchObject({
+          id: late.id,
           version: 1,
-          sha256: session.skills[2].sha256,
-          files: skillFiles("ss-shadowed", "Mine.")
+          sha256: lateV1.sha256,
+          files: skillFiles("ss-late", "The bundle's.")
         });
-        expect(mine.sha256).toBe(crypto.createHash("sha256").update(JSON.stringify(mine.files)).digest("hex"));
+        const scratch = delivered.find((skill) => skill.name === "ss-scratch")!;
+        expect(scratch).toMatchObject({ id: session.skills[0].id, version: 1, files: skillFiles("ss-scratch", "Scratch.") });
+        expect(scratch.sha256).toBe(crypto.createHash("sha256").update(JSON.stringify(scratch.files)).digest("hex"));
+      });
+
+      test("the organization's skill count leaves out skills sent with sessions", async () => {
+        const skillsCount = async () => {
+          const res = await testServer.inject({
+            method: "GET",
+            url: "/api/v1/organization/product-stats",
+            headers: { authorization: `Bearer ${jwtAuthToken}` }
+          });
+          expect(res.statusCode, res.payload).toBe(200);
+          return res.json().agentVault.skillsCount as number;
+        };
+        const before = await skillsCount();
+        const minted = await inject("POST", sessionsUrl, {
+          skills: [inlineSkill("ss-uncounted-a"), inlineSkill("ss-uncounted-b")],
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        expect(await skillsCount()).toBe(before);
+        await createSkill("ss-counted");
+        expect(await skillsCount()).toBe(before + 1);
+      });
+
+      test("a listed skill the session's bundle also holds is delivered once, as the bundle's", async () => {
+        const bundle = await createAccessBundle(`ss-both-ways-${Date.now()}`);
+        const { skill } = await createSkill("ss-both-ways");
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
+        const minted = await inject("POST", sessionsUrl, {
+          accessBundle: bundle.name,
+          skills: ["ss-both-ways"],
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const auditLogs = recordAuditLogs();
+        try {
+          expect((await deliveredTo(minted.json().session.token)).map(({ id }) => id)).toEqual([skill.id]);
+          expect(auditLogs).toHaveBeenCalledWith(
+            expect.objectContaining({
+              event: expect.objectContaining({
+                type: "agent-vault-skills-delivered",
+                metadata: expect.objectContaining({
+                  skills: [expect.objectContaining({ skillId: skill.id, accessBundleId: bundle.id, isInline: false })]
+                })
+              })
+            })
+          );
+        } finally {
+          auditLogs.mockRestore();
+        }
       });
 
       test("a Member lists only skills in a bundle granted to them, sends its own, and loses the listed one when the grant goes", async () => {
         const member = await createMemberIdentity(`ss-member-${Date.now()}`);
         try {
+          // With no bundle at all, a member can still send skills of its own: no services and no credentials come with them.
+          const alone = await member.as("POST", sessionsUrl, { skills: [inlineSkill("ss-member-alone")] });
+          expect(alone.statusCode, alone.payload).toBe(200);
+          expect(alone.json().session).toMatchObject({ accessBundle: null, services: [] });
+          expect(await deliveredNames(alone.json().session.token)).toEqual(["ss-member-alone"]);
+
           const bundle = await createAccessBundle(`ss-member-bundle-${Date.now()}`);
+          // A second bundle the member keeps, so losing the first runs the live check against a reach that isn't empty.
+          const kept = await createAccessBundle(`ss-member-kept-${Date.now()}`);
           const { skill: granted } = await createSkill("ss-granted");
+          const { skill: elsewhere } = await createSkill("ss-elsewhere");
           await createSkill("ss-outside");
           expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [granted.id] })).statusCode).toBe(200);
+          expect((await inject("POST", bundleSkillsUrl(kept.id), { skillIds: [elsewhere.id] })).statusCode).toBe(200);
           await grantTo(bundle.id, member.id);
+          await grantTo(kept.id, member.id);
 
           const outside = await member.as("POST", sessionsUrl, { skills: ["ss-outside"] });
           expect(outside.statusCode).toBe(400);
@@ -10552,7 +10635,21 @@ describe("Agent Vault V1 Router", async () => {
           const minted = await member.as("POST", sessionsUrl, { skills: ["ss-granted", inlineSkill("ss-member-own")] });
           expect(minted.statusCode, minted.payload).toBe(200);
           const { token, id: sessionId } = minted.json().session as { token: string; id: string };
-          expect(await deliveredNames(token)).toEqual(["ss-granted", "ss-member-own"]);
+          // A session with no bundle names none on the delivered event, though its listed skill came through one.
+          const auditLogs = recordAuditLogs();
+          try {
+            expect(await deliveredNames(token)).toEqual(["ss-granted", "ss-member-own"]);
+            expect(auditLogs).toHaveBeenCalledWith(
+              expect.objectContaining({
+                event: expect.objectContaining({
+                  type: "agent-vault-skills-delivered",
+                  metadata: expect.objectContaining({ accessBundleId: null, accessBundleName: null })
+                })
+              })
+            );
+          } finally {
+            auditLogs.mockRestore();
+          }
           const skillNamesIn = async (read: Promise<{ json: () => { session: { skills: { name: string }[] } } }>) =>
             (await read).json().session.skills.map((entry) => entry.name);
           expect(await skillNamesIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual([
@@ -10622,6 +10719,19 @@ describe("Agent Vault V1 Router", async () => {
         const reserved = await inject("POST", sessionsUrl, { skills: [inlineSkill("infisical-agent-vault")] });
         expect(reserved.statusCode).toBe(400);
         expect(reserved.json().message).toContain("'infisical-agent-vault' is reserved");
+      });
+
+      test("inline skills past the request's 2 MB are refused", async () => {
+        const chunk = (index: number): TFile => ({
+          path: `data/${index}.txt`,
+          mode: "0644",
+          contentBase64: Buffer.alloc(700 * 1024, 97).toString("base64")
+        });
+        // Each skill is under an upload's 1 MB, and together they pass the 2 MB a request may carry.
+        const res = await inject("POST", sessionsUrl, {
+          skills: [0, 1, 2].map((index) => inlineSkill(`ss-heavy-${index}`, "Heavy.", [chunk(index)]))
+        });
+        expect(res.statusCode).toBe(413);
       });
 
       test("an inline skill stays the session's: no project skill list, read, edit, bundle link or name reaches it", async () => {
@@ -10723,7 +10833,10 @@ describe("Agent Vault V1 Router", async () => {
           createdAt: new Date()
         });
 
-        expect(await deliveredNames(token)).toEqual(["ss-pinned"]);
+        const delivered = await deliveredTo(token);
+        expect(delivered.map(({ name, version, sha256 }) => ({ name, version, sha256 }))).toEqual([
+          { name: "ss-pinned", version: 1, sha256: first.sha256 }
+        ]);
         expect((await inject("GET", `${sessionsUrl}/${id}`)).json().session.skills).toEqual([
           expect.objectContaining({ name: "ss-pinned", isInline: true, sha256: first.sha256 })
         ]);
@@ -10731,8 +10844,22 @@ describe("Agent Vault V1 Router", async () => {
       });
 
       test("an inline skill's files are deleted when the session is revoked, by either route, and once it ends on its own", async () => {
+        // Every other session lists one project skill and `live` another, so a lookup that lost its session filter
+        // would hand `live` theirs.
+        await createSkill("ss-other-listed");
+        await createSkill("ss-live-listed");
+        // Minted first, so every revoke and the cleanup below run while it holds skills of its own.
+        const liveRes = await inject("POST", sessionsUrl, {
+          skills: [inlineSkill("ss-live-own"), "ss-live-listed"],
+          ttl: "1h"
+        });
+        expect(liveRes.statusCode, liveRes.payload).toBe(200);
+        const live = liveRes.json().session as { id: string; token: string };
         const mintWithInline = async () => {
-          const res = await inject("POST", sessionsUrl, { skills: [inlineSkill("ss-ephemeral")], ttl: "1h" });
+          const res = await inject("POST", sessionsUrl, {
+            skills: [inlineSkill("ss-ephemeral"), "ss-other-listed"],
+            ttl: "1h"
+          });
           expect(res.statusCode, res.payload).toBe(200);
           return res.json().session as { id: string; token: string };
         };
@@ -10759,7 +10886,7 @@ describe("Agent Vault V1 Router", async () => {
         };
 
         const revoked = await mintWithInline();
-        expect(await deliveredNames(revoked.token)).toEqual(["ss-ephemeral"]);
+        expect(await deliveredNames(revoked.token)).toEqual(["ss-ephemeral", "ss-other-listed"]);
         expect(await rowOf(revoked.id)).toMatchObject({
           name: "ss-ephemeral",
           version: 1,
@@ -10776,7 +10903,8 @@ describe("Agent Vault V1 Router", async () => {
         expect((await fetchSessionSkills(`Bearer ${revoked.token}`)).statusCode).toBe(401);
         // The session still shows what it was sent.
         expect((await inject("GET", `${sessionsUrl}/${revoked.id}`)).json().session.skills).toEqual([
-          expect.objectContaining({ name: "ss-ephemeral", isInline: true, sha256: afterRevoke.sha256 })
+          expect.objectContaining({ name: "ss-ephemeral", isInline: true, sha256: afterRevoke.sha256 }),
+          expect.objectContaining({ name: "ss-other-listed", isInline: false })
         ]);
 
         const selfRevoked = await mintWithInline();
@@ -10788,16 +10916,28 @@ describe("Agent Vault V1 Router", async () => {
         expect(bySession.statusCode, bySession.payload).toBe(200);
         expect((await rowOf(selfRevoked.id)).encryptedFiles).toBeNull();
 
-        const [expired, ownerless, live] = await Promise.all([mintWithInline(), mintWithInline(), mintWithInline()]);
+        const [expired, ownerless, orphaned] = await Promise.all([mintWithInline(), mintWithInline(), mintWithInline()]);
         await testDb("agent_vault_sessions")
           .where({ id: expired.id })
           .update({ expiresAt: new Date(Date.now() - 1000) });
         await testDb("agent_vault_sessions").where({ id: ownerless.id }).update({ userId: null });
+        // A machine identity's session on behalf of a user who was since removed, which keeps their name and loses
+        // their id.
+        const actingIdentity = await createOrgIdentity(`ss-orphaned-${Date.now()}`);
+        await testDb("agent_vault_sessions").where({ id: orphaned.id }).update({
+          userId: null,
+          identityId: actingIdentity.id,
+          actorType: "machineIdentity",
+          onBehalfOfUserName: "Removed User",
+          onBehalfOfUserId: null
+        });
         await agentVaultSessionInlineSkillDALFactory(testDb).deleteFilesOfEndedSessions();
+        await deleteOrgIdentity(actingIdentity.id);
         expect((await rowOf(expired.id)).encryptedFiles).toBeNull();
         expect((await rowOf(ownerless.id)).encryptedFiles).toBeNull();
+        expect((await rowOf(orphaned.id)).encryptedFiles).toBeNull();
         expect((await rowOf(live.id)).encryptedFiles).not.toBeNull();
-        expect(await deliveredNames(live.token)).toEqual(["ss-ephemeral"]);
+        expect(await deliveredNames(live.token)).toEqual(["ss-live-listed", "ss-live-own"]);
       });
     });
   });
