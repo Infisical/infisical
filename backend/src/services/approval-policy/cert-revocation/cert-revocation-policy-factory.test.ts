@@ -82,10 +82,22 @@ const setup = (
       }))
     },
     userDAL: {
+      find: vi.fn().mockImplementation(async ({ $in }: { $in: { id: string[] } }) =>
+        $in.id.map((id) => ({
+          id,
+          isAccepted: true,
+          firstName: id === "auditor" ? "Ada" : null,
+          lastName: id === "auditor" ? "Auditor" : null,
+          email: `${id}@example.com`,
+          username: `${id}@example.com`
+        }))
+      )
+    },
+    groupDAL: {
       find: vi
         .fn()
         .mockImplementation(async ({ $in }: { $in: { id: string[] } }) =>
-          $in.id.map((id) => ({ id, isAccepted: true }))
+          $in.id.map((id) => ({ id, name: `${id} name` }))
         )
     },
     membershipRoleDAL: {
@@ -682,7 +694,7 @@ describe("certRevocationApprovalResourceFactory.verifyPolicyActors", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("refuses Auditors and non-members, naming each", async () => {
+  it("refuses Auditors and non-members, naming each the way the approver picker does", async () => {
     const { resource } = setup(
       [],
       [
@@ -699,7 +711,7 @@ describe("certRevocationApprovalResourceFactory.verifyPolicyActors", () => {
 
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toThrow(
-      "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users auditor, outsider; groups auditor-group."
+      "Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users Ada Auditor, outsider@example.com; groups auditor-group name."
     );
   });
 });

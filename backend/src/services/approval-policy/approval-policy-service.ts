@@ -1654,8 +1654,12 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const decorated = await $decorateRequest({ ...request, steps }, actor);
-    const approversCanNoLongerApprove = await isPendingRequestUndecidable(request.id, primaryDb);
-    return { request: { ...decorated, canReview, approversCanNoLongerApprove } };
+    // Only types whose saved approvers can go stale say whether they still can approve, so other types' responses
+    // don't carry the field at all.
+    const approversCanNoLongerApprove = resources[request.type as ApprovalPolicyType]?.findUndecidableRequestIds
+      ? { approversCanNoLongerApprove: await isPendingRequestUndecidable(request.id, primaryDb) }
+      : {};
+    return { request: { ...decorated, canReview, ...approversCanNoLongerApprove } };
   };
 
   const approveRequest = async (
@@ -2148,11 +2152,11 @@ export const approvalPolicyServiceFactory = ({
           visibleRequests.filter((r) => r.status === ApprovalRequestStatus.Pending).map((r) => r.id),
           approvalPolicyDAL.primaryNode()
         )
-      : new Set<string>();
+      : null;
     const decorated = await Promise.all(
       visibleRequests.map(async (r) => ({
         ...(await $decorateRequest(r, actor, ctx)),
-        approversCanNoLongerApprove: undecidableIds.has(r.id)
+        ...(undecidableIds ? { approversCanNoLongerApprove: undecidableIds.has(r.id) } : {})
       }))
     );
     return { requests: decorated, projectId };

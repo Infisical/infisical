@@ -129,7 +129,8 @@ export type TApprovalRequest = {
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;
   canReview: boolean;
-  approversCanNoLongerApprove: boolean;
+  // Only revocation requests carry this.
+  approversCanNoLongerApprove?: boolean;
   isBreakGlass: boolean;
   bypassReason?: string | null;
   createdAt: string;

@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipStatus, ResourceType } from "@app/db/schemas";
 import { RESOURCE_SCOPE, ResourceMembershipRole } from "@app/db/schemas/models";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -43,6 +44,7 @@ type TCertRevocationApprovalResourceDep = TOrgAccessDALs & {
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
 };
 
 type TMembershipDeps = Pick<
@@ -196,7 +198,8 @@ export const certRevocationApprovalResourceFactory = ({
   membershipRoleDAL,
   userGroupMembershipDAL,
   orgDAL,
-  userDAL
+  userDAL,
+  groupDAL
 }: TCertRevocationApprovalResourceDep): TApprovalResource<
   TCertRevocationPolicyInputs,
   TCertRevocationPolicy,
@@ -342,9 +345,21 @@ export const certRevocationApprovalResourceFactory = ({
 
       const userIds = unable.filter((entry) => entry.type === ApproverType.User).map((entry) => entry.id);
       const groupIds = unable.filter((entry) => entry.type === ApproverType.Group).map((entry) => entry.id);
+      // Named the way the approver picker shows them, so the admin can find each one in the form.
+      const [users, groups] = await Promise.all([
+        userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
+        groupIds.length ? groupDAL.find({ $in: { id: groupIds } }) : []
+      ]);
+      const userLabels = new Map(
+        users.map((user) => [
+          user.id,
+          [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || user.username
+        ])
+      );
+      const groupLabels = new Map(groups.map((group) => [group.id, group.name]));
       const parts = [
-        ...(userIds.length ? [`users ${userIds.join(", ")}`] : []),
-        ...(groupIds.length ? [`groups ${groupIds.join(", ")}`] : [])
+        ...(userIds.length ? [`users ${userIds.map((id) => userLabels.get(id) ?? id).join(", ")}`] : []),
+        ...(groupIds.length ? [`groups ${groupIds.map((id) => groupLabels.get(id) ?? id).join(", ")}`] : [])
       ];
       throw new BadRequestError({
         message: `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${parts.join("; ")}.`

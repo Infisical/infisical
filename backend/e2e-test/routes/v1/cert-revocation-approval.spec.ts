@@ -480,6 +480,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
       const fixture = await setUp({ approverVia: "user", steps: oneStep });
       const auditor = await createApprover("auditor");
       let auditorEntry: { type: ApproverType; id: string };
+      let auditorLabel: string;
       if (kind === "user") {
         await addApplicationUsers({
           applicationId: fixture.application.id,
@@ -488,8 +489,14 @@ describe("Revocation approval when a saved approver's access changes", { timeout
           authToken: adminToken
         });
         auditorEntry = { type: ApproverType.User, id: auditor.userId };
+        auditorLabel = "auditor";
       } else {
-        const { id: groupId } = await createProjectGroup({ orgId, projectId, userIds: [auditor.userId] });
+        const { id: groupId, name: groupName } = await createProjectGroup({
+          orgId,
+          projectId,
+          userIds: [auditor.userId]
+        });
+        auditorLabel = groupName;
         createdGroupIds.push(groupId);
         await addApplicationGroup({
           applicationId: fixture.application.id,
@@ -512,7 +519,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
         (await testDb(TableName.ApprovalPolicies).where({ scopeId: fixture.application.id })).length;
       const policiesBefore = await policyCount();
 
-      const auditorRefusal = `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${kind}s ${auditorEntry.id}.`;
+      const auditorRefusal = `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: ${kind}s ${auditorLabel}.`;
       await createRevocationApprovalPolicy({
         applicationId: fixture.application.id,
         profileSlug: fixture.profile.slug,

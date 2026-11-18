@@ -578,14 +578,14 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
     }
   );
 
-  it("doesn't flag a request type whose saved approvers can't go stale", async () => {
+  it("leaves the flag off request types whose saved approvers can't go stale", async () => {
     const ctx = build({
       primaryRole: ResourceMembershipRole.Auditor,
       replicaRole: ResourceMembershipRole.Auditor,
       type: ApprovalPolicyType.CertRequest
     });
 
-    expect(await ctx.flags()).toEqual({ fetched: false, listed: false });
+    expect(await ctx.flags()).toEqual({ fetched: undefined, listed: undefined });
   });
 
   it("checks every pending request in an Application with one read of its requests, steps and approvers", async () => {

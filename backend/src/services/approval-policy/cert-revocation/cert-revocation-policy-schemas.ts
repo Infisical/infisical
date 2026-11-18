@@ -105,7 +105,13 @@ export const CertRevocationRequestSchema = BaseApprovalRequestSchema.extend({
   requestData: z.object({
     version: z.literal(1),
     requestData: CertRevocationPolicyRequestDataSchema
-  })
+  }),
+  approversCanNoLongerApprove: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Whether too few of the approvers this pending request was raised with can still approve it for it ever to pass. Set when requests are listed or one is fetched by ID. Once the policy has approvers who can approve, revoking the certificate again replaces such a request."
+    )
 });
 
 export const CertRevocationRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
