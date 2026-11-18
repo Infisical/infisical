@@ -1,15 +1,11 @@
-import { createMongoAbility, ForbiddenError, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResourceMembershipRole, TPkiSignerCertificateRevocations } from "@app/db/schemas";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
-import {
-  ResourcePermissionSet,
-  ResourcePermissionSignerActions,
-  ResourcePermissionSub,
-  TResourceAbility
-} from "@app/ee/services/permission/resource-permission";
+import { SignerPermissionActions, SignerPermissionSub } from "@app/domains/certificates/code-signing/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, RuleViolationError, PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ExecutionError, ExecutionStats, ResourceLockedError } from "@app/lib/red-lock";
@@ -59,16 +55,16 @@ const GROUP_ADMIN_USER_ID = "user-group-admin";
 const tx = { isTransaction: true } as unknown as Knex;
 
 const actorFields = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ORG_ID
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ORG_ID }
+  } as unknown as TActorContext
 };
 
-const abilityWith = (...actions: ResourcePermissionSignerActions[]): TResourceAbility =>
-  createMongoAbility<ResourcePermissionSet>(
-    actions.map((action) => ({ action, subject: ResourcePermissionSub.Signer })) as RawRuleOf<TResourceAbility>[]
-  );
+const abilityWith = (...actions: SignerPermissionActions[]) =>
+  Permission.fromRules({
+    rules: actions.map((action) => ({ action, subject: SignerPermissionSub.Signer }))
+  }) as never;
 
 const buildSigner = (overrides: Partial<TSignerWithCertificate> = {}): TSignerWithCertificate =>
   ({
@@ -150,10 +146,10 @@ const buildService = ({
   ca = internalCa,
   revocations = [],
   permission = abilityWith(
-    ResourcePermissionSignerActions.ReissueCertificate,
-    ResourcePermissionSignerActions.RevokeCertificate,
-    ResourcePermissionSignerActions.ManageStatus,
-    ResourcePermissionSignerActions.Read
+    SignerPermissionActions.ReissueCertificate,
+    SignerPermissionActions.RevokeCertificate,
+    SignerPermissionActions.ManageStatus,
+    SignerPermissionActions.Read
   )
 }: {
   signer?: TSignerWithCertificate;
@@ -161,7 +157,7 @@ const buildService = ({
   certificate?: ReturnType<typeof buildCertificate>;
   ca?: typeof internalCa | typeof digicertCa | null;
   revocations?: TPkiSignerCertificateRevocations[];
-  permission?: TResourceAbility;
+  permission?: ReturnType<typeof abilityWith>;
 } = {}) => {
   const lock = { release: vi.fn().mockResolvedValue(undefined) };
   let currentSigner = signer;
@@ -249,7 +245,8 @@ const buildService = ({
     certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) },
     certificateService,
     signerIssuanceService,
-    permissionService: { getResourcePermission: vi.fn().mockResolvedValue({ permission, memberships: [] }) },
+    projectPermissionService: { getProjectPermission: vi.fn() },
+    signerPermissionService: { getSignerPermission: vi.fn().mockResolvedValue(permission) },
     keyStore: { acquireLock: vi.fn().mockResolvedValue(lock) },
     hsmConnectorService: { assertAttachPermission: vi.fn() },
     digicertFns: {
@@ -340,9 +337,9 @@ describe("signerService locked fresh read", () => {
   });
 
   it("checks the permission before taking the lock", async () => {
-    const { service, deps } = buildService({ permission: abilityWith(ResourcePermissionSignerActions.Read) });
+    const { service, deps } = buildService({ permission: abilityWith(SignerPermissionActions.Read) });
 
-    await expect(revoke(service)).rejects.toThrow(ForbiddenError);
+    await expect(revoke(service)).rejects.toThrow(PermissionDeniedError);
     expect(deps.keyStore.acquireLock).not.toHaveBeenCalled();
   });
 
@@ -858,7 +855,7 @@ describe("signerService revoke refusal notification recipients", () => {
 
 describe("signerService.delete with a certificate request in progress", () => {
   it("cleans up the signer's requests before deleting, and deletes nothing when cleanup is refused", async () => {
-    const { service, deps } = buildService({ permission: abilityWith(ResourcePermissionSignerActions.Delete) });
+    const { service, deps } = buildService({ permission: abilityWith(SignerPermissionActions.Delete) });
     deps.signerIssuanceService.cleanUpRequestsBeforeDelete.mockRejectedValue(
       new BadRequestError({
         message: `DigiCert order #${DIGICERT_ORDER_ID} for this signer couldn't be canceled. Cancel it in CertCentral, then delete the signer again.`

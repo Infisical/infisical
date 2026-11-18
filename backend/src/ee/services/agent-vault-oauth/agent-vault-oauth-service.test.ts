@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
@@ -65,12 +67,8 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const REDIRECT_URI = "https://app.infisical.test/agent-vault/oauth/callback";
 const DESTINATION = { hostPattern: "mcp.linear.app", serverUrl: SERVER_URL };
 
-const ctxOf = (actorId: string) => ({
-  actor: ActorType.USER,
-  actorId,
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-});
+const ctxOf = (actorId: string, type: ActorType = ActorType.USER) =>
+  ({ principal: { type, id: actorId, authMethod: null }, org: { id: "org-1" } }) as unknown as TActorContext;
 
 const json = (status: number, body: unknown): TOauthHttpResponse => ({
   status,
@@ -157,6 +155,40 @@ const setup = ({
     encryptedValue: row.encryptedValue ? Buffer.from(row.encryptedValue) : null
   });
   const permissions = { canEditVariables, canReadVariables };
+  // Built on every call, since a test can take a variable permission away after setup.
+  const permissionOf = () =>
+    Permission.fromRules({
+      rules: [
+        ...(permissions.canEditVariables
+          ? [
+              {
+                action: ProjectPermissionAgentVaultVariableActions.Edit,
+                subject: ProjectPermissionSub.AgentVaultVariables
+              }
+            ]
+          : []),
+        ...(permissions.canReadVariables
+          ? [
+              {
+                action: ProjectPermissionAgentVaultVariableActions.Read,
+                subject: ProjectPermissionSub.AgentVaultVariables
+              }
+            ]
+          : []),
+        {
+          action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+          subject: ProjectPermissionSub.AgentVaultAccessBundles
+        },
+        ...(canEditBundles
+          ? [
+              {
+                action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+                subject: ProjectPermissionSub.AgentVaultAccessBundles
+              }
+            ]
+          : [])
+      ]
+    }) as never;
   const tokenRequests: URLSearchParams[] = [];
   const registrations: unknown[] = [];
   const lockKeys: string[][] = [];
@@ -488,46 +520,13 @@ const setup = ({
       addOauthRequiredScopes: async () => undefined
     },
     projectDAL: { findById: async () => ({ name: "Acme Support" }) as never },
-    permissionService: {
-      getProjectPermission: async () =>
-        ({
-          permission: createMongoAbility([
-            ...(permissions.canEditVariables
-              ? [
-                  {
-                    action: ProjectPermissionAgentVaultVariableActions.Edit,
-                    subject: ProjectPermissionSub.AgentVaultVariables
-                  }
-                ]
-              : []),
-            ...(permissions.canReadVariables
-              ? [
-                  {
-                    action: ProjectPermissionAgentVaultVariableActions.Read,
-                    subject: ProjectPermissionSub.AgentVaultVariables
-                  }
-                ]
-              : []),
-            {
-              action: ProjectPermissionAgentVaultAccessBundleActions.Read,
-              subject: ProjectPermissionSub.AgentVaultAccessBundles
-            },
-            ...(canEditBundles
-              ? [
-                  {
-                    action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
-                    subject: ProjectPermissionSub.AgentVaultAccessBundles
-                  }
-                ]
-              : [])
-          ]),
-          hasRole: () => isAdmin,
-          memberships: []
-        }) as never
-    },
-    membershipDAL: {
-      findResourceMembershipsForActor: async () =>
-        grantedBundleIds.map((scopeResourceId) => ({ scopeResourceId, isActive: true, actorGroupId: null })) as never
+    accessBundlePermissionService: {
+      getAgentVaultPermission: async () => ({ permission: permissionOf() }),
+      getAccessBundlePermission: async () => ({
+        permission: permissionOf(),
+        reachesEveryBundle: isAdmin,
+        accessBundleIds: isAdmin ? null : grantedBundleIds
+      })
     }
   });
 
@@ -809,7 +808,7 @@ describe("starting an authorization", () => {
 
   test("a caller who can't edit access bundles is refused before any request to the server", async () => {
     const env = setup({ canEditBundles: false });
-    await expect(createAuthorization(env)).rejects.toThrow(ForbiddenError);
+    await expect(createAuthorization(env)).rejects.toThrow(PermissionDeniedError);
     expect(env.registrations).toHaveLength(0);
   });
 
@@ -818,7 +817,7 @@ describe("starting an authorization", () => {
     await expect(
       env.service.createAuthorization({
         projectId: PROJECT_ID,
-        ctx: { ...ctxOf(USER_ID), actor: ActorType.IDENTITY },
+        ctx: ctxOf(USER_ID, ActorType.IDENTITY),
         serverUrl: SERVER_URL
       })
     ).rejects.toThrow("Only a user can authorize an OAuth connection");
@@ -1985,7 +1984,7 @@ describe("a member's own sign-in", () => {
     const env = setup({ canEditBundles: false });
     env.rows.set(SERVICE_ID, memberService());
 
-    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(ForbiddenError);
+    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(PermissionDeniedError);
   });
 
   test("a personal sign-in is claimed only as a personal value, and an admin's only for the service", async () => {
@@ -2340,12 +2339,7 @@ const IDENTITY_ID = "88888888-8888-4888-8888-888888888888";
 const API_REDIRECT_URI = "https://app.acme.test/oauth/callback";
 const AUTHORIZATION_KEY = (id: string) => `agent-vault-oauth-authorization:${id}`;
 
-const identityCtx = {
-  actor: ActorType.IDENTITY,
-  actorId: IDENTITY_ID,
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-};
+const identityCtx = ctxOf(IDENTITY_ID, ActorType.IDENTITY);
 
 const addVariable = (
   env: ReturnType<typeof setup>,
@@ -2369,7 +2363,7 @@ const addVariable = (
 
 const startVariableSignIn = (
   env: ReturnType<typeof setup>,
-  ctx: typeof identityCtx | ReturnType<typeof ctxOf> = identityCtx,
+  ctx: TActorContext = identityCtx,
   extra: { clientSecret?: string; variableId?: string } = {}
 ) => env.service.startVariableAuthorization({ projectId: PROJECT_ID, ctx, variableId: VARIABLE_ID, ...extra });
 
@@ -2383,7 +2377,7 @@ const completeVariableSignIn = (
     variableId = VARIABLE_ID,
     ...rest
   }: {
-    ctx?: typeof identityCtx | ReturnType<typeof ctxOf>;
+    ctx?: TActorContext;
     variableId?: string;
     code?: string;
     error?: string;
@@ -2857,7 +2851,7 @@ describe("completing an OAuth variable's sign-in", () => {
 
     await expect(completeVariableSignIn(env, state, { ctx: ctxOf(USER_ID) })).rejects.toThrow(NotFoundError);
     await expect(
-      completeVariableSignIn(env, state, { ctx: { ...identityCtx, actorId: "99999999-9999-4999-8999-999999999999" } })
+      completeVariableSignIn(env, state, { ctx: ctxOf("99999999-9999-4999-8999-999999999999", ActorType.IDENTITY) })
     ).rejects.toThrow(NotFoundError);
     await expect(completeVariableSignIn(env, "not-a-sign-in.abc")).rejects.toThrow(NotFoundError);
     await expect(completeVariableSignIn(env, `${authorization!.id}.forged`)).rejects.toThrow(BadRequestError);
@@ -3184,7 +3178,7 @@ describe("completing an OAuth variable's sign-in", () => {
     await expect(
       env.service.getAuthorization({
         projectId: PROJECT_ID,
-        ctx: { ...identityCtx, actorId: USER_ID },
+        ctx: ctxOf(USER_ID, ActorType.IDENTITY),
         authorizationId: authorization!.id
       })
     ).rejects.toThrow(NotFoundError);

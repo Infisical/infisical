@@ -1,8 +1,8 @@
-import { ForbiddenError } from "@casl/ability";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ApprovalStatus,
@@ -20,6 +20,7 @@ import {
 import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
 import { bulkWriteLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { toHttpError } from "@app/server/lib/domain-errors";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -44,15 +45,17 @@ const batchFailureSchema = z.object({
 });
 
 const getBatchFailureMessage = (error: unknown, approvalRequestId: string, action: "review" | "merge") => {
-  if (error instanceof ForbiddenError) return `You don't have permission to ${action} this change request.`;
+  if (error instanceof PermissionDeniedError && error.denial)
+    return `You don't have permission to ${action} this change request.`;
+  const httpError = error instanceof Error ? toHttpError(error) : error;
   if (
-    error instanceof BadRequestError ||
-    error instanceof NotFoundError ||
-    error instanceof ConflictError ||
-    error instanceof ForbiddenRequestError ||
-    error instanceof PolicyViolationError
+    httpError instanceof BadRequestError ||
+    httpError instanceof NotFoundError ||
+    httpError instanceof ConflictError ||
+    httpError instanceof ForbiddenRequestError ||
+    httpError instanceof PolicyViolationError
   )
-    return error.message;
+    return httpError.message;
   logger.error(error, `Batch ${action} of change request failed [approvalRequestId=${approvalRequestId}]`);
   return `Something went wrong. Open this change request to ${action} it on its own.`;
 };
@@ -64,10 +67,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     { bypassReason, requireApprovals }: { bypassReason?: string; requireApprovals?: boolean }
   ) =>
     server.services.secretChangeRequest.mergeSecretApprovalRequest({
-      actorId: req.permission.id,
-      actor: req.permission.type,
-      actorAuthMethod: req.permission.authMethod,
-      actorOrgId: req.permission.orgId,
+      actor: req.permission,
       approvalId,
       bypassReason,
       requireApprovals
@@ -132,10 +132,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     { status, comment }: { status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED; comment?: string }
   ) =>
     server.services.secretChangeRequest.reviewApproval({
-      actorId: req.permission.id,
-      actor: req.permission.type,
-      actorAuthMethod: req.permission.authMethod,
-      actorOrgId: req.permission.orgId,
+      actor: req.permission,
       approvalId,
       status,
       comment
@@ -238,10 +235,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { approvals, totalCount } = await server.services.secretChangeRequest.getSecretApprovals({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query,
         projectId: req.query.projectId
       });
@@ -273,10 +267,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretChangeRequest.requestCount({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.query.projectId,
         policyId: req.query.policyId
       });
@@ -464,10 +455,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const approval = await server.services.secretChangeRequest.updateApprovalStatus({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -607,10 +595,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretChangeRequest.getSecretApprovalDetails({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.id
       });
       return { approval };

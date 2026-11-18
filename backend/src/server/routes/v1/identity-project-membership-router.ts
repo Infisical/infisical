@@ -135,7 +135,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       if (!role && !roles) throw new BadRequestError({ message: "You must provide either role or roles field" });
 
       const { membership } = await server.services.membershipIdentity.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -226,7 +226,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -288,7 +288,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -401,7 +401,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -491,7 +491,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -542,11 +542,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       }
     },
     handler: async (req) => {
-      const { sources } = await server.services.permission.getIdentityPermissionAudit({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const { sources } = await server.services.memberPermissionAudit.getIdentityPermissionAudit({
+        actor: req.permission,
         projectId: req.params.projectId,
         targetIdentityId: req.params.identityId,
         includeFolderPermissions: req.query.includeFolderPermissions
@@ -615,7 +612,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -664,7 +661,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.createFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -739,7 +736,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -805,7 +802,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -868,7 +865,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
       });
@@ -916,7 +913,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) =>
       server.services.folderPermission.listFolderAccessIdentities({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.query.environmentSlug,
         secretPath: req.query.secretPath,

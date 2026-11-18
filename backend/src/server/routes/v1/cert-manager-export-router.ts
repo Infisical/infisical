@@ -57,10 +57,7 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const result = await server.services.certManagerExport.exportCertManagerProject({
         sourceProjectId: req.body.sourceProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

@@ -70,8 +70,10 @@ export class ProjectResourcePermissionService implements TProjectResourcePermiss
     );
     const grants = grantsPerResource.reduce((all, next) => all.merge(next), ActorGrants.empty());
 
-    if (grants.hasMembership) return ProjectResourcePermission.fromGrants<TSet>({ grants, roles, isProjectAdmin });
-    if (isProjectAdmin) return ProjectResourcePermission.implicitAdmin<TSet>({ roles });
+    const project = access?.project ?? null;
+    if (grants.hasMembership)
+      return ProjectResourcePermission.fromGrants<TSet>({ grants, roles, isProjectAdmin, project });
+    if (isProjectAdmin && project) return ProjectResourcePermission.implicitAdmin<TSet>({ roles, project });
     const last = resources[resources.length - 1];
     throw new PermissionDeniedError({ message: `You are not a member of this ${last?.resourceType ?? "resource"}.` });
   }

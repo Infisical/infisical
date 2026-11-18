@@ -1,9 +1,11 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { CliCapability, cliSupports, isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -49,7 +51,6 @@ import {
   checkAccountAccess,
   getLaunchAccessRemainingMs,
   getResourceIdsWithActions,
-  TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
 import {
@@ -62,7 +63,6 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS,
@@ -104,7 +104,8 @@ type TPamSessionServiceFactoryDep = {
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
   instanceConfigService: TInstanceConfigService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -142,7 +143,8 @@ export const pamSessionServiceFactory = ({
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  projectPermissionService,
+  pamPermissionService,
   kmsDataKeyService,
   instanceConfigService,
   gatewayV2Service,
@@ -168,13 +170,13 @@ export const pamSessionServiceFactory = ({
     accountId: string,
     folderId: string | null | undefined,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
-  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+  ) => checkAccountAccess(pamPermissionService, accountId, folderId, projectId, action, ctx);
 
   const checkSession = async (
     session: { accountId?: string | null; projectId: string },
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => {
     if (session.accountId) {
@@ -183,8 +185,8 @@ export const pamSessionServiceFactory = ({
       return;
     }
 
-    const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
-    if (!hasRole(PamProductRole.Admin)) {
+    const productPermission = await verifyProductMembership(projectPermissionService, session.projectId, ctx);
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Only a project admin can access a session whose account has been deleted"
       });
@@ -205,20 +207,20 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext,
     pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
-    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
+    const productPermission = await verifyProductMembership(projectPermissionService, projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ViewSessions] },
+      { allOf: [PamResourcePermissionActions.ViewSessions] },
       ctx
     );
 
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
-      includeOrphaned: hasRole(PamProductRole.Admin),
+      includeOrphaned: productPermission.hasRole({ slug: PamProductRole.Admin }),
       ...pagination
     });
   };
@@ -227,7 +229,7 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) return null;
 
-    await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
+    await checkSession(session, PamResourcePermissionActions.ViewSessions, ctx);
 
     return session;
   };
@@ -506,12 +508,12 @@ export const pamSessionServiceFactory = ({
   // gateway, which would otherwise keep serving it while the session list shows it as ended
   const endOwnSession = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
-    const ownerId = ctx.actor === ActorType.IDENTITY ? session?.identityId : session?.userId;
-    if (!session || ownerId !== ctx.actorId) {
+    const ownerId = ctx.principal.type === ActorType.IDENTITY ? session?.identityId : session?.userId;
+    if (!session || ownerId !== ctx.principal.id) {
       throw new NotFoundError({ message: `Session '${sessionId}' not found` });
     }
 
-    await verifyProductMembership(permissionService, session.projectId, ctx);
+    await verifyProductMembership(projectPermissionService, session.projectId, ctx);
 
     if (session.gatewayId) {
       throw new BadRequestError({
@@ -524,7 +526,7 @@ export const pamSessionServiceFactory = ({
     if (updatedSession) {
       void reportPamSessionEnded({
         session: updatedSession,
-        orgId: ctx.actorOrgId,
+        orgId: ctx.org.id,
         endReason: PamSessionEndReason.Completed,
         telemetryService,
         userDAL
@@ -575,20 +577,14 @@ export const pamSessionServiceFactory = ({
 
     // Machine identities launch sessions via identity access tokens; human-only controls
     // (MFA, access-request approval) cannot be satisfied by them and are rejected explicitly below.
-    const isUserActor = actor.actor === ActorType.USER;
+    const isUserActor = actor.principal.type === ActorType.USER;
 
     const policy = resolveAccessControls(account.templatePolicies);
     const { requiresApproval } = policy;
 
     // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
     // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
+    await checkAccount(account.id, account.folderId, projectId, PamResourcePermissionActions.LaunchSessions, actor);
 
     const trimmedReason = reason?.trim() || null;
 
@@ -602,8 +598,8 @@ export const pamSessionServiceFactory = ({
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL, userService },
         {
-          userId: actor.actorId,
-          orgId: actor.actorOrgId,
+          userId: actor.principal.id,
+          orgId: actor.org.id,
           actorEmail,
           accountId: account.id,
           mfaSessionId,
@@ -631,7 +627,7 @@ export const pamSessionServiceFactory = ({
       membershipRoleDAL,
       projectId,
       account,
-      actor
+      { type: actor.principal.type, id: actor.principal.id }
     );
     if (launchAccessRemainingMs !== null) {
       if (launchAccessRemainingMs <= 0) {
@@ -645,8 +641,8 @@ export const pamSessionServiceFactory = ({
     // blocked on a launch reason for a session they cannot start yet.
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
-        actorId: actor.actorId,
-        actor: actor.actor,
+        actorId: actor.principal.id,
+        actor: actor.principal.type,
         accountId: account.id,
         accountFolderId: account.folderId,
         projectId
@@ -656,7 +652,7 @@ export const pamSessionServiceFactory = ({
         // approvers", so the CLI can guide the user instead of prompting into a 400
         const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
           pamAccessRequestService.getAccessStatusBatch(
-            { actorId: actor.actorId, actor: actor.actor },
+            { actorId: actor.principal.id, actor: actor.principal.type },
             [account.id],
             projectId
           ),
@@ -733,7 +729,7 @@ export const pamSessionServiceFactory = ({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
-        externalId: actor.actorOrgId,
+        externalId: actor.org.id,
         roleSessionName: toAwsRoleSessionName(federatedUsername),
         sessionDuration: stsDurationSeconds
       });
@@ -766,8 +762,8 @@ export const pamSessionServiceFactory = ({
       const session = await pamSessionDAL.transaction(async (tx) => {
         if (isUserActor) {
           await assertUserStillActiveInOrg({
-            orgId: actor.actorOrgId,
-            userId: actor.actorId,
+            orgId: actor.org.id,
+            userId: actor.principal.id,
             membershipDAL,
             orgDAL,
             tx
@@ -789,8 +785,8 @@ export const pamSessionServiceFactory = ({
             projectId,
             accountId: account.id,
             // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-            userId: isUserActor ? actor.actorId : null,
-            identityId: isUserActor ? null : actor.actorId,
+            userId: isUserActor ? actor.principal.id : null,
+            identityId: isUserActor ? null : actor.principal.id,
             reason: trimmedReason,
             folderName: account.folderName
           },
@@ -816,7 +812,7 @@ export const pamSessionServiceFactory = ({
     await gatewayPoolService.assertGatewayBindingInOrg({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
-      orgId: actor.actorOrgId
+      orgId: actor.org.id
     });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
@@ -853,12 +849,18 @@ export const pamSessionServiceFactory = ({
       resolveSelectedHost(account.accountType as PamAccountType, rawConnectionDetails, targetHost) ??
       gatewayTarget.host;
 
-    const user = isUserActor ? await userDAL.findById(actor.actorId) : null;
+    const user = isUserActor ? await userDAL.findById(actor.principal.id) : null;
     const expiresAt = new Date(Date.now() + sessionDurationMs);
 
     const session = await pamSessionDAL.transaction(async (tx) => {
       if (isUserActor) {
-        await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, orgDAL, tx });
+        await assertUserStillActiveInOrg({
+          orgId: actor.org.id,
+          userId: actor.principal.id,
+          membershipDAL,
+          orgDAL,
+          tx
+        });
       }
 
       return pamSessionDAL.create(
@@ -875,8 +877,8 @@ export const pamSessionServiceFactory = ({
           projectId,
           accountId: account.id,
           // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-          userId: isUserActor ? actor.actorId : null,
-          identityId: isUserActor ? null : actor.actorId,
+          userId: isUserActor ? actor.principal.id : null,
+          identityId: isUserActor ? null : actor.principal.id,
           gatewayId: effectiveGatewayId,
           reason: trimmedReason,
           folderName: account.folderName,
@@ -897,8 +899,8 @@ export const pamSessionServiceFactory = ({
       port: gatewayTarget.port,
       duration: sessionDurationMs,
       actorMetadata: {
-        id: actor.actorId,
-        type: actor.actor,
+        id: actor.principal.id,
+        type: actor.principal.type,
         name: user?.email ?? actorName
       },
       // The platform dials for web sessions, so only a CLI caller is gated on its version.
@@ -987,7 +989,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session is not active" });
     }
 
-    await checkSession(session, ResourcePermissionPamResourceActions.TerminateSessions, ctx);
+    await checkSession(session, PamResourcePermissionActions.TerminateSessions, ctx);
 
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {
@@ -995,12 +997,12 @@ export const pamSessionServiceFactory = ({
     }
 
     if (session.gatewayId) {
-      const user = await userDAL.findById(ctx.actorId);
+      const user = await userDAL.findById(ctx.principal.id);
       sendPamSessionCancellationSignal({
         sessionId,
         gatewayId: session.gatewayId,
         accountType: session.accountType,
-        actorId: ctx.actorId,
+        actorId: ctx.principal.id,
         actorEmail: user?.email ?? "",
         gatewayV2Service
       });

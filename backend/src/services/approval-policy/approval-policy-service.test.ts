@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { OrgMembershipStatus, ResourceMembershipRole, TApprovalRequests } from "@app/db/schemas";
-import { ActorType } from "@app/lib/auth/actor-types";
+import { ApplicationPermissionSub } from "@app/domains/certificates/cert-manager/ce/module";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
+import { ProjectPermissionApprovalRequestActions } from "@app/domains/platform/projects/ce/module";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 
 import { ApprovalPolicyScope, ApprovalPolicyType, ApprovalRequestStatus, ApproverType } from "./approval-policy-enums";
-import { approvalPolicyServiceFactory } from "./approval-policy-service";
+import { approvalPolicyServiceFactory, toApprovalActorContext } from "./approval-policy-service";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -74,7 +81,9 @@ describe("approvalPolicyService.notifyApprovedActionFailed", () => {
 });
 
 describe("approvalPolicyService review of a revocation by an approver removed from its Application", () => {
-  const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
+  const approver = toApprovalActorContext(
+    actorContext({ principal: userPrincipal({ id: "approver-1" }), org: actorOrg({ id: "org-1" }) })
+  );
 
   type TApplicationMembership = { actorUserId?: string; actorGroupId?: string; isActive: boolean; role?: string };
 
@@ -154,9 +163,18 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
       approvalPolicyDAL,
-      permissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue({}),
-        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue(Permission.none()) },
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockResolvedValue(
+          Permission.fromRules({
+            rules: [
+              {
+                action: ProjectPermissionApprovalRequestActions.Read,
+                subject: ApplicationPermissionSub.ApprovalRequests
+              }
+            ]
+          })
+        )
       },
       userGroupMembershipDAL,
       resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
@@ -340,7 +358,9 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
 });
 
 describe("approvalPolicyService rechecks a revocation approver under the request's lock", () => {
-  const approver = { type: ActorType.USER, id: "approver-1", orgId: "org-1", authMethod: null } as never;
+  const approver = toApprovalActorContext(
+    actorContext({ principal: userPrincipal({ id: "approver-1" }), org: actorOrg({ id: "org-1" }) })
+  );
   const groupMessage =
     "You can't review this request because the group that names you as an approver no longer has a role in its Application that can approve requests.";
 
@@ -408,9 +428,18 @@ describe("approvalPolicyService rechecks a revocation approver under the request
       approvalRequestDAL,
       approvalRequestApprovalsDAL,
       approvalPolicyDAL,
-      permissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue({}),
-        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue(Permission.none()) },
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockResolvedValue(
+          Permission.fromRules({
+            rules: [
+              {
+                action: ProjectPermissionApprovalRequestActions.Read,
+                subject: ApplicationPermissionSub.ApprovalRequests
+              }
+            ]
+          })
+        )
       },
       userGroupMembershipDAL,
       resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
@@ -472,7 +501,9 @@ describe("approvalPolicyService rechecks a revocation approver under the request
 });
 
 describe("approvalPolicyService flags a pending request its saved approvers can no longer approve", () => {
-  const viewer = { type: ActorType.USER, id: "viewer-1", orgId: "org-1", authMethod: null } as never;
+  const viewer = toApprovalActorContext(
+    actorContext({ principal: userPrincipal({ id: "viewer-1" }), org: actorOrg({ id: "org-1" }) })
+  );
 
   const build = ({
     primaryRole,
@@ -550,9 +581,18 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
       approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]), findOne: vi.fn().mockResolvedValue(null) },
       approvalPolicyDAL,
       pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: "app-1", projectId: "project-1" }) },
-      permissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue({}),
-        getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
+      orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue(Permission.none()) },
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockResolvedValue(
+          Permission.fromRules({
+            rules: [
+              {
+                action: ProjectPermissionApprovalRequestActions.Read,
+                subject: ApplicationPermissionSub.ApprovalRequests
+              }
+            ]
+          })
+        )
       },
       userGroupMembershipDAL: { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) },
       resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }

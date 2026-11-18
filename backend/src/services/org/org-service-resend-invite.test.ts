@@ -1,7 +1,8 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
+import { MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
   orgAdminPermissions,
@@ -9,6 +10,11 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { orgServiceFactory } from "./org-service";
@@ -31,19 +37,23 @@ beforeEach(() => {
 const ORG_ID = "org-id";
 const MEMBERSHIP_ID = "membership-id";
 
-const abilityByRole: Record<string, MongoAbility> = {
-  admin: createMongoAbility<MongoAbility>(orgAdminPermissions),
-  member: createMongoAbility<MongoAbility>(orgMemberPermissions)
+type TRules = MongoAbility["rules"];
+
+const toPermission = (rules: TRules) => Permission.fromRules({ rules: rules as never });
+
+const abilityByRole: Record<string, TRules> = {
+  admin: orgAdminPermissions as TRules,
+  member: orgMemberPermissions as TRules
 };
 
-const memberCreatorOnly = createMongoAbility<MongoAbility>([
+const memberCreatorOnly: TRules = [
   {
     action: [OrgPermissionMemberActions.Read, OrgPermissionMemberActions.Create],
     subject: OrgPermissionSubjects.Member
   }
-]);
+];
 
-const memberCreatorGranter = createMongoAbility<MongoAbility>([
+const memberCreatorGranter: TRules = [
   {
     action: [
       OrgPermissionMemberActions.Read,
@@ -52,7 +62,7 @@ const memberCreatorGranter = createMongoAbility<MongoAbility>([
     ],
     subject: OrgPermissionSubjects.Member
   }
-]);
+];
 
 const setup = ({
   actorPermission,
@@ -61,7 +71,7 @@ const setup = ({
   inviteeGroupRole,
   membershipExists = true
 }: {
-  actorPermission: MongoAbility;
+  actorPermission: TRules;
   shouldUseNewPrivilegeSystem: boolean;
   inviteeRole?: string;
   inviteeGroupRole?: string;
@@ -71,20 +81,19 @@ const setup = ({
   const org = { id: ORG_ID, slug: "acme", name: "Acme", authEnforced: false, shouldUseNewPrivilegeSystem };
 
   const service = orgServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
-      getActorGrantAbilities: vi
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(toPermission(actorPermission)),
+      getGrantPermissions: vi
         .fn()
         .mockResolvedValue(
           [inviteeRole, inviteeGroupRole]
             .filter((role): role is string => Boolean(role) && role !== "no-access")
-            .map((role) => ({ permission: abilityByRole[role] }))
+            .map((role) => toPermission(abilityByRole[role]))
         )
     },
     userDAL: { findOne: vi.fn().mockResolvedValue({ id: "actor-id" }) },
     orgDAL: {
       findOrgById: vi.fn().mockResolvedValue(org),
-      findById: vi.fn().mockResolvedValue(org),
       findMembership: vi.fn().mockResolvedValue(
         membershipExists
           ? [
@@ -106,12 +115,12 @@ const setup = ({
   const resend = () =>
     service.resendOrgMemberInvitation({
       orgId: ORG_ID,
-      actorOrgId: ORG_ID,
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: "email",
+      actor: actorContext({
+        principal: userPrincipal({ id: "actor-id" }),
+        org: actorOrg({ id: ORG_ID, shouldUseNewPrivilegeSystem })
+      }),
       membershipId: MEMBERSHIP_ID
-    } as never);
+    });
 
   return { resend, createTokenForUser };
 };

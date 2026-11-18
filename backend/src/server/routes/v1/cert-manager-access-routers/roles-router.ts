@@ -40,7 +40,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { roles } = await server.services.role.listRoles({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         data: {}
       });
@@ -73,7 +73,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const role = await server.services.role.getRoleBySlug({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { slug: req.params.roleSlug }
       });

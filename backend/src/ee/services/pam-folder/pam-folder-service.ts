@@ -1,26 +1,21 @@
-import { ForbiddenError } from "@casl/ability";
-import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
+import { OrgMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships, TPamFolders } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
-  OrganizationActionScope,
-  OrgMembershipRole,
-  RESOURCE_SCOPE,
-  ResourceType,
-  TMemberships,
-  TPamFolders
-} from "@app/db/schemas";
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
+  TPamPermissionService
+} from "@app/domains/pam/pam/ce/module";
+import { TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TActorInput } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -32,7 +27,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PAM_FOLDER_RESOURCE_TYPE } from "../pam-access-request/pam-access-request-events";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { getResourceIdsWithActions, verifyProductMembership } from "../pam/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,
@@ -56,10 +51,9 @@ type TPamFolderServiceFactoryDep = {
     | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getResourcePermission"
-  >;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
   pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "cleanupFolderResources">;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -74,7 +68,9 @@ export const pamFolderServiceFactory = ({
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  pamPermissionService,
   pamAccessRequestService,
   userDAL,
   userGroupMembershipDAL,
@@ -83,26 +79,19 @@ export const pamFolderServiceFactory = ({
   alertService
 }: TPamFolderServiceFactoryDep) => {
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
-    verifyProductMembership(permissionService, projectId, ctx);
+    verifyProductMembership(projectPermissionService, projectId, ctx);
 
   // Joining a folder is for a person holding the org Admin role itself, the highest privilege there is, so it is
   // no escalation. Machine identities are excluded so the decision to enter a folder is always a human one.
   const canJoinFolders = async (ctx: TActorContext) => {
-    if (ctx.actor !== ActorType.USER) return false;
-    const { hasRole } = await permissionService.getOrgPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      orgId: ctx.actorOrgId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    return hasRole(OrgMembershipRole.Admin);
+    if (ctx.principal.type !== ActorType.USER) return false;
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor: ctx });
+    return orgPermission.hasRole({ slug: OrgMembershipRole.Admin });
   };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await verifyMembership(projectId, ctx);
-    if (!hasRole(PamProductRole.Admin)) {
+    const productPermission = await verifyMembership(projectId, ctx);
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only PAM product admins can perform this action" });
     }
   };
@@ -110,19 +99,11 @@ export const pamFolderServiceFactory = ({
   const checkFolderPermission = async (
     folderId: string,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => {
-    const { permission } = await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      resourceId: folderId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
+    const permission = await pamPermissionService.getPamPermission({ actor: ctx, projectId, folderId });
+    permission.assert({ action, subject: PamResourcePermissionSub.PamResource });
   };
 
   const list = async ({
@@ -131,13 +112,13 @@ export const pamFolderServiceFactory = ({
     onlyAccessible,
     filterByAction,
     includeNonMemberFolders,
-    ...ctx
-  }: TListPamFoldersDTO & TActorContext) => {
+    actor: ctx
+  }: TListPamFoldersDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
 
     const actionsToCheck = filterByAction
       ? { anyOf: [filterByAction] }
-      : { anyOf: [ResourcePermissionPamResourceActions.ReadFolder, ResourcePermissionPamResourceActions.ReadAccounts] };
+      : { anyOf: [PamResourcePermissionActions.ReadFolder, PamResourcePermissionActions.ReadAccounts] };
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -148,7 +129,7 @@ export const pamFolderServiceFactory = ({
     );
 
     // CreateAccounts is a folder-level action only - ignore account-level permissions for this filter
-    const isFolderOnlyAction = filterByAction === ResourcePermissionPamResourceActions.CreateAccounts;
+    const isFolderOnlyAction = filterByAction === PamResourcePermissionActions.CreateAccounts;
     const effectiveAccountIds = isFolderOnlyAction ? [] : accountIds;
 
     const listVisible = async () => {
@@ -172,7 +153,7 @@ export const pamFolderServiceFactory = ({
         membershipDAL,
         membershipRoleDAL,
         projectId,
-        { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
+        { allOf: [PamResourcePermissionActions.ManageMembers] },
         ctx
       )
     ]);
@@ -190,8 +171,8 @@ export const pamFolderServiceFactory = ({
     });
   };
 
-  const getById = async ({ folderId, projectId, ...ctx }: TGetPamFolderDTO & TActorContext) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.ReadFolder, ctx);
+  const getById = async ({ folderId, projectId, actor: ctx }: TGetPamFolderDTO & TActorInput) => {
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.ReadFolder, ctx);
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
@@ -206,11 +187,13 @@ export const pamFolderServiceFactory = ({
     const membership = await membershipDAL.create(
       {
         scope: RESOURCE_SCOPE,
-        scopeOrgId: ctx.actorOrgId,
+        scopeOrgId: ctx.org.id,
         scopeProjectId: projectId,
         scopeResourceType: ResourceType.PamFolder,
         scopeResourceId: folderId,
-        ...(ctx.actor === ActorType.USER ? { actorUserId: ctx.actorId } : { actorIdentityId: ctx.actorId }),
+        ...(ctx.principal.type === ActorType.USER
+          ? { actorUserId: ctx.principal.id }
+          : { actorIdentityId: ctx.principal.id }),
         isActive: true
       },
       tx
@@ -219,7 +202,7 @@ export const pamFolderServiceFactory = ({
     return membership;
   };
 
-  const create = async ({ projectId, name, description, ...ctx }: TCreatePamFolderDTO & TActorContext) => {
+  const create = async ({ projectId, name, description, actor: ctx }: TCreatePamFolderDTO & TActorInput) => {
     await verifyProductAdmin(projectId, ctx);
 
     try {
@@ -239,8 +222,8 @@ export const pamFolderServiceFactory = ({
     }
   };
 
-  const update = async ({ folderId, projectId, name, description, ...ctx }: TUpdatePamFolderDTO & TActorContext) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.EditFolder, ctx);
+  const update = async ({ folderId, projectId, name, description, actor: ctx }: TUpdatePamFolderDTO & TActorInput) => {
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.EditFolder, ctx);
 
     const existing = await pamFolderDAL.findById(folderId);
     if (!existing || existing.projectId !== projectId) {
@@ -264,8 +247,8 @@ export const pamFolderServiceFactory = ({
     }
   };
 
-  const deleteFolder = async ({ folderId, projectId, ...ctx }: TDeletePamFolderDTO & TActorContext) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.DeleteFolder, ctx);
+  const deleteFolder = async ({ folderId, projectId, actor: ctx }: TDeletePamFolderDTO & TActorInput) => {
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.DeleteFolder, ctx);
 
     const existing = await pamFolderDAL.findById(folderId);
     if (!existing || existing.projectId !== projectId) {
@@ -305,36 +288,28 @@ export const pamFolderServiceFactory = ({
     });
   };
 
-  const getFolderPermissions = async ({ folderId, projectId, ...ctx }: TGetPamFolderDTO & TActorContext) => {
+  const getFolderPermissions = async ({ folderId, projectId, actor: ctx }: TGetPamFolderDTO & TActorInput) => {
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
     }
 
-    const { permission, memberships } = await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      resourceId: folderId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
+    const permission = await pamPermissionService.getPamPermission({ actor: ctx, projectId, folderId });
+
+    permission.assert({
+      action: PamResourcePermissionActions.ReadFolder,
+      subject: PamResourcePermissionSub.PamResource
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.ReadFolder,
-      ResourcePermissionSub.PamResource
-    );
-
     // Only member managers get the roster; read-only roles must not enumerate members.
-    const canManageMembers = permission.can(
-      ResourcePermissionPamResourceActions.ManageMembers,
-      ResourcePermissionSub.PamResource
-    );
+    const canManageMembers = permission.can({
+      action: PamResourcePermissionActions.ManageMembers,
+      subject: PamResourcePermissionSub.PamResource
+    });
 
     return {
-      permissions: packRules(permission.rules),
-      memberships: canManageMembers ? memberships : []
+      permissions: permission.pack(),
+      memberships: canManageMembers ? permission.memberships.map((membership) => membership.toJSON()) : []
     };
   };
 
@@ -353,7 +328,9 @@ export const pamFolderServiceFactory = ({
         ? await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } })
         : [];
       const adminMembershipIds = new Set(
-        roles.filter((r) => r.role === PamResourceRole.Admin && isActiveRole(r)).map((r) => r.membershipId)
+        roles
+          .filter((r) => r.role === PamResourceRole.Admin && TemporaryAccess.restore(r).isActive())
+          .map((r) => r.membershipId)
       );
       const adminMemberships = memberships.filter((m) => adminMembershipIds.has(m.id));
       const adminGroupIds = adminMemberships.map((m) => m.actorGroupId).filter((id): id is string => Boolean(id));
@@ -366,23 +343,23 @@ export const pamFolderServiceFactory = ({
           ...adminMemberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)),
           ...groupMembers.map((m) => m.userId)
         ])
-      ].filter((id) => id !== ctx.actorId);
+      ].filter((id) => id !== ctx.principal.id);
       if (adminUserIds.length === 0) return;
 
       const [admins, actor] = await Promise.all([
         userDAL.find({ $in: { id: adminUserIds } }),
-        userDAL.findById(ctx.actorId)
+        userDAL.findById(ctx.principal.id)
       ]);
       const name = actor?.email || actor?.username || "An organization admin";
 
       await notificationService.createUserNotifications(
         admins.map((admin) => ({
           userId: admin.id,
-          orgId: ctx.actorOrgId,
+          orgId: ctx.org.id,
           type: NotificationType.PAM_FOLDER_ADMIN_ACCESS_ISSUED,
           title: "Direct Folder Access Issued",
           body: `The organization admin **${name}** has self-issued admin access to the folder **${folder.name}**.`,
-          link: `/organizations/${ctx.actorOrgId}/pam/accounts`
+          link: `/organizations/${ctx.org.id}/pam/accounts`
         }))
       );
 
@@ -402,7 +379,7 @@ export const pamFolderServiceFactory = ({
 
   // Folder access never falls back to anyone, so an org admin entering a folder is an explicit, audited
   // membership write.
-  const grantAdminAccess = async ({ folderId, projectId, ...ctx }: TGrantPamFolderAdminAccessDTO & TActorContext) => {
+  const grantAdminAccess = async ({ folderId, projectId, actor: ctx }: TGrantPamFolderAdminAccessDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
     if (!(await canJoinFolders(ctx))) {
       throw new ForbiddenRequestError({ message: "Only organization admins can join a PAM folder as admin" });
@@ -418,7 +395,7 @@ export const pamFolderServiceFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
+      { allOf: [PamResourcePermissionActions.ManageMembers] },
       ctx
     );
     if (adminFolderIds.includes(folderId)) {
@@ -435,8 +412,8 @@ export const pamFolderServiceFactory = ({
             projectId,
             resourceType: ResourceType.PamFolder,
             resourceId: folderId,
-            actorType: ctx.actor,
-            actorId: ctx.actorId
+            actorType: ctx.principal.type,
+            actorId: ctx.principal.id
           },
           tx
         );
@@ -447,7 +424,7 @@ export const pamFolderServiceFactory = ({
         }
 
         const roles = await membershipRoleDAL.find({ membershipId: existing.id }, { tx });
-        const activeRoles = existing.isActive ? roles.filter(isActiveRole) : [];
+        const activeRoles = existing.isActive ? roles.filter((r) => TemporaryAccess.restore(r).isActive()) : [];
         if (activeRoles.some((r) => r.role === PamResourceRole.Admin)) {
           throw new ConflictError({ message: `You're already an admin of folder "${folder.name}"` });
         }

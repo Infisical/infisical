@@ -256,10 +256,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       const oidc = await server.services.oidc.getOidc({
         organizationId: req.query.organizationId,
         type: "external",
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       return oidc;
@@ -340,10 +337,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const oidc = await server.services.oidc.updateOidcCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -481,10 +475,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
 
     handler: async (req) => {
       const oidc = await server.services.oidc.createOidcCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 

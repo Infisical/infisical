@@ -1,16 +1,13 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionAgentVaultHookActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
 import { assertAgentVaultHooksOnPlan } from "./agent-vault-hook-fns";
 import {
@@ -25,10 +22,12 @@ import {
 
 type TAgentVaultHookServiceFactoryDep = {
   agentVaultHookDAL: TAgentVaultHookDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  accessBundlePermissionService: Pick<
+    TAccessBundlePermissionService,
+    "getAgentVaultPermission" | "getAccessBundlePermission"
+  >;
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 };
 
 export type TAgentVaultHookServiceFactory = ReturnType<typeof agentVaultHookServiceFactory>;
@@ -46,14 +45,16 @@ export const toAgentVaultHook = (row: TAgentVaultHookRow, usedBy: THookServiceRe
 
 export const agentVaultHookServiceFactory = ({
   agentVaultHookDAL,
-  permissionService,
+  accessBundlePermissionService,
   kmsDataKeyService,
-  licenseService,
-  membershipDAL
+  licenseService
 }: TAgentVaultHookServiceFactoryDep) => {
   const $authorize = async (scoped: TAgentVaultHookScoped, action: ProjectPermissionAgentVaultHookActions) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, scoped);
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultHooks);
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({
+      actor: scoped.ctx,
+      projectId: scoped.projectId
+    });
+    permission.assert({ action, subject: ProjectPermissionSub.AgentVaultHooks });
   };
 
   // Sealed before any transaction: with an external KMS this is a network call.
@@ -67,14 +68,14 @@ export const agentVaultHookServiceFactory = ({
 
   // A caller who can read hooks but not every bundle sees only the services they reach, as with a variable's services.
   const $authorizeRead = async (scoped: TAgentVaultHookScoped) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      scoped
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultHookActions.Read,
-      ProjectPermissionSub.AgentVaultHooks
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: scoped.ctx,
+      projectId: scoped.projectId
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultHookActions.Read,
+      subject: ProjectPermissionSub.AgentVaultHooks
+    });
     return accessBundleIds;
   };
 
@@ -111,7 +112,7 @@ export const agentVaultHookServiceFactory = ({
 
   const createHook = async ({ name, description, url, secret, ...scoped }: TCreateHookDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Create);
-    await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.actorOrgId);
+    await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.org.id);
 
     const existing = await agentVaultHookDAL.findByNameInProject({ name, projectId: scoped.projectId });
     if (existing) throw duplicateName(name);
@@ -143,7 +144,7 @@ export const agentVaultHookServiceFactory = ({
 
     // The plan gates what the hook does, not how it is labelled, so a downgraded org can still rename one.
     const changesBehaviour = (url !== undefined && url !== current.url) || secret !== undefined;
-    if (changesBehaviour) await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.actorOrgId);
+    if (changesBehaviour) await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.org.id);
 
     if (name !== undefined && name.toLowerCase() !== current.name.toLowerCase()) {
       const existing = await agentVaultHookDAL.findByNameInProject({

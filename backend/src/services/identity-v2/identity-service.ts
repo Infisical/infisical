@@ -1,8 +1,6 @@
 import {
   AccessScope,
-  ActionProjectType,
   getAdminMemberOnlyProductLabel,
-  OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
   ProjectType,
@@ -20,20 +18,20 @@ import {
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
 import {
   isCustomProjectRole,
   ProjectPermissionIdentityActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -42,7 +40,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
@@ -72,7 +69,8 @@ import { newProjectIdentityFactory } from "./project/project-identity-factory";
 type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   instanceConfigService: TInstanceConfigService;
@@ -85,7 +83,6 @@ type TScopedIdentityV2ServiceFactoryDep = {
   >;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
@@ -95,7 +92,8 @@ export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2Servic
 export const identityV2ServiceFactory = ({
   identityDAL,
   identityMembershipV2DAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
   licenseService,
   usageMeteringService,
   instanceConfigService,
@@ -105,18 +103,15 @@ export const identityV2ServiceFactory = ({
   identityAccessTokenService,
   keyStore,
   projectDAL,
-  orgDAL,
   roleDAL,
   alertService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
-    permissionService,
-    orgDAL,
+    orgPermissionService,
     membershipIdentityDAL
   });
   const projectFactory = newProjectIdentityFactory({
-    permissionService,
-    orgDAL,
+    projectPermissionService,
     membershipIdentityDAL
   });
 
@@ -131,9 +126,9 @@ export const identityV2ServiceFactory = ({
 
     await factory.onCreateIdentityGuard(dto);
 
-    const plan = await licenseService.getPlan(dto.permission.orgId);
+    const plan = await licenseService.getPlan(dto.actor.org.id);
     if (plan.isLimited(PlanLimit.Identities)) {
-      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.actor.org.id);
       if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
@@ -149,13 +144,9 @@ export const identityV2ServiceFactory = ({
         throw new BadRequestError({ message: "Identity must have at least one permanent role" });
       }
 
-      const { permission: actorPermission } = await permissionService.getProjectPermission({
-        actor: dto.permission.type,
-        actorId: dto.permission.id,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: dto.permission.authMethod,
-        projectId: scopeData.projectId,
-        actorOrgId: dto.permission.orgId
+      const actorPermission = await projectPermissionService.getProjectPermission({
+        actor: dto.actor,
+        projectId: scopeData.projectId
       });
 
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
@@ -173,22 +164,19 @@ export const identityV2ServiceFactory = ({
         }
       }
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
+      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-      const permissionRoles = await permissionService.getProjectPermissionByRoles(
-        filterRolesNeedingPrivilegeBoundary(data.roles).map((el) => el.role),
-        scopeData.projectId
-      );
+      const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
+        projectId: scopeData.projectId,
+        roles: filterRolesNeedingPrivilegeBoundary(data.roles).map((el) => el.role)
+      });
       for (const permissionRole of permissionRoles) {
         const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
           [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
           ProjectPermissionSub.Identity,
-          actorPermission,
-          permissionRole.permission,
+          actorPermission.toAbility(),
+          permissionRole.permission.toAbility(),
           { assignableRole: permissionRole.role?.slug }
         );
         if (!permissionBoundary.isValid) {
@@ -266,7 +254,7 @@ export const identityV2ServiceFactory = ({
         {
           name: data.name,
           hasDeleteProtection: data.hasDeleteProtection,
-          orgId: dto.permission.orgId,
+          orgId: dto.actor.org.id,
           projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : null
         },
         tx
@@ -275,7 +263,7 @@ export const identityV2ServiceFactory = ({
         {
           scope: AccessScope.Organization,
           actorIdentityId: newIdentity.id,
-          scopeOrgId: dto.permission.orgId
+          scopeOrgId: dto.actor.org.id
         },
         tx
       );
@@ -287,7 +275,7 @@ export const identityV2ServiceFactory = ({
           {
             scope: AccessScope.Project,
             actorIdentityId: newIdentity.id,
-            scopeOrgId: dto.permission.orgId,
+            scopeOrgId: dto.actor.org.id,
             scopeProjectId: scopeData.projectId
           },
           tx
@@ -321,14 +309,14 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await usageMeteringService.syncSeats(dto.permission.orgId);
+    await usageMeteringService.syncSeats(dto.actor.org.id);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    usageMeteringService.emit(dto.permission.orgId, Meter.Identities);
+    usageMeteringService.emit(dto.actor.org.id, Meter.Identities);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities);
-      usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(dto.actor.org.id, Meter.SecretIdentities);
+      usageMeteringService.emit(dto.actor.org.id, Meter.PamIdentities);
     }
 
     return { identity };
@@ -342,7 +330,7 @@ export const identityV2ServiceFactory = ({
 
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
-      orgId: dto.permission.orgId,
+      orgId: dto.actor.org.id,
       projectId: dto.scopeData.scope === AccessScope.Project ? dto.scopeData.projectId : null
     });
     if (!existingIdentity)
@@ -377,7 +365,7 @@ export const identityV2ServiceFactory = ({
       }> = [];
 
       if (data.metadata) {
-        await identityMetadataDAL.delete({ orgId: dto.permission.orgId, identityId: dto.selector.identityId }, tx);
+        await identityMetadataDAL.delete({ orgId: dto.actor.org.id, identityId: dto.selector.identityId }, tx);
 
         if (data.metadata.length) {
           const rowsToInsert = data.metadata.map(({ key, value }) => ({
@@ -408,7 +396,7 @@ export const identityV2ServiceFactory = ({
 
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
-      orgId: dto.permission.orgId,
+      orgId: dto.actor.org.id,
       projectId: dto.scopeData.scope === AccessScope.Project ? dto.scopeData.projectId : null
     });
     if (!existingIdentity)
@@ -498,15 +486,9 @@ export const identityV2ServiceFactory = ({
 
   const resolveIdentitySearchScope = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     scope
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: TSearchIdentitiesV2DTO["actorAuthMethod"];
-    actorOrgId: string;
+    actor: TSearchIdentitiesV2DTO["actor"];
     scope: SearchIdentitiesScope[];
   }): Promise<{
     uniqueScope: Set<SearchIdentitiesScope>;
@@ -515,15 +497,11 @@ export const identityV2ServiceFactory = ({
     conditionalProjectIds: Set<string>;
   }> => {
     const uniqueScope = new Set(scope);
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor });
+    const canReadOrgIdentities = orgPermission.can({
+      action: OrgPermissionIdentityActions.Read,
+      subject: OrgPermissionSubjects.Identity
     });
-    const canReadOrgIdentities = orgPermission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     if (uniqueScope.has(SearchIdentitiesScope.OrganizationScope) && !canReadOrgIdentities) {
       uniqueScope.delete(SearchIdentitiesScope.OrganizationScope);
     }
@@ -532,10 +510,10 @@ export const identityV2ServiceFactory = ({
     const projectPermissions = new Map<string, TProjectPermissionAbility>();
     const conditionalProjectIds = new Set<string>();
     if (uniqueScope.has(SearchIdentitiesScope.ProjectScope)) {
-      const canAccessAllProjects = orgPermission.can(
-        OrgPermissionAdminConsoleAction.AccessAllProjects,
-        OrgPermissionSubjects.AdminConsole
-      );
+      const canAccessAllProjects = orgPermission.can({
+        action: OrgPermissionAdminConsoleAction.AccessAllProjects,
+        subject: OrgPermissionSubjects.AdminConsole
+      });
 
       if (canAccessAllProjects && canReadOrgIdentities) {
         // Org admins read unconditionally across every project — skip the per-project probe,
@@ -543,25 +521,25 @@ export const identityV2ServiceFactory = ({
         // explicitly joined and drop them from accessibleProjectIds. The org-level identity:read
         // gate stops access-all-projects holders without identity:read from enumerating
         // project-scoped machine identities across the org.
-        accessibleProjectIds.push(...(await projectDAL.findOrgProjectIds(actorOrgId)));
+        accessibleProjectIds.push(...(await projectDAL.findOrgProjectIds(actor.org.id)));
       } else {
-        const candidateProjectIds = await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
+        const candidateProjectIds = await projectDAL.findActorAccessibleProjectIds(
+          actor.principal.id,
+          actor.principal.type,
+          actor.org.id
+        );
 
         const projectAccessChecks = await Promise.all(
           candidateProjectIds.map(async (projectId) => {
             try {
-              const { permission: projectPermission } = await permissionService.getProjectPermission({
-                actor,
-                actorId,
-                actionProjectType: ActionProjectType.Any,
-                actorAuthMethod,
-                projectId,
-                actorOrgId
-              });
+              const projectPermission = await projectPermissionService.getProjectPermission({ actor, projectId });
               // Broad `can(Read, Identity)` returns true for conditional rules too. We keep the
               // project here and use the per-row check below to honor `identityId` conditions.
-              return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
-                ? { projectId, permission: projectPermission }
+              return projectPermission.can({
+                action: ProjectPermissionIdentityActions.Read,
+                subject: ProjectPermissionSub.Identity
+              })
+                ? { projectId, permission: projectPermission.toAbility() }
                 : null;
             } catch {
               return null;
@@ -597,9 +575,6 @@ export const identityV2ServiceFactory = ({
 
   const searchOrgIdentities = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     limit,
     offset,
     orderBy,
@@ -608,13 +583,7 @@ export const identityV2ServiceFactory = ({
     searchFilter = {}
   }: TSearchIdentitiesV2DTO) => {
     const { uniqueScope, accessibleProjectIds, projectPermissions, conditionalProjectIds } =
-      await resolveIdentitySearchScope({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        scope
-      });
+      await resolveIdentitySearchScope({ actor, scope });
 
     if (!uniqueScope.size) {
       return { identityMemberships: [], totalCount: 0 };
@@ -633,7 +602,7 @@ export const identityV2ServiceFactory = ({
 
     if (conditionalProjectIds.size === 0) {
       const { totalCount, docs } = await identityMembershipV2DAL.searchIdentitiesV2({
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         limit,
         offset,
         orderBy,
@@ -650,7 +619,7 @@ export const identityV2ServiceFactory = ({
     // would over-return rows the caller can't see, so fetch the full ordered set and filter by
     // per-row CASL before paginating in memory. Mirrors the tier-2 pattern in pam-resource-service.
     const { docs } = await identityMembershipV2DAL.searchIdentitiesV2({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       orderBy,
       orderDirection,
       searchFilter,
@@ -667,25 +636,12 @@ export const identityV2ServiceFactory = ({
     };
   };
 
-  const countOrgIdentities = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    scope,
-    searchFilter = {}
-  }: TCountIdentitiesV2DTO) => {
+  const countOrgIdentities = async ({ actor, scope, searchFilter = {} }: TCountIdentitiesV2DTO) => {
     const requestedOrg = scope.includes(SearchIdentitiesScope.OrganizationScope);
     const requestedProject = scope.includes(SearchIdentitiesScope.ProjectScope);
 
     const { uniqueScope, accessibleProjectIds, projectPermissions, conditionalProjectIds } =
-      await resolveIdentitySearchScope({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        scope
-      });
+      await resolveIdentitySearchScope({ actor, scope });
 
     // Build the response shape from the *requested* scopes so callers always get a number
     // for every scope they asked about (zero when permissions/projects filter the scope out).
@@ -699,7 +655,7 @@ export const identityV2ServiceFactory = ({
 
     if (conditionalProjectIds.size === 0) {
       const dalCounts = await identityMembershipV2DAL.countIdentitiesV2({
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         scope: Array.from(uniqueScope),
         accessibleProjectIds,
         searchFilter
@@ -715,7 +671,7 @@ export const identityV2ServiceFactory = ({
     // Org-scope rows have no per-identity conditions, so the SQL count is still correct.
     if (requestedOrg && uniqueScope.has(SearchIdentitiesScope.OrganizationScope)) {
       const orgOnly = await identityMembershipV2DAL.countIdentitiesV2({
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         scope: [SearchIdentitiesScope.OrganizationScope],
         accessibleProjectIds: [],
         searchFilter
@@ -727,7 +683,7 @@ export const identityV2ServiceFactory = ({
       // Only identityId / scope / projectId are needed to apply the per-row CASL filter, so fetch
       // the lean refs instead of the full search payload (which the count would otherwise discard).
       const refs = await identityMembershipV2DAL.listIdentityRefsV2({
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         scope: [SearchIdentitiesScope.ProjectScope],
         accessibleProjectIds,
         searchFilter

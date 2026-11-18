@@ -1,16 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TGroups,
-  TRoles
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TGroups } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -26,13 +22,10 @@ import {
   DatabaseError,
   ForbiddenRequestError,
   NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
+  PermissionBoundaryError
 } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
@@ -42,7 +35,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import { resolveMembershipRoleSlugs, toRoleAbilities } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
@@ -56,7 +49,6 @@ import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
 import {
   addIdentitiesToGroup,
@@ -117,7 +109,7 @@ type TGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  orgPermissionService: TOrgPermissionService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
@@ -146,7 +138,7 @@ export const groupServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   additionalPrivilegeDAL,
-  permissionService,
+  orgPermissionService,
   licenseService,
   usageMeteringService,
   oidcConfigDAL,
@@ -163,37 +155,29 @@ export const groupServiceFactory = ({
 }: TGroupServiceFactoryDep) => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
-  const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+  const createGroup = async ({ name, slug, role, actor }: TCreateGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Create, subject: OrgPermissionSubjects.Groups });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
-
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
       });
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const [rolePermissionDetails] = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: [role]
+    });
+    const { shouldUseNewPrivilegeSystem } = actor.org;
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (role !== OrgMembershipRole.NoAccess) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
         OrgPermissionSubjects.Groups,
-        permission,
-        rolePermissionDetails.permission
+        permission.toAbility(),
+        rolePermissionDetails.permission.toAbility()
       );
 
       if (!permissionBoundary.isValid)
@@ -215,7 +199,7 @@ export const groupServiceFactory = ({
           {
             name,
             slug: effectiveSlug,
-            orgId: actorOrgId
+            orgId: actor.org.id
           },
           tx
         )
@@ -235,7 +219,7 @@ export const groupServiceFactory = ({
         {
           actorGroupId: newGroup.id,
           scope: AccessScope.Organization,
-          scopeOrgId: actorOrgId
+          scopeOrgId: actor.org.id
         },
         tx
       );
@@ -255,37 +239,19 @@ export const groupServiceFactory = ({
     return group;
   };
 
-  const updateGroup = async ({
-    id,
-    name,
-    slug,
-    role,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdateGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+  const updateGroup = async ({ id, name, slug, role, actor }: TUpdateGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
-
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -293,18 +259,18 @@ export const groupServiceFactory = ({
     }
     const { group } = groupMembership;
 
-    const isLinkedGroup = group.orgId !== actorOrgId;
+    const isLinkedGroup = group.orgId !== actor.org.id;
     if (isLinkedGroup && (name || slug)) {
       throw new BadRequestError({
         message: "Cannot update name or slug of a linked group. Only the role in this sub-organization can be updated."
       });
     }
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
     const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+    const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
 
@@ -315,23 +281,26 @@ export const groupServiceFactory = ({
         shouldUseNewPrivilegeSystem,
         opActions: OrgPermissionGroupActions.AddMembers,
         opSubject: OrgPermissionSubjects.Groups,
-        actorPermission: permission,
-        targetPermissions,
+        actorPermission: permission.toAbility(),
+        targetPermissions: toRoleAbilities(targetPermissions),
         baseMessage: "Failed to rename a more privileged group"
       });
     }
 
-    let customRole: TRoles | undefined;
+    let customRole: { id: string } | undefined;
     if (role) {
-      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
+      const [rolePermissionDetails] = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: actor.org.id,
+        roles: [role]
+      });
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
         opActions: OrgPermissionGroupActions.GrantPrivileges,
         opSubject: OrgPermissionSubjects.Groups,
-        actorPermission: permission,
-        targetPermissions,
+        actorPermission: permission.toAbility(),
+        targetPermissions: toRoleAbilities(targetPermissions),
         baseMessage: "Failed to change the roles of a more privileged group"
       });
 
@@ -339,8 +308,8 @@ export const groupServiceFactory = ({
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
         OrgPermissionSubjects.Groups,
-        permission,
-        rolePermissionDetails.permission
+        permission.toAbility(),
+        rolePermissionDetails.permission.toAbility()
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
@@ -378,7 +347,7 @@ export const groupServiceFactory = ({
           {
             scope: AccessScope.Organization,
             actorGroupId: group.id,
-            scopeOrgId: actorOrgId
+            scopeOrgId: actor.org.id
           },
           tx
         );
@@ -482,20 +451,11 @@ export const groupServiceFactory = ({
     return deletedGroup;
   };
 
-  const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+  const deleteGroup = async ({ id, actor }: TDeleteGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Delete, subject: OrgPermissionSubjects.Groups });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
-
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
@@ -503,7 +463,7 @@ export const groupServiceFactory = ({
       });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -512,62 +472,53 @@ export const groupServiceFactory = ({
     const { group } = groupMembership;
 
     const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+    const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.Delete,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(targetPermissions),
       baseMessage: "Failed to delete a more privileged group"
     });
 
-    const isLinkedGroup = group.orgId !== actorOrgId;
+    const isLinkedGroup = group.orgId !== actor.org.id;
 
     if (isLinkedGroup) {
       const unlinkedGroup = await groupDAL.findById(id);
       const { identityIdsLosingOrgAccess, sendPamCancellations } = await groupDAL.transaction((tx) =>
         membershipGroupService.detachGroupFromOrg(
-          { groupId: id, orgId: actorOrgId, orgMembershipId: groupMembership.id, actorId },
+          { groupId: id, orgId: actor.org.id, orgMembershipId: groupMembership.id, actorId: actor.principal.id },
           tx
         )
       );
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
-      usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(actor.org.id, Meter.SecretIdentities);
+      usageMeteringService.emit(actor.org.id, Meter.PamIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
-    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
+    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId: actor.principal.id, actorOrgId: actor.org.id });
     // Deleting the group drops its members from any project it was on.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actor.org.id, Meter.SecretIdentities);
+    usageMeteringService.emit(actor.org.id, Meter.PamIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 
-  const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  const getGroupById = async ({ id, actor }: TGetGroupByIdDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -602,32 +553,12 @@ export const groupServiceFactory = ({
     };
   };
 
-  const listGroupUsers = async ({
-    id,
-    offset,
-    limit,
-    username,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    search,
-    filter
-  }: TListGroupUsersDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  const listGroupUsers = async ({ id, offset, limit, username, actor, search, filter }: TListGroupUsersDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -653,26 +584,14 @@ export const groupServiceFactory = ({
     offset,
     limit,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     search,
     filter
   }: TListGroupMachineIdentitiesDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -700,25 +619,13 @@ export const groupServiceFactory = ({
     orderBy,
     orderDirection,
     memberTypeFilter,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListGroupMembersDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -748,25 +655,13 @@ export const groupServiceFactory = ({
     filter,
     orderBy,
     orderDirection,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListGroupProjectsDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      scopeData: { scope: AccessScope.Organization, orgId: actor.org.id },
       groupId: id
     });
     if (!groupMembership?.group) {
@@ -775,7 +670,7 @@ export const groupServiceFactory = ({
     const { group } = groupMembership;
 
     const { projects, totalCount } = await groupDAL.findAllGroupProjects({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       groupId: group.id,
       offset,
       limit,
@@ -788,46 +683,22 @@ export const groupServiceFactory = ({
     return { projects, totalCount };
   };
 
-  const listAvailableGroups = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    rootOrgId
-  }: TGenericPermission & { rootOrgId: string }) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+  const listAvailableGroups = async ({ actor, rootOrgId }: TActorInput & { rootOrgId: string }) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
-
-    return groupDAL.listAvailableGroups(actorOrgId, rootOrgId);
+    return groupDAL.listAvailableGroups(actor.org.id, rootOrgId);
   };
 
-  const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const addUserToGroup = async ({ id, username, actor }: TAddUserToGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
     // check if group with slug exists
     const groupMembership = await membershipGroupDAL.getGroupById({
       scopeData: {
         scope: AccessScope.Organization,
-        orgId: actorOrgId
+        orgId: actor.org.id
       },
       groupId: id
     });
@@ -837,7 +708,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    if (groupMembership.group.orgId !== actorOrgId) {
+    if (groupMembership.group.orgId !== actor.org.id) {
       throw new ForbiddenRequestError({
         message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
       });
@@ -856,19 +727,19 @@ export const groupServiceFactory = ({
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+    const rolePermissionDetails = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.AddMembers,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions: rolePermissionDetails,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(rolePermissionDetails),
       baseMessage: "Failed to add user to more privileged group"
     });
 
@@ -916,31 +787,15 @@ export const groupServiceFactory = ({
     return groupOrgMemberships.some((membership) => !directOrgIds.has(membership.scopeOrgId));
   };
 
-  const addMachineIdentityToGroup = async ({
-    id,
-    identityId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TAddMachineIdentityToGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const addMachineIdentityToGroup = async ({ id, identityId, actor }: TAddMachineIdentityToGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
     // check if group with slug exists
     const groupMembership = await membershipGroupDAL.getGroupById({
       scopeData: {
         scope: AccessScope.Organization,
-        orgId: actorOrgId
+        orgId: actor.org.id
       },
       groupId: id
     });
@@ -950,26 +805,26 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    if (groupMembership.group.orgId !== actorOrgId) {
+    if (groupMembership.group.orgId !== actor.org.id) {
       throw new ForbiddenRequestError({
         message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
       });
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+    const rolePermissionDetails = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.AddIdentities,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions: rolePermissionDetails,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(rolePermissionDetails),
       baseMessage: "Failed to add identity to more privileged group"
     });
 
@@ -1003,31 +858,15 @@ export const groupServiceFactory = ({
     return { identity: identities[0], group: groupMembership.group };
   };
 
-  const removeUserFromGroup = async ({
-    id,
-    username,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TRemoveUserFromGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const removeUserFromGroup = async ({ id, username, actor }: TRemoveUserFromGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
     // check if group with slug exists
     const groupMembership = await membershipGroupDAL.getGroupById({
       scopeData: {
         scope: AccessScope.Organization,
-        orgId: actorOrgId
+        orgId: actor.org.id
       },
       groupId: id
     });
@@ -1037,7 +876,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    if (groupMembership.group.orgId !== actorOrgId) {
+    if (groupMembership.group.orgId !== actor.org.id) {
       throw new ForbiddenRequestError({
         message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
       });
@@ -1056,19 +895,19 @@ export const groupServiceFactory = ({
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+    const rolePermissionDetails = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.RemoveMembers,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions: rolePermissionDetails,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(rolePermissionDetails),
       baseMessage: "Failed to delete user from more privileged group"
     });
 
@@ -1079,7 +918,7 @@ export const groupServiceFactory = ({
       group: groupMembership.group,
       usageMeteringService,
       userIds: [user.id],
-      actorId,
+      actorId: actor.principal.id,
       userGroupMembershipDAL,
       identityGroupMembershipDAL,
       agentVaultPersonalValueDAL,
@@ -1096,30 +935,14 @@ export const groupServiceFactory = ({
     return { user: users[0], group: groupMembership.group };
   };
 
-  const removeMachineIdentityFromGroup = async ({
-    id,
-    identityId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TRemoveMachineIdentityFromGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const removeMachineIdentityFromGroup = async ({ id, identityId, actor }: TRemoveMachineIdentityFromGroupDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
     const groupMembership = await membershipGroupDAL.getGroupById({
       scopeData: {
         scope: AccessScope.Organization,
-        orgId: actorOrgId
+        orgId: actor.org.id
       },
       groupId: id
     });
@@ -1129,26 +952,26 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    if (groupMembership.group.orgId !== actorOrgId) {
+    if (groupMembership.group.orgId !== actor.org.id) {
       throw new ForbiddenRequestError({
         message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
       });
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+    const rolePermissionDetails = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: groupRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.RemoveIdentities,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions: rolePermissionDetails,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(rolePermissionDetails),
       baseMessage: "Failed to remove identity from more privileged group"
     });
 
@@ -1166,7 +989,7 @@ export const groupServiceFactory = ({
       group: groupMembership.group,
       usageMeteringService,
       identityIds: [identityId],
-      actorId,
+      actorId: actor.principal.id,
       identityDAL,
       groupDAL,
       identityGroupMembershipDAL,

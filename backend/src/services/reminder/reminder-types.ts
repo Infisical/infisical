@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
 import { TAlertChannelInput } from "../alert/alert-channel-service-types";
 import { TPreparedAlert } from "../alert/alert-service";
@@ -16,11 +16,7 @@ export type TReminder = {
   updatedAt: Date;
 };
 
-export type TCreateReminderDTO = {
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
+export type TCreateReminderDTO = TActorInput & {
   reminder: {
     secretId?: string;
     message?: string | null;
@@ -56,42 +52,18 @@ export interface TReminderServiceFactory {
 
   applyReminder: (prepared: TPreparedReminder, tx: Knex) => Promise<{ id: string; created: boolean }>;
 
-  createReminder: ({ actor, actorId, actorOrgId, actorAuthMethod, reminder }: TCreateReminderDTO) => Promise<{
+  createReminder: (dto: TCreateReminderDTO) => Promise<{
     id: string;
     created: boolean;
   }>;
 
-  getReminder: ({
-    secretId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: {
-    secretId: string;
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-  }) => Promise<(TReminder & { recipients: string[] }) | null>;
+  getReminder: (dto: { secretId: string } & TActorInput) => Promise<(TReminder & { recipients: string[] }) | null>;
 
   dispatchDueReminders: (opts?: { now?: Date }) => Promise<void>;
 
   reapOrphanedReminderAlerts: () => Promise<void>;
 
-  deleteReminder: ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    secretId
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-    secretId: string;
-  }) => Promise<void>;
+  deleteReminder: (dto: { secretId: string } & TActorInput) => Promise<void>;
 
   deleteReminderBySecretId: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 

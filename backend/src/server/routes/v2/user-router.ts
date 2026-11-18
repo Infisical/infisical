@@ -616,7 +616,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const user = await server.services.user.deleteUser(req.permission.id, {
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         lastMemberOrganizationIds: req.query.lastMemberOrganizationIds
       });
       return { user };

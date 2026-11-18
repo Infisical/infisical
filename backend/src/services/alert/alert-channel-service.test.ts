@@ -16,11 +16,9 @@ const CREATOR = { createdByActorId: "11111111-1111-1111-1111-111111111111", crea
 const RECIPIENT_SCOPE = { projectId: null, allowEmailAddresses: true };
 const CHANNEL_INPUT = { ...CREATOR, recipientScope: RECIPIENT_SCOPE };
 const ACTOR = {
-  actor: ActorType.USER,
-  actorId: CREATOR.createdByActorId,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: "org-1"
-};
+  principal: { type: ActorType.USER, id: CREATOR.createdByActorId, authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1" }
+} as never;
 
 type TRow = {
   id: string;
@@ -119,8 +117,8 @@ const buildService = (opts?: {
         return found ? { ...found, integration: "slack" } : undefined;
       }
     },
-    permissionService: {
-      getOrgPermission: async () => ({ permission: { cannot: () => opts?.canReadSettings === false } })
+    orgPermissionService: {
+      getOrgPermission: async () => ({ cannot: () => opts?.canReadSettings === false })
     }
   } as unknown as TAlertChannelServiceFactoryDep);
 

@@ -3,7 +3,6 @@ import path from "path";
 import RE2 from "re2";
 
 import {
-  ActionProjectType,
   ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -14,15 +13,14 @@ import {
   TSecrets
 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
+import { TActorInput } from "@app/lib/types";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   buildHierarchy,
@@ -67,7 +65,7 @@ export const generateSecretBlindIndexBySalt = async (secretName: string, secretB
 };
 
 type TRecursivelyFetchSecretsFromFoldersArg = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
@@ -76,21 +74,14 @@ type TGetPathsDTO = {
   projectId: string;
   environment: string;
   currentPath: string;
-
-  auth: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string | undefined;
-  };
-};
+} & TActorInput;
 
 export const recursivelyGetSecretPaths = ({
   folderDAL,
   projectEnvDAL,
-  permissionService
+  secretsPermissionService
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
-  const getPaths = async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
+  const getPaths = async ({ projectId, environment, currentPath, actor }: TGetPathsDTO) => {
     const env = await projectEnvDAL.findOne({
       projectId,
       slug: environment
@@ -117,19 +108,12 @@ export const recursivelyGetSecretPaths = ({
       folderId: p.folderId
     }));
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: auth.actor,
-      actorId: auth.actorId,
-      projectId,
-      actorAuthMethod: auth.actorAuthMethod,
-      actorOrgId: auth.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
       (folder) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment,
           secretPath: folder.path
         }) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)

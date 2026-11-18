@@ -1,16 +1,15 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { Grant, Permission, RuleSet } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  StandardProjectRoles
 } from "@app/domains/platform/projects/ce/module";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
-import { conditionsMatcher } from "@app/lib/casl";
+import { FolderGrant, FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
@@ -135,26 +134,30 @@ describe("assertManageFolderSubtree", () => {
     ])
   });
 
-  const folderGrant = (
-    role: SecretFolderRole,
-    secretPath: string,
-    appliesToSubfolders = false
-  ): TProjectFolderScopedPrivilege => ({
-    id: "privilege-id",
-    folderId: "granted-folder-id",
-    role,
-    environmentSlug: "dev",
-    secretPath,
-    appliesToSubfolders
-  });
+  const folderGrant = (role: SecretFolderRole, secretPath: string, appliesToSubfolders = false) =>
+    FolderGrant.restore({
+      id: `grant-${secretPath}`,
+      name: "",
+      actorId: null,
+      folderId: "granted-folder-id",
+      role,
+      environmentSlug: "dev",
+      secretPath,
+      appliesToSubfolders,
+      isTemporary: false,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null
+    });
 
-  const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TProjectFolderScopedPrivilege[]) =>
-    createMongoAbility<ProjectPermissionSet>(
-      buildProjectPermissionRules(roles, ProjectType.SecretManager, privileges) as RawRuleOf<
-        MongoAbility<ProjectPermissionSet>
-      >[],
-      { conditionsMatcher }
-    );
+  const projectRoles = StandardProjectRoles.generic(ProjectType.SecretManager);
+  const abilityFor = (roles: { role: string; permissions?: unknown }[], grants: FolderGrant[] = []) =>
+    Permission.fromRules<ProjectPermissionSet>({
+      rules: RuleSet.merge(
+        roles.map(({ role, permissions }) =>
+          projectRoles.rulesFor(Grant.restore({ slug: role, packedRules: permissions }))
+        )
+      ).then(FolderGrants.inForce(grants).rules())
+    });
 
   test("allows a project admin", () => {
     const caller = abilityFor([{ role: ProjectMembershipRole.Admin, permissions: [] }]);

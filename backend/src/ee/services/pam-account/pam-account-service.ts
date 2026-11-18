@@ -2,19 +2,24 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import {
+  PamResourcePermissionActions,
+  PamResourcePermissionSet,
+  PamResourcePermissionSub,
+  TPamPermissionService
+} from "@app/domains/pam/pam/ce/module";
+import { Membership } from "@app/domains/platform/access-control/ce/module";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSet,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -22,6 +27,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
+import { TActorInput } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -59,7 +65,6 @@ import {
   checkFolderPermission,
   getAccountPermissionRulesMap,
   getResourceIdsWithActions,
-  TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
@@ -123,10 +128,9 @@ type TPamAccountServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
-  >;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
   instanceConfigService: TInstanceConfigService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
@@ -217,7 +221,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     orgDAL,
     mfaSessionService,
     userService,
-    permissionService,
+    projectPermissionService,
+    pamPermissionService,
     kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService,
@@ -319,10 +324,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   };
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
-    verifyProductMembership(permissionService, projectId, ctx);
+    verifyProductMembership(projectPermissionService, projectId, ctx);
 
   const checkFolder = (folderId: string, projectId: string, ctx: TActorContext) =>
-    checkFolderPermission(permissionService, folderId, projectId, ctx);
+    checkFolderPermission(pamPermissionService, folderId, projectId, ctx);
 
   const list = async ({
     projectId,
@@ -331,15 +336,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     accountType,
     search,
     filterByAction,
-    ...ctx
-  }: TListPamAccountsDTO & TActorContext) => {
+    actor: ctx
+  }: TListPamAccountsDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] },
+      { allOf: [PamResourcePermissionActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
@@ -379,12 +384,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       permissionsByAccountId
     ] = await Promise.all([
       deps.pamAccessRequestService.getAccessStatusBatch(
-        { actorId: ctx.actorId, actor: ctx.actor },
+        { actorId: ctx.principal.id, actor: ctx.principal.type },
         accountIdsRequiringApproval,
         projectId
       ),
       deps.pamAccessRequestService.getAccessStatusBatch(
-        { actorId: ctx.actorId, actor: ctx.actor },
+        { actorId: ctx.principal.id, actor: ctx.principal.type },
         accountIdsRequiringApproval,
         projectId,
         PamAccessType.Credential
@@ -392,8 +397,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
       deps.pamAccessRequestService.getBreakGlassUserFolders(
         folderIdsRequiringApproval,
-        { actorId: ctx.actorId, actor: ctx.actor },
-        ctx.actorOrgId
+        { actorId: ctx.principal.id, actor: ctx.principal.type },
+        ctx.org.id
       ),
       // Resolve every account's effective permissions in one membership fetch
       getAccountPermissionRulesMap(
@@ -405,7 +410,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       )
     ]);
 
-    const maskingDegraded = await $resolveMaskingDegraded(ctx.actorOrgId, accounts);
+    const maskingDegraded = await $resolveMaskingDegraded(ctx.org.id, accounts);
 
     return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
@@ -472,17 +477,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     accountId: string,
     folderId: string | null | undefined,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
-  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+  ) => checkAccountAccess(pamPermissionService, accountId, folderId, projectId, action, ctx);
 
-  const getById = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
+  const getById = async ({ accountId, projectId, actor: ctx }: TGetPamAccountDTO & TActorInput) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const credentials = sanitizeCredentials(
@@ -523,8 +528,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     reason,
     mfaSessionId,
     tokenVersionId,
-    ...ctx
-  }: TGetPamAccountCredentialsDTO & TActorContext) => {
+    actor: ctx
+  }: TGetPamAccountCredentialsDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
 
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
@@ -532,13 +537,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    await checkAccount(
-      accountId,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.ViewCredentials,
-      ctx
-    );
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ViewCredentials, ctx);
 
     const accountType = account.accountType as PamAccountType;
     const policy = resolveAccessControls(account.templatePolicies);
@@ -547,8 +546,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     let grantExpiresAt: Date | null = null;
     if (policy.requiresApproval) {
       const grant = await deps.pamAccessRequestService.checkGrant({
-        actorId: ctx.actorId,
-        actor: ctx.actor,
+        actorId: ctx.principal.id,
+        actor: ctx.principal.type,
         accountId: account.id,
         accountFolderId: account.folderId,
         projectId,
@@ -580,7 +579,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     if (policy.requireMfa) {
-      if (ctx.actor !== ActorType.USER) {
+      if (ctx.principal.type !== ActorType.USER) {
         throw new ForbiddenRequestError({
           message:
             "This account requires MFA verification, which machine identities cannot perform. Remove the MFA policy from the account's template to allow machine identity access."
@@ -589,8 +588,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL, userService },
         {
-          userId: ctx.actorId,
-          orgId: ctx.actorOrgId,
+          userId: ctx.principal.id,
+          orgId: ctx.org.id,
           actorEmail,
           accountId: account.id,
           mfaSessionId,
@@ -705,15 +704,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     recordingConnectionId,
     settingsOverrides,
     skipConnectionTest,
-    ...ctx
-  }: TCreatePamAccountDTO & TActorContext) => {
-    const { permission } = await checkFolder(folderId, projectId, ctx);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.CreateAccounts,
-      ResourcePermissionSub.PamResource
-    );
+    actor: ctx
+  }: TCreatePamAccountDTO & TActorInput) => {
+    const permission = await checkFolder(folderId, projectId, ctx);
+    permission.assert({
+      action: PamResourcePermissionActions.CreateAccounts,
+      subject: PamResourcePermissionSub.PamResource
+    });
 
-    const plan = await licenseService.getPlan(ctx.actorOrgId);
+    const plan = await licenseService.getPlan(ctx.org.id);
     if (!plan.allows(PlanProduct.Pam)) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."
@@ -730,7 +729,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     if (plan.isLimited(PlanLimit.PamAccounts)) {
-      const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
+      const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.org.id);
       if (plan.exceeds(PlanLimit.PamAccounts, currentPamAccountCount)) {
         throw new BadRequestError({
           name: "PAM_ACCOUNT_LIMIT_REACHED",
@@ -794,7 +793,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           templateGatewayId: template.gatewayId,
           templateGatewayPoolId: template.gatewayPoolId
         },
-        ctx.actorOrgId
+        ctx.org.id
       );
     }
 
@@ -884,8 +883,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayPoolId,
     recordingConnectionId,
     settingsOverrides,
-    ...ctx
-  }: TUpdatePamAccountDTO & TActorContext) => {
+    actor: ctx
+  }: TUpdatePamAccountDTO & TActorInput) => {
     const existing = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
@@ -897,7 +896,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
-    await checkAccount(accountId, existing.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
+    await checkAccount(accountId, existing.folderId, projectId, PamResourcePermissionActions.EditAccounts, ctx);
 
     if (folderId) {
       const folder = await pamFolderDAL.findById(folderId);
@@ -908,11 +907,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       // roles cascade to the accounts inside, so EditAccounts alone must not relocate an account into a
       // folder where the actor would gain ViewCredentials/LaunchSessions.
       if (folderId !== existing.folderId) {
-        const { permission } = await checkFolder(folderId, projectId, ctx);
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionPamResourceActions.CreateAccounts,
-          ResourcePermissionSub.PamResource
-        );
+        const permission = await checkFolder(folderId, projectId, ctx);
+        permission.assert({
+          action: PamResourcePermissionActions.CreateAccounts,
+          subject: PamResourcePermissionSub.PamResource
+        });
       }
     }
 
@@ -930,8 +929,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       // A template carries governance settings (e.g. requiresApproval) and is product-admin-managed, so
       // re-pointing an account's template is an admin-only action to prevent bypassing those controls.
       if (templateId !== existing.templateId) {
-        const { hasRole } = await verifyMembership(projectId, ctx);
-        if (!hasRole(PamProductRole.Admin)) {
+        const productPermission = await verifyMembership(projectId, ctx);
+        if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
           throw new ForbiddenRequestError({ message: "Only PAM admins can change an account's template" });
         }
       }
@@ -1073,7 +1072,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
           templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
         },
-        ctx.actorOrgId
+        ctx.org.id
       );
     }
 
@@ -1083,11 +1082,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const actorCanViewCredentials =
       routingChanged && !credentialSecretSupplied
         ? await accountAccessAllows(
-            permissionService,
+            pamPermissionService,
             accountId,
             existing.folderId,
             projectId,
-            ResourcePermissionPamResourceActions.ViewCredentials,
+            PamResourcePermissionActions.ViewCredentials,
             ctx
           )
         : true;
@@ -1153,19 +1152,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
   };
 
-  const deleteAccount = async ({ accountId, projectId, ...ctx }: TDeletePamAccountDTO & TActorContext) => {
+  const deleteAccount = async ({ accountId, projectId, actor: ctx }: TDeletePamAccountDTO & TActorInput) => {
     const existing = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    await checkAccount(
-      accountId,
-      existing.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.DeleteAccounts,
-      ctx
-    );
+    await checkAccount(accountId, existing.folderId, projectId, PamResourcePermissionActions.DeleteAccounts, ctx);
 
     try {
       // Every session cancellation this delete triggers is held back until COMMIT: the delete can still
@@ -1191,7 +1184,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         await pamAccountDAL.updateById(accountId, { rotationAccountId: null }, tx);
 
         const sendGrantCancellations = await deps.pamAccessRequestService.cleanupAccountResources(
-          { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
+          { accountId, folderId: existing.folderId, projectId, actorId: ctx.principal.id },
           tx
         );
 
@@ -1206,10 +1199,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
         let sendSweepCancellations: (() => void) | undefined;
         if (liveSessions.length > 0) {
-          const actor = await userDAL.findById(ctx.actorId, tx);
+          const actor = await userDAL.findById(ctx.principal.id, tx);
           sendSweepCancellations = await terminatePamSessions({
             sessions: liveSessions,
-            actorId: ctx.actorId,
+            actorId: ctx.principal.id,
             actorEmail: actor?.email ?? "",
             pamSessionDAL,
             gatewayV2Service,
@@ -1240,7 +1233,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
                 dependent.id,
                 dependent.folderId,
                 projectId,
-                ResourcePermissionPamResourceActions.ReadAccounts,
+                PamResourcePermissionActions.ReadAccounts,
                 ctx
               )
                 .then(() => true)
@@ -1262,9 +1255,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         const sources = await pamDiscoverySourceDAL.find({ credentialAccountId: accountId });
         if (sources.length) {
           // Discovery is Admin-only, so a non-admin gets the count rather than the source names.
-          const { hasRole } = await verifyMembership(projectId, ctx);
+          const productPermission = await verifyMembership(projectId, ctx);
           const plural = sources.length > 1;
-          const subject = hasRole(PamProductRole.Admin)
+          const subject = productPermission.hasRole({ slug: PamProductRole.Admin })
             ? `discovery source${plural ? "s" : ""} ${sources.map((source) => `'${source.name}'`).join(", ")}`
             : `${sources.length} discovery source${plural ? "s" : ""}`;
           throw new BadRequestError({
@@ -1290,15 +1283,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     search,
     folderId,
     accountType,
-    ...ctx
-  }: TListAccessibleAccountsDTO & TActorContext & { offset?: number; limit?: number }) => {
+    actor: ctx
+  }: TListAccessibleAccountsDTO & TActorInput & { offset?: number; limit?: number }) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
+      { allOf: [PamResourcePermissionActions.ReadAccounts] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
@@ -1307,7 +1300,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
+      { allOf: [PamResourcePermissionActions.LaunchSessions] },
       ctx
     );
     const launchFolderIds = new Set(launchScopes.folderIds);
@@ -1332,15 +1325,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     ];
     const [accessStatusMap, foldersWithApprovalPolicy, breakGlassFolders] = await Promise.all([
       deps.pamAccessRequestService.getAccessStatusBatch(
-        { actorId: ctx.actorId, actor: ctx.actor },
+        { actorId: ctx.principal.id, actor: ctx.principal.type },
         accountIdsRequiringApproval,
         projectId
       ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
       deps.pamAccessRequestService.getBreakGlassUserFolders(
         folderIdsRequiringApproval,
-        { actorId: ctx.actorId, actor: ctx.actor },
-        ctx.actorOrgId
+        { actorId: ctx.principal.id, actor: ctx.principal.type },
+        ctx.org.id
       )
     ]);
 
@@ -1396,13 +1389,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return decrypt(projectId, blob);
   };
 
-  const getOrCreateSshCa = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
+  const getOrCreateSshCa = async ({ accountId, projectId, actor: ctx }: TGetPamAccountDTO & TActorInput) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.EditAccounts, ctx);
 
     const existing = parseInternalMetadata(
       account.accountType as PamAccountType,
@@ -1429,65 +1422,53 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return { publicKey, created: true, keyAlgorithm };
   };
 
-  const getAccountPermissions = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
+  const getAccountPermissions = async ({ accountId, projectId, actor: ctx }: TGetPamAccountDTO & TActorInput) => {
     const account = await pamAccountDAL.findById(accountId);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    const allRules: RawRuleOf<MongoAbility<ResourcePermissionSet, MongoQuery>>[] = [];
-    const allMemberships: Awaited<ReturnType<typeof permissionService.getResourcePermission>>["memberships"] = [];
+    const allRules: RawRuleOf<MongoAbility<PamResourcePermissionSet, MongoQuery>>[] = [];
+    const allMemberships: Membership[] = [];
 
     if (account.folderId) {
       try {
-        const folderResult = await permissionService.getResourcePermission({
-          actor: ctx.actor,
-          actorId: ctx.actorId,
+        const folderPermission = await pamPermissionService.getPamPermission({
+          actor: ctx,
           projectId,
-          resourceType: ResourceType.PamFolder,
-          resourceId: account.folderId,
-          actorAuthMethod: ctx.actorAuthMethod,
-          actorOrgId: ctx.actorOrgId
+          folderId: account.folderId
         });
-        allRules.push(...folderResult.permission.rules);
-        allMemberships.push(...folderResult.memberships);
+        allRules.push(...folderPermission.rules);
+        allMemberships.push(...folderPermission.memberships);
       } catch (err) {
-        if (!(err instanceof ForbiddenRequestError)) throw err;
+        if (!(err instanceof ForbiddenRequestError) && !(err instanceof PermissionDeniedError)) throw err;
       }
     }
 
     try {
-      const accountResult = await permissionService.getResourcePermission({
-        actor: ctx.actor,
-        actorId: ctx.actorId,
-        projectId,
-        resourceType: ResourceType.PamAccount,
-        resourceId: accountId,
-        actorAuthMethod: ctx.actorAuthMethod,
-        actorOrgId: ctx.actorOrgId
-      });
-      allRules.push(...accountResult.permission.rules);
-      allMemberships.push(...accountResult.memberships);
+      const accountPermission = await pamPermissionService.getPamPermission({ actor: ctx, projectId, accountId });
+      allRules.push(...accountPermission.rules);
+      allMemberships.push(...accountPermission.memberships);
     } catch (err) {
-      if (!(err instanceof ForbiddenRequestError)) throw err;
+      if (!(err instanceof ForbiddenRequestError) && !(err instanceof PermissionDeniedError)) throw err;
     }
 
-    const mergedPermission = createMongoAbility<ResourcePermissionSet>(allRules, { conditionsMatcher });
+    const mergedPermission = createMongoAbility<PamResourcePermissionSet>(allRules, { conditionsMatcher });
 
     ForbiddenError.from(mergedPermission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.ReadAccounts,
-      ResourcePermissionSub.PamResource
+      PamResourcePermissionActions.ReadAccounts,
+      PamResourcePermissionSub.PamResource
     );
 
     // Only member managers get the roster; read-only roles must not enumerate members.
     const canManageMembers = mergedPermission.can(
-      ResourcePermissionPamResourceActions.ManageMembers,
-      ResourcePermissionSub.PamResource
+      PamResourcePermissionActions.ManageMembers,
+      PamResourcePermissionSub.PamResource
     );
 
     return {
       permissions: packRules(mergedPermission.rules),
-      memberships: canManageMembers ? allMemberships : []
+      memberships: canManageMembers ? allMemberships.map((membership) => membership.toJSON()) : []
     };
   };
 

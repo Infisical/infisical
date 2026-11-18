@@ -1,10 +1,12 @@
-import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-
 import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
-import { ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { conditionsMatcher } from "@app/lib/casl";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
+import {
+  ProjectAccess,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  StandardProjectRoles
+} from "@app/domains/platform/projects/ce/module";
+import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import {
   TCachedFolderAccess,
@@ -72,19 +74,18 @@ export const collectDistinctRoles = (entries: { roles: TProjectMemberRoleRow[] }
 // the verdict depends only on the role. Handlebars conditions are therefore never interpolated and
 // a templated condition compares literally, which does not match.
 export const roleGrantsFolderAccess = (role: TDistinctProjectRole, folder: TFolderLocation) => {
-  const rules = buildProjectPermissionRules(
-    [
-      role.isCustom
-        ? { role: ProjectMembershipRole.Custom, permissions: role.permissions }
-        : { role: role.slug, permissions: [] }
-    ],
-    ProjectType.SecretManager
-  ) as RawRuleOf<MongoAbility>[];
-  const ability = createMongoAbility(rules, { conditionsMatcher });
-  // subject() tags the object it receives with the subject type and refuses to retag it, so each probe
-  // gets its own copy of the folder fields
+  const grant = role.isCustom
+    ? Grant.restore({ slug: ProjectMembershipRole.Custom, packedRules: role.permissions })
+    : Grant.restore({ slug: role.slug });
+  const permission = Permission.fromRules<ProjectPermissionSet>({
+    rules: ProjectAccess.rulesOf([grant], StandardProjectRoles.generic(ProjectType.SecretManager))
+  });
   return FOLDER_ACCESS_PROBES.some(({ action, subject: sub }) =>
-    ability.can(action, subject(sub, { environment: folder.environmentSlug, secretPath: folder.path }))
+    permission.can({
+      action: action as ProjectPermissionSet[0],
+      subject: sub,
+      fields: { environment: folder.environmentSlug, secretPath: folder.path }
+    })
   );
 };
 

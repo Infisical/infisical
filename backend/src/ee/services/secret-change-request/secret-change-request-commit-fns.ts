@@ -1,13 +1,14 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
+import { MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
+import { SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
@@ -27,12 +28,11 @@ import { TSecretValidationRuleServiceFactory } from "@app/services/secret-valida
 import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TGenerateSecretApprovalRequestV2BridgeDTO } from "./secret-change-request-types";
 
 type TSecretApprovalRequestCommitFnsFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -84,7 +84,7 @@ export const pickApprovalCommitColumns = ({
 });
 
 export const secretApprovalRequestCommitFnsFactory = ({
-  permissionService,
+  secretsPermissionService,
   folderDAL,
   projectDAL,
   kmsDataKeyService,
@@ -118,10 +118,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
 
   const buildSecretApprovalCommits = async ({
     data,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     secretPath,
     environment,
@@ -129,17 +126,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
     updateMode = SecretUpdateMode.FailOnNotFound,
     trx: providedTx
   }: TBuildSecretApprovalCommitsDTO) => {
-    if (actor === ActorType.SERVICE)
+    if (actor.principal.type === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token over protected branches" });
 
-    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     const folder = providedFolder ?? (await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx));
     if (!folder)
       throw new NotFoundError({
@@ -148,7 +138,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
       });
     const folderId = folder.id;
 
-    if (hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata")) {
+    if (permission.hasProjectEnforcement({ name: "enforceEncryptedSecretManagerSecretMetadata" })) {
       const hasMissingEncryptedMetadataInCreate = data[SecretOperations.Create]?.some((secret) =>
         secret.secretMetadata?.some((meta) => !meta.isEncrypted)
       );
@@ -460,15 +450,16 @@ export const secretApprovalRequestCommitFnsFactory = ({
           message: `Secret does not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
         });
       secretsToDeleteInDB.forEach((el) => {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretActions.Delete,
-          subject(ProjectPermissionSub.Secrets, {
+        permission.assert({
+          action: ProjectPermissionSecretActions.Delete,
+          subject: ProjectPermissionSub.Secrets,
+          fields: {
             environment,
             secretPath,
             secretName: el.key,
             secretTags: el.tags?.map((i) => i.slug)
-          })
-        );
+          }
+        });
       });
 
       const secretsGroupedByKey = groupBy(secretsToDeleteInDB, (i) => i.key);
@@ -512,7 +503,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
           secretPath,
           secrets: secretsToValidate
         },
-        permission,
+        permission.toAbility(),
         providedTx
       );
     }
@@ -530,27 +521,29 @@ export const secretApprovalRequestCommitFnsFactory = ({
       if (commit.op === SecretOperations.Update) action = ProjectPermissionSecretActions.Edit;
       if (commit.op === SecretOperations.Delete) return; // we do the validation on top
 
-      ForbiddenError.from(permission).throwUnlessCan(
+      permission.assert({
         action,
-        subject(ProjectPermissionSub.Secrets, {
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: commit.key,
           secretTags: commitTagIds?.[commit.key]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
-        })
-      );
+        }
+      });
 
       const originalKey = commit.op === SecretOperations.Update ? renamedFromKey[commit.key] : undefined;
       if (originalKey) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretActions.Edit,
-          subject(ProjectPermissionSub.Secrets, {
+        permission.assert({
+          action: ProjectPermissionSecretActions.Edit,
+          subject: ProjectPermissionSub.Secrets,
+          fields: {
             environment,
             secretPath,
             secretName: originalKey,
             secretTags: existingTagIds[originalKey]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
-          })
-        );
+          }
+        });
       }
     });
 

@@ -1,6 +1,6 @@
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
   CERT_SUBJECT_ALTERNATIVE_NAMES,
@@ -119,13 +119,13 @@ export type TGetCertDTO = {
   id?: string;
   serialNumber?: string;
   includeDeleted?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteCertDTO = {
   id?: string;
   serialNumber?: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum CertificateRevocationStatus {
   Revoked = "revoked",
@@ -159,17 +159,17 @@ export type TRevokeCertDTO = {
   serialNumber?: string;
   thumbprint?: string;
   revocationReason: CrlReason;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAssignCertToApplicationDTO = {
   certificateId: string;
   applicationId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertBodyDTO = {
   id?: string;
   serialNumber?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TImportCertDTO = {
   projectId?: string;
@@ -186,24 +186,24 @@ export type TImportCertDTO = {
 
   profileId?: string;
   externalMetadata?: TImportExternalMetadata;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertPrivateKeyDTO = {
   id?: string;
   serialNumber?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertBundleDTO = {
   id?: string;
   serialNumber?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertPkcs12DTO = {
   id?: string;
   serialNumber?: string;
   password: string;
   alias: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertificateCredentialsDTO = {
   certId: string;

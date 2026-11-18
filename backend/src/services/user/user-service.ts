@@ -1,17 +1,23 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -94,7 +100,9 @@ type TUserServiceFactoryDep = {
   >;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
@@ -116,7 +124,9 @@ export const userServiceFactory = ({
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService,
+  orgPermissionService,
+  actorContextService,
+  ssoSessionService,
   userAliasDAL,
   totpConfigDAL,
   webAuthnCredentialDAL,
@@ -776,10 +786,7 @@ export const userServiceFactory = ({
 
   const deleteUser = async (
     userId: string,
-    {
-      actorAuthMethod,
-      lastMemberOrganizationIds
-    }: { actorAuthMethod: ActorAuthMethod; lastMemberOrganizationIds?: string[] }
+    { actor, lastMemberOrganizationIds }: { actor: TActorContext; lastMemberOrganizationIds?: string[] }
   ) => {
     const {
       isOnlyServerAdmin,
@@ -825,16 +832,12 @@ export const userServiceFactory = ({
 
     for await (const org of lastMemberOrgs) {
       try {
-        await permissionService.getOrgPermission({
-          actor: ActorType.USER,
-          actorId: userId,
-          orgId: org.id,
-          actorOrgId: org.id,
-          actorAuthMethod,
-          scope: OrganizationActionScope.Any
-        });
+        const orgActor = await actorContextService.forPrincipal({ principal: actor.principal, orgId: org.id });
+        await orgPermissionService.getOrgPermission({ actor: orgActor, scope: OrganizationActionScope.Any });
+        const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(orgActor);
+        if (ssoRefusal) throw new ForbiddenRequestError({ message: ssoRefusal.message });
       } catch (error) {
-        if (!(error instanceof ForbiddenRequestError)) throw error;
+        if (!(error instanceof ForbiddenRequestError) && !(error instanceof PermissionDeniedError)) throw error;
         throw new ForbiddenRequestError({
           message: `Your current login cannot delete the organization '${org.name}': ${error.message} Log in to that organization and delete it, or delete your account from there; nothing was deleted.`
         });
@@ -1014,26 +1017,19 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
-  const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
+  const listUserGroups = async ({ username, actor }: TListUserGroupsDTO) => {
     // akhilmhdh: case sensitive email resolution
     const user = await userDAL.findOne({ username });
 
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
-    if (user.id !== actorId) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    if (user.id !== actor.principal.id) {
+      const permission = await orgPermissionService.getOrgPermission({ actor });
+      permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
     }
 
-    const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
+    const memberships = await groupProjectDAL.findByUserId(user.id, actor.org.id);
     return memberships;
   };
 

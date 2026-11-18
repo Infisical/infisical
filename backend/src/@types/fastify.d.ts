@@ -7,7 +7,7 @@ import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
+import { TActorContextService, TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
@@ -155,6 +155,7 @@ import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/ident
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
+import { TMemberPermissionAuditServiceFactory } from "@app/services/member-permission-audit/member-permission-audit-service";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
@@ -432,6 +433,8 @@ declare module "fastify" {
     kmsRootKeyService: TKmsRootKeyService;
     instanceConfigService: TInstanceConfigService;
     actorContextService: TActorContextService;
+    orgPermissionService: TOrgPermissionService;
+    memberPermissionAudit: TMemberPermissionAuditServiceFactory;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

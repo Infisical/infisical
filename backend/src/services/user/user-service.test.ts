@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { ActorType, AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
+import { BadRequestError } from "@app/lib/errors";
 
 import { userServiceFactory } from "./user-service";
 
@@ -547,6 +548,11 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
   });
 });
 
+const deleteActor = {
+  principal: { type: ActorType.USER, id: USER_ID, authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
+
 type TLastAdminOrg = { id: string; name: string; rootOrgId: string | null };
 
 const buildDeleteUserService = (
@@ -581,13 +587,22 @@ const buildDeleteUserService = (
     findOrgsWhereUserIsLastAdmin: vi.fn().mockResolvedValue(lastAdminOrgs)
   };
 
-  const permissionService = { getOrgPermission: vi.fn().mockResolvedValue({}) };
+  const orgPermissionService = { getOrgPermission: vi.fn().mockResolvedValue({}) };
+  const actorContextService = {
+    forPrincipal: vi.fn(async ({ principal, orgId }: { principal: unknown; orgId: string }) => ({
+      principal,
+      org: { id: orgId }
+    }))
+  };
+  const ssoSessionService = { findSsoSessionRefusal: vi.fn().mockResolvedValue(null) };
 
   const service = userServiceFactory({
     userDAL,
     orgDAL,
     orgDeletionService,
-    permissionService,
+    orgPermissionService,
+    actorContextService,
+    ssoSessionService,
     membershipUserDAL,
     pamSessionDAL: { findLiveByOrgAndUserIds: vi.fn().mockResolvedValue([]) },
     alertChannelRecipientDAL: { deleteByPrincipals: vi.fn() },
@@ -595,14 +610,24 @@ const buildDeleteUserService = (
     smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) }
   } as unknown as Parameters<typeof userServiceFactory>[0]);
 
-  return { service, calls, orgDAL, orgDeletionService, permissionService, userDAL, membershipUserDAL, tx };
+  return {
+    service,
+    calls,
+    orgDAL,
+    orgDeletionService,
+    orgPermissionService,
+    ssoSessionService,
+    userDAL,
+    membershipUserDAL,
+    tx
+  };
 };
 
 describe("deleteUser last member organizations", () => {
   test("refuses without confirmed organizations and names them", async () => {
     const { service, orgDeletionService, userDAL } = buildDeleteUserService([{ id: "org-1", name: "Acme" }]);
 
-    await expect(service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL })).rejects.toThrow(
+    await expect(service.deleteUser(USER_ID, { actor: deleteActor })).rejects.toThrow(
       /last member of the organization 'Acme'/
     );
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
@@ -616,7 +641,7 @@ describe("deleteUser last member organizations", () => {
     ]);
 
     await service.deleteUser(USER_ID, {
-      actorAuthMethod: AuthMethod.EMAIL,
+      actor: deleteActor,
       lastMemberOrganizationIds: ["org-2", "org-1"]
     });
 
@@ -635,7 +660,7 @@ describe("deleteUser last member organizations", () => {
     ]);
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: confirmed })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: confirmed })
     ).rejects.toThrow(/have changed.*'Acme', 'Beta'.*nothing was deleted/);
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
     expect(userDAL.deleteById).not.toHaveBeenCalled();
@@ -645,7 +670,7 @@ describe("deleteUser last member organizations", () => {
     const { service, orgDeletionService, userDAL } = buildDeleteUserService([]);
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
     ).rejects.toThrow(/no longer the last member/);
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
     expect(userDAL.deleteById).not.toHaveBeenCalled();
@@ -657,32 +682,30 @@ describe("deleteUser last member organizations", () => {
     userDAL.find.mockResolvedValue([{ id: USER_ID }]);
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
     ).rejects.toThrow(/only server admin/);
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 
   test("refuses and deletes nothing when the session does not satisfy an organization's SSO", async () => {
-    const { service, orgDeletionService, permissionService, userDAL } = buildDeleteUserService([
+    const { service, orgDeletionService, orgPermissionService, ssoSessionService, userDAL } = buildDeleteUserService([
       { id: "org-1", name: "Acme" },
       { id: "org-2", name: "Beta" }
     ]);
-    permissionService.getOrgPermission.mockImplementation(async ({ orgId }: { orgId: string }) => {
-      if (orgId === "org-2")
-        throw new ForbiddenRequestError({ message: "Login with SAML SSO to access this resource." });
-      return {};
-    });
+    ssoSessionService.findSsoSessionRefusal.mockImplementation(async ({ org }: { org: { id: string } }) =>
+      org.id === "org-2" ? { message: "Login with SAML SSO to access this resource." } : null
+    );
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1", "org-2"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1", "org-2"] })
     ).rejects.toThrow(/cannot delete the organization 'Beta'.*SAML SSO.*nothing was deleted/);
-    expect(permissionService.getOrgPermission).toHaveBeenCalledWith(
+    expect(orgPermissionService.getOrgPermission).toHaveBeenCalledWith(
       expect.objectContaining({
-        actorId: USER_ID,
-        orgId: "org-2",
-        actorOrgId: "org-2",
-        actorAuthMethod: AuthMethod.EMAIL
+        actor: expect.objectContaining({
+          principal: deleteActor.principal,
+          org: { id: "org-2" }
+        }) as unknown
       })
     );
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
@@ -706,7 +729,7 @@ describe("deleteUser last member organizations", () => {
       .mockResolvedValueOnce([]);
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
     ).rejects.toThrow(/Another member joined the organization 'Acme'/);
     expect(orgDAL.lockOrgTreeAccessForDeletion).toHaveBeenCalledWith("org-1", tx);
     expect(orgDAL.findOrgsWhereUserIsLastMember).toHaveBeenLastCalledWith(USER_ID, tx);
@@ -718,7 +741,7 @@ describe("deleteUser last member organizations", () => {
     orgDeletionService.deleteOrganization.mockRejectedValueOnce(new Error("boom"));
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
     ).rejects.toThrow("boom");
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
@@ -732,7 +755,7 @@ describe("deleteUser last admin organizations", () => {
     );
 
     await expect(
-      service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL, lastMemberOrganizationIds: ["org-1"] })
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
     ).rejects.toThrow(/only admin of the organization 'Beta'/);
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
     expect(userDAL.deleteById).not.toHaveBeenCalled();
@@ -773,7 +796,7 @@ describe("deleteUser last admin organizations", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: "org-a", name: "Acme", rootOrgId: null }]);
 
-    await expect(service.deleteUser(USER_ID, { actorAuthMethod: AuthMethod.EMAIL })).rejects.toThrow(
+    await expect(service.deleteUser(USER_ID, { actor: deleteActor })).rejects.toThrow(
       /now the only admin of the organization 'Acme'/
     );
     expect(tx.raw).toHaveBeenCalledTimes(2);

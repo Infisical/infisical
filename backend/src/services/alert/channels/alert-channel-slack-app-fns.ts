@@ -1,5 +1,6 @@
 import { ErrorCode, WebClient } from "@slack/web-api";
 
+import { TPermissionCheck } from "@app/domains/platform/access-control/ce/module";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import {
   OrgPermissionActions,
@@ -23,8 +24,8 @@ import { buildSlackPayload } from "./alert-channel-slack-fns";
 const SLACK_INTEGRATION_MISSING_MESSAGE =
   "The Slack integration this channel posts through no longer exists. Edit the alert and select another Slack integration.";
 
-export const SLACK_APP_REQUIRED_ORG_PERMISSION = {
-  permission: [OrgPermissionActions.Read, OrgPermissionSubjects.Settings] as OrgPermissionSet,
+export const SLACK_APP_REQUIRED_ORG_PERMISSION: { permission: TPermissionCheck<OrgPermissionSet>; message: string } = {
+  permission: { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings },
   message:
     "Posting through a Slack integration needs permission to read organization settings. Ask an organization admin, or use a Slack webhook URL instead."
 };

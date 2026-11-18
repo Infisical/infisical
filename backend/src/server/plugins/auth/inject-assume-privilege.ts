@@ -12,7 +12,6 @@ export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
         const decodedToken = await server.services.assumePrivileges.verifyAssumePrivilegeToken(
           assumeRoleCookie,
           req.auth.tokenVersionId,
-          req.auth.authMethod,
           req.auth.orgId
         );
         if (decodedToken) {

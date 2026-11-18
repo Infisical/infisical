@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export enum AgentVaultSkillFileMode {
   Regular = "0644",
@@ -7,7 +7,7 @@ export enum AgentVaultSkillFileMode {
 
 export type TAgentVaultSkillFile = { path: string; mode: AgentVaultSkillFileMode; contentBase64: string };
 
-export type TAgentVaultSkillScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultSkillScoped = { projectId: string; ctx: TActorContext };
 
 export type TCreateSkillDTO = TAgentVaultSkillScoped & { files: TAgentVaultSkillFile[] };
 

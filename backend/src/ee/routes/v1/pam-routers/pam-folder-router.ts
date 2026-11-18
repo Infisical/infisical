@@ -1,9 +1,9 @@
 import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamFolderCallerAccess, PamResourceRole } from "@app/ee/services/pam/pam-enums";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -38,7 +38,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
           .transform((v) => v === "true")
           .describe("Count only accounts that can launch a session toward each folder's accountCount"),
         filterByAction: z
-          .nativeEnum(ResourcePermissionPamResourceActions)
+          .nativeEnum(PamResourcePermissionActions)
           .optional()
           .describe("Filter folders to only those where the caller has this specific permission action"),
         includeNonMemberFolders: z
@@ -74,10 +74,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         onlyAccessible: req.query.onlyAccessible,
         filterByAction: req.query.filterByAction,
         includeNonMemberFolders: req.query.includeNonMemberFolders,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { folders };
     }
@@ -106,10 +103,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const { folder, membership, previousRole } = await server.services.pamFolder.grantAdminAccess({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -169,10 +163,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.pamFolder.getFolderPermissions({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { data };
     }
@@ -202,10 +193,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const folder = await server.services.pamFolder.getById({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { folder };
     }
@@ -232,10 +220,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const folder = await server.services.pamFolder.create({
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -292,10 +277,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         folderId: req.params.folderId,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -347,10 +329,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const folder = await server.services.pamFolder.deleteFolder({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

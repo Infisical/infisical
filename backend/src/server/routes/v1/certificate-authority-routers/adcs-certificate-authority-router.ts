@@ -52,10 +52,7 @@ export const registerADCSCertificateAuthorityRouter = async (server: FastifyZodP
       const templates = await server.services.certificateAuthority.getADCSTemplates({
         caId: req.params.caId,
         projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

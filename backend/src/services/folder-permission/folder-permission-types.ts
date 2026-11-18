@@ -1,6 +1,6 @@
 import { SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TFolderGrantActor = {
   actorId: string;
@@ -23,8 +23,7 @@ export type TResolvedFolder = {
   envId: string;
 };
 
-export type TCreateFolderGrantDTO = {
-  permission: OrgServiceActor;
+export type TCreateFolderGrantDTO = TActorInput & {
   projectId: string;
   environmentSlug: string;
   secretPath: string;
@@ -35,8 +34,7 @@ export type TCreateFolderGrantDTO = {
   isPermissionRecursive?: boolean;
 };
 
-export type TUpdateFolderGrantDTO = {
-  permission: OrgServiceActor;
+export type TUpdateFolderGrantDTO = TActorInput & {
   projectId: string;
   environmentSlug: string;
   secretPath: string;
@@ -48,22 +46,19 @@ export type TUpdateFolderGrantDTO = {
   isPermissionRecursive?: boolean;
 };
 
-export type TDeleteFolderGrantDTO = {
-  permission: OrgServiceActor;
+export type TDeleteFolderGrantDTO = TActorInput & {
   projectId: string;
   environmentSlug: string;
   secretPath: string;
   target: TFolderGrantActor;
 };
 
-export type TListActorFolderGrantsDTO = {
-  permission: OrgServiceActor;
+export type TListActorFolderGrantsDTO = TActorInput & {
   projectId: string;
   target: TFolderGrantActor;
 };
 
-export type TListFolderAccessActorsDTO = {
-  permission: OrgServiceActor;
+export type TListFolderAccessActorsDTO = TActorInput & {
   projectId: string;
   environmentSlug: string;
   secretPath: string;

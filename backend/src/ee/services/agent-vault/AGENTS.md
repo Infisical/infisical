@@ -151,13 +151,15 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - Audit events name actors through `agent-vault-actor-name-fns.ts`. Resolve names before the write, so a
   failed lookup can't leave a committed change unaudited, and attach a name only to an actor already proven
   to be in the org: the lookup isn't org-scoped.
-- Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
-  `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
-  count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.
+- Reachability has one implementation, `accessBundlePermissionService.getAccessBundlePermission` (and
+  `getGrantedAccessBundlePermission`, `findReachableAccessBundleIds`, `intersectAccessBundleIds`), and mint,
+  member-facing reads and resolve all call it. A group's grants count only while the group confers a live role.
+  Write no group-expansion SQL here. To check an actor other than the request's (a session's owner, an on-behalf-of
+  user, a member a delegation covers), build its context with `agentVaultActorContext`, never by hand.
 - Reachability is a service-layer filter (`whereIn` on ids, `null` for a role that reaches every bundle), not a CASL
   condition: conditions can interpolate only `identity.id`, `username` and `metadata`.
 - **The roles that reach every bundle are `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`** (admin alone), checked through
-  `hasRoleReachingEveryBundle`. A personal value save locks those role rows, the cleanup after a revoke keeps the values
+  `reachesEveryBundle` on the access bundle permission service, which keeps its own copy of the list in step. A personal value save locks those role rows, the cleanup after a revoke keeps the values
   of anyone holding one, and a delegation reads a group's reach from them, all filtering by that list, so a role added
   to it is added everywhere at once. Granting a role that reach is a decision about bundles, never a side effect of a
   permission.
@@ -185,7 +187,7 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
   (10 second marker), so a promotion or demotion can lag by that much on top of the proxy's poll.
 - Resolve requires a live session-read permission, not a membership row: a lapsed time-limited role leaves
-  its row behind, and `hasRoleReachingEveryBundle` alone would fall through as member. An actor removed from the project
+  its row behind, and a role row alone would fall through as member. An actor removed from the project
   surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
   the next poll instead of riding its grace window.
 - Removing an actor from an Agent Vault project does not revoke their sessions. The sessions resolve to nothing while
@@ -274,13 +276,14 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   member can send without a grant. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
   org member, as resolve requires.
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
-  can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
+  can use and the identity can't. Users and the identity go through `accessBundlePermissionService.getAccessBundlePermission`, the call mint
   uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
   group never holds a session. The list leaves it out, because it reads every covered user's access. The write works
   it out after its transaction commits and after the router writes the audit event, so a failure there can't leave a
   committed save unaudited.
-- **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
-  the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
+- **Mint checks the user's access, then the caller's once more.** The permission functions, wrapped by
+  `withProjectAuditContext` in `server/routes/index.ts`, leave the last actor they ran for in the request context,
+  where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
 - **The user's Read on sessions is checked with `can()`, not thrown through CASL**, at mint as on every resolve: the
   identity starts the session, so the user only needs a live Agent Vault role. A CASL denial would be recorded against
@@ -935,7 +938,7 @@ an installed copy.
   response. The dashboard doesn't show the built-in skill; the docs point readers to this endpoint and to the copy
   `agent-vault run` installs.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
-  (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
+  (`getAccessBundlePermission`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
   Listing versions checks `Edit`, so it is admin only. Creating, updating, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
   bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). A project

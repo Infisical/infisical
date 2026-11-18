@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { TExternalKmsGcpSchema, TExternalKmsInputSchema, TExternalKmsInputUpdateSchema } from "./providers/model";
 
@@ -6,28 +6,27 @@ export type TCreateExternalKmsDTO = {
   name?: string;
   description?: string;
   provider: TExternalKmsInputSchema;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TUpdateExternalKmsDTO = {
   id: string;
   name?: string;
   description?: string;
   provider?: TExternalKmsInputUpdateSchema;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TDeleteExternalKmsDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
-export type TListExternalKmsDTO = Omit<TOrgPermission, "orgId">;
+export type TListExternalKmsDTO = TActorInput;
 
 export type TGetExternalKmsByIdDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TGetExternalKmsBySlugDTO = {
   name: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
-export type TFetchGcpKmsKeysDTO = Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion"> &
-  Omit<TOrgPermission, "orgId">;
+export type TFetchGcpKmsKeysDTO = Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion"> & TActorInput;

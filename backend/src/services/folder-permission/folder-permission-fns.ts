@@ -1,6 +1,6 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-
-import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
+import { SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -8,16 +8,13 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { recursiveFolderPathGlob, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
@@ -94,18 +91,11 @@ export const resolveFolder = async (
 // fetched before the folder is resolved so a caller without project access gets a permission error
 // and cannot probe which environments and folder paths exist in another project
 export const getFolderAccessPermission = async (
-  permission: OrgServiceActor,
+  actor: TActorContext,
   projectId: string,
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">
+  secretsPermissionService: TSecretsPermissionService
 ) => {
-  const { permission: callerPermission } = await permissionService.getProjectPermission({
-    actor: permission.type,
-    actorId: permission.id,
-    projectId,
-    actorAuthMethod: permission.authMethod,
-    actorOrgId: permission.orgId,
-    actionProjectType: ActionProjectType.SecretManager
-  });
+  const { permission: callerPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
   return callerPermission;
 };
 
@@ -114,15 +104,9 @@ export const assertReadActorGrantsAccess = (
   target: TFolderGrantActor
 ) => {
   if (target.actorType === ActorType.USER) {
-    ForbiddenError.from(callerPermission).throwUnlessCan(
-      ProjectPermissionMemberActions.Read,
-      ProjectPermissionSub.Member
-    );
+    callerPermission.assert({ action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member });
   } else {
-    ForbiddenError.from(callerPermission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionSub.Identity
-    );
+    callerPermission.assert({ action: ProjectPermissionIdentityActions.Read, subject: ProjectPermissionSub.Identity });
   }
 };
 
@@ -130,13 +114,14 @@ export const assertManageFolderAccess = (
   callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
   folder: TResolvedFolder
 ) => {
-  ForbiddenError.from(callerPermission).throwUnlessCan(
-    ProjectPermissionSecretFolderActions.ManageAccess,
-    subject(ProjectPermissionSub.SecretFolders, {
+  callerPermission.assert({
+    action: ProjectPermissionSecretFolderActions.ManageAccess,
+    subject: ProjectPermissionSub.SecretFolders,
+    fields: {
       environment: folder.environmentSlug,
       secretPath: folder.path
-    })
-  );
+    }
+  });
 };
 
 export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
@@ -148,21 +133,20 @@ export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
 };
 
 export const assertManageFolderSubtree = (
-  callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
+  callerPermission: Permission<ProjectPermissionSet>,
   folder: TResolvedFolder,
   operation: "apply" | "remove" = "apply"
 ) => {
-  const subtreeManageAccess = createMongoAbility<ProjectPermissionSet>(
-    [
+  const subtreeManageAccess = Permission.fromRules<ProjectPermissionSet>({
+    rules: [
       {
         action: ProjectPermissionSecretFolderActions.ManageAccess,
         subject: ProjectPermissionSub.SecretFolders,
         conditions: { environment: folder.environmentSlug, secretPath: { $glob: recursiveFolderPathGlob(folder.path) } }
       }
-    ] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-    { conditionsMatcher }
-  );
-  const { isValid } = validatePermissionBoundary(callerPermission, subtreeManageAccess);
+    ]
+  }).toAbility();
+  const { isValid } = validatePermissionBoundary(callerPermission.toAbility(), subtreeManageAccess);
   if (!isValid) {
     logger.warn({ callerPermission, subtreeManageAccess }, "assertManageFolderSubtree: invalid permission boundary");
     throw new ForbiddenRequestError({

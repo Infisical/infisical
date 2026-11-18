@@ -1,5 +1,6 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateIssuanceCaller } from "@app/services/certificate-common/certificate-permission-fns";
 
 import { CertificateIssuanceOperation, CertificateRequestStatus } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
@@ -11,8 +12,8 @@ export type TSubjectAlternativeName = {
   value: string;
 };
 
-export type TCreateCertificateRequestDTO = TProjectPermission & {
-  internal?: boolean;
+export type TCreateCertificateRequestDTO = {
+  projectId: string;
   profileId?: string;
   applicationId?: string;
   caId?: string;
@@ -42,13 +43,17 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   state?: string;
   locality?: string;
   domainComponents?: string[];
-};
+} & (
+  | { internal: true; actor?: undefined; enrollment?: undefined }
+  | (TCertificateIssuanceCaller & { internal?: false })
+);
 
-export type TGetCertificateRequestDTO = TProjectPermission & {
+export type TGetCertificateRequestDTO = TActorInput & {
+  projectId: string;
   certificateRequestId: string;
 };
 
-export type TGetCertificateFromRequestDTO = Omit<TProjectPermission, "projectId"> & {
+export type TGetCertificateFromRequestDTO = TActorInput & {
   certificateRequestId: string;
 };
 
@@ -66,7 +71,8 @@ export type TAttachCertificateToRequestDTO = {
   certificateId: string;
 };
 
-export type TListCertificateRequestsDTO = TProjectPermission & {
+export type TListCertificateRequestsDTO = TActorInput & {
+  projectId: string;
   offset?: number;
   limit?: number;
   search?: string;

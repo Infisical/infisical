@@ -1,20 +1,18 @@
 import net from "node:net";
 
-import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import {
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TGatewaysV2Update,
-  TRelays
-} from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TGatewaysV2Update, TRelays } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getReportedCliVersion } from "@app/lib/cli-version/cli-version-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -25,7 +23,6 @@ import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker"
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
   createSerialNumber,
@@ -45,7 +42,6 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountType } from "../pam/pam-enums";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
@@ -77,7 +73,7 @@ type TGatewayV2ServiceFactoryDep = {
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -122,7 +118,7 @@ export const gatewayV2ServiceFactory = ({
   relayService,
   gatewayV2DAL,
   relayDAL,
-  permissionService,
+  orgPermissionService,
   orgDAL,
   notificationService,
   appConnectionDAL,
@@ -133,20 +129,10 @@ export const gatewayV2ServiceFactory = ({
   pamAccountTemplateDAL,
   resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
-  const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: ActorType.IDENTITY,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId: orgId
-    });
+  const $validateIdentityAccessToGateway = async (actor: TActorContext) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.CreateGateways, subject: OrgPermissionSubjects.Gateway });
   };
 
   const $getOrgCAs = async (orgId: string) => {
@@ -323,23 +309,13 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
-  const listGateways = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+  const listGateways = async ({ orgPermission }: { orgPermission: TActorContext }) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway });
 
     const gateways = await gatewayV2DAL.find({
-      orgId: orgPermission.orgId
+      orgId: orgPermission.org.id
     });
 
     if (gateways.length === 0) {
@@ -825,20 +801,14 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const registerGateway = async ({
-    orgId,
-    actorId,
-    actorType,
-    actorAuthMethod,
+    actor,
     relayName,
     directAddress,
     name,
     tokenVersion,
     userAgent
   }: {
-    orgId: string;
-    actorId: string;
-    actorType: ActorType;
-    actorAuthMethod: ActorAuthMethod;
+    actor: TActorContext;
     relayName?: string;
     directAddress?: string;
     name?: string;
@@ -854,11 +824,13 @@ export const gatewayV2ServiceFactory = ({
       // Once per address change rather than once per dial, since this resolves DNS.
       await assertHostNotInfisicalInfrastructure({ host });
     }
+    const orgId = actor.org.id;
+    const actorId = actor.principal.id;
     const orgCAs = await $getOrgCAs(orgId);
 
     // Enrollment-flow gateways authenticate with GATEWAY_ACCESS_TOKEN — the gateway row
     // already exists, so we just look it up and issue fresh certs using its stored relay.
-    if (actorType === ActorType.GATEWAY) {
+    if (actor.principal.type === ActorType.GATEWAY) {
       const gateway = await gatewayV2DAL.findById(actorId);
       if (!gateway || gateway.orgId !== orgId) {
         throw new NotFoundError({ message: `Gateway ${actorId} not found` });
@@ -889,7 +861,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     // Identity-based flow: upsert the gateway row then issue certs.
-    await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
+    await $validateIdentityAccessToGateway(actor);
 
     if (!name) {
       throw new BadRequestError({ message: "Gateway name is required" });
@@ -1078,25 +1050,15 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
-  const triggerHeartbeat = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
-    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
+  const triggerHeartbeat = async ({ orgPermission, id }: { orgPermission: TActorContext; id: string }) => {
+    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.org.id });
     if (!gateway) {
       throw new NotFoundError({ message: `Gateway ${id} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: gateway.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission, orgId: gateway.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway });
 
     await $checkAllGatewayTransports(gateway.id);
   };
@@ -1106,7 +1068,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities,
     userAgent
   }: {
-    orgPermission: OrgServiceActor;
+    orgPermission: TActorContext;
     userAgent?: string;
     capabilities?: {
       pkcs11?: boolean;
@@ -1122,25 +1084,25 @@ export const gatewayV2ServiceFactory = ({
     const nextCapabilities = capabilities ?? {};
     const cliVersionFields = getCliVersionFields(userAgent);
 
-    if (orgPermission.type === ActorType.GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(orgPermission.id);
-      if (!gateway || gateway.orgId !== orgPermission.orgId) {
-        throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
+    if (orgPermission.principal.type === ActorType.GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(orgPermission.principal.id);
+      if (!gateway || gateway.orgId !== orgPermission.org.id) {
+        throw new NotFoundError({ message: `Gateway ${orgPermission.principal.id} not found.` });
       }
       await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
       await $checkAllGatewayTransports(gateway.id);
       return;
     }
 
-    await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+    await $validateIdentityAccessToGateway(orgPermission);
 
     const gateway = await gatewayV2DAL.findOne({
-      orgId: orgPermission.orgId,
-      identityId: orgPermission.id
+      orgId: orgPermission.org.id,
+      identityId: orgPermission.principal.id
     });
 
     if (!gateway) {
-      throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
+      throw new NotFoundError({ message: `Gateway for identity ${orgPermission.principal.id} not found.` });
     }
 
     await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities, ...cliVersionFields });
@@ -1151,21 +1113,21 @@ export const gatewayV2ServiceFactory = ({
     orgPermission,
     activeChannels
   }: {
-    orgPermission: OrgServiceActor;
+    orgPermission: TActorContext;
     activeChannels: number;
   }) => {
     let gateway;
-    if (orgPermission.type === ActorType.GATEWAY) {
-      gateway = await gatewayV2DAL.findById(orgPermission.id);
+    if (orgPermission.principal.type === ActorType.GATEWAY) {
+      gateway = await gatewayV2DAL.findById(orgPermission.principal.id);
     } else {
       // Same check heartbeat makes: an identity whose gateway permission was revoked must not keep
       // submitting occupancy values and steering pool routing.
-      await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
-      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+      await $validateIdentityAccessToGateway(orgPermission);
+      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.org.id, identityId: orgPermission.principal.id });
     }
 
-    if (!gateway || gateway.orgId !== orgPermission.orgId) {
-      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
+    if (!gateway || gateway.orgId !== orgPermission.org.id) {
+      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.principal.id}' not found` });
     }
 
     // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
@@ -1176,25 +1138,15 @@ export const gatewayV2ServiceFactory = ({
     return { gatewayId: gateway.id, activeChannels };
   };
 
-  const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
-    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
+  const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: TActorContext; id: string }) => {
+    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.org.id });
     if (!gateway) {
       throw new NotFoundError({ message: `Gateway ${id} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: gateway.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission, orgId: gateway.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.DeleteGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.DeleteGateways, subject: OrgPermissionSubjects.Gateway });
 
     const proxyDependents = await resourceAuthMethodService.findKubernetesProxyDependents(gateway.id);
     if (proxyDependents.length) {
@@ -1228,33 +1180,25 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
-  const getPamSessionKey = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+  const getPamSessionKey = async ({ orgPermission }: { orgPermission: TActorContext }) => {
     // Gateway actors are already authenticated via GATEWAY_ACCESS_TOKEN JWT — skip org permission check.
-    if (orgPermission.type !== ActorType.GATEWAY) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: orgPermission.type,
-        actorId: orgPermission.id,
-        orgId: orgPermission.orgId,
-        actorAuthMethod: orgPermission.authMethod,
-        actorOrgId: orgPermission.orgId,
-        scope: OrganizationActionScope.Any
-      });
+    if (orgPermission.principal.type !== ActorType.GATEWAY) {
+      const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayActions.CreateGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      permission.assert({ action: OrgPermissionGatewayActions.CreateGateways, subject: OrgPermissionSubjects.Gateway });
     }
 
     // Fetched before the transaction: calling KMS Core inside it without joining would grab a second pool connection.
     const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
+      orgId: orgPermission.org.id
     });
 
     return gatewayV2DAL.transaction(async (tx) => {
       const gateway = await gatewayV2DAL.findOne(
-        orgPermission.type === ActorType.GATEWAY ? { id: orgPermission.id } : { identityId: orgPermission.id },
+        orgPermission.principal.type === ActorType.GATEWAY
+          ? { id: orgPermission.principal.id }
+          : { identityId: orgPermission.principal.id },
         tx
       );
 
@@ -1345,27 +1289,17 @@ export const gatewayV2ServiceFactory = ({
     orgPermission,
     gatewayId
   }: {
-    orgPermission: OrgServiceActor;
+    orgPermission: TActorContext;
     gatewayId: string;
   }) => {
-    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.org.id });
     if (!gateway) {
       throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: gateway.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission, orgId: gateway.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway });
 
     const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs, pamAccounts, pamAccountTemplates] =
       await Promise.all([
@@ -1397,25 +1331,15 @@ export const gatewayV2ServiceFactory = ({
 
   // --- V3 service methods ---
 
-  const $assertCanEditGateway = async (orgPermission: OrgServiceActor, gatewayId: string) => {
-    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+  const $assertCanEditGateway = async (orgPermission: TActorContext, gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.org.id });
     if (!gateway) {
       throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: gateway.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: orgPermission, orgId: gateway.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.EditGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.EditGateways, subject: OrgPermissionSubjects.Gateway });
 
     return gateway;
   };
@@ -1428,14 +1352,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     name
   }: {
-    orgPermission: OrgServiceActor;
+    orgPermission: TActorContext;
     gatewayId: string;
     name: string;
   }) => {
     const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
     if (gateway.name === name) return;
 
-    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, name });
+    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.org.id, name });
     if (existing && existing.id !== gatewayId) {
       throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
     }
@@ -1446,7 +1370,7 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     name
   }: {
-    orgPermission: OrgServiceActor;
+    orgPermission: TActorContext;
     gatewayId: string;
     name: string;
   }) => {
@@ -1466,17 +1390,11 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const createGateway = async ({
-    orgId,
-    actorId,
-    actorType,
-    actorAuthMethod,
+    actor,
     name,
     authMethod
   }: {
-    orgId: string;
-    actorId: string;
-    actorType: ActorType;
-    actorAuthMethod: ActorAuthMethod;
+    actor: TActorContext;
     name: string;
     authMethod:
       | { method: "aws"; config: TAwsAuthMethodConfig }
@@ -1484,30 +1402,16 @@ export const gatewayV2ServiceFactory = ({
       | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
       | { method: "token" };
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actorType,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId: orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const orgId = actor.org.id;
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.CreateGateways, subject: OrgPermissionSubjects.Gateway });
 
     // The host check (DNS) and the secret encryption (possibly an external KMS) both reach
     // the network, so they run before the transaction is opened rather than inside it.
     let authMethodArg = authMethod;
     if (authMethod.method === "kubernetes") {
-      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId, undefined, {
-        type: actorType,
-        id: actorId,
-        orgId,
-        authMethod: actorAuthMethod
-      });
+      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId, undefined, actor);
       authMethodArg = {
         method: authMethod.method,
         config: {

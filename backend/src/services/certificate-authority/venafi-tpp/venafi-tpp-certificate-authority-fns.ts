@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -12,7 +13,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -382,7 +382,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateVenafiTppCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, policyDN } = configuration;
     const appConnection = await appConnectionDAL.findById(appConnectionId);
@@ -458,7 +458,7 @@ export const VenafiTppCertificateAuthorityFns = ({
   }: {
     id: string;
     configuration?: TUpdateVenafiTppCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     status?: CaStatus;
     name?: string;
   }) => {

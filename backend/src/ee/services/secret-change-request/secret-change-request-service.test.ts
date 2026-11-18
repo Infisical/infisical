@@ -2,7 +2,9 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -167,6 +169,8 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
+  const permission: Record<string, unknown> = { can: vi.fn().mockReturnValue(false), hasRole };
+  permission.toAbility = () => permission;
   const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true });
   vi.spyOn(licenseService, "getPlan");
   const deps = {
@@ -231,8 +235,8 @@ const buildService = ({
       findBySecretChangeIdBridgeSecretV2: vi.fn().mockResolvedValue(COMMIT_ROWS),
       findCommitsBySecretChangeIds: vi.fn().mockResolvedValue([])
     },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ hasRole, permission: { can: vi.fn().mockReturnValue(false) } })
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission, folderGrants: FolderGrants.none() })
     },
     membershipUserDAL: {
       find: vi.fn().mockResolvedValue([{ actorUserId: "approver-1", isActive: true }])
@@ -268,19 +272,33 @@ const buildService = ({
   return { service, deps, hasRole };
 };
 
-const dto = (overrides: Record<string, unknown> = {}) => ({
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null,
-  projectId: "project-1",
-  environment: "dev",
-  secretPath: "/",
-  commitMessage: "msg",
-  policy: { id: "policy-1" },
-  data: { [SecretOperations.Create]: [{ secretKey: "NEW_KEY", secretValue: "v" }] },
-  ...overrides
+// The cases override the actor as flat fields; the service takes them as an actor context.
+const asActorContext = ({
+  actor = ActorType.USER,
+  actorId,
+  actorOrgId = "org-1",
+  ...rest
+}: Record<string, unknown>) => ({
+  ...rest,
+  actor: {
+    principal: { type: actor, id: actorId, authMethod: null },
+    org: { id: actorOrgId, rootOrgId: actorOrgId, parentOrgId: null }
+  } as unknown as TActorContext
 });
+
+const dto = (overrides: Record<string, unknown> = {}) =>
+  asActorContext({
+    actor: ActorType.USER,
+    actorId: "user-1",
+    actorOrgId: "org-1",
+    projectId: "project-1",
+    environment: "dev",
+    secretPath: "/",
+    commitMessage: "msg",
+    policy: { id: "policy-1" },
+    data: { [SecretOperations.Create]: [{ secretKey: "NEW_KEY", secretValue: "v" }] },
+    ...overrides
+  });
 
 type TGenerateInput = Parameters<
   ReturnType<typeof buildService>["service"]["generateSecretApprovalRequestV2Bridge"]
@@ -477,24 +495,30 @@ describe("secretChangeRequest reviewApproval", () => {
   });
 
   const review = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.reviewApproval({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      status: ApprovalStatus.APPROVED,
-      comment: "ship it",
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["reviewApproval"]>[0]);
+    service.reviewApproval(
+      asActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        status: ApprovalStatus.APPROVED,
+        comment: "ship it",
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["reviewApproval"]>[0]
+    );
 
   test("records an approver's decision on the current step under the request lock and queues the webhook", async () => {
     const { service, deps } = buildService();
 
     const result = await review(service);
 
-    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
-      expect.objectContaining({ actor: ActorType.USER, actorId: "approver-1", projectId: "project-1" })
+    expect(deps.secretsPermissionService.getSecretsPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({
+          principal: expect.objectContaining({ id: "approver-1" }) as unknown
+        }) as unknown,
+        projectId: "project-1"
+      })
     );
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
@@ -555,7 +579,7 @@ describe("secretChangeRequest reviewApproval", () => {
 
     hasRole.mockReturnValueOnce(true);
     await expect(review(service, { actorId: "outsider" })).resolves.toMatchObject({ reviewerUserId: "outsider" });
-    expect(hasRole).toHaveBeenCalledWith(ProjectMembershipRole.Admin);
+    expect(hasRole).toHaveBeenCalledWith({ slug: ProjectMembershipRole.Admin });
 
     await expect(review(service, { actorId: "user-1" })).resolves.toMatchObject({ reviewerUserId: "user-1" });
 
@@ -671,14 +695,15 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
   });
 
   const merge = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.mergeSecretApprovalRequest({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["mergeSecretApprovalRequest"]>[0]);
+    service.mergeSecretApprovalRequest(
+      asActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["mergeSecretApprovalRequest"]>[0]
+    );
 
   test("applies the commits under the request lock, closes the request and reports the merge", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
@@ -997,15 +1022,16 @@ describe("secretChangeRequest updateApprovalStatus", () => {
   });
 
   const setStatus = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.updateApprovalStatus({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      status: RequestState.Closed,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["updateApprovalStatus"]>[0]);
+    service.updateApprovalStatus(
+      asActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        status: RequestState.Closed,
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["updateApprovalStatus"]>[0]
+    );
 
   test("closes an open request on both tables under the request lock and queues the webhook", async () => {
     const { service, deps } = buildService();
@@ -1261,14 +1287,15 @@ describe("secretChangeRequest getSecretApprovalDetails", () => {
   };
 
   const details = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.getSecretApprovalDetails({
-      id: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["getSecretApprovalDetails"]>[0]);
+    service.getSecretApprovalDetails(
+      asActorContext({
+        id: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["getSecretApprovalDetails"]>[0]
+    );
 
   const buildDetailsService = (overrides: Parameters<typeof buildService>[0] = {}) => {
     const built = buildService({ requestSteps: [reviewedStep], ...overrides });
@@ -1351,9 +1378,15 @@ describe("secretChangeRequest getSecretApprovalDetails", () => {
 
     await expect(details(service, { actorId: "stranger" })).rejects.toBeInstanceOf(ForbiddenRequestError);
 
-    deps.permissionService.getProjectPermission.mockResolvedValueOnce({
-      hasRole,
-      permission: { can: vi.fn().mockReturnValue(true) }
+    deps.secretsPermissionService.getSecretsPermission.mockResolvedValueOnce({
+      permission: {
+        can: vi.fn().mockReturnValue(true),
+        hasRole,
+        toAbility() {
+          return this;
+        }
+      },
+      folderGrants: FolderGrants.none()
     });
     await expect(details(service, { actorId: "stranger" })).resolves.toMatchObject({ id: "request-1" });
 
@@ -1461,13 +1494,17 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
     committerIdentityName: null
   };
   const filter = { projectId: "project-1", userId: "approver-1", limit: 20, offset: 0 };
-  const listDto = {
+  const listDto = asActorContext({
     actor: ActorType.USER,
     actorId: "approver-1",
     actorOrgId: "org-1",
-    actorAuthMethod: null,
     projectId: "project-1"
-  } as unknown as Parameters<ReturnType<typeof buildService>["service"]["getSecretApprovals"]>[0];
+  }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["getSecretApprovals"]>[0];
+  const serviceTokenDto = asActorContext({
+    actor: ActorType.SERVICE,
+    actorId: "token-1",
+    projectId: "project-1"
+  }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["getSecretApprovals"]>[0];
 
   test("hydrates the page in batches and maps it onto the list shape", async () => {
     const { service, deps } = buildService({
@@ -1545,8 +1582,9 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
 
   test("lists every request for a caller who can read all secret approval requests", async () => {
     const { service, deps } = buildService();
-    deps.permissionService.getProjectPermission.mockResolvedValueOnce({
-      permission: { can: vi.fn().mockReturnValue(true) }
+    deps.secretsPermissionService.getSecretsPermission.mockResolvedValueOnce({
+      permission: { can: vi.fn().mockReturnValue(true) },
+      folderGrants: FolderGrants.none()
     });
 
     await service.getSecretApprovals(listDto);
@@ -1557,13 +1595,9 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
   test("refuses a service token before reading anything", async () => {
     const { service, deps } = buildService();
 
-    await expect(service.getSecretApprovals({ ...listDto, actor: ActorType.SERVICE })).rejects.toThrow(
-      "Cannot use service token"
-    );
-    await expect(service.requestCount({ ...listDto, actor: ActorType.SERVICE })).rejects.toThrow(
-      "Cannot use service token"
-    );
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    await expect(service.getSecretApprovals(serviceTokenDto)).rejects.toThrow("Cannot use service token");
+    await expect(service.requestCount(serviceTokenDto)).rejects.toThrow("Cannot use service token");
+    expect(deps.secretsPermissionService.getSecretsPermission).not.toHaveBeenCalled();
   });
 
   test("marks a request whose policy is gone and skips the follow-up reads on an empty page", async () => {

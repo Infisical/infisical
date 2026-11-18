@@ -2,47 +2,46 @@ import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@ca
 import { PackRule, packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ProjectType, ResourceType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import {
+  PamAccountRoles,
+  PamFolderRoles,
+  PamResourcePermissionActions,
+  PamResourcePermissionSet,
+  PamResourcePermissionSub,
+  TPamPermissionService
+} from "@app/domains/pam/pam/ce/module";
+import { Grant, TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { isActiveRole } from "../permission/permission-fns";
-import { resolveResourceRoleRules } from "../permission/permission-service";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSet,
-  ResourcePermissionSub
-} from "../permission/resource-permission";
+const folderRoles = new PamFolderRoles();
+const accountRoles = new PamAccountRoles();
 
-export type TActorContext = {
-  actorId: string;
-  actor: ActorType;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
-
-const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceActions): boolean => {
+const pamRoleHasAction = (role: string, action: PamResourcePermissionActions): boolean => {
   try {
-    const rules = resolveResourceRoleRules(ResourceType.PamFolder, role);
+    const rules = folderRoles.rulesFor(Grant.restore({ slug: role }));
     const ability = createMongoAbility(rules);
-    return ability.can(action, ResourcePermissionSub.PamResource);
+    return ability.can(action, PamResourcePermissionSub.PamResource);
   } catch {
     return false;
   }
 };
 
-type TPermissionDep = Pick<TPermissionServiceFactory, "getResourcePermission">;
-type TProjectPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
+type TPamDep = Pick<TPamPermissionService, "getPamPermission">;
+type TProjectsDep = Pick<TProjectPermissionService, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 type TBatchMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
 type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
 
 type TPamActionFilter = {
-  allOf?: ResourcePermissionPamResourceActions[];
-  anyOf?: ResourcePermissionPamResourceActions[];
+  allOf?: PamResourcePermissionActions[];
+  anyOf?: PamResourcePermissionActions[];
 };
 
 type TPamActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
@@ -65,75 +64,49 @@ const activeRoleByMembershipId = (roles: Awaited<ReturnType<TMembershipRoleDALFa
   );
 };
 
-export const verifyProductMembership = async (
-  permissionService: TProjectPermissionDep,
+export const verifyProductMembership = (
+  projectPermissionService: TProjectsDep,
   projectId: string,
   ctx: TActorContext
-) => {
-  const { hasRole } = await permissionService.getProjectPermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId,
-    actionProjectType: ActionProjectType.PAM
-  });
-  return { hasRole };
-};
+) => projectPermissionService.getProjectPermission({ actor: ctx, projectId, type: ProjectType.PAM });
 
-export const checkFolderPermission = async (
-  permissionService: TPermissionDep,
+export const checkFolderPermission = (
+  pamPermissionService: TPamDep,
   folderId: string,
   projectId: string,
   ctx: TActorContext
-) => {
-  return permissionService.getResourcePermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    resourceType: ResourceType.PamFolder,
-    resourceId: folderId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId
-  });
-};
+) => pamPermissionService.getPamPermission({ actor: ctx, projectId, folderId });
 
+// The folder's roles and the account's count together. A folder member the folder does not give the action, with no
+// role on the account, is refused as a non-member of the account, as when the account was checked on its own.
 export const checkAccountAccess = async (
-  permissionService: TPermissionDep,
+  pamPermissionService: TPamDep,
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
-  action: ResourcePermissionPamResourceActions,
+  action: PamResourcePermissionActions,
   ctx: TActorContext
 ) => {
-  if (folderId) {
-    try {
-      const { permission } = await checkFolderPermission(permissionService, folderId, projectId, ctx);
-      ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
-      return;
-    } catch (err) {
-      // No folder access: fall back to direct account access
-      if (!(err instanceof ForbiddenError) && !(err instanceof ForbiddenRequestError)) throw err;
-    }
+  const permission = await pamPermissionService.getPamPermission({ actor: ctx, projectId, folderId, accountId });
+  const check = { action, subject: PamResourcePermissionSub.PamResource };
+  const { memberships } = permission;
+  if (
+    folderId &&
+    !permission.isProjectAdmin &&
+    memberships.length > 0 &&
+    memberships.every((membership) => membership.resourceId !== accountId) &&
+    permission.cannot(check)
+  ) {
+    throw new ForbiddenRequestError({ message: `You are not a member of this ${ResourceType.PamAccount}.` });
   }
-
-  const { permission } = await permissionService.getResourcePermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    resourceType: ResourceType.PamAccount,
-    resourceId: accountId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId
-  });
-  ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
+  permission.assert(check);
 };
 
 const findActivePamMemberships = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
-  ctx: Pick<TActorContext, "actor" | "actorId">,
+  actor: { type: ActorType; id: string },
   tx?: Knex,
   isRelevant: (membership: { scopeResourceId?: string | null }) => boolean = () => true
 ) => {
@@ -142,8 +115,8 @@ const findActivePamMemberships = async (
       {
         projectId,
         resourceType: ResourceType.PamFolder,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
+        actorType: actor.type,
+        actorId: actor.id
       },
       tx
     ),
@@ -151,8 +124,8 @@ const findActivePamMemberships = async (
       {
         projectId,
         resourceType: ResourceType.PamAccount,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
+        actorType: actor.type,
+        actorId: actor.id
       },
       tx
     )
@@ -176,13 +149,13 @@ export const getLaunchAccessRemainingMs = async (
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
   account: { id: string; folderId?: string | null },
-  ctx: Pick<TActorContext, "actor" | "actorId">
+  actor: { type: ActorType; id: string }
 ): Promise<number | null> => {
   const { folderMemberships, accountMemberships, roles } = await findActivePamMemberships(
     membershipDAL,
     membershipRoleDAL,
     projectId,
-    ctx,
+    actor,
     undefined,
     (m) => m.scopeResourceId === account.id || (Boolean(account.folderId) && m.scopeResourceId === account.folderId)
   );
@@ -195,7 +168,8 @@ export const getLaunchAccessRemainingMs = async (
   if (membershipIds.size === 0) return 0;
 
   const grantingRoles = roles.filter(
-    (r) => isActiveRole(r) && pamRoleHasAction(r.role, ResourcePermissionPamResourceActions.LaunchSessions)
+    (r) =>
+      TemporaryAccess.restore(r).isActive() && pamRoleHasAction(r.role, PamResourcePermissionActions.LaunchSessions)
   );
   if (grantingRoles.some((r) => !r.isTemporary)) return null;
 
@@ -205,18 +179,20 @@ export const getLaunchAccessRemainingMs = async (
 
 // Non-throwing counterpart to checkAccountAccess, for deciding what a caller may do.
 export const accountAccessAllows = async (
-  permissionService: TPermissionDep,
+  pamPermissionService: TPamDep,
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
-  action: ResourcePermissionPamResourceActions,
+  action: PamResourcePermissionActions,
   ctx: TActorContext
 ): Promise<boolean> => {
   try {
-    await checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+    await checkAccountAccess(pamPermissionService, accountId, folderId, projectId, action, ctx);
     return true;
   } catch (err) {
-    if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError) return false;
+    if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionDeniedError) {
+      return false;
+    }
     throw err;
   }
 };
@@ -235,7 +211,13 @@ export const getResourceIdsWithActions = async (
     folderMemberships: activeFolderMemberships,
     accountMemberships: activeAccountMemberships,
     roles
-  } = await findActivePamMemberships(membershipDAL, membershipRoleDAL, projectId, ctx, tx);
+  } = await findActivePamMemberships(
+    membershipDAL,
+    membershipRoleDAL,
+    projectId,
+    { type: ctx.principal.type, id: ctx.principal.id },
+    tx
+  );
   const roleByMembershipId = activeRoleByMembershipId(roles);
 
   const folderIds = activeFolderMemberships
@@ -315,21 +297,21 @@ export const getAccountPermissionRulesMap = async (
   accounts: { id: string; folderId?: string | null }[],
   ctx: TActorContext
 ) => {
-  const permissionsByAccountId = new Map<string, PackRule<RawRuleOf<MongoAbility<ResourcePermissionSet>>>[]>();
+  const permissionsByAccountId = new Map<string, PackRule<RawRuleOf<MongoAbility<PamResourcePermissionSet>>>[]>();
   if (accounts.length === 0) return permissionsByAccountId;
 
   const [folderMemberships, accountMemberships] = await Promise.all([
     membershipDAL.findResourceMembershipsForActor({
       projectId,
       resourceType: ResourceType.PamFolder,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
+      actorType: ctx.principal.type,
+      actorId: ctx.principal.id
     }),
     membershipDAL.findResourceMembershipsForActor({
       projectId,
       resourceType: ResourceType.PamAccount,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
+      actorType: ctx.principal.type,
+      actorId: ctx.principal.id
     })
   ]);
 
@@ -366,14 +348,16 @@ export const getAccountPermissionRulesMap = async (
 
   const rulesForRole = (resourceType: ResourceType, role: string) => {
     try {
-      return resolveResourceRoleRules(resourceType, role);
+      return (resourceType === ResourceType.PamFolder ? folderRoles : accountRoles).rulesFor(
+        Grant.restore({ slug: role })
+      );
     } catch {
       return [];
     }
   };
 
   accounts.forEach((account) => {
-    const rules: RawRuleOf<MongoAbility<ResourcePermissionSet>>[] = [];
+    const rules: RawRuleOf<MongoAbility<PamResourcePermissionSet>>[] = [];
     if (account.folderId) {
       (folderRolesByResourceId.get(account.folderId) ?? []).forEach((role) => {
         rules.push(...rulesForRole(ResourceType.PamFolder, role));
@@ -382,7 +366,7 @@ export const getAccountPermissionRulesMap = async (
     (accountRolesByResourceId.get(account.id) ?? []).forEach((role) => {
       rules.push(...rulesForRole(ResourceType.PamAccount, role));
     });
-    const ability = createMongoAbility<ResourcePermissionSet>(rules);
+    const ability = createMongoAbility<PamResourcePermissionSet>(rules);
     permissionsByAccountId.set(account.id, packRules(ability.rules));
   });
 

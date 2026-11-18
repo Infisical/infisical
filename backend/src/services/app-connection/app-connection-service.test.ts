@@ -1,6 +1,7 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionAppConnectionActions,
@@ -9,6 +10,7 @@ import {
 import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TRequestPermission } from "@app/lib/types";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
@@ -22,8 +24,25 @@ const actor = {
   authMethod: AuthMethod.EMAIL,
   orgId: ACTOR_ORG_ID,
   rootOrgId: ACTOR_ORG_ID,
-  parentOrgId: ACTOR_ORG_ID
-};
+  parentOrgId: ACTOR_ORG_ID,
+  principal: {
+    type: ActorType.USER,
+    id: "user-1",
+    username: "user",
+    email: null,
+    authMethod: AuthMethod.EMAIL,
+    isSuperAdmin: false
+  },
+  org: {
+    id: ACTOR_ORG_ID,
+    name: "org",
+    rootOrgId: ACTOR_ORG_ID,
+    parentOrgId: ACTOR_ORG_ID,
+    shouldUseNewPrivilegeSystem: true,
+    ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: false }
+  },
+  plan: async () => ({})
+} as unknown as TRequestPermission;
 
 class PermissionReached extends Error {}
 
@@ -31,14 +50,16 @@ const buildService = (
   connection: { orgId: string; projectId: string | null; app?: AppConnection },
   abilities: { org?: unknown; project?: unknown } = {}
 ) => {
-  const permissionService = {
+  const orgPermissionService = {
     getOrgPermission: vi.fn(async () => {
       if (!abilities.org) throw new PermissionReached();
-      return { permission: abilities.org };
-    }),
+      return abilities.org;
+    })
+  };
+  const projectPermissionService = {
     getProjectPermission: vi.fn(async () => {
       if (!abilities.project) throw new PermissionReached();
-      return { permission: abilities.project };
+      return abilities.project;
     })
   };
 
@@ -57,7 +78,8 @@ const buildService = (
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       }))
     },
-    permissionService,
+    orgPermissionService,
+    projectPermissionService,
     licenseService: new FakeLicenseService()
   };
 
@@ -66,7 +88,7 @@ const buildService = (
   });
 
   const service = appConnectionServiceFactory(deps as unknown as Parameters<typeof appConnectionServiceFactory>[0]);
-  return { service, permissionService };
+  return { service, orgPermissionService, projectPermissionService };
 };
 
 type TService = ReturnType<typeof buildService>["service"];
@@ -90,21 +112,27 @@ const CALLS: [string, (service: TService) => Promise<unknown>][] = [
 
 describe("app connection in another org reads as missing", () => {
   test.each(CALLS)("%s: org-level connection in another org", async (_, call) => {
-    const { service, permissionService } = buildService({ orgId: "org-2", projectId: null });
+    const { service, orgPermissionService, projectPermissionService } = buildService({
+      orgId: "org-2",
+      projectId: null
+    });
 
     const result = call(service);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toThrow(`Could not find App Connection with ID ${CONNECTION_ID}`);
-    expect(permissionService.getOrgPermission).not.toHaveBeenCalled();
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(orgPermissionService.getOrgPermission).not.toHaveBeenCalled();
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
   });
 
   test.each(CALLS)("%s: project connection in another org", async (_, call) => {
-    const { service, permissionService } = buildService({ orgId: "org-2", projectId: "proj-2" });
+    const { service, orgPermissionService, projectPermissionService } = buildService({
+      orgId: "org-2",
+      projectId: "proj-2"
+    });
 
     await expect(call(service)).rejects.toBeInstanceOf(NotFoundError);
-    expect(permissionService.getOrgPermission).not.toHaveBeenCalled();
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(orgPermissionService.getOrgPermission).not.toHaveBeenCalled();
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
   });
 
   test.each(CALLS)("%s: connection in the caller's org still reaches the permission check", async (_, call) => {
@@ -115,15 +143,15 @@ describe("app connection in another org reads as missing", () => {
 });
 
 describe("validateAppConnectionUsageById refuses connections the caller cannot use", () => {
-  const canConnectOrg = createMongoAbility([
-    { action: OrgPermissionAppConnectionActions.Connect, subject: OrgPermissionSubjects.AppConnections }
-  ]);
-  const canConnectProject = createMongoAbility([
-    { action: ProjectPermissionAppConnectionActions.Connect, subject: ProjectPermissionSub.AppConnections }
-  ]);
+  const canConnectOrg = Permission.fromRules({
+    rules: [{ action: OrgPermissionAppConnectionActions.Connect, subject: OrgPermissionSubjects.AppConnections }]
+  });
+  const canConnectProject = Permission.fromRules({
+    rules: [{ action: ProjectPermissionAppConnectionActions.Connect, subject: ProjectPermissionSub.AppConnections }]
+  });
 
   test("org connection without Connect permission", async () => {
-    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null }, { org: createMongoAbility([]) });
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null }, { org: Permission.none() });
 
     await expect(
       service.validateAppConnectionUsageById(
@@ -131,11 +159,11 @@ describe("validateAppConnectionUsageById refuses connections the caller cannot u
         { connectionId: CONNECTION_ID, projectId: "proj-1" },
         actor
       )
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   test("project connection without Connect permission", async () => {
-    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: "proj-1" }, { project: createMongoAbility([]) });
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: "proj-1" }, { project: Permission.none() });
 
     await expect(
       service.validateAppConnectionUsageById(
@@ -143,7 +171,7 @@ describe("validateAppConnectionUsageById refuses connections the caller cannot u
         { connectionId: CONNECTION_ID, projectId: "proj-1" },
         actor
       )
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   test("project connection from another project, even with Connect there", async () => {

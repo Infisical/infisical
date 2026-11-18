@@ -1,5 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
+
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { SECRET_REMINDER_DUE_EVENT, SECRET_REMINDER_RESOURCE_TYPE } from "./reminder-events";
 import { reminderServiceFactory } from "./reminder-service";
@@ -243,8 +245,11 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
     folderDAL: {
       findSecretPathByFolderIds: async () => [{ id: "folder-1", path: "/", environmentSlug: "dev" }]
     },
-    permissionService: {
-      getProjectPermission: async () => ({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+    secretsPermissionService: {
+      getSecretsPermission: async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: FolderGrants.none()
+      })
     },
     alertService: {
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
@@ -279,7 +284,7 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
   return { service, calls, alertRequests, deletedAlerts, repointed, copied, insertedReminders, reminderTx, writeTxs };
 };
 
-const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
+const caller = { actor: { principal: { type: "user", id: "user-1", authMethod: null }, org: { id: "org-1" } } };
 
 const saveReminder = (
   service: ReturnType<typeof buildWriteService>["service"],
@@ -302,7 +307,7 @@ describe("reminder alert sync", () => {
         resourceId: "secret-1",
         eventType: SECRET_REMINDER_DUE_EVENT,
         projectId: "proj-1",
-        ...caller,
+        actor: caller.actor,
         channels: {
           replaceRecipients: {
             channelType: "email",

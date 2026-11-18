@@ -73,10 +73,6 @@ export const certificateV3QueueServiceFactory = ({
                 }
 
                 const renewed = await certificateV3Service.renewCertificate({
-                  actor: ActorType.PLATFORM,
-                  actorId: "",
-                  actorAuthMethod: null,
-                  actorOrgId: "",
                   certificateId: certificate.id,
                   internal: true,
                   // A certificate Infisical has no private key for is eligible only because it holds a

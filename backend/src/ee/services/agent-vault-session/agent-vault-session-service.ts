@@ -1,21 +1,21 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import {
+  ProjectPermission,
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -39,14 +39,7 @@ import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vau
 import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import { isForeignKeyViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
-import {
-  getAgentVaultPermission,
-  getAgentVaultReachability,
-  intersectAccessBundleIds,
-  serviceIdsReachedThrough,
-  skillIdsReachedThrough,
-  TAgentVaultPermission
-} from "../agent-vault/agent-vault-permission";
+import { serviceIdsReachedThrough, skillIdsReachedThrough } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import {
@@ -120,10 +113,10 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
   agentVaultResolveDAL: Pick<TAgentVaultResolveDALFactory, "findServiceOverrides">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  accessBundlePermissionService: TAccessBundlePermissionService;
+  actorContextService: Pick<TActorContextService, "forPrincipal">;
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
 };
@@ -149,18 +142,18 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultDelegationDAL,
   resourceMetadataDAL,
   agentVaultResolveDAL,
-  membershipDAL,
   userDAL,
   orgDAL,
-  permissionService,
+  accessBundlePermissionService,
+  actorContextService,
   kmsDataKeyService,
   licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
-    if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
+    if (ctx.principal.type !== ActorType.USER && ctx.principal.type !== ActorType.IDENTITY) {
       throw new BadRequestError({ message: "Only a user or machine identity can hold an Agent Vault session" });
     }
-    return { type: ctx.actor, id: ctx.actorId };
+    return { type: ctx.principal.type, id: ctx.principal.id };
   };
 
   const toSessionView = ({
@@ -276,16 +269,16 @@ export const agentVaultSessionServiceFactory = ({
   const findSessionServices = (
     sessionIds: string[],
     readerAccessBundleIds: string[] | null,
-    permission: TAgentVaultPermission["permission"]
+    permission: ProjectPermission
   ) => {
-    const canReadVariables = permission.can(
-      ProjectPermissionAgentVaultVariableActions.Read,
-      ProjectPermissionSub.AgentVaultVariables
-    );
-    const canReadHooks = permission.can(
-      ProjectPermissionAgentVaultHookActions.Read,
-      ProjectPermissionSub.AgentVaultHooks
-    );
+    const canReadVariables = permission.can({
+      action: ProjectPermissionAgentVaultVariableActions.Read,
+      subject: ProjectPermissionSub.AgentVaultVariables
+    });
+    const canReadHooks = permission.can({
+      action: ProjectPermissionAgentVaultHookActions.Read,
+      subject: ProjectPermissionSub.AgentVaultHooks
+    });
     // Filled once the inline rows are loaded, which findSessionEntries awaits before it maps any of them.
     let oauthVariables: TInlineOauthVariableKeys = new Map();
     let hookNames: ReadonlyMap<string, string> | undefined;
@@ -334,7 +327,7 @@ export const agentVaultSessionServiceFactory = ({
   const withSessionServicesAndSkills = async <T extends { id: string }>(
     sessions: T[],
     readerAccessBundleIds: string[] | null,
-    permission: TAgentVaultPermission["permission"]
+    permission: ProjectPermission
   ) => {
     const sessionIds = sessions.map((session) => session.id);
     const [servicesOf, skillsOf] = await Promise.all([
@@ -347,7 +340,7 @@ export const agentVaultSessionServiceFactory = ({
   const withServicesSkillsAndMetadata = async <T extends { id: string }>(
     sessions: T[],
     readerAccessBundleIds: string[] | null,
-    permission: TAgentVaultPermission["permission"]
+    permission: ProjectPermission
   ) => {
     const [withServices, metadataBySession] = await Promise.all([
       withSessionServicesAndSkills(sessions, readerAccessBundleIds, permission),
@@ -377,11 +370,11 @@ export const agentVaultSessionServiceFactory = ({
     const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
 
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Create,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     if (!accessBundles.length && !services.length && !skills.length) {
       throw new BadRequestError({
@@ -401,10 +394,10 @@ export const agentVaultSessionServiceFactory = ({
     // An inline service names its own hosts and credentials, the same call as writing a bundle's services.
     if (
       inlineEntries.length &&
-      permission.cannot(
-        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
-        ProjectPermissionSub.AgentVaultSessions
-      )
+      permission.cannot({
+        action: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        subject: ProjectPermissionSub.AgentVaultSessions
+      })
     ) {
       throw new ForbiddenRequestError({
         message: `You are not allowed to ${ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices} on ${ProjectPermissionSub.AgentVaultSessions}. Use an access bundle or list the project's services by name instead.`
@@ -420,10 +413,10 @@ export const agentVaultSessionServiceFactory = ({
     );
     if (
       inlineSkillEntries.length &&
-      permission.cannot(
-        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
-        ProjectPermissionSub.AgentVaultSessions
-      )
+      permission.cannot({
+        action: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        subject: ProjectPermissionSub.AgentVaultSessions
+      })
     ) {
       throw new ForbiddenRequestError({
         message: `You are not allowed to ${ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills} on ${ProjectPermissionSub.AgentVaultSessions}. Use an access bundle or list the project's skills by name instead.`
@@ -438,10 +431,10 @@ export const agentVaultSessionServiceFactory = ({
     // naming one takes ReadValue too, checked before the lookup so a missing key can't be told from one the caller may
     // not read.
     if (preparedInlineServices.some((service) => service.oauthVariableKey)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultVariableActions.ReadValue,
-        ProjectPermissionSub.AgentVaultVariables
-      );
+      permission.assert({
+        action: ProjectPermissionAgentVaultVariableActions.ReadValue,
+        subject: ProjectPermissionSub.AgentVaultVariables
+      });
       preparedInlineServices = bindInlineOauthVariables(
         preparedInlineServices,
         await agentVaultVariableDAL.findKeys({ projectId, owner: null })
@@ -452,16 +445,16 @@ export const agentVaultSessionServiceFactory = ({
       ...new Set(preparedInlineServices.flatMap((service) => (service.hook ? [service.hook.name] : [])))
     ];
     if (inlineHookNames.length) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultHookActions.Read,
-        ProjectPermissionSub.AgentVaultHooks
-      );
-      await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
+      permission.assert({
+        action: ProjectPermissionAgentVaultHookActions.Read,
+        subject: ProjectPermissionSub.AgentVaultHooks
+      });
+      await assertAgentVaultHooksOnPlan(licenseService, ctx.org.id);
     }
-    const canReadHooks = permission.can(
-      ProjectPermissionAgentVaultHookActions.Read,
-      ProjectPermissionSub.AgentVaultHooks
-    );
+    const canReadHooks = permission.can({
+      action: ProjectPermissionAgentVaultHookActions.Read,
+      subject: ProjectPermissionSub.AgentVaultHooks
+    });
     const preparedInlineSkills = prepareInlineSkills(
       inlineSkillEntries.map(({ input }) => input),
       inlineSkillEntries.map(({ position }) => position)
@@ -517,10 +510,10 @@ export const agentVaultSessionServiceFactory = ({
       // checked first and the identity's own bundles next, so an identity learns nothing about who is in the org until
       // an admin has delegated it and granted it the bundle it asks for.
       const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
-      const { accessBundleIds: identityReach } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx }
-      );
+      const { accessBundleIds: identityReach } = await accessBundlePermissionService.getAccessBundlePermission({
+        actor: ctx,
+        projectId
+      });
       const notGrantedToIdentity = firstUnreachable(identityReach);
       if (notGrantedToIdentity) {
         throw new BadRequestError({
@@ -553,12 +546,12 @@ export const agentVaultSessionServiceFactory = ({
       }
 
       onBehalfOfUser = await resolveOnBehalfOfUser(
-        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+        { agentVaultDelegationDAL, userDAL, orgDAL, accessBundlePermissionService, actorContextService },
         { projectId, ctx, onBehalfOf, delegation }
       );
       // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
       // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
-      await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+      await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
 
       const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
       if (notGrantedToUser) {
@@ -583,7 +576,10 @@ export const agentVaultSessionServiceFactory = ({
       }
       // Resolve reaches only the bundles both of them are granted, so a service each reaches through a different bundle
       // would never arrive. The skills fetch reaches the same bundles.
-      ownerReach = intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds);
+      ownerReach = accessBundlePermissionService.intersectAccessBundleIds(
+        identityReach,
+        onBehalfOfUser.accessBundleIds
+      );
       const serviceOutOfSharedReach = await firstUnreachableService(ownerReach);
       if (serviceOutOfSharedReach) {
         throw new BadRequestError({
@@ -599,10 +595,10 @@ export const agentVaultSessionServiceFactory = ({
         });
       }
     } else {
-      const { accessBundleIds } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx }
-      );
+      const { accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+        actor: ctx,
+        projectId
+      });
       ownerReach = accessBundleIds;
       const notGranted = firstUnreachable(accessBundleIds);
       if (notGranted) {
@@ -892,7 +888,7 @@ export const agentVaultSessionServiceFactory = ({
           tx
         );
 
-        await insertSessionMetadata({ orgId: ctx.actorOrgId, sessionId: created.id, metadata }, tx);
+        await insertSessionMetadata({ orgId: ctx.org.id, sessionId: created.id, metadata }, tx);
 
         return {
           session: created,
@@ -961,20 +957,20 @@ export const agentVaultSessionServiceFactory = ({
     limit,
     offset
   }: TListSessionsDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: ctx,
+      projectId
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     if (scope === AgentVaultSessionScope.All) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultSessionActions.ReadAny,
-        ProjectPermissionSub.AgentVaultSessions
-      );
+      permission.assert({
+        action: ProjectPermissionAgentVaultSessionActions.ReadAny,
+        subject: ProjectPermissionSub.AgentVaultSessions
+      });
     }
 
     const actor = scope === AgentVaultSessionScope.All ? undefined : requireSessionActor(ctx);
@@ -1015,18 +1011,18 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.ReadAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: ctx,
+      projectId
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
+    const reachesAnySession = permission.can({
+      action: ProjectPermissionAgentVaultSessionActions.ReadAny,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const [session] = await withServicesSkillsAndMetadata(
       [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
@@ -1037,15 +1033,15 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Revoke,
-      ProjectPermissionSub.AgentVaultSessions
-    );
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Revoke,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
+    const reachesAnySession = permission.can({
+      action: ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
 
@@ -1095,18 +1091,18 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const updateSession = async ({ projectId, ctx, sessionId, label, metadata }: TUpdateSessionDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionSub.AgentVaultSessions
-    );
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.EditAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: ctx,
+      projectId
+    });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
+    const reachesAnySession = permission.can({
+      action: ProjectPermissionAgentVaultSessionActions.EditAny,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
     // The visible session can come from a replica that lags, so the owner check, the previous label and the previous
@@ -1131,7 +1127,7 @@ export const agentVaultSessionServiceFactory = ({
         return { written, metadataChanged: false, currentMetadata: previousMetadata };
       }
       await resourceMetadataDAL.delete({ agentVaultSessionId: session.id }, tx);
-      await insertSessionMetadata({ orgId: ctx.actorOrgId, sessionId: session.id, metadata }, tx);
+      await insertSessionMetadata({ orgId: ctx.org.id, sessionId: session.id, metadata }, tx);
       return { written, metadataChanged: true, currentMetadata: metadata };
     });
 

@@ -1,8 +1,8 @@
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -41,14 +41,14 @@ export type TVerifyPermission = {
 export type TGetAccessRequestCountDTO = {
   projectSlug: string;
   policyId?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TReviewAccessRequestDTO = {
   requestId: string;
   status: ApprovalStatus;
   envName?: string;
   bypassReason?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
@@ -56,25 +56,25 @@ export type TCreateAccessApprovalRequestDTO = {
   isTemporary: boolean;
   temporaryRange?: string;
   note?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeAccessRequestDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRetryDelegatedApprovalDispatchDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCancelAccessRequestDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
   authorUserId?: string;
   envSlug?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TNotifyDelegatedDecisionDTO = {
   requestId: string;
@@ -84,7 +84,7 @@ export type TSecretAccessApprovalRequestServiceFactoryDep = {
   licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug" | "checkProjectUpgradeStatus">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction" | "findByIdForUpdate" | "updateById">;

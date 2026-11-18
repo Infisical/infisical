@@ -1,8 +1,10 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -41,11 +43,11 @@ const liveCertificate = {
 };
 
 const actor = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: null,
-  actorOrgId: "org-1"
-} as const;
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+    org: { id: "org-1" }
+  } as unknown as TActorContext
+};
 
 const buildService = () => {
   const certificateDAL = {
@@ -70,10 +72,10 @@ const buildService = () => {
     certificateSyncDAL,
     signerDAL,
     resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
-    permissionService: {
+    projectPermissionService: {
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     },
     pkiApplicationDAL: { findById: vi.fn() },
     pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
@@ -196,10 +198,10 @@ describe("certificateService.importCert with a CSR", () => {
           certificateAuthority: { externalType: null, name: "my-root-ca" }
         })
       },
-      permissionService: {
+      projectPermissionService: {
         getProjectPermission: vi
           .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
       }
     } as unknown as TDeps;
 
@@ -360,7 +362,7 @@ describe("certificate revocation behind an approval policy", () => {
 
   const buildRevocationService = ({
     ca = externalCa as object,
-    applicationPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
+    applicationPermissions = [{ action: "manage", subject: "all" }] as { action: string | string[]; subject: string }[]
   } = {}) => {
     let stored: Record<string, unknown> = { ...applicationCertificate };
     const certificateDAL = {
@@ -427,8 +429,8 @@ describe("certificate revocation behind an approval policy", () => {
       projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) },
       licenseService,
       telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
-      permissionService: {
-        getResourcePermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(applicationPermissions) })
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: applicationPermissions }))
       }
     } as unknown as TDeps;
 
@@ -762,7 +764,15 @@ describe("certificate revocation behind an approval policy", () => {
     it("refuses a revocation request from an actor that is neither a user nor a machine identity", async () => {
       const ctx = buildRevocationService();
 
-      await expect(ctx.service.revokeCert({ ...revokeRequest, actor: ActorType.PLATFORM })).rejects.toThrow(
+      await expect(
+        ctx.service.revokeCert({
+          ...revokeRequest,
+          actor: {
+            ...actor.actor,
+            principal: { type: ActorType.PLATFORM, id: "platform" }
+          } as unknown as TActorContext
+        })
+      ).rejects.toThrow(
         new BadRequestError({ message: "Only users and machine identities can request a certificate revocation" })
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
@@ -812,7 +822,8 @@ describe("certificate revocation behind an approval policy", () => {
     const canRevoke = [{ action: "delete", subject: "certificates" }];
     const canNeither = [{ action: ["read", "list"], subject: "certificates" }];
 
-    const isForbidden = (error: unknown) => error instanceof ForbiddenError || error instanceof ForbiddenRequestError;
+    const isForbidden = (error: unknown) =>
+      error instanceof PermissionDeniedError || error instanceof ForbiddenRequestError;
 
     it("opens an approval request for an actor who can only request a revocation", async () => {
       const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });

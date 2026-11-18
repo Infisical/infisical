@@ -1,4 +1,3 @@
-import { ForbiddenError, MongoAbility } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -12,15 +11,22 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
+  OrgPermission,
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionMemberActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TOrgRolePermission,
+  TSsoSessionService
 } from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -33,11 +39,10 @@ import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bo
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -128,7 +133,9 @@ type TOrgServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -155,7 +162,9 @@ export const orgServiceFactory = ({
   groupDAL,
   roleDAL,
   incidentContactDAL,
-  permissionService,
+  orgPermissionService,
+  actorContextService,
+  ssoSessionService,
   smtpService,
   projectDAL,
   projectMembershipDAL,
@@ -182,30 +191,15 @@ export const orgServiceFactory = ({
   orgInviteQuota,
   instanceConfigService
 }: TOrgServiceFactoryDep) => {
+  const $asBoundaryTargets = (targets: TOrgRolePermission[]) =>
+    targets.map(({ permission, role }) => ({ permission: permission.toAbility(), role }));
+
   /*
    * Get organization details by the organization id
    * */
-  const findOrganizationById = async ({
-    userId,
-    orgId,
-    actorAuthMethod,
-    rootOrgId,
-    actorOrgId
-  }: {
-    userId: string;
-    orgId: string;
-    actorAuthMethod: ActorAuthMethod;
-    rootOrgId: string;
-    actorOrgId: string;
-  }) => {
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const findOrganizationById = async ({ actor, orgId }: { actor: TActorContext; orgId: string }) => {
+    await orgPermissionService.getOrgPermission({ actor, orgId });
+    const { rootOrgId, id: actorOrgId } = actor.org;
     const appCfg = getConfig();
     const hasSubOrg = rootOrgId !== actorOrgId;
 
@@ -233,6 +227,40 @@ export const orgServiceFactory = ({
     };
   };
 
+  // For a session refreshing its token, which has no request context in its org.
+  const findOrganizationByIdForUser = async ({
+    userId,
+    authMethod,
+    orgId
+  }: {
+    userId: string;
+    authMethod: AuthMethod;
+    orgId: string;
+  }) => {
+    const user = await userDAL.findById(userId);
+    const actor = await actorContextService.forPrincipal({
+      principal: {
+        type: ActorType.USER,
+        id: userId,
+        username: user?.username ?? "",
+        email: user?.email ?? null,
+        authMethod,
+        isSuperAdmin: false
+      },
+      orgId
+    });
+    const organization = await findOrganizationById({ actor, orgId });
+    // A session the org's SSO enforcement refuses does not get its access token refreshed.
+    const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(actor);
+    if (ssoRefusal) {
+      throw new ForbiddenRequestError({
+        message: ssoRefusal.message,
+        ...(ssoRefusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
+      });
+    }
+    return organization;
+  };
+
   /*
    * Get all organization a user part of
    * */
@@ -258,35 +286,24 @@ export const orgServiceFactory = ({
   /*
    * Get all organization members
    * */
-  const findAllOrgMembers = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const findAllOrgMembers = async ({ actor, orgId }: TFindAllOrgMembersDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
 
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
   };
 
   // Group names and roles only go to callers who can read groups; the list itself just needs member read.
-  const listOrgUserAccess = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const listOrgUserAccess = async ({ actor, orgId }: TFindAllOrgMembersDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
-    const canReadGroups = permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
+    const canReadGroups = permission.can({
+      action: OrgPermissionGroupActions.Read,
+      subject: OrgPermissionSubjects.Groups
+    });
 
     const [members, groupAccess] = await Promise.all([
       orgDAL.findAllOrgMembers(orgId),
@@ -309,37 +326,16 @@ export const orgServiceFactory = ({
     ];
   };
 
-  const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  const getOrgGroups = async ({ actor, orgId }: TGetOrgGroupsDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
     const groups = await groupDAL.findByOrgId(orgId);
     return groups;
   };
 
-  const findOrgMembersByUsername = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    orgId,
-    emails
-  }: TFindOrgMembersByEmailDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+  const findOrgMembersByUsername = async ({ actor, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
 
     const members = await orgDAL.findOrgMembersByUsername(orgId, emails);
 
@@ -355,23 +351,16 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId, actorOrgId, actorAuthMethod }: TFindAllWorkspacesDTO) => {
-    await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
+  const findAllWorkspaces = async ({ actor, orgId }: TFindAllWorkspacesDTO) => {
+    await orgPermissionService.getOrgPermission({ actor, orgId, scope: OrganizationActionScope.Any });
 
-    if (actor === ActorType.USER) {
-      const workspaces = await projectDAL.findUserProjects(actorId, orgId);
+    if (actor.principal.type === ActorType.USER) {
+      const workspaces = await projectDAL.findUserProjects(actor.principal.id, orgId);
       return workspaces;
     }
 
-    if (actor === ActorType.IDENTITY) {
-      const workspaces = await projectDAL.findIdentityProjects(actorId, orgId);
+    if (actor.principal.type === ActorType.IDENTITY) {
+      const workspaces = await projectDAL.findIdentityProjects(actor.principal.id, orgId);
       return workspaces;
     }
 
@@ -428,22 +417,16 @@ export const orgServiceFactory = ({
     };
   };
 
-  const upgradePrivilegeSystem = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    orgId
-  }: TUpgradePrivilegeSystemDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId,
+  const upgradePrivilegeSystem = async ({ actor, orgId }: TUpgradePrivilegeSystemDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       orgId,
-      actorAuthMethod,
-      actorOrgId,
       scope: OrganizationActionScope.ParentOrganization
     });
+    const actorId = actor.principal.id;
+    const actorOrgId = actor.org.id;
 
-    if (!hasRole(OrgMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: OrgMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Insufficient privileges - only the organization admin can upgrade the privilege system."
       });
@@ -485,9 +468,6 @@ export const orgServiceFactory = ({
    * */
   const updateOrg = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     orgId,
     data: {
       name,
@@ -517,33 +497,30 @@ export const orgServiceFactory = ({
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
-    const { permission } = await permissionService.getOrgPermission({
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings });
 
     if (allowSecretSharingOutsideOrganization !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionSecretShareAction.ManageSettings,
-        OrgPermissionSubjects.SecretShare
-      );
+      permission.assert({
+        action: OrgPermissionSecretShareAction.ManageSettings,
+        subject: OrgPermissionSubjects.SecretShare
+      });
     }
 
     if (secretShareBrandConfig !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionSecretShareAction.ManageSettings,
-        OrgPermissionSubjects.SecretShare
-      );
+      permission.assert({
+        action: OrgPermissionSecretShareAction.ManageSettings,
+        subject: OrgPermissionSubjects.SecretShare
+      });
     }
 
     const plan = await licenseService.getPlan(orgId);
-    const currentOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
-      orgDAL.findOrgById(actorOrgId)
+    const currentOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(actor.org.id), () =>
+      orgDAL.findOrgById(actor.org.id)
     );
 
     if (secretShareBrandConfig !== undefined) {
@@ -595,7 +572,7 @@ export const orgServiceFactory = ({
     }
 
     if (ssoMfaTrust !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
     }
 
     if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.has(PlanFeature.EnforceMfa)) {
@@ -610,7 +587,7 @@ export const orgServiceFactory = ({
         throw new BadRequestError({
           message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
     }
 
     if (scimEnabled !== undefined) {
@@ -619,7 +596,7 @@ export const orgServiceFactory = ({
           message:
             "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
         });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+      permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Scim });
       if (scimEnabled && !currentOrg.orgAuthMethod) {
         throw new BadRequestError({
           message: "Cannot enable SCIM when neither SAML or OIDC is configured."
@@ -633,7 +610,7 @@ export const orgServiceFactory = ({
           message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
         });
       }
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
     }
 
     if (authEnforced && googleSsoAuthEnforced) {
@@ -885,31 +862,21 @@ export const orgServiceFactory = ({
    * Delete organization by id
    * */
   const deleteOrganizationById = async ({
-    userId,
+    actor,
     authorizationHeader,
     userAgentHeader,
     ipAddress,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
+    orgId
   }: {
-    userId: string;
+    actor: TActorContext;
     authorizationHeader?: string;
     userAgentHeader?: string;
     ipAddress: string;
     orgId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    if (!hasRole(OrgMembershipRole.Admin)) {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    const userId = actor.principal.id;
+    if (!permission.hasRole({ slug: OrgMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         name: "DeleteOrganizationById",
         message: "Insufficient privileges"
@@ -959,37 +926,25 @@ export const orgServiceFactory = ({
     isActive,
     orgId,
     actor,
-    actorId,
     membershipId,
-    actorAuthMethod,
-    actorOrgId,
     metadata
   }: TUpdateOrgMembershipDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Edit, subject: OrgPermissionSubjects.Member });
 
     const foundMembership = await membershipUserDAL.findOne({
       id: membershipId,
       scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+      scopeOrgId: actor.org.id
     });
     if (!foundMembership?.actorUserId)
       throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
-    if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
+    if (actor.principal.type === ActorType.USER && foundMembership.actorUserId === actor.principal.id)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
-      orgDAL.findById(orgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = actor.org;
 
     const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
     if (role !== undefined || metadata !== undefined)
@@ -1005,16 +960,16 @@ export const orgServiceFactory = ({
 
     if (targetOps.length) {
       const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
-        ignoreUnresolvedRoles: true
-      });
+      const targetPermissions = $asBoundaryTargets(
+        await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: targetRoles, ignoreUnresolvedRoles: true })
+      );
 
       for (const { opAction, baseMessage } of targetOps) {
         assertRoleSetBoundary({
           shouldUseNewPrivilegeSystem,
           opActions: opAction,
           opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission,
+          actorPermission: permission.toAbility(),
           targetPermissions,
           baseMessage
         });
@@ -1039,12 +994,14 @@ export const orgServiceFactory = ({
     }
 
     if (role && roleNeedsPrivilegeBoundary(role)) {
-      const permissionRoles = await permissionService.getOrgPermissionByRoles([role], orgId);
+      const permissionRoles = $asBoundaryTargets(
+        await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] })
+      );
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
         opActions: OrgPermissionMemberActions.GrantPrivileges,
         opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
+        actorPermission: permission.toAbility(),
         targetPermissions: permissionRoles,
         baseMessage: "Failed to assign the requested role to an org member"
       });
@@ -1144,27 +1101,17 @@ export const orgServiceFactory = ({
     return loginPolicy.allows(LoginMethod.EMAIL);
   };
 
-  const resendOrgMemberInvitation = async ({
-    orgId,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    membershipId
-  }: TResendOrgMemberInvitationDTO) => {
+  const resendOrgMemberInvitation = async ({ orgId, actor, membershipId }: TResendOrgMemberInvitationDTO) => {
     const appCfg = getConfig();
-    const { permission } = await permissionService.getOrgPermission({
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+    permission.assert({ action: OrgPermissionMemberActions.Create, subject: OrgPermissionSubjects.Member });
 
-    const invitingUser = await userDAL.findOne({ id: actorId });
+    const invitingUser = await userDAL.findOne({ id: actor.principal.id });
 
     const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
@@ -1184,21 +1131,21 @@ export const orgServiceFactory = ({
       });
     }
 
-    const inviteePermissions = await permissionService.getActorGrantAbilities({
-      scopeData: { scope: AccessScope.Organization, orgId },
-      actorId: inviteeOrgMembership.actorUserId as string,
-      actorType: ActorType.USER
+    const inviteePermissions = await orgPermissionService.getGrantPermissions({
+      actor: {
+        type: ActorType.USER,
+        id: inviteeOrgMembership.actorUserId as string,
+        name: inviteeOrgMembership.username ?? ""
+      },
+      orgId
     });
     if (inviteePermissions.length) {
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
-        orgDAL.findById(orgId)
-      );
       assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
+        shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem,
         opActions: OrgPermissionMemberActions.GrantPrivileges,
         opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
-        targetPermissions: inviteePermissions,
+        actorPermission: permission.toAbility(),
+        targetPermissions: inviteePermissions.map((grant) => ({ permission: grant.toAbility() })),
         baseMessage: "Failed to resend the invitation of this org member"
       });
     }
@@ -1383,23 +1330,9 @@ export const orgServiceFactory = ({
     return { token, user, organizationName: organization.name };
   };
 
-  const getOrgMembership = async ({
-    membershipId,
-    orgId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetOrgMembershipDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+  const getOrgMembership = async ({ membershipId, orgId, actor }: TGetOrgMembershipDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
     if (!membership) {
@@ -1416,47 +1349,32 @@ export const orgServiceFactory = ({
   const $assertMembershipRemovalBoundary = async ({
     membershipIds,
     orgId,
-    permission
+    permission,
+    shouldUseNewPrivilegeSystem
   }: {
     membershipIds: string[];
     orgId: string;
-    permission: MongoAbility;
+    permission: OrgPermission;
+    shouldUseNewPrivilegeSystem: boolean;
   }) => {
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
-      ignoreUnresolvedRoles: true
-    });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
-      orgDAL.findById(orgId)
+    const targetPermissions = $asBoundaryTargets(
+      await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: targetRoles, ignoreUnresolvedRoles: true })
     );
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionMemberActions.Delete,
       opSubject: OrgPermissionSubjects.Member,
-      actorPermission: permission,
+      actorPermission: permission.toAbility(),
       targetPermissions,
       baseMessage: "Failed to remove this member from the organization"
     });
   };
 
-  const deleteOrgMembership = async ({
-    orgId,
-    actor,
-    actorId,
-    membershipId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteOrgMembershipDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
+  const deleteOrgMembership = async ({ orgId, actor, membershipId }: TDeleteOrgMembershipDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Delete, subject: OrgPermissionSubjects.Member });
 
     const membershipToDelete = await membershipUserDAL.findOne({
       id: membershipId,
@@ -1466,7 +1384,12 @@ export const orgServiceFactory = ({
     if (!membershipToDelete?.actorUserId)
       throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
 
-    await $assertMembershipRemovalBoundary({ membershipIds: [membershipId], orgId, permission });
+    await $assertMembershipRemovalBoundary({
+      membershipIds: [membershipId],
+      orgId,
+      permission,
+      shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+    });
 
     const [deletedMembership] = await deleteOrgMembershipsFn({
       orgMembershipIds: [membershipId],
@@ -1474,7 +1397,7 @@ export const orgServiceFactory = ({
       orgDAL,
       userAliasDAL,
       usageMeteringService,
-      userId: actor === ActorType.USER ? actorId : undefined,
+      userId: actor.principal.type === ActorType.USER ? actor.principal.id : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
@@ -1488,23 +1411,9 @@ export const orgServiceFactory = ({
     return deletedMembership;
   };
 
-  const bulkDeleteOrgMemberships = async ({
-    orgId,
-    actor,
-    actorId,
-    membershipIds,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteOrgMembershipsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
+  const bulkDeleteOrgMemberships = async ({ orgId, actor, membershipIds }: TDeleteOrgMembershipsDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Delete, subject: OrgPermissionSubjects.Member });
 
     const membershipsToDelete = await membershipUserDAL.find({
       scope: AccessScope.Organization,
@@ -1519,7 +1428,12 @@ export const orgServiceFactory = ({
         message: `Organization membership with ID '${missingMembershipIds.join("', '")}' not found`
       });
 
-    await $assertMembershipRemovalBoundary({ membershipIds, orgId, permission });
+    await $assertMembershipRemovalBoundary({
+      membershipIds,
+      orgId,
+      permission,
+      shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem
+    });
 
     const deletedMemberships = await deleteOrgMembershipsFn({
       orgMembershipIds: membershipIds,
@@ -1527,7 +1441,7 @@ export const orgServiceFactory = ({
       orgDAL,
       userAliasDAL,
       usageMeteringService,
-      userId: actor === ActorType.USER ? actorId : undefined,
+      userId: actor.principal.type === ActorType.USER ? actor.principal.id : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
@@ -1545,24 +1459,14 @@ export const orgServiceFactory = ({
     orgMembershipId,
     orgId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     limit,
     offset,
     search,
     orderDirection,
     excludeProjectType
   }: TListProjectMembershipsByOrgMembershipIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
     if (!membership) {
@@ -1582,41 +1486,20 @@ export const orgServiceFactory = ({
   /*
    * CRUD operations of incident contacts
    * */
-  const findIncidentContacts = async (
-    userId: string,
-    orgId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
-  ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  const findIncidentContacts = async (actor: TActorContext, orgId: string) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.IncidentAccount });
     const incidentContacts = await incidentContactDAL.findByOrgId(orgId);
     return incidentContacts;
   };
 
-  const createIncidentContact = async (
-    userId: string,
-    orgId: string,
-    email: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
-  ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+  const createIncidentContact = async (actor: TActorContext, orgId: string, email: string) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       orgId,
-      actorAuthMethod,
-      actorOrgId,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.IncidentAccount });
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
       throw new BadRequestError({
@@ -1629,22 +1512,13 @@ export const orgServiceFactory = ({
     return incidentContact;
   };
 
-  const deleteIncidentContact = async (
-    userId: string,
-    orgId: string,
-    id: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
-  ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+  const deleteIncidentContact = async (actor: TActorContext, orgId: string, id: string) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       orgId,
-      actorAuthMethod,
-      actorOrgId,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.IncidentAccount });
 
     const incidentContact = await incidentContactDAL.deleteById(id, orgId);
     return incidentContact;
@@ -1745,6 +1619,7 @@ export const orgServiceFactory = ({
 
   return {
     findOrganizationById,
+    findOrganizationByIdForUser,
     findAllOrgMembers,
     listOrgUserAccess,
     findAllOrganizationOfUser,

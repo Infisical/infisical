@@ -2,9 +2,10 @@ import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -47,10 +48,8 @@ type TMembershipIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
-  >;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -80,7 +79,8 @@ export const membershipIdentityServiceFactory = ({
   membershipIdentityDAL,
   roleDAL,
   membershipRoleDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
@@ -99,15 +99,14 @@ export const membershipIdentityServiceFactory = ({
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
-      orgDAL,
-      permissionService,
+      orgPermissionService,
       identityDAL,
       membershipIdentityDAL
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
       orgDAL,
-      permissionService,
+      projectPermissionService,
       identityDAL,
       projectDAL
     })
@@ -489,7 +488,7 @@ export const membershipIdentityServiceFactory = ({
         message: "Identity doesn't have membership"
       });
 
-    if (existingMembership.actorIdentityId === dto.permission.id)
+    if (existingMembership.actorIdentityId === dto.actor.principal.id)
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
@@ -643,10 +642,10 @@ export const membershipIdentityServiceFactory = ({
       await scopeFactory[scopeData.scope].onListMembershipIdentityGuard(dto);
     }
 
-    if (scopeData.scope !== AccessScope.Project && dto.permission.rootOrgId === dto.permission.orgId)
+    if (scopeData.scope !== AccessScope.Project && dto.actor.org.rootOrgId === dto.actor.org.id)
       return { identities: [] };
 
-    const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.permission.rootOrgId);
+    const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.actor.org.rootOrgId);
 
     return { identities };
   };
