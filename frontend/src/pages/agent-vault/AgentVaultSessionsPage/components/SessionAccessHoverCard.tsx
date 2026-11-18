@@ -15,7 +15,7 @@ import {
   TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 
-import { inlineServiceTarget } from "./sessionInlineServices";
+import { inlineServiceTarget } from "./sessionAccess";
 
 const ServiceListFrame = ({
   caption,
@@ -122,7 +122,7 @@ type HoverCardProps = {
   children: ReactNode;
 };
 
-export const ServicesHoverCard = ({ content, children }: HoverCardProps) => {
+export const SessionAccessHoverCard = ({ content, children }: HoverCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={150} closeDelay={100}>

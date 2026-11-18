@@ -40,19 +40,19 @@ import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agen
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
-  InlineServicesList,
-  ServicesList,
-  ServicesHoverCard,
-  SessionSkillsList
-} from "./InlineServicesHoverCard";
-import { SessionExpiry } from "./SessionExpiry";
-import {
   inlineServiceTarget,
   sessionInlineServices,
   sessionInlineSkills,
-  sessionServices,
-  sessionSkills
-} from "./sessionInlineServices";
+  sessionListedServices,
+  sessionListedSkills
+} from "./sessionAccess";
+import {
+  InlineServicesList,
+  ServicesList,
+  SessionAccessHoverCard,
+  SessionSkillsList
+} from "./SessionAccessHoverCard";
+import { SessionExpiry } from "./SessionExpiry";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
@@ -104,9 +104,9 @@ const SkillsDetail = ({
           </Tooltip>
         ))}
         {more.length > 0 && (
-          <ServicesHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
+          <SessionAccessHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
             {moreButton(more.length)}
-          </ServicesHoverCard>
+          </SessionAccessHoverCard>
         )}
       </DetailValue>
     </Detail>
@@ -144,10 +144,10 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   const inlineServices = session ? sessionInlineServices(session) : [];
   const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
   const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
-  const listedServices = session ? sessionServices(session) : [];
+  const listedServices = session ? sessionListedServices(session) : [];
   const shownServices = listedServices.slice(0, SHOWN_SERVICES);
   const moreServices = listedServices.slice(SHOWN_SERVICES);
-  const listedSkills = session ? sessionSkills(session) : [];
+  const listedSkills = session ? sessionListedSkills(session) : [];
   const inlineSkills = session ? sessionInlineSkills(session) : [];
 
   return (
@@ -287,9 +287,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                             </Tooltip>
                           ))}
                           {moreServices.length > 0 && (
-                            <ServicesHoverCard content={<ServicesList services={moreServices} />}>
+                            <SessionAccessHoverCard
+                              content={<ServicesList services={moreServices} />}
+                            >
                               {moreButton(moreServices.length)}
-                            </ServicesHoverCard>
+                            </SessionAccessHoverCard>
                           )}
                         </DetailValue>
                       </Detail>
@@ -322,11 +324,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                             </Tooltip>
                           ))}
                           {moreInlineServices.length > 0 && (
-                            <ServicesHoverCard
+                            <SessionAccessHoverCard
                               content={<InlineServicesList services={moreInlineServices} />}
                             >
                               {moreButton(moreInlineServices.length)}
-                            </ServicesHoverCard>
+                            </SessionAccessHoverCard>
                           )}
                         </DetailValue>
                       </Detail>

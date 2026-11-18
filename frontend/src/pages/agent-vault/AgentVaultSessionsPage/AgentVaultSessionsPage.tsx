@@ -115,17 +115,17 @@ import {
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionDialog } from "./components/EditSessionDialog";
-import { InlineServicesList, SessionSkillsList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
-import { SessionDetailSheet } from "./components/SessionDetailSheet";
-import { SessionExpiry } from "./components/SessionExpiry";
-import { SessionIdentity } from "./components/SessionIdentity";
 import {
   inlineServicesLabel,
   inlineSkillsLabel,
   toAccessItems,
   TSessionAccessItem
-} from "./components/sessionInlineServices";
+} from "./components/sessionAccess";
+import { InlineServicesList, SessionSkillsList } from "./components/SessionAccessHoverCard";
+import { SessionDetailSheet } from "./components/SessionDetailSheet";
+import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionIdentity } from "./components/SessionIdentity";
 import { SessionLabel } from "./components/SessionLabel";
 import {
   SESSION_METADATA_MAX_KEYS,
@@ -240,11 +240,11 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  // A session needs a bundle the caller reaches or a service or skill they can name. A member can name only the
+  // A session needs a bundle the caller reaches or a service or skill they can pick. A member can pick only the
   // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
   const { data: pickableServices } = useListAgentVaultServices(projectId, { limit: 1 });
-  // Without Read on skills the caller can name none, and the list would only answer 403.
+  // Without Read on skills the caller can pick none, and the list would only answer 403.
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
     ProjectPermissionSub.AgentVaultSkills

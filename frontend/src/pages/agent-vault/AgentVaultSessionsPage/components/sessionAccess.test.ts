@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
 
-import { sessionInlineSkills, sessionSkills } from "./sessionInlineServices";
+import { sessionInlineSkills, sessionListedSkills } from "./sessionAccess";
 
 describe("session skill helpers", () => {
   it("split a session's skills into listed and inline ones", () => {
@@ -19,12 +19,12 @@ describe("session skill helpers", () => {
       isInline: true
     } as TAgentVaultSessionSkill;
 
-    expect(sessionSkills({ skills: [listed, inline] })).toEqual([listed]);
+    expect(sessionListedSkills({ skills: [listed, inline] })).toEqual([listed]);
     expect(sessionInlineSkills({ skills: [listed, inline] })).toEqual([inline]);
   });
 
   it("read a session from an API that predates session skills as having none", () => {
-    expect(sessionSkills({})).toEqual([]);
+    expect(sessionListedSkills({})).toEqual([]);
     expect(sessionInlineSkills({})).toEqual([]);
   });
 });

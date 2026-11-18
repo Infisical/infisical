@@ -42,6 +42,7 @@ import {
   TAgentVaultSkill
 } from "@app/hooks/api/agentVault/types";
 
+import { TSessionFieldErrors } from "./sessionFormErrors";
 import { sessionLabelSchema } from "./sessionLabelSchema";
 import { SessionMetadataFields } from "./SessionMetadataFields";
 import { metadataRowsToRecord, sessionMetadataRowsSchema } from "./sessionMetadataSchema";
@@ -127,17 +128,12 @@ export type TDashboardSessionInput = {
   skills: string[];
 };
 
-// The API's refusals of a picked service: one that shares a host with another service in the session, or one the
-// caller can't use, which includes one deleted since it was picked.
-export const isSessionServicesError = (message: string) =>
-  message.includes("both cover") || message.includes("can't use a service");
-
 const PICK_SOMETHING_ERROR = "pickSomething";
 
 type Props = {
   formId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onSubmit: (input: TDashboardSessionInput) => Promise<{ servicesError?: string } | undefined>;
+  onSubmit: (input: TDashboardSessionInput) => Promise<TSessionFieldErrors | undefined>;
 };
 
 export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) => {
@@ -158,15 +154,20 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   const { control, handleSubmit, watch, setError, clearErrors, getFieldState } = formMethods;
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
+  const selectedSkillCount = watch("skills").length;
 
-  // The bundle is picked outside this form, so nothing re-validates the services field when it changes.
+  // The bundle is picked outside this form, and picking a skill re-validates only the skills field, so neither clears
+  // the error that asked for something to be picked, which sits on services.
   useEffect(() => {
-    if (accessBundle && getFieldState("services").error?.type === PICK_SOMETHING_ERROR) {
+    if (
+      (accessBundle || selectedSkillCount > 0) &&
+      getFieldState("services").error?.type === PICK_SOMETHING_ERROR
+    ) {
       clearErrors("services");
     }
-  }, [accessBundle?.id]);
+  }, [accessBundle?.id, selectedSkillCount]);
 
-  // An admin can name any of the project's services, and a member only those in their bundles, which is what this
+  // An admin can pick any of the project's services, and a member only those in their bundles, which is what this
   // list returns to each.
   const [serviceSearch, setServiceSearch] = useState("");
   const [debouncedServiceSearch] = useDebounce(serviceSearch);
@@ -180,7 +181,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     }
   );
 
-  // The same for skills: an admin can name any of them, and a member only those in their bundles.
+  // The same for skills: an admin can pick any of them, and a member only those in their bundles.
   const [skillSearch, setSkillSearch] = useState("");
   const [debouncedSkillSearch] = useDebounce(skillSearch);
   const { data: pickableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
@@ -240,6 +241,9 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           });
           if (result?.servicesError) {
             setError("services", { type: "server", message: result.servicesError });
+          }
+          if (result?.skillsError) {
+            setError("skills", { type: "server", message: result.skillsError });
           }
         }
       )}
@@ -308,7 +312,6 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
                 includeMissingSelectedOptions
                 getOptionValue={(skill) => skill.id}
                 getOptionLabel={(skill) => skill.name}
-                getOptionKeywords={(skill) => [skill.description]}
                 renderOption={(skill) => (
                   <div className="flex min-w-0 items-center gap-2">
                     <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
@@ -328,8 +331,8 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
                 onValueChange={field.onChange}
               />
               <FieldDescription>
-                The project&apos;s skills an agent gets with this session, beside its access
-                bundle&apos;s.
+                The project&apos;s skills an agent gets with this session, beside or instead of an
+                access bundle&apos;s.
               </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>

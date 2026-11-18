@@ -24,7 +24,7 @@ export const inlineServicesLabel = (count: number) =>
 export const sessionInlineServices = (session: Pick<TAgentVaultSession, "services">) =>
   session.services.flatMap((service) => (service.isInline ? [service] : []));
 
-export const sessionServices = (session: Pick<TAgentVaultSession, "services">) =>
+export const sessionListedServices = (session: Pick<TAgentVaultSession, "services">) =>
   session.services.flatMap((service) => (service.isInline ? [] : [service]));
 
 export const inlineSkillsLabel = (count: number) =>
@@ -33,7 +33,7 @@ export const inlineSkillsLabel = (count: number) =>
 // Optional because an API pod from before session skills, during a rolling upgrade, sends sessions without them.
 type TSessionWithSkills = Partial<Pick<TAgentVaultSession, "skills">>;
 
-export const sessionSkills = (session: TSessionWithSkills) =>
+export const sessionListedSkills = (session: TSessionWithSkills) =>
   (session.skills ?? []).filter((skill) => !skill.isInline);
 
 export const sessionInlineSkills = (session: TSessionWithSkills) =>
@@ -55,9 +55,9 @@ export const toAccessItems = (
   const inlineSkills = sessionInlineSkills(session);
   return [
     ...(session.accessBundle ? [{ kind: "bundle" as const, bundle: session.accessBundle }] : []),
-    ...sessionServices(session).map((service) => ({ kind: "service" as const, service })),
+    ...sessionListedServices(session).map((service) => ({ kind: "service" as const, service })),
     ...(inline.length ? [{ kind: "inline" as const, services: inline }] : []),
-    ...sessionSkills(session).map((skill) => ({ kind: "skill" as const, skill })),
+    ...sessionListedSkills(session).map((skill) => ({ kind: "skill" as const, skill })),
     ...(inlineSkills.length ? [{ kind: "inline-skills" as const, skills: inlineSkills }] : [])
   ];
 };
