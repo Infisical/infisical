@@ -16,12 +16,14 @@ import {
 type TFolderAccessScope = { projectId: string; environmentSlug: string; secretPath: string };
 
 // a grant changes what the actor may read, so the roster and anything rendering the project's
-// secrets both go stale. the roster is invalidated across every page/search variant, and a root
-// grant can reach every folder of its environment, so it refreshes every roster there.
+// secrets both go stale. the roster is invalidated across every page/search variant, and a grant
+// can reach every folder below its own, so it refreshes every roster there too: removing it or
+// turning subfolder access off changes what those folders inherit.
 const invalidateFolderAccess = (
   queryClient: ReturnType<typeof useQueryClient>,
   { projectId, environmentSlug, secretPath }: TFolderAccessScope
 ) => {
+  const subfolderPrefix = `${secretPath.replace(/\/+$/, "")}/`;
   queryClient.invalidateQueries({
     predicate: (query) => {
       const label = query.queryKey[1];
@@ -37,7 +39,8 @@ const invalidateFolderAccess = (
       return (
         params?.projectId === projectId &&
         params?.environmentSlug === environmentSlug &&
-        (secretPath === "/" || params?.secretPath === secretPath)
+        (params?.secretPath === secretPath ||
+          Boolean(params?.secretPath?.startsWith(subfolderPrefix)))
       );
     }
   });
