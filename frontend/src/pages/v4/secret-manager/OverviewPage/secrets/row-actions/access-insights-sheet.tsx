@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
 import { useIsMobile } from "@infisical/cipher/hooks/use-mobile";
+import { FrameScope } from "@infisical/cipher/lib/frame-context";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -8,6 +9,7 @@ import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
@@ -343,11 +345,22 @@ export function AccessInsightsSheet({
           <Stack gap={16}>
             <FilterBar
               label="Access filters"
-              searchLabel="Search by name"
-              searchPlaceholder={isMobile ? "Search..." : "Search by name..."}
               searchValue={search}
-              onSearchChange={setSearch}
-              slashShortcut={false}
+              search={
+                <Input
+                  icon="search"
+                  width={isMobile ? undefined : "md"}
+                  aria-label="Search by name"
+                  placeholder={isMobile ? "Search..." : "Search by name..."}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape" || !search) return;
+                    event.preventDefault();
+                    setSearch("");
+                  }}
+                />
+              }
               fields={[
                 {
                   key: "type",
@@ -378,19 +391,21 @@ export function AccessInsightsSheet({
                 </Button>
               }
             />
-            <DataTable
-              label={`Access to ${secret.name}`}
-              rows={rows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              rowLabel={(row) => row.name}
-              loading={open && isPending}
-              loadingRows={4}
-              rowActions={{ renderMenu: (row) => menu(row, setPrivilegeTarget) }}
-              empty={empty}
-              filtered={filtered}
-              ghost={false}
-            />
+            <FrameScope framed>
+              <DataTable
+                label={`Access to ${secret.name}`}
+                rows={rows}
+                columns={columns}
+                getRowId={(row) => row.id}
+                rowLabel={(row) => row.name}
+                loading={open && isPending}
+                loadingRows={4}
+                rowActions={{ renderMenu: (row) => menu(row, setPrivilegeTarget) }}
+                empty={empty}
+                filtered={filtered}
+                ghost={false}
+              />
+            </FrameScope>
           </Stack>
         </SheetBody>
       </SheetContent>
