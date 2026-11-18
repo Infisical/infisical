@@ -7,6 +7,7 @@ import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
@@ -90,6 +91,7 @@ import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service"
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { ActorAuthMethod, ActorType, MfaMethod } from "@app/lib/auth/actor-types";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
+import type { TRequestPermission } from "@app/lib/types";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -279,14 +281,7 @@ declare module "fastify" {
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
     shouldForwardWritesToPrimaryInstance: boolean;
-    permission: {
-      authMethod: ActorAuthMethod;
-      type: ActorType;
-      id: string;
-      orgId: string;
-      parentOrgId: string;
-      rootOrgId: string;
-    };
+    permission: TRequestPermission;
     rateLimits: RateLimitConfiguration;
     passportUser: TProviderAuthCallback;
     passportMachineIdentity: {
@@ -436,6 +431,7 @@ declare module "fastify" {
     kmsDataKeyService: TKmsDataKeyService;
     kmsRootKeyService: TKmsRootKeyService;
     instanceConfigService: TInstanceConfigService;
+    actorContextService: TActorContextService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
