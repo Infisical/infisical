@@ -6,6 +6,7 @@ import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { fillActivityPeriods, getActivityPeriodWindow, selectActivityPeriod } from "@app/lib/knex/activity-periods";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
@@ -1512,29 +1513,16 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const getActivityTrend = async (projectId: string, daysBack: number) => {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
-      const now = new Date();
-
-      const useDaily = daysBack <= 30;
-
-      if (!useDaily) {
-        startDate.setDate(1);
-      }
-      const truncUnit = useDaily ? "day" : "month";
-      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
-
-      const periodExpr = (col: string) =>
-        db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."${col}"), ?) as period`, [truncUnit, dateFormat]);
+      const window = getActivityPeriodWindow(daysBack);
+      const { startDate, endDate } = window;
 
       const issued = await db
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(periodExpr("notBefore"))
+        .where(`${TableName.Certificate}.notBefore`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1544,9 +1532,9 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
-        .where(`${TableName.Certificate}.notAfter`, "<=", now)
+        .where(`${TableName.Certificate}.notAfter`, "<=", endDate)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
-        .select(periodExpr("notAfter"))
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notAfter"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1557,8 +1545,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
-        .where(`${TableName.Certificate}.revokedAt`, "<=", now)
-        .select(periodExpr("revokedAt"))
+        .where(`${TableName.Certificate}.revokedAt`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "revokedAt"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -1569,59 +1557,26 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Certificate}.deletedAt`)
         .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(periodExpr("notBefore"))
+        .where(`${TableName.Certificate}.notBefore`, "<=", endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
 
-      const periods: Array<{
-        period: string;
-        issued: number;
-        expired: number;
-        revoked: number;
-        renewed: number;
-      }> = [];
-      interface PeriodCount {
-        period: string;
-        count: string;
-      }
+      type PeriodCount = { period: string; count: string };
+      const toCountMap = (rows: unknown) => new Map((rows as PeriodCount[]).map((r) => [r.period, Number(r.count)]));
 
-      const typedIssued = issued as unknown as PeriodCount[];
-      const typedExpired = expired as unknown as PeriodCount[];
-      const typedRevoked = revoked as unknown as PeriodCount[];
-      const typedRenewed = renewed as unknown as PeriodCount[];
+      const issuedMap = toCountMap(issued);
+      const expiredMap = toCountMap(expired);
+      const revokedMap = toCountMap(revoked);
+      const renewedMap = toCountMap(renewed);
 
-      const issuedMap = new Map(typedIssued.map((r) => [r.period, r.count]));
-      const expiredMap = new Map(typedExpired.map((r) => [r.period, r.count]));
-      const revokedMap = new Map(typedRevoked.map((r) => [r.period, r.count]));
-      const renewedMap = new Map(typedRenewed.map((r) => [r.period, r.count]));
-
-      const cursor = new Date(startDate);
-      while (cursor <= now) {
-        let periodKey: string;
-        if (useDaily) {
-          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-        } else {
-          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        }
-        const issuedCount = issuedMap.get(periodKey);
-        const expiredCount = expiredMap.get(periodKey);
-        const revokedCount = revokedMap.get(periodKey);
-        const renewedCount = renewedMap.get(periodKey);
-        periods.push({
-          period: periodKey,
-          issued: issuedCount ? Number(issuedCount) : 0,
-          expired: expiredCount ? Number(expiredCount) : 0,
-          revoked: revokedCount ? Number(revokedCount) : 0,
-          renewed: renewedCount ? Number(renewedCount) : 0
-        });
-        if (useDaily) {
-          cursor.setDate(cursor.getDate() + 1);
-        } else {
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
+      const periods = fillActivityPeriods(window, (period) => ({
+        issued: issuedMap.get(period) ?? 0,
+        expired: expiredMap.get(period) ?? 0,
+        revoked: revokedMap.get(period) ?? 0,
+        renewed: renewedMap.get(period) ?? 0
+      }));
 
       return { periods };
     } catch (error) {
@@ -1631,27 +1586,15 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const getPqcTrend = async (projectId: string, daysBack: number) => {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
-      const now = new Date();
-
-      const useDaily = daysBack <= 30;
-      if (!useDaily) {
-        startDate.setDate(1);
-      }
-      const truncUnit = useDaily ? "day" : "month";
-      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
+      const window = getActivityPeriodWindow(daysBack);
 
       const rows = await db
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .whereNull(`${TableName.Certificate}.deletedAt`)
-        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(
-          db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."notBefore"), ?) as period`, [truncUnit, dateFormat])
-        )
+        .where(`${TableName.Certificate}.notBefore`, ">=", window.startDate)
+        .where(`${TableName.Certificate}.notBefore`, "<=", window.endDate)
+        .select(selectActivityPeriod(db, window, TableName.Certificate, "notBefore"))
         .select(
           db.raw(
             `CASE WHEN "${TableName.Certificate}"."keyAlgorithm" IN (${PQC_KEY_ALGORITHMS.map(() => "?").join(",")}) THEN 'pqc' ELSE 'nonPqc' END as bucket`,
@@ -1675,23 +1618,10 @@ export const certificateDALFactory = (db: TDbClient) => {
         else nonPqcMap.set(r.period, Number(r.count));
       });
 
-      const periods: Array<{ period: string; pqc: number; nonPqc: number }> = [];
-      const cursor = new Date(startDate);
-      while (cursor <= now) {
-        const periodKey = useDaily
-          ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
-          : `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        periods.push({
-          period: periodKey,
-          pqc: pqcMap.get(periodKey) ?? 0,
-          nonPqc: nonPqcMap.get(periodKey) ?? 0
-        });
-        if (useDaily) {
-          cursor.setDate(cursor.getDate() + 1);
-        } else {
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
+      const periods = fillActivityPeriods(window, (period) => ({
+        pqc: pqcMap.get(period) ?? 0,
+        nonPqc: nonPqcMap.get(period) ?? 0
+      }));
 
       return { periods };
     } catch (error) {
