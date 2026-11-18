@@ -69,7 +69,7 @@ type TSecretImportSecretsV2 = {
 };
 
 export const LEVEL_BREAK = 10;
-const normalizeSecretPath = (path: string) => (path === "/" ? "/" : path.replace(/\/+$/, "") || "/");
+const normalizeSecretPath = (path?: string) => (!path || path === "/" ? "/" : path.replace(/\/+$/, "") || "/");
 const getImportSourceKey = (envId: string, path: string) => `${envId}=${normalizeSecretPath(path)}`;
 const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 
@@ -364,10 +364,10 @@ export const fnSecretsV2FromImports = async ({
       (item) => `${item.envId}-${item.secretPath}`
     );
 
-    const importedFolders = await folderDAL.findByManySecretPath(uniqueSourcePaths);
+    const importedFolders = (await folderDAL.findByManySecretPath(uniqueSourcePaths)).filter(Boolean);
     if (!importedFolders.length) continue;
 
-    const importedFolderIds = importedFolders.filter(Boolean).map((el) => el?.id) as string[];
+    const importedFolderIds = importedFolders.map((el) => el.id);
 
     if (!importedFolderIds.length) continue;
 
@@ -498,7 +498,7 @@ export const fnSecretsV2FromImports = async ({
       const accessScope =
         isCrossProject && importAccessScopeByFolderId?.get(folderId)
           ? importAccessScopeByFolderId.get(folderId)!
-          : { environment: importEnv.slug, secretPath: importPath };
+          : { environment: importEnv.slug, secretPath: normalizeSecretPath(importPath) };
 
       // Skip cross-project imports that have no corresponding ProjectFolderGrant
       if (isCrossProject && !grantedFolderIds.has(sourceImportFolder?.id || "")) {
