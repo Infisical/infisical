@@ -10,9 +10,10 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Alert,
   AlertDescription,
+  AnimatedCollapse,
   Button,
   CardContent,
-  Separator,
+  FieldSeparator,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -406,20 +407,21 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
 
   const MoreOptionsChevron = showMoreOptions ? ChevronUpIcon : ChevronDownIcon;
   const moreOptions = hasMoreOptions && (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       <Button
         variant="outline"
         size="lg"
         isFullWidth
+        aria-controls="mfa-more-options"
         aria-expanded={showMoreOptions}
         onClick={() => setShowMoreOptions(!showMoreOptions)}
       >
         More Options
         <MoreOptionsChevron />
       </Button>
-      {showMoreOptions && (
-        <>
-          <Separator />
+      <AnimatedCollapse id="mfa-more-options" isOpen={showMoreOptions}>
+        <div className="flex flex-col gap-2 pt-2">
+          <FieldSeparator />
           {otherMethods.map((otherMethod) => {
             const Icon = MFA_METHOD_ICONS[otherMethod];
             return (
@@ -435,25 +437,13 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               </Button>
             );
           })}
-          <Button
-            variant="outline"
-            size="lg"
-            isFullWidth
-            onClick={() => {
-              setMfaCode("");
-              setShowMoreOptions(false);
-              setShowRecoveryCodeInput(true);
-            }}
-          >
-            Recovery Code
-          </Button>
-        </>
-      )}
+        </div>
+      </AnimatedCollapse>
     </div>
   );
 
-  const hasRecoveryActions =
-    showRecoveryCodeInput || activeMethod === MfaMethod.EMAIL || !hasMoreOptions;
+  const showRecoveryToggle = showRecoveryCodeInput || isRecoveringFromSetup || hasRecoveryCodes;
+  const hasRecoveryActions = activeMethod === MfaMethod.EMAIL || showRecoveryToggle;
   const recoveryActions = hasRecoveryActions && (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       {showRecoveryCodeInput ? (
@@ -494,7 +484,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
           />
         )
       )}
-      {!hasMoreOptions && (
+      {showRecoveryToggle && (
         <button
           type="button"
           onClick={() => {

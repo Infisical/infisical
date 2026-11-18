@@ -82,16 +82,10 @@ export const OrgGenericAuthSection = () => {
   };
 
   const handleUpdateAllowedMfa = async (options: TMfaMethodOption[]) => {
-    if (!currentOrg?.id) return;
+    // Removing the last MFA method is a no-op.
+    if (!currentOrg?.id || !options.length) return;
     if (!subscription?.enforceMfa) {
       handlePopUpOpen("upgradePlan");
-      return;
-    }
-    if (!options.length) {
-      createNotification({
-        text: "Keep at least one MFA method. Members need a method to sign in.",
-        type: "error"
-      });
       return;
     }
 

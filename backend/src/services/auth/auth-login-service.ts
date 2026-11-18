@@ -222,6 +222,7 @@ export const authLoginServiceFactory = ({
         issuingRootOrgId,
         email,
         allowedMfaMethods,
+        requiredMfaMethod: initialMfaMethod,
         idpMfaOrgId
       },
       appCfg.AUTH_SECRET,

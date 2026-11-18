@@ -45,8 +45,7 @@ export const MfaEnrollment = ({ methods, onComplete, onUseRecoveryCode }: Props)
         <h2 className="text-xl font-normal text-foreground">Set up two-factor authentication</h2>
         {methods.length > 1 && !selectedMethod && (
           <p className="mt-2 text-sm text-muted">
-            Your organization requires one of the following MFA methods to log in. Select one to
-            configure.
+            Set up one of the methods your organization allows to sign in.
           </p>
         )}
       </div>
@@ -65,7 +64,7 @@ export const MfaEnrollment = ({ methods, onComplete, onUseRecoveryCode }: Props)
           )}
         </>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {methods.map((method) => {
             const Icon = MFA_METHOD_ICONS[method];
             return (
