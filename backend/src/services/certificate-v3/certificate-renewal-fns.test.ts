@@ -104,6 +104,16 @@ describe("haveRenewalNamesChanged", () => {
     ).toBe(false);
   });
 
+  it("treats a case change in a URI SAN as a change, since URI paths are case-sensitive", () => {
+    const uriSan = (value: string) => ({ type: CertSubjectAlternativeNameType.URI, value });
+    expect(
+      haveRenewalNamesChanged(
+        { commonName: "app.example.com", subjectAlternativeNames: [uriSan("spiffe://example.com/Service")] },
+        { commonName: "app.example.com", subjectAlternativeNames: [uriSan("spiffe://example.com/service")] }
+      )
+    ).toBe(true);
+  });
+
   it("detects a changed common name or SAN list", () => {
     expect(haveRenewalNamesChanged(certificateNames, { ...certificateNames, commonName: "new.example.com" })).toBe(
       true

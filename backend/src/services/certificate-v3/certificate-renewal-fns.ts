@@ -485,7 +485,9 @@ export const haveRenewalNamesChanged = (
   const toNameKey = ({ commonName, subjectAlternativeNames }: typeof original) =>
     [
       (commonName ?? "").toLowerCase(),
-      ...(subjectAlternativeNames ?? []).map((san) => san.value.toLowerCase()).sort()
+      ...(subjectAlternativeNames ?? [])
+        .map((san) => (san.type === CertSubjectAlternativeNameType.URI ? san.value : san.value.toLowerCase()))
+        .sort()
     ].join("\n");
 
   return toNameKey(original) !== toNameKey(renewed);

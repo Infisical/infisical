@@ -826,7 +826,13 @@ export const evaluateSubjectStep = ({
         hint: getSubjectAttributeHint(rule),
         error:
           validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy) ??
-          (isCommonNameAddedAsDnsSan && attr.type === CertSubjectAttributeType.COMMON_NAME
+          (isCommonNameAddedAsDnsSan &&
+          attr.type === CertSubjectAttributeType.COMMON_NAME &&
+          !subjectAltNames.some(
+            (san) =>
+              san.type === CertSubjectAlternativeNameType.DNS_NAME &&
+              san.value.trim().toLowerCase() === attr.value.trim().toLowerCase()
+          )
             ? validateCommonNameAsDnsSan(attr.value, rules)
             : undefined),
         isLocked: Boolean(rule?.required?.length)

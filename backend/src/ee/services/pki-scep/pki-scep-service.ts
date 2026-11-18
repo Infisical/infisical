@@ -993,6 +993,20 @@ export const pkiScepServiceFactory = ({
       profile.defaults
     );
 
+    const approvalPolicy = await matchCertificateRequestApprovalPolicy(
+      { approvalPolicyService, approvalPolicyDAL },
+      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
+    );
+    if (approvalPolicy) {
+      certRequestWithDefaults.subjectAlternativeNames = addCommonNameAsDnsSan({
+        policy,
+        enrollmentType: EnrollmentType.SCEP,
+        commonName: certRequestWithDefaults.commonName,
+        subjectAlternativeNames: certRequestWithDefaults.subjectAlternativeNames,
+        isCsrSignedAsSent: caSignsCsrAsSent(caType)
+      }).subjectAlternativeNames;
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       certRequestWithDefaults,
@@ -1005,19 +1019,15 @@ export const pkiScepServiceFactory = ({
     }
     assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
+    const issuedRequest = approvalPolicy ? certRequestWithDefaults : certRequest;
     await validateCertificateRequestLicense({
-      request: { ...certRequest, keyAlgorithm, signatureAlgorithm },
-      altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      request: { ...issuedRequest, keyAlgorithm, signatureAlgorithm },
+      altNames: (issuedRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,
       quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
-
-    const approvalPolicy = await matchCertificateRequestApprovalPolicy(
-      { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
-    );
 
     const createScepCertificateRequest = (
       status: CertificateRequestStatus,

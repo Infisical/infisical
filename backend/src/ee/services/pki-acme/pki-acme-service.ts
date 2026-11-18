@@ -1316,13 +1316,18 @@ export const pkiAcmeServiceFactory = ({
       if (!certificatePolicy) {
         throw new NotFoundError({ message: "Certificate policy not found" });
       }
-      certificateRequest.subjectAlternativeNames = addCommonNameAsDnsSan({
-        policy: certificatePolicy,
-        enrollmentType: EnrollmentType.ACME,
-        csrCommonName: certificateRequest.commonName,
-        subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
-        isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
-      }).subjectAlternativeNames;
+      try {
+        certificateRequest.subjectAlternativeNames = addCommonNameAsDnsSan({
+          policy: certificatePolicy,
+          enrollmentType: EnrollmentType.ACME,
+          csrCommonName: certificateRequest.commonName,
+          subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+          isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
+        }).subjectAlternativeNames;
+      } catch (error) {
+        if (error instanceof BadRequestError) throw await $rejectCsr(`Invalid CSR: ${error.message}`);
+        throw error;
+      }
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
       // holding a pooled connection across signing is what let concurrent finalizations exhaust
