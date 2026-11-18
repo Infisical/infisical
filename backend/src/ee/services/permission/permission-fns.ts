@@ -689,7 +689,7 @@ const RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE = buildFolderScopedDenyRulesByR
 
 const FOLDER_EDITING_ROLES = new Set([SecretFolderRole.Edit, SecretFolderRole.Manage, SecretFolderRole.FullAccess]);
 
-const canonicalFolderPath = (folderPath: string) => {
+export const canonicalFolderPath = (folderPath: string) => {
   const segments = folderPath.split("/").filter(Boolean);
   return segments.length ? `/${segments.join("/")}` : "/";
 };

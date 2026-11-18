@@ -2,6 +2,7 @@ import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/sc
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import {
   buildFolderScopedPrivilegeRulesByGrant,
+  canonicalFolderPath,
   hasSecretReadValueOrDescribePermission,
   isFolderPathBelow
 } from "@app/ee/services/permission/permission-fns";
@@ -147,9 +148,14 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
 });
 
 export const buildFolderGrantSourceRules = <T extends TProjectFolderScopedPrivilege>(grants: T[]) => {
-  const rulesByGrant = buildFolderScopedPrivilegeRulesByGrant(grants);
+  // Every recursive grant is compared with every later one, so each path is canonicalized once up front rather
+  // than once per comparison.
+  const rulesByGrant = buildFolderScopedPrivilegeRulesByGrant(grants).map((grant) => {
+    const secretPath = canonicalFolderPath(grant.privilege.secretPath);
+    return { ...grant, secretPath, pathsBelow: secretPath === "/" ? "/" : `${secretPath}/` };
+  });
   return new Map(
-    rulesByGrant.map(({ privilege, rules }, index) => [
+    rulesByGrant.map(({ privilege, rules, secretPath, pathsBelow }, index) => [
       privilege.id,
       privilege.appliesToSubfolders
         ? [
@@ -159,7 +165,8 @@ export const buildFolderGrantSourceRules = <T extends TProjectFolderScopedPrivil
               .filter(
                 (later) =>
                   later.privilege.environmentSlug === privilege.environmentSlug &&
-                  isFolderPathBelow(later.privilege.secretPath, privilege.secretPath)
+                  later.secretPath !== secretPath &&
+                  later.secretPath.startsWith(pathsBelow)
               )
               .flatMap((later) => later.rules.filter((rule) => rule.inverted))
           ]
