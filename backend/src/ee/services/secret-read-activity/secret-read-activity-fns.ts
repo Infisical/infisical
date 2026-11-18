@@ -1,7 +1,7 @@
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
@@ -177,7 +177,7 @@ export const createAccessDating = (
       const permission = source.permission();
       let granted = checks.get(permission);
       if (granted === undefined) {
-        granted = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject);
+        granted = SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, subject);
         checks.set(permission, granted);
       }
       return granted;
@@ -238,9 +238,7 @@ export const summarizeSecretAccess = (
   const subject = subjectOf(activity);
   const entitled = unique(
     readersByRules
-      .filter(([{ permission }]) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject)
-      )
+      .filter(([{ permission }]) => SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, subject))
       .flat(),
     (reader) => reader.actorId
   );

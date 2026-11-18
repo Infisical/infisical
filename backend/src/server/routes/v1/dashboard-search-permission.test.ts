@@ -1,24 +1,26 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { registerDashboardRouter } from "./dashboard-router";
 
 test.each(["/team", "/team/team"])("deep search checks the actual path for a grant on %s", async (allowedPath) => {
   const routes = new Map<string, (req: unknown) => Promise<{ secrets: { secretPath: string }[] }>>();
-  const permission = createMongoAbility<ProjectPermissionSet>([
-    {
-      action: ProjectPermissionSecretActions.DescribeSecret,
-      subject: ProjectPermissionSub.Secrets,
-      conditions: { environment: "dev", secretPath: allowedPath }
-    }
-  ]);
+  const permission = Permission.fromRules<ProjectPermissionSet>({
+    rules: [
+      {
+        action: ProjectPermissionSecretActions.DescribeSecret,
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { environment: "dev", secretPath: allowedPath }
+      }
+    ]
+  });
   const folders = [
     { id: "team", path: "/team", environment: "dev" },
     { id: "child", path: "/team/child", environment: "dev" }
@@ -27,7 +29,7 @@ test.each(["/team", "/team/team"])("deep search checks the actual path for a gra
     async ({ folderMappings }: { folderMappings: { path: string; folderId: string }[] }) => ({
       secrets: folderMappings
         .filter(({ path }: { path: string }) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment: "dev",
             secretPath: path,
             secretName: "KEY",

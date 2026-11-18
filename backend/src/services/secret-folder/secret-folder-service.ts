@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -7,6 +6,7 @@ import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionActions,
@@ -353,7 +353,7 @@ export const secretFolderServiceFactory = ({
   const $assertNoOpenChangeRequests = async (
     folders: { id: string; path: string }[],
     action: TFolderChangeAction,
-    permission: MongoAbility<ProjectPermissionSet>,
+    permission: Permission<ProjectPermissionSet>,
     tx: Knex
   ) => {
     const folderIdsWithOpenRequests = await secretChangeRequestService.findFolderIdsWithOpenRequests(
@@ -363,7 +363,10 @@ export const secretFolderServiceFactory = ({
     if (!folderIdsWithOpenRequests.length) return;
 
     if (
-      !permission.can(ProjectPermissionSecretApprovalRequestActions.Read, ProjectPermissionSub.SecretApprovalRequest)
+      !permission.can({
+        action: ProjectPermissionSecretApprovalRequestActions.Read,
+        subject: ProjectPermissionSub.SecretApprovalRequest
+      })
     ) {
       throw new BadRequestError({
         message: `You cannot ${action} the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
@@ -395,7 +398,7 @@ export const secretFolderServiceFactory = ({
     folderId: string;
     newName: string;
     actor: ActorType;
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     tx: Knex;
   }) => {
     const unlockedSubtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
@@ -542,7 +545,7 @@ export const secretFolderServiceFactory = ({
               folderId: folder.id,
               newName: name,
               actor: actor.principal.type,
-              permission: permission.toAbility(),
+              permission,
               tx
             });
           }
@@ -705,7 +708,7 @@ export const secretFolderServiceFactory = ({
           folderId: folder.id,
           newName: name,
           actor: actor.principal.type,
-          permission: permission.toAbility(),
+          permission,
           tx
         });
       }
@@ -795,7 +798,7 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
     actor: ActorType;
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     tx: Knex;
   }) => {
     let targetFolder = await folderDAL
@@ -913,7 +916,7 @@ export const secretFolderServiceFactory = ({
         parentId: parentFolder.id,
         idOrName,
         actor: actor.principal.type,
-        permission: permission.toAbility(),
+        permission,
         tx
       });
 
@@ -1612,7 +1615,7 @@ export const secretFolderServiceFactory = ({
           parentId: parentFolder.id,
           idOrName,
           actor: actor.principal.type,
-          permission: permission.toAbility(),
+          permission,
           tx
         });
 
@@ -1785,7 +1788,7 @@ export const secretFolderServiceFactory = ({
     // request-memoized, so it reuses the lookup getFolderById already performed (no extra DB read).
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: folder.projectId });
     const accessScope: TFolderMoveAccessScope = {
-      permission: permission.toAbility(),
+      permission,
       environment: folder.environment.envSlug,
       rootFolderPath: folder.path
     };
@@ -1830,12 +1833,7 @@ export const secretFolderServiceFactory = ({
       canActorAccessDestination &&
       destinationBlock &&
       destinationEnvironment &&
-      canActorReadBlock(
-        permission.toAbility(),
-        destinationEnvironment,
-        "secret_approval_policy",
-        destinationBlock.blockingAbsPath
-      )
+      canActorReadBlock(permission, destinationEnvironment, "secret_approval_policy", destinationBlock.blockingAbsPath)
         ? destinationBlock
         : undefined;
 
@@ -1971,7 +1969,7 @@ export const secretFolderServiceFactory = ({
       );
       if (sourceBlock) {
         assertFolderMoveAllowed(sourceBlock, {
-          permission: permission.toAbility(),
+          permission,
           environment: sourceEnvironment,
           folderName,
           scope: "source"
@@ -1979,7 +1977,7 @@ export const secretFolderServiceFactory = ({
       }
       if (destinationBlock) {
         assertFolderMoveAllowed(destinationBlock, {
-          permission: permission.toAbility(),
+          permission,
           environment: destinationEnvironment,
           folderName,
           scope: "destination"

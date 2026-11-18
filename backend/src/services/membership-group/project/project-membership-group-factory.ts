@@ -6,19 +6,15 @@ import {
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
@@ -99,25 +95,14 @@ export const newProjectMembershipGroupFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-        ProjectPermissionSub.Groups,
-        permission.toAbility(),
-        permissionRole.permission.toAbility(),
-        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create group project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.AssignRole,
-            ProjectPermissionSub.Groups
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Groups,
+        fields: { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to create group project membership"
+      });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -176,14 +161,13 @@ export const newProjectMembershipGroupFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-      opSubject: ProjectPermissionSub.Groups,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to change the roles of a more privileged group",
-      subjectFields: { groupName: groupDetails.name }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+      subject: ProjectPermissionSub.Groups,
+      fields: { groupName: groupDetails.name },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged group"
     });
 
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
@@ -191,25 +175,14 @@ export const newProjectMembershipGroupFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-        ProjectPermissionSub.Groups,
-        permission.toAbility(),
-        permissionRole.permission.toAbility(),
-        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update group project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.AssignRole,
-            ProjectPermissionSub.Groups
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Groups,
+        fields: { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update group project membership"
+      });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -239,14 +212,13 @@ export const newProjectMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: ProjectPermissionGroupActions.Delete,
-      opSubject: ProjectPermissionSub.Groups,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove a more privileged group from the project",
-      subjectFields: { groupName: groupDetails.name }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: ProjectPermissionGroupActions.Delete,
+      subject: ProjectPermissionSub.Groups,
+      fields: { groupName: groupDetails.name },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged group from the project"
     });
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };

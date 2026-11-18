@@ -1,7 +1,7 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -59,8 +59,7 @@ const read = (overrides: Partial<TSecretLastRead>): TSecretLastRead => ({
   ...overrides
 });
 
-const ability = (rules: Parameters<typeof createMongoAbility>[0]) =>
-  createMongoAbility<MongoAbility<ProjectPermissionSet>>(rules as never);
+const ability = (rules: unknown[]) => Permission.fromRules<ProjectPermissionSet>({ rules: rules as never });
 const readsAll = ability([{ action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }]);
 const readsProd = ability([
   {

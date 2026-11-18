@@ -4,16 +4,14 @@ import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
 import {
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   ProjectPermissionSet
 } from "@app/domains/platform/projects/ce/module";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
@@ -69,13 +67,67 @@ const buildTx = (adminCount: number) => {
 // follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 type TTestRule = { action: string | string[]; subject: string; conditions?: unknown };
 
+// Agent Vault's role rules are EE-only inside its domain. These stand in for the parts of its admin and member sets
+// the guards read: the admin manages members, groups and identities, the member only runs sessions.
+const agentVaultMemberRules: TTestRule[] = [
+  {
+    action: [
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ],
+    subject: ProjectPermissionSub.AgentVaultSessions
+  }
+];
+const agentVaultAdminRules: TTestRule[] = [
+  ...agentVaultMemberRules,
+  {
+    action: [
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete,
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionMemberActions.AssumePrivileges
+    ],
+    subject: ProjectPermissionSub.Member
+  },
+  {
+    action: [
+      ProjectPermissionGroupActions.Create,
+      ProjectPermissionGroupActions.Edit,
+      ProjectPermissionGroupActions.Delete,
+      ProjectPermissionGroupActions.Read,
+      ProjectPermissionGroupActions.GrantPrivileges,
+      ProjectPermissionGroupActions.AssignRole
+    ],
+    subject: ProjectPermissionSub.Groups
+  },
+  {
+    action: [
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete,
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+      ProjectPermissionIdentityActions.AssumePrivileges
+    ],
+    subject: ProjectPermissionSub.Identity
+  }
+];
+
 const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
   adminMembershipIds = [] as string[],
   groupReachableIds = [] as string[],
   // A role of its own, in place of Agent Vault admin.
-  rules = agentVaultProjectAdminPermissions as unknown as TTestRule[],
+  rules = agentVaultAdminRules,
   // Off is the legacy system, where the boundary compares rule sets instead of checking assign-role.
   shouldUseNewPrivilegeSystem = false
 } = {}) => {
@@ -86,8 +138,8 @@ const buildService = ({
         roles.map((role) => ({
           permission: Permission.fromRules({
             rules: (role === ProjectMembershipRole.Admin
-              ? agentVaultProjectAdminPermissions
-              : agentVaultProjectMemberPermissions) as TPermissionRule<ProjectPermissionSet>[]
+              ? agentVaultAdminRules
+              : agentVaultMemberRules) as unknown as TPermissionRule<ProjectPermissionSet>[]
           }),
           role: { name: role, slug: role }
         }))

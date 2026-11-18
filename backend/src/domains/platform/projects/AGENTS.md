@@ -24,5 +24,3 @@ What a project permission is, and what License and the product meters need about
   `identities`, `user_group_membership`, `identity_group_membership`). Those move behind the owning domain's service
   once it exists.
 - Tests: model and service tests on in-memory stores; `testing/projects-module.ts` builds the module on Postgres.
-  The parity spec (`services/project-permission/permission-parity.integration-test.ts`) compares the domains
-  against the legacy engine and goes away with it.

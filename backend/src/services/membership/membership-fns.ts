@@ -1,4 +1,4 @@
-import { MongoAbility } from "@casl/ability";
+import { AbilityTuple } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -10,9 +10,9 @@ import {
   TableName
 } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission, TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import type { TActorContextService } from "@app/domains/platform/organizations/ce/module";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
@@ -75,6 +75,8 @@ export const roleNeedsPrivilegeBoundary = (role: string) =>
 export const filterRolesNeedingPrivilegeBoundary = <T extends { role: string }>(roles: T[]) =>
   roles.filter((el) => roleNeedsPrivilegeBoundary(el.role));
 
+const isActiveRole = (role: TMembershipRole) => TemporaryAccess.restore(role).isActive();
+
 export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
   ...new Set(
     roles
@@ -84,10 +86,9 @@ export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
   )
 ];
 
-// The role permissions as the CASL abilities the privilege boundary helpers take.
-export const toRoleAbilities = (
-  rolePermissions: { permission: { toAbility: () => MongoAbility }; role?: { slug: string } }[]
-) => rolePermissions.map(({ permission, role }) => ({ permission: permission.toAbility(), role }));
+// The role permissions as the targets a privilege boundary check measures, one per role.
+export const toBoundsTargets = (rolePermissions: { permission: Permission<AbilityTuple>; role?: { slug: string } }[]) =>
+  rolePermissions.map(({ permission, role }) => ({ permission, roleSlug: role?.slug }));
 
 type TAssertWillRetainProjectAdminArg = {
   scopeProjectId: string;

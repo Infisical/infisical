@@ -14,12 +14,11 @@ into domains.
   grants nothing, and an unknown folder role fails the check (`FolderRoleInvalid`) only when its rules are built.
   `FolderGrants.rules()` puts every grant's deny block before every allow block; keep that order, or one grant undoes
   another's allow at the same folder.
-- **The folder rules** are in `models/folder-roles.ts` (from the legacy `ee/services/permission/folder-roles.ts`).
+- **The folder rules** are in `models/folder-roles.ts`.
   A new action on a subject with a `secretPath` condition goes into `FOLDER_SCOPED_DENY_RULES`, or folder grants stop
   resetting it at their folder; `models/folder-grants.test.ts` fails until it does.
 - **Cache:** an actor's folder grants are cached (`FolderGrantCache`) behind the actor's grants fingerprint plus the
-  project's folder version, the Postgres counter `project-folder-permission-version:<projectId>` the legacy
-  permission service shares. Anything that changes a folder grant or moves, renames or deletes a folder or an
+  project's folder version, the Postgres counter `project-folder-permission-version:<projectId>`. Anything that changes a folder grant or moves, renames or deletes a folder or an
   environment must call `secretsPermissionService.within(tx).invalidateFolderGrants({ projectIds })` in its
   transaction (legacy code passes `sealKnexTransaction(trx)`), or `invalidateFolderGrants` when it has none, or
   readers keep the old paths for up to ten minutes.
