@@ -249,7 +249,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.Users}.id`, pageIds)
         .select([...$userColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
 
-      // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
+      // isPending is deliberately not filtered: GrantStore.findActorGrants grants access on group
       // membership alone and the flag is no longer cleared when a user is accepted.
       const viaGroup = $projectMemberships(conn, scope)
         .join(

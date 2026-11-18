@@ -10,7 +10,6 @@ import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-doma
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -23,8 +22,9 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { MAX_NEW_MEMBERS_PER_INVITE, TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
@@ -115,13 +115,12 @@ export const newOrgMembershipUserFactory = ({
       });
       const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: toRoleAbilities(permissionRoles),
-        baseMessage: "Failed to assign the requested role to a new org member"
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: toBoundsTargets(permissionRoles),
+        message: "Failed to assign the requested role to a new org member"
       });
     }
 
@@ -376,13 +375,12 @@ export const newOrgMembershipUserFactory = ({
       });
 
       for (const { opAction, baseMessage } of targetOps) {
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: opAction,
-          opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission.toAbility(),
-          targetPermissions: toRoleAbilities(targetPermissions),
-          baseMessage
+        assertPermissionBounds(permission, {
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+          actions: opAction,
+          subject: OrgPermissionSubjects.Member,
+          targets: toBoundsTargets(targetPermissions),
+          message: baseMessage
         });
       }
     }
@@ -394,13 +392,12 @@ export const newOrgMembershipUserFactory = ({
         roles: rolesToBound.map((el) => el.role)
       });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: toRoleAbilities(permissionRoles),
-        baseMessage: "Failed to assign the requested role to an existing org member"
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: toBoundsTargets(permissionRoles),
+        message: "Failed to assign the requested role to an existing org member"
       });
     }
   };
@@ -421,13 +418,12 @@ export const newOrgMembershipUserFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionMemberActions.Delete,
-      opSubject: OrgPermissionSubjects.Member,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove this member from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionMemberActions.Delete,
+      subject: OrgPermissionSubjects.Member,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove this member from the organization"
     });
   };
 

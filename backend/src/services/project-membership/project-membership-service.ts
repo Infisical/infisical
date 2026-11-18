@@ -8,7 +8,6 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -18,6 +17,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -32,7 +32,7 @@ import { lockMembershipsById } from "../membership/membership-dal";
 import {
   assertProductWillRetainAdmin,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -273,14 +273,13 @@ export const projectMembershipServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
     for (const addedUser of orgMembershipUsernames) {
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-        opSubject: ProjectPermissionSub.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: toRoleAbilities(memberRolePermissions),
-        baseMessage: "Failed to add a member with a role exceeding your own privileges",
-        subjectFields: { userEmail: addedUser.email || undefined }
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Member,
+        fields: { userEmail: addedUser.email || undefined },
+        targets: toBoundsTargets(memberRolePermissions),
+        message: "Failed to add a member with a role exceeding your own privileges"
       });
     }
 
@@ -400,14 +399,13 @@ export const projectMembershipServiceFactory = ({
           .filter(Boolean),
         ...unattributableRoles
       ];
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: ProjectPermissionMemberActions.Delete,
-        opSubject: ProjectPermissionSub.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: toRoleAbilities(targetPermissions),
-        baseMessage: "Failed to remove a more privileged member from the project",
-        subjectFields: { userEmail: projectMember.user.email || undefined }
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: ProjectPermissionMemberActions.Delete,
+        subject: ProjectPermissionSub.Member,
+        fields: { userEmail: projectMember.user.email || undefined },
+        targets: toBoundsTargets(targetPermissions),
+        message: "Failed to remove a more privileged member from the project"
       });
     }
 

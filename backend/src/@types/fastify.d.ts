@@ -65,7 +65,6 @@ import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-pro
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
@@ -326,7 +325,6 @@ declare module "fastify" {
     authToken: TAuthTokenServiceFactory;
     oauthClient: TOauthClientServiceFactory;
     oidcIssuer: TOidcIssuerServiceFactory;
-    permission: TPermissionServiceFactory;
     org: TOrgServiceFactory;
     orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;

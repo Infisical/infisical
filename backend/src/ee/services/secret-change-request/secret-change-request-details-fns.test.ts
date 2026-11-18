@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
 import {
@@ -160,9 +160,10 @@ describe("buildSecretApprovalCommitValueAccess", () => {
       secretPath: null
     });
     expect(canRead([{ slug: "t" }])).toBe(true);
-    expect(permission.can).toHaveBeenCalledWith(
-      ProjectPermissionSecretActions.ReadValue,
-      expect.objectContaining({ environment: "dev", secretPath: "/", secretTags: ["t"] })
-    );
+    expect(permission.can).toHaveBeenCalledWith({
+      action: ProjectPermissionSecretActions.ReadValue,
+      subject: ProjectPermissionSub.Secrets,
+      fields: { environment: "dev", secretPath: "/", secretTags: ["t"] }
+    });
   });
 });

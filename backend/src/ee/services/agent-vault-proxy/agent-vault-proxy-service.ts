@@ -931,8 +931,8 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     // The role is re-derived here, never trusted from mint, and it has to be a live role: a time-limited one
-    // leaves its row behind when it lapses. actorAuthMethod is passed as null *explicitly* — validateOrgSSO
-    // throws on `undefined` but passes on `null`, and the session row stores no auth method.
+    // leaves its row behind when it lapses. The context carries no sign-in method, since the session row stores
+    // none, so the org's sign-in policy is not applied to it.
     let actorReach: string[] | null;
     let canUseInlineServices: boolean;
     let canUseInlineSkills: boolean;

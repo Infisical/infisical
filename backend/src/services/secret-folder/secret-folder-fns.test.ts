@@ -1,8 +1,9 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { TSecretFolders } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
@@ -11,7 +12,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -574,7 +574,7 @@ describe("findPolicyProtectedFolder", () => {
 });
 
 const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) =>
-  createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+  Permission.fromRules<ProjectPermissionSet>({ rules });
 
 const canReadAll = buildAccess([
   { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },

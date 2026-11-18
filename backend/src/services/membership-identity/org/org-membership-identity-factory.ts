@@ -4,20 +4,16 @@ import {
   OrgPermissionSubjects,
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
@@ -78,23 +74,13 @@ export const newOrgMembershipIdentityFactory = ({
 
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission.toAbility(),
-        permissionRole.permission.toAbility()
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity org membership",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update identity org membership"
+      });
     }
   };
 
@@ -122,33 +108,22 @@ export const newOrgMembershipIdentityFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionIdentityActions.GrantPrivileges,
-      opSubject: OrgPermissionSubjects.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to change the roles of a more privileged identity"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionIdentityActions.GrantPrivileges,
+      subject: OrgPermissionSubjects.Identity,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged identity"
     });
 
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission.toAbility(),
-        permissionRole.permission.toAbility()
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity org membership",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update identity org membership"
+      });
     }
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
@@ -196,13 +171,12 @@ export const newOrgMembershipIdentityFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionIdentityActions.Delete,
-      opSubject: OrgPermissionSubjects.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove a more privileged identity from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionIdentityActions.Delete,
+      subject: OrgPermissionSubjects.Identity,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the organization"
     });
   };
 

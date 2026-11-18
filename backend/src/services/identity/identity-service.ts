@@ -15,25 +15,21 @@ import {
   TOrganizationsService,
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipIdentityServiceFactory } from "../membership-identity/membership-identity-service";
-import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import { resolveMembershipRoleSlugs, toBoundsTargets } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -110,23 +106,13 @@ export const identityServiceFactory = ({
         });
     }
     if (role !== OrgMembershipRole.NoAccess) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission.toAbility(),
-        rolePermissionDetails.permission.toAbility()
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create identity",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: rolePermissionDetails.permission }],
+        message: "Failed to create identity"
+      });
     }
 
     // Before the transaction: a plan cache miss calls the License Server.
@@ -241,35 +227,21 @@ export const identityServiceFactory = ({
         ignoreUnresolvedRoles: true
       });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionIdentityActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Identity,
-        actorPermission: permission.toAbility(),
-        targetPermissions: targetPermissions.map((target) => ({
-          ...target,
-          permission: target.permission.toAbility()
-        })),
-        baseMessage: "Failed to change the roles of a more privileged identity"
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: toBoundsTargets(targetPermissions),
+        message: "Failed to change the roles of a more privileged identity"
       });
 
-      const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission.toAbility(),
-        rolePermissionDetails?.permission.toAbility()
-      );
-      if (!appliedRolePermissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: rolePermissionDetails?.permission }],
+        message: "Failed to update identity"
+      });
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
@@ -375,13 +347,12 @@ export const identityServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionIdentityActions.Delete,
-      opSubject: OrgPermissionSubjects.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: targetPermissions.map((target) => ({ ...target, permission: target.permission.toAbility() })),
-      baseMessage: "Failed to remove a more privileged identity from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionIdentityActions.Delete,
+      subject: OrgPermissionSubjects.Identity,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the organization"
     });
 
     await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, id, isActorSuperAdmin);

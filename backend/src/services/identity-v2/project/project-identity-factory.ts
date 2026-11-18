@@ -4,10 +4,10 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import { resolveMembershipRoleSlugs, toBoundsTargets } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TIdentityV2Factory } from "../identity-types";
 
@@ -72,14 +72,13 @@ export const newProjectIdentityFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
-      opActions: ProjectPermissionIdentityActions.Delete,
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: targetPermissions.map((target) => ({ ...target, permission: target.permission.toAbility() })),
-      baseMessage: "Failed to remove a more privileged identity from the project",
-      subjectFields: { identityId: dto.selector.identityId }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
+      actions: ProjectPermissionIdentityActions.Delete,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the project"
     });
   };
 

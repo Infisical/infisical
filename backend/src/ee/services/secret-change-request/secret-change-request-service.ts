@@ -977,7 +977,7 @@ export const secretChangeRequestServiceFactory = ({
         commits,
         decryptor,
         canReadSecretValue: buildSecretApprovalCommitValueAccess({
-          permission: permission.toAbility(),
+          permission,
           isReviewer,
           isRequestOpen: approvalRequest.status === ApprovalRequestStatus.Open,
           environment: folder.environmentSlug,

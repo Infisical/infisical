@@ -21,6 +21,7 @@ import {
 } from "@app/domains/certificates/code-signing/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -30,7 +31,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -1948,7 +1948,7 @@ export const signerServiceFactory = ({
                 role: ResourceMembershipRole.Admin
               })
             )
-              .filter(isActiveRole)
+              .filter((role) => TemporaryAccess.restore(role).isActive())
               .map((role) => role.membershipId)
           )
         : new Set<string>();

@@ -1,12 +1,11 @@
 import path from "node:path";
 
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TableName, TSecretFolders, TSecretImports, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import {
   InternalMetadataType,
@@ -1744,27 +1743,20 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
     }
 
+    const secretFields = {
+      environment: sourceEnvironment,
+      secretPath: sourceSecretPath,
+      secretName: secret.key,
+      secretTags: secret.tags.map((el) => el.slug)
+    };
     for (const sourceAction of sourceActions) {
       if (
         sourceAction === ProjectPermissionSecretActions.DescribeSecret ||
         sourceAction === ProjectPermissionSecretActions.ReadValue
       ) {
-        throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
-          environment: sourceEnvironment,
-          secretPath: sourceSecretPath,
-          secretName: secret.key,
-          secretTags: secret.tags.map((el) => el.slug)
-        });
+        SecretReadAccess.assert(permission, sourceAction, secretFields);
       } else {
-        ForbiddenError.from(permission).throwUnlessCan(
-          sourceAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: sourceEnvironment,
-            secretPath: sourceSecretPath,
-            secretName: secret.key,
-            secretTags: secret.tags.map((el) => el.slug)
-          })
-        );
+        permission.assert({ action: sourceAction, subject: ProjectPermissionSub.Secrets, fields: secretFields });
       }
     }
   });
@@ -1867,15 +1859,16 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
   for (const secret of secretsToApplyAtDestination) {
     for (const destinationAction of destinationActions) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        destinationAction,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: destinationAction,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment: destinationEnvironment,
           secretPath: destinationFolder.path,
           secretName: secret.key,
           secretTags: secret.tags.map((el) => el.slug)
-        })
-      );
+        }
+      });
     }
   }
 
@@ -1906,10 +1899,11 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     // message is resolved against their permission rather than formatted inside validation.
     throw new BadRequestError({
       message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
-        permission.can(
-          ProjectPermissionSecretActions.DescribeSecret,
-          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-        )
+        permission.can({
+          action: ProjectPermissionSecretActions.DescribeSecret,
+          subject: ProjectPermissionSub.Secrets,
+          fields: { environment, secretPath }
+        })
       )
     });
   }
@@ -2201,6 +2195,6 @@ export const fnSecretMoveInTransaction = async (dto: TFnSecretMoveInTransaction)
     actor: actor.principal.type,
     actorId: actor.principal.id,
     actorOrgId: actor.org.id,
-    permission: permission.toAbility()
+    permission
   });
 };

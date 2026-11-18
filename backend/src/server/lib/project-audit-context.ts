@@ -12,7 +12,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 
 // The project a request acted in and the actor's attributes there, for the audit log, the permission-denied audit
 // hook, the error handler and API metrics. The domains never touch the request, so the composition root records it
-// around the permission services, as the legacy engine did inside each project check.
+// around the permission services.
 const record = <T extends { project: Project | null; grants: ActorGrants }>(permission: T): T => {
   const { project, grants } = permission;
   if (project) {

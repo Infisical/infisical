@@ -10,20 +10,16 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -136,28 +132,17 @@ export const newProjectMembershipUserFactory = ({
     for (const permissionRole of permissionRoles) {
       // Per-user checks
       for (const newUser of newUsers) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-          ProjectPermissionSub.Member,
-          permission.toAbility(),
-          permissionRole.permission.toAbility(),
-          {
+        assertPermissionBounds(permission, {
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+          actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+          subject: ProjectPermissionSub.Member,
+          fields: {
             userEmail: newUser.email ?? undefined,
             assignableRole: permissionRole.role?.slug
-          }
-        );
-
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create user project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionMemberActions.AssignRole,
-              ProjectPermissionSub.Member
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
+          },
+          targets: [{ permission: permissionRole.permission }],
+          message: "Failed to create user project membership"
+        });
       }
     }
   };
@@ -268,14 +253,13 @@ export const newProjectMembershipUserFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-      opSubject: ProjectPermissionSub.Member,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to change the roles of a more privileged member",
-      subjectFields: { userEmail: targetUser.email || undefined }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+      subject: ProjectPermissionSub.Member,
+      fields: { userEmail: targetUser.email || undefined },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged member"
     });
 
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
@@ -284,28 +268,17 @@ export const newProjectMembershipUserFactory = ({
     });
 
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-        ProjectPermissionSub.Member,
-        permission.toAbility(),
-        permissionRole.permission.toAbility(),
-        {
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Member,
+        fields: {
           userEmail: targetUser.email || undefined,
           assignableRole: permissionRole.role?.slug
-        }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update user project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.AssignRole,
-            ProjectPermissionSub.Member
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+        },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update user project membership"
+      });
     }
   };
 
@@ -329,14 +302,13 @@ export const newProjectMembershipUserFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: ProjectPermissionMemberActions.Delete,
-      opSubject: ProjectPermissionSub.Member,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove a more privileged member from the project",
-      subjectFields: { userEmail: targetMembership?.user.email || undefined }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: ProjectPermissionMemberActions.Delete,
+      subject: ProjectPermissionSub.Member,
+      fields: { userEmail: targetMembership?.user.email || undefined },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged member from the project"
     });
   };
 

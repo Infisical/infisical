@@ -1,9 +1,8 @@
-import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import { ProjectPermission, ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
@@ -301,7 +300,7 @@ export type TFnSecretMove = {
   actor: ActorType;
   actorId: string;
   actorOrgId: string;
-  permission: MongoAbility<ProjectPermissionSet>;
+  permission: ProjectPermission;
   tx: Knex;
   kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;

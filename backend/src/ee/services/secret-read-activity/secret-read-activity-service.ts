@@ -398,7 +398,7 @@ export const secretReadActivityServiceFactory = ({
     const readers = actors.map(({ actorType, actorId }) => ({
       actorType,
       actorId,
-      permission: permissionForActor({ actorId, groupIds: groupIdsOf(actorId), ...detailsOf(actorId) }).toAbility()
+      permission: permissionForActor({ actorId, groupIds: groupIdsOf(actorId), ...detailsOf(actorId) })
     }));
 
     // Every source of each actor's access with its date: their own roles and project-wide privileges, each group
@@ -407,7 +407,7 @@ export const secretReadActivityServiceFactory = ({
     const sources = [
       ...[...directMembers.values()].flatMap((member) => {
         const sourceOf = (key: string) => () =>
-          (member.accessSources().find((source) => source.key === key)?.permission ?? member.permission).toAbility();
+          member.accessSources().find((source) => source.key === key)?.permission ?? member.permission;
         return [
           ...member.roles.map((role) => ({
             actorId: member.id,
@@ -427,7 +427,7 @@ export const secretReadActivityServiceFactory = ({
           actorId,
           date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
           permission: once(() =>
-            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsOf(actorId) }).toAbility()
+            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsOf(actorId) })
           )
         };
       }),
@@ -443,7 +443,7 @@ export const secretReadActivityServiceFactory = ({
             date: sourceDates.privilegeDates.get(grant.id),
             reach,
             restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? restartReach : undefined,
-            permission: once(() => Permission.fromRules<ProjectPermissionSet>({ rules: grant.rules() }).toAbility())
+            permission: once(() => Permission.fromRules<ProjectPermissionSet>({ rules: grant.rules() }))
           };
         })
       )

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
-import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { startStandaloneKmsCore } from "@app/domains/domains";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
@@ -985,24 +985,10 @@ describe("Agent Vault V1 Router", async () => {
       const membership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: secondProjectId, actorUserId: seedData1.id })
         .first();
-      const cacheKeys = [
-        KeyStorePrefixes.ProjectPermissionMarker(
-          secondProjectId,
-          ActorType.USER,
-          seedData1.id,
-          ActionProjectType.AgentVault
-        ),
-        KeyStorePrefixes.ProjectPermissionData(
-          secondProjectId,
-          ActorType.USER,
-          seedData1.id,
-          ActionProjectType.AgentVault
-        )
-      ];
       await testDb("membership_roles")
         .where({ membershipId: membership.id })
         .update({ role: ProjectMembershipRole.Member });
-      await clearPermissionCaches(cacheKeys, [secondProjectId]);
+      await clearPermissionCaches([secondProjectId]);
 
       try {
         const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
@@ -1017,7 +1003,7 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: membership.id })
           .update({ role: ProjectMembershipRole.Admin });
-        await clearPermissionCaches(cacheKeys, [secondProjectId]);
+        await clearPermissionCaches([secondProjectId]);
       }
     });
   });
@@ -8960,23 +8946,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [owner.id], role })).statusCode
         ).toBe(200);
-        await clearPermissionCaches(
-          [
-            KeyStorePrefixes.ProjectPermissionMarker(
-              projectId,
-              ActorType.IDENTITY,
-              owner.id,
-              ActionProjectType.AgentVault
-            ),
-            KeyStorePrefixes.ProjectPermissionData(
-              projectId,
-              ActorType.IDENTITY,
-              owner.id,
-              ActionProjectType.AgentVault
-            )
-          ],
-          [projectId]
-        );
+        await clearPermissionCaches([projectId]);
       };
       try {
         await setRole("admin");
@@ -9632,22 +9602,18 @@ describe("Agent Vault V1 Router", async () => {
       const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
 
       // getProjectPermission caches the raw membership rows for ten seconds, so clear it around each flip.
-      const cacheKeys = [
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-      ];
 
       try {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await clearPermissionCaches(cacheKeys, [projectId]);
+        await clearPermissionCaches([projectId]);
         await expect(resolve()).rejects.toThrow(UnauthorizedError);
       } finally {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: false, temporaryAccessEndTime: null });
-        await clearPermissionCaches(cacheKeys, [projectId]);
+        await clearPermissionCaches([projectId]);
       }
 
       expect((await resolve()).services).toHaveLength(1);
@@ -11818,19 +11784,7 @@ describe("Agent Vault V1 Router", async () => {
       testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
         .first();
-    const clearSeedPermissionCache = (projectId: string) =>
-      clearPermissionCaches(
-        [
-          KeyStorePrefixes.ProjectPermissionMarker(
-            projectId,
-            ActorType.USER,
-            seedData1.id,
-            ActionProjectType.AgentVault
-          ),
-          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-        ],
-        [projectId]
-      );
+    const clearSeedPermissionCache = (projectId: string) => clearPermissionCaches([projectId]);
 
     test("the generic role change refuses to demote the last Agent Vault admin", async () => {
       const projectId = await projectFor();
@@ -12421,10 +12375,6 @@ describe("Agent Vault V1 Router", async () => {
         ).statusCode
       ).toBe(200);
 
-      const cacheKeys = [
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault)
-      ];
       const mint = () =>
         agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
 
@@ -12472,14 +12422,14 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: groupMembership.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await clearPermissionCaches(cacheKeys, [projectId]);
+        await clearPermissionCaches([projectId]);
 
         expect((await resolve()).services).toHaveLength(0);
         const lapsed = await mint();
         expect(lapsed.statusCode).toBe(400);
         expect(JSON.parse(lapsed.payload).message).toContain("is granted to you");
       } finally {
-        await clearPermissionCaches(cacheKeys, [projectId]);
+        await clearPermissionCaches([projectId]);
         await deleteUaIdentity(agent.id);
         await group.cleanup();
       }

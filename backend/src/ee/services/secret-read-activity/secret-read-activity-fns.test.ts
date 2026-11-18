@@ -1,12 +1,13 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
 import { ProjectMembershipRole, SecretFolderRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { FolderGrant } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { LEVEL_BREAK } from "@app/services/secret-import/secret-import-fns";
 import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -60,8 +61,7 @@ const read = (overrides: Partial<TSecretLastRead>): TSecretLastRead => ({
   ...overrides
 });
 
-const ability = (rules: Parameters<typeof createMongoAbility>[0]) =>
-  createMongoAbility<MongoAbility<ProjectPermissionSet>>(rules as never);
+const ability = (rules: unknown[]) => Permission.fromRules<ProjectPermissionSet>({ rules: rules as never });
 const readsAll = ability([{ action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }]);
 const readsProd = ability([
   {
@@ -414,17 +414,35 @@ describe("toUnusedAccessRoles", () => {
 describe("toUnusedAccessFolderAccess", () => {
   test("keeps each grant's location and says whether it is recursive", () => {
     expect(
-      toUnusedAccessFolderAccess([
-        { id: "g1", folderId: "f1", role: "read", environmentSlug: "dev", secretPath: "/", appliesToSubfolders: true },
-        {
-          id: "g2",
-          folderId: "f2",
-          role: "edit",
-          environmentSlug: "prod",
-          secretPath: "/app",
-          appliesToSubfolders: false
-        }
-      ])
+      toUnusedAccessFolderAccess(
+        [
+          {
+            id: "g1",
+            folderId: "f1",
+            role: "read",
+            environmentSlug: "dev",
+            secretPath: "/",
+            appliesToSubfolders: true
+          },
+          {
+            id: "g2",
+            folderId: "f2",
+            role: "edit",
+            environmentSlug: "prod",
+            secretPath: "/app",
+            appliesToSubfolders: false
+          }
+        ].map((grant) =>
+          FolderGrant.restore({
+            ...grant,
+            name: "",
+            actorId: null,
+            isTemporary: false,
+            temporaryAccessStartTime: null,
+            temporaryAccessEndTime: null
+          })
+        )
+      )
     ).toEqual([
       {
         id: "g1",

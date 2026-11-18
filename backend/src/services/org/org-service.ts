@@ -25,7 +25,6 @@ import {
   OrgPermissionSubjects,
   TActorContextService,
   TOrgPermissionService,
-  TOrgRolePermission,
   TSsoSessionService
 } from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
@@ -38,7 +37,6 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -59,6 +57,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -75,7 +74,7 @@ import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TMembershipDALFactory } from "../membership/membership-dal";
-import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary } from "../membership/membership-fns";
+import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary, toBoundsTargets } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -191,9 +190,6 @@ export const orgServiceFactory = ({
   orgInviteQuota,
   instanceConfigService
 }: TOrgServiceFactoryDep) => {
-  const $asBoundaryTargets = (targets: TOrgRolePermission[]) =>
-    targets.map(({ permission, role }) => ({ permission: permission.toAbility(), role }));
-
   /*
    * Get organization details by the organization id
    * */
@@ -960,18 +956,17 @@ export const orgServiceFactory = ({
 
     if (targetOps.length) {
       const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
-      const targetPermissions = $asBoundaryTargets(
+      const targetPermissions = toBoundsTargets(
         await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: targetRoles, ignoreUnresolvedRoles: true })
       );
 
       for (const { opAction, baseMessage } of targetOps) {
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: opAction,
-          opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission.toAbility(),
-          targetPermissions,
-          baseMessage
+        assertPermissionBounds(permission, {
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+          actions: opAction,
+          subject: OrgPermissionSubjects.Member,
+          targets: toBoundsTargets(targetPermissions),
+          message: baseMessage
         });
       }
     }
@@ -994,16 +989,15 @@ export const orgServiceFactory = ({
     }
 
     if (role && roleNeedsPrivilegeBoundary(role)) {
-      const permissionRoles = $asBoundaryTargets(
+      const permissionRoles = toBoundsTargets(
         await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] })
       );
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: permissionRoles,
-        baseMessage: "Failed to assign the requested role to an org member"
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: toBoundsTargets(permissionRoles),
+        message: "Failed to assign the requested role to an org member"
       });
     }
 
@@ -1140,13 +1134,12 @@ export const orgServiceFactory = ({
       orgId
     });
     if (inviteePermissions.length) {
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission.toAbility(),
-        targetPermissions: inviteePermissions.map((grant) => ({ permission: grant.toAbility() })),
-        baseMessage: "Failed to resend the invitation of this org member"
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: inviteePermissions.map((grant) => ({ permission: grant })),
+        message: "Failed to resend the invitation of this org member"
       });
     }
 
@@ -1358,17 +1351,16 @@ export const orgServiceFactory = ({
     shouldUseNewPrivilegeSystem: boolean;
   }) => {
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
-    const targetPermissions = $asBoundaryTargets(
+    const targetPermissions = toBoundsTargets(
       await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: targetRoles, ignoreUnresolvedRoles: true })
     );
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionMemberActions.Delete,
-      opSubject: OrgPermissionSubjects.Member,
-      actorPermission: permission.toAbility(),
-      targetPermissions,
-      baseMessage: "Failed to remove this member from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionMemberActions.Delete,
+      subject: OrgPermissionSubjects.Member,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove this member from the organization"
     });
   };
 

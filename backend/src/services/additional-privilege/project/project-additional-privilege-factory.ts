@@ -5,15 +5,12 @@ import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionIdentityActions,
+  ProjectPermission,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
@@ -22,6 +19,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { buildMemberActorContext } from "@app/services/membership/membership-fns";
+import { permissionBoundsMessage } from "@app/services/membership/permission-bounds";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -171,14 +169,15 @@ export const newProjectAdditionalPrivilegesFactory = ({
     shouldUseNewPrivilegeSystem: boolean,
     actions: ProjectPermissionSet[0][],
     permissionSubject: PrivilegeValidationSubject,
-    actorPermission: MongoAbility,
-    targetUserPermission: MongoAbility,
+    actorPermission: ProjectPermission,
+    targetUserPermission: ProjectPermission,
     subjectFields: Record<string, string | undefined>
   ) => {
     if (shouldUseNewPrivilegeSystem) {
+      const actorAbility = actorPermission.toAbility() as MongoAbility;
       const subjectToCheck = subject(permissionSubject, subjectFields);
       const isConditionallyForbidden = actions.some((action) => {
-        const rule = actorPermission.relevantRuleFor(action, subjectToCheck);
+        const rule = actorAbility.relevantRuleFor(action, subjectToCheck);
         return Boolean(rule?.inverted && rule.conditions);
       });
       if (isConditionallyForbidden) {
@@ -186,14 +185,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
       }
     }
 
-    return validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
+    const missingPermissions = actorPermission.boundsViolations({
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions,
-      permissionSubject,
-      actorPermission,
-      targetUserPermission,
-      subjectFields
-    );
+      subject: permissionSubject,
+      fields: subjectFields,
+      targets: [{ permission: targetUserPermission }]
+    });
+    return { isValid: missingPermissions.length === 0, missingPermissions };
   };
 
   const hasSubjectOrActionConditions = (
@@ -216,19 +215,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
       | typeof ProjectPermissionIdentityActions.GrantPrivileges
       | typeof ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
     permissionSubject: ProjectPermissionSub.Member | ProjectPermissionSub.Identity,
-    actorPermission: MongoAbility,
-    targetUserPermission: MongoAbility,
+    actorPermission: ProjectPermission,
+    targetUserPermission: ProjectPermission,
     targetIdentifier: string | undefined,
     permissions: unknown
   ) => {
+    const actorAbility = actorPermission.toAbility() as MongoAbility;
     const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
 
     const hasConditionalForbid = actionsToTry.some((action) =>
-      checkPermissionConditions(actorPermission, action, permissionSubject, "conditionalForbid")
+      checkPermissionConditions(actorAbility, action, permissionSubject, "conditionalForbid")
     );
     if (
       !hasConditionalForbid &&
-      actionsToTry.some((action) => hasUnrestrictedGrantPrivileges(actorPermission, action, permissionSubject))
+      actionsToTry.some((action) => hasUnrestrictedGrantPrivileges(actorAbility, action, permissionSubject))
     ) {
       return;
     }
@@ -239,11 +239,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
     // Check if the actor has action conditions - if so, skip subject-only validation
     const actorHasActionConditions =
-      hasActionConditions(actorPermission, permissionAction, permissionSubject) ||
+      hasActionConditions(actorAbility, permissionAction, permissionSubject) ||
       (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
-        hasActionConditions(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)) ||
+        hasActionConditions(actorAbility, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)) ||
       (permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges &&
-        hasActionConditions(actorPermission, ProjectPermissionIdentityActions.GrantPrivileges, permissionSubject));
+        hasActionConditions(actorAbility, ProjectPermissionIdentityActions.GrantPrivileges, permissionSubject));
 
     for (const rule of permissionRules) {
       let ruleSubjects: string[];
@@ -314,8 +314,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
     actorType: ActorType;
     actorId: string;
     permissions: unknown;
-    permission: MongoAbility;
-    targetUserPermission: MongoAbility;
+    permission: ProjectPermission;
+    targetUserPermission: ProjectPermission;
     memberships: Array<{ actorUserId?: string | null; actorIdentityId?: string | null }>;
     shouldUseNewPrivilegeSystem: boolean;
     targetIdentifier: string | undefined;
@@ -333,6 +333,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
       errorMessage
     } = params;
 
+    const actorAbility = permission.toAbility() as MongoAbility;
+
     const permissionAction =
       actorType === ActorType.USER
         ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
@@ -342,16 +344,16 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
     const hasDetailedConditions =
       shouldUseNewPrivilegeSystem &&
-      (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
+      (hasSubjectOrActionConditions(actorAbility, permissionAction, permissionSubject) ||
         (actorType === ActorType.USER &&
           hasSubjectOrActionConditions(
-            permission,
+            actorAbility,
             ProjectPermissionMemberActions.GrantPrivileges,
             permissionSubject
           )) ||
         (actorType === ActorType.IDENTITY &&
           hasSubjectOrActionConditions(
-            permission,
+            actorAbility,
             ProjectPermissionIdentityActions.GrantPrivileges,
             permissionSubject
           )));
@@ -376,32 +378,32 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            errorMessage,
-            shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
+          message: permissionBoundsMessage({
+            message: errorMessage,
+            usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+            action: permissionAction,
+            subject: permissionSubject
+          }),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     } else {
       // This prevents bypassing authorization by providing an empty permissions payload.
-      const canPerformNewAction = permission.can(permissionAction, permissionSubject);
+      const canPerformNewAction = actorAbility.can(permissionAction, permissionSubject);
 
       const legacyAction =
         actorType === ActorType.USER
           ? ProjectPermissionMemberActions.GrantPrivileges
           : ProjectPermissionIdentityActions.GrantPrivileges;
-      const canPerformLegacyAction = permission.can(legacyAction, permissionSubject);
+      const canPerformLegacyAction = actorAbility.can(legacyAction, permissionSubject);
 
       if (!canPerformNewAction && !canPerformLegacyAction) {
         throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            errorMessage,
-            shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
+          message: permissionBoundsMessage({
+            message: errorMessage,
+            usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+            action: permissionAction,
+            subject: permissionSubject
+          }),
           details: {
             missingPermissions: [
               {
@@ -478,8 +480,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType,
         actorId,
         permissions: dto.data.permissions,
-        permission: permission.toAbility(),
-        targetUserPermission: targetUserPermission.toAbility(),
+        permission,
+        targetUserPermission,
         memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,
@@ -542,8 +544,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType,
         actorId,
         permissions: permissionsToValidate,
-        permission: permission.toAbility(),
-        targetUserPermission: targetUserPermission.toAbility(),
+        permission,
+        targetUserPermission,
         memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,

@@ -52,9 +52,9 @@ Gotchas:
 - **Product membership is plain project membership, so PAM roles inherit the generic project role rules.**
   `PamProductRole.Admin`/`Member` are stored as the `admin`/`member` project membership roles, which means a
   product member would otherwise pick up the generic project Member ability — including identity CRUD.
-  In a PAM project those slugs resolve to their own rule sets — `pamProjectAdminPermissions` /
-  `pamProjectMemberPermissions` in `permission/default-roles.ts`, dispatched by project type in
-  `buildProjectPermissionRules` — rather than the generic project Admin/Member abilities. A product
+  In a PAM project those slugs resolve to their own rule sets (`PamProjectRoles` in
+  `domains/pam/pam/ce/models/pam-project-roles.ts`, which `domains.ts` hands to Projects) rather than the
+  generic project Admin/Member abilities. A product
   member gets read-only visibility of members, groups and identities and nothing else, because
   everything they are entitled to comes from their folder/account memberships. Managing identities,
   users and groups is a product admin responsibility; without the split, a product member inherited

@@ -177,7 +177,7 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Matches a user's project memberships the way permissionDAL.getPermission does, directly or through a
+  // Matches a user's project memberships the way GrantStore.findActorGrants does, directly or through a
   // group, so it answers whether a privilege granted to the user in the project would take effect.
   const isUserProjectMember = async ({ projectId, userId }: { projectId: string; userId: string }, tx?: Knex) => {
     try {

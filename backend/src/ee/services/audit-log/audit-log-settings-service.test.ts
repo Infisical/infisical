@@ -16,16 +16,12 @@ import {
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub,
   projectAdminPermissions,
-  projectMemberPermissions
+  projectMemberPermissions,
+  projectViewerPermission
 } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 
-import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions,
-  projectViewerPermission
-} from "../permission/default-roles";
 import { AuditLogEventClass } from "./audit-log-event-classes";
 import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";
@@ -485,10 +481,8 @@ describe("built-in roles", () => {
 
   test.each([
     ["project admin", projectAdminPermissions, true],
-    ["Agent Vault admin", agentVaultProjectAdminPermissions, true],
     ["project member", projectMemberPermissions, false],
-    ["project viewer", projectViewerPermission, false],
-    ["Agent Vault member", agentVaultProjectMemberPermissions, false]
+    ["project viewer", projectViewerPermission, false]
   ])("%s can edit project audit log settings: %s", (_, rules, expected) => {
     const ability = createMongoAbility(rules as never);
     expect(ability.can(ProjectPermissionAuditLogsActions.Edit, ProjectPermissionSub.AuditLogs)).toBe(expected);
