@@ -5,11 +5,11 @@ import { Knex } from "knex";
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";

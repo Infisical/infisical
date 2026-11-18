@@ -5,6 +5,7 @@ import { Knex } from "knex";
 import { AccessScope, TableName } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 
 import { OrganizationsModule } from "../../module";
 
@@ -12,7 +13,7 @@ import { OrganizationsModule } from "../../module";
 describe("OrganizationsService.within", () => {
   const h = setupIntegration();
 
-  const build = () => new OrganizationsModule({ db: h.db }).organizationsService;
+  const build = () => new OrganizationsModule({ db: h.db, ...accessControlServices(h.db) }).organizationsService;
 
   const orgTree = async () => {
     const root = await h.factories.organization();

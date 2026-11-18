@@ -3,11 +3,15 @@ import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "./org-permission";
 import { permissionServiceFactory } from "./permission-service";
-import { ProjectPermissionActions, ProjectPermissionSecretActions, ProjectPermissionSub } from "./project-permission";
 
 // Privilege boundaries compare the actor against every grant the target holds. An additional
 // privilege carries a raw permission blob and no role slug, so a resolver that walked only

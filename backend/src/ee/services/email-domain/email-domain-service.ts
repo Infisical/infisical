@@ -3,7 +3,7 @@ import dns from "node:dns/promises";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";

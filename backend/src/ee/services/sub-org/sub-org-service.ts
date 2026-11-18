@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "@app/domains/platform/organizations/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -15,7 +16,6 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 

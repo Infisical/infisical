@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
-import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";

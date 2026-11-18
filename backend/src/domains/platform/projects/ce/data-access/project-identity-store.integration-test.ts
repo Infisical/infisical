@@ -4,12 +4,12 @@ import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { seedBillableActors } from "@app/domains/platform/organizations/ce/testing/billable-actor-fixture";
 
-import { ProjectsModule } from "../module";
+import { buildProjectsModule } from "../testing/projects-module";
 
 describe("ProjectsService project identity counts", () => {
   const h = setupIntegration();
 
-  const build = () => ({ module: new ProjectsModule({ db: h.db }) });
+  const build = () => ({ module: buildProjectsModule(h.db) });
 
   test("should count a project type's users and identities once each, direct or through a group, skipping deleted projects", async () => {
     // Setup

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 
 import { OrganizationsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
@@ -8,7 +9,7 @@ import { seedBillableActors } from "../testing/billable-actor-fixture";
 describe("OrganizationsService billable actor counts", () => {
   const h = setupIntegration();
 
-  const build = () => ({ module: new OrganizationsModule({ db: h.db }) });
+  const build = () => ({ module: new OrganizationsModule({ db: h.db, ...accessControlServices(h.db) }) });
   const countSeats = async (module: OrganizationsModule, orgId: string | null) => {
     const { users, identities } = await module.organizationsService.countBillableOrgActors(orgId);
     return users + identities;

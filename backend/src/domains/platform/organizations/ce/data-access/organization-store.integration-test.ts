@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 
 import { OrganizationsModule } from "../module";
 import { OrganizationStore } from "./organization-store";
@@ -11,7 +12,9 @@ import { OrganizationStore } from "./organization-store";
 describe("OrganizationsService organizations for License", () => {
   const h = setupIntegration();
 
-  const build = () => ({ organizations: new OrganizationsModule({ db: h.db }).organizationsService });
+  const build = () => ({
+    organizations: new OrganizationsModule({ db: h.db, ...accessControlServices(h.db) }).organizationsService
+  });
 
   const orgTree = async () => {
     const root = await h.factories.organization();

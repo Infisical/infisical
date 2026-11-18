@@ -4,6 +4,17 @@ import { Knex } from "knex";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionKmipServerActions,
+  OrgPermissionRelayActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -16,15 +27,7 @@ import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionKmipServerActions,
-  OrgPermissionRelayActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";

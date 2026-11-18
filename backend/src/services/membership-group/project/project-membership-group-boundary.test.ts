@@ -2,12 +2,12 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions
 } from "@app/ee/services/permission/default-roles";
-import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { conditionsMatcher } from "@app/lib/casl";
 import { PermissionBoundaryError } from "@app/lib/errors";
 

@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { orgAdminPermissions } from "@app/ee/services/permission/org-permission";
+import { orgAdminPermissions } from "@app/domains/platform/organizations/ce/module";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { groupServiceFactory } from "./group-service";

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";
@@ -11,7 +12,6 @@ import {
   HONEY_TOKEN_PROVIDER_MAP
 } from "../honey-token/honey-token-provider-fns";
 import { THoneyTokenTestConnectionResponseByType } from "../honey-token/honey-token-provider-types";
-import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   THoneyTokenConfigServiceFactoryDep,
   THoneyTokenConfigServiceTypeInput,
