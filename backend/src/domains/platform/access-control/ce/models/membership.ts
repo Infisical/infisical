@@ -39,6 +39,10 @@ export class Membership {
     return this.record.id;
   }
 
+  get isActive(): boolean {
+    return Boolean(this.record.isActive);
+  }
+
   get resourceId(): string | null {
     return this.record.scopeResourceId ?? null;
   }
