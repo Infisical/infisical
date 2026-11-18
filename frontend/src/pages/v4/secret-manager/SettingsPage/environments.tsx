@@ -453,7 +453,11 @@ const blockedReasons = ({
   return { createBlocked, editBlocked };
 };
 
-const useEnvironmentOrder = (projectId: string, serverOrder: ProjectEnv[] | undefined) => {
+const useEnvironmentOrder = (
+  projectId: string,
+  serverOrder: ProjectEnv[] | undefined,
+  refreshFailed: boolean
+) => {
   const update = useV4Adapter("projectEnvironments").useUpdateEnvironment();
   const [moving, setMoving] = useState(false);
   const [reordered, setReordered] = useState<{ base: ProjectEnv[]; order: ProjectEnv[] }>();
@@ -482,13 +486,13 @@ const useEnvironmentOrder = (projectId: string, serverOrder: ProjectEnv[] | unde
     }
   };
 
-  return { active, busy: moving || awaitingRefresh, reorder };
+  return { active, busy: moving || (awaitingRefresh && !refreshFailed), reorder };
 };
 
 export const EnvironmentsSettings = () => {
   const { orgId, projectId } = useProjectScope();
   const adapter = useV4Adapter("projectEnvironments");
-  const { data: project, isPending } = adapter.useProject(projectId);
+  const { data: project, isPending, error: projectError } = adapter.useProject(projectId);
   const { data: environmentLimit } = adapter.useEnvironmentLimit(orgId);
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
   const [dialog, setDialog] = useState<{ open: boolean; key: number; environment?: ProjectEnv }>({
@@ -496,7 +500,11 @@ export const EnvironmentsSettings = () => {
     key: 0
   });
   const [confirm, setConfirm] = useState<Confirm>();
-  const { active, busy, reorder } = useEnvironmentOrder(projectId, project?.environments);
+  const { active, busy, reorder } = useEnvironmentOrder(
+    projectId,
+    project?.environments,
+    Boolean(projectError)
+  );
 
   const can = (action: ProjectPermissionActions) =>
     permission.can(action, ProjectPermissionSub.Environments);
