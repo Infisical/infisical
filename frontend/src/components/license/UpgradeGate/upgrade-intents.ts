@@ -128,10 +128,10 @@ export const FolderAccessControlsUpgradeIntent = {
   featureKey: UpgradeFeature.FolderAccessControls,
   productKey: BillingProduct.SecretsManagement,
   planKey: BillingPlan.Pro,
-  upgradeLabel: "Unlock Folder Access Controls",
-  title: "Manage Folder Access",
+  upgradeLabel: "Unlock Environment-Wide Folder Access",
+  title: "Apply Access to the Environment",
   description:
-    "Folder-level access controls are included with Secrets Management Pro. Review the plan or start a free trial to continue."
+    "Applying folder access to every folder in an environment is included with Secrets Management Pro. Review the plan or start a free trial to continue."
 } satisfies UpgradeIntent;
 
 export const SecretImportReplicationUpgradeIntent = {
