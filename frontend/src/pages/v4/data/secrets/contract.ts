@@ -2,6 +2,7 @@ import type {
   DashboardProjectSecretsOverview,
   DashboardSecretValue,
   TGetDashboardProjectSecretsOverviewDTO,
+  TGetSecretKeyExistsDTO,
   TGetSecretValueDTO
 } from "@app/hooks/api/dashboard/types";
 import type { CreateEnvironmentDTO, Project, ProjectEnv } from "@app/hooks/api/projects/types";
@@ -55,6 +56,7 @@ export type SecretsAdapter = SecretsFlowsAdapter &
       dto: TGetSecretValueDTO,
       options?: { enabled?: boolean }
     ) => V4QueryResult<DashboardSecretValue> & { isFetching?: boolean };
+    useSecretKeyCheck: () => (dto: TGetSecretKeyExistsDTO) => Promise<string[]>;
     useSecretReferenceTree: (
       dto: TGetSecretReferenceTreeDTO
     ) => V4QueryResult<{ tree: TSecretReferenceTraceNode; value: string }>;

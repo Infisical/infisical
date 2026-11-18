@@ -4,7 +4,14 @@ import type { ApplyFeedback, FlowFeedback, FlowScope } from "../flows";
 export type SecretPatch = Partial<
   Pick<
     Secret,
-    "comment" | "tags" | "metadata" | "skipMultilineEncoding" | "reminder" | "override" | "versions"
+    | "name"
+    | "comment"
+    | "tags"
+    | "metadata"
+    | "skipMultilineEncoding"
+    | "reminder"
+    | "override"
+    | "versions"
   >
 > & { value?: string };
 

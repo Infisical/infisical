@@ -392,6 +392,15 @@ export const secretsDemo: SecretsAdapter = {
       };
     return { data, isPending: false, error: null, refetch };
   },
+  useSecretKeyCheck: () => {
+    const store = useStore();
+    return async (dto) =>
+      dto.environments.filter((environment) =>
+        store
+          .get()
+          .secrets.some(secretAt(dto.projectId, environment, dto.secretPath, dto.secretKey))
+      );
+  },
   useSecretValue: (dto, options) => {
     const scenario = useScenario();
     const state = useStore().use();

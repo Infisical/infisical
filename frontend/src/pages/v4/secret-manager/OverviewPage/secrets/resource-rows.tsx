@@ -69,7 +69,7 @@ import {
   type EnvironmentOption,
   ExpandCell,
   KindIcon,
-  PendingBadge,
+  RowStateBadges,
   PendingMenuItems,
   presenceOf,
   ROW_ACTION_SLOTS,
@@ -612,6 +612,7 @@ function KindRowView({
   const line = (entry: Resource, withName: boolean) => (
     <div className={styles.nameLine}>
       {withName && <span className={styles.truncate}>{spec.label(entry)}</span>}
+      {withName && <RowStateBadges rowKey={rowKey} ctx={ctx} />}
       {spec.details(entry)}
     </div>
   );
@@ -625,10 +626,7 @@ function KindRowView({
     const rowActions = actions(first);
     return (
       <RowContextMenu {...rowActions}>
-        <TableRow
-          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
-          className={styles.row}
-        >
+        <TableRow data-recent={ctx.recent.includes(rowKey) || undefined} className={styles.row}>
           <SelectCell
             kind={kind}
             keys={[selectionKey(first)]}
@@ -654,7 +652,7 @@ function KindRowView({
   return (
     <>
       <TableRow
-        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+        data-recent={ctx.recent.includes(rowKey) || undefined}
         className={styles.row}
         data-expanded={expanded || undefined}
         data-has-selection={
@@ -769,7 +767,7 @@ function FolderRowView({
   return (
     <RowContextMenu {...rowActions}>
       <TableRow
-        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+        data-recent={ctx.recent.includes(rowKey) || undefined}
         data-pending={ctx.pending?.[first.id]}
         className={styles.row}
       >
@@ -810,7 +808,7 @@ function FolderRowView({
                 }}
               >
                 {first.description && <InfoHint text={first.description} />}
-                <PendingBadge type={ctx.pending?.[first.id]} />
+                <RowStateBadges rowKey={rowKey} resource={first} ctx={ctx} />
               </span>
             </RowLink>
           </div>
@@ -1029,7 +1027,7 @@ export function ImportRow({
     <>
       <RowContextMenu {...rowActions}>
         <TableRow
-          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          data-recent={ctx.recent.includes(rowKey) || undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
           onClick={() => setExpanded(!expanded)}
@@ -1050,6 +1048,7 @@ export function ImportRow({
                 <KindIcon kind="import" />
               </span>
               {label}
+              <RowStateBadges rowKey={rowKey} ctx={ctx} />
               {first.revoked && (
                 <span className={styles.push}>
                   <Badge tone="bad">

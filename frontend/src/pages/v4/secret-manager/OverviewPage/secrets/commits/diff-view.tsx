@@ -660,7 +660,8 @@ export function SecretVersionDiffView({
   showViewed = false,
   customHeader,
   onDiscard,
-  headerExtra
+  headerExtra,
+  compact = false
 }: {
   item: DiffViewItem;
   isCollapsed?: boolean;
@@ -670,6 +671,7 @@ export function SecretVersionDiffView({
   customHeader?: ReactNode;
   onDiscard?: () => void;
   headerExtra?: ReactNode;
+  compact?: boolean;
 }) {
   const [viewed, setViewed] = useState(false);
   const [internalValue, setInternalValue] = useState(isCollapsed ? "" : item.id);
@@ -690,6 +692,8 @@ export function SecretVersionDiffView({
     return null;
   }
   const isSecret = item.type === "secret";
+  const SecretDiff = compact ? CompactSecretDiffView : SecretDiffView;
+  const FolderDiff = compact ? CompactFolderDiffView : FolderDiffView;
   const name = isSecret ? item.secretKey || "Unnamed secret" : item.folderName || "Unnamed folder";
   let badge: { tone: "bad" | "ok" | "warn"; label: string } | undefined;
   if (item.isDeleted) badge = { tone: "bad", label: "Deleted" };
@@ -747,13 +751,13 @@ export function SecretVersionDiffView({
         <AccordionContent className={styles.accordionBody}>
           <div className={styles.cardBody}>
             {isSecret ? (
-              <SecretDiffView
+              <SecretDiff
                 operationType={operationType}
                 oldVersion={toSecretData(oldVersion)}
                 newVersion={toSecretData(newVersion)}
               />
             ) : (
-              <FolderDiffView
+              <FolderDiff
                 operationType={operationType}
                 oldVersion={toFolderData(oldVersion)}
                 newVersion={toFolderData(newVersion)}

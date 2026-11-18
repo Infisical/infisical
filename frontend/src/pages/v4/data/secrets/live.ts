@@ -1,4 +1,10 @@
-import { useGetProjectSecretsOverview, useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { useQueryClient } from "@tanstack/react-query";
+
+import {
+  secretKeyExistsQueryOptions,
+  useGetProjectSecretsOverview,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
 import { useCreateWsEnvironment } from "@app/hooks/api/projects/queries";
 import {
   useCreateFolder,
@@ -47,6 +53,10 @@ export const secretsLive: SecretsAdapter = {
   useCreateTag: (options) => useCreateWsTag({ meta: options?.meta }),
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
+  useSecretKeyCheck: () => {
+    const queryClient = useQueryClient();
+    return (dto) => queryClient.fetchQuery(secretKeyExistsQueryOptions(dto));
+  },
   useSecretReferenceTree: useGetSecretReferenceTree,
   useSecretReferences: useGetSecretReferences,
   useExpandedSecretValue: useGetExpandedSecretValue,
