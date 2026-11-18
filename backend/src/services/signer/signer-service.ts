@@ -28,7 +28,8 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -293,7 +294,7 @@ type TSignerServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess" | "findMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -2994,6 +2995,7 @@ export const signerServiceFactory = ({
     };
 
     let signerIds: string[] | undefined;
+    let isCacheable = true;
     if (dto.signerId) {
       const signer = await signerDAL.findById(dto.signerId);
       if (!signer || signer.projectId !== dto.projectId) {
@@ -3015,6 +3017,7 @@ export const signerServiceFactory = ({
       );
       const readable = await Promise.all(memberSignerIds.map(canReadSigner));
       signerIds = memberSignerIds.filter((_, i) => readable[i]);
+      isCacheable = false;
     }
 
     const daysBackByRange: Record<SigningActivityRange, number> = {
@@ -3023,11 +3026,21 @@ export const signerServiceFactory = ({
       [SigningActivityRange.SixMonths]: 180
     };
 
-    const periods = await signingOperationDAL.getActivityTrend({
-      projectId: dto.projectId,
-      signerIds,
-      daysBack: daysBackByRange[dto.range]
-    });
+    const fetchPeriods = () =>
+      signingOperationDAL.getActivityTrend({
+        projectId: dto.projectId,
+        signerIds,
+        daysBack: daysBackByRange[dto.range]
+      });
+
+    const periods = isCacheable
+      ? await withCache({
+          keyStore,
+          key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, dto.signerId),
+          ttlSeconds: KeyStoreTtls.DashboardCacheInSeconds,
+          fetcher: fetchPeriods
+        })
+      : await fetchPeriods();
 
     return { periods };
   };

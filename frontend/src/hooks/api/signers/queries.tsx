@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { SignerPermissionSet } from "@app/context/SignerPermissionContext/types";
 import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
+import { DASHBOARD_STALE_TIME } from "@app/hooks/api/reactQuery";
 
 import {
   SignerStatus,
@@ -161,6 +162,7 @@ export const useGetSigningActivityTrend = (dto: TGetSigningActivityTrendDTO) => 
       return data.periods;
     },
     enabled: Boolean(dto.projectId),
+    staleTime: DASHBOARD_STALE_TIME,
     placeholderData: (previousData) => previousData
   });
 };
