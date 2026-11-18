@@ -8,19 +8,43 @@ import {
   OrgMembershipRole,
   ProjectMembershipRole,
   ProjectType,
+  RESOURCE_SCOPE,
+  ResourceMembershipRole,
+  ResourceType,
+  SecretFolderRole,
   TableName
 } from "@app/db/schemas";
+// The Agent Vault roles and permission service are EE only; this spec, deleted with the legacy service, compares them.
+// oxlint-disable-next-line no-restricted-imports
+import {
+  AccessBundleRoles,
+  AgentVaultEeModule,
+  agentVaultProjectMemberPermissions,
+  AgentVaultProjectRoles
+} from "@app/domains/agent-vault/agent-vault/ee/module";
+import { CertManagerModule } from "@app/domains/certificates/cert-manager/ce/module";
+import { CodeSigningModule } from "@app/domains/certificates/code-signing/ce/module";
+import { KmsModule, kmsProjectRoles } from "@app/domains/kms/kms/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
-import { randomId, setupIntegration } from "@app/domains/lib/testing/integration";
+import { randomId, setupIntegration, TTenant } from "@app/domains/lib/testing/integration";
+import { PamModule, pamProjectMemberPermissions, PamProjectRoles } from "@app/domains/pam/pam/ce/module";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
-import { PAST, TSeedRole } from "@app/domains/platform/access-control/ce/testing/grant-fixture";
+import {
+  PAST,
+  TSeedActor,
+  TSeedRole,
+  temporaryColumns
+} from "@app/domains/platform/access-control/ce/testing/grant-fixture";
 import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing/knex-grant-seeder";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   OrganizationsModule,
   OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
+import { SecretsModule } from "@app/domains/secrets-manager/secrets/ce/module";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -31,6 +55,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { toHttpError } from "@app/server/lib/domain-errors";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
@@ -38,8 +63,10 @@ import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folde
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
+import { ProjectPermission } from "../../models/project-permission";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCmekActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -65,6 +92,8 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 type TRule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
+
+type TFolderGrantView = { id: string; folderId: string; role: string; environmentSlug: string; secretPath: string };
 
 // CASL decides by the last matching rule, so swapping two neighbouring rules of the same polarity, or repeating one,
 // never changes an answer, while moving a rule across one of the other polarity can. This keeps the runs of allow
@@ -103,7 +132,23 @@ const legacyRequestContext = (principal: TPrincipal) => {
   }
 };
 
-type TModules = { organizations: OrganizationsModule; projects: ProjectsModule };
+type TModules = {
+  organizations: OrganizationsModule;
+  projects: ProjectsModule;
+  secrets: SecretsModule;
+  pam: PamModule;
+  certManager: CertManagerModule;
+  codeSigning: CodeSigningModule;
+  kms: KmsModule;
+  agentVault: AgentVaultEeModule;
+};
+
+// The product roles domains.ts hands Projects.
+const productProjectRoles = (): TProjectRoles[] => [
+  new PamProjectRoles(),
+  new AgentVaultProjectRoles(),
+  kmsProjectRoles
+];
 
 // What the domain code answers for a project check. The generic path is Projects' own; a product passes its service
 // (Secrets' getSecretsPermission, PAM's, Agent Vault's) and the roles it hands Projects.
@@ -112,7 +157,7 @@ type TCurrentProjectPermission = (input: {
   actor: TActorContext;
   projectId: string;
   type: ProjectType;
-}) => Promise<{ rules: object[]; hasRole(input: { slug: string }): boolean }>;
+}) => Promise<ProjectPermission>;
 
 const genericProjectPermission: TCurrentProjectPermission = ({ modules, actor, projectId, type }) =>
   modules.projects.projectPermissionService.getProjectPermission({ actor, projectId, type });
@@ -150,7 +195,37 @@ describe("Permission parity: legacy permissionService and the domain permission 
       projectRoles,
       cacheMarkerTtlSeconds: 0
     });
-    return { legacy, modules: { organizations, projects } };
+    const { projectsService, projectPermissionService, projectResourcePermissionService } = projects;
+    const modules: TModules = {
+      organizations,
+      projects,
+      secrets: new SecretsModule({
+        db: h.db,
+        keyStore: new InMemoryKeyStore(),
+        projectPermissionService,
+        actorGrantsService: accessControl.actorGrantsService,
+        groupService: accessControl.groupService,
+        projectsService,
+        cacheMarkerTtlSeconds: 0
+      }),
+      pam: new PamModule({ projectsService, projectResourcePermissionService }),
+      certManager: new CertManagerModule({
+        db: h.db,
+        organizationsService: organizations.organizationsService,
+        projectResourcePermissionService
+      }),
+      codeSigning: new CodeSigningModule({ projectResourcePermissionService }),
+      kms: new KmsModule({ projectPermissionService }),
+      agentVault: new AgentVaultEeModule({
+        keyStore: new InMemoryKeyStore(),
+        licenseService: new FakeLicenseService(),
+        usageMeteringService: new FakeUsageMeteringService(),
+        organizationsService: organizations.organizationsService,
+        projectPermissionService,
+        actorGrantsService: accessControl.actorGrantsService
+      })
+    };
+    return { legacy, modules, membershipDAL: membershipDALFactory(h.db) };
   };
 
   const seed = () => new KnexGrantSeeder(h.db);
@@ -980,23 +1055,889 @@ describe("Permission parity: legacy permissionService and the domain permission 
     });
   });
 
-  describe("product project permission (ported as each product's service lands)", () => {
-    test.todo(
-      "Secrets: a Secret Manager project with a folder grant matches getSecretsPermission and its folder grants"
+  describe("product project permission", () => {
+    type TResource = { resourceType: ResourceType; resourceId: string };
+
+    type TCurrentResourcePermission = (input: { modules: TModules; actor: TActorContext }) => Promise<{
+      rules: object[];
+      hasRole(input: { slug: string }): boolean;
+      isImplicitAdmin: boolean;
+    }>;
+
+    // Each product's own resource check, as its routes call it. Access bundles have no product service yet.
+    const resourcePermission =
+      (projectId: string, { resourceType, resourceId }: TResource): TCurrentResourcePermission =>
+      ({ modules, actor }) => {
+        switch (resourceType) {
+          case ResourceType.PamFolder:
+            return modules.pam.pamPermissionService.getPamPermission({ actor, projectId, folderId: resourceId });
+          case ResourceType.PamAccount:
+            return modules.pam.pamPermissionService.getPamPermission({ actor, projectId, accountId: resourceId });
+          case ResourceType.CertificateApplication:
+            return modules.certManager.applicationPermissionService.getApplicationPermission({
+              actor,
+              projectId,
+              applicationId: resourceId
+            });
+          case ResourceType.Signer:
+            return modules.codeSigning.signerPermissionService.getSignerPermission({
+              actor,
+              projectId,
+              signerId: resourceId
+            });
+          default:
+            return modules.projects.projectResourcePermissionService.getResourcePermission({
+              actor,
+              projectId,
+              type: ProjectType.AgentVault,
+              resources: [{ resourceType, resourceId }],
+              roles: new AccessBundleRoles()
+            });
+        }
+      };
+
+    const RESOURCE_SLUGS = ["admin", "operator", "connector", "auditor", "consumer", "custom"];
+
+    const resourceRoles = (
+      tenant: TTenant,
+      { resourceType, resourceId }: TResource,
+      actor: TSeedActor | { groupId: string },
+      roles: TSeedRole[]
+    ) =>
+      seed().membership({
+        scope: RESOURCE_SCOPE,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        resourceType,
+        resourceId,
+        actor,
+        roles
+      });
+
+    const compareResource = async ({
+      principal,
+      tenant,
+      resource,
+      current = resourcePermission(tenant.project.id, resource)
+    }: {
+      principal: TPrincipal;
+      tenant: TTenant;
+      resource: TResource;
+      current?: TCurrentResourcePermission;
+    }) => {
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+      legacyRequestContext(principal);
+      const legacyResult = await legacy.getResourcePermission({
+        ...legacyArgs(principal, tenant.org.id),
+        projectId: tenant.project.id,
+        ...resource
+      });
+      const actor = await modules.organizations.actorContextService.forPrincipal({ principal, orgId: tenant.org.id });
+      const permission = await current({ modules, actor });
+
+      expect(decisionShape(permission.rules)).toEqual(decisionShape(legacyResult.permission.rules));
+      expect(RESOURCE_SLUGS.map((slug) => permission.hasRole({ slug }))).toEqual(
+        RESOURCE_SLUGS.map((slug) => legacyResult.hasRole(slug))
+      );
+      expect(permission.isImplicitAdmin).toBe(legacyResult.isImplicitAdmin);
+      return { legacyResult, permission };
+    };
+
+    const compareResourceRefusal = async ({
+      principal,
+      tenant,
+      resource
+    }: {
+      principal: TPrincipal;
+      tenant: TTenant;
+      resource: TResource;
+    }) => {
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+      legacyRequestContext(principal);
+      const actor = await modules.organizations.actorContextService.forPrincipal({ principal, orgId: tenant.org.id });
+      await compareRefusal(
+        legacy.getResourcePermission({
+          ...legacyArgs(principal, tenant.org.id),
+          projectId: tenant.project.id,
+          ...resource
+        }),
+        resourcePermission(tenant.project.id, resource)({ modules, actor })
+      );
+    };
+
+    const newResource = (resourceType: ResourceType): TResource => ({ resourceType, resourceId: crypto.randomUUID() });
+
+    const secretsPermission =
+      (onFolderGrants: (grants: TFolderGrantView[]) => void): TCurrentProjectPermission =>
+      async ({ modules, actor, projectId }) => {
+        const { permission, folderGrants } = await modules.secrets.secretsPermissionService.getSecretsPermission({
+          actor,
+          projectId
+        });
+        onFolderGrants(folderGrants.list);
+        return permission;
+      };
+
+    const kmsPermission: TCurrentProjectPermission = ({ modules, actor, projectId }) =>
+      modules.kms.kmsPermissionService.getKmsPermission({ actor, projectId });
+
+    const agentVaultPermission: TCurrentProjectPermission = async ({ modules, actor, projectId }) =>
+      (await modules.agentVault.accessBundlePermissionService.getAgentVaultPermission({ actor, projectId })).permission;
+
+    // secret_folders belongs to Secret Manager but no domain owns it yet, so the spec writes the rows directly: one
+    // root in prod with the named folders under it.
+    const addFolders = async (tenant: TTenant, names: string[]) => {
+      const prod = tenant.environments.find((env) => env.slug === "prod")!;
+      const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");
+      return Promise.all(
+        names.map(async (name) => {
+          const [folder] = await h
+            .db(TableName.SecretFolder)
+            .insert({ name, envId: prod.id, parentId: root.id })
+            .returning("*");
+          return folder;
+        })
+      );
+    };
+
+    const folderGrant = async (
+      tenant: TTenant,
+      actor: TSeedActor,
+      folder: { id: string },
+      role: SecretFolderRole,
+      endsAt?: Date
+    ) => {
+      const privilege = await seed().privilege({
+        actor,
+        projectId: tenant.project.id,
+        folder: { id: folder.id, role }
+      });
+      if (endsAt) {
+        await h.db(TableName.AdditionalPrivilege).where({ id: privilege.id }).update(temporaryColumns(endsAt));
+      }
+      return privilege;
+    };
+
+    const byId = <T extends { id: string }>(items: T[]) => [...items].sort((a, b) => a.id.localeCompare(b.id));
+
+    const folderGrantView = (grants: TFolderGrantView[]) =>
+      byId(grants).map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+        id,
+        folderId,
+        role,
+        environmentSlug,
+        secretPath
+      }));
+
+    test("should match getSecretsPermission and its folder grants for a member and for an admin with a stale grant", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const user = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: user.id }, [{ role: ProjectMembershipRole.Viewer }]);
+      const [app, billing, old] = await addFolders(tenant, ["app", "billing", "old"]);
+      await folderGrant(tenant, { userId: user.id }, app, SecretFolderRole.Edit);
+      await folderGrant(tenant, { userId: user.id }, billing, SecretFolderRole.List, new Date(Date.now() + 3_600_000));
+      await folderGrant(tenant, { userId: user.id }, old, SecretFolderRole.Manage, PAST());
+      await folderGrant(tenant, { userId: tenant.admin.id }, app, SecretFolderRole.Read);
+      const identity = await newIdentityInOrg(tenant.org.id);
+      await projectRoles(tenant, { identityId: identity.id }, [{ role: ProjectMembershipRole.NoAccess }]);
+      await folderGrant(tenant, { identityId: identity.id }, billing, SecretFolderRole.Read);
+
+      // Action and assert
+      for (const principal of [userPrincipal(user), userPrincipal(tenant.admin), identityPrincipal(identity)]) {
+        let current: TFolderGrantView[] = [];
+        // oxlint-disable-next-line no-await-in-loop
+        const { legacyResult } = await compareProject({
+          principal,
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type: ProjectType.SecretManager,
+          current: secretsPermission((grants) => {
+            current = grants;
+          })
+        });
+        expect(folderGrantView(current)).toEqual(folderGrantView(legacyResult.folderScopedPrivileges));
+      }
+      const { modules } = build();
+      const userActor = await modules.organizations.actorContextService.forPrincipal({
+        principal: userPrincipal(user),
+        orgId: tenant.org.id
+      });
+      const { folderGrants } = await modules.secrets.secretsPermissionService.getSecretsPermission({
+        actor: userActor,
+        projectId: tenant.project.id
+      });
+      expect(folderGrants.list.map(({ secretPath }) => secretPath).sort()).toEqual(["/app", "/billing"]);
+    });
+
+    test.each([ProjectMembershipRole.NoAccess, ProjectMembershipRole.Viewer, ProjectMembershipRole.Member])(
+      "should match getSecretsPermission for a %s with a grant on the root that applies to subfolders and exact grants below it",
+      async (baseRole) => {
+        // Setup
+        const tenant = await h.newTenant();
+        const user = await newUserInOrg(tenant.org.id);
+        await projectRoles(tenant, { userId: user.id }, [{ role: baseRole }]);
+        const prod = tenant.environments.find((env) => env.slug === "prod")!;
+        const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");
+        const [app, billing] = await Promise.all(
+          ["app", "billing"].map(async (name) => {
+            const [folder] = await h
+              .db(TableName.SecretFolder)
+              .insert({ name, envId: prod.id, parentId: root.id })
+              .returning("*");
+            return folder;
+          })
+        );
+        const recursive = await folderGrant(tenant, { userId: user.id }, root, SecretFolderRole.Edit);
+        await h.db(TableName.AdditionalPrivilege).where({ id: recursive.id }).update({ appliesToSubfolders: true });
+        await folderGrant(tenant, { userId: user.id }, app, SecretFolderRole.Read);
+        await folderGrant(tenant, { userId: user.id }, billing, SecretFolderRole.FullAccess);
+
+        // Action and assert
+        await compareProject({
+          principal: userPrincipal(user),
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type: ProjectType.SecretManager,
+          current: secretsPermission(() => undefined)
+        });
+      }
     );
-    test.todo(
-      "Secrets: by-roles, grant permissions and audit sources with folder grants, and the project member listing"
+
+    test("should match grant permissions, audit sources and the project member listing with folder grants", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const [app, billing, old] = await addFolders(tenant, ["app", "billing", "old"]);
+      const placeholderRole = await customRole({ projectId: tenant.project.id }, [
+        {
+          action: ProjectPermissionSecretActions.ReadValue,
+          subject: ProjectPermissionSub.Secrets,
+          conditions: { secretPath: "/users/{{identity.username}}" }
+        }
+      ]);
+
+      const viewer = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: viewer.id }, [
+        { role: ProjectMembershipRole.Viewer },
+        { role: ProjectMembershipRole.Custom, customRoleId: placeholderRole.id }
+      ]);
+      await seed().privilege({
+        actor: { userId: viewer.id },
+        projectId: tenant.project.id,
+        permissions: packRules<TRule>([{ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Tags }])
+      });
+      await folderGrant(tenant, { userId: viewer.id }, app, SecretFolderRole.Edit);
+      await folderGrant(tenant, { userId: viewer.id }, old, SecretFolderRole.Manage, PAST());
+
+      const groupOnly = await newUserInOrg(tenant.org.id);
+      const group = await seed().group({ orgId: tenant.org.id });
+      await seed().groupMember({ groupId: group.id, userId: groupOnly.id });
+      await seed().membership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { groupId: group.id },
+        roles: [
+          { role: ProjectMembershipRole.Member },
+          { role: ProjectMembershipRole.Custom, customRoleId: placeholderRole.id }
+        ]
+      });
+      await folderGrant(tenant, { userId: groupOnly.id }, billing, SecretFolderRole.Read);
+
+      const formerAdmin = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: formerAdmin.id }, [
+        { role: ProjectMembershipRole.Admin, temporaryAccessEndTime: PAST() },
+        { role: ProjectMembershipRole.Member }
+      ]);
+      await folderGrant(tenant, { userId: formerAdmin.id }, app, SecretFolderRole.List);
+
+      const identity = await newIdentityInOrg(tenant.org.id);
+      await projectRoles(tenant, { identityId: identity.id }, [{ role: ProjectMembershipRole.Viewer }]);
+      await folderGrant(tenant, { identityId: identity.id }, billing, SecretFolderRole.List);
+
+      const { legacy, modules } = build();
+      const { projectPermissionService } = modules.projects;
+      const { secretsPermissionService } = modules.secrets;
+      const scope = { orgId: tenant.org.id, projectId: tenant.project.id };
+
+      // Action and assert: grant permissions (privilege boundaries)
+      for (const actor of [
+        { type: ActorType.USER as const, id: viewer.id, name: viewer.username },
+        { type: ActorType.USER as const, id: formerAdmin.id, name: formerAdmin.username },
+        { type: ActorType.IDENTITY as const, id: identity.id, name: identity.name }
+      ]) {
+        // oxlint-disable-next-line no-await-in-loop
+        const legacyGrants = await legacy.getActorGrantAbilities({
+          scopeData: { scope: AccessScope.Project, ...scope },
+          actorId: actor.id,
+          actorType: actor.type
+        });
+        // oxlint-disable-next-line no-await-in-loop
+        const { grants } = await projectPermissionService.getPermissionAuditSources({ target: actor, ...scope });
+        // oxlint-disable-next-line no-await-in-loop
+        const [rolePermissions, folderPermissions] = await Promise.all([
+          projectPermissionService.getGrantPermissions({ actor, ...scope }),
+          secretsPermissionService.getFolderGrantPermissions({
+            target: actor,
+            projectId: tenant.project.id,
+            grants
+          })
+        ]);
+        expect(folderPermissions.length).toBeGreaterThan(0);
+        expect(asSet([...rolePermissions, ...folderPermissions])).toEqual(
+          asSet(legacyGrants.map(({ permission }) => permission))
+        );
+      }
+
+      // Action and assert: permission audit
+      for (const target of [viewer, formerAdmin]) {
+        // oxlint-disable-next-line no-await-in-loop
+        const legacyAudit = await legacy.getMembershipPermissionAudit({
+          actor: ActorType.USER,
+          actorId: tenant.admin.id,
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: tenant.org.id,
+          projectId: tenant.project.id,
+          targetUserId: target.id,
+          includeFolderPermissions: true
+        });
+        const targetActor = { type: ActorType.USER as const, id: target.id };
+        // oxlint-disable-next-line no-await-in-loop
+        const { sources, grants } = await projectPermissionService.getPermissionAuditSources({
+          target: targetActor,
+          ...scope
+        });
+        // oxlint-disable-next-line no-await-in-loop
+        const folderSources = await secretsPermissionService.getFolderGrantAuditSources({
+          target: targetActor,
+          projectId: tenant.project.id,
+          grants
+        });
+        expect(folderSources).toHaveLength(1);
+        expect(byId([...sources, ...folderSources])).toEqual(byId(legacyAudit.sources));
+      }
+
+      // Action and assert: the project member listing
+      const [legacyListing, currentListing] = await Promise.all([
+        legacy.getProjectPermissions(tenant.project.id, tenant.org.id),
+        secretsPermissionService.getProjectMemberPermissions(scope)
+      ]);
+      const directView = (
+        members: {
+          id: string;
+          name: string;
+          membershipId: string;
+          roles: { id: string }[];
+          additionalPrivileges: { id: string; name: string }[];
+          permission: { rules: object[] };
+          accessSources: () => { key: string; permission: { rules: object[] } }[];
+        }[]
+      ) =>
+        byId(members).map((member) => ({
+          id: member.id,
+          name: member.name,
+          membershipId: member.membershipId,
+          roles: byId(member.roles),
+          additionalPrivileges: byId(member.additionalPrivileges),
+          rules: decisionShape(member.permission.rules),
+          accessSources: member
+            .accessSources()
+            .map(({ key, permission }) => ({ key, rules: decisionShape(permission.rules) }))
+            .sort((a, b) => a.key.localeCompare(b.key))
+        }));
+      const groupView = (
+        groups: { id: string; name: string; membershipId: string; roles: object[]; permission: { rules: object[] } }[]
+      ) =>
+        byId(groups).map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          membershipId: entry.membershipId,
+          roles: entry.roles.map((role) => JSON.stringify(role)).sort(),
+          rules: decisionShape(entry.permission.rules)
+        }));
+      const folderAccessView = (byActor: Map<string, TFolderGrantView[]>) =>
+        [...byActor.entries()]
+          .map(([actorId, grants]) => ({ actorId, grants: folderGrantView(grants) }))
+          .sort((a, b) => a.actorId.localeCompare(b.actorId));
+
+      expect(directView(currentListing.userPermissions)).toEqual(directView(legacyListing.userPermissions));
+      expect(directView(currentListing.identityPermissions)).toEqual(directView(legacyListing.identityPermissions));
+      expect(groupView(currentListing.groupPermissions)).toEqual(groupView(legacyListing.groupPermissions));
+      expect(folderAccessView(currentListing.folderAccessByActorId)).toEqual(
+        folderAccessView(legacyListing.folderAccessByActorId)
+      );
+      expect(currentListing.groupRulesHavePlaceholders).toBe(legacyListing.groupRulesHavePlaceholders);
+      expect(currentListing.groupRulesHavePlaceholders).toBe(true);
+      const actorQueries = [
+        { actorId: viewer.id, groupIds: [] },
+        { actorId: formerAdmin.id, groupIds: [] },
+        { actorId: identity.id, groupIds: [] },
+        { actorId: groupOnly.id, groupIds: [group.id], username: groupOnly.username, metadata: [] },
+        { actorId: viewer.id, groupIds: [group.id], groupsOnly: true },
+        { actorId: groupOnly.id, groupIds: [group.id], username: groupOnly.username, groupsOnly: true }
+      ];
+      expect(actorQueries.map((query) => decisionShape(currentListing.permissionForActor(query).rules))).toEqual(
+        actorQueries.map((query) => decisionShape(legacyListing.permissionForActor(query).rules))
+      );
+    });
+
+    test("should match a PAM project admin and member, and a custom role with a privilege resolving to the member rules", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.PAM });
+      const member = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: member.id }, [{ role: ProjectMembershipRole.Member }]);
+      const custom = await newUserInOrg(tenant.org.id);
+      const role = await customRole({ projectId: tenant.project.id }, [
+        { action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Tags }
+      ]);
+      await projectRoles(tenant, { userId: custom.id }, [
+        { role: ProjectMembershipRole.Custom, customRoleId: role.id }
+      ]);
+      await seed().privilege({
+        actor: { userId: custom.id },
+        projectId: tenant.project.id,
+        permissions: packRules<TRule>([{ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Tags }])
+      });
+
+      // Action and assert
+      const compare = (principal: TPrincipal) =>
+        compareProject({
+          principal,
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type: ProjectType.PAM,
+          roles: productProjectRoles(),
+          extraSlugs: [role.slug]
+        });
+      const admin = await compare(userPrincipal(tenant.admin));
+      expect(admin.permission.hasRole({ slug: ProjectMembershipRole.Admin })).toBe(true);
+      for (const principal of [userPrincipal(member), userPrincipal(custom)]) {
+        // oxlint-disable-next-line no-await-in-loop
+        const { permission } = await compare(principal);
+        expect(decisionShape(permission.rules)).toEqual(decisionShape(pamProjectMemberPermissions));
+      }
+    });
+
+    test.each(["admin", "operator", "connector", "auditor"])(
+      "should match PAM folder and account permission for the %s resource role",
+      async (role) => {
+        // Setup
+        const tenant = await h.newTenant({ projectType: ProjectType.PAM });
+        const user = await newUserInOrg(tenant.org.id);
+        await projectRoles(tenant, { userId: user.id }, [{ role: ProjectMembershipRole.Member }]);
+        const folder = newResource(ResourceType.PamFolder);
+        const account = newResource(ResourceType.PamAccount);
+        await resourceRoles(tenant, folder, { userId: user.id }, [{ role }]);
+        await resourceRoles(tenant, account, { userId: user.id }, [{ role }]);
+
+        // Action and assert
+        for (const resource of [folder, account]) {
+          // oxlint-disable-next-line no-await-in-loop
+          const { permission } = await compareResource({ principal: userPrincipal(user), tenant, resource });
+          expect(permission.rules.length).toBeGreaterThan(0);
+          expect(permission.hasRole({ slug: role })).toBe(true);
+        }
+      }
     );
-    test.todo("PAM: a PAM project member and admin, and a custom role resolving to the member rules");
-    test.todo("PAM: folder and account resource permission for each PAM resource role and the project admin");
-    test.todo("Agent Vault: an Agent Vault project member and admin, and an access bundle consumer");
-    test.todo("Cert Manager: a certificate application permission for each application role and the project admin");
-    test.todo("Code signing: a signer permission for each signer role and the project admin");
-    test.todo("KMS: the cryptographic operator role in a KMS project");
-    test.todo("KMS: a project admin holds CMEK PublishPublicKey, through the KMS product service");
-    test.todo(
-      "PAM and Agent Vault: a project member holding viewer, no-access or an unknown slug resolves to the member rules"
-    );
-    test.todo("PAM, Agent Vault, Cert Manager and code signing: a delegated OAuth token's hasRole is false");
+
+    test("should match PAM resource permission for a project admin, an org member outside the project, a folder and an account together, and refuse a member with no role alike", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.PAM });
+      const folder = newResource(ResourceType.PamFolder);
+      const account = newResource(ResourceType.PamAccount);
+      const otherFolder = newResource(ResourceType.PamFolder);
+      await resourceRoles(tenant, otherFolder, { userId: tenant.admin.id }, [{ role: "operator" }]);
+      const outsider = await newUserInOrg(tenant.org.id);
+      await resourceRoles(tenant, folder, { userId: outsider.id }, [{ role: "auditor" }]);
+      const both = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: both.id }, [{ role: ProjectMembershipRole.Member }]);
+      await resourceRoles(tenant, folder, { userId: both.id }, [{ role: "connector" }]);
+      await resourceRoles(tenant, account, { userId: both.id }, [{ role: "auditor" }]);
+      const roleless = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: roleless.id }, [{ role: ProjectMembershipRole.Member }]);
+
+      // Action and assert
+      const implicit = await compareResource({ principal: userPrincipal(tenant.admin), tenant, resource: folder });
+      expect(implicit.permission.isImplicitAdmin).toBe(true);
+      expect(implicit.permission.rules).toEqual([]);
+      const held = await compareResource({ principal: userPrincipal(tenant.admin), tenant, resource: otherFolder });
+      expect(held.permission.hasRole({ slug: "operator" })).toBe(true);
+      await compareResource({ principal: userPrincipal(outsider), tenant, resource: folder });
+      await compareResourceRefusal({ principal: userPrincipal(roleless), tenant, resource: folder });
+      await compareResourceRefusal({ principal: userPrincipal(roleless), tenant, resource: account });
+
+      // Legacy has no single permission for an account in a folder: checkAccountAccess tries the folder, then the
+      // account, so what it allows is the folder's rules and the account's together.
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+      const principal = userPrincipal(both);
+      legacyRequestContext(principal);
+      const legacyRules = await Promise.all(
+        [folder, account].map(async (resource) => {
+          const { permission } = await legacy.getResourcePermission({
+            ...legacyArgs(principal, tenant.org.id),
+            projectId: tenant.project.id,
+            ...resource
+          });
+          return permission.rules;
+        })
+      );
+      const actor = await modules.organizations.actorContextService.forPrincipal({ principal, orgId: tenant.org.id });
+      const together = await modules.pam.pamPermissionService.getPamPermission({
+        actor,
+        projectId: tenant.project.id,
+        folderId: folder.resourceId,
+        accountId: account.resourceId
+      });
+      expect(decisionShape(together.rules)).toEqual(decisionShape(legacyRules.flat()));
+      expect(["connector", "auditor"].map((slug) => together.hasRole({ slug }))).toEqual([true, true]);
+    });
+
+    test("should match an Agent Vault project admin and member, and an access bundle consumer", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.AgentVault });
+      const bundleA = newResource(ResourceType.AgentVaultAccessBundle);
+      const bundleB = newResource(ResourceType.AgentVaultAccessBundle);
+      const consumer = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: consumer.id }, [{ role: ProjectMembershipRole.Member }]);
+      await resourceRoles(tenant, bundleA, { userId: consumer.id }, [{ role: "consumer" }]);
+      const viaGroup = await newUserInOrg(tenant.org.id);
+      const group = await seed().group({ orgId: tenant.org.id });
+      await seed().groupMember({ groupId: group.id, userId: viaGroup.id });
+      await seed().membership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { groupId: group.id },
+        roles: [{ role: ProjectMembershipRole.Member }]
+      });
+      await resourceRoles(tenant, bundleB, { groupId: group.id }, [{ role: "consumer" }]);
+      await resourceRoles(tenant, bundleA, { userId: tenant.admin.id }, [{ role: "consumer" }]);
+      const ungranted = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: ungranted.id }, [{ role: ProjectMembershipRole.Member }]);
+
+      // Action and assert
+      const principals = [tenant.admin, consumer, viaGroup, ungranted].map((user) => userPrincipal(user));
+      for (const principal of principals) {
+        // oxlint-disable-next-line no-await-in-loop
+        await compareProject({
+          principal,
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type: ProjectType.AgentVault,
+          roles: productProjectRoles(),
+          current: agentVaultPermission
+        });
+      }
+
+      const { modules } = build({ projectRoles: productProjectRoles() });
+      const reachOf = async (user: { id: string; username: string }) => {
+        const actor = await modules.organizations.actorContextService.forPrincipal({
+          principal: userPrincipal(user),
+          orgId: tenant.org.id
+        });
+        return modules.agentVault.accessBundlePermissionService.getGrantedAccessBundlePermission({
+          actor,
+          projectId: tenant.project.id
+        });
+      };
+      expect(await reachOf(tenant.admin)).toMatchObject({
+        reachesEveryBundle: true,
+        accessBundleIds: null,
+        grantedAccessBundleIds: [bundleA.resourceId]
+      });
+      expect(await reachOf(viaGroup)).toMatchObject({ accessBundleIds: [bundleB.resourceId] });
+
+      const consumed = await compareResource({ principal: userPrincipal(consumer), tenant, resource: bundleA });
+      expect(consumed.permission.hasRole({ slug: "consumer" })).toBe(true);
+      const implicit = await compareResource({ principal: userPrincipal(tenant.admin), tenant, resource: bundleB });
+      expect(implicit.permission.isImplicitAdmin).toBe(true);
+      await compareResource({ principal: userPrincipal(viaGroup), tenant, resource: bundleB });
+      await compareResourceRefusal({ principal: userPrincipal(ungranted), tenant, resource: bundleA });
+    });
+
+    describe.each([
+      { product: "Cert Manager", resourceType: ResourceType.CertificateApplication },
+      { product: "code signing", resourceType: ResourceType.Signer }
+    ])("$product resource permission", ({ resourceType }) => {
+      test.each([ResourceMembershipRole.Admin, ResourceMembershipRole.Operator, ResourceMembershipRole.Auditor])(
+        "should match for the %s role",
+        async (role) => {
+          // Setup
+          const tenant = await h.newTenant({ projectType: ProjectType.CertificateManager });
+          const user = await newUserInOrg(tenant.org.id);
+          await projectRoles(tenant, { userId: user.id }, [{ role: ProjectMembershipRole.Member }]);
+          const resource = newResource(resourceType);
+          await resourceRoles(tenant, resource, { userId: user.id }, [{ role }]);
+
+          // Action and assert
+          const { permission } = await compareResource({ principal: userPrincipal(user), tenant, resource });
+          expect(permission.rules.length).toBeGreaterThan(0);
+          expect(permission.hasRole({ slug: role })).toBe(true);
+        }
+      );
+
+      test("should match for the project admin with and without a role, and refuse a custom or unknown role and a member with no role alike", async () => {
+        // Setup
+        const tenant = await h.newTenant({ projectType: ProjectType.CertificateManager });
+        const resource = newResource(resourceType);
+        const held = newResource(resourceType);
+        await resourceRoles(tenant, held, { userId: tenant.admin.id }, [{ role: ResourceMembershipRole.Auditor }]);
+        const custom = await newUserInOrg(tenant.org.id);
+        await projectRoles(tenant, { userId: custom.id }, [{ role: ProjectMembershipRole.Member }]);
+        await resourceRoles(tenant, resource, { userId: custom.id }, [{ role: ResourceMembershipRole.Custom }]);
+        const unknown = await newUserInOrg(tenant.org.id);
+        await projectRoles(tenant, { userId: unknown.id }, [{ role: ProjectMembershipRole.Member }]);
+        await resourceRoles(tenant, resource, { userId: unknown.id }, [{ role: "owner" }]);
+        const roleless = await newUserInOrg(tenant.org.id);
+        await projectRoles(tenant, { userId: roleless.id }, [{ role: ProjectMembershipRole.Member }]);
+
+        // Action and assert
+        const implicit = await compareResource({ principal: userPrincipal(tenant.admin), tenant, resource });
+        expect(implicit.permission.isImplicitAdmin).toBe(true);
+        expect(implicit.permission.rules.length).toBeGreaterThan(0);
+        const withRole = await compareResource({ principal: userPrincipal(tenant.admin), tenant, resource: held });
+        expect(decisionShape(withRole.permission.rules)).not.toEqual(decisionShape(implicit.permission.rules));
+        for (const user of [custom, unknown, roleless]) {
+          // oxlint-disable-next-line no-await-in-loop
+          await compareResourceRefusal({ principal: userPrincipal(user), tenant, resource });
+        }
+      });
+    });
+
+    test("should match the cryptographic operator role in a KMS project, through the KMS product service and by role", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.KMS });
+      const operator = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: operator.id }, [{ role: ProjectMembershipRole.KmsCryptographicOperator }]);
+      const viewer = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: viewer.id }, [
+        { role: ProjectMembershipRole.Viewer },
+        { role: ProjectMembershipRole.KmsCryptographicOperator }
+      ]);
+
+      // Action and assert
+      for (const user of [operator, viewer]) {
+        // oxlint-disable-next-line no-await-in-loop
+        const { permission } = await compareProject({
+          principal: userPrincipal(user),
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type: ProjectType.KMS,
+          roles: productProjectRoles(),
+          current: kmsPermission
+        });
+        expect(permission.hasRole({ slug: ProjectMembershipRole.KmsCryptographicOperator })).toBe(true);
+        expect(
+          permission.can({
+            action: ProjectPermissionCmekActions.Encrypt,
+            subject: ProjectPermissionSub.Cmek
+          })
+        ).toBe(true);
+      }
+
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+      const { projectPermissionService } = modules.projects;
+      const slugs = [ProjectMembershipRole.KmsCryptographicOperator, ProjectMembershipRole.Viewer];
+      const [legacyByRoles, currentByRoles] = await Promise.all([
+        legacy.getProjectPermissionByRoles(slugs, tenant.project.id),
+        projectPermissionService.getProjectPermissionByRoles({ projectId: tenant.project.id, roles: slugs })
+      ]);
+      expect(currentByRoles.map(({ permission }) => decisionShape(permission.rules))).toEqual(
+        legacyByRoles.map(({ permission }) => decisionShape(permission.rules))
+      );
+      const scope = { orgId: tenant.org.id, projectId: tenant.project.id };
+      const [legacyGrants, currentGrants] = await Promise.all([
+        legacy.getActorGrantAbilities({
+          scopeData: { scope: AccessScope.Project, ...scope },
+          actorId: viewer.id,
+          actorType: ActorType.USER
+        }),
+        projectPermissionService.getGrantPermissions({
+          actor: { type: ActorType.USER, id: viewer.id, name: viewer.username },
+          ...scope
+        })
+      ]);
+      expect(asSet(currentGrants)).toEqual(asSet(legacyGrants.map(({ permission }) => permission)));
+      const [legacyAudit, currentAudit] = await Promise.all([
+        legacy.getMembershipPermissionAudit({
+          actor: ActorType.USER,
+          actorId: tenant.admin.id,
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: tenant.org.id,
+          projectId: tenant.project.id,
+          targetUserId: viewer.id,
+          includeFolderPermissions: true
+        }),
+        projectPermissionService.getPermissionAuditSources({
+          target: { type: ActorType.USER, id: viewer.id },
+          ...scope
+        })
+      ]);
+      expect(byId(currentAudit.sources)).toEqual(byId(legacyAudit.sources));
+    });
+
+    test("should give a KMS project's member listing the cryptographic operator, as legacy did", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.KMS });
+      const viewer = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: viewer.id }, [
+        { role: ProjectMembershipRole.Viewer },
+        { role: ProjectMembershipRole.KmsCryptographicOperator }
+      ]);
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+
+      // Action
+      const [legacyListing, currentListing] = await Promise.all([
+        legacy.getProjectPermissions(tenant.project.id, tenant.org.id),
+        modules.secrets.secretsPermissionService.getProjectMemberPermissions({
+          orgId: tenant.org.id,
+          projectId: tenant.project.id
+        })
+      ]);
+
+      // Assert
+      const encrypt = { action: ProjectPermissionCmekActions.Encrypt, subject: ProjectPermissionSub.Cmek } as const;
+      const legacyViewer = legacyListing.userPermissions.find(({ id }) => id === viewer.id)!;
+      const currentViewer = currentListing.userPermissions.find(({ id }) => id === viewer.id)!;
+      expect(currentViewer.permission.can(encrypt)).toBe(true);
+      expect(decisionShape(currentViewer.permission.rules)).toEqual(decisionShape(legacyViewer.permission.rules));
+      const query = { actorId: viewer.id, groupIds: [] };
+      expect(decisionShape(currentListing.permissionForActor(query).rules)).toEqual(
+        decisionShape(legacyListing.permissionForActor(query).rules)
+      );
+    });
+
+    test("should give a KMS project admin CMEK PublishPublicKey through the KMS product service, as legacy did", async () => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: ProjectType.KMS });
+
+      // Action
+      const { legacyResult, permission } = await compareProject({
+        principal: userPrincipal(tenant.admin),
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        type: ProjectType.KMS,
+        roles: productProjectRoles(),
+        current: kmsPermission
+      });
+
+      // Assert
+      expect(
+        legacyResult.permission.can(ProjectPermissionCmekActions.PublishPublicKey, ProjectPermissionSub.Cmek)
+      ).toBe(true);
+      expect(
+        permission.can({
+          action: ProjectPermissionCmekActions.PublishPublicKey,
+          subject: ProjectPermissionSub.Cmek
+        })
+      ).toBe(true);
+    });
+
+    test("should keep the cryptographic operator role outside a KMS project, as legacy did", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const user = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: user.id }, [
+        { role: ProjectMembershipRole.Viewer },
+        { role: ProjectMembershipRole.KmsCryptographicOperator }
+      ]);
+      const principal = userPrincipal(user);
+      const { legacy, modules } = build({ projectRoles: productProjectRoles() });
+      legacyRequestContext(principal);
+
+      // Action
+      const legacyResult = await legacy.getProjectPermission({
+        ...legacyArgs(principal, tenant.org.id),
+        projectId: tenant.project.id,
+        actionProjectType: ActionProjectType.SecretManager
+      });
+      const actor = await modules.organizations.actorContextService.forPrincipal({ principal, orgId: tenant.org.id });
+      const permission = await modules.projects.projectPermissionService.getProjectPermission({
+        actor,
+        projectId: tenant.project.id,
+        type: ProjectType.SecretManager
+      });
+
+      // Assert
+      expect(decisionShape(permission.rules)).toEqual(decisionShape(legacyResult.permission.rules));
+      expect(permission.hasRole({ slug: ProjectMembershipRole.KmsCryptographicOperator })).toBe(
+        legacyResult.hasRole(ProjectMembershipRole.KmsCryptographicOperator)
+      );
+    });
+
+    test.each([
+      [ProjectType.PAM, ProjectMembershipRole.Viewer],
+      [ProjectType.PAM, ProjectMembershipRole.NoAccess],
+      [ProjectType.PAM, "ssh-host-bootstrapper"],
+      [ProjectType.AgentVault, ProjectMembershipRole.Viewer],
+      [ProjectType.AgentVault, ProjectMembershipRole.NoAccess],
+      [ProjectType.AgentVault, "ssh-host-bootstrapper"]
+    ])("should resolve a %s project member holding %s to the member rules alike", async (type, role) => {
+      // Setup
+      const tenant = await h.newTenant({ projectType: type });
+      const user = await newUserInOrg(tenant.org.id);
+      await projectRoles(tenant, { userId: user.id }, [{ role }]);
+
+      // Action
+      const { permission } = await compareProject({
+        principal: userPrincipal(user),
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        type,
+        roles: productProjectRoles(),
+        current: type === ProjectType.AgentVault ? agentVaultPermission : genericProjectPermission,
+        extraSlugs: [role]
+      });
+
+      // Assert
+      const memberRules = type === ProjectType.PAM ? pamProjectMemberPermissions : agentVaultProjectMemberPermissions;
+      expect(decisionShape(permission.rules)).toEqual(decisionShape(memberRules));
+    });
+
+    test("should give a delegated OAuth token hasRole false on the PAM, Agent Vault, Cert Manager and code signing paths alike", async () => {
+      // Setup
+      const pamTenant = await h.newTenant({ projectType: ProjectType.PAM });
+      const agentVaultTenant = await h.newTenant({ projectType: ProjectType.AgentVault });
+      const certTenant = await h.newTenant({ projectType: ProjectType.CertificateManager });
+      const pamFolder = newResource(ResourceType.PamFolder);
+      await resourceRoles(pamTenant, pamFolder, { userId: pamTenant.admin.id }, [{ role: "admin" }]);
+      const application = newResource(ResourceType.CertificateApplication);
+      const signer = newResource(ResourceType.Signer);
+      await resourceRoles(certTenant, application, { userId: certTenant.admin.id }, [
+        { role: ResourceMembershipRole.Admin }
+      ]);
+      await resourceRoles(certTenant, signer, { userId: certTenant.admin.id }, [
+        { role: ResourceMembershipRole.Admin }
+      ]);
+      const oauth = (tenant: TTenant) =>
+        userPrincipal(tenant.admin, { oauth: { clientId: "client", scopes: ["secrets:read"] } });
+
+      // Action and assert
+      for (const [tenant, type, current] of [
+        [pamTenant, ProjectType.PAM, genericProjectPermission],
+        [agentVaultTenant, ProjectType.AgentVault, agentVaultPermission]
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop
+        const { permission } = await compareProject({
+          principal: oauth(tenant),
+          orgId: tenant.org.id,
+          projectId: tenant.project.id,
+          type,
+          roles: productProjectRoles(),
+          current
+        });
+        expect(permission.hasRole({ slug: ProjectMembershipRole.Admin })).toBe(false);
+      }
+      for (const [tenant, resource] of [
+        [pamTenant, pamFolder],
+        [certTenant, application],
+        [certTenant, signer]
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop
+        const { permission } = await compareResource({ principal: oauth(tenant), tenant, resource });
+        expect(permission.hasRole({ slug: "admin" })).toBe(false);
+        expect(permission.rules).toEqual([]);
+      }
+    });
   });
 });
