@@ -228,7 +228,7 @@ describe("Folder-scoped privilege permissions", () => {
     // the raw insert bypasses the version bump, so force a cold fetch
     await clearMemberPermissionCaches();
     const before = await secretsPermissionService.getSecretsPermission({ actor, projectId });
-    expect(before.folderGrants).toEqual([
+    expect(before.folderGrants.list.map((grant) => grant.toJSON())).toEqual([
       expect.objectContaining({
         folderId: folderB.id,
         role: SecretFolderRole.Read,
@@ -277,7 +277,7 @@ describe("Folder-scoped privilege permissions", () => {
     // The cached grants with the pre-rename fingerprint stay, so the refetch below is driven by the version bump,
     // not by a cold cache.
     const afterRename = await secretsPermissionService.getSecretsPermission({ actor, projectId });
-    expect(afterRename.folderGrants).toEqual([
+    expect(afterRename.folderGrants.list.map((grant) => grant.toJSON())).toEqual([
       expect.objectContaining({ folderId: folderB.id, secretPath: "/rbac-a-renamed/rbac-b" })
     ]);
 
@@ -291,7 +291,7 @@ describe("Folder-scoped privilege permissions", () => {
     expect(versionAfterMove).toBeGreaterThan(versionAfterRename);
 
     const after = await secretsPermissionService.getSecretsPermission({ actor, projectId });
-    expect(after.folderGrants).toEqual([
+    expect(after.folderGrants.list.map((grant) => grant.toJSON())).toEqual([
       expect.objectContaining({
         folderId: privilegeRow.folderId,
         role: SecretFolderRole.Read,

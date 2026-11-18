@@ -7,7 +7,11 @@ import { ProjectType } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionSecretEventActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  ProjectPermissionSecretEventActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, RateLimitError } from "@app/lib/errors";
@@ -72,6 +76,7 @@ export const getSSEHeaders = () =>
 
 type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
+  projectPermissionService: TProjectPermissionService;
   secretsPermissionService: TSecretsPermissionService;
   actorContextService: TActorContextService;
   licenseService: TLicenseService;
@@ -81,6 +86,7 @@ type TProjectEventsSSEServiceFactoryDep = {
 
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
+  projectPermissionService,
   secretsPermissionService,
   actorContextService,
   licenseService,
@@ -164,8 +170,13 @@ export const projectEventsSSEServiceFactory = ({
    * Fetch fresh permission from permission service
    */
   const fetchPermission = async (actor: TActorContext, projectId: string): Promise<TSSEPermissionCache> => {
-    // Through Secrets, so folder grants decide at their folders as they do for every other secret check.
-    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    // A subscription is accepted on a project of any type. In a Secret Manager project it goes through Secrets, so
+    // folder grants decide at their folders as they do for every other secret check.
+    const access = await projectPermissionService.getProjectAccess({ actor, projectId });
+    const permission =
+      access.project.type === ProjectType.SecretManager
+        ? (await secretsPermissionService.getSecretsPermission({ actor, projectId })).permission
+        : access.toPermission();
 
     return {
       permission,
