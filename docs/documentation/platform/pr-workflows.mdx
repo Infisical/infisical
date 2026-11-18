@@ -46,7 +46,7 @@ This guide shows you how to create approval policies that require changes to sec
 
     By default, a [secret import](/documentation/platform/secret-reference#secret-imports) into a folder the policy covers can read the source folder directly, so a change in the source skips approval.
 
-    Enable the **Require Approval for Imported Secrets** toggle to make every change that reaches the covered folders through an import from the same project go through a change request. When you save the policy, Infisical converts the existing imports in those folders and keeps their current values. For what changes and what still takes effect without approval, see [Require approval for imported secrets](/documentation/platform/secret-reference#require-approval-for-imported-secrets).
+    Enable the **Require Approval for Imported Secrets** toggle to make every new import from the same project into the covered folders respect the policy, so each change that reaches them goes through a change request. Existing imports that ignore the policy aren't changed. When you save the policy, Infisical lists them so you can recreate them. For the steps and for what still takes effect without approval, see [Require approval for imported secrets](/documentation/platform/secret-reference#require-approval-for-imported-secrets).
 
   </Step>
   <Step title="Submit a change request">

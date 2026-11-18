@@ -175,7 +175,7 @@ export const CreateSecretImportForm = ({
   }: TFormSchema) => {
     const isReplication = Boolean(enforcingPolicy) || isReplicationSelected;
     try {
-      if (isReplication && !enforcingPolicy && !subscription?.secretApproval) {
+      if (isReplication && !subscription?.secretApproval) {
         onUpgradePlan();
         return;
       }

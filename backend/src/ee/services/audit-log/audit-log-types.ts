@@ -412,7 +412,6 @@ export enum EventType {
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
-  SECRET_IMPORT_REPLICATION_ENFORCED = "secret-import-replication-enforced",
   UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
   UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
   ADD_PROJECT_GROUP = "add-project-group",
@@ -2786,9 +2785,6 @@ interface CreateSecretImportEvent {
     importFromSecretPath: string;
     importToEnvironment: string;
     importToSecretPath: string;
-    isReplication?: boolean;
-    enforcedBySecretChangePolicyId?: string;
-    enforcedBySecretChangePolicyName?: string;
   };
 }
 
@@ -2800,9 +2796,6 @@ interface UpdateSecretImportEvent {
     importToEnvironment: string;
     importToSecretPath: string;
     position: number;
-    isReplication?: boolean;
-    enforcedBySecretChangePolicyId?: string;
-    enforcedBySecretChangePolicyName?: string;
     orderBefore?: {
       environment: string;
       secretPath: string;
@@ -2811,21 +2804,6 @@ interface UpdateSecretImportEvent {
       environment: string;
       secretPath: string;
     }[];
-  };
-}
-
-interface SecretImportReplicationEnforcedEvent {
-  type: EventType.SECRET_IMPORT_REPLICATION_ENFORCED;
-  metadata: {
-    secretChangePolicyId: string;
-    secretChangePolicyName: string;
-    secretImportId: string;
-    sourceEnvironment: string;
-    sourceSecretPath: string;
-    destinationEnvironment: string;
-    destinationSecretPath: string;
-    outcome: "converted" | "failed";
-    reason?: string;
   };
 }
 
@@ -8880,7 +8858,6 @@ export type Event =
   | GetSecretImportsEvent
   | GetSecretImportEvent
   | CreateSecretImportEvent
-  | SecretImportReplicationEnforcedEvent
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent
   | UpdateUserRole

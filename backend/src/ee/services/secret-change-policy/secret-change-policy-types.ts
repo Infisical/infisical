@@ -13,9 +13,10 @@ import {
 } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -72,6 +73,23 @@ export type TGetBoardSapDTO = {
   secretPath: string;
 } & Omit<TProjectPermission, "projectId">;
 
+// The settings of a policy that is being created or edited. `policyId` is set when editing, so the saved
+// version of the policy is replaced by these settings instead of competing with them.
+export type TListDirectImportsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  policyId?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDirectSecretImport = {
+  id: string;
+  environment: { slug: string; name: string };
+  secretPath: string;
+  sourceEnvironment: { slug: string; name: string };
+  sourceSecretPath: string;
+};
+
 export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
 
 export type TSecretChangePolicyApprover = { type: ApproverType; id: string; username?: string | null };
@@ -107,6 +125,7 @@ export type TSecretChangePolicyMethods = {
     tx?: Knex
   ) => Promise<Map<string, TSecretChangePolicy>>;
   getSecretApprovalPolicyOfFolder: (dto: TGetBoardSapDTO) => Promise<TSecretChangePolicy | undefined>;
+  listDirectImportsCoveredByPolicy: (dto: TListDirectImportsDTO) => Promise<TDirectSecretImport[]>;
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
@@ -126,7 +145,8 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findDirectImportsByEnvIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
-  eventEmitter: TEventEmitter;
 };

@@ -80,7 +80,6 @@ export enum EventType {
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
-  SECRET_IMPORT_REPLICATION_ENFORCED = "secret-import-replication-enforced",
   UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
   UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
   ADD_PROJECT_GROUP = "add-project-group",

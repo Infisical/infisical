@@ -63,6 +63,21 @@ export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
 
+export type TListSecretApprovalPolicyDirectImportsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  policyId?: string;
+};
+
+export type TSecretApprovalPolicyDirectImport = {
+  id: string;
+  environment: { slug: string; name: string };
+  secretPath: string;
+  sourceEnvironment: { slug: string; name: string };
+  sourceSecretPath: string;
+};
+
 export type TGetSecretApprovalPolicyOfBoardDTO = {
   projectId: string;
   environment: string;

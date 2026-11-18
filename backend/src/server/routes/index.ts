@@ -207,11 +207,6 @@ import { secretChangePolicyDALFactory } from "@app/ee/services/secret-change-pol
 import { secretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { secretChangeRequestDALFactory } from "@app/ee/services/secret-change-request/secret-change-request-dal";
 import { secretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
-import {
-  secretImportEnforcementPolicyConsumerFactory,
-  secretImportReplicationConversionConsumerFactory
-} from "@app/ee/services/secret-import-enforcement/secret-import-enforcement-consumers";
-import { secretImportEnforcementServiceFactory } from "@app/ee/services/secret-import-enforcement/secret-import-enforcement-service";
 import { secretReadActivityDALFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-dal";
 import { secretReadActivityQueueServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-queue";
 import { secretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
@@ -1387,9 +1382,10 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectDAL,
     userDAL,
+    secretImportDAL,
+    folderDAL,
     permissionService,
-    licenseService,
-    eventEmitter: eventOutboxService
+    licenseService
   });
 
   // samlService is created after loginService (below) due to dependency on processProviderCallback
@@ -2779,26 +2775,6 @@ export const registerRoutes = async (
     projectFolderGrantDAL,
     orgDAL
   });
-
-  const secretImportEnforcementService = secretImportEnforcementServiceFactory({
-    secretImportDAL,
-    folderDAL,
-    secretV2BridgeDAL,
-    secretVersionV2BridgeDAL,
-    secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
-    secretTagDAL,
-    resourceMetadataDAL,
-    folderCommitService,
-    secretChangePolicyService,
-    projectDAL,
-    projectFolderGrantDAL,
-    orgDAL,
-    kmsService,
-    auditLogService,
-    eventEmitter: eventOutboxService
-  });
-  eventOutboxRegistry.register(secretImportEnforcementPolicyConsumerFactory({ secretImportEnforcementService }));
-  eventOutboxRegistry.register(secretImportReplicationConversionConsumerFactory({ secretImportEnforcementService }));
 
   const integrationService = integrationServiceFactory({
     permissionService,

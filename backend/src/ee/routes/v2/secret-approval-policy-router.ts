@@ -326,6 +326,55 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   });
 
   server.route({
+    url: "/direct-imports",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listSecretApprovalPolicyDirectImports",
+      description:
+        "List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as a replicated import.",
+      querystring: z.object({
+        projectId: z.string().trim().min(1),
+        environments: z
+          .string()
+          .trim()
+          .min(1)
+          .regex(/^[^,]+(,[^,]+)*$/, "Environments must be a comma-separated list of environment slugs")
+          .describe("Comma-separated list of environment slugs the policy applies to"),
+        secretPath: z.string().trim().min(1).describe("The policy's secret path, which can be a glob pattern"),
+        policyId: z.string().uuid().optional().describe("The policy being edited, if any")
+      }),
+      response: {
+        200: z.object({
+          imports: z
+            .object({
+              id: z.string(),
+              environment: z.object({ slug: z.string(), name: z.string() }),
+              secretPath: z.string(),
+              sourceEnvironment: z.object({ slug: z.string(), name: z.string() }),
+              sourceSecretPath: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const imports = await server.services.secretChangePolicy.listDirectImportsCoveredByPolicy({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query,
+        environments: req.query.environments.split(",").map((slug) => slug.trim())
+      });
+      return { imports };
+    }
+  });
+
+  server.route({
     url: "/board",
     method: "GET",
     config: {

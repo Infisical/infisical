@@ -80,10 +80,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
             importFromSecretPath: secretImport.importPath,
             importFromEnvironment: secretImport.importEnv.slug,
             importToEnvironment: req.body.environment,
-            importToSecretPath: req.body.path,
-            isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
-            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
+            importToSecretPath: req.body.path
           }
         }
       });
@@ -179,10 +176,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
             folderId: secretImport.folderId,
             position: secretImport.position,
             importToEnvironment: req.body.environment,
-            importToSecretPath: req.body.path,
-            isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
-            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
+            importToSecretPath: req.body.path
           }
         }
       });

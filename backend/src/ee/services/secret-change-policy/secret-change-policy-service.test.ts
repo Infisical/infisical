@@ -156,8 +156,7 @@ const buildService = ({
       )
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    licenseService,
-    eventEmitter: { emit: vi.fn().mockResolvedValue(undefined) }
+    licenseService
   };
 
   const service = secretChangePolicyServiceFactory(
@@ -595,7 +594,7 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
     });
   });
 
-  test("turns on import replication without touching self-approval, and records the change", async () => {
+  test("turns on import replication without touching self-approval", async () => {
     const { service, deps } = buildService({
       permission: allowEdit,
       rows: [buildRow({ constraints: { version: 1, constraints: { allowedSelfApprovals: false } } })]
@@ -608,10 +607,6 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
       { constraints: { version: 1, constraints: { allowedSelfApprovals: false, enforceImportReplication: true } } },
       TX
     );
-    const [[events, tx]] = deps.eventEmitter.emit.mock.calls as [[{ type: string; data: unknown }[], unknown]];
-    expect(tx).toBe(TX);
-    expect(events.map((event) => event.type)).toEqual(["com.infisical.secrets.secret-change-policy.modified.v1"]);
-    expect(events[0].data).toMatchObject({ policyId: "policy-1", modificationType: "updated" });
   });
 
   test("rewrites the policy, step, approvers, environments and bypassers in one transaction", async () => {

@@ -1,10 +1,6 @@
-import { posix as posixPath } from "node:path";
-
-import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -67,35 +63,6 @@ type TSecretImportSecretsV2 = {
     secretComment: string;
     secretMetadata?: ResourceMetadataWithEncryptionDTO;
   })[];
-};
-
-// A replication import's values are read through a reserved row that points at its copy, and that row must sit
-// right after the import: reordering moves the pair together and deleting shifts by 2. createImport can append
-// both rows at the end, but an existing import being converted may sit mid-list. The caller holds the folder's
-// import position lock.
-export const insertReservedImportRow = async (
-  secretImportDAL: Pick<TSecretImportDALFactory, "shiftPositionsAfter" | "create">,
-  {
-    folderId,
-    envId,
-    folderPath,
-    importId,
-    position
-  }: { folderId: string; envId: string; folderPath: string; importId: string; position: number },
-  tx: Knex
-) => {
-  // Frees the slot after the import. Appending instead would move the copy's precedence to the end of the list.
-  await secretImportDAL.shiftPositionsAfter(folderId, position, 1, tx);
-  return secretImportDAL.create(
-    {
-      folderId,
-      position: position + 1,
-      isReserved: true,
-      importEnv: envId,
-      importPath: posixPath.join(folderPath, getReplicationFolderName(importId))
-    },
-    tx
-  );
 };
 
 export const LEVEL_BREAK = 10;

@@ -17,50 +17,11 @@ import (
 
 var stagingApp = secretmanager.Location{Env: "staging", Path: "/app"}
 
-func TestImportReplicationEnforcement_Conversion(t *testing.T) {
+func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should keep an existing import's values when a new policy requires approval for imported secrets", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
-		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
-		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
-
-		// Action
-		createPolicy(t, proj, "prod", "/", tn.Admin, true)
-
-		// Assert
-		waitConverted(t, proj, "prod", "/", prodImport)
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-		require.Zero(t, openRequests(t, proj))
-	})
-
-	t.Run("should convert an existing import when the option is turned on for an existing policy", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
-		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
-		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
-		policyID := createPolicy(t, proj, "prod", "/", tn.Admin, false)
-		require.False(t, importRowByID(t, proj, "prod", "/", prodImport).Replication)
-
-		// Action
-		setImportEnforcement(t, proj, policyID, tn.Admin, true)
-
-		// Assert
-		waitConverted(t, proj, "prod", "/", prodImport)
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-	})
-
-	t.Run("should hold a source change after conversion until it is approved", func(t *testing.T) {
+	t.Run("should leave an existing direct import reading its source when the policy starts requiring approval", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -70,17 +31,66 @@ func TestImportReplicationEnforcement_Conversion(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
 		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
 		createPolicy(t, proj, "prod", "/", tn.Admin, true)
-		waitConverted(t, proj, "prod", "/", prodImport)
 
 		// Action
 		secretmanager.UpdateSecret(t, proj, "staging", "KEY", "v2", secretmanager.WithPath(stagingApp.Path))
 
 		// Assert
-		waitForOpenRequest(t, proj)
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-
-		approveAndMerge(t, tn.Admin, openRequestIDs(t, proj)[0])
+		require.False(t, importRowByID(t, proj, "prod", "/", prodImport).Replication)
 		require.Equal(t, map[string][]string{"KEY": {"v2"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
+	})
+
+	t.Run("should list only the direct same-project imports in folders the policy would govern", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		other := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		for _, folder := range []string{"/app", "/other"} {
+			secretmanager.CreateFolder(t, proj, "staging", folder)
+		}
+		secretmanager.CreateFolder(t, proj, "prod", "/governed-elsewhere")
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		secretmanager.GrantFolder(t, other, proj, secretmanager.Location{Env: "dev", Path: "/"})
+
+		listed := secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		secretmanager.CreateImport(t, proj, "prod", secretmanager.Location{Env: "staging", Path: "/other"},
+			secretmanager.Replicated())
+		secretmanager.CreateImport(t, proj, "prod", secretmanager.Location{Env: "dev", Path: "/"},
+			secretmanager.FromProject(other))
+		secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.IntoPath("/governed-elsewhere"))
+		createPolicy(t, proj, "prod", "/governed-elsewhere", tn.Admin, false)
+
+		// Action
+		imports := listDirectImports(t, proj, "prod", "/**")
+
+		// Assert
+		require.Len(t, imports, 1)
+		require.Equal(t, listed, imports[0].Id)
+		require.Equal(t, "/", imports[0].SecretPath)
+		require.Equal(t, "staging", imports[0].SourceEnvironment.Slug)
+		require.Equal(t, stagingApp.Path, imports[0].SourceSecretPath)
+	})
+
+	t.Run("should refuse to point a direct import at another source in a governed folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		for _, folder := range []string{"/app", "/other"} {
+			secretmanager.CreateFolder(t, proj, "staging", folder)
+		}
+		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		createPolicy(t, proj, "prod", "/", tn.Admin, true)
+
+		// Action
+		res := repoint(t, tn.Admin, proj, "prod", prodImport, secretmanager.Location{Env: "staging", Path: "/other"})
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "repointing returned %s", apierr.Body(res.Body))
+		require.Equal(t, stagingApp.Path, importRowByID(t, proj, "prod", "/", prodImport).Path)
 	})
 }
 
@@ -88,7 +98,28 @@ func TestImportReplicationEnforcement_NewImports(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should make a new same-project import a replication import whose values wait for approval", func(t *testing.T) {
+	t.Run("should refuse a new same-project import that ignores the policy", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		createPolicy(t, proj, "prod", "/", tn.Admin, true)
+
+		// Action
+		body := api.CreateSecretImportJSONRequestBody{ProjectId: proj.ID, Environment: "prod", Path: new("/")}
+		body.Import.Environment = stagingApp.Env
+		body.Import.Path = stagingApp.Path
+		res, err := tn.Admin.API.CreateSecretImportWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "creating the import returned %s", apierr.Body(res.Body))
+		require.Empty(t, listImports(t, proj, "prod", "/"))
+	})
+
+	t.Run("should hold a replicated import's values until each change is approved", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `Creating the source secret and creating the import can each queue a replication
 			run, and each run that finds the copy unwritten opens its own request, so the claim
@@ -102,46 +133,24 @@ func TestImportReplicationEnforcement_NewImports(t *testing.T) {
 		createPolicy(t, proj, "prod", "/", tn.Admin, true)
 
 		// Action
-		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.Replicated())
 
 		// Assert
-		require.True(t, importRowByID(t, proj, "prod", "/", prodImport).Replication)
 		waitForOpenRequest(t, proj)
 		require.Empty(t, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-
-		approveAndMerge(t, tn.Admin, openRequestIDs(t, proj)[0])
-		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-	})
-
-	t.Run("should hold the new source's values when a governed import is repointed", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		for _, folder := range []string{"/app", "/other"} {
-			secretmanager.CreateFolder(t, proj, "staging", folder)
+		for _, id := range openRequestIDs(t, proj) {
+			approveAndMerge(t, tn.Admin, id)
 		}
-		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath("/app"))
-		secretmanager.CreateSecret(t, proj, "staging", "OTHER_KEY", "other", secretmanager.WithPath("/other"))
-		prodImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
-		createPolicy(t, proj, "prod", "/", tn.Admin, true)
-		waitConverted(t, proj, "prod", "/", prodImport)
+		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
 
-		// Action
-		res := repoint(t, tn.Admin, proj, "prod", prodImport, secretmanager.Location{Env: "staging", Path: "/other"})
-
-		// Assert
-		require.Equalf(t, http.StatusOK, res.StatusCode(), "repointing returned %s", apierr.Body(res.Body))
+		secretmanager.UpdateSecret(t, proj, "staging", "KEY", "v2", secretmanager.WithPath(stagingApp.Path))
 		waitForOpenRequest(t, proj)
 		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-
 		approveAndMerge(t, tn.Admin, openRequestIDs(t, proj)[0])
-		require.Equal(t, map[string][]string{"OTHER_KEY": {"other"}},
-			importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
+		require.Equal(t, map[string][]string{"KEY": {"v2"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
 	})
 
-	t.Run("should leave a new cross-project import reading its source directly", func(t *testing.T) {
+	t.Run("should allow a new cross-project import that reads its source directly", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -187,23 +196,6 @@ func createPolicy(t *testing.T, proj *fixture.Project, env, secretPath string, a
 	return res.JSON200.Approval.Id
 }
 
-func setImportEnforcement(t *testing.T, proj *fixture.Project, policyID uuid.UUID, approver *harness.Principal, enforce bool) {
-	t.Helper()
-	var item api.UpdateSecretApprovalPolicyJSONBody_Approvers_Item
-	require.NoError(t, item.FromUpdateSecretApprovalPolicyJSONBodyApprovers1(api.UpdateSecretApprovalPolicyJSONBodyApprovers1{
-		Type: api.UpdateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
-		Id:   new(approver.ID.String()),
-	}))
-	res, err := proj.Tenant().Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
-		api.UpdateSecretApprovalPolicyJSONRequestBody{
-			Approvers:                []api.UpdateSecretApprovalPolicyJSONBody_Approvers_Item{item},
-			EnforceImportReplication: &enforce,
-		})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "updating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	require.Equal(t, enforce, res.JSON200.Approval.EnforceImportReplication)
-}
-
 func importRowByID(t *testing.T, proj *fixture.Project, env, folderPath, importID string) importRow {
 	t.Helper()
 	for _, row := range listImports(t, proj, env, folderPath) {
@@ -215,16 +207,25 @@ func importRowByID(t *testing.T, proj *fixture.Project, env, folderPath, importI
 	return importRow{}
 }
 
-// waitConverted waits for the policy change's conversion, which runs after the change
-// commits, to turn the import into a replication import.
-func waitConverted(t *testing.T, proj *fixture.Project, env, folderPath, importID string) {
+func listDirectImports(t *testing.T, proj *fixture.Project, env, secretPath string) []struct {
+	Environment struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"environment"`
+	Id                string `json:"id"`
+	SecretPath        string `json:"secretPath"`
+	SourceEnvironment struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"sourceEnvironment"`
+	SourceSecretPath string `json:"sourceSecretPath"`
+} {
 	t.Helper()
-	var last importRow
-	wait.Until(t, "the import to become a replication import", func() bool {
-		last = importRowByID(t, proj, env, folderPath, importID)
-		return last.Replication
-	}, replicationBudget)
-	require.Truef(t, last.ReplicationOK, "conversion failed: %s", last.ReplicationStatus)
+	res, err := proj.Tenant().Admin.API.ListSecretApprovalPolicyDirectImportsWithResponse(t.Context(),
+		&api.ListSecretApprovalPolicyDirectImportsParams{ProjectId: proj.ID, Environments: env, SecretPath: secretPath})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing direct imports returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return res.JSON200.Imports
 }
 
 func waitForOpenRequest(t *testing.T, proj *fixture.Project) {

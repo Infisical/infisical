@@ -25,6 +25,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
   AlertTitle,
   Badge,
@@ -79,6 +80,8 @@ import { TDelegatedApprovalPolicyInput } from "@app/hooks/api/delegatedApprovals
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { onRequestError } from "@app/hooks/api/reactQuery";
+import { fetchSecretApprovalPolicyDirectImports } from "@app/hooks/api/secretApproval";
+import { TSecretApprovalPolicyDirectImport } from "@app/hooks/api/secretApproval/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -182,8 +185,11 @@ const Form = ({
   onRequestClose: () => void;
 }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [isEnforceImportReplicationConfirmOpen, setIsEnforceImportReplicationConfirmOpen] =
-    useState(false);
+  const [directImportsReview, setDirectImportsReview] = useState<{
+    imports: TSecretApprovalPolicyDirectImport[];
+    data: TApprovalPolicyFormSchema;
+  } | null>(null);
+  const [isSavingAfterReview, setIsSavingAfterReview] = useState(false);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
     () =>
@@ -437,7 +443,7 @@ const Form = ({
     onToggle(false);
   };
 
-  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+  const savePolicy = async (data: TApprovalPolicyFormSchema) => {
     try {
       if (isEditMode) {
         await handleUpdatePolicy(data);
@@ -459,6 +465,28 @@ const Form = ({
 
       if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
     }
+  };
+
+  // Imports that still read their source directly are not converted when the policy starts requiring approval
+  // for imported secrets, so the admin is shown which ones to recreate before the policy is saved.
+  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+    if (data.policyType === PolicyType.ChangePolicy && data.enforceImportReplication && projectId) {
+      try {
+        const imports = await fetchSecretApprovalPolicyDirectImports({
+          projectId,
+          environments: data.environments.map((env) => env.slug),
+          secretPath: data.secretPath,
+          policyId: editValues?.id
+        });
+        if (imports.length) {
+          setDirectImportsReview({ imports, data });
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    await savePolicy(data);
   };
 
   const memberOptions = useMemo<ApproverOptionData[]>(
@@ -1175,10 +1203,9 @@ const Form = ({
                     <FieldContent>
                       <FieldTitle>Require Approval for Imported Secrets</FieldTitle>
                       <FieldDescription>
-                        Imports from this project into this path become replication imports, so
-                        changes to imported values need approval. Existing imports keep their
-                        current values. Imports from other projects are not affected, and turning
-                        this off does not revert converted imports.
+                        New imports from this project into this path must respect this policy, so
+                        changes to imported values need approval. Existing imports that ignore it
+                        have to be recreated. Imports from other projects are not affected.
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
@@ -1186,13 +1213,7 @@ const Form = ({
                       aria-label="Require approval for imported secrets"
                       variant="project"
                       checked={value}
-                      onCheckedChange={(checked) => {
-                        if (checked && !editValues?.enforceImportReplication) {
-                          setIsEnforceImportReplicationConfirmOpen(true);
-                          return;
-                        }
-                        onChange(checked);
-                      }}
+                      onCheckedChange={onChange}
                     />
                   </Field>
                 )}
@@ -1303,31 +1324,58 @@ const Form = ({
         )}
       </div>
       <AlertDialog
-        open={isEnforceImportReplicationConfirmOpen}
-        onOpenChange={setIsEnforceImportReplicationConfirmOpen}
+        open={Boolean(directImportsReview)}
+        onOpenChange={(open) => {
+          if (!open) setDirectImportsReview(null);
+        }}
+        isPending={isSavingAfterReview}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Require Approval for Imported Secrets?</AlertDialogTitle>
+            <AlertDialogMedia>
+              <TriangleAlertIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Save With Imports That Ignore This Policy?</AlertDialogTitle>
             <AlertDialogDescription>
-              When you save this policy, existing imports from this project into the paths it covers
-              become replication imports. They keep their current values, but every later change to
-              those values goes through a change request. Turning this off later does not convert
-              them back.
+              {directImportsReview?.imports.length === 1
+                ? "This import reads its source directly"
+                : `These ${directImportsReview?.imports.length} imports read their source directly`}
+              , so changes to their values won&apos;t need approval. Recreate each one as an import
+              that respects approval policies, and delete the old one after the new import&apos;s
+              first change request is merged.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <ul className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border text-sm">
+            {directImportsReview?.imports.map((secretImport) => (
+              <li
+                key={secretImport.id}
+                className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2 last:border-b-0"
+              >
+                <Badge variant="neutral">{secretImport.environment.name}</Badge>
+                <span className="font-mono text-xs">{secretImport.secretPath}</span>
+                <span className="text-muted">imports</span>
+                <Badge variant="neutral">{secretImport.sourceEnvironment.name}</Badge>
+                <span className="font-mono text-xs">{secretImport.sourceSecretPath}</span>
+              </li>
+            ))}
+          </ul>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
             <AlertDialogAction
               variant="project"
-              onClick={() =>
-                setValue("enforceImportReplication", true, {
-                  shouldDirty: true,
-                  shouldValidate: true
-                })
-              }
+              onClick={async (event) => {
+                event.preventDefault();
+                if (!directImportsReview || isSavingAfterReview) return;
+                setIsSavingAfterReview(true);
+                try {
+                  await savePolicy(directImportsReview.data);
+                } finally {
+                  setIsSavingAfterReview(false);
+                  setDirectImportsReview(null);
+                }
+              }}
             >
-              Require Approval
+              Save Policy
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

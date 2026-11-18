@@ -22,7 +22,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { ActorType } from "../auth/auth-type";
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -34,7 +33,6 @@ import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-f
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
-import { emitSecretsModified } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
@@ -42,7 +40,7 @@ import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { SecretImportModifiedEventV1 } from "./secret-import-events";
-import { fnSecretsFromImports, fnSecretsV2FromImports, insertReservedImportRow } from "./secret-import-fns";
+import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
@@ -59,10 +57,7 @@ type TSecretImportServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<
-    TSecretV2BridgeDALFactory,
-    "find" | "findByFolderIds" | "delete" | "invalidateSecretCacheByProjectId"
-  >;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -75,6 +70,10 @@ type TSecretImportServiceFactoryDep = {
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
+const ERR_DIRECT_IMPORT_UNDER_POLICY = (policyName: string) =>
+  new BadRequestError({
+    message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect it. Create the import with replication enabled instead.`
+  });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
 
@@ -145,143 +144,6 @@ export const secretImportServiceFactory = ({
     tx: Knex
   ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
 
-  const $findEnforcingPolicy = async (projectId: string, environment: string, folderPath: string, tx?: Knex) => {
-    const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folderPath, tx);
-    return policy?.enforceImportReplication ? policy : undefined;
-  };
-
-  const $queueReplication = async ({
-    importId,
-    importEnvId,
-    importPath,
-    projectId,
-    actor,
-    actorId,
-    actorOrgId
-  }: {
-    importId: string;
-    importEnvId: string;
-    importPath: string;
-    projectId: string;
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-  }) => {
-    const sourceEnv = await projectEnvDAL.findById(importEnvId);
-    if (!sourceEnv) return;
-    const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnv.slug, importPath);
-    if (!sourceFolder) return;
-
-    await secretQueueService.replicateSecrets({
-      secretPath: importPath,
-      orgId: actorOrgId,
-      projectId,
-      environmentSlug: sourceEnv.slug,
-      environmentName: sourceEnv.name,
-      pickOnlyImportIds: [importId],
-      actorId,
-      actor
-    });
-  };
-
-  // A one-time conversion of this import may already have copied part of the source into its reserved folder. Once
-  // the import is a replication import, readers see that folder, so it starts empty and the replication job fills
-  // it through a change request.
-  const $clearPendingCopy = async (
-    {
-      importId,
-      folder,
-      projectId,
-      environment
-    }: { importId: string; folder: { id: string; path: string }; projectId: string; environment: string },
-    tx: Knex
-  ) => {
-    const replicationFolder = await folderDAL.findOne(
-      { parentId: folder.id, name: getReplicationFolderName(importId), isReserved: true },
-      tx
-    );
-    if (!replicationFolder) return;
-
-    const deleted = await secretV2BridgeDAL.delete({ folderId: replicationFolder.id }, tx);
-    if (deleted.length) {
-      await emitSecretsModified(
-        eventEmitter,
-        {
-          projectId,
-          environment,
-          secretPath: path.join(folder.path, replicationFolder.name),
-          modificationType: EventModificationType.Deleted
-        },
-        deleted,
-        tx
-      );
-    }
-  };
-
-  // Makes a regular same-project import a replication import. Its copy starts empty and is filled by the
-  // replication job as the actor, so the values arrive as a change request wherever a policy applies to them.
-  const $forceReplication = async ({
-    importId,
-    folder,
-    projectId,
-    environment,
-    actor,
-    actorId,
-    actorOrgId
-  }: {
-    importId: string;
-    folder: { id: string; path: string; environment: { id: string } };
-    projectId: string;
-    environment: string;
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-  }) => {
-    const converted = await secretImportDAL.transaction(async (tx) => {
-      await secretImportDAL.lockFolderImportPositions(folder.id, tx);
-      const doc = await secretImportDAL.findOne({ id: importId, folderId: folder.id }, tx);
-      if (!doc || doc.isReplication || doc.isReserved) return undefined;
-
-      const [updated] = await secretImportDAL.update(
-        { id: importId, folderId: folder.id },
-        { isReplication: true, isReplicationSuccess: null, replicationStatus: null, lastReplicated: null },
-        tx
-      );
-      await insertReservedImportRow(
-        secretImportDAL,
-        {
-          folderId: folder.id,
-          envId: folder.environment.id,
-          folderPath: folder.path,
-          importId,
-          position: updated.position
-        },
-        tx
-      );
-      await $clearPendingCopy({ importId, folder, projectId, environment }, tx);
-      await $emitImportModified(
-        importId,
-        { projectId, environment, secretPath: folder.path },
-        EventModificationType.Updated,
-        tx
-      );
-      return updated;
-    });
-    if (!converted) return undefined;
-
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    await $queueReplication({
-      importId,
-      importEnvId: converted.importEnv,
-      importPath: converted.importPath,
-      projectId,
-      actor,
-      actorId,
-      actorOrgId
-    });
-    return converted;
-  };
-
   const createImport = async ({
     environment,
     data,
@@ -349,10 +211,19 @@ export const secretImportServiceFactory = ({
       });
     }
 
-    if (isReplication && isCrossProjectImport) {
-      throw new BadRequestError({
-        message: "Replication is not supported for cross-project imports"
-      });
+    if (isReplication) {
+      if (isCrossProjectImport) {
+        throw new BadRequestError({
+          message: "Replication is not supported for cross-project imports"
+        });
+      }
+
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.has(PlanFeature.SecretApproval)) {
+        throw new BadRequestError({
+          message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
+        });
+      }
     }
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -363,20 +234,9 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const enforcingPolicy = isCrossProjectImport
-      ? undefined
-      : await $findEnforcingPolicy(projectId, environment, folder.path);
-    const shouldReplicate = Boolean(isReplication || enforcingPolicy);
-
-    // A policy that requires replication is already plan-gated, so an org that has since downgraded can still
-    // create imports in the folders it governs.
-    if (shouldReplicate && !enforcingPolicy) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.has(PlanFeature.SecretApproval)) {
-        throw new BadRequestError({
-          message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
-        });
-      }
+    if (!isReplication && !isCrossProjectImport) {
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
+      if (policy?.enforceImportReplication) throw ERR_DIRECT_IMPORT_UNDER_POLICY(policy.name);
     }
 
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
@@ -401,7 +261,6 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
-      await secretImportDAL.lockFolderImportPositions(folder.id, tx);
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {
@@ -409,19 +268,18 @@ export const secretImportServiceFactory = ({
           position: lastPos + 1,
           importEnv: importEnv.id,
           importPath: data.path,
-          isReplication: shouldReplicate
+          isReplication
         },
         tx
       );
       if (doc.isReplication) {
-        await insertReservedImportRow(
-          secretImportDAL,
+        await secretImportDAL.create(
           {
             folderId: folder.id,
-            envId: folder.environment.id,
-            folderPath: folder.path,
-            importId: doc.id,
-            position: doc.position
+            position: lastPos + 2,
+            isReserved: true,
+            importEnv: folder.environment.id,
+            importPath: path.join(secretPath, getReplicationFolderName(doc.id))
           },
           tx
         );
@@ -469,39 +327,7 @@ export const secretImportServiceFactory = ({
     }
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-
-    // The policy was read before the import was written, so a policy that started requiring replication in
-    // between would never see this import. Its one-time conversion may already have run, so convert it here.
-    if (!secImport.isReplication && !isCrossProjectImport) {
-      const latePolicy = await $findEnforcingPolicy(projectId, environment, folder.path, secretImportDAL.primaryNode());
-      if (latePolicy) {
-        const converted = await $forceReplication({
-          importId: secImport.id,
-          folder,
-          projectId,
-          environment,
-          actor,
-          actorId,
-          actorOrgId
-        });
-        if (converted) {
-          return {
-            ...secImport,
-            ...converted,
-            importEnv,
-            enforcedBySecretChangePolicyId: latePolicy.id,
-            enforcedBySecretChangePolicyName: latePolicy.name
-          };
-        }
-      }
-    }
-
-    return {
-      ...secImport,
-      importEnv,
-      enforcedBySecretChangePolicyId: enforcingPolicy?.id,
-      enforcedBySecretChangePolicyName: enforcingPolicy?.name
-    };
+    return { ...secImport, importEnv };
   };
 
   const updateImport = async ({
@@ -548,6 +374,14 @@ export const secretImportServiceFactory = ({
       });
     }
 
+    const isSourceChanging =
+      (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
+      (data.path !== undefined && data.path !== secImpDoc.importPath);
+    if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
+      if (policy?.enforceImportReplication) throw ERR_DIRECT_IMPORT_UNDER_POLICY(policy.name);
+    }
+
     // check if user has permission to import from target path when source is changing
     if (data.environment || data.path) {
       const newSourcePath = data.path || secImpDoc.importPath;
@@ -571,17 +405,8 @@ export const secretImportServiceFactory = ({
       if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
     }
 
-    const isSourceChanging =
-      (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
-      (data.path !== undefined && data.path !== secImpDoc.importPath);
-    const enforcingPolicy =
-      isSourceChanging && importedEnv.projectId === projectId
-        ? await $findEnforcingPolicy(projectId, environment, folder.path)
-        : undefined;
-
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
-      await secretImportDAL.lockFolderImportPositions(folder.id, tx);
-      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
+      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
 
       let finalPosition = data.position;
@@ -639,35 +464,29 @@ export const secretImportServiceFactory = ({
         } else {
           await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, 1, tx);
         }
+      } else if (secImp.isReplication) {
+        const replicationFolderPath = path.join(secretPath, getReplicationFolderName(secImp.id));
+        await secretImportDAL.update(
+          {
+            folderId: folder.id,
+            importEnv: folder.environment.id,
+            importPath: replicationFolderPath,
+            isReserved: true
+          },
+          { position: undefined },
+          tx
+        );
       }
 
-      const shouldStartReplicating = Boolean(enforcingPolicy) && !secImp.isReplication;
       const [doc] = await secretImportDAL.update(
         { id, folderId: folder.id },
         {
           position: finalPosition,
           importEnv: data?.environment ? importedEnv.id : undefined,
-          importPath: data?.path,
-          ...(shouldStartReplicating
-            ? { isReplication: true, isReplicationSuccess: null, replicationStatus: null, lastReplicated: null }
-            : {})
+          importPath: data?.path
         },
         tx
       );
-      if (shouldStartReplicating) {
-        await insertReservedImportRow(
-          secretImportDAL,
-          {
-            folderId: folder.id,
-            envId: folder.environment.id,
-            folderPath: folder.path,
-            importId: doc.id,
-            position: doc.position
-          },
-          tx
-        );
-        await $clearPendingCopy({ importId: doc.id, folder, projectId, environment }, tx);
-      }
 
       await $emitImportModified(
         doc.id,
@@ -679,52 +498,7 @@ export const secretImportServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-
-    // A replication import in a governed folder whose source changed must copy the new source, and that copy
-    // goes through the policy like any other change to the folder.
-    if (enforcingPolicy && updatedSecImport.isReplication) {
-      await $queueReplication({
-        importId: updatedSecImport.id,
-        importEnvId: updatedSecImport.importEnv,
-        importPath: updatedSecImport.importPath,
-        projectId,
-        actor,
-        actorId,
-        actorOrgId
-      });
-    }
-
-    // Same race as in createImport: the policy was read before the update, and a policy that started requiring
-    // replication in between skips this import once its source no longer matches what it read.
-    if (isSourceChanging && !updatedSecImport.isReplication && importedEnv.projectId === projectId) {
-      const latePolicy = await $findEnforcingPolicy(projectId, environment, folder.path, secretImportDAL.primaryNode());
-      if (latePolicy) {
-        const converted = await $forceReplication({
-          importId: updatedSecImport.id,
-          folder,
-          projectId,
-          environment,
-          actor,
-          actorId,
-          actorOrgId
-        });
-        if (converted) {
-          return {
-            ...converted,
-            importEnv: importedEnv,
-            enforcedBySecretChangePolicyId: latePolicy.id,
-            enforcedBySecretChangePolicyName: latePolicy.name
-          };
-        }
-      }
-    }
-
-    return {
-      ...updatedSecImport,
-      importEnv: importedEnv,
-      enforcedBySecretChangePolicyId: enforcingPolicy?.id,
-      enforcedBySecretChangePolicyName: enforcingPolicy?.name
-    };
+    return { ...updatedSecImport, importEnv: importedEnv };
   };
 
   const deleteImport = async ({
@@ -758,38 +532,38 @@ export const secretImportServiceFactory = ({
       });
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
-      await secretImportDAL.lockFolderImportPositions(folder.id, tx);
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc) throw new NotFoundError({ message: `Secret import with folder ID '${id}' not found` });
-
-      // The reserved folder can exist before the import is a replication import (a conversion fills it first),
-      // so it is removed either way.
-      const replicationFolderPath = path.join(secretPath, getReplicationFolderName(doc.id));
-      const [reservedImport] = await secretImportDAL.delete(
-        {
-          folderId: folder.id,
-          importEnv: folder.environment.id,
-          importPath: replicationFolderPath,
-          isReserved: true
-        },
-        tx
-      );
-      const replicatedFolder = await folderDAL.findBySecretPath(projectId, environment, replicationFolderPath, tx);
-      if (replicatedFolder) {
-        await folderDAL.deleteById(replicatedFolder.id, tx);
-        await FolderModifiedEventV1.emit(
-          eventEmitter,
-          {
-            folderId: replicatedFolder.id,
-            projectId,
-            environment,
-            secretPath: replicatedFolder.path,
-            modificationType: EventModificationType.Deleted
-          },
-          tx
-        );
+      if (doc.isReplication) {
+        const replicationFolderPath = path.join(secretPath, getReplicationFolderName(doc.id));
+        const replicatedFolder = await folderDAL.findBySecretPath(projectId, environment, replicationFolderPath, tx);
+        if (replicatedFolder) {
+          await secretImportDAL.delete(
+            {
+              folderId: folder.id,
+              importEnv: folder.environment.id,
+              importPath: replicationFolderPath,
+              isReserved: true
+            },
+            tx
+          );
+          await folderDAL.deleteById(replicatedFolder.id, tx);
+          await FolderModifiedEventV1.emit(
+            eventEmitter,
+            {
+              folderId: replicatedFolder.id,
+              projectId,
+              environment,
+              secretPath: replicatedFolder.path,
+              modificationType: EventModificationType.Deleted
+            },
+            tx
+          );
+        }
+        await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 2, tx);
+      } else {
+        await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 1, tx);
       }
-      await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, reservedImport ? 2 : 1, tx);
 
       await $emitImportModified(
         doc.id,

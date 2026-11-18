@@ -13,15 +13,12 @@ import {
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { ActorType } from "@app/services/auth/auth-type";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretChangePolicyDALFactory, TSecretChangePolicyRow } from "./secret-change-policy-dal";
-import { SecretChangePolicyModifiedEventV1, TSecretChangePolicyModifiedEventData } from "./secret-change-policy-events";
 import {
   TCreateSapDTO,
   TSecretChangePolicy,
@@ -41,7 +38,6 @@ type TSecretChangePolicyFnsFactoryDep = {
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
-  eventEmitter: TEventEmitter;
 };
 
 type TUpdatePolicyInput = Pick<
@@ -111,48 +107,6 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
     bypassers: row.bypassers,
     userApprovers: row.userApprovers
   };
-};
-
-export const emitSecretChangePolicyModified = ({
-  eventEmitter,
-  policy,
-  modificationType,
-  previous,
-  tx
-}: {
-  eventEmitter: TEventEmitter;
-  policy: Pick<TSecretChangePolicy, "id" | "projectId" | "environments" | "secretPath" | "enforceImportReplication">;
-  modificationType: EventModificationType;
-  previous?: { environmentIds: string[]; secretPath?: string | null; enforceImportReplication?: boolean };
-  tx: Knex;
-}) => {
-  const environmentIds = policy.environments.map((env) => env.id);
-  const secretPath = policy.secretPath ?? "";
-  const changed: TSecretChangePolicyModifiedEventData["previous"] = {};
-  if (previous) {
-    const previousEnvIds = new Set(previous.environmentIds);
-    if (previousEnvIds.size !== environmentIds.length || environmentIds.some((id) => !previousEnvIds.has(id))) {
-      changed.environmentIds = previous.environmentIds;
-    }
-    if ((previous.secretPath ?? "") !== secretPath) changed.secretPath = previous.secretPath ?? "";
-    if ((previous.enforceImportReplication ?? false) !== policy.enforceImportReplication) {
-      changed.enforceImportReplication = previous.enforceImportReplication ?? false;
-    }
-  }
-
-  return SecretChangePolicyModifiedEventV1.emit(
-    eventEmitter,
-    {
-      policyId: policy.id,
-      projectId: policy.projectId,
-      environmentIds,
-      secretPath,
-      enforceImportReplication: policy.enforceImportReplication,
-      modificationType,
-      ...(Object.keys(changed).length ? { previous: changed } : {})
-    },
-    tx
-  );
 };
 
 export const getPolicyScore = (policy: { secretPath?: string | null }) =>
@@ -229,8 +183,7 @@ export const secretChangePolicyFnsFactory = ({
   approvalPolicySecretEnvironmentDAL,
   secretChangePolicyDAL,
   projectDAL,
-  userDAL,
-  eventEmitter
+  userDAL
 }: TSecretChangePolicyFnsFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -484,19 +437,7 @@ export const secretChangePolicyFnsFactory = ({
       );
 
       const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
-      const updatedPolicy = toSecretChangePolicy(row);
-      await emitSecretChangePolicyModified({
-        eventEmitter,
-        policy: updatedPolicy,
-        modificationType: EventModificationType.Updated,
-        previous: {
-          environmentIds: current.envs.map((env) => env.id),
-          secretPath: current.secretPath,
-          enforceImportReplication: readSecretChangePolicyConstraints(lockedPolicy.constraints).enforceImportReplication
-        },
-        tx
-      });
-      return updatedPolicy;
+      return toSecretChangePolicy(row);
     });
 
   return {

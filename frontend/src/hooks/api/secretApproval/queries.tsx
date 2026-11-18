@@ -6,7 +6,9 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 import {
   TGetSecretApprovalPoliciesDTO,
   TGetSecretApprovalPolicyOfBoardDTO,
-  TSecretApprovalPolicy
+  TListSecretApprovalPolicyDirectImportsDTO,
+  TSecretApprovalPolicy,
+  TSecretApprovalPolicyDirectImport
 } from "./types";
 
 export const secretApprovalKeys = {
@@ -35,6 +37,19 @@ export const useGetSecretApprovalPolicies = ({
     ...options,
     enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
+
+export const fetchSecretApprovalPolicyDirectImports = async ({
+  projectId,
+  environments,
+  secretPath,
+  policyId
+}: TListSecretApprovalPolicyDirectImportsDTO) => {
+  const { data } = await apiRequest.get<{ imports: TSecretApprovalPolicyDirectImport[] }>(
+    "/api/v2/secret-approvals/direct-imports",
+    { params: { projectId, environments: environments.join(","), secretPath, policyId } }
+  );
+  return data.imports;
+};
 
 const fetchApprovalPolicyOfABoard = async (
   projectId: string,

@@ -76,10 +76,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
             importFromSecretPath: secretImport.importPath,
             importFromEnvironment: secretImport.importEnv.slug,
             importToEnvironment: req.body.environment,
-            importToSecretPath: req.body.path,
-            isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
-            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
+            importToSecretPath: req.body.path
           }
         }
       });
@@ -160,10 +157,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
             folderId: secretImport.folderId,
             position: secretImport.position,
             importToEnvironment: req.body.environment,
-            importToSecretPath: req.body.path,
-            isReplication: Boolean(secretImport.isReplication),
-            enforcedBySecretChangePolicyId: secretImport.enforcedBySecretChangePolicyId,
-            enforcedBySecretChangePolicyName: secretImport.enforcedBySecretChangePolicyName
+            importToSecretPath: req.body.path
           }
         }
       });

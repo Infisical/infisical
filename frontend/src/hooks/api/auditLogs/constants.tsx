@@ -64,7 +64,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_SECRET_IMPORT]: "Create secret import",
   [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",
   [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
-  [EventType.SECRET_IMPORT_REPLICATION_ENFORCED]: "Enforce secret import replication",
   [EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS]: "Update denied permissions",
   [EventType.UPDATE_USER_PROJECT_ROLE]: "Update user role",
   [EventType.ADD_PROJECT_GROUP]: "Add project group",

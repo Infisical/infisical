@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretImports } from "@app/db/schemas";
-import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
@@ -590,64 +589,6 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Serializes every write that changes a folder's import positions. Callers take it before any row lock.
-  const lockFolderImportPositions = async (folderId: string, tx: Knex) => {
-    try {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretImportPositions(folderId)]);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Lock folder import positions" });
-    }
-  };
-
-  const shiftPositionsAfter = async (folderId: string, position: number, positionInc: number, tx: Knex) => {
-    try {
-      await tx(TableName.SecretImport)
-        .where({ folderId })
-        .andWhere("position", ">", position)
-        .increment("position", positionInc);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Shift import positions" });
-    }
-  };
-
-  // Regular same-project imports, in the given environments, of folders that are not reserved replication
-  // folders. Cross-project imports are left out because they cannot be replication imports.
-  const findConvertibleImportsByEnvIds = async (envIds: string[], tx?: Knex) => {
-    try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
-        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(`${TableName.Environment} as destinationEnv`, `${TableName.SecretFolder}.envId`, "destinationEnv.id")
-        .join(`${TableName.Environment} as sourceEnv`, `${TableName.SecretImport}.importEnv`, "sourceEnv.id")
-        .whereIn(`${TableName.SecretFolder}.envId`, envIds)
-        .whereRaw(`"sourceEnv"."projectId" = "destinationEnv"."projectId"`)
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretFolder}.isReserved`, false)
-            .orWhereNull(`${TableName.SecretFolder}.isReserved`);
-        })
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretImport}.isReplication`, false)
-            .orWhereNull(`${TableName.SecretImport}.isReplication`);
-        })
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretImport}.isReserved`, false)
-            .orWhereNull(`${TableName.SecretImport}.isReserved`);
-        })
-        .whereNull("destinationEnv.deleteAfter")
-        .select(
-          db.ref("id").withSchema(TableName.SecretImport),
-          db.ref("folderId").withSchema(TableName.SecretImport),
-          db.ref("envId").withSchema(TableName.SecretFolder),
-          db.ref("slug").withSchema("destinationEnv").as("environmentSlug")
-        );
-      return docs as { id: string; folderId: string; envId: string; environmentSlug: string }[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find convertible imports by env ids" });
-    }
-  };
-
   const findCrossProjectImportsBySourceFolder = async (
     sourceEnvId: string,
     sourceSecretPath: string,
@@ -683,12 +624,62 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  const primaryNode = () => db.primaryNode();
+  // Same-project imports that read their source directly (not replication imports), placed in the given
+  // environments. Reserved replication folders are left out, since nobody creates imports in them.
+  const findDirectImportsByEnvIds = async (envIds: string[], tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(`${TableName.Environment} as destinationEnv`, `${TableName.SecretFolder}.envId`, "destinationEnv.id")
+        .join(`${TableName.Environment} as sourceEnv`, `${TableName.SecretImport}.importEnv`, "sourceEnv.id")
+        .whereIn(`${TableName.SecretFolder}.envId`, envIds)
+        .whereRaw('"sourceEnv"."projectId" = "destinationEnv"."projectId"')
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretImport}.isReplication`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReplication`);
+        })
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretImport}.isReserved`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReserved`);
+        })
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretFolder}.isReserved`, false)
+            .orWhereNull(`${TableName.SecretFolder}.isReserved`);
+        })
+        .whereNull("sourceEnv.deleteAfter")
+        .whereNull("destinationEnv.deleteAfter")
+        .select(
+          db.ref("id").withSchema(TableName.SecretImport),
+          db.ref("folderId").withSchema(TableName.SecretImport),
+          db.ref("importPath").withSchema(TableName.SecretImport),
+          db.ref("id").withSchema("destinationEnv").as("envId"),
+          db.ref("slug").withSchema("destinationEnv").as("environmentSlug"),
+          db.ref("name").withSchema("destinationEnv").as("environmentName"),
+          db.ref("slug").withSchema("sourceEnv").as("sourceEnvironmentSlug"),
+          db.ref("name").withSchema("sourceEnv").as("sourceEnvironmentName")
+        );
+      return docs as {
+        id: string;
+        folderId: string;
+        importPath: string;
+        envId: string;
+        environmentSlug: string;
+        environmentName: string;
+        sourceEnvironmentSlug: string;
+        sourceEnvironmentName: string;
+      }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find direct secret imports by environment IDs" });
+    }
+  };
 
   return {
     ...secretImportOrm,
-    primaryNode,
     find,
+    findDirectImportsByEnvIds,
     findById,
     lockWithFolderAgainstDelete,
     findByIds,
@@ -703,9 +694,6 @@ export const secretImportDALFactory = (db: TDbClient) => {
     getUniqueImportCountByFolderIds,
     getFolderIsImportedBy,
     getFolderImports,
-    findCrossProjectImportsBySourceFolder,
-    lockFolderImportPositions,
-    shiftPositionsAfter,
-    findConvertibleImportsByEnvIds
+    findCrossProjectImportsBySourceFolder
   };
 };
