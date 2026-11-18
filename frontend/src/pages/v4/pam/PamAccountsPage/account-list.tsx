@@ -66,6 +66,7 @@ export const AccountList = ({
       header: "Name",
       primary: true,
       grow: true,
+      minWidth: 160,
       text: (account) => account.name,
       render: (account) => (
         <AccountName
@@ -79,7 +80,6 @@ export const AccountList = ({
     {
       id: "access",
       header: "Access",
-      width: 184,
       render: (account) => <AccessState account={account} />
     }
   ];

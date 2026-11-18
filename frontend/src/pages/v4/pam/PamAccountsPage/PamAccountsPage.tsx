@@ -7,7 +7,7 @@ import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
@@ -122,6 +122,7 @@ export const PamAccountsPage = () => {
       header: "Name",
       primary: true,
       grow: true,
+      minWidth: 160,
       text: (row) => {
         if (row.kind === "my-accounts") return "My accounts";
         return row.kind === "folder" ? row.folder.name : row.account.name;
@@ -148,7 +149,7 @@ export const PamAccountsPage = () => {
             return (
               <Inline gap={8} align="center" wrap={false}>
                 <Icon name="folder" style={{ flexShrink: 0 }} />
-                <span>{folder.name}</span>
+                <InlineItem truncate>{folder.name}</InlineItem>
                 <Badge tone="outline">Not a member</Badge>
               </Inline>
             );
@@ -179,7 +180,6 @@ export const PamAccountsPage = () => {
     {
       id: "access",
       header: "Access",
-      width: 184,
       render: (row) => (row.kind === "account" ? <AccessState account={row.account} /> : null)
     }
   ];

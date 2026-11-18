@@ -1934,34 +1934,38 @@ export const OverviewPage = () => {
                       onSearchAllFolders={() => setSearchAllOpen(true)}
                     />
                   </div>
-                  <ResourceFilterMenu
-                    types={types}
-                    onToggleType={(kind) => {
-                      setTypes(
-                        types.includes(kind)
-                          ? types.filter((entry) => entry !== kind)
-                          : [...types, kind]
-                      );
-                      resetView();
-                    }}
-                    tags={tagOptions}
-                    selectedTags={tags}
-                    onToggleTag={(tag) => {
-                      setTags(
-                        tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
-                      );
-                      resetView();
-                    }}
-                    onClearTags={() => {
-                      setTags([]);
-                      resetView();
-                    }}
-                  />
-                  <ExportMenu
-                    disabledReason={unavailable ? writeBlock : exportBlock}
-                    secretCount={single ? envSecrets(activeEnvironment).length : 0}
-                    onExport={(action) => exportEnv(activeEnvironment, action)}
-                  />
+                  <div className={styles.toolbarActions}>
+                    <ResourceFilterMenu
+                      types={types}
+                      onToggleType={(kind) => {
+                        setTypes(
+                          types.includes(kind)
+                            ? types.filter((entry) => entry !== kind)
+                            : [...types, kind]
+                        );
+                        resetView();
+                      }}
+                      tags={tagOptions}
+                      selectedTags={tags}
+                      onToggleTag={(tag) => {
+                        setTags(
+                          tags.includes(tag)
+                            ? tags.filter((entry) => entry !== tag)
+                            : [...tags, tag]
+                        );
+                        resetView();
+                      }}
+                      onClearTags={() => {
+                        setTags([]);
+                        resetView();
+                      }}
+                    />
+                    <ExportMenu
+                      disabledReason={unavailable ? writeBlock : exportBlock}
+                      secretCount={single ? envSecrets(activeEnvironment).length : 0}
+                      onExport={(action) => exportEnv(activeEnvironment, action)}
+                    />
+                  </div>
                 </div>
                 <div className={styles.tableBlock}>
                   <div className={styles.tableFrame}>
@@ -1999,6 +2003,30 @@ export const OverviewPage = () => {
                                   Clear sort
                                 </Button>
                               </ButtonGroup>
+                            )}
+                            {single && (
+                              <>
+                                <SecretSyncStatusBadge
+                                  syncs={syncs}
+                                  project={project}
+                                  environments={visibleEnvironments.map(
+                                    (environment) => environment.value
+                                  )}
+                                  path={path}
+                                />
+                                {windowRows.some(([, entries]) =>
+                                  ["secret", "import"].includes(entries[0].kind)
+                                ) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    icon="eye"
+                                    onClick={() => setRevealAll(!revealAll)}
+                                  >
+                                    {revealAll ? "Hide values" : "Reveal all"}
+                                  </Button>
+                                )}
+                              </>
                             )}
                             {!single && (
                               <>
@@ -2045,7 +2073,6 @@ export const OverviewPage = () => {
                           </>
                         )
                       }
-                      onNavigate={navigate}
                       report={report}
                     />
                     {unavailableState ?? (
@@ -2093,33 +2120,7 @@ export const OverviewPage = () => {
                               {sortMenu}
                             </TableHead>
                             {single ? (
-                              <TableHead>
-                                <div className={`${styles.headLine} ${styles.valueHead}`}>
-                                  Value
-                                  <span className={styles.push}>
-                                    {windowRows.some(([, entries]) =>
-                                      ["secret", "import"].includes(entries[0].kind)
-                                    ) && (
-                                      <Button
-                                        variant="ghost"
-                                        size="xs"
-                                        icon="eye"
-                                        onClick={() => setRevealAll(!revealAll)}
-                                      >
-                                        {revealAll ? "Hide values" : "Reveal all"}
-                                      </Button>
-                                    )}
-                                    <SecretSyncStatusBadge
-                                      syncs={syncs}
-                                      project={project}
-                                      environments={visibleEnvironments.map(
-                                        (environment) => environment.value
-                                      )}
-                                      path={path}
-                                    />
-                                  </span>
-                                </div>
-                              </TableHead>
+                              <TableHead>Value</TableHead>
                             ) : (
                               visibleEnvironments.map((environment) => (
                                 <TableHead key={environment.value}>

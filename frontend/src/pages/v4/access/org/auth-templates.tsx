@@ -21,7 +21,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
@@ -448,27 +448,27 @@ export const AuthTemplatesSection = () => {
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
+      minWidth: 160,
       render: (template) => <span>{template.name}</span>
     },
     {
       id: "method",
       header: "Method",
       sortable: true,
-      grow: true,
       render: (template) => (
         <Inline gap={8} wrap={false}>
           <Icon
             name={template.authMethod === MachineIdentityAuthMethod.KUBERNETES ? "apps" : "key"}
           />
-          <span>{methodLabel(template.authMethod)}</span>
+          <InlineItem truncate>{methodLabel(template.authMethod)}</InlineItem>
         </Inline>
       )
     },
     {
       id: "endpoint",
       header: "Host / URL",
-      grow: true,
       render: (template) => <span>{endpointOf(template)}</span>
     }
   ];

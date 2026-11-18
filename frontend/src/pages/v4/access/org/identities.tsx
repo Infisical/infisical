@@ -307,7 +307,9 @@ export const OrgIdentitiesTab = () => {
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
+      minWidth: 160,
       text: (row) => row.identity.name,
       render: (row) => {
         const locked = row.identity.activeLockoutAuthMethods;
@@ -358,6 +360,7 @@ export const OrgIdentitiesTab = () => {
       id: "authMethods",
       header: "Auth methods",
       grow: true,
+      maxWidth: 320,
       text: (row) => sortedMethods(row.identity.authMethods).map(authMethodName).join(", "),
       render: (row) =>
         row.identity.authMethods.length ? (

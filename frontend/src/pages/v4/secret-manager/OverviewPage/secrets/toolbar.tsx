@@ -20,6 +20,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/pop
 import { TableCell, TableRow } from "@infisical/cipher/ui/table";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import type { LinkOptions } from "@tanstack/react-router";
 import {
   ClipboardPasteIcon,
   FilterIcon,
@@ -33,6 +34,8 @@ import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
 import { copyText } from "../../../clipboard";
 import { ProviderIcon } from "../../../components/provider-icon";
+import { v4Path } from "../../../links";
+import { withoutDefaults } from "../../search-defaults";
 import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
 import {
@@ -309,22 +312,33 @@ export function AddNewMenu({
   );
 }
 
+const OVERVIEW_ROUTE = v4Path(
+  "/organizations/$orgId/projects/secret-management/$projectId/overview"
+);
+
 export function FolderBreadcrumbBar({
   path,
   actions,
   manageAccessBlock,
   onManageAccess,
-  onNavigate,
   report
 }: {
   path: string;
   actions?: ReactNode;
   manageAccessBlock?: string;
   onManageAccess: () => void;
-  onNavigate: (path: string) => void;
   report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
+  const folderLink = (secretPath: string): LinkOptions => ({
+    from: OVERVIEW_ROUTE,
+    to: ".",
+    search: (previous) =>
+      withoutDefaults(
+        { ...previous, secretPath, search: "" },
+        { secretPath: "/", search: "", environments: [] }
+      )
+  });
   const folderMenu = (
     <>
       <DropdownMenuItem
@@ -356,16 +370,14 @@ export function FolderBreadcrumbBar({
         items={[
           {
             label: <Icon name="home" label="Root folder" />,
-            onNavigate: segments.length ? () => onNavigate("/") : undefined,
+            link: segments.length ? folderLink("/") : undefined,
             menu: segments.length ? undefined : folderMenu
           },
           ...segments.map((segment, index) => {
             const current = index === segments.length - 1;
             return {
               label: segment,
-              onNavigate: current
-                ? undefined
-                : () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`),
+              link: current ? undefined : folderLink(`/${segments.slice(0, index + 1).join("/")}`),
               menu: current ? folderMenu : undefined
             };
           })
@@ -447,7 +459,6 @@ const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: []
 function QuickAddValue({
   ref,
   scope,
-  multiple,
   value,
   onChange,
   onSave,
@@ -455,7 +466,6 @@ function QuickAddValue({
 }: {
   ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
   scope: Scope;
-  multiple: boolean;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -487,7 +497,7 @@ function QuickAddValue({
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
-          placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
+          placeholder="Value"
           autoComplete="off"
           spellCheck={false}
         />
@@ -620,7 +630,7 @@ export function QuickAddRow({
             ref={keyRef}
             className={styles.inlineInput}
             aria-label="New secret name"
-            placeholder="Add a secret name or paste a .env"
+            placeholder="Secret name"
             autoComplete="off"
             spellCheck={false}
             value={key}
@@ -735,7 +745,6 @@ export function QuickAddRow({
           <QuickAddValue
             ref={valueRef}
             scope={scope}
-            multiple={multiple}
             value={value}
             onChange={setValue}
             onSave={save}
