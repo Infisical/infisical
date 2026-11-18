@@ -18,7 +18,7 @@ import {
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { bulkWriteLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -36,7 +36,7 @@ const approvalRequestUser = z.object({ userId: z.string().nullable().optional() 
   })
 );
 
-const MAX_BATCH_REQUESTS = 100;
+const MAX_BATCH_REQUESTS = 50;
 
 const batchFailureSchema = z.object({
   approvalRequestId: z.string().uuid(),
@@ -62,18 +62,27 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     req: FastifyRequest,
     approvalId: string,
     { bypassReason, requireApprovals }: { bypassReason?: string; requireApprovals?: boolean }
-  ) => {
-    const { approval, projectId, secretMutationEvents, isMergedViaBypass, requestedByActor } =
-      await server.services.secretChangeRequest.mergeSecretApprovalRequest({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        approvalId,
-        bypassReason,
-        requireApprovals
-      });
+  ) =>
+    server.services.secretChangeRequest.mergeSecretApprovalRequest({
+      actorId: req.permission.id,
+      actor: req.permission.type,
+      actorAuthMethod: req.permission.authMethod,
+      actorOrgId: req.permission.orgId,
+      approvalId,
+      bypassReason,
+      requireApprovals
+    });
 
+  const recordMerge = async (
+    req: FastifyRequest,
+    {
+      approval,
+      projectId,
+      secretMutationEvents,
+      isMergedViaBypass,
+      requestedByActor
+    }: Awaited<ReturnType<typeof mergeRequest>>
+  ) => {
     await server.services.auditLog.createAuditLog({
       ...req.auditLogInfo,
       orgId: req.permission.orgId,
@@ -115,16 +124,14 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         }
       })
       .catch(() => {});
-
-    return approval;
   };
 
   const reviewRequest = async (
     req: FastifyRequest,
     approvalId: string,
     { status, comment }: { status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED; comment?: string }
-  ) => {
-    const review = await server.services.secretChangeRequest.reviewApproval({
+  ) =>
+    server.services.secretChangeRequest.reviewApproval({
       actorId: req.permission.id,
       actor: req.permission.type,
       actorAuthMethod: req.permission.authMethod,
@@ -134,6 +141,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       comment
     });
 
+  const recordReview = async (req: FastifyRequest, review: Awaited<ReturnType<typeof reviewRequest>>) => {
     await server.services.auditLog.createAuditLog({
       ...req.auditLogInfo,
       orgId: req.permission.orgId,
@@ -157,13 +165,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         properties: {
           requestId: review.requestId,
           projectId: review.projectId,
-          reviewStatus: status,
+          reviewStatus: review.status,
           ...req.auditLogInfo
         }
       })
       .catch(() => {});
-
-    return review;
   };
 
   server.route({
@@ -281,12 +287,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   // Batch routes deviate from per-resource REST on purpose: bulk review sends up to
   // MAX_BATCH_REQUESTS reviews or merges, and one call per request would exhaust writeLimit.
   // Each request still goes through the single-request service path, with its own permission
-  // check, transaction and audit events, so one failure doesn't stop the others.
+  // check, transaction and audit events, so one failure doesn't stop the others. Audit and
+  // telemetry run outside the try, because once the write commits the request can't be retried.
   server.route({
     method: "POST",
     url: "/batch/review",
     config: {
-      rateLimit: writeLimit
+      rateLimit: bulkWriteLimit
     },
     schema: {
       hide: true,
@@ -308,13 +315,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const reviews: Awaited<ReturnType<typeof reviewRequest>>[] = [];
       const failures: z.infer<typeof batchFailureSchema>[] = [];
       for await (const approvalRequestId of new Set(req.body.approvalRequestIds)) {
+        let review: Awaited<ReturnType<typeof reviewRequest>>;
         try {
-          reviews.push(
-            await reviewRequest(req, approvalRequestId, { status: req.body.status, comment: req.body.comment })
-          );
+          review = await reviewRequest(req, approvalRequestId, { status: req.body.status, comment: req.body.comment });
         } catch (error) {
           failures.push({ approvalRequestId, message: getBatchFailureMessage(error, approvalRequestId, "review") });
+          continue;
         }
+        reviews.push(review);
+        await recordReview(req, review).catch((error) =>
+          logger.error(
+            error,
+            `Failed to record batch review of change request [approvalRequestId=${approvalRequestId}]`
+          )
+        );
       }
       return { reviews, failures };
     }
@@ -324,7 +338,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     method: "POST",
     url: "/batch/merge",
     config: {
-      rateLimit: writeLimit
+      rateLimit: bulkWriteLimit
     },
     schema: {
       hide: true,
@@ -341,14 +355,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approvals: Awaited<ReturnType<typeof mergeRequest>>[] = [];
+      const approvals: Awaited<ReturnType<typeof mergeRequest>>["approval"][] = [];
       const failures: z.infer<typeof batchFailureSchema>[] = [];
       for await (const approvalRequestId of new Set(req.body.approvalRequestIds)) {
+        let merge: Awaited<ReturnType<typeof mergeRequest>>;
         try {
-          approvals.push(await mergeRequest(req, approvalRequestId, { requireApprovals: true }));
+          merge = await mergeRequest(req, approvalRequestId, { requireApprovals: true });
         } catch (error) {
           failures.push({ approvalRequestId, message: getBatchFailureMessage(error, approvalRequestId, "merge") });
+          continue;
         }
+        approvals.push(merge.approval);
+        await recordMerge(req, merge).catch((error) =>
+          logger.error(error, `Failed to record batch merge of change request [approvalRequestId=${approvalRequestId}]`)
+        );
       }
       return { approvals, failures };
     }
@@ -382,11 +402,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approval = await mergeRequest(req, req.params.id, {
+      const merge = await mergeRequest(req, req.params.id, {
         bypassReason: req.body.bypassReason,
         requireApprovals: req.body.requireApprovals
       });
-      return { approval };
+      await recordMerge(req, merge);
+      return { approval: merge.approval };
     }
   });
 
@@ -414,6 +435,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const review = await reviewRequest(req, req.params.id, req.body);
+      await recordReview(req, review);
       return { review };
     }
   });

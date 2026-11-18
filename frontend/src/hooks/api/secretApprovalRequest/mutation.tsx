@@ -149,7 +149,10 @@ export const useBulkActOnSecretApprovalRequests = () => {
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
       results.forEach(({ id }) =>
-        queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) })
+        queryClient.invalidateQueries({
+          queryKey: secretApprovalRequestKeys.detail({ id }),
+          refetchType: "none"
+        })
       );
 
       if (action !== BulkChangeRequestAction.Merge || !results.some(({ isSuccess }) => isSuccess))
