@@ -129,8 +129,14 @@ if (changed.includes(ICON_DATA)) {
 const namesIcon = (file) => {
   const text = readFileSync(file, "utf8");
   if (/\bicon(Names|Shapes)\b/.test(text)) return true;
-  // A quoted name counts on a line that reads as an icon reference, so a "tag" or "key" elsewhere doesn't.
-  return text.split("\n").some((line) => /icon|name=|media/i.test(line) && icons.some((name) => line.includes('"' + name + '"') || line.includes("'" + name + "'")));
+  // A quoted name counts within a few lines of an icon reference (a JSX expression can split name={ and
+  // the string), so a "tag" or "key" elsewhere doesn't.
+  const lines = text.split("\n");
+  return lines.some(
+    (line, i) =>
+      icons.some((name) => line.includes('"' + name + '"') || line.includes("'" + name + "'")) &&
+      lines.slice(Math.max(0, i - 4), i + 1).some((near) => /icon|name=|name:|media/i.test(near))
+  );
 };
 const reached = new Set();
 const queue = changed.filter((f) => f.startsWith("src/") && f !== ICON_DATA).map((f) => path.join(cipher, f)).filter((f) => existsSync(f));
