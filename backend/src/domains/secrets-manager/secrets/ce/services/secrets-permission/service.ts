@@ -124,15 +124,16 @@ export class SecretsPermissionService implements TSecretsPermissionService {
       }),
       this.groupService.findGroupsByIds({ ids: members.groupMembers().map(({ groupId }) => groupId) })
     ]);
+    const projectRoles = project
+      ? this.projectPermissionService.getProjectRoles({ projectType: project.type })
+      : StandardProjectRoles.generic(ProjectType.SecretManager);
     return buildProjectMemberPermissions({
       members,
       folderGrants,
       names,
       groups,
-      standardRoles: StandardProjectRoles.generic(project?.type ?? ProjectType.SecretManager),
-      projectRoles: project
-        ? this.projectPermissionService.getProjectRoles({ projectType: project.type })
-        : StandardProjectRoles.generic(ProjectType.SecretManager),
+      standardRoles: projectRoles,
+      projectRoles,
       now: new Date()
     });
   }
