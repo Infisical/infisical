@@ -32,6 +32,7 @@ import {
   CreateSecretSyncSheet,
   SYNC_DRAFT_STORAGE_KEY
 } from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
+import { useAddSyncFailureAlert } from "../../OverviewPage/secrets/secret-sync/failure-alert";
 import type { LocalSecretSync } from "../../OverviewPage/secrets/secret-sync/sync-model";
 import {
   destinationNameOf,
@@ -104,6 +105,7 @@ export const SecretSyncsTab = ({
     error
   } = adapter.useSecretSyncs(projectId, { refetchInterval: 30_000 });
   const createSync = adapter.useCreateSecretSync();
+  const addSyncFailureAlert = useAddSyncFailureAlert();
   const actions = useSyncActions(projectId);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
@@ -457,7 +459,7 @@ export const SecretSyncsTab = ({
           }))
         }}
         syncs={syncs.map(toLocal)}
-        onCreate={(sync, feedback) =>
+        onCreate={(sync, feedback, failureAlertChannels) =>
           createSync
             .mutateAsync({
               projectId,
@@ -472,7 +474,8 @@ export const SecretSyncsTab = ({
               syncOptions: sync.syncOptions
             } as TCreateSecretSyncDTO)
             .then(
-              () => {
+              async (created) => {
+                await addSyncFailureAlert(created, failureAlertChannels);
                 setCreating(undefined);
                 toast({ tone: "ok", ...feedback });
               },

@@ -170,6 +170,7 @@ import { ResourceSearchInput, SearchAllFoldersSheet } from "./secrets/search/sea
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
+import { useAddSyncFailureAlert } from "./secrets/secret-sync/failure-alert";
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
@@ -673,6 +674,7 @@ export const OverviewPage = () => {
     syncOptions: sync.syncOptions as Record<string, unknown>
   }));
   const createSecretSync = adapter.useCreateSecretSync();
+  const addSyncFailureAlert = useAddSyncFailureAlert();
   const refetchProjectRef = useRef(projectQuery.refetch);
   const refetchOverviewRef = useRef(overview.refetch);
   useLayoutEffect(() => {
@@ -2425,7 +2427,7 @@ export const OverviewPage = () => {
             scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
             initial={single ? { environment: activeEnvironment, path } : undefined}
             syncs={syncs}
-            onCreate={(sync, feedback) =>
+            onCreate={(sync, feedback, failureAlertChannels) =>
               createSecretSync
                 .mutateAsync({
                   projectId,
@@ -2440,7 +2442,8 @@ export const OverviewPage = () => {
                   syncOptions: sync.syncOptions
                 } as TCreateSecretSyncDTO)
                 .then(
-                  () => {
+                  async (created) => {
+                    await addSyncFailureAlert(created, failureAlertChannels);
                     setSyncOpen(false);
                     toast({ tone: "ok", ...feedback });
                   },

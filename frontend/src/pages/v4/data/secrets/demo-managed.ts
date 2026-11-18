@@ -538,7 +538,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       projectId: dto.projectId
     };
     store.update((state) => ({ ...state, secretSyncs: [...state.secretSyncs, sync] }));
-    return {};
+    return sync;
   }),
   useSyncConnections: (app) => ({
     data: DEMO_SYNC_CONNECTIONS.filter((connection) => connection.app === app),

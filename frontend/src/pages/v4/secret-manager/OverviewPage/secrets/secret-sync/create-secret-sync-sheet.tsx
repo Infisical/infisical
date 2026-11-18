@@ -37,7 +37,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { EnterpriseSecretSyncsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   getSecretSyncDestinationConfig,
-  SecretSyncUnionSchema
+  SecretSyncFormSchema
 } from "@app/components/secret-syncs/forms/schemas";
 import {
   ProjectPermissionSecretSyncActions,
@@ -49,12 +49,15 @@ import {
   SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP,
   SECRET_SYNC_MAP
 } from "@app/helpers/secretSyncs";
+import type { TChannelForm } from "@app/hooks/api/alerts/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
+import { useProjectPermission } from "../../../../access/permissions";
+import { useAlertMembers } from "../../../../cert-manager/SettingsPage/alert-members";
 import { useV4Adapter } from "../../../../data/adapters";
 import {
   connectionRedirect,
@@ -72,6 +75,13 @@ import { DiscardDialog, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  FAILURE_ALERT_FIELDS,
+  failureAlertReviewItems
+} from "./failure-alert";
+import { FailureAlertFields } from "./failure-alert-fields";
 import { enabledBadge, SyncConnections } from "./sync-fields";
 import { IMPORT_CAPABLE_SYNCS, type LocalSecretSync, type LocalSyncConnection } from "./sync-model";
 import { SYNC_VIEWS } from "./sync-views";
@@ -121,6 +131,13 @@ const formTabs = (destination: SecretSync, destinationName: string) => [
     title: "Sync details",
     rightDescription: "The description shows as a tooltip in the sync list.",
     fields: ["name", "description"]
+  },
+  {
+    name: "Alerts",
+    key: "alerts",
+    title: "Failure alert",
+    rightDescription: "You can change this alert later from the sync's page.",
+    fields: FAILURE_ALERT_FIELDS
   },
   {
     name: "Review",
@@ -817,8 +834,17 @@ export function DetailsFields() {
   );
 }
 
-function ReviewFields({ duplicateProject }: { duplicateProject?: string }) {
+function ReviewFields({
+  duplicateProject,
+  projectId,
+  canManageAlert
+}: {
+  duplicateProject?: string;
+  projectId: string;
+  canManageAlert: boolean;
+}) {
   const values = useSyncValues();
+  const members = useAlertMembers(projectId);
   const destination = values.destination as SecretSync;
   const view = SYNC_VIEWS[destination];
   const options = values.syncOptions ?? {};
@@ -877,9 +903,20 @@ function ReviewFields({ duplicateProject }: { duplicateProject?: string }) {
           ["Description", values.description]
         ]}
       />
+      <ReviewSection
+        label="Failure alert"
+        items={failureAlertReviewItems({
+          enabled: Boolean(values.isFailureAlertEnabled),
+          channels: values.channels ?? [],
+          canManage: canManageAlert,
+          members
+        })}
+      />
     </Stack>
   );
 }
+
+const createSyncResolver = zodResolver(SecretSyncFormSchema());
 
 const mergeDefaults = (base: FieldValues, extra: FieldValues): FieldValues => ({
   ...base,
@@ -909,7 +946,11 @@ export function CreateSecretSyncSheet({
   scope: FlowScope;
   initial?: { environment: string; path: string };
   syncs: readonly LocalSecretSync[];
-  onCreate: (sync: LocalSecretSync, feedback: FlowFeedback) => void;
+  onCreate: (
+    sync: LocalSecretSync,
+    feedback: FlowFeedback,
+    failureAlertChannels?: TChannelForm[]
+  ) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
   destination?: SecretSync;
   draft?: FieldValues;
@@ -941,8 +982,21 @@ export function CreateSecretSyncSheet({
     })),
     ...addedConnections
   ];
+  const { permission } = useProjectPermission(scope.project);
+  const alertScopeOf = (formValues: FieldValues) => ({
+    environment: formValues.environment?.slug,
+    secretPath: formValues.secretPath,
+    connectionId: formValues.connection?.id
+  });
   const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretSyncUnionSchema),
+    resolver: (formValues, context, options) =>
+      createSyncResolver(
+        canManageFailureAlert(permission, alertScopeOf(formValues))
+          ? formValues
+          : { ...formValues, isFailureAlertEnabled: false },
+        context,
+        options
+      ),
     mode: "onChange",
     reValidateMode: "onChange"
   });
@@ -962,6 +1016,7 @@ export function CreateSecretSyncSheet({
     "create secret syncs here"
   );
   const conflicts = useSourceConflicts(scope.project, values);
+  const canManageAlert = canManageFailureAlert(permission, alertScopeOf(values));
   const duplicate =
     destination && values.connection?.id
       ? syncs.find(
@@ -981,6 +1036,8 @@ export function CreateSecretSyncSheet({
         {
           destination: next,
           isAutoSyncEnabled: true,
+          isFailureAlertEnabled: true,
+          channels: [buildProjectAdminsChannel(scope.project)],
           environment,
           secretPath: initial?.path ?? "/",
           syncOptions: {
@@ -1008,7 +1065,14 @@ export function CreateSecretSyncSheet({
         ...list,
         { ...draft.connection, app: SECRET_SYNC_CONNECTION_MAP[next] }
       ]);
-    form.reset(draft, { keepDefaultValues: false });
+    form.reset(
+      {
+        isFailureAlertEnabled: true,
+        ...draft,
+        channels: [buildProjectAdminsChannel(scope.project)]
+      },
+      { keepDefaultValues: false }
+    );
     setDestination(next);
     setStep(1);
   }, [open, draft]);
@@ -1092,7 +1156,8 @@ export function CreateSecretSyncSheet({
       },
       {
         title: `Successfully added ${destinationName} sync`
-      }
+      },
+      canManageAlert && data.isFailureAlertEnabled ? data.channels : undefined
     );
     close();
   };
@@ -1102,6 +1167,11 @@ export function CreateSecretSyncSheet({
     !values.syncOptions?.disableSecretDeletion &&
     !values.syncOptions?.keySchema;
   const goTo = (key: string) => setStep(tabs.findIndex((tab) => tab.key === key));
+  const goToFirstError = (errors: FieldValues) => {
+    setConfirming(false);
+    const index = tabs.findIndex((tab) => tab.fields.some((field) => field in errors));
+    if (index >= 0) setStep(index);
+  };
   const Destination = destination ? SYNC_VIEWS[destination]?.Destination : undefined;
 
   let body: ReactNode = null;
@@ -1112,7 +1182,15 @@ export function CreateSecretSyncSheet({
     if (step === 3) body = <OptionsFields />;
     if (step === 4) body = <DetailsFields />;
     if (step === 5)
-      body = <ReviewFields duplicateProject={duplicate ? duplicate.project : undefined} />;
+      body = <FailureAlertFields projectId={scope.project} canManage={canManageAlert} />;
+    if (step === 6)
+      body = (
+        <ReviewFields
+          duplicateProject={duplicate ? duplicate.project : undefined}
+          projectId={scope.project}
+          canManageAlert={canManageAlert}
+        />
+      );
   }
 
   return (
@@ -1124,7 +1202,10 @@ export function CreateSecretSyncSheet({
         redirect: redirect && {
           ...redirect,
           start: (href, pending) => {
-            sessionStorage.setItem(SYNC_DRAFT_STORAGE_KEY, JSON.stringify(form.getValues()));
+            sessionStorage.setItem(
+              SYNC_DRAFT_STORAGE_KEY,
+              JSON.stringify({ ...form.getValues(), channels: undefined })
+            );
             startConnectionRedirect(href, pending);
           }
         }
@@ -1245,7 +1326,7 @@ export function CreateSecretSyncSheet({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={form.handleSubmit(submit)}>
+              <AlertDialogAction onClick={form.handleSubmit(submit, goToFirstError)}>
                 I understand
               </AlertDialogAction>
             </AlertDialogFooter>
