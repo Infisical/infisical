@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import {
   ApprovalPolicyType,
@@ -11,7 +12,6 @@ import {
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 

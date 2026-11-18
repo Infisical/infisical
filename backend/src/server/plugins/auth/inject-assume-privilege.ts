@@ -1,8 +1,8 @@
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
   server.addHook("onRequest", async (req, res) => {

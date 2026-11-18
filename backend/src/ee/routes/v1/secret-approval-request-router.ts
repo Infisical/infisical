@@ -9,6 +9,7 @@ import {
   RequestState,
   SecretApprovalRequestOrderBy
 } from "@app/ee/services/secret-change-request/secret-change-request-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import {
   BadRequestError,
   ConflictError,
@@ -23,7 +24,6 @@ import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, SanitizedUserSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

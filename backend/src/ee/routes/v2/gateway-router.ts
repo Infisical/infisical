@@ -4,11 +4,11 @@ import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { GATEWAYS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { zodBuffer } from "@app/lib/zod";
 import { gatewayMetricsReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,

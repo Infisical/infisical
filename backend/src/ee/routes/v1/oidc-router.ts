@@ -14,6 +14,7 @@ import { z } from "zod";
 import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -21,7 +22,7 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({

@@ -37,6 +37,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -61,15 +62,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import {
-  ActorAuthMethod,
-  ActorType,
-  AuthMethod,
-  AuthModeJwtTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  SsoMfaTrust
-} from "../auth/auth-type";
+import { AuthModeJwtTokenPayload, SsoMfaTrust } from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";

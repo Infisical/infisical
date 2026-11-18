@@ -20,10 +20,10 @@ import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-chang
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {

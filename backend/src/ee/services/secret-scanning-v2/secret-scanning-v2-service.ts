@@ -61,6 +61,7 @@ import {
   writeTextToFile
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -69,7 +70,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";

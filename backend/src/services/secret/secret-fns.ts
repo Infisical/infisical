@@ -16,6 +16,7 @@ import {
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -30,7 +31,6 @@ import {
   generatePaths
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";

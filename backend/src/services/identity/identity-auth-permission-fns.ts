@@ -5,9 +5,9 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/ser
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {

@@ -4,12 +4,12 @@ import { packRules } from "@casl/ability/extra";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
-import { ActorType } from "../auth/auth-type";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";

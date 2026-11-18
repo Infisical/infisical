@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType } from "../auth/auth-type";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
 import { SecretModifiedEventV1 } from "../secret-v2-bridge/secret-events";
 import {

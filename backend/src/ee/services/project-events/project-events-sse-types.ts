@@ -5,7 +5,7 @@ import { MongoQuery } from "@ucast/mongo2js";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
 import { ProjectEvents } from "./project-events-types";
 

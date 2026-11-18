@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 // A personal variable or a personal value belongs to exactly one user or machine identity, the actor a session names.
 export type TAgentVaultOwner = { userId: string; identityId?: never } | { identityId: string; userId?: never };

@@ -14,6 +14,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -34,7 +35,6 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";

@@ -11,11 +11,11 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 

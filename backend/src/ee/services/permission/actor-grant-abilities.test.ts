@@ -3,7 +3,7 @@ import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "./org-permission";
 import { permissionServiceFactory } from "./permission-service";

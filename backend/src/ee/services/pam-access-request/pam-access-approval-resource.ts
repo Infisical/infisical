@@ -11,6 +11,7 @@ import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { formatDuration, ms } from "@app/lib/ms";
@@ -42,7 +43,6 @@ import {
   TPamAccessPolicy,
   TPamAccessPolicyInputs
 } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";

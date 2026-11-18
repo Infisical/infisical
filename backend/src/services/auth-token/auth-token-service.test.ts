@@ -4,10 +4,10 @@ import knex from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseError, ForbiddenRequestError, GatewayTimeoutError, UnauthorizedError } from "@app/lib/errors";
 
-import { AuthTokenType } from "../auth/auth-type";
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
 

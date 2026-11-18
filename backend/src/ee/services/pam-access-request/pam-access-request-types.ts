@@ -1,9 +1,9 @@
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import {
   TAutoApprovalConfig,
   TAutoApprovalInputValue
 } from "@app/services/approval-policy/auto-approval/auto-approval-types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { PamAccessType, PamNotificationEvent } from "../pam/pam-enums";
 import { TActorContext } from "../pam/pam-permission";

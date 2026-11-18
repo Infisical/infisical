@@ -33,6 +33,7 @@ import {
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -49,7 +50,6 @@ import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";

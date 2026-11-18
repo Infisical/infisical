@@ -4,7 +4,7 @@ import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { injectPermissionDeniedAuditLog } from "./audit-log-permission-denied";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";

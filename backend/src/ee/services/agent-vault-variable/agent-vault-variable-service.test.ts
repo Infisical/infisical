@@ -5,8 +5,8 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";

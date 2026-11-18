@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { requestMemoKeys } from "./memo-keys";
 import { RequestContextKey } from "./request-context-keys";

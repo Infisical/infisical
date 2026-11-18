@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { approvalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   ApprovalNotificationEvent,
@@ -22,7 +23,6 @@ import {
   TApprovalRequestDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { NotificationType } from "@app/services/notification/notification-types";
 
 import { createIsolatedOrgAndProject } from "./testUtils/fixtures";

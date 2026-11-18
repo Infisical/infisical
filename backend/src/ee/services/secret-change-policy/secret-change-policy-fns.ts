@@ -3,6 +3,7 @@ import picomatch from "picomatch";
 import { z } from "zod";
 
 import { TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { canonicalizeSecretPath, canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
@@ -13,7 +14,6 @@ import {
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 

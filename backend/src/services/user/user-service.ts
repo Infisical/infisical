@@ -11,6 +11,7 @@ import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -31,14 +32,7 @@ import {
   MFA_METHOD_PRIORITY,
   resolveMfaChallenge
 } from "../auth/auth-fns";
-import {
-  ActorAuthMethod,
-  ActorType,
-  AuthMethod,
-  AuthModeSignUpTokenPayload,
-  AuthTokenType,
-  MfaMethod
-} from "../auth/auth-type";
+import { AuthModeSignUpTokenPayload } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";

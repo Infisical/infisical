@@ -17,6 +17,7 @@ import { LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LdapSso } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -24,7 +25,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { resolveAssertedProfileName } from "@app/services/user-alias/user-alias-fns";
 

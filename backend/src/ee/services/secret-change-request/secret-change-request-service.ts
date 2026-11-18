@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -22,7 +23,6 @@ import {
   resolveStepApproverUserIds,
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 

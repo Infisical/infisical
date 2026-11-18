@@ -7,9 +7,9 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { InternalCaType } from "../certificate-authority-enums";
 import { CaSigningConfigType } from "./ca-signing-config-enums";

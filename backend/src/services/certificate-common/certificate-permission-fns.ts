@@ -11,7 +11,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 

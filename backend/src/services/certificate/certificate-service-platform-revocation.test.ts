@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/certificate-authority-fns";
 
 import { certificateServiceFactory } from "./certificate-service";

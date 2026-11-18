@@ -19,6 +19,7 @@ import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/s
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText, slugSchema } from "@app/server/lib/schemas";
@@ -27,7 +28,6 @@ import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TSupportedConfigs = typeof ACCOUNT_TYPE_CONFIGS;

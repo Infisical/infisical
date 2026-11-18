@@ -29,6 +29,7 @@ import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/ident
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
@@ -50,7 +51,6 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";

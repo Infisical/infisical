@@ -9,12 +9,12 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";

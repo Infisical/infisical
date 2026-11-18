@@ -1,6 +1,6 @@
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { autoApprovalServiceFactory } from "./auto-approval-service";
 import {

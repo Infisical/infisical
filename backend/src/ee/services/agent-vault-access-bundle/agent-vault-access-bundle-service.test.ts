@@ -9,8 +9,8 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";

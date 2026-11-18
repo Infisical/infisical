@@ -10,9 +10,9 @@ import {
   ResourcePermissionSub,
   TResourceAbility
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ExecutionError, ExecutionStats, ResourceLockedError } from "@app/lib/red-lock";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import {

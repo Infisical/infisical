@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { OrgMembershipStatus, ResourceMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApprovalPolicyScope, ApprovalPolicyType, ApprovalRequestStatus, ApproverType } from "./approval-policy-enums";
 import { approvalPolicyServiceFactory } from "./approval-policy-service";

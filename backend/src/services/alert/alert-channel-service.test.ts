@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { alertChannelServiceFactory, TAlertChannelServiceFactoryDep } from "./alert-channel-service";
 import { AlertChannelType } from "./alert-channel-types";

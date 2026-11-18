@@ -9,9 +9,9 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import { externallyReviewedAccessRequestMessage } from "./access-approval-request-constants";

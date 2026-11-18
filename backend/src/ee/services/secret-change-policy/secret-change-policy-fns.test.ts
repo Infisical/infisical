@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretChangePolicyRow } from "./secret-change-policy-dal";

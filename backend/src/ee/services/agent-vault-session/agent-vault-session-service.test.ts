@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { sha256Hex } from "../agent-vault-skill/agent-vault-skill-fns";
