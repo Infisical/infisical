@@ -487,6 +487,82 @@ describe("fnSecretsV2FromImports", () => {
     expect(imports[0].secrets.map((s) => s.key)).toEqual(["A", "B"]);
     expect(findByManySecretPath).toHaveBeenCalledWith([{ envId: "env", secretPath: "/shared" }]);
   });
+
+  it("filters out missing source folders without throwing and returns secrets for found folders", async () => {
+    const { args, findByManySecretPath } = makeArgs({
+      secretImports: [
+        {
+          id: "import-1",
+          folderId: "dest-folder",
+          importPath: "/found",
+          importEnv: { id: "env", slug: "dev", name: "Development" },
+          position: 1,
+          version: 1,
+          isReplication: false,
+          isReserved: false,
+          createdAt: new Date(0),
+          updatedAt: new Date(0)
+        } as Args["secretImports"][number],
+        {
+          id: "import-2",
+          folderId: "dest-folder",
+          importPath: "/missing",
+          importEnv: { id: "env", slug: "dev", name: "Development" },
+          position: 2,
+          version: 1,
+          isReplication: false,
+          isReserved: false,
+          createdAt: new Date(0),
+          updatedAt: new Date(0)
+        } as Args["secretImports"][number]
+      ]
+    });
+
+    findByManySecretPath.mockResolvedValue([
+      { id: "shared-folder", envId: "env", path: "/found" },
+      undefined as unknown as { id: string; envId: string; path: string }
+    ]);
+
+    const imports = await fnSecretsV2FromImports(args);
+
+    expect(imports).toHaveLength(2);
+    const foundImport = imports.find((i) => i.id === "import-1");
+    const missingImport = imports.find((i) => i.id === "import-2");
+    expect(foundImport?.folderId).toBe("shared-folder");
+    expect(foundImport?.secrets.map((s) => s.key)).toEqual(["A", "B"]);
+    expect(missingImport?.folderId).toBeUndefined();
+    expect(missingImport?.secrets).toEqual([]);
+  });
+
+  it("checks permissions against normalized secret path to prevent path alias bypass", async () => {
+    const checkedPaths: string[] = [];
+    const { args } = makeArgs({
+      secretImports: [
+        {
+          id: "import-slash-deny",
+          folderId: "dest-folder",
+          importPath: "/shared//",
+          importEnv: { id: "env", slug: "dev", name: "Development" },
+          position: 1,
+          version: 1,
+          isReplication: false,
+          isReserved: false,
+          createdAt: new Date(0),
+          updatedAt: new Date(0)
+        } as Args["secretImports"][number]
+      ],
+      hasSecretAccess: (_env, secretPath) => {
+        checkedPaths.push(secretPath);
+        return secretPath !== "/shared";
+      }
+    });
+
+    const imports = await fnSecretsV2FromImports(args);
+
+    expect(checkedPaths).toContain("/shared");
+    expect(imports).toHaveLength(1);
+    expect(imports[0].secrets).toEqual([]);
+  });
 });
 
 describe("fnSecretsFromImports", () => {
