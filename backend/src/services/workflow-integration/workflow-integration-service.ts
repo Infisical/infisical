@@ -1,42 +1,30 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 
 import { TWorkflowIntegrationDALFactory } from "./workflow-integration-dal";
 import { TGetWorkflowIntegrationsByOrg } from "./workflow-integration-types";
 
 type TWorkflowIntegrationServiceFactoryDep = {
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
 };
 
 export type TWorkflowIntegrationServiceFactory = ReturnType<typeof workflowIntegrationServiceFactory>;
 
 export const workflowIntegrationServiceFactory = ({
   workflowIntegrationDAL,
-  permissionService
+  orgPermissionService
 }: TWorkflowIntegrationServiceFactoryDep) => {
-  const getIntegrationsByOrg = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod
-  }: TGetWorkflowIntegrationsByOrg) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const getIntegrationsByOrg = async ({ actor }: TGetWorkflowIntegrationsByOrg) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
     return workflowIntegrationDAL.find({
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
   };
   return {

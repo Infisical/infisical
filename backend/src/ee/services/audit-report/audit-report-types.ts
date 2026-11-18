@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 
 export enum AuditReportType {
   StaleSecrets = "STALE_SECRETS",
@@ -88,7 +88,7 @@ export type TListOrgAuditReportsDTO = {
   limit?: number;
 };
 
-export type TAuditReportServiceActor = OrgServiceActor;
+export type TAuditReportServiceActor = TActorContext;
 
 // Job payload for the generation queue.
 export type TGenerateAuditReportJobPayload = {

@@ -7,7 +7,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
+import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import {

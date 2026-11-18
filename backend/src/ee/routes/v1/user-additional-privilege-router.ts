@@ -64,7 +64,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId: membership.scopeProjectId as string,
@@ -150,7 +150,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,
@@ -217,7 +217,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,
@@ -274,7 +274,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
 
       const { additionalPrivileges: privileges } =
         await server.services.additionalPrivilege.listAdditionalPrivilegesWithAccessApprovalStatus({
-          permission: req.permission,
+          actor: req.permission,
           scopeData: {
             scope: AccessScope.Project,
             projectId: membership.scopeProjectId as string,
@@ -321,7 +321,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,

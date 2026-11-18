@@ -409,6 +409,31 @@ describe("withCacheFingerprint", () => {
     expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalled();
   });
 
+  it("should check the fingerprint on every read and write no marker when the marker TTL is 0", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const stale = { fingerprint: "fp-old", payload: { role: "admin" } };
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return "1";
+      if (key === "data-key") return JSON.stringify(stale);
+      return null;
+    });
+    const dataFetcher = vi.fn().mockResolvedValue({ role: "member" });
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 0,
+      dataTtlSeconds: 600,
+      fingerprintFetcher: vi.fn().mockResolvedValue("fp-new"),
+      dataFetcher
+    });
+
+    expect(result).toEqual({ role: "member" });
+    expect(mockKeyStore.getItem).not.toHaveBeenCalledWith("marker-key");
+    expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalledWith("marker-key", expect.anything(), expect.anything());
+  });
+
   it("should revalidate and reset marker on marker miss + data hit + fingerprint match (1 DB read)", async () => {
     const { withCacheFingerprint } = await import("./with-cache");
     const payload = { id: "user-456", permissions: ["admin"] };

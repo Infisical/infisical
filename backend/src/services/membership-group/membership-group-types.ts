@@ -1,5 +1,6 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { OrderByDirection } from "@app/lib/types";
 
 export enum OrgGroupsOrderBy {
   Name = "name",
@@ -27,7 +28,7 @@ export interface TMembershipGroupScopeFactory {
 }
 
 export type TCreateMembershipGroupDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     groupId: string;
@@ -42,7 +43,7 @@ export type TCreateMembershipGroupDTO = {
 };
 
 export type TUpdateMembershipGroupDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     groupId: string;
@@ -61,7 +62,7 @@ export type TUpdateMembershipGroupDTO = {
 };
 
 export type TListMembershipGroupDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     limit?: number;
@@ -74,7 +75,7 @@ export type TListMembershipGroupDTO = {
 };
 
 export type TDeleteMembershipGroupDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     groupId: string;
@@ -82,7 +83,7 @@ export type TDeleteMembershipGroupDTO = {
 };
 
 export type TGetMembershipGroupByGroupIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     groupId: string;

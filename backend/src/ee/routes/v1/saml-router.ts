@@ -459,10 +459,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const saml = await server.services.saml.getSaml({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         orgId: req.query.organizationId,
         type: "org"
       });
@@ -524,10 +521,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         enableGroupSync,
         mfaSignalAttribute,
         mfaAuthnContexts,
-        actor: permission.type,
-        actorId: permission.id,
-        actorAuthMethod: permission.authMethod,
-        actorOrgId: permission.orgId,
+        actor: permission,
         orgId: req.body.organizationId
       });
 
@@ -604,10 +598,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         enableGroupSync,
         mfaSignalAttribute,
         mfaAuthnContexts,
-        actor: permission.type,
-        actorId: permission.id,
-        actorAuthMethod: permission.authMethod,
-        actorOrgId: permission.orgId,
+        actor: permission,
         orgId: req.body.organizationId
       });
 

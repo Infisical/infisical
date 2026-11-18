@@ -248,10 +248,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },
@@ -426,10 +423,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },

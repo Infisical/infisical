@@ -128,10 +128,17 @@ describe("Auth IdP Service-Level Tests", () => {
 
   describe("SSO config updates", () => {
     const actor = {
-      actor: ActorType.USER,
-      actorId: seedData1.id,
-      actorOrgId: TEST_ORG_ID,
-      actorAuthMethod: AuthMethod.OKTA_SAML
+      actor: {
+        principal: {
+          type: ActorType.USER,
+          id: seedData1.id,
+          username: seedData1.username,
+          email: seedData1.email,
+          authMethod: AuthMethod.OKTA_SAML,
+          isSuperAdmin: false
+        },
+        org: { id: TEST_ORG_ID, rootOrgId: TEST_ORG_ID, parentOrgId: TEST_ORG_ID, shouldUseNewPrivilegeSystem: true }
+      }
     };
 
     const enforceSsoAndScim = () =>

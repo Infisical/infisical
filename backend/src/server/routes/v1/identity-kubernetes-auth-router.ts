@@ -242,10 +242,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.attachKubernetesAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -394,10 +391,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.updateKubernetesAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -470,10 +464,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.getKubernetesAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -522,10 +513,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.revokeIdentityKubernetesAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

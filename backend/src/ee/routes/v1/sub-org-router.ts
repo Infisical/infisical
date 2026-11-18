@@ -54,7 +54,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
         slug: req.body.slug,
-        permission: req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -124,7 +124,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { organizations, totalCount } = await server.services.subOrganization.listSubOrgs({
-        permission: req.permission,
+        actor: req.permission,
         data: {
           limit: req.query.limit,
           offset: req.query.offset,
@@ -178,7 +178,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         subOrgId: req.params.subOrgId,
         name: req.body.name,
         slug: req.body.slug,
-        permission: req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -226,7 +226,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.joinSubOrg({
         subOrgId: req.params.subOrgId,
-        permission: req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -274,7 +274,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.deleteSubOrg({
         subOrgId: req.params.subOrgId,
-        permission: req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

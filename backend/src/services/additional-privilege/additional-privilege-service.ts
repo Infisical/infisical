@@ -3,15 +3,16 @@ import { RawRule } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAdditionalPrivilegeDALFactory } from "./additional-privilege-dal";
@@ -29,10 +30,11 @@ import { newProjectAdditionalPrivilegesFactory } from "./project/project-additio
 
 type TAdditionalPrivilegeServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  projectPermissionService: TProjectPermissionService;
+  actorContextService: TActorContextService;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -40,10 +42,11 @@ export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPri
 
 export const additionalPrivilegeServiceFactory = ({
   additionalPrivilegeDAL,
-  permissionService,
-  orgDAL,
+  projectPermissionService,
+  actorContextService,
   membershipDAL,
   userDAL,
+  identityDAL,
   projectDAL
 }: TAdditionalPrivilegeServiceFactoryDep) => {
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
@@ -51,9 +54,10 @@ export const additionalPrivilegeServiceFactory = ({
     [AccessScope.Project]: newProjectAdditionalPrivilegesFactory({
       additionalPrivilegeDAL,
       membershipDAL,
-      orgDAL,
-      permissionService,
+      projectPermissionService,
+      actorContextService,
       userDAL,
+      identityDAL,
       projectDAL
     })
   };

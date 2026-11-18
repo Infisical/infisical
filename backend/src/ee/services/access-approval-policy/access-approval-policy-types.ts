@@ -1,7 +1,7 @@
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import {
   TApprovalPolicyBypassersDALFactory,
@@ -55,8 +55,7 @@ export type TCreateAccessApprovalPolicy = {
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-  orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
@@ -78,30 +77,29 @@ export type TUpdateAccessApprovalPolicy = {
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
-  orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteAccessApprovalPolicy = {
   policyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetAccessPolicyCountByEnvironmentDTO = {
   envSlug: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetAccessApprovalPolicyByIdDTO = {
   policyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSecretAccessApprovalPolicyServiceFactoryDep = {
   licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   userDAL: Pick<TUserDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;

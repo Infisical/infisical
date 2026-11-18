@@ -1,13 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
 import { isAxiosError } from "axios";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import {
   createAnthropicMessage,
   getAnthropicErrorMessage,
@@ -30,7 +31,7 @@ type TAiServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
 };
 
@@ -40,19 +41,9 @@ export const aiServiceFactory = ({
   orgDAL,
   appConnectionDAL,
   appConnectionService,
-  permissionService,
+  orgPermissionService,
   kmsDataKeyService
 }: TAiServiceFactoryDep) => {
-  const $getOrgPermission = (actor: OrgServiceActor) =>
-    permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
-
   // The org's model with its connection, or null when AI features are off
   const getOrgAiModel = async (orgId: string) => {
     const org = await orgDAL.findById(orgId);
@@ -64,22 +55,22 @@ export const aiServiceFactory = ({
     return { connectionId: connection.id, connectionName: connection.name, model: org.aiModel };
   };
 
-  const getOrgAiConfig = async (actor: OrgServiceActor) => {
-    const { permission } = await $getOrgPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+  const getOrgAiConfig = async (actor: TActorContext) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
-    return getOrgAiModel(actor.orgId);
+    return getOrgAiModel(actor.org.id);
   };
 
   const updateOrgAiConfig = async (
     { connectionId, model }: { connectionId: string | null; model: string | null },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await $getOrgPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings });
 
     if (!connectionId) {
-      await orgDAL.updateById(actor.orgId, { aiConnectionId: null, aiModel: null });
+      await orgDAL.updateById(actor.org.id, { aiConnectionId: null, aiModel: null });
       return null;
     }
 
@@ -88,7 +79,7 @@ export const aiServiceFactory = ({
     }
 
     const raw = await appConnectionDAL.findById(connectionId);
-    if (!raw || raw.orgId !== actor.orgId) {
+    if (!raw || raw.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Could not find App Connection with ID '${connectionId}'` });
     }
     if (raw.projectId) {
@@ -117,7 +108,7 @@ export const aiServiceFactory = ({
       });
     }
 
-    await orgDAL.updateById(actor.orgId, { aiConnectionId: connectionId, aiModel: model });
+    await orgDAL.updateById(actor.org.id, { aiConnectionId: connectionId, aiModel: model });
     return { connectionId, connectionName: connection.name, model };
   };
 

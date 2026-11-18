@@ -10,6 +10,8 @@ import {
   TPermissionRule
 } from "@app/domains/platform/access-control/ce/module";
 
+import { Project } from "./project";
+
 // What the roles held on one kind of resource inside a project grant (a PAM folder or account, a certificate
 // application, a signer, an access bundle). The product implements it and passes it with each check.
 export type TResourceRoles<TSet extends AbilityTuple> = {
@@ -28,7 +30,9 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
     readonly grants: ActorGrants,
     // True when the actor holds no role on the resource and gets the project-admin rules only.
     readonly isImplicitAdmin: boolean,
-    readonly isProjectAdmin: boolean
+    readonly isProjectAdmin: boolean,
+    // The project, when the actor is a member of it.
+    readonly project: Project | null = null
   ) {
     super(Permission.abilityOf<TSet>(rules));
   }
@@ -37,20 +41,34 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
   static fromGrants<T extends AbilityTuple>({
     grants,
     roles,
-    isProjectAdmin
+    isProjectAdmin,
+    project = null
   }: {
     grants: ActorGrants;
     roles: TResourceRoles<T>;
     isProjectAdmin: boolean;
+    project?: Project | null;
   }): ProjectResourcePermission<T> {
     const held = RuleSet.merge(grants.active().map((grant) => roles.rulesFor(grant)));
     const rules = isProjectAdmin ? held.then(RuleSet.of(roles.projectAdminRules())) : held;
-    return new ProjectResourcePermission<T>(rules, grants, false, isProjectAdmin);
+    return new ProjectResourcePermission<T>(rules, grants, false, isProjectAdmin, project);
   }
 
   // A project admin with no role on the resource.
-  static implicitAdmin<T extends AbilityTuple>({ roles }: { roles: TResourceRoles<T> }): ProjectResourcePermission<T> {
-    return new ProjectResourcePermission<T>(RuleSet.of(roles.projectAdminRules()), ActorGrants.empty(), true, true);
+  static implicitAdmin<T extends AbilityTuple>({
+    roles,
+    project = null
+  }: {
+    roles: TResourceRoles<T>;
+    project?: Project | null;
+  }): ProjectResourcePermission<T> {
+    return new ProjectResourcePermission<T>(
+      RuleSet.of(roles.projectAdminRules()),
+      ActorGrants.empty(),
+      true,
+      true,
+      project
+    );
   }
 
   // Allows nothing: what a delegated OAuth token gets, since no scope covers resource memberships.

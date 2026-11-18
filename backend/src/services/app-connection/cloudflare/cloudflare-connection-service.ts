@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -17,11 +17,11 @@ import { TCloudflareConnection } from "./cloudflare-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TCloudflareConnection>;
 
 export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listPagesProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listPagesProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const projects = await listCloudflarePagesProjects(appConnection);
@@ -35,7 +35,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listWorkersScripts = async (connectionId: string, actor: OrgServiceActor) => {
+  const listWorkersScripts = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const scripts = await listCloudflareWorkersScripts(appConnection);
@@ -49,7 +49,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listSecretsStores = async (connectionId: string, actor: OrgServiceActor) => {
+  const listSecretsStores = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const stores = await listCloudflareSecretsStores(appConnection);
@@ -65,7 +65,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listZones = async (connectionId: string, actor: OrgServiceActor) => {
+  const listZones = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const zones = await listCloudflareZones(appConnection);
@@ -76,7 +76,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listPermissionGroups = async (connectionId: string, actor: OrgServiceActor) => {
+  const listPermissionGroups = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const permissionGroups = await listCloudflarePermissionGroups(appConnection);
@@ -90,7 +90,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listR2Buckets = async (connectionId: string, actor: OrgServiceActor) => {
+  const listR2Buckets = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const buckets = await listCloudflareR2Buckets(appConnection);

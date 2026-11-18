@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -21,14 +21,14 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TGcpConnection>;
 
 export const gcpConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const listSecretManagerProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listSecretManagerProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
@@ -43,7 +43,7 @@ export const gcpConnectionService = (
 
   const listSecretManagerProjectLocations = async (
     { connectionId, projectId }: TGetGCPProjectLocationsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
@@ -56,7 +56,7 @@ export const gcpConnectionService = (
     }
   };
 
-  const listCertificateManagerProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listCertificateManagerProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
@@ -69,7 +69,7 @@ export const gcpConnectionService = (
 
   const listCertificateManagerLocations = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
@@ -83,7 +83,7 @@ export const gcpConnectionService = (
 
   const listCertificateMaps = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
@@ -95,7 +95,7 @@ export const gcpConnectionService = (
     }
   };
 
-  const listCloudDnsProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listCloudDnsProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
@@ -108,7 +108,7 @@ export const gcpConnectionService = (
 
   const listCloudDnsZones = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 

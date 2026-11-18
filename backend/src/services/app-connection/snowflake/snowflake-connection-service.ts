@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   listSnowflakeDatabases,
@@ -10,21 +10,21 @@ import { TSnowflakeConnection } from "@app/services/app-connection/snowflake/sno
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TSnowflakeConnection>;
 
 export const snowflakeConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listDatabases = async (connectionId: string, actor: OrgServiceActor) => {
+  const listDatabases = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Snowflake, connectionId, actor);
     return listSnowflakeDatabases(appConnection.credentials);
   };
 
-  const listSchemas = async (connectionId: string, database: string, actor: OrgServiceActor) => {
+  const listSchemas = async (connectionId: string, database: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Snowflake, connectionId, actor);
     return listSnowflakeSchemas(appConnection.credentials, database);
   };
 
-  const listUsers = async (connectionId: string, actor: OrgServiceActor) => {
+  const listUsers = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Snowflake, connectionId, actor);
     return listSnowflakeUsers(appConnection.credentials);
   };

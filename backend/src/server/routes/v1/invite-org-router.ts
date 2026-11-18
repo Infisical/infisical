@@ -64,7 +64,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.auth.actor !== ActorType.USER) return;
 
       const { signUpTokens: completeInviteLinks } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -112,12 +112,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             if (agentVaultProjectIds.has(projectId)) {
               const { members } = await server.services.agentVaultMembership.addProductMembers({
                 projectId,
-                ctx: {
-                  actorId: req.permission.id,
-                  actor: req.permission.type,
-                  actorOrgId: req.permission.orgId,
-                  actorAuthMethod: req.permission.authMethod
-                },
+                ctx: req.permission,
                 userIds: [],
                 groupIds: [],
                 machineIdentityIds: [],
@@ -145,7 +140,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             }
 
             const { memberships } = await server.services.membershipUser.createMembership({
-              permission: req.permission,
+              actor: req.permission,
               scopeData: {
                 scope: AccessScope.Project,
                 orgId: req.permission.orgId,
@@ -188,10 +183,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
           const { memberships } = await server.services.pamMembership.addProductUserMembers({
             projectId: pamProjectId,
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            actorAuthMethod: req.permission.authMethod,
+            actor: req.permission,
             userIds: [],
             emails: req.body.inviteeEmails,
             role: PamProductRole.Member
@@ -276,10 +268,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.org.resendOrgMemberInvitation({
         orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         membershipId: req.body.membershipId
       });
     }

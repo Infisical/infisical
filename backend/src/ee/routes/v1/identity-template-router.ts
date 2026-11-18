@@ -95,10 +95,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const template = await server.services.identityAuthTemplate.createTemplate({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         name: req.body.name,
         authMethod: req.body.authMethod,
         templateFields: req.body.templateFields
@@ -152,10 +149,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: req.params.templateId,
         name: req.body.name,
         templateFields: req.body.templateFields,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -204,10 +198,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const template = await server.services.identityAuthTemplate.deleteTemplate({
         templateId: req.params.templateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo
       });
 
@@ -253,10 +244,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const template = await server.services.identityAuthTemplate.getTemplate({
         templateId: req.params.templateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return template;
@@ -296,10 +284,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         limit: req.query.limit,
         offset: req.query.offset,
         search: req.query.search,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return { templates, totalCount };
@@ -332,10 +317,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const templates = await server.services.identityAuthTemplate.getTemplatesByAuthMethod({
         authMethod: req.query.authMethod,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return templates;
@@ -373,10 +355,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const templates = await server.services.identityAuthTemplate.findTemplateUsages({
         templateId: req.params.templateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return templates;
@@ -419,10 +398,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       const templates = await server.services.identityAuthTemplate.unlinkTemplateUsage({
         templateId: req.params.templateId,
         identityIds: req.body.identityIds,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo
       });
 

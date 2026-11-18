@@ -124,12 +124,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         ttl,
         keyAlgorithm,
         authMethod: authMethodArg,
-        actor: {
-          type: req.permission.type,
-          id: req.permission.id,
-          orgId: req.permission.orgId,
-          authMethod: req.permission.authMethod
-        }
+        actor: req.permission
       });
 
       const view = await server.services.resourceAuthMethod.loadView({ type: "kmip", id: kmipServer.id });
@@ -580,10 +575,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
 
       const configs = await server.services.kmip.registerServer({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         hostnamesOrIps: kmipServer.hostnamesOrIps,
         ttl: resolvedTtl,
         commonName: resolvedCommonName,

@@ -1,11 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
-import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { PamResourcePermissionActions, PamResourcePermissionSub } from "@app/domains/pam/pam/ce/module";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 
@@ -88,7 +85,7 @@ const buildService = (
       assertGatewayBindingInOrg
     },
     kmsDataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
-    permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
+    pamPermissionService: { getPamPermission: vi.fn() },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     rotationHandlers
   };
@@ -96,7 +93,13 @@ const buildService = (
   const service = pamAccountHeartbeatServiceFactory(
     deps as unknown as Parameters<typeof pamAccountHeartbeatServiceFactory>[0]
   );
-  return { service, updateById, testCredential, assertGatewayBindingInOrg, permissionService: deps.permissionService };
+  return {
+    service,
+    updateById,
+    testCredential,
+    assertGatewayBindingInOrg,
+    pamPermissionService: deps.pamPermissionService
+  };
 };
 
 describe("heartbeat: Windows", () => {
@@ -244,22 +247,22 @@ describe("heartbeat: SSH certificate", () => {
 
 describe("heartbeat: manual check permissions", () => {
   const actor = {
-    actorId: "user-1",
-    actor: ActorType.USER,
-    actorOrgId: "org-1",
-    actorAuthMethod: AuthMethod.EMAIL
-  } as Parameters<ReturnType<typeof pamAccountHeartbeatServiceFactory>["checkAccount"]>[1];
+    principal: { type: ActorType.USER, id: "user-1" },
+    org: { id: "org-1" }
+  } as unknown as Parameters<ReturnType<typeof pamAccountHeartbeatServiceFactory>["checkAccount"]>[1];
 
-  const abilityFor = (actions: ResourcePermissionPamResourceActions[]) =>
-    createMongoAbility(actions.map((action) => ({ action, subject: ResourcePermissionSub.PamResource })));
+  const permissionFor = (actions: PamResourcePermissionActions[]) =>
+    Permission.fromRules({
+      rules: actions.map((action) => ({ action, subject: PamResourcePermissionSub.PamResource }))
+    }) as never;
 
   // A manual check sends the stored credential to whatever target the account currently points at, so it is
   // gated on reading the credential rather than on editing the account.
   test("an actor with ViewCredentials may run one", async () => {
-    const { service, permissionService, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
-    permissionService.getResourcePermission.mockResolvedValue({
-      permission: abilityFor([ResourcePermissionPamResourceActions.ViewCredentials])
-    });
+    const { service, pamPermissionService, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
+    pamPermissionService.getPamPermission.mockResolvedValue(
+      permissionFor([PamResourcePermissionActions.ViewCredentials])
+    );
 
     await service.checkAccount({ accountId: "acc-win", projectId: "proj-1" }, actor);
 
@@ -267,13 +270,10 @@ describe("heartbeat: manual check permissions", () => {
   });
 
   test("EditAccounts alone is refused before the target is contacted", async () => {
-    const { service, permissionService, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
-    permissionService.getResourcePermission.mockResolvedValue({
-      permission: abilityFor([
-        ResourcePermissionPamResourceActions.EditAccounts,
-        ResourcePermissionPamResourceActions.ReadAccounts
-      ])
-    });
+    const { service, pamPermissionService, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
+    pamPermissionService.getPamPermission.mockResolvedValue(
+      permissionFor([PamResourcePermissionActions.EditAccounts, PamResourcePermissionActions.ReadAccounts])
+    );
 
     await expect(service.checkAccount({ accountId: "acc-win", projectId: "proj-1" }, actor)).rejects.toThrow();
     expect(testCredential).not.toHaveBeenCalled();

@@ -4,8 +4,10 @@ import pLimit from "p-limit";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
@@ -13,6 +15,8 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TIdentityDALFactory } from "../identity/identity-dal";
+import { buildMemberActorContext } from "../membership/membership-fns";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -28,6 +32,7 @@ import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bri
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TUserDALFactory } from "../user/user-dal";
 import { importDataIntoInfisicalFn } from "./external-migration-fns";
 import {
   ExternalPlatforms,
@@ -63,6 +68,9 @@ export type TExternalMigrationQueueFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  actorContextService: TActorContextService;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
@@ -88,7 +96,10 @@ export const externalMigrationQueueFactory = ({
   resourceMetadataDAL,
   notificationService,
   secretChangeRequestService,
-  auditLogService
+  auditLogService,
+  actorContextService,
+  userDAL,
+  identityDAL
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
     orgId: string;
@@ -148,8 +159,19 @@ export const externalMigrationQueueFactory = ({
 
       const decryptedJson = JSON.parse(decrypted) as TImportInfisicalDataCreate;
 
+      const projectActor = await buildMemberActorContext(
+        { actorContextService, userDAL, identityDAL },
+        {
+          target: {
+            type: decryptedJson.actor as ActorType.USER | ActorType.IDENTITY,
+            id: decryptedJson.actorId
+          },
+          orgId: decryptedJson.actorOrgId
+        }
+      );
       const { projectsNotImported } = await importDataIntoInfisicalFn({
         input: decryptedJson,
+        projectActor,
         projectDAL,
         projectEnvDAL,
         secretDAL,

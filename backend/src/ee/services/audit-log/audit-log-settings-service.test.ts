@@ -1,6 +1,8 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
@@ -12,7 +14,9 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  projectAdminPermissions,
+  projectMemberPermissions
 } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -20,8 +24,6 @@ import { ActorType } from "@app/lib/auth/actor-types";
 import {
   agentVaultProjectAdminPermissions,
   agentVaultProjectMemberPermissions,
-  projectAdminPermissions,
-  projectMemberPermissions,
   projectViewerPermission
 } from "../permission/default-roles";
 import { AuditLogEventClass } from "./audit-log-event-classes";
@@ -76,13 +78,11 @@ describe("isAuditLogEventEnabled", () => {
 
 type TRow = { orgId: string; projectId: string | null; eventClass: string; isEnabled: boolean };
 
+const actorOrg = { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1", shouldUseNewPrivilegeSystem: true };
+
 const orgActor = {
-  type: "user",
-  id: "user-1",
-  authMethod: null,
-  orgId: "org-1",
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: actorOrg
 } as never;
 
 const createHarness = ({
@@ -92,6 +92,7 @@ const createHarness = ({
   canReadAuditLogs = true,
   planHasAuditLogs = true
 } = {}) => {
+  actorOrg.shouldUseNewPrivilegeSystem = shouldUseNewPrivilegeSystem;
   const tx = { raw: vi.fn(async () => undefined) };
   const orgDAL = {
     findById: vi.fn(async (id: string) => ({ id, shouldUseNewPrivilegeSystem }))
@@ -112,32 +113,38 @@ const createHarness = ({
     deleteItem: vi.fn(async () => 1)
   };
 
-  const permissionService = {
-    getOrgPermission: vi.fn(async () => ({
-      permission: createMongoAbility([
-        { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings },
-        ...(canReadAuditLogs
-          ? [{ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs }]
-          : []),
-        ...(canEditAuditLogs
-          ? [{ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogs }]
-          : [])
-      ])
-    })),
-    getProjectPermission: vi.fn(async () => ({
-      permission: createMongoAbility([
-        {
-          action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit],
-          subject: ProjectPermissionSub.Settings
-        },
-        ...(canReadAuditLogs
-          ? [{ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs }]
-          : []),
-        ...(canEditAuditLogs
-          ? [{ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs }]
-          : [])
-      ])
-    }))
+  const orgPermissionService = {
+    getOrgPermission: vi.fn(async () =>
+      Permission.fromRules({
+        rules: [
+          { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Settings },
+          ...(canReadAuditLogs
+            ? [{ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs }]
+            : []),
+          ...(canEditAuditLogs
+            ? [{ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogs }]
+            : [])
+        ]
+      })
+    )
+  };
+  const projectPermissionService = {
+    getProjectPermission: vi.fn(async () =>
+      Permission.fromRules({
+        rules: [
+          {
+            action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit],
+            subject: ProjectPermissionSub.Settings
+          },
+          ...(canReadAuditLogs
+            ? [{ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs }]
+            : []),
+          ...(canEditAuditLogs
+            ? [{ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs }]
+            : [])
+        ]
+      })
+    )
   };
 
   const projectDAL = {
@@ -150,7 +157,8 @@ const createHarness = ({
     auditLogSettingsDAL: auditLogSettingsDAL as never,
     orgDAL: orgDAL as never,
     projectDAL: projectDAL as never,
-    permissionService: permissionService as never,
+    orgPermissionService: orgPermissionService as never,
+    projectPermissionService: projectPermissionService as never,
     licenseService,
     keyStore: keyStore as never
   });
@@ -248,7 +256,7 @@ describe("updateOrgSettings", () => {
     const { service, auditLogSettingsDAL } = createHarness({ canEditAuditLogs: false });
 
     await expect(service.updateOrgSettings({ actor: orgActor, eventClasses: fullEventClasses })).rejects.toThrow(
-      ForbiddenError
+      PermissionDeniedError
     );
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
@@ -264,7 +272,7 @@ describe("updateOrgSettings", () => {
   test("refuses to read without read on audit logs, even with read on settings", async () => {
     const { service } = createHarness({ canReadAuditLogs: false });
 
-    await expect(service.getOrgSettings({ actor: orgActor })).rejects.toThrow(ForbiddenError);
+    await expect(service.getOrgSettings({ actor: orgActor })).rejects.toThrow(PermissionDeniedError);
   });
 
   test("refuses to save on a plan without audit logs", async () => {
@@ -422,19 +430,13 @@ describe("updateProjectSettings", () => {
     vi.clearAllMocks();
   });
 
-  const projectActor = {
-    actor: ActorType.USER,
-    actorId: "user-1",
-    actorAuthMethod: null,
-    actorOrgId: "org-1",
-    projectId: "p1"
-  };
+  const projectActor = { actor: orgActor, projectId: "p1" };
 
   test("refuses an actor without edit on audit logs, even with edit on settings", async () => {
     const { service, auditLogSettingsDAL } = createHarness({ canEditAuditLogs: false });
 
     await expect(service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses })).rejects.toThrow(
-      ForbiddenError
+      PermissionDeniedError
     );
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
@@ -450,7 +452,7 @@ describe("updateProjectSettings", () => {
   test("refuses to read without read on audit logs, even with read on settings", async () => {
     const { service } = createHarness({ canReadAuditLogs: false });
 
-    await expect(service.getProjectSettings(projectActor)).rejects.toThrow(ForbiddenError);
+    await expect(service.getProjectSettings(projectActor)).rejects.toThrow(PermissionDeniedError);
   });
 
   test("refuses to save on a plan without audit logs, checked against the project's org", async () => {

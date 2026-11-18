@@ -1,10 +1,13 @@
 import { Knex } from "knex";
 
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
+
+type TProjectActorInput = { projectId: string } & TActorInput;
 
 enum KmsType {
   External = "external",
@@ -34,10 +37,7 @@ export type Filter =
     };
 
 export type TCreateProjectDTO = {
-  actor: ActorType;
-  actorAuthMethod: ActorAuthMethod;
-  actorId: string;
-  actorOrgId: string;
+  actor: TActorContext;
   projectName: string;
   projectDescription?: string;
   slug?: string;
@@ -59,31 +59,31 @@ export type TDeleteProjectBySlugDTO = {
 
 export type TGetProjectDTO = {
   filter: Filter;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
-} & TProjectPermission;
+} & TProjectActorInput;
 
 export type TToggleProjectDeleteProtectionDTO = {
   hasDeleteProtection: boolean;
-} & TProjectPermission;
+} & TProjectActorInput;
 
-export type TEnableSecretBlindIndexDTO = TProjectPermission;
+export type TEnableSecretBlindIndexDTO = TProjectActorInput;
 
 export type TUpdateProjectVersionLimitDTO = {
   pitVersionLimit: number;
   workspaceSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAuditLogsRetentionDTO = {
   auditLogsRetentionDays: number;
   filter: Filter;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateProjectNameDTO = {
   name: string;
-} & TProjectPermission;
+} & TProjectActorInput;
 
 export type TUpdateProjectDTO = {
   filter: Filter;
@@ -101,30 +101,27 @@ export type TUpdateProjectDTO = {
     enforceEncryptedSecretManagerSecretMetadata?: boolean;
     auditLogsRetentionDays?: number;
   };
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteProjectDTO = {
   filter: Filter;
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string | undefined;
   hardDelete?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListDeletedProjectsDTO = {
   type?: ProjectType;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListProjectsDTO = {
   includeRoles: boolean;
   type?: ProjectType;
   limit?: number;
   offset?: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpgradeProjectDTO = {
   userPrivateKey: string;
-} & TProjectPermission;
+} & TProjectActorInput;
 
 export type AddUserToWsDTO = {
   decryptKey: TProjectKeys & { sender: { publicKey?: string } };
@@ -142,7 +139,7 @@ export type TListProjectCasDTO = {
   limit?: number;
   commonName?: string;
   filter: Filter;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListProjectCertsDTO = {
   filter: Filter;
@@ -176,34 +173,34 @@ export type TListProjectCertsDTO = {
   sortByCurrentStatus?: boolean;
   statusAt?: Date;
   excludeFriendlyNameFromSearch?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetDashboardStatsDTO = {
   filter: Filter;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetActivityTrendDTO = {
   filter: Filter;
   range?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TListProjectAlertsDTO = TProjectPermission;
+export type TListProjectAlertsDTO = TProjectActorInput;
 
 export type TUpdateProjectKmsDTO = {
   kms: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string };
-} & TProjectPermission;
+} & TProjectActorInput;
 
 export type TLoadProjectKmsBackupDTO = {
   backup: string;
-} & TProjectPermission;
+} & TProjectActorInput;
 
-export type TGetProjectKmsKey = TProjectPermission;
+export type TGetProjectKmsKey = TProjectActorInput;
 
-export type TListProjectCertificateTemplatesDTO = TProjectPermission;
+export type TListProjectCertificateTemplatesDTO = TProjectActorInput;
 
-export type TListProjectPkiSubscribersDTO = TProjectPermission;
+export type TListProjectPkiSubscribersDTO = TProjectActorInput;
 
-export type TGetProjectWorkflowIntegrationConfig = TProjectPermission & {
+export type TGetProjectWorkflowIntegrationConfig = TProjectActorInput & {
   integration: WorkflowIntegration;
 };
 
@@ -227,12 +224,12 @@ export type TUpdateProjectWorkflowIntegration = (
       secretRequestChannels?: { teamId: string; channelIds: string[] };
     }
 ) &
-  TProjectPermission;
+  TProjectActorInput;
 
 export type TDeleteProjectWorkflowIntegration = {
   integrationId: string;
   integration: WorkflowIntegration;
-} & TProjectPermission;
+} & TProjectActorInput;
 
 export enum SearchProjectSortBy {
   NAME = "name",
@@ -241,7 +238,7 @@ export enum SearchProjectSortBy {
 }
 
 export type TSearchProjectsDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   name?: string;
   type?: ProjectType;
   limit?: number;
@@ -252,7 +249,7 @@ export type TSearchProjectsDTO = {
 };
 
 export type TProjectAccessRequestDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   projectId: string;
   comment?: string;
 };

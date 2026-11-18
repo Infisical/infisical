@@ -1,7 +1,9 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
@@ -10,7 +12,6 @@ import {
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
-import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 
@@ -21,6 +22,12 @@ import { ApprovalStatus } from "./access-approval-request-types";
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://example.com" })
 }));
+
+const actorOf = (id: string) =>
+  ({
+    principal: { type: ActorType.USER, id, authMethod: AuthMethod.EMAIL },
+    org: { id: "org-1" }
+  }) as unknown as TActorContext;
 
 const pendingRequest = {
   id: "req-1",
@@ -51,12 +58,12 @@ const delegatedRequest = {
   status: DelegatedApprovalRequestStatus.WaitingApproval
 };
 
-const canEditPolicies = createMongoAbility([
-  { action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval }
-]);
-const cannotEditPolicies = createMongoAbility([
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval }
-]);
+const canEditPolicies = Permission.fromRules({
+  rules: [{ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval }]
+});
+const cannotEditPolicies = Permission.fromRules({
+  rules: [{ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval }]
+});
 
 const delegatedPolicy = {
   id: "policy-1",
@@ -78,13 +85,19 @@ const createService = ({
     return current;
   });
   const findSecretAccessPolicies = vi.fn().mockResolvedValue(policy ? [policy] : []);
-  const getProjectPermission =
+  const grants = {
+    active: () =>
+      memberships
+        .flatMap((membership) => membership.roles)
+        .map((role) => ({ isBuiltIn: (slug: string) => role.role === slug }))
+  };
+  const getSecretsPermission =
     projectAccess === "member"
-      ? vi.fn().mockResolvedValue({ permission, memberships })
+      ? vi.fn().mockResolvedValue({ permission: Object.assign(permission, { grants }) })
       : vi
           .fn()
           .mockRejectedValue(
-            new ForbiddenRequestError({ message: "You are not a member of this project with ID project-1" })
+            new PermissionDeniedError({ message: "You are not a member of this project with ID project-1" })
           );
 
   const service = secretAccessApprovalRequestServiceFactory({
@@ -92,7 +105,7 @@ const createService = ({
       findSecretAccessRequestById: vi.fn().mockImplementation(async () => current)
     },
     secretAccessApprovalPolicyDAL: { findSecretAccessPolicies },
-    permissionService: { getProjectPermission },
+    secretsPermissionService: { getSecretsPermission },
     delegatedApprovalService: { getRequestByRequestId: vi.fn().mockResolvedValue(delegated) },
     approvalRequestDAL: {
       transaction: vi.fn().mockImplementation(async (cb: (tx: string) => unknown) => cb("tx")),
@@ -107,10 +120,7 @@ const createService = ({
 const cancelAs = (service: ReturnType<typeof createService>["service"], actorId: string) =>
   service.cancelAccessRequest({
     requestId: "req-1",
-    actor: ActorType.USER,
-    actorId,
-    actorOrgId: "org-1",
-    actorAuthMethod: AuthMethod.EMAIL
+    actor: actorOf(actorId)
   });
 
 describe("secretAccessApprovalRequestService.cancelAccessRequest", () => {
@@ -135,7 +145,7 @@ describe("secretAccessApprovalRequestService.cancelAccessRequest", () => {
   test("refuses someone else's request when the actor cannot edit approval policies", async () => {
     const { service, updateById } = createService();
 
-    await expect(cancelAs(service, "bystander")).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(cancelAs(service, "bystander")).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(updateById).not.toHaveBeenCalled();
   });
 
@@ -163,10 +173,7 @@ describe("secretAccessApprovalRequestService.reviewAccessRequest", () => {
     service.reviewAccessRequest({
       requestId: "req-1",
       status,
-      actor: ActorType.USER,
-      actorId: "reviewer",
-      actorOrgId: "org-1",
-      actorAuthMethod: AuthMethod.EMAIL
+      actor: actorOf("reviewer")
     });
 
   test("refuses to approve a request reviewed in an external approval system", async () => {
@@ -277,7 +284,7 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
       checkProjectUpgradeStatus: vi.fn().mockResolvedValue(undefined)
     },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev", name: "Development" }) },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
+    secretsPermissionService: { getSecretsPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
     licenseService: { getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), secretApproval: true })) }
   } as never);
@@ -291,10 +298,7 @@ const submitAccessRequest = (
 ) =>
   service.createAccessApprovalRequest({
     projectSlug: "project",
-    actor: ActorType.USER,
-    actorId: "requester",
-    actorOrgId: "org-1",
-    actorAuthMethod: AuthMethod.EMAIL,
+    actor: actorOf("requester"),
     permissions: REQUEST_PERMISSIONS,
     isTemporary: false,
     ...overrides
@@ -340,15 +344,15 @@ describe("secretAccessApprovalRequestService.createAccessApprovalRequest", () =>
 });
 
 describe("secretAccessApprovalRequestService.listApprovalRequests", () => {
-  const canReadAllRequests = createMongoAbility([
-    { action: ProjectPermissionApprovalRequestActions.Read, subject: ProjectPermissionSub.ApprovalRequests }
-  ]);
+  const canReadAllRequests = Permission.fromRules({
+    rules: [{ action: ProjectPermissionApprovalRequestActions.Read, subject: ProjectPermissionSub.ApprovalRequests }]
+  });
 
   const createListService = (permission = cannotEditPolicies) => {
     const findSecretAccessRequests = vi.fn().mockResolvedValue([]);
     const service = secretAccessApprovalRequestServiceFactory({
       projectDAL: { findProjectBySlug: vi.fn().mockResolvedValue({ id: "project-1" }) },
-      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+      secretsPermissionService: { getSecretsPermission: vi.fn().mockResolvedValue({ permission }) },
       secretAccessApprovalRequestDAL: { findSecretAccessRequests }
     } as never);
     return { service, findSecretAccessRequests };
@@ -361,10 +365,7 @@ describe("secretAccessApprovalRequestService.listApprovalRequests", () => {
     service.listApprovalRequests({
       projectSlug: "project",
       ...filters,
-      actor: ActorType.USER,
-      actorId: "requester",
-      actorOrgId: "org-1",
-      actorAuthMethod: AuthMethod.EMAIL
+      actor: actorOf("requester")
     });
 
   test("filters by requester and environment in the query for a reader of all requests", async () => {

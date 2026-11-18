@@ -1,4 +1,5 @@
-import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { TActorInput } from "@app/lib/types";
 
 import { AuditLogEventClass } from "./audit-log-event-classes";
 
@@ -8,17 +9,18 @@ export type TAuditLogEventClassSetting = {
 };
 
 export type TGetOrgAuditLogSettingsDTO = {
-  actor: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export type TUpdateOrgAuditLogSettingsDTO = {
-  actor: OrgServiceActor;
+  actor: TActorContext;
   eventClasses: TAuditLogEventClassSetting[];
 };
 
-export type TGetProjectAuditLogSettingsDTO = TProjectPermission;
+export type TGetProjectAuditLogSettingsDTO = { projectId: string } & TActorInput;
 
-export type TUpdateProjectAuditLogSettingsDTO = TProjectPermission & {
+export type TUpdateProjectAuditLogSettingsDTO = TActorInput & {
+  projectId: string;
   eventClasses: TAuditLogEventClassSetting[];
 };
 

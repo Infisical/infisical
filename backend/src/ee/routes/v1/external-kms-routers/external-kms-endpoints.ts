@@ -61,10 +61,7 @@ export const registerExternalKmsEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.findById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.id
       });
 
@@ -133,10 +130,7 @@ export const registerExternalKmsEndpoints = <
       } as TExternalKmsInputSchema;
 
       const externalKms = await server.services.externalKms.create({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         name,
         provider: providerInput,
         description
@@ -205,10 +199,7 @@ export const registerExternalKmsEndpoints = <
       } as TExternalKmsInputUpdateSchema;
 
       const externalKms = await server.services.externalKms.updateById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         name,
         provider: providerInput,
         description,
@@ -262,10 +253,7 @@ export const registerExternalKmsEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.deleteById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.id
       });
 

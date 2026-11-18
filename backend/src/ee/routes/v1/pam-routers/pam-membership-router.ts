@@ -1,10 +1,11 @@
 import { FastifyRequest } from "fastify";
 import z from "zod";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { ActorAuthMethod, ActorType, AuthMode } from "@app/lib/auth/actor-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -40,15 +41,9 @@ const MemberResultSchema = z.object({
 
 export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
 
-const actorCtx = (req: {
-  internalPamProjectId: string;
-  permission: { id: string; type: ActorType; orgId: string; authMethod: ActorAuthMethod };
-}) => ({
+const actorCtx = (req: { internalPamProjectId: string; permission: TActorContext }) => ({
   projectId: req.internalPamProjectId,
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
+  actor: req.permission
 });
 
 const emitAuditLog = async (

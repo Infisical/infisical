@@ -1,11 +1,12 @@
 import { S3ServiceException } from "@aws-sdk/client-s3";
-import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TPermissionRule, Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import {
   agentVaultProjectAdminPermissions,
   agentVaultProjectMemberPermissions
@@ -190,12 +191,13 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     appConnectionDAL: { findById: vi.fn(async () => ({ name: "prod-logs" })) } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility(
-          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
-        ),
-        hasRole: () => overrides.isAdmin ?? true
+    accessBundlePermissionService: {
+      getAgentVaultPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({
+          rules: ((overrides.isAdmin ?? true)
+            ? agentVaultProjectAdminPermissions
+            : agentVaultProjectMemberPermissions) as TPermissionRule<ProjectPermissionSet>[]
+        })
       }))
     } as never,
     kmsDataKeyService: {} as never,
@@ -212,8 +214,7 @@ const record = (
   chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
 ) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
-const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
-const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+const ctx = { principal: { type: "user", id: "user-1" }, org: { id: "org-1" } } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 
 // The route's schema already shapes the body, so tests pass plain objects.
@@ -221,7 +222,6 @@ const save = (service: ReturnType<typeof build>["service"], patch: Record<string
   service.updateSessionLogSettings({
     projectId: PROJECT_ID,
     ctx,
-    actor,
     ...patch
   } as unknown as TUpdateSessionLogSettingsDTO);
 

@@ -71,7 +71,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         : permissions!;
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
@@ -166,7 +166,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
@@ -271,7 +271,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
@@ -349,7 +349,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
@@ -416,7 +416,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
@@ -475,7 +475,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       });
 
       const { additionalPrivileges: privileges } = await server.services.additionalPrivilege.listAdditionalPrivileges({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           projectId,

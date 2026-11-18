@@ -16,6 +16,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ProjectType, TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -23,7 +24,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -374,7 +374,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAwsPcaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, certificateAuthorityArn, region } = configuration;
 
@@ -469,7 +469,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAwsPcaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction since the decrypt goes through KMS Core and the describe call hits AWS.

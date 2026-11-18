@@ -1,13 +1,14 @@
 import { Readable } from "node:stream";
 
-import { ForbiddenError, subject } from "@casl/ability";
 import { nanoid } from "nanoid";
 import picomatch from "picomatch";
 
 import { ProjectType } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { ProjectPermissionSecretEventActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -71,7 +72,8 @@ export const getSSEHeaders = () =>
 
 type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
-  permissionService: TPermissionServiceFactory;
+  secretsPermissionService: TSecretsPermissionService;
+  actorContextService: TActorContextService;
   licenseService: TLicenseService;
   keyStore: TKeyStoreFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
@@ -79,7 +81,8 @@ type TProjectEventsSSEServiceFactoryDep = {
 
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
-  permissionService,
+  secretsPermissionService,
+  actorContextService,
   licenseService,
   keyStore,
   projectEnvDAL
@@ -160,15 +163,9 @@ export const projectEventsSSEServiceFactory = ({
   /**
    * Fetch fresh permission from permission service
    */
-  const fetchPermission = async (opts: TSSESubscribeOpts): Promise<TSSEPermissionCache> => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: opts.actor,
-      actorId: opts.actorId,
-      projectId: opts.projectId,
-      actorAuthMethod: opts.actorAuthMethod,
-      actorOrgId: opts.actorOrgId,
-      actionProjectType: opts.actionProjectType
-    });
+  const fetchPermission = async (actor: TActorContext, projectId: string): Promise<TSSEPermissionCache> => {
+    // Through Secrets, so folder grants decide at their folders as they do for every other secret check.
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     return {
       permission,
@@ -198,25 +195,18 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: reg.conditions?.secretPath ?? "/"
       };
 
-      ForbiddenError.from(permissionCache.permission).throwUnlessCan(
-        // @ts-expect-error - permissionSubject is narrowed by getBusEventToSubject but TS doesn't infer it
-        action,
-        subject(permissionSubject, subjectFields)
-      );
+      permissionCache.permission.assert({ action, subject: permissionSubject, fields: subjectFields });
 
       // When no environmentSlug is specified, verify the user has the action
       // access in ALL project environments to check the SSE events
       if (!reg.conditions?.environmentSlug) {
         const secretPath = reg.conditions?.secretPath ?? "/";
         for (const env of projectEnvironments) {
-          ForbiddenError.from(permissionCache.permission).throwUnlessCan(
-            // @ts-expect-error - permissionSubject is narrowed by getBusEventToSubject but TS doesn't infer it
+          permissionCache.permission.assert({
             action,
-            subject(permissionSubject, {
-              environment: env.slug,
-              secretPath
-            })
-          );
+            subject: permissionSubject,
+            fields: { environment: env.slug, secretPath }
+          });
         }
       }
     }
@@ -231,7 +221,12 @@ export const projectEventsSSEServiceFactory = ({
     if (!entry) return;
 
     try {
-      const newPermissionCache = await fetchPermission(entry.opts);
+      // A context of its own per refresh: the domains remember a permission for as long as its context lives.
+      const actor = await actorContextService.forPrincipal({
+        principal: entry.opts.actor.principal,
+        orgId: entry.opts.actor.org.id
+      });
+      const newPermissionCache = await fetchPermission(actor, entry.opts.projectId);
 
       // Re-validate registered permissions with refreshed permissions
       await validateRegisteredPermissions(newPermissionCache, entry.opts.register, entry.opts.projectId);
@@ -289,10 +284,11 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: payload.secretPath
       };
 
-      return permissionCache.permission.can(
+      return permissionCache.permission.can({
         action,
-        subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields)
-      );
+        subject: ProjectPermissionSub.SecretEventSubscriptions,
+        fields: subjectFields
+      });
     });
   };
 
@@ -304,12 +300,12 @@ export const projectEventsSSEServiceFactory = ({
     const id = `sse-${nanoid()}`;
 
     // Fetch initial permission (throws if not authorized)
-    const permissionCache = await fetchPermission(opts);
+    const permissionCache = await fetchPermission(opts.actor, opts.projectId);
 
     // Validate user has permission for all registered events (throws ForbiddenError if not)
     await validateRegisteredPermissions(permissionCache, opts.register, opts.projectId);
 
-    const plan = await licenseService.getPlan(opts.actorOrgId);
+    const plan = await licenseService.getPlan(opts.actor.org.id);
     if (!plan.has(PlanFeature.EventSubscriptions)) {
       throw new BadRequestError({
         message: "Event subscriptions are not available on your current plan. Please upgrade to access this feature."
@@ -405,7 +401,7 @@ export const projectEventsSSEServiceFactory = ({
       id,
       stream,
       projectId: opts.projectId,
-      actorId: opts.actorId,
+      actorId: opts.actor.principal.id,
       ping,
       close,
       unsubscribe

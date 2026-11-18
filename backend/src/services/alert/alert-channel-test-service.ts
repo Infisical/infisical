@@ -15,7 +15,7 @@ import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } f
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
-import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
@@ -63,7 +63,7 @@ export const alertChannelTestServiceFactory = ({
     }
 
     for (const owner of owners) {
-      if (owner.orgId !== dto.actorOrgId) {
+      if (owner.orgId !== dto.actor.org.id) {
         throw new NotFoundError({ message: `Channel with ID '${channelId}' was not found in this scope` });
       }
 
@@ -80,7 +80,7 @@ export const alertChannelTestServiceFactory = ({
         orgId: owner.orgId,
         projectId: owner.projectId,
         resourceId: owner.resourceId,
-        actor: toAlertActor(dto)
+        actor: dto.actor
       });
     }
   };
@@ -94,7 +94,7 @@ export const alertChannelTestServiceFactory = ({
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
-    if (!channel || channel.orgId !== dto.actorOrgId || (channel.projectId ?? null) !== projectId) {
+    if (!channel || channel.orgId !== dto.actor.org.id || (channel.projectId ?? null) !== projectId) {
       throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' was not found in this scope` });
     }
     if (channel.channelType !== dto.channelType) {
@@ -123,13 +123,13 @@ export const alertChannelTestServiceFactory = ({
     if (rows.length === 0) return [];
 
     if (scope.allowEmailAddresses) {
-      await alertChannelService.validateRecipients(dto.actorOrgId, scope, rows);
+      await alertChannelService.validateRecipients(dto.actor.org.id, scope, rows);
     } else {
       alertChannelService.assertRecipientTypesAllowed(scope, rows);
     }
 
     const resolved = await alertRecipientResolver.resolveMany(new Map([[TEST_CHANNEL_ID, rows]]), {
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId: scope.projectId
     });
     return (resolved.get(TEST_CHANNEL_ID) ?? []).slice(0, MAX_TEST_RECIPIENTS);
@@ -153,11 +153,11 @@ export const alertChannelTestServiceFactory = ({
     }
 
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
-    await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
+    await $assertCooldown(dto.actor.org.id, dto.actor.principal.id, dto.channelType);
 
     const deps: TAlertChannelDeps = { smtpService };
     const payload = buildTestAlertPayload({
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId,
       ...(provider.getWebhookSource
         ? { alertId: dto.alertId, resourceId: dto.resourceId, getWebhookSource: provider.getWebhookSource }
@@ -183,7 +183,7 @@ export const alertChannelTestServiceFactory = ({
       const error = $toError(err);
       logger.info(
         { channelType: dto.channelType, error },
-        `Alert channel test delivery failed [channelType=${dto.channelType}] [orgId=${dto.actorOrgId}]`
+        `Alert channel test delivery failed [channelType=${dto.channelType}] [orgId=${dto.actor.org.id}]`
       );
       return { success: false, error };
     }
@@ -198,7 +198,7 @@ export const alertChannelTestServiceFactory = ({
     }
 
     const projectId = await resolveAlertProjectId(provider, {
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId: dto.projectId,
       resourceId: dto.resourceId
     });
@@ -207,7 +207,7 @@ export const alertChannelTestServiceFactory = ({
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
         !alert ||
-        alert.orgId !== dto.actorOrgId ||
+        alert.orgId !== dto.actor.org.id ||
         alert.resourceType !== dto.resourceType ||
         (alert.resourceId ?? null) !== (dto.resourceId ?? null) ||
         (alert.projectId ?? null) !== projectId
@@ -218,19 +218,19 @@ export const alertChannelTestServiceFactory = ({
 
     await provider.assertPermission({
       action: dto.alertId ? AlertPermissionAction.Edit : AlertPermissionAction.Create,
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId,
       resourceId: dto.resourceId,
-      actor: toAlertActor(dto)
+      actor: dto.actor
     });
-    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
+    await provider.assertResourceInScope({ orgId: dto.actor.org.id, projectId, resourceId: dto.resourceId });
 
     if (!dto.channelId) {
-      await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
+      await provider.assertChannelTypesAllowed?.({ orgId: dto.actor.org.id, channelTypes: [dto.channelType] });
     }
 
     const config = await $resolveConfig(dto, projectId);
-    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const resourceName = await getAlertResourceName(provider, dto.actor.org.id, dto.resourceId);
     const result = await $sendTest(dto, projectId, provider, config);
     return { ...result, projectId, resourceName };
   };
