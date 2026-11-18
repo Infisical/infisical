@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -42,19 +42,24 @@ const COMMENT_MAX_LENGTH = 500;
 
 type CancellationReason = (typeof CANCELLATION_REASONS)[number]["value"];
 
-const formSchema = z.object({
-  reason: z.enum(
-    CANCELLATION_REASONS.map((reason) => reason.value) as [
-      CancellationReason,
-      ...CancellationReason[]
-    ],
-    { message: "Select a reason to continue." }
-  ),
-  comment: z
-    .string()
-    .trim()
-    .max(COMMENT_MAX_LENGTH, `Keep your comment under ${COMMENT_MAX_LENGTH} characters.`)
-});
+const formSchema = z
+  .object({
+    reason: z.enum(
+      CANCELLATION_REASONS.map((reason) => reason.value) as [
+        CancellationReason,
+        ...CancellationReason[]
+      ],
+      { message: "Select a reason to continue." }
+    ),
+    comment: z
+      .string()
+      .trim()
+      .max(COMMENT_MAX_LENGTH, `Keep your comment under ${COMMENT_MAX_LENGTH} characters.`)
+  })
+  .refine(({ reason, comment }) => reason !== "other" || comment.length > 0, {
+    path: ["comment"],
+    message: "Add a comment to continue."
+  });
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -95,11 +100,15 @@ export const CancellationFeedbackDialog = ({
   const {
     control,
     handleSubmit,
-    formState: { isSubmitting }
+    trigger,
+    setFocus,
+    formState: { isSubmitting, isSubmitted }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { comment: "" }
   });
+
+  const isCommentRequired = useWatch({ control, name: "reason" }) === "other";
 
   const onSubmit = async ({ reason, comment }: FormData) => {
     try {
@@ -143,7 +152,15 @@ export const CancellationFeedbackDialog = ({
                 <RadioGroup
                   aria-labelledby="cancellation-reason-label"
                   value={field.value ?? ""}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    if (isSubmitted) {
+                      trigger("comment");
+                    }
+                    if (value === "other") {
+                      setFocus("comment");
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="sm:grid-cols-2"
                 >
@@ -172,7 +189,9 @@ export const CancellationFeedbackDialog = ({
             name="comment"
             render={({ field, fieldState }) => (
               <Field>
-                <FieldLabel htmlFor="cancellation-comment">Comment (optional)</FieldLabel>
+                <FieldLabel htmlFor="cancellation-comment">
+                  {isCommentRequired ? "Comment" : "Comment (optional)"}
+                </FieldLabel>
                 <FieldContent>
                   <TextArea
                     {...field}
@@ -181,7 +200,12 @@ export const CancellationFeedbackDialog = ({
                     rows={3}
                     maxLength={COMMENT_MAX_LENGTH}
                     disabled={isSubmitting}
-                    placeholder="Tell us what would have made you stay"
+                    aria-required={isCommentRequired}
+                    placeholder={
+                      isCommentRequired
+                        ? "What made you cancel?"
+                        : "Tell us what would have made you stay"
+                    }
                     isError={Boolean(fieldState.error)}
                   />
                   <FieldDescription className="flex justify-between gap-4">
