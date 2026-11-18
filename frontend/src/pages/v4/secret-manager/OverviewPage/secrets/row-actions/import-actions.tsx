@@ -24,7 +24,6 @@ export function ImportActions({
   action,
   onClose,
   scope,
-  resources,
   onApply,
   onToast
 }: RowActionHostProps<"import">) {
@@ -68,7 +67,6 @@ export function ImportActions({
     <>
       <ReorderImportsSheet
         entry={action?.action === "reorder" ? action.entry : undefined}
-        resources={resources}
         onClose={onClose}
       />
       <AlertDialog
