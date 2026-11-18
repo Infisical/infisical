@@ -61,10 +61,11 @@ import {
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 import {
-  DECISION_PRESENTATION,
   hostPatternFor,
   SESSION_LOG_COLUMN_COUNT,
-  SessionLogRow
+  SESSION_LOG_OUTCOMES,
+  SessionLogRow,
+  sessionLogOutcome
 } from "./SessionLogRow";
 import {
   chunkIdTime,
@@ -244,7 +245,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const visible = useMemo(
     () =>
       records.filter((record) => {
-        if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
+        if (decisionFilter !== "all" && sessionLogOutcome(record.decision) !== decisionFilter)
+          return false;
         return matchesSessionLogSearch(record, search);
       }),
     [records, search, decisionFilter]
@@ -432,6 +434,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const isUnreachable =
     gaps.length > 0 && !hasOpenedRecords && gaps.every((gap) => gap.reason === "fetch");
+  // Hidden until the first page says there are logs to search, since logs that are off, off-plan or unreadable
+  // replace the whole panel. An active filter keeps it so the filter can always be cleared.
+  const canSearch = !isPending && !isLoadError && (hasChunks || Boolean(hasNextPage) || isFiltered);
 
   const retryButton = (
     <Button
@@ -547,64 +552,64 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-56 flex-1">
-          <InputGroup>
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method, tool, service, statement, command or output..."
-            />
-            {search && (
-              <InputGroupAddon align="inline-end">
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  aria-label="Clear search"
-                  onClick={() => setSearch("")}
-                >
-                  <XIcon />
-                </IconButton>
+      {canSearch && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-56 flex-1">
+            <InputGroup>
+              <InputGroupAddon>
+                <SearchIcon />
               </InputGroupAddon>
-            )}
-          </InputGroup>
-        </div>
-        <Select
-          value={decisionFilter}
-          onValueChange={(value) => setDecisionFilter(value as DecisionFilter)}
-        >
-          <SelectTrigger aria-label="Filter by outcome">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="all">All Outcomes</SelectItem>
-            {Object.entries(DECISION_PRESENTATION).map(
-              ([value, { label, icon: Icon, iconClassName }]) => (
-                <SelectItem key={value} value={value}>
+              <InputGroupInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search host, path, method, tool, service, statement, command or output..."
+              />
+              {search && (
+                <InputGroupAddon align="inline-end">
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    aria-label="Clear search"
+                    onClick={() => setSearch("")}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+          </div>
+          <Select
+            value={decisionFilter}
+            onValueChange={(value) => setDecisionFilter(value as DecisionFilter)}
+          >
+            <SelectTrigger aria-label="Filter by outcome">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Outcomes</SelectItem>
+              {SESSION_LOG_OUTCOMES.map(({ decision, label, icon: Icon, iconClassName }) => (
+                <SelectItem key={decision} value={decision}>
                   <span className="flex items-center gap-2">
                     <Icon className={iconClassName} />
                     {label}
                   </span>
                 </SelectItem>
-              )
-            )}
-          </SelectContent>
-        </Select>
-        <DateRangeFilter
-          accent="av"
-          size="md"
-          isActive={Boolean(range)}
-          inactiveLabel="Entire Session"
-          showTimezoneToggle={false}
-          earliestDate={new Date(session.createdAt)}
-          showRelativeRanges={isActive}
-          onChange={(result) => applyRange(result)}
-          onClear={() => applyRange(null)}
-        />
-      </div>
+              ))}
+            </SelectContent>
+          </Select>
+          <DateRangeFilter
+            accent="av"
+            size="md"
+            isActive={Boolean(range)}
+            inactiveLabel="Entire Session"
+            showTimezoneToggle={false}
+            earliestDate={new Date(session.createdAt)}
+            showRelativeRanges={isActive}
+            onChange={(result) => applyRange(result)}
+            onClear={() => applyRange(null)}
+          />
+        </div>
+      )}
 
       {isUnreachable && (
         <Alert variant="warning">

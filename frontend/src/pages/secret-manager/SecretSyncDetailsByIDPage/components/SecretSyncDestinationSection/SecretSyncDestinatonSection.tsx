@@ -20,6 +20,7 @@ import { Cloud66SyncDestinationSection } from "./Cloud66SyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareSecretsStoreSyncDestinationSection } from "./CloudflareSecretsStoreSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
+import { ConvexSyncDestinationSection } from "./ConvexSyncDestinationSection";
 import { CoolifySyncDestinationSection } from "./CoolifySyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
@@ -144,6 +145,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       DestinationComponents = (
         <CloudflareSecretsStoreSyncDestinationSection secretSync={secretSync} />
       );
+      break;
+    case SecretSync.Convex:
+      DestinationComponents = <ConvexSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Zabbix:
       DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;

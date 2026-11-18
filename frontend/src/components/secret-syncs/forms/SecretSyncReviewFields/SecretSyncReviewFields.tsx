@@ -58,6 +58,7 @@ import {
   CloudflareWorkersSyncOptionsReviewFields,
   CloudflareWorkersSyncReviewFields
 } from "./CloudflareWorkersReviewFields";
+import { ConvexSyncReviewFields } from "./ConvexSyncReviewFields";
 import { CoolifySyncReviewFields } from "./CoolifySyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
@@ -299,6 +300,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflareSecretsStore:
       DestinationFieldsComponent = <CloudflareSecretsStoreSyncReviewFields />;
+      break;
+    case SecretSync.Convex:
+      DestinationFieldsComponent = <ConvexSyncReviewFields />;
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;

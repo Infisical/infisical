@@ -228,10 +228,10 @@ export const McpToolsFields = ({
                 ) : (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="text"
                     size="xs"
+                    className="text-muted"
                     isDisabled={isAuthorizationExpired || listTools.isPending}
-                    isPending={listTools.isPending}
                     onClick={() => loadTools().catch(() => undefined)}
                   >
                     <RefreshCwIcon />

@@ -377,6 +377,8 @@ export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
+    // The form shows a refusal of its services under that field and toasts any other.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
