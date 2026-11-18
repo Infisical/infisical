@@ -87,13 +87,28 @@ const SlackChannelPickers = ({ index }: Props) => {
   const channelsQuery = useGetSlackIntegrationChannels(workflowIntegrationId || undefined);
   const slackChannels = channelsQuery.data ?? [];
 
-  // Clear an id whose integration was deleted, so the form asks for a new one instead of saving it.
+  // Only a list fetched after mount proves the saved integration was deleted; a cached one can predate it.
+  const { isSuccess, isFetching, isFetchedAfterMount, refetch } = integrationsQuery;
   useEffect(() => {
-    if (!integrationsQuery.isSuccess || !workflowIntegrationId) return;
+    if (!isSuccess || !workflowIntegrationId) return;
     if (integrations.some((integration) => integration.id === workflowIntegrationId)) return;
+    if (isFetching) return;
+    if (!isFetchedAfterMount) {
+      refetch();
+      return;
+    }
     setIsSavedIntegrationDeleted(true);
     setValue(`channels.${index}.workflowIntegrationId`, "", { shouldDirty: true });
-  }, [integrationsQuery.isSuccess, integrations, workflowIntegrationId, index, setValue]);
+  }, [
+    isSuccess,
+    isFetching,
+    isFetchedAfterMount,
+    refetch,
+    integrations,
+    workflowIntegrationId,
+    index,
+    setValue
+  ]);
 
   const knownChannelIds = new Set(slackChannels.map((channel) => channel.id));
   const isMissingChannel = (channel: TAlertSlackChannel) =>

@@ -40,7 +40,6 @@ export const fetchSlackChannels = async (botKey: string) => {
     const response = await slackWebClient.conversations.list({
       cursor,
       limit: 1000,
-      exclude_archived: true,
       types: "public_channel,private_channel"
     });
 
