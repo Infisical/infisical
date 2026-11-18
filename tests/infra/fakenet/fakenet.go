@@ -22,9 +22,11 @@ import (
 
 // Service is one third-party API.
 type Service interface {
-	// Host is the name the product's client has hardcoded. It has to be hardcoded
-	// for a test to mean anything: a configurable base URL pointed straight at
-	// fakenet would prove the fake works and nothing about interception.
+	// Host is the name the service answers on. For a vendor-hosted API it is the one
+	// the product's client calls by default: a configurable base URL pointed straight
+	// at fakenet would prove the fake works and nothing about interception. A
+	// customer-hosted service, such as an appliance, has no default, so a test passes
+	// its fixed .test name through the connection's normal host setting.
 	Host() string
 
 	// Scope says which caller a request belongs to, by reading the credential off
@@ -49,7 +51,8 @@ type Fake interface {
 }
 
 // Releaser is a Fake that holds state outside its own scope, such as an account two
-// hosts share, and gives it up when the test removes the scope.
+// hosts share, and gives it up when the test removes the scope. Release runs under the
+// server's lock, so it must not call back into the server.
 type Releaser interface {
 	Release()
 }

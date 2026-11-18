@@ -139,6 +139,20 @@ fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.tes
 DNS provider fakes (`cloudflare`, `dnsmadeeasy`, and Route 53 in `aws`) serve the TXT records created through
 their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers would.
 
+Route 53 also serves the TXT records a test seeds in a hosted zone. Seed the zone and its
+record together through the account's `Route53` scope, with the value in quotes as Route 53
+stores it:
+
+```go
+cp.Route53.Seed(t, map[string]any{"zones": map[string]any{"Z1": map[string]any{
+	"name":    "acme.test",
+	"records": []map[string]any{{"name": "_acme-challenge.acme.test", "type": "TXT", "values": []string{`"token"`}}},
+}}})
+```
+
+Reseeding the zone without the record withdraws it, and so does the end of the test. A
+removal leaves the name alone if another account has written it since.
+
 ## TLS certificates
 
 fakenet answers TLS on port 443 for every name with a certificate it mints for that
@@ -153,7 +167,9 @@ fakenet.ServeCertificate(t, fixture.FakenetAdmin(t, tn), name, certPEM, keyPEM)
 ```
 
 `fakenet.StallPort` accepts TCP connections on every name and never answers, for a test
-that needs a client to wait out its own timeout, such as a discovery scan kept running.
+that needs a client to wait out its own timeout, such as a discovery scan kept running. It
+closes a connection after 30 seconds, so the client's timeout must be shorter, and it holds
+at most 64 at once: a connection past that is closed as soon as it is accepted.
 
 ## Certificate Manager
 

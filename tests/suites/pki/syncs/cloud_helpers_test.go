@@ -28,8 +28,8 @@ type cloudSyncState struct {
 // response.
 type cloudSyncGet func(ctx context.Context, pkiSyncId string, reqEditors ...api.RequestEditorFn) (*http.Response, error)
 
-// cloudSyncReadTimeout bounds one read, so a stuck response cannot hold a poll past
-// its wait.
+// cloudSyncReadTimeout bounds one read, so one stuck response cannot use up the whole
+// wait.
 const cloudSyncReadTimeout = 10 * time.Second
 
 // cloudSyncFetch reads a sync once. permanent reports an error that polling again

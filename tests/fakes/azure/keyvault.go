@@ -110,8 +110,9 @@ func (v *Vaults) vault(w http.ResponseWriter, r *http.Request) (*Vault, bool) {
 
 func baseURL(r *http.Request) string { return "https://" + r.Host }
 
-// vaultListPage is the default page size of a certificate list. Key Vault returns "up to
-// 25" per page; a smaller page makes any vault with a few certificates exercise nextLink.
+// vaultListPage is the most a certificate list page holds. Key Vault returns "up to 25"
+// per page, or up to maxresults; capping every page at two, whatever the client asks
+// for, makes any vault with a few certificates exercise nextLink.
 const vaultListPage = 2
 
 func (v *Vaults) list(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +124,7 @@ func (v *Vaults) list(w http.ResponseWriter, r *http.Request) {
 			vaultError(w, http.StatusBadRequest, "BadParameter", "maxresults must be between 1 and 25.")
 			return
 		}
-		size = n
+		size = min(n, vaultListPage)
 	}
 	start := 0
 	if raw := q.Get("$skiptoken"); raw != "" {

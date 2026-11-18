@@ -51,6 +51,7 @@ func TestGcpCertificateManagerPkiSync_Sync(t *testing.T) {
 			require.True(t, strings.HasPrefix(name, "projects/"+project+"/locations/us-central1/certificates/"), "created at %s", name)
 			require.True(t, strings.HasPrefix(created.PemCertificate, strings.TrimSpace(cert.Certificate)))
 			require.Equal(t, "infisical", created.Labels["managed-by"])
+			gcp.CertificateManager.ExpectEvent[oauth.GCPCertificateCreated](t, func(e oauth.GCPCertificateCreated) bool { return e.Name == name })
 		}
 		for name, op := range state.Operations {
 			require.Truef(t, op.Done, "Infisical never polled operation %s", name)

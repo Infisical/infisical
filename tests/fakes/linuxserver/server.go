@@ -243,16 +243,20 @@ type upload struct {
 	path string
 	mode uint32
 
-	mu  sync.Mutex
-	buf []byte
+	mu     sync.Mutex
+	buf    []byte
+	failed bool
 }
 
+// WriteAt refuses a write past maxUpload and marks the upload failed, so Close discards
+// it rather than storing the part the client was told did not land.
 func (u *upload) WriteAt(p []byte, off int64) (int, error) {
-	if off < 0 || off > maxUpload || int64(len(p)) > maxUpload-off {
-		return 0, sftp.ErrSSHFxFailure
-	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	if off < 0 || off > maxUpload || int64(len(p)) > maxUpload-off {
+		u.failed = true
+		return 0, sftp.ErrSSHFxFailure
+	}
 	if end := int(off) + len(p); end > len(u.buf) {
 		u.buf = append(u.buf, make([]byte, end-len(u.buf))...)
 	}
@@ -263,6 +267,9 @@ func (u *upload) WriteAt(p []byte, off int64) (int, error) {
 func (u *upload) Close() error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	if u.failed {
+		return sftp.ErrSSHFxFailure
+	}
 	if !u.host.put(u.path, bytes.Clone(u.buf), u.mode) {
 		return os.ErrNotExist
 	}

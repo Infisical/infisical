@@ -53,6 +53,9 @@ func TestAzureKeyVaultPkiSync_Sync(t *testing.T) {
 		require.Equal(t, strings.TrimSpace(cert.Certificate), strings.TrimSpace(imported.Certificate))
 		require.Contains(t, imported.Imported, strings.TrimSpace(cert.PrivateKey))
 		require.Contains(t, imported.Imported, strings.TrimSpace(cloudFirstPEM(t, cert.Chain)))
+		kv.ExpectEvent[azure.VaultCertificateImported](t, func(e azure.VaultCertificateImported) bool {
+			return e.Vault == vault && e.Name == "Infisical-"+strings.ReplaceAll(cert.ID.String(), "-", "")
+		})
 	})
 
 	t.Run("should leave a disabled certificate object alone when it is past the first page of the vault's list", func(t *testing.T) {

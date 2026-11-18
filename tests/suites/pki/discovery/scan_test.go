@@ -1,9 +1,11 @@
 package discovery_test
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/pki"
@@ -124,20 +126,27 @@ func TestPkiDiscovery_Scan(t *testing.T) {
 	t.Run("should refuse a scan while another scan runs in the project", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The first scan targets fakenet's stall port, which accepts and never answers, so it
-			holds the project's scan slot for the scanner's per-endpoint timeout.`)
+			holds the project's scan slot from the trigger until the scanner's 10-second per-endpoint
+			timeout (DEFAULT_SCAN_TIMEOUT) runs out after the job starts. Both triggers share an
+			8-second budget that starts before the first is sent, so any answer the competing one
+			gets falls inside that overlap.`)
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
 		running := newDiscovery(t, tn, proj, strconv.Itoa(fakenet.StallPort), targetName())
 		other := newDiscovery(t, tn, proj, "443", targetName())
-		triggerScan(t, tn, running)
+		ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+		defer cancel()
+		first, err := tn.Admin.API.TriggerPkiDiscoveryScanWithResponse(ctx, running)
+		require.NoError(t, err, "triggering the first scan to establish overlap")
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "triggering the first scan: %s", apierr.Body(first.Body))
 
 		// Action
-		res, err := tn.Admin.API.TriggerPkiDiscoveryScanWithResponse(t.Context(), other)
+		res, err := tn.Admin.API.TriggerPkiDiscoveryScanWithResponse(ctx, other)
 
 		// Assert
-		require.NoError(t, err)
+		require.NoError(t, err, "the competing trigger has to answer while the first scan is certain to hold the slot")
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "Another scan is already running in this project. Only one concurrent scan per project is allowed.", apierr.Message(res.Body))
 		state, err := tn.Admin.API.GetPkiDiscoveryWithResponse(t.Context(), other)

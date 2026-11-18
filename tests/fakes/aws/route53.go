@@ -23,9 +23,10 @@ type HostedZones struct {
 	Policy
 	Zones map[string]*HostedZone `json:"zones"`
 
-	mu     sync.Mutex
-	events fakenet.Emitter
-	svc    service
+	mu       sync.Mutex
+	released bool
+	events   fakenet.Emitter
+	svc      service
 }
 
 // HostedZone is a public zone. Names are fully qualified, with the trailing dot Route
@@ -57,7 +58,9 @@ func (z *HostedZones) Snapshot() ([]byte, error) {
 	}{z.Policy, z.Zones})
 }
 
-// Seed merges zones by id. A zone's name gets its trailing dot if it lacks one.
+// Seed merges zones by id. Zone and record names are canonicalized as the API stores
+// them, and DNS then answers with the seeded zones' TXT records, so a reseed that drops
+// one withdraws it. Names outside the seeded zones are left as they are.
 func (z *HostedZones) Seed(raw []byte) error {
 	var in struct {
 		Policy
@@ -69,12 +72,42 @@ func (z *HostedZones) Seed(raw []byte) error {
 	z.mu.Lock()
 	defer z.mu.Unlock()
 	z.merge(in.Policy)
+	if len(in.Zones) == 0 {
+		return nil
+	}
+	before := z.txtAnswers()
+	var written, removed []string
 	for id, zone := range in.Zones {
+		if old, ok := z.Zones[id]; ok {
+			removed = append(removed, old.txtNames()...)
+		}
 		zone.ID = id
 		zone.Name = fqdn(zone.Name)
+		for _, r := range zone.Records {
+			r.Name = fqdn(r.Name)
+		}
 		z.Zones[id] = zone
+		written = append(written, zone.txtNames()...)
 	}
+	z.publishTXT(written, removed, before)
+	z.publishCNAMEs()
 	return nil
+}
+
+// Release withdraws this account's TXT and CNAME answers when the test removes its
+// scope, leaving a TXT name another publisher has written since. Fakenet can hand the
+// scope to a request before the removal and run it after, so released stops that
+// request from publishing them again.
+func (z *HostedZones) Release() {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	z.released = true
+	for name, values := range z.txtAnswers() {
+		z.events.ReplaceTXT(name, values)
+	}
+	publicCNAMEs.Lock()
+	defer publicCNAMEs.Unlock()
+	delete(publicCNAMEs.m, z)
 }
 
 func fqdn(name string) string {
@@ -198,20 +231,45 @@ func invalidChangeBatch(format string, args ...any) *apiError {
 	return errf(http.StatusBadRequest, "InvalidChangeBatch", format, args...)
 }
 
-// publicCNAMEs is every CNAME value the Route 53 fake serves, by record name, across
-// accounts, which ACM reads to validate a domain as it would through public DNS. Its
+// publicCNAMEs is every CNAME value the Route 53 fake serves, by account and record
+// name, which ACM reads to validate a domain as it would through public DNS. Keyed by
+// account so one account's changes, reseeds and release never touch another's. Its
 // lock is taken last, under a zone's or ACM's own.
 var publicCNAMEs = struct {
 	sync.Mutex
-	m map[string][]string
-}{m: map[string][]string{}}
+	m map[*HostedZones]map[string][]string
+}{m: map[*HostedZones]map[string][]string{}}
 
-// cnameServed reports whether a CNAME name answers with value, ignoring case and the
-// trailing dot.
+// cnameServed reports whether a CNAME name answers with value in any account, ignoring
+// case and the trailing dot.
 func cnameServed(name, value string) bool {
 	publicCNAMEs.Lock()
 	defer publicCNAMEs.Unlock()
-	return slices.ContainsFunc(publicCNAMEs.m[fqdn(name)], func(v string) bool { return fqdn(v) == fqdn(value) })
+	for _, names := range publicCNAMEs.m {
+		if slices.ContainsFunc(names[fqdn(name)], func(v string) bool { return fqdn(v) == fqdn(value) }) {
+			return true
+		}
+	}
+	return false
+}
+
+// publishCNAMEs replaces this account's entry in publicCNAMEs with its zones' current
+// CNAMEs. It runs under z.mu.
+func (z *HostedZones) publishCNAMEs() {
+	if z.released {
+		return
+	}
+	names := map[string][]string{}
+	for _, zone := range z.Zones {
+		for _, r := range zone.Records {
+			if r.Type == "CNAME" {
+				names[r.Name] = append(names[r.Name], r.Values...)
+			}
+		}
+	}
+	publicCNAMEs.Lock()
+	defer publicCNAMEs.Unlock()
+	publicCNAMEs.m[z] = names
 }
 
 // change applies a batch atomically. It runs under z.mu and updates fakenet's DNS before
@@ -236,9 +294,11 @@ func (z *HostedZones) change(zoneID string, body []byte) (any, *apiError) {
 		return nil, errf(http.StatusBadRequest, "InvalidInput", "Changes must contain at least one change")
 	}
 
+	var before map[string][]string
 	records := slices.Clone(zone.Records)
 	var events []fakenet.Event
-	var touched []string
+	var written, removed []string
+	cnameChanged := false
 	for _, ch := range in.Changes {
 		set := RecordSet{Name: fqdn(ch.Set.Name), Type: ch.Set.Type, TTL: ch.Set.TTL, Values: ch.Set.Values}
 		if set.Name != zone.Name && !strings.HasSuffix(set.Name, "."+zone.Name) {
@@ -270,20 +330,22 @@ func (z *HostedZones) change(zoneID string, body []byte) (any, *apiError) {
 		default:
 			return nil, errf(http.StatusBadRequest, "InvalidInput", "Invalid action %s", ch.Action)
 		}
-		if set.Type == "TXT" || set.Type == "CNAME" {
-			touched = append(touched, set.Name)
+		switch {
+		case set.Type == "TXT" && ch.Action == "UPSERT":
+			written = append(written, set.Name)
+		case set.Type == "TXT":
+			removed = append(removed, set.Name)
+		case set.Type == "CNAME":
+			cnameChanged = true
 		}
 	}
+	if len(written) > 0 || len(removed) > 0 {
+		before = z.txtAnswers()
+	}
 	zone.Records = records
-	for _, name := range touched {
-		z.events.SetTXT(name, z.txtValues(name)...)
-		publicCNAMEs.Lock()
-		if values := z.cnameValues(name); len(values) > 0 {
-			publicCNAMEs.m[name] = values
-		} else {
-			delete(publicCNAMEs.m, name)
-		}
-		publicCNAMEs.Unlock()
+	z.publishTXT(written, removed, before)
+	if cnameChanged {
+		z.publishCNAMEs()
 	}
 	for _, ev := range events {
 		z.events.Publish(ev)
@@ -294,30 +356,51 @@ func (z *HostedZones) change(zoneID string, body []byte) (any, *apiError) {
 	}, nil
 }
 
-// cnameValues is every CNAME value under a name across the account's zones.
-func (z *HostedZones) cnameValues(name string) []string {
-	var out []string
+// publishTXT sets fakenet's DNS answer for each written name to the account's current
+// TXT values, replacing whatever another publisher wrote. A name the change only removed
+// records from gets the values left, or none, only while DNS still answers with what the
+// account published before the change, so another publisher's answer stays. It runs
+// under z.mu.
+func (z *HostedZones) publishTXT(written, removed []string, before map[string][]string) {
+	if z.released || len(written)+len(removed) == 0 {
+		return
+	}
+	answers := z.txtAnswers()
+	for _, name := range written {
+		if len(answers[name]) > 0 {
+			z.events.SetTXT(name, answers[name]...)
+		}
+	}
+	for _, name := range append(removed, written...) {
+		if !slices.Contains(written, name) || len(answers[name]) == 0 {
+			z.events.ReplaceTXT(name, before[name], answers[name]...)
+		}
+	}
+}
+
+// txtAnswers is what the account publishes for each of its TXT names: every value
+// under the name across its zones, unquoted and without the trailing dot, as fakenet's
+// DNS answers it.
+func (z *HostedZones) txtAnswers() map[string][]string {
+	out := map[string][]string{}
 	for _, zone := range z.Zones {
 		for _, r := range zone.Records {
-			if r.Type == "CNAME" && r.Name == name {
-				out = append(out, r.Values...)
+			if r.Type == "TXT" {
+				for _, v := range r.Values {
+					out[r.Name] = append(out[r.Name], strings.Trim(v, `"`))
+				}
 			}
 		}
 	}
 	return out
 }
 
-// txtValues is every TXT value under a name across the account's zones, unquoted and
-// without the trailing dot, as fakenet's DNS answers it.
-func (z *HostedZones) txtValues(name string) []string {
+// txtNames is every TXT record name in the zone.
+func (zone *HostedZone) txtNames() []string {
 	var out []string
-	for _, zone := range z.Zones {
-		for _, r := range zone.Records {
-			if r.Type == "TXT" && r.Name == name {
-				for _, v := range r.Values {
-					out = append(out, strings.Trim(v, `"`))
-				}
-			}
+	for _, r := range zone.Records {
+		if r.Type == "TXT" {
+			out = append(out, r.Name)
 		}
 	}
 	return out

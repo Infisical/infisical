@@ -42,12 +42,17 @@ func TestCertificate_Delete(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, readCert(t, tn.Admin, issued.ID).StatusCode())
 		crl, err := x509.ParseRevocationList(pki.CurrentCRL(t, tn.Admin.API, g.CA))
 		require.NoError(t, err)
-		serial, ok := new(big.Int).SetString(issued.SerialNumber, 16)
-		require.True(t, ok, "serial %q is not hex", issued.SerialNumber)
-		var listed bool
-		for _, e := range crl.RevokedCertificateEntries {
-			listed = listed || e.SerialNumber.Cmp(serial) == 0
+		listed := func(cert pki.Certificate) bool {
+			serial, ok := new(big.Int).SetString(cert.SerialNumber, 16)
+			require.True(t, ok, "serial %q is not hex", cert.SerialNumber)
+			for _, e := range crl.RevokedCertificateEntries {
+				if e.SerialNumber.Cmp(serial) == 0 {
+					return true
+				}
+			}
+			return false
 		}
-		require.True(t, listed, "the deleted certificate's serial left the CRL")
+		require.True(t, listed(rebuild), "the CRL was not rebuilt after the delete")
+		require.True(t, listed(issued), "the deleted certificate's serial left the CRL")
 	})
 }

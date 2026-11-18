@@ -834,7 +834,6 @@ output-options:
     - getInternalCertificateAuthorityV1
     - updateInternalCertificateAuthorityV1
     - getCrlDer
-    - getCrlDeprecated
     - postOcspRequest
     - postEstApplicationSimpleEnroll
     - postEstApplicationSimpleReenroll

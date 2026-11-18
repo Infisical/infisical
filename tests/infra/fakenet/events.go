@@ -52,6 +52,16 @@ func (e Emitter) SetTXT(name string, values ...string) {
 	e.txt.set(name, values)
 }
 
+// ReplaceTXT answers name with values only while fakenet's DNS still answers with
+// previous, for a fake removing some or all of what it published: another publisher
+// may have written the name since, and its answer stays. No values removes the name.
+func (e Emitter) ReplaceTXT(name string, previous []string, values ...string) {
+	if e.txt == nil {
+		return
+	}
+	e.txt.replaceIf(name, previous, values)
+}
+
 // LookupTXT returns the TXT values fakenet's DNS answers for name, for a fake that
 // checks a record another fake published (a CA validating DNS-01).
 func (e Emitter) LookupTXT(name string) []string {

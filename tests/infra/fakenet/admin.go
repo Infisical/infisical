@@ -123,15 +123,16 @@ func (s *Server) Admin(ca *CA) http.Handler {
 
 	mux.HandleFunc("DELETE "+AdminPrefix+"/scopes/{host}/{key}", func(w http.ResponseWriter, r *http.Request) {
 		id := scopeID{r.PathValue("host"), r.PathValue("key")}
+		// Released under s.mu, so a request for the same key cannot open a new scope that
+		// picks up the shared state this one is still giving up.
 		s.mu.Lock()
-		sc := s.scopes[id]
-		delete(s.scopes, id)
-		s.mu.Unlock()
-		if sc != nil {
+		if sc := s.scopes[id]; sc != nil {
+			delete(s.scopes, id)
 			if rel, ok := sc.fake.(Releaser); ok {
 				rel.Release()
 			}
 		}
+		s.mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 	})
 

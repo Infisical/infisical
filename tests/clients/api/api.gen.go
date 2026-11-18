@@ -36504,96 +36504,6 @@ func (e RevokeCertificate500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for GetCrlDeprecated400JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated400JSONResponseBodyStatusCodeN400 GetCrlDeprecated400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated400JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetCrlDeprecated401JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated401JSONResponseBodyStatusCodeN401 GetCrlDeprecated401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated401JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetCrlDeprecated403JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated403JSONResponseBodyStatusCodeN403 GetCrlDeprecated403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated403JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetCrlDeprecated404JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated404JSONResponseBodyStatusCodeN404 GetCrlDeprecated404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated404JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetCrlDeprecated422JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated422JSONResponseBodyStatusCodeN422 GetCrlDeprecated422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated422JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetCrlDeprecated500JSONResponseBodyStatusCode.
-const (
-	GetCrlDeprecated500JSONResponseBodyStatusCodeN500 GetCrlDeprecated500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the GetCrlDeprecated500JSONResponseBodyStatusCode enum.
-func (e GetCrlDeprecated500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetCrlDeprecated500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetCrlDer400JSONResponseBodyStatusCode.
 const (
 	GetCrlDer400JSONResponseBodyStatusCodeN400 GetCrlDer400JSONResponseBodyStatusCode = 400
@@ -133099,24 +133009,6 @@ type RevokeCertificate422JSONResponseBodyStatusCode float32
 // RevokeCertificate500JSONResponseBodyStatusCode defines parameters for RevokeCertificate.
 type RevokeCertificate500JSONResponseBodyStatusCode float32
 
-// GetCrlDeprecated400JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated400JSONResponseBodyStatusCode float32
-
-// GetCrlDeprecated401JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated401JSONResponseBodyStatusCode float32
-
-// GetCrlDeprecated403JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated403JSONResponseBodyStatusCode float32
-
-// GetCrlDeprecated404JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated404JSONResponseBodyStatusCode float32
-
-// GetCrlDeprecated422JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated422JSONResponseBodyStatusCode float32
-
-// GetCrlDeprecated500JSONResponseBodyStatusCode defines parameters for GetCrlDeprecated.
-type GetCrlDeprecated500JSONResponseBodyStatusCode float32
-
 // GetCrlDer400JSONResponseBodyStatusCode defines parameters for GetCrlDer.
 type GetCrlDer400JSONResponseBodyStatusCode float32
 
@@ -202032,11 +201924,6 @@ type ClientInterface interface {
 	// Revoke.
 	RevokeCertificate(ctx context.Context, id string, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetCrlDeprecated performs a GET /api/v1/cert-manager/crl/{crlId} (the `GetCrlDeprecated` operationId) request.
-	//
-	// Get CRL in DER format (deprecated).
-	GetCrlDeprecated(ctx context.Context, crlId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetCrlDer performs a GET /api/v1/cert-manager/crl/{crlId}/der (the `GetCrlDer` operationId) request.
 	//
 	// Get CRL in DER format.
@@ -212140,21 +212027,6 @@ func (c *Client) RevokeCertificateWithBody(ctx context.Context, id string, conte
 // Revoke.
 func (c *Client) RevokeCertificate(ctx context.Context, id string, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevokeCertificateRequest(c.Server, id, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetCrlDeprecated performs a GET /api/v1/cert-manager/crl/{crlId} (the `GetCrlDeprecated` operationId) request.
-//
-// Get CRL in DER format (deprecated).
-func (c *Client) GetCrlDeprecated(ctx context.Context, crlId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetCrlDeprecatedRequest(c.Server, crlId)
 	if err != nil {
 		return nil, err
 	}
@@ -236160,40 +236032,6 @@ func NewRevokeCertificateRequestWithBody(server string, id string, contentType s
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetCrlDeprecatedRequest constructs an http.Request for the GetCrlDeprecated method
-func NewGetCrlDeprecatedRequest(server string, crlId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "crlId", crlId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/cert-manager/crl/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -268363,13 +268201,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Revoke.
 	RevokeCertificateWithResponse(ctx context.Context, id string, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*RevokeCertificateResponse, error)
-
-	// GetCrlDeprecatedWithResponse performs a GET /api/v1/cert-manager/crl/{crlId} (the `GetCrlDeprecated` operationId) request.
-	//
-	// Get CRL in DER format (deprecated).
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetCrlDeprecatedWithResponse(ctx context.Context, crlId string, reqEditors ...RequestEditorFn) (*GetCrlDeprecatedResponse, error)
 
 	// GetCrlDerWithResponse performs a GET /api/v1/cert-manager/crl/{crlId}/der (the `GetCrlDer` operationId) request.
 	//
@@ -318441,153 +318272,6 @@ func (r RevokeCertificateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RevokeCertificateResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetCrlDeprecatedResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *interface{}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode GetCrlDeprecated500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON200() *interface{} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetCrlDeprecatedResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode GetCrlDeprecated500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r GetCrlDeprecatedResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetCrlDeprecatedResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetCrlDeprecatedResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetCrlDeprecatedResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -440653,19 +440337,6 @@ func (c *ClientWithResponses) RevokeCertificateWithResponse(ctx context.Context,
 	return ParseRevokeCertificateResponse(rsp)
 }
 
-// GetCrlDeprecatedWithResponse performs a GET /api/v1/cert-manager/crl/{crlId} (the `GetCrlDeprecated` operationId) request.
-//
-// Get CRL in DER format (deprecated).
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetCrlDeprecatedWithResponse(ctx context.Context, crlId string, reqEditors ...RequestEditorFn) (*GetCrlDeprecatedResponse, error) {
-	rsp, err := c.GetCrlDeprecated(ctx, crlId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetCrlDeprecatedResponse(rsp)
-}
-
 // GetCrlDerWithResponse performs a GET /api/v1/cert-manager/crl/{crlId}/der (the `GetCrlDer` operationId) request.
 //
 // Get CRL in DER format.
@@ -480277,106 +479948,6 @@ func ParseRevokeCertificateResponse(rsp *http.Response) (*RevokeCertificateRespo
 			Message    string                                         `json:"message"`
 			ReqId      string                                         `json:"reqId"`
 			StatusCode RevokeCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetCrlDeprecatedResponse parses an HTTP response from a GetCrlDeprecatedWithResponse call
-func ParseGetCrlDeprecatedResponse(rsp *http.Response) (*GetCrlDeprecatedResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetCrlDeprecatedResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest interface{}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode GetCrlDeprecated500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

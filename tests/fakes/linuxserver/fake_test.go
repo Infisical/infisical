@@ -90,6 +90,24 @@ func TestFake_OpenModeFromAttributes(t *testing.T) {
 	require.Equal(t, uint32(0o600), f.host.Files["/srv/a.key"].Mode)
 }
 
+func TestFake_OversizedWriteStoresNothing(t *testing.T) {
+	f := &fs{host: Service.New(fakenet.Emitter{}).(*Server)}
+	require.NoError(t, f.host.Seed([]byte(`{"directories":["/srv"]}`)))
+	f.host.put("/srv/existing", []byte("original"), 0o644)
+
+	for _, p := range []string{"/srv/existing", "/srv/new"} {
+		w, err := f.Filewrite(&sftp.Request{Filepath: p})
+		require.NoError(t, err)
+		_, err = w.WriteAt([]byte("prefix"), 0)
+		require.NoError(t, err)
+		_, err = w.WriteAt([]byte("x"), maxUpload)
+		require.Error(t, err)
+		require.Error(t, w.(io.Closer).Close())
+	}
+	require.Equal(t, "original", f.host.Files["/srv/existing"].Content)
+	require.NotContains(t, f.host.Files, "/srv/new")
+}
+
 func TestFake_WriteKeepsOpenMode(t *testing.T) {
 	host := Service.New(fakenet.Emitter{}).(*Server)
 	require.NoError(t, host.Seed([]byte(`{"directories":["/srv"]}`)))

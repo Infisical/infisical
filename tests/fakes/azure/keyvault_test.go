@@ -106,7 +106,7 @@ func TestKeyVaultFake_Certificates(t *testing.T) {
 }
 
 func TestKeyVaultFake_List(t *testing.T) {
-	t.Run("should return the remaining certificates through nextLink", func(t *testing.T) {
+	t.Run("should return the remaining certificates through nextLink, even when the client asks for a larger page", func(t *testing.T) {
 		// Setup
 		fakes, _ := newVaults(t, "client-d")
 		for _, name := range []string{"a", "b", "c"} {
@@ -131,7 +131,7 @@ func TestKeyVaultFake_List(t *testing.T) {
 			}
 			return names, page.NextLink
 		}
-		first, next := listPage("/certificates?api-version=7.4")
+		first, next := listPage("/certificates?api-version=7.4&maxresults=25")
 		require.NotNil(t, next)
 		nextURL, err := url.Parse(*next)
 		require.NoError(t, err)

@@ -12,7 +12,6 @@ export const registerCaCrlRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getCrlDeprecated",
       description: "Get CRL in DER format (deprecated)",
       params: z.object({
         crlId: z.string().trim().describe(CA_CRLS.GET.crlId)
