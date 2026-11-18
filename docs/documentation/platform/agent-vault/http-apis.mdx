@@ -157,7 +157,7 @@ If you don't name the port, the host will only match [port `443`](#default-port)
 The proxy sends the credential to a plaintext host unencrypted, so anyone who can read traffic between the proxy and the API can read the credential. Only use plaintext hosts on a network you trust.
 </Warning>
 
-The proxy refuses plain HTTP requests to a service with an [OAuth](#oauth) credential, so an OAuth service needs a host that serves HTTPS.
+The proxy refuses to send an [OAuth](#oauth) token over plain HTTP, so an OAuth service needs a host that serves HTTPS.
 
 ### Wildcards
 

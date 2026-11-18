@@ -7,7 +7,7 @@ An OAuth variable is a [global variable](/documentation/platform/agent-vault/var
 
 Infisical stores the tokens the provider returns and renews the access token before it expires. The [proxy](/documentation/platform/agent-vault/proxies) sends the access token to the service's hosts as `Authorization: Bearer <access-token>`, and the agent never receives any token.
 
-Use an OAuth variable when several services need the same sign-in, or when an HTTP API needs OAuth. If your own app needs a sign-in for each of its users, [create the variables through the API](/documentation/platform/agent-vault/oauth-variables-api).
+Use an OAuth variable when several services need the same sign-in, or when an HTTP API needs OAuth. You can create OAuth variables in the Infisical dashboard or [through the API](#manage-oauth-variables-through-the-api).
 
 <Info>
   Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update OAuth variables.
@@ -45,8 +45,6 @@ Use an OAuth variable when several services need the same sign-in, or when an HT
 <Warning>
   Every session that uses the variable calls the provider as the account you signed in with. Sign in with an account that has only the access your agents need.
 </Warning>
-
-To create another variable for the same provider, such as one for a second account, open an existing variable's actions menu and select **Duplicate**. The copy gets the provider settings but no sign-in and no client secret. If the provider uses your own OAuth app, enter the **Client Secret** again, then authorize the copy with the other account.
 
 ## Use an OAuth variable in a service
 
@@ -100,7 +98,7 @@ If a variable shows **Needs Reauthorization** or **Missing Scopes**, sign in aga
 
 The services that use the variable get the new token within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
 
-If the variable has a redirect URI of your own app, the actions menu doesn't show **Reauthorize**. [Send the user through your app's sign-in again](/documentation/platform/agent-vault/oauth-variables-api#reconnect-an-account).
+If the variable has a redirect URI of your own app, the actions menu doesn't show **Reauthorize**. [Start a new sign-in through the API](#reconnect-a-variable) instead.
 
 ## Edits that disconnect a variable
 
@@ -114,6 +112,115 @@ The tokens belong to the provider and OAuth app the variable signed in with. If 
 
 Changing the scopes keeps the current sign-in, and the next sign-in asks for the new scopes.
 
+## Manage OAuth variables through the API
+
+Your backend can create OAuth variables and send people through the provider's sign-in, for example one variable for each user of your app. The person signs in on your OAuth app's consent screen and comes back to a page in your app.
+
+You need:
+
+- A machine identity with the **Admin** role in the Agent Vault project, and an access token for it (follow [Step 1](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and [Step 2](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) of Create sessions with the API, and choose **Admin** in **Role**)
+- An OAuth app with the provider, whose redirect URI points at a page of your app, such as `https://app.example.com/oauth/google/callback`
+
+<Warning>
+  Anyone with the **Admin** role in the project can make a service send a variable's access token to any host. Give the **Admin** role only to the people and machine identities you trust with every account that a variable signs in to.
+</Warning>
+
+### Create a variable and start the sign-in
+
+Call the [Create variable](/api-reference/endpoints/agent-vault-variables/create) endpoint with the provider's settings and `signIn`:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "<project-id>",
+    "scope": "global",
+    "key": "GDRIVE_TEAM",
+    "type": "oauth",
+    "oauth": {
+      "authorizationEndpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenEndpoint": "https://oauth2.googleapis.com/token",
+      "clientId": "<client-id>",
+      "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+      "redirectUri": "https://app.example.com/oauth/google/callback"
+    },
+    "signIn": {"clientSecret": "<client-secret>"}
+  }'
+```
+
+- `redirectUri` is the page in your app where the provider sends the person back (a machine identity must set it)
+- `signIn.clientSecret` is your OAuth app's client secret, which Infisical never returns
+
+Save the variable's ID from `variable.id` in your own records, then redirect the person's browser to `signIn.authorization.authorizeUrl`. The link works for 10 minutes, so create it when the person asks to connect.
+
+If the provider lets apps register themselves as OAuth clients, as many MCP servers do, you can send `serverUrl` set to the provider's URL instead of the endpoints and `clientId`. Infisical then finds the endpoints and registers a client for each sign-in. If `signIn.authorization` in the response is `null`, Infisical couldn't start the sign-in:
+
+- `registrationRequired` is `true` if the provider doesn't let apps register (set your own OAuth app's `clientId`)
+- `manualSetupRequired` is `true` if Infisical couldn't find endpoints it can trust (check the endpoints in `prefill`, and set them yourself)
+
+### Complete the sign-in from your callback
+
+After the person approves access, the provider redirects them to your `redirectUri` with `code`, `state`, and sometimes `iss` in the query string. Your callback must:
+
+1. Require the person to be logged in to your app
+2. Take the variable ID from your own records for that person, never from the request
+3. Send the query string's values to the [Complete variable sign-in](/api-reference/endpoints/agent-vault-variables/complete-sign-in) endpoint, with the same machine identity that started the sign-in
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables/<variable-id>/authorizations/complete \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"state": "<state>", "code": "<code>", "iss": "<iss>"}'
+```
+
+Forward `iss` exactly as the provider sent it, and leave it out if the redirect had none. If the redirect carried `error` and `error_description` instead, send `{"state": "<state>", "error": "<error>", "errorDescription": "<error_description>"}`.
+
+The response has the variable with `oauth.status` set to `connected`. If the endpoint returns a `400` or `404` response, the sign-in failed or expired, so start a new one.
+
+### Use the variable in a session
+
+Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint, and add an [inline service](/documentation/platform/agent-vault/inline-services#use-oauth-in-an-inline-service) to `services` whose credential names the variable:
+
+```json
+{
+  "type": "http",
+  "name": "gdrive",
+  "hostPattern": "www.googleapis.com",
+  "credential": {"type": "oauth", "variable": "GDRIVE_TEAM"}
+}
+```
+
+### Reconnect a variable
+
+To check a variable's status, call the [List variables](/api-reference/endpoints/agent-vault-variables/list) endpoint with the variable's key in `keys` and `scope` set to `global`. If `oauth.status` is `needs-reauthorization` or `needs-additional-scopes`, send the person through the sign-in again:
+
+1. Call the [Start variable sign-in](/api-reference/endpoints/agent-vault-variables/start-sign-in) endpoint
+2. Redirect the person to `authorization.authorizeUrl` from the response
+3. [Complete the sign-in from your callback](#complete-the-sign-in-from-your-callback)
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables/<variable-id>/authorizations \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"clientSecret": "<client-secret>"}'
+```
+
+### Import tokens you already have
+
+If your app already holds tokens for an account, store them instead of sending the person through the sign-in. Send `tokens` instead of `signIn` to the [Create variable](/api-reference/endpoints/agent-vault-variables/create) endpoint, or send `tokens` to the [Update variable](/api-reference/endpoints/agent-vault-variables/update) endpoint to replace an existing variable's tokens:
+
+```json
+"tokens": {
+  "accessToken": "<access-token>",
+  "refreshToken": "<refresh-token>",
+  "expiresAt": "2026-11-18T11:00:00Z",
+  "clientSecret": "<client-secret>"
+}
+```
+
+The variable needs `authorizationEndpoint`, `tokenEndpoint`, and `clientId` set, as in the [Create variable example](#create-a-variable-and-start-the-sign-in). Without a `refreshToken`, the variable stops working when the access token expires.
+
 ## Limits
 
 - An OAuth variable counts toward the project's limit of 500 global variables
@@ -124,8 +231,8 @@ Changing the scopes keeps the current sign-in, and the next sign-in asks for the
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Connect your users' accounts" icon="users" href="/documentation/platform/agent-vault/oauth-variables-api">
-    Create an OAuth variable for each user of your own app through the API.
+  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
+    Create a session for each agent run from your own code.
   </Card>
   <Card title="Inline services" icon="plug" href="/documentation/platform/agent-vault/inline-services">
     Send a service that uses an OAuth variable with a session.

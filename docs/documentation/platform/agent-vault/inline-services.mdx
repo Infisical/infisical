@@ -62,10 +62,10 @@ An HTTP API or MCP server sent with a session can use OAuth in one of two ways. 
 To use a sign-in stored in Infisical, name an [OAuth variable](/documentation/platform/agent-vault/oauth-variables) of the project in `variable`:
 
 ```json
-"credential": {"type": "oauth", "variable": "GDRIVE_U123"}
+"credential": {"type": "oauth", "variable": "GDRIVE_TEAM"}
 ```
 
-This is how an app [runs agents as each of its users' accounts](/documentation/platform/agent-vault/oauth-variables-api). If someone deletes the variable while the session is live, the proxy refuses the agent's requests to the service.
+Your backend can also [create OAuth variables through the API](/documentation/platform/agent-vault/oauth-variables#manage-oauth-variables-through-the-api). If someone deletes the variable while the session is live, the proxy refuses the agent's requests to the service.
 
 To use tokens your code already has, send them with the provider's endpoints, your OAuth app's client ID, and the scopes the tokens were granted:
 

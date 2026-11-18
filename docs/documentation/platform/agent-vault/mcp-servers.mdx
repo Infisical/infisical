@@ -260,8 +260,6 @@ To allow or refuse each call with your own rules, such as rules based on the too
       <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
     </Frame>
 
-    **The sign-in used by this service isn't connected in Infisical Agent Vault:** The service uses an [OAuth variable](#oauth-variable) that nobody has authorized yet, or an edit disconnected it. [Authorize the variable](/documentation/platform/agent-vault/oauth-variables#create-an-oauth-variable).
-
     **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
 
     **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
@@ -269,6 +267,9 @@ To allow or refuse each call with your own rules, such as rules based on the too
     **The service rejected your credential:** The server rejected the token you set for a [member-provided](#leave-the-credential-to-each-member) service. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service.
 
     **Reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
+  </Accordion>
+  <Accordion title="The agent gets a 403 response that says the sign-in isn't connected">
+    The proxy refuses requests to the service with a `403` response and the `policy_blocked` error code, and the message says the sign-in used by the service isn't connected in Infisical Agent Vault. The service uses an [OAuth variable](#oauth-variable) that nobody has authorized yet, or an edit disconnected it. [Authorize the variable](/documentation/platform/agent-vault/oauth-variables#create-an-oauth-variable).
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:
