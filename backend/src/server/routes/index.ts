@@ -1205,7 +1205,8 @@ export const registerRoutes = async (
     projectDAL,
     groupDAL,
     emailDomainDAL,
-    slackIntegrationDAL
+    slackIntegrationDAL,
+    permissionService
   });
   const alertService = alertServiceFactory({
     alertDAL,

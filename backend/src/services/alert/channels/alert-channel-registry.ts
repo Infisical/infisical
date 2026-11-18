@@ -13,6 +13,7 @@ import { PAGERDUTY_MAX_INCIDENTS_PER_RUN, sendPagerDutyNotification } from "./al
 import {
   assertSlackAppConfigInScope,
   getSlackAppWorkflowIntegrationId,
+  SLACK_APP_REQUIRED_ORG_PERMISSION,
   sendSlackAppNotification
 } from "./alert-channel-slack-app-fns";
 import { sendSlackNotification } from "./alert-channel-slack-fns";
@@ -40,6 +41,7 @@ export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefin
     configSchema: SlackAppChannelConfigSchema,
     assertConfigInScope: assertSlackAppConfigInScope,
     getWorkflowIntegrationId: getSlackAppWorkflowIntegrationId,
+    requiredOrgPermission: SLACK_APP_REQUIRED_ORG_PERMISSION,
     send: sendSlackAppNotification
   },
   [AlertChannelType.WEBHOOK]: {

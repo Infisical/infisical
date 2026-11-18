@@ -21,7 +21,10 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
   alertDAL: Pick<TAlertDALFactory, "findByChannelId" | "findActiveById">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
+  alertChannelService: Pick<
+    TAlertChannelServiceFactory,
+    "validateRecipients" | "assertRecipientTypesAllowed" | "assertActorMayUseConfig"
+  >;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -92,7 +95,13 @@ export const alertChannelTestServiceFactory = ({
     const incoming = dto.config ?? {};
 
     if (!dto.channelId) {
-      return parseChannelConfig(definition, dto.channelType, incoming);
+      const config = parseChannelConfig(definition, dto.channelType, incoming);
+      await alertChannelService.assertActorMayUseConfig({
+        actor: toAlertActor(dto),
+        channelType: dto.channelType,
+        config
+      });
+      return config;
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -114,7 +123,14 @@ export const alertChannelTestServiceFactory = ({
     const stored = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
-    return parseChannelConfig(definition, dto.channelType, merged);
+    const config = parseChannelConfig(definition, dto.channelType, merged);
+    await alertChannelService.assertActorMayUseConfig({
+      actor: toAlertActor(dto),
+      channelType: dto.channelType,
+      config,
+      existingConfig: stored
+    });
+    return config;
   };
 
   const $resolveRecipients = async (

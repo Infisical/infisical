@@ -1,5 +1,10 @@
 import { ErrorCode, WebClient } from "@slack/web-api";
 
+import {
+  OrgPermissionActions,
+  OrgPermissionSet,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -17,6 +22,12 @@ import { buildSlackPayload } from "./alert-channel-slack-fns";
 
 const SLACK_INTEGRATION_MISSING_MESSAGE =
   "The Slack integration this channel posts through no longer exists. Edit the alert and select another Slack integration.";
+
+export const SLACK_APP_REQUIRED_ORG_PERMISSION = {
+  permission: [OrgPermissionActions.Read, OrgPermissionSubjects.Settings] as OrgPermissionSet,
+  message:
+    "Posting through a Slack integration needs permission to read organization settings. Ask an organization admin, or use a Slack webhook URL instead."
+};
 
 const SLACK_AUTH_ERRORS = ["invalid_auth", "not_authed", "token_revoked", "account_inactive", "token_expired"];
 

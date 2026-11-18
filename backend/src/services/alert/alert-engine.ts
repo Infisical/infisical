@@ -186,7 +186,7 @@ export const alertEngineFactory = ({
     });
 
     const errors = dispatched
-      .filter((result) => !result.success && result.error)
+      .filter((result) => result.error)
       .map((result) => `${result.channelType}: ${result.error}`);
     const anyDelivered = dispatched.some((result) => result.success);
     let status = AlertRunStatus.SUCCESS;

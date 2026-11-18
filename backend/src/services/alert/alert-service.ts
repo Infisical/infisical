@@ -313,6 +313,7 @@ export const alertServiceFactory = ({
           orgId: dto.actorOrgId,
           projectId: projectId ?? null,
           recipientScope,
+          actor: toAlertActor(dto),
           createdByActorId: dto.actorId,
           createdByActorType: dto.actor
         },
@@ -416,7 +417,8 @@ export const alertServiceFactory = ({
               config: channelInput.config,
               enabled: channelInput.enabled,
               recipients: channelInput.recipients,
-              recipientScope
+              recipientScope,
+              actor: toAlertActor(dto)
             },
             existingById.get(channelInput.id) as TAlertChannels,
             cipher
@@ -434,6 +436,7 @@ export const alertServiceFactory = ({
               orgId: alert.orgId,
               projectId: alert.projectId,
               recipientScope,
+              actor: toAlertActor(dto),
               createdByActorId: alert.createdByActorId ?? null,
               createdByActorType: alert.createdByActorType
             },
@@ -850,6 +853,7 @@ export const alertServiceFactory = ({
             name: channel.name,
             channelType: channel.channelType,
             encryptedConfig: channel.encryptedConfig,
+            workflowIntegrationId: channel.workflowIntegrationId,
             enabled: channel.enabled,
             orgId: channel.orgId,
             projectId: channel.projectId,

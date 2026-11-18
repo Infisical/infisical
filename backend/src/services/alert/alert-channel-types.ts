@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { OrgPermissionSet } from "@app/ee/services/permission/org-permission";
 import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -99,6 +100,7 @@ export type TAlertChannelDefinition = {
     deps: TAlertChannelScopeDeps
   ) => Promise<void>;
   getWorkflowIntegrationId?: (config: Record<string, unknown>) => string;
+  requiredOrgPermission?: { permission: OrgPermissionSet; message: string };
   send: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>;
 };
 

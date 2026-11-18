@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+
 import { alertChannelServiceFactory, TAlertChannelServiceFactoryDep } from "./alert-channel-service";
 import { AlertChannelType } from "./alert-channel-types";
 import { AlertPrincipalType } from "./alert-types";
@@ -13,6 +15,12 @@ const tx = {} as Knex;
 const CREATOR = { createdByActorId: "11111111-1111-1111-1111-111111111111", createdByActorType: "user" };
 const RECIPIENT_SCOPE = { projectId: null, allowEmailAddresses: true };
 const CHANNEL_INPUT = { ...CREATOR, recipientScope: RECIPIENT_SCOPE };
+const ACTOR = {
+  actor: ActorType.USER,
+  actorId: CREATOR.createdByActorId,
+  actorAuthMethod: AuthMethod.EMAIL,
+  actorOrgId: "org-1"
+};
 
 type TRow = {
   id: string;
@@ -36,6 +44,7 @@ const buildService = (opts?: {
   seed?: TRow[];
   projectUserIds?: string[];
   slackIntegrations?: Array<{ id: string; orgId: string }>;
+  canReadSettings?: boolean;
 }) => {
   const slackLookups: string[] = [];
   const scopeCheckTxs: unknown[] = [];
@@ -109,6 +118,9 @@ const buildService = (opts?: {
         const found = (opts?.slackIntegrations ?? []).find((integration) => integration.id === id);
         return found ? { ...found, integration: "slack" } : undefined;
       }
+    },
+    permissionService: {
+      getOrgPermission: async () => ({ permission: { cannot: () => opts?.canReadSettings === false } })
     }
   } as unknown as TAlertChannelServiceFactoryDep);
 
@@ -120,18 +132,22 @@ type TService = ReturnType<typeof buildService>["service"];
 // Prepares then applies in one transaction, the way the alert service writes a channel.
 const createChannel = async (
   service: TService,
-  input: Parameters<TService["prepareChannelCreate"]>[0],
+  input: Omit<Parameters<TService["prepareChannelCreate"]>[0], "actor">,
   enc: Parameters<TService["prepareChannelCreate"]>[1],
   trx: Knex
-) => service.applyChannelCreate(await service.prepareChannelCreate(input, enc, trx), trx);
+) => service.applyChannelCreate(await service.prepareChannelCreate({ actor: ACTOR, ...input }, enc, trx), trx);
 
 const updateChannel = async (
   service: TService,
-  input: Parameters<TService["prepareChannelUpdate"]>[0],
+  input: Omit<Parameters<TService["prepareChannelUpdate"]>[0], "actor">,
   channel: Parameters<TService["prepareChannelUpdate"]>[1],
   channelCipher: Parameters<TService["prepareChannelUpdate"]>[2],
   trx: Knex
-) => service.applyChannelUpdate(await service.prepareChannelUpdate(input, channel, channelCipher, trx), trx);
+) =>
+  service.applyChannelUpdate(
+    await service.prepareChannelUpdate({ actor: ACTOR, ...input }, channel, channelCipher, trx),
+    trx
+  );
 
 const seedRow = (
   over: Partial<TRow> & { id: string; channelType: AlertChannelType; encryptedConfig: Buffer }
@@ -707,6 +723,73 @@ describe("alert channel service", () => {
       expect((store.get("ch-1") as TRow & { workflowIntegrationId?: string }).workflowIntegrationId).toBe(
         SLACK_INTEGRATION_B
       );
+    });
+
+    test("needs permission to read org settings to post through a Slack integration", async () => {
+      const { service } = buildService({
+        slackIntegrations: [{ id: SLACK_INTEGRATION_A, orgId: "org-1" }],
+        canReadSettings: false
+      });
+      await expect(
+        createChannel(
+          service,
+          {
+            name: "Slack",
+            channelType: AlertChannelType.SLACK_APP,
+            config: { workflowIntegrationId: SLACK_INTEGRATION_A, channels: SLACK_CHANNELS },
+            orgId: "org-1",
+            ...CHANNEL_INPUT
+          },
+          encryptor as never,
+          tx
+        )
+      ).rejects.toThrow("needs permission to read organization settings");
+    });
+
+    test("lets a user without that permission rename the channel but not change its Slack channels", async () => {
+      const seeded = () =>
+        seedRow({
+          id: "ch-1",
+          channelType: AlertChannelType.SLACK_APP,
+          encryptedConfig: encConfig({ workflowIntegrationId: SLACK_INTEGRATION_A, channels: SLACK_CHANNELS })
+        });
+      const { service, store } = buildService({ seed: [seeded()], canReadSettings: false });
+      const update = (config: Record<string, unknown>) =>
+        updateChannel(
+          service,
+          { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", name: "Renamed", config },
+          store.get("ch-1") as never,
+          cipher,
+          tx
+        );
+
+      await update({ workflowIntegrationId: SLACK_INTEGRATION_A, channels: SLACK_CHANNELS });
+      expect(store.get("ch-1")!.name).toBe("Renamed");
+
+      await expect(
+        update({
+          workflowIntegrationId: SLACK_INTEGRATION_A,
+          channels: [...SLACK_CHANNELS, { id: "C0999ZZZZ", name: "general" }]
+        })
+      ).rejects.toThrow("needs permission to read organization settings");
+    });
+
+    test("does not need that permission for a Slack webhook channel", async () => {
+      const { service } = buildService({ canReadSettings: false });
+      await expect(
+        createChannel(
+          service,
+          {
+            name: "Slack",
+            channelType: AlertChannelType.SLACK,
+            config: { webhookUrl: "https://hooks.slack.com/services/T000/B000/XXXX" },
+            orgId: "org-1",
+            ...CHANNEL_INPUT
+          },
+          encryptor as never,
+          tx
+        )
+      ).resolves.toBeDefined();
     });
   });
 });

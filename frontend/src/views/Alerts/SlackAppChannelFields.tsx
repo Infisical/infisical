@@ -32,8 +32,12 @@ type Props = {
 };
 
 const SlackChannelsWithoutAccess = ({ index }: Props) => {
-  const { control } = useFormContext<TChannelsForm>();
+  const {
+    control,
+    formState: { errors }
+  } = useFormContext<TChannelsForm>();
   const savedChannels = useWatch({ control, name: `channels.${index}.slackChannels` }) ?? [];
+  const channelErrors = errors.channels?.[index];
 
   return (
     <Field>
@@ -48,6 +52,12 @@ const SlackChannelsWithoutAccess = ({ index }: Props) => {
           Picking a Slack integration and channels needs permission to read organization settings.
           Ask an organization admin, or select Webhook URL instead.
         </FieldDescription>
+        <FieldError
+          errors={[
+            channelErrors?.workflowIntegrationId,
+            channelErrors?.slackChannels as { message?: string } | undefined
+          ]}
+        />
       </FieldContent>
     </Field>
   );
