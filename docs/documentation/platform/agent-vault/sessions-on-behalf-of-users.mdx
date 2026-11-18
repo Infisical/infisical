@@ -160,7 +160,7 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an admin of the project, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-Each service you name in `services` also has to be in a bundle that both of them can use.
+Each service you name in `services` also has to be in a bundle that both of them can use, unless both are admins of the project.
 
 If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
 
