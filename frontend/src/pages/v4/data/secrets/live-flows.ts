@@ -19,7 +19,8 @@ import {
 import {
   useCreateSecretImport,
   useDeleteSecretImport,
-  useResyncSecretReplication
+  useResyncSecretReplication,
+  useUpdateSecretImport
 } from "@app/hooks/api/secretImports/mutation";
 import {
   useCreateCommit,
@@ -70,6 +71,7 @@ export const secretsFlowsLive: SecretsFlowsAdapter = {
   useCreateCommit: withMutationMeta(useCreateCommit),
   useDeleteEnvironment: useDeleteWsEnvironment,
   useCreateSecretImport,
+  useUpdateSecretImport,
   useDeleteSecretImport,
   useResyncSecretImport: useResyncSecretReplication
 };

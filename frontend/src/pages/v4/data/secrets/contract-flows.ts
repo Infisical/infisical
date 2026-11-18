@@ -26,6 +26,7 @@ import type {
 import type {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
+  TUpdateSecretImportDTO,
   TResyncSecretReplicationDTO
 } from "@app/hooks/api/secretImports/types";
 import type {
@@ -113,6 +114,7 @@ export type SecretsFlowsAdapter = SecretsManagedAdapter &
     useCreateCommit: V4Mutation<TCreateCommitDTO, TCreateCommitResponse>;
     useDeleteEnvironment: V4Mutation<DeleteEnvironmentDTO>;
     useCreateSecretImport: V4Mutation<TCreateSecretImportDTO>;
+    useUpdateSecretImport: V4Mutation<TUpdateSecretImportDTO>;
     useDeleteSecretImport: V4Mutation<TDeleteSecretImportDTO>;
     useResyncSecretImport: V4Mutation<TResyncSecretReplicationDTO>;
   };

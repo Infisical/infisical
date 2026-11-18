@@ -228,6 +228,34 @@ const secretImport = (
   ...extra
 });
 
+const withPositions = (imports: DemoImport[]) => {
+  const last = new Map<string, number>();
+  return imports
+    .flatMap((entry): DemoImport[] =>
+      entry.isReplication
+        ? [
+            entry,
+            {
+              ...entry,
+              id: `${entry.id}:reserved`,
+              importPath: `${entry.path === "/" ? "" : entry.path}/__reserve_replication_${entry.id}`,
+              importEnv: envOf(entry.environment),
+              isReplication: false,
+              isReplicationSuccess: undefined,
+              replicationStatus: undefined,
+              lastReplicated: undefined,
+              isReserved: true
+            }
+          ]
+        : [entry]
+    )
+    .map((entry) => {
+      const position = (last.get(entry.folderId) ?? 0) + 1;
+      last.set(entry.folderId, position);
+      return { ...entry, position: String(position) };
+    });
+};
+
 const dynamicSecret = (
   path: string,
   environment: string,
@@ -603,7 +631,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       ...folders("web-dashboard", "/", "shared", ["prod"]),
       ...folders("web-dashboard", "/", "flags", ["staging"])
     ],
-    imports: [
+    imports: withPositions([
       secretImport("/", "dev", { environment: "dev", path: "/workers" }),
       secretImport("/", "dev", { environment: "staging", path: "/api" }),
       secretImport("/", "staging", { environment: "staging", path: "/workers" }),
@@ -635,6 +663,8 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       ),
       secretImport("/api", "dev", { environment: "dev", path: "/workers" }),
       secretImport("/api", "prod", { environment: "staging", path: "/api/v1" }),
+      secretImport("/api", "prod", { environment: "staging", path: "/workers" }),
+      secretImport("/api", "prod", { environment: "staging", path: "/api" }),
       ...many
         .filter((environment) => environment !== "prod")
         .map((environment) =>
@@ -655,8 +685,59 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
             {},
             "web-dashboard"
           )
-      )
-    ],
+      ),
+      ...(large
+        ? [
+            {
+              environment: "prod-apac",
+              path: "/platform/shared/observability/opentelemetry-collector"
+            },
+            {
+              environment: "prod-eu",
+              path: "/services/checkout/payment-providers/adyen/webhook-signing"
+            },
+            {
+              environment: "perf",
+              path: "/load-testing/k6-scenarios/regional-traffic-profiles",
+              extra: {
+                isReplication: true,
+                isReplicationSuccess: true,
+                replicationStatus: "succeeded",
+                lastReplicated: "2026-11-17T21:40:00Z"
+              }
+            },
+            { environment: "staging", path: deepIntegrationPath },
+            {
+              environment: "production-eu-central-regulated-workloads",
+              path: "/identity/oidc/client-credentials/partner-portal",
+              extra: {
+                importEnv: {
+                  id: "env-prod-euc",
+                  name: "Production EU Central (regulated workloads)",
+                  slug: "production-eu-central-regulated-workloads",
+                  projectId: "platform-core"
+                },
+                sourceProjectName: "platform-core"
+              }
+            },
+            { environment: "canary", path: "/feature-flags/experiments/2026-q4-pricing-page" },
+            { environment: "sandbox", path: "/third-party/sandbox-credentials/stripe-connect" },
+            { environment: "uat", path: "/release-candidates/web-dashboard/v4-cipher-migration" },
+            { environment: "qa", path: "/test-fixtures/end-to-end/playwright-shared-accounts" },
+            { environment: "preview", path: "/preview-deployments/pull-requests/shared-runtime" }
+          ].map(
+            ({
+              environment,
+              path,
+              extra
+            }: {
+              environment: string;
+              path: string;
+              extra?: Partial<TSecretImport>;
+            }) => secretImport("/", "dev", { environment, path }, extra, "web-dashboard")
+          )
+        : [])
+    ]),
     dynamicSecrets,
     leases: seedLeases(dynamicSecrets),
     secretSyncs: seedSecretSyncs(envOf),

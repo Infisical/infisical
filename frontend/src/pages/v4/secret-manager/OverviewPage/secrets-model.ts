@@ -57,6 +57,7 @@ export type Resource =
       sourceProjectName?: string;
       revoked: boolean;
       replicated: boolean;
+      position?: number;
       replicationStatus?: "succeeded" | "failed";
       replicationDetails?: string;
       lastReplicated?: string;

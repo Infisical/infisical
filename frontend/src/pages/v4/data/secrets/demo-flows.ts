@@ -25,9 +25,13 @@ import {
   useStore,
   within
 } from "./demo-store";
-import type { DemoSecret, DemoVersion, SecretsFixtures } from "./fixtures";
+import type { DemoImport, DemoSecret, DemoVersion, SecretsFixtures } from "./fixtures";
 
 type Scoped = { projectId: string; environment: string; path: string };
+
+const REPLICATION_FOLDER_PREFIX = "__reserve_replication_";
+const reservedPathOf = (entry: { id: string; path: string }) =>
+  childPath(entry.path, `${REPLICATION_FOLDER_PREFIX}${entry.id}`);
 
 const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {
   const history = store.get().versionHistory[secret.id] ?? [];
@@ -661,36 +665,124 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
   useCreateSecretImport: demoMutation((store, dto) => {
     const project = store.get().projects.find((entry) => entry.id === dto.projectId);
     const source = project?.environments.find((entry) => entry.slug === dto.import.environment);
-    if (!source) throw new Error("Source environment not found");
+    const destination = project?.environments.find((entry) => entry.slug === dto.environment);
+    if (!source || !destination) throw new Error("Source environment not found");
     const timestamp = now();
+    const id = crypto.randomUUID();
+    const folderId = `${dto.projectId}:${dto.environment}:${dto.path ?? "/"}`;
+    store.update((state) => {
+      const last = Math.max(
+        0,
+        ...state.imports
+          .filter((entry) => entry.folderId === folderId)
+          .map((entry) => Number(entry.position))
+      );
+      const reserved = dto.isReplication
+        ? [
+            {
+              id: crypto.randomUUID(),
+              folderId,
+              importPath: reservedPathOf({ id, path: dto.path ?? "/" }),
+              importEnv: destination,
+              position: String(last + 2),
+              createdAt: timestamp,
+              updatedAt: timestamp,
+              isReserved: true,
+              projectId: dto.projectId,
+              environment: dto.environment,
+              path: dto.path ?? "/"
+            }
+          ]
+        : [];
+      return {
+        ...state,
+        imports: [
+          ...state.imports,
+          {
+            id,
+            folderId,
+            importPath: dto.import.path,
+            importEnv: source,
+            position: String(last + 1),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            isReplication: dto.isReplication,
+            isReplicationSuccess: dto.isReplication ? true : undefined,
+            replicationStatus: dto.isReplication ? "succeeded" : undefined,
+            lastReplicated: dto.isReplication ? timestamp : undefined,
+            projectId: dto.projectId,
+            environment: dto.environment,
+            path: dto.path ?? "/"
+          },
+          ...reserved
+        ]
+      };
+    });
+    return {};
+  }),
+  useUpdateSecretImport: demoMutation((store, dto) => {
+    const target = dto.import.position;
+    const moving = store.get().imports.find((entry) => entry.id === dto.id);
+    if (!moving) throw new Error("Secret import not found");
+    if (!target) return {};
+    const from = Number(moving.position);
+    const folder = store
+      .get()
+      .imports.filter((entry) => entry.folderId === moving.folderId)
+      .sort((a, b) => Number(a.position) - Number(b.position));
+    const positions = new Map<string, number>([[moving.id, target]]);
+    if (moving.isReplication) {
+      const reserved = folder.find(
+        (entry) => entry.isReserved && entry.importPath === reservedPathOf(moving)
+      );
+      const others = folder.filter((entry) => entry.id !== moving.id && entry.id !== reserved?.id);
+      const displaced = others.findIndex((entry) => Number(entry.position) === target);
+      const insert = displaced === -1 ? others.length : displaced + (target > from ? 1 : 0);
+      others.forEach((entry, index) =>
+        positions.set(entry.id, index + 1 + (index >= insert ? 2 : 0))
+      );
+      positions.set(moving.id, insert + 1);
+      if (reserved) positions.set(reserved.id, insert + 2);
+    } else {
+      folder.forEach((entry) => {
+        const position = Number(entry.position);
+        if (entry.id === moving.id) return;
+        if (target > from && position > from && position <= target)
+          positions.set(entry.id, position - 1);
+        if (target < from && position >= target && position < from)
+          positions.set(entry.id, position + 1);
+      });
+    }
     store.update((state) => ({
       ...state,
-      imports: [
-        ...state.imports,
-        {
-          id: crypto.randomUUID(),
-          folderId: `${dto.projectId}:${dto.environment}:${dto.path ?? "/"}`,
-          importPath: dto.import.path,
-          importEnv: source,
-          position: String(state.imports.length + 1),
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          isReplication: dto.isReplication,
-          isReplicationSuccess: dto.isReplication ? true : undefined,
-          replicationStatus: dto.isReplication ? "succeeded" : undefined,
-          lastReplicated: dto.isReplication ? timestamp : undefined,
-          projectId: dto.projectId,
-          environment: dto.environment,
-          path: dto.path ?? "/"
-        }
-      ]
+      imports: state.imports.map((entry) => {
+        const position = positions.get(entry.id);
+        return position === undefined ? entry : { ...entry, position: String(position) };
+      })
     }));
     return {};
   }),
   useDeleteSecretImport: demoMutation((store, dto) => {
+    const removing = store.get().imports.find((entry) => entry.id === dto.id);
+    if (!removing) return {};
+    const isPair = (entry: DemoImport) =>
+      entry.id === removing.id ||
+      Boolean(
+        removing.isReplication &&
+        entry.isReserved &&
+        entry.folderId === removing.folderId &&
+        entry.importPath === reservedPathOf(removing)
+      );
+    const shift = removing.isReplication ? 2 : 1;
     store.update((state) => ({
       ...state,
-      imports: state.imports.filter((entry) => entry.id !== dto.id)
+      imports: state.imports
+        .filter((entry) => !isPair(entry))
+        .map((entry) =>
+          entry.folderId === removing.folderId && Number(entry.position) > Number(removing.position)
+            ? { ...entry, position: String(Number(entry.position) - shift) }
+            : entry
+        )
     }));
     return {};
   }),

@@ -31,6 +31,7 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
+  ArrowDownUpIcon,
   BanIcon,
   EditIcon,
   FileKeyIcon,
@@ -1042,10 +1043,19 @@ export function ImportRow({
     (entry.replicated ? undefined : "Only replicated imports resync");
   const deleteBlock = (entry: Of<"import">) =>
     importGate(entry, ProjectPermissionActions.Delete, "remove this secret import");
+  const reorderBlock = importGate(first, ProjectPermissionActions.Edit, "reorder secret imports");
   const rowActions: RowActionProps = {
     label: `secret import ${first.source.path}`,
     menu: ctx.single ? (
       <>
+        <DropdownMenuItem
+          disabled={Boolean(reorderBlock)}
+          description={reorderBlock}
+          onSelect={() => ctx.onAction({ kind: "import", action: "reorder", entry: first })}
+        >
+          <Icon icon={ArrowDownUpIcon} />
+          Reorder imports
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={Boolean(resyncBlock(first))}
           description={resyncBlock(first)}
