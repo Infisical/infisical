@@ -25,7 +25,7 @@ import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
-import { useV4Session } from "../../data/session/contract";
+import { useProjectName } from "../../shell/resource-name";
 import { ImportKeysDialog } from "../keys/import-dialog";
 import { DeleteKeyDialog, ExportKeyDialog, RotateKeyDialog } from "../keys/key-dialogs";
 import { KeySheet } from "../keys/key-sheet";
@@ -357,8 +357,7 @@ export const OverviewPage = () => {
   const { orgId, projectId } = useKmsProjectId();
   const kms = useV4Adapter("kms");
   const permissions = useKeyPermissions(projectId);
-  const { projects } = useV4Session();
-  const projectName = projects.find((project) => project.id === projectId)?.name ?? projectId;
+  const projectName = useProjectName(projectId).name;
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const usage = filters.find((filter) => filter.field === "usage")?.values[0] ?? "all";
@@ -494,7 +493,7 @@ export const OverviewPage = () => {
         />
         <DataTable
           filtered={filtered}
-          label={`Keys in ${projectName}`}
+          label={projectName ? `Keys in ${projectName}` : "Keys"}
           rows={rows}
           columns={columns}
           loading={isPending}

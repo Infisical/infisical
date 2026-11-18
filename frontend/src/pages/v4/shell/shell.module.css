@@ -40,3 +40,11 @@
   max-height: min(550px, var(--radix-popover-content-available-height));
   overflow-y: auto;
 }
+
+.nameSkeleton {
+  width: calc(6 * var(--cipher-space-16));
+}
+
+span.nameFallback {
+  max-width: calc(6 * var(--cipher-space-16));
+}
