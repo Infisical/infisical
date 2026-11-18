@@ -254,7 +254,12 @@ export function AccessInsightsSheet({
       actions={
         <Button
           variant="outline"
-          onClick={() => setFilters([...filters, { field: "members", values: ["all"] }])}
+          onClick={() =>
+            setFilters([
+              ...filters.filter((filter) => filter.field !== "members"),
+              { field: "members", values: ["all"] }
+            ])
+          }
         >
           Show all members
         </Button>
