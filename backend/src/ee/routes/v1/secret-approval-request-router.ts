@@ -286,6 +286,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
 
   // Batch routes deviate from per-resource REST on purpose: bulk review sends up to
   // MAX_BATCH_REQUESTS reviews or merges, and one call per request would exhaust writeLimit.
+  // They return 200 with per-request failures in `failures`, like the Agent Vault membership routes.
   // Each request still goes through the single-request service path, with its own permission
   // check, transaction and audit events, so one failure doesn't stop the others. Audit and
   // telemetry run outside the try, because once the write commits the request can't be retried.
