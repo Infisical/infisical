@@ -898,6 +898,7 @@ export const registerRoutes = async (
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
   const projectEventsSSEService = projectEventsSSEServiceFactory({
+    projectPermissionService,
     secretsPermissionService,
     actorContextService,
     projectEventsService,
