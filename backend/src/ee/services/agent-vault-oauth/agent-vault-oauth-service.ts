@@ -1130,7 +1130,11 @@ export const agentVaultOauthServiceFactory = ({
         compatibility: []
       };
     } else {
-      const discovery = await discoverOauthServer(http, serverUrl, undefined, { allowIssuerMismatch: true });
+      const discovery = await discoverOauthServer(http, serverUrl, undefined, {
+        allowIssuerMismatch: true,
+        issuerFromServerPath: true,
+        scopesFromAuthorizationServer: true
+      });
       if (discovery.endpointsGuessed || discovery.issuerMismatch) {
         return notReady({
           manualSetupRequired: true,

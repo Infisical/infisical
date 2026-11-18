@@ -2502,6 +2502,55 @@ describe("starting an OAuth variable's sign-in", () => {
     expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("issues:read");
   });
 
+  test("without the variable's scopes, a sign-in asks for the ones the authorization server lists", async () => {
+    const advertised = {
+      ...LINEAR_JSON,
+      "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
+        resource: SERVER_URL,
+        authorization_servers: ["https://mcp.linear.app"]
+      },
+      "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+        ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+        scopes_supported: ["read", "has space", "offline_access"]
+      }
+    };
+    const env = setup({ metadata: advertised });
+    addVariable(env, { serverUrl: SERVER_URL, redirectUri: API_REDIRECT_URI });
+
+    const start = await startVariableSignIn(env);
+
+    expect(new URL(start.authorization!.authorizeUrl).searchParams.get("scope")).toBe("read offline_access");
+
+    const service = setup({ metadata: advertised });
+    const { authorization } = await createAuthorization(service);
+    expect(new URL(authorization!.authorizeUrl).searchParams.get("scope")).toBe("offline_access");
+  });
+
+  test("a variable discovers an issuer under its server URL's path (Keycloak)", async () => {
+    const realm = "https://sso.example.com/realms/acme";
+    const env = setup({
+      challenge: null,
+      metadata: {
+        [`${realm}/.well-known/openid-configuration`]: {
+          issuer: realm,
+          authorization_endpoint: `${realm}/protocol/openid-connect/auth`,
+          token_endpoint: `${realm}/protocol/openid-connect/token`,
+          registration_endpoint: `${realm}/clients-registrations/openid-connect`,
+          scopes_supported: ["openid", "profile"],
+          code_challenge_methods_supported: ["S256"]
+        }
+      }
+    });
+    addVariable(env, { serverUrl: realm, redirectUri: API_REDIRECT_URI });
+
+    const start = await startVariableSignIn(env);
+
+    expect(start.manualSetupRequired).toBe(false);
+    const url = new URL(start.authorization!.authorizeUrl);
+    expect(`${url.origin}${url.pathname}`).toBe(`${realm}/protocol/openid-connect/auth`);
+    expect(url.searchParams.get("scope")).toBe("openid profile");
+  });
+
   test("a variable set up by hand discovers nothing, and a reconnect keeps the stored client secret", async () => {
     const env = setup();
     addVariable(
