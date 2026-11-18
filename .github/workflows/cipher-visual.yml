@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cipher-visual-${{ github.event.pull_request.number || github.ref }}
+  group: cipher-visual-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'cipher-visual:scoped' && github.run_id || 'check' }}
   cancel-in-progress: true
 
 jobs:
