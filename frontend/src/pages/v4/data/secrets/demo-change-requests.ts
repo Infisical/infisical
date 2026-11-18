@@ -235,7 +235,8 @@ export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
           )
         : undefined,
       isPending: false,
-      error: null
+      error: null,
+      refetch: async () => undefined
     };
   },
   useReviewApprovalRequest: () => {

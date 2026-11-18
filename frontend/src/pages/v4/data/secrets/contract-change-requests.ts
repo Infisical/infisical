@@ -35,7 +35,7 @@ export type SecretsChangeRequestsAdapter = {
     environment: string;
     path: string;
     enabled: boolean;
-  }) => V4QueryResult<TSecretImport[]>;
+  }) => V4QueryResult<TSecretImport[]> & { refetch: () => Promise<unknown> };
   useReviewApprovalRequest: V4Mutation<TUpdateSecretApprovalReviewStatusDTO>;
   useUpdateApprovalRequestStatus: V4Mutation<TUpdateSecretApprovalRequestStatusDTO>;
   useMergeApprovalRequest: V4Mutation<TPerformSecretApprovalRequestMerge>;
