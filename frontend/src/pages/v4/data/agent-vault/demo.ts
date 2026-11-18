@@ -100,6 +100,52 @@ const inline = (index: number, name: string, hostPattern: string): TAgentVaultSe
   substitutions: []
 });
 
+const named = (
+  index: number,
+  name: string,
+  type: AgentVaultServiceType,
+  hostPattern: string | null = null
+): TAgentVaultSessionService => ({
+  isInline: false,
+  id: uuid("c2", index),
+  name,
+  type,
+  description: null,
+  hostPattern
+});
+
+const NAMED = {
+  githubApi: named(1, "github-api", AgentVaultServiceType.Http, "api.github.com:443"),
+  stripeTest: named(2, "stripe-test", AgentVaultServiceType.Http, "api.stripe.com:443"),
+  internalBilling: named(
+    3,
+    "internal-billing",
+    AgentVaultServiceType.Http,
+    "billing.internal.acme.dev:443, billing-admin.internal.acme.dev:443"
+  ),
+  zendesk: named(4, "zendesk", AgentVaultServiceType.Http, "acme.zendesk.com:443"),
+  linearMcp: named(5, "linear-mcp", AgentVaultServiceType.Mcp, "mcp.linear.app:443"),
+  sentry: named(7, "sentry", AgentVaultServiceType.Http, "sentry.io:443, *.sentry.io:443"),
+  ordersDb: named(8, "orders-db", AgentVaultServiceType.Postgres),
+  buildServer: named(9, "build-server", AgentVaultServiceType.Ssh),
+  notionMcp: named(10, "notion-mcp", AgentVaultServiceType.Mcp, "mcp.notion.com:443")
+};
+
+const INCIDENT_METADATA = Object.fromEntries([
+  ["incident", "INC-4821"],
+  ["severity", "sev-1"],
+  ["commander", "diego.alvarez@acme.dev"],
+  ["service", "checkout-api"],
+  ["region", "us-east-1"],
+  ["runbook", "https://wiki.acme.dev/runbooks/checkout-api/upstream-timeouts-and-retry-storms"],
+  ["statusPage", "https://status.acme.dev/incidents/01JDQ4R8M2X7K9YB3TC6VNHWEZ"],
+  ["slackChannel", "#inc-4821-checkout-upstream-timeouts"],
+  ["pagerDutyIncident", "Q3V8TB1N2X0KLM"],
+  ["deploymentUnderSuspicion", "checkout-api@4.18.3-canary.20261118.1842+sha.9f3c2ab71d"],
+  ["customerImpact", "Card checkouts failing for roughly 4% of EU and US traffic since 09:10 UTC"],
+  ["ownerTeam", "payments-platform"]
+]);
+
 type Seed = [
   label: string | null,
   actor: TAgentVaultSessionActor,
@@ -108,26 +154,66 @@ type Seed = [
   services: TAgentVaultSessionService[],
   status: AgentVaultSessionStatus,
   createdMinutesAgo: number,
-  expiresInMinutes: number | null
+  expiresInMinutes: number | null,
+  metadata?: Record<string, string>
 ];
 
 const { Active, Revoked, Expired } = AgentVaultSessionStatus;
 
 const seeds: Seed[] = [
-  ["release-notes-drafter", machines[0], null, 0, [], Active, 18, 60 * 8],
-  ["Refund triage", sarah, null, 1, [], Active, 42, 60 * 4],
+  [
+    "release-notes-drafter",
+    machines[0],
+    null,
+    0,
+    [],
+    Active,
+    18,
+    60 * 8,
+    { runId: "8812", repo: "acme/web" }
+  ],
+  [
+    "Refund triage",
+    sarah,
+    null,
+    1,
+    [NAMED.zendesk, NAMED.linearMcp],
+    Active,
+    42,
+    60 * 4,
+    { ticket: "SUP-2291" }
+  ],
   ["support-queue-sweep", machines[1], people[2], 2, [], Active, 95, 60 * 24],
-  [null, people[1], null, 0, [], Active, 140, 60 * 2],
-  ["Incident 4821 investigation", people[3], null, 3, [], Active, 210, 60 * 6],
+  [null, people[1], null, null, [NAMED.githubApi], Active, 140, 60 * 2],
+  [
+    "Incident 4821 investigation across checkout, payments and the EU edge",
+    people[3],
+    null,
+    3,
+    [
+      NAMED.ordersDb,
+      NAMED.buildServer,
+      NAMED.notionMcp,
+      NAMED.stripeTest,
+      NAMED.internalBilling,
+      inline(5, "Checkout status mirror", "status-mirror.checkout.internal.acme.dev"),
+      inline(6, "EU edge health", "edge-eu.acme.dev")
+    ],
+    Active,
+    210,
+    60 * 6,
+    INCIDENT_METADATA
+  ],
   [
     "nightly-evals",
     machines[2],
     sarah,
     3,
-    [inline(1, "Eval dashboard", "evals.acme.dev")],
+    [NAMED.sentry, inline(1, "Eval dashboard", "evals.acme.dev")],
     Active,
     300,
-    null
+    null,
+    { suite: "regression", model: "claude-opus-5-5" }
   ],
   ["Pull request reviewer", sarah, null, 0, [], Revoked, 60 * 9, 60 * 3],
   ["Stripe sandbox checks", people[2], null, 1, [], Expired, 60 * 26, -60 * 2],
@@ -174,10 +260,10 @@ const bundleRef = (bundle: number | null, index: number): TAgentVaultSession["ac
 
 seedDemoProject("agent-platform", {
   sessions: seeds.map(
-    ([label, actor, onBehalfOf, bundle, services, status, created, expires], index) => ({
+    ([label, actor, onBehalfOf, bundle, services, status, created, expires, metadata], index) => ({
       id: uuid("d1", index + 1),
       label,
-      metadata: {},
+      metadata: metadata ?? {},
       actor,
       onBehalfOf,
       status,
@@ -193,10 +279,21 @@ seedDemoProject("agent-platform", {
 
 const withBundleNames = (project: TDemoProject) => {
   const names = new Map(project.bundles.map((bundle) => [bundle.id, bundle.name]));
+  const services = new Map(project.services.map((service) => [service.id, service]));
   return (session: TAgentVaultSession): TAgentVaultSession => {
     const id = session.accessBundle?.id;
     const name = id ? names.get(id) : undefined;
-    return id && name ? { ...session, accessBundle: { id, name } } : session;
+    return {
+      ...session,
+      accessBundle: id && name ? { id, name } : session.accessBundle,
+      services: session.services.flatMap((service): TAgentVaultSessionService[] => {
+        if (service.isInline) return [service];
+        const current = services.get(service.id);
+        return current
+          ? [{ ...service, name: current.name, description: current.description }]
+          : [];
+      })
+    };
   };
 };
 
@@ -272,6 +369,8 @@ const releaseNotesLog = (): TLogEntry[] => [
 
 const refundTriageLog = (): TLogEntry[] => [
   http(3, "GET", "app.infisical.com", "/api/v1/agent-vault/session/services", 200, Discovery),
+  http(12, "GET", "acme.zendesk.com", "/api/v2/tickets/2291.json", 200, Brokered, "zendesk"),
+  http(18, "PUT", "acme.zendesk.com", "/api/v2/tickets/2291.json", 200, Brokered, "zendesk"),
   ...Array.from({ length: 12 }, (_, step) =>
     http(
       30 + step * 140,
@@ -614,15 +713,17 @@ const slice = <T>(rows: T[], limit = 20, offset = 0) => ({
 });
 
 export const agentVaultDemo: AgentVaultAdapter = {
-  useSessions: (_, projectId, { scope, statuses, search, limit = 20, offset = 0 }) => {
+  useSessions: (_, projectId, { scope, statuses, search, metadata, limit = 20, offset = 0 }) => {
     const term = search?.toLowerCase();
+    const statusSet = new Set(statuses);
     const project = demoProject(agentVaultDemoStore.use(), projectId);
     const matched = project.sessions
       .map(withBundleNames(project))
       .filter(
         (session) =>
           (scope !== AgentVaultSessionScope.Mine || isMine(session)) &&
-          (!statuses?.length || statuses.includes(session.status)) &&
+          (!statusSet.size || statusSet.has(session.status)) &&
+          Object.entries(metadata ?? {}).every(([key, value]) => session.metadata[key] === value) &&
           (!term ||
             [
               session.label,
@@ -649,48 +750,68 @@ export const agentVaultDemo: AgentVaultAdapter = {
     };
   },
   useCreateSession: (_, projectId) =>
-    fixtureMutation(({ accessBundle, ttl, label }: TCreateAgentVaultSessionDTO) => {
-      const bundle = demoProject(agentVaultDemoStore.get(), projectId).bundles.find(
-        (entry) => entry.name === accessBundle
-      );
-      const minutes = ttl === "never" ? null : ttlMinutes(ttl);
-      const session: TAgentVaultSession = {
-        id: crypto.randomUUID(),
-        label: label ?? null,
-        metadata: {},
-        actor: sarah,
-        onBehalfOf: null,
-        status: Active,
-        createdAt: now(),
-        expiresAt: minutes === null ? null : new Date(Date.now() + minutes * 60_000).toISOString(),
-        revokedAt: null,
-        accessBundle: bundle ? { id: bundle.id, name: bundle.name } : null,
-        services: [],
-        stats: null
-      };
-      updateDemoProject(projectId, (project) => ({
-        ...project,
-        sessions: [session, ...project.sessions]
-      }));
-      return {
-        id: session.id,
-        label: session.label,
-        metadata: session.metadata,
-        token: randomToken(),
-        expiresAt: session.expiresAt,
-        createdAt: session.createdAt,
-        projectId,
-        accessBundle: session.accessBundle,
-        services: []
-      };
-    })(),
-  useUpdateSessionLabel: (_, projectId) =>
-    fixtureMutation(({ sessionId, label }: TUpdateAgentVaultSessionDTO) => {
+    fixtureMutation(
+      ({ accessBundle, services = [], ttl, label, metadata }: TCreateAgentVaultSessionDTO) => {
+        const current = demoProject(agentVaultDemoStore.get(), projectId);
+        const bundle = current.bundles.find((entry) => entry.name === accessBundle);
+        const namedServices = services.flatMap((name): TAgentVaultSessionService[] => {
+          const service = current.services.find((entry) => entry.name === name);
+          if (!service) return [];
+          return [
+            {
+              isInline: false,
+              id: service.id,
+              name: service.name,
+              type: service.type,
+              description: service.description,
+              hostPattern: "hostPattern" in service ? service.hostPattern : null
+            }
+          ];
+        });
+        const minutes = ttl === "never" ? null : ttlMinutes(ttl);
+        const session: TAgentVaultSession = {
+          id: crypto.randomUUID(),
+          label: label ?? null,
+          metadata: metadata ?? {},
+          actor: sarah,
+          onBehalfOf: null,
+          status: Active,
+          createdAt: now(),
+          expiresAt:
+            minutes === null ? null : new Date(Date.now() + minutes * 60_000).toISOString(),
+          revokedAt: null,
+          accessBundle: bundle ? { id: bundle.id, name: bundle.name } : null,
+          services: namedServices,
+          stats: null
+        };
+        updateDemoProject(projectId, (project) => ({
+          ...project,
+          sessions: [session, ...project.sessions]
+        }));
+        return {
+          id: session.id,
+          label: session.label,
+          metadata: session.metadata,
+          token: randomToken(),
+          expiresAt: session.expiresAt,
+          createdAt: session.createdAt,
+          projectId,
+          accessBundle: session.accessBundle,
+          services: namedServices
+        };
+      }
+    )(),
+  useUpdateSession: (_, projectId) =>
+    fixtureMutation(({ sessionId, label, metadata }: TUpdateAgentVaultSessionDTO) => {
       updateDemoProject(projectId, (project) => ({
         ...project,
         sessions: project.sessions.map((session) =>
           session.id === sessionId
-            ? { ...session, label: label === undefined ? session.label : label }
+            ? {
+                ...session,
+                label: label === undefined ? session.label : label,
+                metadata: metadata ?? session.metadata
+              }
             : session
         )
       }));

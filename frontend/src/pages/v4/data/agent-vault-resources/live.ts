@@ -306,6 +306,41 @@ const useListAgentVaultServices = (
   });
 };
 
+const SERVICES_REQUIRING_SETUP_PAGE_SIZE = 100;
+
+const useListAllAgentVaultServicesRequiringSetup = (
+  projectId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const orgId = useOrgId();
+
+  return useQuery({
+    queryKey: agentVaultKeys.allServicesRequiringSetup(orgId, projectId),
+    queryFn: async () => {
+      const collect = async (
+        services: TAgentVaultProjectService[]
+      ): Promise<TAgentVaultProjectService[]> => {
+        const { data } = await apiRequest.get<{
+          services: TAgentVaultProjectService[];
+          totalCount: number;
+        }>("/api/v1/agent-vault/services", {
+          params: {
+            projectId,
+            requiresSetup: true,
+            limit: SERVICES_REQUIRING_SETUP_PAGE_SIZE,
+            offset: services.length
+          }
+        });
+        const next = [...services, ...data.services];
+        return data.services.length && next.length < data.totalCount ? collect(next) : next;
+      };
+      return collect([]);
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
 const useListAgentVaultSkills = (
   projectId: string,
   params: TListAgentVaultSkillsDTO = {},
@@ -1086,6 +1121,7 @@ export const agentVaultResourcesLive: AgentVaultResourcesAdapter = {
   useRevokeAccessBundleMembers: useRevokeAgentVaultAccessBundleMembers,
 
   useServices: useListAgentVaultServices,
+  useAllServicesRequiringSetup: useListAllAgentVaultServicesRequiringSetup,
   useCreateService: useCreateAgentVaultService,
   useUpdateService: useUpdateAgentVaultService,
   useDeleteService: useDeleteAgentVaultService,

@@ -1,13 +1,23 @@
 import { useId, useRef, useState } from "react";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
-import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
+import {
+  Detail,
+  DetailGroup,
+  DetailGroupHeader,
+  DetailLabel,
+  DetailValue
+} from "@infisical/cipher/ui/detail";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetBody,
@@ -17,26 +27,40 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
-import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Meta, SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 
-import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault/enums";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import {
+  AgentVaultMemberType,
+  type AgentVaultServiceType,
+  AgentVaultSessionStatus
+} from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultSession, TAgentVaultSessionActor } from "@app/hooks/api/agentVault/types";
 
-import { failed, saved } from "../../access/toast";
+import { MetadataEditor } from "../../access/org/metadata-editor";
+import { failed, readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { ServiceIcon } from "../resources/shared";
 import { SessionLogsPanel } from "./session-logs-panel";
 import {
   actorName,
   actorSubtitle,
-  canEditSessionLabel,
+  canEditSession,
   formatSessionExpiry,
   formatTimestamp,
   inlineServiceTarget,
+  isSameSessionMetadata,
+  metadataRecordToRows,
+  metadataRowsToRecord,
   SESSION_STATUS,
+  sessionInlineServices,
   sessionLabelSchema,
+  sessionMetadataErrors,
+  sessionNamedServices,
+  type TMetadataErrors,
   useCanActOnSession
 } from "./sessions";
 
@@ -56,6 +80,198 @@ const ActorValue = ({ actor }: { actor: TAgentVaultSessionActor }) => {
   );
 };
 
+const SHOWN_NAMED_SERVICES = 2;
+const SHOWN_INLINE_SERVICES = 1;
+
+type TListedService = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  hostPattern: string | null;
+  tooltip: string;
+  detail: string | null;
+};
+
+const ServiceList = ({
+  label,
+  caption,
+  shown,
+  services
+}: {
+  label: string;
+  caption: string;
+  shown: number;
+  services: TListedService[];
+}) => {
+  const more = services.slice(shown);
+  return (
+    <Inline gap={16} align="center">
+      {services.slice(0, shown).map((service) => (
+        <Tooltip key={service.id} content={service.tooltip}>
+          <Inline gap={8} align="center" wrap={false} tabIndex={0} style={{ minWidth: 0 }}>
+            <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
+            <span className="truncate">{service.name}</span>
+          </Inline>
+        </Tooltip>
+      ))}
+      {more.length > 0 && (
+        <HoverCard openDelay={150} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <Button variant="link" underline="hover">{`+${more.length} more`}</Button>
+          </HoverCardTrigger>
+          <HoverCardContent align="start">
+            <Stack gap={8}>
+              <SmallText muted>{caption}</SmallText>
+              <List label={label} variant="bare" size="sm">
+                {more.map((service) => (
+                  <ListRow
+                    key={service.id}
+                    value={service.id}
+                    label={service.name}
+                    title={service.name}
+                    description={service.detail ?? undefined}
+                    media={
+                      <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
+                    }
+                  />
+                ))}
+              </List>
+            </Stack>
+          </HoverCardContent>
+        </HoverCard>
+      )}
+    </Inline>
+  );
+};
+
+const EditMetadataDialog = ({
+  orgId,
+  projectId,
+  session,
+  onClose
+}: {
+  orgId: string;
+  projectId: string;
+  session: TAgentVaultSession;
+  onClose: () => void;
+}) => {
+  const update = useV4Adapter("agentVault").useUpdateSession(orgId, projectId);
+  const [initial] = useState(() => metadataRecordToRows(session.metadata));
+  const [entries, setEntries] = useState(initial);
+  const [errors, setErrors] = useState<TMetadataErrors>();
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: JSON.stringify(entries) !== JSON.stringify(initial),
+    onDiscard: onClose
+  });
+
+  const submit = async () => {
+    const metadata = metadataRowsToRecord(entries);
+    if (isSameSessionMetadata(metadata, session.metadata)) {
+      onClose();
+      return;
+    }
+    await update
+      .mutateAsync({ sessionId: session.id, metadata })
+      .catch(readableFailure("Couldn't save the session metadata"));
+    saved("Session updated");
+    onClose();
+  };
+
+  return (
+    <>
+      <MultiStep
+        variant="dialog"
+        title="Edit metadata"
+        open
+        onOpenChange={(next) => {
+          if (next || update.isPending) return;
+          requestDiscard();
+        }}
+        completeLabel="Save"
+        onComplete={submit}
+        steps={[
+          {
+            title: "Metadata",
+            validate: () => {
+              const next = sessionMetadataErrors(entries);
+              setErrors(next);
+              if (!next) return true;
+              const message =
+                next.list ?? next.rows.map((row) => row.key ?? row.value).find(Boolean);
+              return message ? { message } : false;
+            },
+            content: (
+              <MetadataEditor
+                boxed
+                addLabel="Add metadata"
+                entries={entries}
+                errors={errors?.rows}
+                onChange={(next) => {
+                  setEntries(next);
+                  setErrors(undefined);
+                }}
+              />
+            )
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your metadata changes will be lost."
+      />
+    </>
+  );
+};
+
+const MetadataGroup = ({
+  orgId,
+  projectId,
+  session
+}: {
+  orgId: string;
+  projectId: string;
+  session: TAgentVaultSession;
+}) => {
+  const canActOn = useCanActOnSession(projectId);
+  const [editing, setEditing] = useState(false);
+  const entries = Object.entries(session.metadata);
+  const canEdit = canEditSession(session) && canActOn(session, "edit");
+  return (
+    <DetailGroup>
+      <DetailGroupHeader
+        level={3}
+        action={
+          canEdit && (
+            <Button variant="ghost" size="xs" icon="pencil" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )
+        }
+      >
+        Metadata
+      </DetailGroupHeader>
+      {entries.length > 0 ? (
+        entries.map(([key, value]) => (
+          <Detail key={key}>
+            <DetailLabel>{key}</DetailLabel>
+            <DetailValue>{value}</DetailValue>
+          </Detail>
+        ))
+      ) : (
+        <Meta mono={false}>No metadata</Meta>
+      )}
+      {editing && (
+        <EditMetadataDialog
+          orgId={orgId}
+          projectId={projectId}
+          session={session}
+          onClose={() => setEditing(false)}
+        />
+      )}
+    </DetailGroup>
+  );
+};
+
 const LabelField = ({
   orgId,
   projectId,
@@ -67,7 +283,7 @@ const LabelField = ({
   session: TAgentVaultSession;
   inputRef: React.Ref<HTMLInputElement>;
 }) => {
-  const update = useV4Adapter("agentVault").useUpdateSessionLabel(orgId, projectId);
+  const update = useV4Adapter("agentVault").useUpdateSession(orgId, projectId);
   const canActOn = useCanActOnSession(projectId);
   const stored = session.label ?? "";
   const [draft, setDraft] = useState(stored);
@@ -79,7 +295,7 @@ const LabelField = ({
     if (draft === syncedLabel) setDraft(stored);
   }
 
-  if (!canEditSessionLabel(session) || !canActOn(session, "edit"))
+  if (!canEditSession(session) || !canActOn(session, "edit"))
     return (
       <Detail>
         <DetailLabel>Label</DetailLabel>
@@ -148,7 +364,8 @@ const Details = ({
   const hasExpired = Boolean(
     session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
-  const inlineServices = session.services.flatMap((service) => (service.isInline ? [service] : []));
+  const inlineServices = sessionInlineServices(session);
+  const namedServices = sessionNamedServices(session);
   return (
     <Stack gap={24}>
       <LabelField
@@ -213,23 +430,48 @@ const Details = ({
             </DetailValue>
           </Detail>
         )}
+        {namedServices.length > 0 && (
+          <Detail>
+            <DetailLabel>Services</DetailLabel>
+            <DetailValue>
+              <ServiceList
+                label="Services"
+                caption="The project's services, named when the session was created."
+                shown={SHOWN_NAMED_SERVICES}
+                services={namedServices.map((service) => ({
+                  id: service.id,
+                  name: service.name,
+                  type: service.type,
+                  hostPattern: service.hostPattern,
+                  tooltip: service.description
+                    ? `A project service this session names. ${service.description}`
+                    : "A project service this session names",
+                  detail: service.description
+                }))}
+              />
+            </DetailValue>
+          </Detail>
+        )}
         {inlineServices.length > 0 && (
           <Detail>
             <DetailLabel>Inline services</DetailLabel>
             <DetailValue>
-              <Inline gap={4}>
-                {inlineServices.map((service) => (
-                  <Tooltip
-                    key={service.id}
-                    content={`Sent with this session when it was created, for ${inlineServiceTarget(service)}.`}
-                  >
-                    <Badge tone="outline" tabIndex={0}>
-                      <Icon name="globe" />
-                      {service.name}
-                    </Badge>
-                  </Tooltip>
-                ))}
-              </Inline>
+              <ServiceList
+                label="Inline services"
+                caption="Sent with the session when it was created."
+                shown={SHOWN_INLINE_SERVICES}
+                services={inlineServices.map((service) => {
+                  const target = inlineServiceTarget(service);
+                  return {
+                    id: service.id,
+                    name: service.name,
+                    type: service.type,
+                    hostPattern: hostPatternOf(service),
+                    tooltip: `Sent with this session when it was created, for ${target}.`,
+                    detail: target === service.name ? null : target
+                  };
+                })}
+              />
             </DetailValue>
           </Detail>
         )}
@@ -268,6 +510,7 @@ const Details = ({
           </Detail>
         )}
       </DetailGroup>
+      <MetadataGroup orgId={orgId} projectId={projectId} session={session} />
     </Stack>
   );
 };

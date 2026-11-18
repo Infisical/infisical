@@ -88,6 +88,21 @@ export const ServiceIcon = ({
   serviceType?: AgentVaultServiceType | null;
 }) => <Chip icon={iconOf({ hostPattern, serviceType })} />;
 
+export const ServiceGlyph = ({
+  hostPattern,
+  serviceType
+}: {
+  hostPattern?: string | null;
+  serviceType?: AgentVaultServiceType | null;
+}) => {
+  const icon = iconOf({ hostPattern, serviceType });
+  return icon.image ? (
+    <ProviderIcon icon={icon.image} alt="" size="sm" />
+  ) : (
+    <Icon icon={icon.icon ?? "globe"} />
+  );
+};
+
 type TNativeService = { name: string; type: AgentVaultServiceType };
 const NO_NATIVE_SERVICES: TNativeService[] = [];
 

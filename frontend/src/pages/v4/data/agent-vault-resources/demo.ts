@@ -1146,6 +1146,9 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       totalCount: rows.length
     };
   }),
+  useAllServicesRequiringSetup: query("all-services-requiring-setup", (state) =>
+    state.services.filter(needsSetup).map((service) => projectService(state, service))
+  ),
   useCreateService: mutation((dto: TCreateAgentVaultServiceDTO, state) => {
     if (state.services.some((service) => service.name === dto.name))
       throw new Error(`A service named ${dto.name} already exists in this project.`);

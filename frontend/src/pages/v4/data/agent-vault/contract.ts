@@ -97,7 +97,7 @@ export type AgentVaultAdapter = {
     orgId: string,
     projectId: string
   ) => ReturnType<V4Mutation<TCreateAgentVaultSessionDTO, TAgentVaultMintedSession>>;
-  useUpdateSessionLabel: (
+  useUpdateSession: (
     orgId: string,
     projectId: string
   ) => ReturnType<V4Mutation<TUpdateAgentVaultSessionDTO, TAgentVaultSession>>;
