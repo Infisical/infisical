@@ -7,11 +7,11 @@ import {
   OrgPermissionSubjects,
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";
-import { roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
+import { roleNeedsPrivilegeBoundary, toBoundsTargets } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TRoleDALFactory } from "../role/role-dal";
 import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-role-mapping-dal";
@@ -137,16 +137,12 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       });
 
       for (const { roleSlug, baseMessage } of boundaryChecks) {
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: OrgPermissionMemberActions.GrantPrivileges,
-          opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission.toAbility(),
-          targetPermissions: [rolePermissions[roleSlugsToCheck.indexOf(roleSlug)]].map((target) => ({
-            permission: target.permission.toAbility(),
-            role: target.role
-          })),
-          baseMessage
+        assertPermissionBounds(permission, {
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+          actions: OrgPermissionMemberActions.GrantPrivileges,
+          subject: OrgPermissionSubjects.Member,
+          targets: toBoundsTargets([rolePermissions[roleSlugsToCheck.indexOf(roleSlug)]]),
+          message: baseMessage
         });
       }
     }

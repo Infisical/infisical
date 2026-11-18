@@ -4,10 +4,10 @@ import {
   OrgPermissionSubjects,
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import { resolveMembershipRoleSlugs, toBoundsTargets } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TIdentityV2Factory } from "../identity-types";
 
@@ -52,13 +52,12 @@ export const newOrgIdentityFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionIdentityActions.Delete,
-      opSubject: OrgPermissionSubjects.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: targetPermissions.map((target) => ({ ...target, permission: target.permission.toAbility() })),
-      baseMessage: "Failed to remove a more privileged identity from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionIdentityActions.Delete,
+      subject: OrgPermissionSubjects.Identity,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the organization"
     });
   };
 

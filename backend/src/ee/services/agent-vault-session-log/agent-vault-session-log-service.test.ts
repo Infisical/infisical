@@ -6,11 +6,12 @@ import { TPermissionRule, Permission } from "@app/domains/platform/access-contro
 import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -33,6 +34,17 @@ import { buildSessionLogObjectName, toRev } from "./agent-vault-session-log-fns"
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
+
+// Agent Vault's role rules are EE-only inside its domain. These stand in for the parts of its admin and member sets
+// the service reads: any member reads its own sessions; the admin reads every session and the project settings.
+const agentVaultMemberRules: TPermissionRule<ProjectPermissionSet>[] = [
+  { action: [ProjectPermissionAgentVaultSessionActions.Read], subject: ProjectPermissionSub.AgentVaultSessions }
+];
+const agentVaultAdminRules: TPermissionRule<ProjectPermissionSet>[] = [
+  ...agentVaultMemberRules,
+  { action: [ProjectPermissionAgentVaultSessionActions.ReadAny], subject: ProjectPermissionSub.AgentVaultSessions },
+  { action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit], subject: ProjectPermissionSub.Settings }
+];
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -194,9 +206,7 @@ const build = (overrides: TOverrides = {}) => {
     accessBundlePermissionService: {
       getAgentVaultPermission: vi.fn(async () => ({
         permission: Permission.fromRules({
-          rules: ((overrides.isAdmin ?? true)
-            ? agentVaultProjectAdminPermissions
-            : agentVaultProjectMemberPermissions) as TPermissionRule<ProjectPermissionSet>[]
+          rules: (overrides.isAdmin ?? true) ? agentVaultAdminRules : agentVaultMemberRules
         })
       }))
     } as never,

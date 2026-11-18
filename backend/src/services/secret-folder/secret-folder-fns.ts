@@ -1,8 +1,8 @@
-import { MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TSecretFolders } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -12,9 +12,9 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -115,7 +115,7 @@ export const resolveClosestFolder = (
 // except secret_approval_policy (handled explicitly in canActorReadBlock) must have an entry here.
 const FOLDER_MOVE_BLOCK_PERMISSION: Record<
   Exclude<TFolderMoveBlockingType, "secret_approval_policy">,
-  { action: string; subject: ProjectPermissionSub }
+  { action: ProjectPermissionSet[0]; subject: ProjectPermissionSub }
 > = {
   secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
   dynamic_secret: {
@@ -133,7 +133,7 @@ const FOLDER_MOVE_BLOCK_PERMISSION: Record<
 // disclose the existence of blocking resources in a subtree the actor cannot see (used by the read-only
 // eligibility endpoint). the move itself omits this so a block always prevents the move.
 export type TFolderMoveAccessScope = {
-  permission: MongoAbility<ProjectPermissionSet>;
+  permission: Permission<ProjectPermissionSet>;
   environment: string;
   rootFolderPath: string;
 };
@@ -149,7 +149,7 @@ export type TFolderMoveBlock = {
 };
 
 export const canActorReadBlock = (
-  permission: MongoAbility<ProjectPermissionSet>,
+  permission: Permission<ProjectPermissionSet>,
   environment: string,
   blockingType: TFolderMoveBlockingType,
   secretPath: string
@@ -166,7 +166,7 @@ export const canActorReadBlock = (
   }
 
   const { action, subject: sub } = blockPermission;
-  return (permission as MongoAbility).can(action, subject(sub, { environment, secretPath }));
+  return permission.can({ action, subject: sub, fields: { environment, secretPath } });
 };
 
 // absolute path of a subtree folder, re-rooted at `rootFolderPath`; the moved folder itself is "/". when the
@@ -328,7 +328,7 @@ export const assertFolderMoveAllowed = (
     folderName,
     scope
   }: {
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     environment: string;
     folderName: string;
     scope: "source" | "destination";
@@ -479,12 +479,12 @@ const FOLDER_CHANGE_BLOCKED_BY_POLICY: Record<TFolderChangeAction, Record<TVisib
 
 const visibleProtectedContent = (
   { environment, contentPath, protects }: TPolicyProtectedFolder,
-  permission: MongoAbility<ProjectPermissionSet>
+  permission: Permission<ProjectPermissionSet>
 ): TVisibleProtectedContent => {
   const canRead =
     protects === "secret_import"
       ? canActorReadBlock(permission, environment, "secret_import", contentPath)
-      : hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      : SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
           secretPath: contentPath
         });
@@ -506,7 +506,7 @@ const throwFolderChangeBlockedByPolicy = (
 
 export const assertFolderDeleteAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
-  permission: MongoAbility<ProjectPermissionSet>
+  permission: Permission<ProjectPermissionSet>
 ) => {
   if (!protectedFolder) return;
   throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, permission));
@@ -515,7 +515,7 @@ export const assertFolderDeleteAllowed = (
 export const assertFolderRenameAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
   scope: TFolderRenameScope,
-  permission: MongoAbility<ProjectPermissionSet>
+  permission: Permission<ProjectPermissionSet>
 ) => {
   if (!protectedFolder) return;
 

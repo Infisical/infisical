@@ -154,8 +154,6 @@ import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
@@ -781,7 +779,6 @@ export const registerRoutes = async (
   };
 
   // ee db layer ops
-  const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
   const scimDAL = scimDALFactory(db);
   const scimEventsDAL = scimEventsDALFactory(db);
@@ -872,20 +869,6 @@ export const registerRoutes = async (
 
   // Project events service (publishes via event bus for inter-container communication)
   const projectEventsService = projectEventsServiceFactory({ eventBus: eventBusService });
-
-  const permissionService = permissionServiceFactory({
-    permissionDAL,
-    serviceTokenDAL,
-    projectDAL,
-    keyStore,
-    roleDAL,
-    userDAL,
-    identityDAL,
-    additionalPrivilegeDAL,
-    groupDAL,
-    secretFolderDAL: folderDAL,
-    orgDAL
-  });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
     projectPermissionService,
@@ -5045,7 +5028,6 @@ export const registerRoutes = async (
     user: userService,
     group: groupService,
     groupProject: groupProjectService,
-    permission: permissionService,
     org: orgService,
     orgDeletion: orgDeletionService,
     subOrganization: subOrgService,
