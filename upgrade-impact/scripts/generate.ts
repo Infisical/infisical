@@ -34,7 +34,8 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag") ?? process.env.GITHUB_REF_NAME,
     dryRun: args.includes("--dry-run"),
-    noAi: args.includes("--no-ai")
+    noAi: args.includes("--no-ai"),
+    fromFile: getValue("--from-file")
   };
 };
 
@@ -125,7 +126,15 @@ export const generateReleaseImpact = async ({
 
 const main = async () => {
   loadPackageEnv(packageRoot);
-  const { tag, dryRun, noAi } = parseArgs();
+  const { tag, dryRun, noAi, fromFile } = parseArgs();
+
+  // Writes data generated earlier, so a caller can add it to an index that changed since.
+  if (fromFile) {
+    const releaseImpact = ReleaseImpactSchema.parse(parse(await fs.readFile(fromFile, "utf8")));
+    await writeReleaseImpact(releaseImpact);
+    process.stdout.write(`Wrote upgrade impact data for ${releaseImpact.version} from ${fromFile}\n`);
+    return;
+  }
 
   if (!tag || !isStableVersion(tag)) {
     throw new Error(`Expected a stable vX.Y.Z tag. Received: ${tag ?? "<missing>"}`);

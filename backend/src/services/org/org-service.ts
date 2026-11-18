@@ -357,7 +357,16 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
+  const findAllWorkspaces = async ({ actor, actorId, orgId, actorOrgId, actorAuthMethod }: TFindAllWorkspacesDTO) => {
+    await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.Any
+    });
+
     if (actor === ActorType.USER) {
       const workspaces = await projectDAL.findUserProjects(actorId, orgId);
       return workspaces;
