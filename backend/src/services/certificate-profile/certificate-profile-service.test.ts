@@ -590,7 +590,7 @@ describe("CertificateProfileService", () => {
             profileId: "profile-123",
             data: { defaults: { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256 } }
           })
-        ).rejects.toThrow(/on for profile 'test-profile' in application 'Windows fleet'.*elliptic curve key/);
+        ).rejects.toThrow(/on for profile 'test-profile' in application 'Windows fleet'.*ECDSA P256 keys/);
         expect(mockCertificateProfileDAL.updateById).not.toHaveBeenCalled();
       });
 
