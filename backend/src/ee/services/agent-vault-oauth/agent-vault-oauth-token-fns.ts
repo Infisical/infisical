@@ -119,6 +119,30 @@ export const validateCallbackIssuer = ({
   return null;
 };
 
+// For an OAuth variable set up by hand with no issuer, whose recorded issuer is only a guess. Providers such as Keycloak
+// issue from a path under the authorization endpoint's origin, so only the origin of an `iss` that arrives is compared.
+export const validateCallbackIssuerOrigin = ({
+  iss,
+  authorizationEndpoint,
+  serverUrl
+}: {
+  iss?: string;
+  authorizationEndpoint: string;
+  serverUrl: string;
+}): string | null => {
+  if (iss === undefined || iss === "") return null;
+  let issOrigin: string | null = null;
+  try {
+    issOrigin = new URL(iss).origin;
+  } catch {
+    issOrigin = null;
+  }
+  if (issOrigin !== new URL(authorizationEndpoint).origin) {
+    return `The authorization response came from a different server than '${describeServer(serverUrl)}' uses, so it was rejected. If the provider's issuer is on another domain, enter it under Issuer.`;
+  }
+  return null;
+};
+
 export type TOauthTokens = {
   accessToken: string;
   refreshToken?: string;

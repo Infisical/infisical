@@ -57,7 +57,6 @@ import {
   AgentVaultOauthRegistration,
   TAgentVaultOauthConfig,
   TAgentVaultOauthMemberConfig,
-  TAgentVaultOauthSecret,
   TAgentVaultOauthVariableCredentialConfig
 } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
@@ -224,6 +223,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
     | "buildCredentialFromAuthorization"
     | "readAuthorizationAccessToken"
     | "refreshServiceToken"
+    | "refreshVariableToken"
     | "prepareMemberOauth"
   >;
 } & TAgentVaultActorNameDALs;
@@ -2367,6 +2367,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let credentialHeader: { name: string; prefix?: string; value: string; isTyped: boolean };
     // Set when the token is the service's saved OAuth token, which can be refreshed if the server refuses it.
     let refreshSavedToken: ((rejectedTokenHash: string) => Promise<string>) | undefined;
+    // Set when an OAuth variable's token is refreshed with no saved service pinning it, which a refusal may blame even
+    // for a request unlike the saved service.
+    let refreshesVariableOnly = false;
     const credentialType = credential?.type ?? (service?.credentialType as AgentVaultCredentialType | undefined);
     if (credentialType === AgentVaultCredentialType.OAuth) {
       const sentOauth = credential?.type === AgentVaultCredentialType.OAuth ? credential : undefined;
@@ -2400,35 +2403,38 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           });
         }
         const storedServerUrl = service ? getServiceServerUrl(service.config) : null;
-        // Only the saved service can refresh the variable's token, since a refresh is pinned to where a service points.
-        if (service && oauthVariableIdOf(service) === oauthVariableId && serverUrl === storedServerUrl) {
-          const savedService = service;
-          const variableKey = variable.key;
-          const refreshToken = async (rejectedTokenHash?: string) => {
-            const refreshed = await agentVaultOauthService.refreshServiceToken({
-              serviceId: savedService.id,
-              projectId: rest.projectId,
-              variableId: oauthVariableId!,
-              expiresWithinSeconds: 60,
-              rejectedTokenHash,
-              destination: { hostPattern: savedService.hostPattern ?? null, serverUrl: storedServerUrl }
-            });
-            if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
-              throw new BadRequestError({
-                message: `The sign-in stored in the OAuth variable '${variableKey}' is no longer accepted. Authorize it again on the Variables page, then load the tools again.`
+        const variableIdToRefresh = oauthVariableId;
+        const variableKey = variable.key;
+        // Through the saved service when the request sends the token where it points, so the refresh is pinned to it.
+        // Otherwise the token goes only to the URL typed here, so the variable is refreshed on its own.
+        const savedService =
+          service && oauthVariableIdOf(service) === oauthVariableId && serverUrl === storedServerUrl ? service : null;
+        const refreshToken = async (rejectedTokenHash?: string) => {
+          const refreshed = savedService
+            ? await agentVaultOauthService.refreshServiceToken({
+                serviceId: savedService.id,
+                projectId: rest.projectId,
+                variableId: variableIdToRefresh,
+                expiresWithinSeconds: 60,
+                rejectedTokenHash,
+                destination: { hostPattern: savedService.hostPattern ?? null, serverUrl: storedServerUrl }
+              })
+            : await agentVaultOauthService.refreshVariableToken({
+                variableId: variableIdToRefresh,
+                projectId: rest.projectId,
+                expiresWithinSeconds: 60,
+                rejectedTokenHash
               });
-            }
-            return refreshed.credential.value;
-          };
-          accessToken = await refreshToken();
-          refreshSavedToken = refreshToken;
-        } else {
-          accessToken = (
-            JSON.parse(
-              decryptor({ cipherTextBlob: variable.encryptedValue }).toString("utf-8")
-            ) as TAgentVaultOauthSecret
-          ).accessToken;
-        }
+          if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
+            throw new BadRequestError({
+              message: `The sign-in stored in the OAuth variable '${variableKey}' is no longer accepted. Authorize it again on the Variables page, then load the tools again.`
+            });
+          }
+          return refreshed.credential.value;
+        };
+        accessToken = await refreshToken();
+        refreshSavedToken = refreshToken;
+        refreshesVariableOnly = !savedService;
       } else if (sentOauth?.authorizationId) {
         accessToken = await agentVaultOauthService.readAuthorizationAccessToken({
           authorizationId: sentOauth.authorizationId,
@@ -2563,8 +2569,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     } catch (err) {
       // A saved token can be refused before it expires (revoked, or no expiry from the provider), so it is refreshed
       // once, as the proxy does, before the admin is asked to reauthorize.
-      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !isSavedConnection)
-        throw err;
+      // With no custom header, nothing but the variable's token can have been refused, whatever else differs.
+      const blamesToken = isSavedConnection || (refreshesVariableOnly && !headerValues.length);
+      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !blamesToken) throw err;
       const refreshedToken = await refreshSavedToken(hashAccessToken(credentialValue));
       if (refreshedToken === credentialValue) throw err;
       return { tools: await listWith(refreshedToken) };

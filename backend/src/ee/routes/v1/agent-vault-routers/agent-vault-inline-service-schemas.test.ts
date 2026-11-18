@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
+import { prepareInlineServices } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-fns";
+import { TAgentVaultInlineServiceInput } from "@app/ee/services/agent-vault-session/agent-vault-session-types";
 import { AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
+import { BadRequestError } from "@app/lib/errors";
 
 import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE, AgentVaultSessionServicesInputSchema } from "./agent-vault-schemas";
 
@@ -289,5 +292,23 @@ describe("OAuth sent with a session", () => {
       "tokenEndpoint"
     ]);
     expect(issuesOf(oauth({ accessToken: "a\nb" }))[0].path).toEqual([0, "credential", "accessToken"]);
+  });
+});
+
+describe("an inline OAuth credential with fields left to members", () => {
+  test("keeps them through the schema, so the session refuses them with a 400", () => {
+    const [parsed] = AgentVaultSessionServicesInputSchema.parse([
+      {
+        type: "http",
+        hostPattern: "api.example.com",
+        credential: { type: "oauth", variable: "GDRIVE_U123", memberProvidedFields: ["credential-value"] }
+      }
+    ]);
+    expect(parsed).toMatchObject({ credential: { memberProvidedFields: ["credential-value"] } });
+
+    expect(() => prepareInlineServices([parsed as TAgentVaultInlineServiceInput])).toThrow(BadRequestError);
+    expect(() => prepareInlineServices([parsed as TAgentVaultInlineServiceInput])).toThrow(
+      /can't leave a field to members/
+    );
   });
 });

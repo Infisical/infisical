@@ -1,7 +1,11 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
@@ -17,7 +21,7 @@ import {
   AgentVaultVariableScope,
   AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
-import { toOauthVariableSettings } from "./agent-vault-oauth-variable-fns";
+import { oauthVariableSettingsFingerprintOf, toOauthVariableSettings } from "./agent-vault-oauth-variable-fns";
 import { TAgentVaultVariable } from "./agent-vault-variable-dal";
 import { agentVaultVariableServiceFactory } from "./agent-vault-variable-service";
 import { TAgentVaultOauthVariableConfig, TAgentVaultOauthVariableConnection } from "./agent-vault-variable-types";
@@ -94,7 +98,15 @@ const textRow = (): TAgentVaultVariable => ({
 });
 
 // `locked` stands in for the row as the update's lock reads it, when another write committed after the first read.
-const buildService = ({ rows, locked }: { rows: TAgentVaultVariable[]; locked?: TAgentVaultVariable }) => {
+const buildService = ({
+  rows,
+  locked,
+  rules = [{ action: "manage", subject: "all" }]
+}: {
+  rows: TAgentVaultVariable[];
+  locked?: TAgentVaultVariable;
+  rules?: { action: string | string[]; subject: string }[];
+}) => {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const tx = { raw: vi.fn() };
   const agentVaultVariableDAL = {
@@ -139,7 +151,7 @@ const buildService = ({ rows, locked }: { rows: TAgentVaultVariable[]; locked?: 
     membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+        permission: createMongoAbility(rules),
         hasRole: () => true,
         memberships: []
       })
@@ -203,55 +215,6 @@ describe("createVariable, OAuth", () => {
       })
     ).rejects.toThrow(BadRequestError);
     expect(agentVaultVariableDAL.create).not.toHaveBeenCalled();
-  });
-
-  test("a duplicate copies the source's settings and never its tokens", async () => {
-    const { service, agentVaultVariableDAL } = buildService({ rows: [oauthRow()] });
-
-    const { variable } = await service.createVariable({
-      projectId: PROJECT_ID,
-      ctx,
-      scope: AgentVaultVariableScope.Global,
-      key: "GDRIVE_U456",
-      type: AgentVaultVariableType.OAuth,
-      sourceVariableId: OAUTH_ID
-    });
-
-    const columns = agentVaultVariableDAL.create.mock.calls[0][0];
-    expect(columns.encryptedValue).toBeNull();
-    expect(columns.oauthConfig).toEqual({ settings, connection: null });
-    expect(variable.oauth?.status).toBe(AgentVaultOauthStatus.NotConnected);
-  });
-
-  test("refuses to duplicate a text variable, which would copy its value", async () => {
-    const { service, agentVaultVariableDAL } = buildService({ rows: [textRow()] });
-
-    await expect(
-      service.createVariable({
-        projectId: PROJECT_ID,
-        ctx,
-        scope: AgentVaultVariableScope.Global,
-        key: "COPY",
-        type: AgentVaultVariableType.OAuth,
-        sourceVariableId: TEXT_ID
-      })
-    ).rejects.toThrow("Only an OAuth variable can be duplicated");
-    expect(agentVaultVariableDAL.create).not.toHaveBeenCalled();
-  });
-
-  test("a duplicate of a variable that isn't there is a 404", async () => {
-    const { service } = buildService({ rows: [] });
-
-    await expect(
-      service.createVariable({
-        projectId: PROJECT_ID,
-        ctx,
-        scope: AgentVaultVariableScope.Global,
-        key: "COPY",
-        type: AgentVaultVariableType.OAuth,
-        sourceVariableId: OAUTH_ID
-      })
-    ).rejects.toThrow(NotFoundError);
   });
 });
 
@@ -322,6 +285,40 @@ describe("updateVariable, OAuth", () => {
     expect(columns.encryptedValue).toBeNull();
     expect((columns.oauthConfig as TAgentVaultOauthVariableConfig).settings).toEqual(settings);
     expect(result.valueReplaced).toBe(true);
+  });
+
+  test("value null counts a disconnect, so a sign-in started before it no longer matches", async () => {
+    const { service, agentVaultVariableDAL } = buildService({ rows: [oauthRow()] });
+
+    await update(service, { value: null });
+
+    const config = writtenColumns(agentVaultVariableDAL).oauthConfig as TAgentVaultOauthVariableConfig;
+    expect(config.disconnects).toBe(1);
+    expect(oauthVariableSettingsFingerprintOf(config.settings, config.disconnects)).not.toBe(
+      oauthVariableSettingsFingerprintOf(settings)
+    );
+  });
+
+  test("a sign-in setting change counts a disconnect on top of the stored count", async () => {
+    const row = oauthRow();
+    const { service, agentVaultVariableDAL } = buildService({
+      rows: [{ ...row, oauthConfig: { ...(row.oauthConfig as TAgentVaultOauthVariableConfig), disconnects: 2 } }]
+    });
+
+    await update(service, { oauth: { clientId: "client-2" } });
+
+    expect((writtenColumns(agentVaultVariableDAL).oauthConfig as TAgentVaultOauthVariableConfig).disconnects).toBe(3);
+  });
+
+  test("an edit that keeps the tokens keeps the count", async () => {
+    const row = oauthRow();
+    const { service, agentVaultVariableDAL } = buildService({
+      rows: [{ ...row, oauthConfig: { ...(row.oauthConfig as TAgentVaultOauthVariableConfig), disconnects: 2 } }]
+    });
+
+    await update(service, { oauth: { scopes: ["openid"] } });
+
+    expect((writtenColumns(agentVaultVariableDAL).oauthConfig as TAgentVaultOauthVariableConfig).disconnects).toBe(2);
   });
 
   test("refuses settings that no longer hold together once merged with the stored ones", async () => {
@@ -465,6 +462,63 @@ describe("importing tokens", () => {
     expect(connected?.method).toBe(AgentVaultOauthVariableConnectMethod.Import);
   });
 
+  test("tokens without a client secret keep the stored one while the client stays the same", async () => {
+    const row = oauthRow();
+    const { service, agentVaultVariableDAL } = buildService({
+      rows: [
+        {
+          ...row,
+          encryptedValue: Buffer.from(
+            `sealed:${JSON.stringify({ accessToken: "ya29.old", clientSecret: "stored-secret" })}`
+          )
+        }
+      ]
+    });
+
+    await service.updateVariable({
+      projectId: PROJECT_ID,
+      ctx,
+      variableId: OAUTH_ID,
+      oauth: { scopes: ["https://www.googleapis.com/auth/drive"] },
+      tokens: { accessToken: "ya29.new" }
+    });
+
+    const columns = writtenColumns(agentVaultVariableDAL);
+    expect(opened(columns.encryptedValue)).toEqual({ accessToken: "ya29.new", clientSecret: "stored-secret" });
+    expect((columns.oauthConfig as TAgentVaultOauthVariableConfig).connection?.tokenEndpointAuthMethod).toBe(
+      AgentVaultOauthClientAuthMethod.ClientSecretBasic
+    );
+  });
+
+  test("tokens without a client secret drop the stored one when the same update changes the client", async () => {
+    const row = oauthRow();
+    const { service, agentVaultVariableDAL } = buildService({
+      rows: [
+        {
+          ...row,
+          encryptedValue: Buffer.from(
+            `sealed:${JSON.stringify({ accessToken: "ya29.old", clientSecret: "stored-secret" })}`
+          )
+        }
+      ]
+    });
+
+    await service.updateVariable({
+      projectId: PROJECT_ID,
+      ctx,
+      variableId: OAUTH_ID,
+      oauth: { clientId: "client-2" },
+      tokens: { accessToken: "ya29.new" }
+    });
+
+    const columns = writtenColumns(agentVaultVariableDAL);
+    expect(opened(columns.encryptedValue)).toEqual({ accessToken: "ya29.new" });
+    expect((columns.oauthConfig as TAgentVaultOauthVariableConfig).connection).toMatchObject({
+      clientId: "client-2",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None
+    });
+  });
+
   test("tokens are refused on a text variable", async () => {
     const { service } = buildService({ rows: [textRow()] });
     await expect(
@@ -502,6 +556,29 @@ describe("createVariable with a sign-in", () => {
       registrationRequired: false,
       redirectUri: "https://app.acme.test/oauth/callback"
     });
+  });
+
+  test("refuses a caller who can create variables but not read and edit them, before anything is prepared", async () => {
+    const { service, agentVaultVariableDAL, agentVaultOauthService } = buildService({
+      rows: [],
+      rules: [
+        { action: ProjectPermissionAgentVaultVariableActions.Create, subject: ProjectPermissionSub.AgentVaultVariables }
+      ]
+    });
+
+    await expect(
+      service.createVariable({
+        projectId: PROJECT_ID,
+        ctx,
+        scope: AgentVaultVariableScope.Global,
+        key: "GDRIVE_U123",
+        type: AgentVaultVariableType.OAuth,
+        oauth: manualOauth,
+        signIn: {}
+      })
+    ).rejects.toThrow(ForbiddenRequestError);
+    expect(agentVaultOauthService.prepareVariableSignIn).not.toHaveBeenCalled();
+    expect(agentVaultVariableDAL.create).not.toHaveBeenCalled();
   });
 
   test("a key that's taken is refused before the sign-in is prepared", async () => {

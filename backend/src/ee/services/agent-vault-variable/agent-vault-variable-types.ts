@@ -54,6 +54,9 @@ export type TAgentVaultOauthVariableConnection = Omit<TAgentVaultOauthConfig, "s
 export type TAgentVaultOauthVariableConfig = {
   settings: TAgentVaultOauthVariableSettings;
   connection: TAgentVaultOauthVariableConnection | null;
+  // How many times the variable has been disconnected; absent is 0. A sign-in records it when it starts, so one started
+  // before a disconnect is refused when it completes, even when the settings it used are back.
+  disconnects?: number;
 };
 
 // Sealed with the project cipher in `encryptedValue` once connected. A client secret lives only here, so a variable
@@ -82,8 +85,6 @@ export type TCreateVariableDTO = TAgentVaultVariableScoped & {
   type: AgentVaultVariableType;
   value?: string;
   oauth?: TAgentVaultOauthVariableSettingsInput;
-  // Copies the settings of this OAuth variable, never its tokens.
-  sourceVariableId?: string;
   tokens?: TAgentVaultOauthVariableTokens;
   // Starts a sign-in for the new variable, returned with it. Never with `tokens`.
   signIn?: { clientSecret?: string };

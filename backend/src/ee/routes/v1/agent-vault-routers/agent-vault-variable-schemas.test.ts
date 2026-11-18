@@ -29,19 +29,14 @@ describe("AgentVaultCreateVariableBodySchema", () => {
     expect(parsed.type).toBe(AgentVaultVariableType.Text);
   });
 
-  test("an OAuth variable takes settings or a source, and no value", () => {
+  test("an OAuth variable takes settings and no value", () => {
     expect(
       AgentVaultCreateVariableBodySchema.safeParse({ scope: "global", key: "G", type: "oauth", oauth: manualOauth })
         .success
     ).toBe(true);
-    expect(
-      AgentVaultCreateVariableBodySchema.safeParse({
-        scope: "global",
-        key: "G",
-        type: "oauth",
-        sourceVariableId: "11111111-1111-4111-8111-111111111111"
-      }).success
-    ).toBe(true);
+    expect(messagesOf(AgentVaultCreateVariableBodySchema, { scope: "global", key: "G", type: "oauth" })).toEqual([
+      "oauth: An OAuth variable needs its provider settings in 'oauth'."
+    ]);
     expect(
       messagesOf(AgentVaultCreateVariableBodySchema, {
         scope: "global",

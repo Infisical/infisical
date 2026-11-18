@@ -68,25 +68,50 @@ export const oauthVariableSignInSettingsOf = (settings: TAgentVaultOauthVariable
     (typeof OAUTH_VARIABLE_SIGN_IN_FIELDS)[number]
   >;
 
-// What a sign-in records when it starts and checks against the locked row when it completes: tokens for settings an
-// edit has changed since belong to the old provider or client. Scopes, client name and redirect URI don't count, as
-// for a disconnect.
-export const oauthVariableSettingsFingerprintOf = (settings: TAgentVaultOauthVariableSettings) =>
+/**
+ * What a sign-in records when it starts and checks against the locked row when it completes: tokens for settings an
+ * edit has changed since belong to the old provider or client, and a disconnect since then cancels the sign-in.
+ * Scopes, client name and redirect URI don't count, as for a disconnect. A count of 0 leaves the hash as it was before
+ * disconnects were counted, so sign-ins already in progress still complete.
+ */
+export const oauthVariableSettingsFingerprintOf = (settings: TAgentVaultOauthVariableSettings, disconnects = 0) =>
   crypto
     .createHash("sha256")
-    .update(JSON.stringify(oauthVariableSignInSettingsOf(settings)))
+    .update(
+      JSON.stringify(
+        disconnects
+          ? { ...oauthVariableSignInSettingsOf(settings), disconnects }
+          : oauthVariableSignInSettingsOf(settings)
+      )
+    )
     .digest("hex");
+
+export const oauthVariableDisconnectsOf = (config: Pick<TAgentVaultOauthVariableConfig, "disconnects">) =>
+  config.disconnects ?? 0;
 
 export const isOauthVariableSignInChanged = (
   before: TAgentVaultOauthVariableSettings,
   after: TAgentVaultOauthVariableSettings
 ) => OAUTH_VARIABLE_SIGN_IN_FIELDS.some((field) => before[field] !== after[field]);
 
+// The settings a stored client secret belongs to. While none of them change, the secret is still the client's.
+const OAUTH_VARIABLE_CLIENT_FIELDS = [
+  "clientId",
+  "tokenEndpoint",
+  "tokenEndpointAuthMethod",
+  "registration"
+] as const satisfies readonly (keyof TAgentVaultOauthVariableSettings)[];
+
+export const isOauthVariableClientChanged = (
+  before: TAgentVaultOauthVariableSettings,
+  after: TAgentVaultOauthVariableSettings
+) => OAUTH_VARIABLE_CLIENT_FIELDS.some((field) => before[field] !== after[field]);
+
 /**
  * The issuer a variable set up by hand records on its sign-in and connection: the one sent, or else the origin of its
  * authorization endpoint, which is where the provider's sign-in lives and so the closest guess (Google issues tokens
- * from oauth2.googleapis.com, but its issuer is https://accounts.google.com). Only one that was sent is compared with
- * the `iss` a callback carries; the guess just names the connection and keys the scopes a service reports missing.
+ * from oauth2.googleapis.com, but its issuer is https://accounts.google.com). One that was sent is compared exactly with
+ * the `iss` a callback carries; for the guess only the origin is, so a path issuer such as a Keycloak realm still passes.
  * Null for a variable that discovers its provider, whose issuer comes from discovery.
  */
 export const oauthVariableIssuerOf = (

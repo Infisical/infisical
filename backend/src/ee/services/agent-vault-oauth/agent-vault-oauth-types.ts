@@ -114,10 +114,15 @@ export type TAgentVaultOauthAuthorization = {
   redirectUri: string;
   status: AgentVaultOauthAuthorizationStatus;
   error: string | null;
+  // What kind of refusal failed a variable sign-in's completion, so completing it again answers with the same status.
+  // Records without it read as a bad request.
+  errorStatus?: TAgentVaultOauthAuthorizationErrorStatus;
   issuer: string;
   issParameterSupported: boolean;
   // An OAuth variable set up by hand with no issuer of its own, whose `issuer` is only its authorization endpoint's
-  // origin. An `iss` on the callback isn't compared to it, since providers such as Keycloak issue from a path under it.
+  // origin. An `iss` on the callback is compared by origin only, since providers such as Keycloak issue from a path
+  // under it. Records started before the rename carry `issuerUnchecked` instead, read the same way.
+  issuerOriginOnly?: boolean;
   issuerUnchecked?: boolean;
   authorizationEndpoint: string;
   tokenEndpoint: string;
@@ -135,6 +140,8 @@ export type TAgentVaultOauthAuthorization = {
   // base64 of the project-cipher blob of a TAgentVaultOauthSecret, set once authorized.
   sealedCredential: string | null;
 };
+
+export type TAgentVaultOauthAuthorizationErrorStatus = "bad-request" | "forbidden" | "not-found" | "conflict";
 
 export type TAgentVaultOauthAuthorizationActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
 
@@ -209,6 +216,15 @@ export type TResolvedOauthCredential = {
   value: string;
   source: AgentVaultCredentialType.OAuth;
   expiresAt: string | null;
+};
+
+// Refreshes an OAuth variable's tokens with no service to pin them to, for a caller that sends them only to a URL an
+// admin typed (loading an unsaved service's tools).
+export type TRefreshVariableTokenDTO = {
+  variableId: string;
+  projectId: string;
+  rejectedTokenHash?: string;
+  expiresWithinSeconds?: number;
 };
 
 export type TReportMissingScopesDTO = {

@@ -196,7 +196,7 @@ const howToUse = (
   onBehalfOfUser: boolean
 ) => {
   if (service.credentialNotConnected) {
-    return `Not usable yet: the sign-in ${JSON.stringify(service.name)} uses isn't connected in Agent Vault, and an Agent Vault admin has to sign it in. The proxy refuses requests to it until then, and it can take a few minutes to apply.`;
+    return `Not usable yet: the sign-in ${JSON.stringify(service.name)} uses isn't connected in Agent Vault or was removed. An Agent Vault admin has to sign it in, or, if it was removed, a new session is needed. The proxy refuses requests to it until then.`;
   }
   if (service.personalValuesMissing) {
     // A sign-in that expired needs connecting again, not values set, so one sentence covers both.

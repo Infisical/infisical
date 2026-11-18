@@ -1,13 +1,18 @@
+import crypto from "node:crypto";
+
 import {
   AgentVaultOauthClientAuthMethod,
   AgentVaultOauthRegistration
 } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   describeOauthVariableSettingsProblem,
+  isOauthVariableClientChanged,
   isOauthVariableSignInChanged,
   mergeOauthVariableSettings,
   OAUTH_VARIABLE_SIGN_IN_FIELDS,
   oauthVariableIssuerOf,
+  oauthVariableSettingsFingerprintOf,
+  oauthVariableSignInSettingsOf,
   toOauthVariableSettings
 } from "./agent-vault-oauth-variable-fns";
 import { TAgentVaultOauthVariableSettings } from "./agent-vault-variable-types";
@@ -106,5 +111,34 @@ describe("oauthVariableIssuerOf", () => {
       "https://issuer.example.com"
     );
     expect(oauthVariableIssuerOf(discovered)).toBeNull();
+  });
+});
+
+describe("oauthVariableSettingsFingerprintOf", () => {
+  test("no disconnects hashes the sign-in settings alone, so sign-ins started before the count existed still match", () => {
+    const legacy = crypto
+      .createHash("sha256")
+      .update(JSON.stringify(oauthVariableSignInSettingsOf(manual)))
+      .digest("hex");
+    expect(oauthVariableSettingsFingerprintOf(manual)).toBe(legacy);
+    expect(oauthVariableSettingsFingerprintOf(manual, 0)).toBe(legacy);
+  });
+
+  test("a disconnect changes it even when the settings are the same", () => {
+    expect(oauthVariableSettingsFingerprintOf(manual, 1)).not.toBe(oauthVariableSettingsFingerprintOf(manual));
+    expect(oauthVariableSettingsFingerprintOf(manual, 2)).not.toBe(oauthVariableSettingsFingerprintOf(manual, 1));
+  });
+});
+
+describe("isOauthVariableClientChanged", () => {
+  test("only the client's own settings count", () => {
+    expect(isOauthVariableClientChanged(manual, { ...manual, scopes: ["email"], issuer: "https://x.test" })).toBe(
+      false
+    );
+    expect(isOauthVariableClientChanged(manual, { ...manual, clientId: "client-2" })).toBe(true);
+    expect(isOauthVariableClientChanged(manual, { ...manual, tokenEndpoint: "https://login.example.com/token" })).toBe(
+      true
+    );
+    expect(isOauthVariableClientChanged(manual, { ...manual, tokenEndpointAuthMethod: null })).toBe(true);
   });
 });

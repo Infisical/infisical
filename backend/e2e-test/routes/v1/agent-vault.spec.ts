@@ -3252,6 +3252,32 @@ describe("Agent Vault V1 Router", async () => {
           variable: { id: variable.id, key: "INLINE_OAUTH" }
         });
       });
+
+      test("an inline OAuth credential can't leave fields to members", async () => {
+        await createOauthVariable("INLINE_MEMBER_OAUTH");
+
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+          ttl: "1h",
+          services: [
+            {
+              type: "http",
+              name: "inline-member-oauth",
+              hostPattern: "api.example.com",
+              credential: { type: "oauth", variable: "INLINE_MEMBER_OAUTH", memberProvidedFields: ["credential-value"] }
+            }
+          ]
+        });
+        expect(mint.statusCode, mint.payload).toBe(400);
+        expect(mint.json().message).toContain("can't leave a field to members");
+      });
+
+      test("a sign-in starts from a POST with no body", async () => {
+        const { variable } = (await createOauthVariable("NO_BODY_OAUTH")).json() as { variable: TOauthVariable };
+
+        const res = await injectRaw("POST", `${variablesUrl}/${variable.id}/authorizations`);
+        expect(res.statusCode, res.payload).toBe(200);
+        expect(res.json().authorization.authorizeUrl).toContain(manualOauth.authorizationEndpoint);
+      });
     });
   });
 

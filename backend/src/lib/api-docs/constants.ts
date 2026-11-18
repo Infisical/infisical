@@ -5081,12 +5081,10 @@ export const AGENT_VAULT = {
       "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value. On an OAuth variable only `null` is accepted, which disconnects it: its tokens and client secret are deleted until the next sign-in or import.",
     type: "`text` for a value services put in place of `{{KEY}}`, or `oauth` for a sign-in whose access token a service sends as its credential. Fixed when the variable is created.",
     createType:
-      "`text` (the default) for a value services put in place of `{{KEY}}`. `oauth` for a sign-in with an OAuth provider, which needs `oauth` or `sourceVariableId`. OAuth variables are always global and count toward the project's limit of 500 global variables.",
+      "`text` (the default) for a value services put in place of `{{KEY}}`. `oauth` for a sign-in with an OAuth provider, which needs `oauth`. OAuth variables are always global and count toward the project's limit of 500 global variables.",
     typeFilter: "Return only the variables of this type.",
     createValue:
       "The value the proxy puts in place of each `{{KEY}}`. Required for a `text` variable; leave it out for an `oauth` one.",
-    sourceVariableId:
-      "The ID of an OAuth variable to copy the provider settings from, instead of sending `oauth`. Only the settings are copied, never the tokens, so the new variable starts out not connected.",
     oauthSettings:
       "The OAuth provider. Send `serverUrl` for Infisical to discover its endpoints at each sign-in, or `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes` to set it up by hand.",
     oauthSettingsUpdate:

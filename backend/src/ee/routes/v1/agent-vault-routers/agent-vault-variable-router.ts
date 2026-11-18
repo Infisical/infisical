@@ -213,7 +213,8 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       params: z.object({
         variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
       }),
-      body: AgentVaultOauthVariableSignInBodySchema,
+      // A POST with no body reaches here as null, not undefined, so optional() alone would refuse it.
+      body: AgentVaultOauthVariableSignInBodySchema.nullish(),
       response: { 200: AgentVaultOauthVariableSignInStartSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -226,7 +227,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
         projectId,
         ctx: actorContext(req),
         variableId: req.params.variableId,
-        ...req.body
+        ...(req.body ?? {})
       });
     }
   });

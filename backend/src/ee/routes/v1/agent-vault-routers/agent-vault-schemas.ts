@@ -376,23 +376,30 @@ const oauthVariableKeyReferenceSchema = z
   .max(AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH)
   .regex(AGENT_VAULT_VARIABLE_KEY_RE, AGENT_VAULT_VARIABLE_KEY_MESSAGE);
 
-const oauthCredentialFields = {
+// Only an MCP service signs in itself; any other service's OAuth credential names a variable. The sign-in fields stay
+// accepted there, hidden from the docs, so the service refuses them by name.
+const mcpOnlyDocs = (mcp: boolean, description: string) => (mcp ? description : openApiHidden());
+
+const oauthCredentialFields = ({ mcp }: { mcp: boolean }) => ({
   type: z.literal(AgentVaultCredentialType.OAuth),
   variable: oauthVariableKeyReferenceSchema.optional().describe(AGENT_VAULT.SERVICE.oauthVariable),
   memberProvidedFields: bearerMemberProvidedFieldsSchema
     .optional()
-    .describe(AGENT_VAULT.SERVICE.oauthMemberProvidedFields),
-  clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.SERVICE.oauthClientId),
-  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.SERVICE.oauthClientSecret),
+    .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthMemberProvidedFields)),
+  clientId: AgentVaultOauthClientIdSchema.optional().describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthClientId)),
+  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(
+    mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthClientSecret)
+  ),
   registration: z
     .literal(AgentVaultOauthRegistration.Dynamic)
     .optional()
-    .describe(AGENT_VAULT.SERVICE.oauthRegistration)
-};
-const oauthCredentialInput = z.object({
-  ...oauthCredentialFields,
-  authorizationId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.authorizationId)
+    .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthRegistration))
 });
+const oauthCredentialInput = ({ mcp }: { mcp: boolean }) =>
+  z.object({
+    ...oauthCredentialFields({ mcp }),
+    authorizationId: z.string().uuid().optional().describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.authorizationId))
+  });
 
 const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
 
@@ -404,7 +411,7 @@ const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
       bearerCredentialInput.describe(docsTitle("Bearer")),
       basicCredentialInput.describe(docsTitle("Basic Auth", mcp)),
       passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
-      oauthCredentialInput.describe(docsTitle("OAuth")),
+      oauthCredentialInput({ mcp }).describe(docsTitle("OAuth")),
       sshKeyCredentialInput.describe(docsTitle("SSH Key", true))
     ])
     .superRefine(checkCredentialFields({ requireValues: true }));
@@ -420,7 +427,7 @@ const nativeCredentialInputSchema = ({ ssh }: { ssh: boolean }) =>
       sshKeyCredentialInput.describe(docsTitle("SSH Key", !ssh)),
       bearerCredentialInput.describe(docsTitle("Bearer", true)),
       passthroughCredentialInput.describe(docsTitle("Pass-through", true)),
-      oauthCredentialInput.describe(docsTitle("OAuth", true))
+      oauthCredentialInput({ mcp: false }).describe(docsTitle("OAuth", true))
     ])
     .superRefine(checkCredentialFields({ requireValues: true }))
     .describe(ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential);
@@ -471,8 +478,12 @@ const credentialUpdateSchema = ({
         .describe(docsTitle("Pass-through", mcp || native)),
       z
         .object({
-          ...oauthCredentialFields,
-          authorizationId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+          ...oauthCredentialFields({ mcp }),
+          authorizationId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.updateAuthorizationId))
         })
         .describe(docsTitle("OAuth", native)),
       z
@@ -980,7 +991,8 @@ const inlineCredentialInputSchema = ({
             .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpointAuthMethod),
           scopes: oauthVariableScopesSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthScopes),
           resource: oauthVariableResourceSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthResource),
-          authorizationId: z.string().uuid().optional().describe(openApiHidden())
+          authorizationId: z.string().uuid().optional().describe(openApiHidden()),
+          memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
         .describe(docsTitle("OAuth", native)),
       z
@@ -2154,7 +2166,6 @@ type TVariableCreateShape = {
   type: AgentVaultVariableType;
   value?: string;
   oauth?: unknown;
-  sourceVariableId?: string;
   tokens?: unknown;
   signIn?: unknown;
 };
@@ -2165,9 +2176,6 @@ const checkVariableCreateFields = (body: TVariableCreateShape, ctx: z.Refinement
   if (body.type === AgentVaultVariableType.Text) {
     if (body.value === undefined) issue("value", "A text variable needs a value.");
     if (body.oauth !== undefined) issue("oauth", "Leave 'oauth' out of a text variable, or send type 'oauth'.");
-    if (body.sourceVariableId !== undefined) {
-      issue("sourceVariableId", "Only an OAuth variable can be duplicated. Send type 'oauth' with 'sourceVariableId'.");
-    }
     if (body.tokens !== undefined) issue("tokens", "Only an OAuth variable takes tokens. Send type 'oauth'.");
     if (body.signIn !== undefined) issue("signIn", "Only an OAuth variable can be signed in to. Send type 'oauth'.");
     return;
@@ -2181,15 +2189,7 @@ const checkVariableCreateFields = (body: TVariableCreateShape, ctx: z.Refinement
   if (body.value !== undefined) {
     issue("value", "Leave 'value' out of an OAuth variable. It gets its tokens from a sign-in or a token import.");
   }
-  if (body.oauth !== undefined && body.sourceVariableId !== undefined) {
-    issue("sourceVariableId", "Send either 'oauth' or 'sourceVariableId', not both.");
-  }
-  if (body.oauth === undefined && body.sourceVariableId === undefined) {
-    issue(
-      "oauth",
-      "An OAuth variable needs its provider settings in 'oauth', or 'sourceVariableId' to copy them from another OAuth variable."
-    );
-  }
+  if (body.oauth === undefined) issue("oauth", "An OAuth variable needs its provider settings in 'oauth'.");
 };
 
 export const AgentVaultCreateVariableBodySchema = z
@@ -2203,7 +2203,6 @@ export const AgentVaultCreateVariableBodySchema = z
       .describe(AGENT_VAULT.VARIABLE.createType),
     value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.createValue),
     oauth: AgentVaultOauthVariableSettingsSchema.optional(),
-    sourceVariableId: z.string().uuid().optional().describe(AGENT_VAULT.VARIABLE.sourceVariableId),
     tokens: AgentVaultOauthVariableTokensSchema.optional().describe(AGENT_VAULT.VARIABLE.tokens),
     signIn: AgentVaultOauthVariableSignInBodySchema.optional().describe(AGENT_VAULT.VARIABLE.signIn)
   })

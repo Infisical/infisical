@@ -8,7 +8,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
@@ -21,6 +21,7 @@ import {
   TOauthVariableConnected,
   TVariableSignInStart
 } from "../agent-vault-oauth/agent-vault-oauth-service";
+import { TAgentVaultOauthSecret } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
@@ -34,8 +35,10 @@ import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from ".
 import {
   describeOauthVariableImportProblem,
   describeOauthVariableSettingsProblem,
+  isOauthVariableClientChanged,
   isOauthVariableSignInChanged,
   mergeOauthVariableSettings,
+  oauthVariableDisconnectsOf,
   oauthVariableSecretOf,
   toImportedOauthVariableConnection,
   toOauthVariableSettings,
@@ -284,8 +287,12 @@ export const agentVaultVariableServiceFactory = ({
       : `The variable '${key}' is used by the services ${names}. Remove it from those services before deleting it.`;
   };
 
-  const sealJson = async (projectId: string, value: unknown) =>
-    (await getProjectCipher(projectId)).encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
+  type TProjectCipher = Awaited<ReturnType<typeof getProjectCipher>>;
+
+  const sealJsonWith = (cipher: TProjectCipher, value: unknown) =>
+    cipher.encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
+
+  const sealJson = async (projectId: string, value: unknown) => sealJsonWith(await getProjectCipher(projectId), value);
 
   const sealValue = (projectId: string, value: string) => sealJson(projectId, { value });
 
@@ -319,29 +326,10 @@ export const agentVaultVariableServiceFactory = ({
     };
   };
 
-  // A copy takes only the settings, so it starts out not connected: tokens belong to the account that signed in.
-  const oauthSettingsForCreate = async ({
-    oauth,
-    sourceVariableId,
-    ...rest
-  }: Pick<TCreateVariableDTO, "oauth" | "sourceVariableId"> & TAgentVaultVariableScoped) => {
-    if (sourceVariableId) {
-      const { variable: source } = await findAccessibleVariable(
-        { variableId: sourceVariableId, ...rest },
-        ProjectPermissionAgentVaultVariableActions.Read
-      );
-      if (!isOauth(source)) {
-        throw new BadRequestError({
-          message: `The variable '${source.key}' is a text variable. Only an OAuth variable can be duplicated.`,
-          details: { field: "sourceVariableId" }
-        });
-      }
-      return oauthConfigOf(source).settings;
-    }
+  const oauthSettingsForCreate = (oauth: TCreateVariableDTO["oauth"]) => {
     if (!oauth) {
       throw new BadRequestError({
-        message:
-          "An OAuth variable needs its provider settings in 'oauth', or 'sourceVariableId' to copy them from another OAuth variable.",
+        message: "An OAuth variable needs its provider settings in 'oauth'.",
         details: { field: "oauth" }
       });
     }
@@ -351,12 +339,26 @@ export const agentVaultVariableServiceFactory = ({
     return settings;
   };
 
+  // Saving the sign-in edits the variable and the response shows it, so creating alone isn't enough to start one.
+  const assertCanStartSignIn = async (scoped: TAgentVaultVariableScoped) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, scoped);
+    const missing = [
+      ProjectPermissionAgentVaultVariableActions.Edit,
+      ProjectPermissionAgentVaultVariableActions.Read
+    ].some((action) => permission.cannot(action, ProjectPermissionSub.AgentVaultVariables));
+    if (missing) {
+      throw new ForbiddenRequestError({
+        message:
+          "Starting a sign-in with a new variable needs permission to read and edit variables. Create the variable without 'signIn', or ask an admin for that access."
+      });
+    }
+  };
+
   const createVariable = async ({
     key,
     value,
     type,
     oauth,
-    sourceVariableId,
     tokens,
     signIn,
     scope: scopeName,
@@ -388,7 +390,8 @@ export const agentVaultVariableServiceFactory = ({
           details: { field: "scope" }
         });
       }
-      const settings = await oauthSettingsForCreate({ oauth, sourceVariableId, ...rest });
+      if (signIn) await assertCanStartSignIn(rest);
+      const settings = oauthSettingsForCreate(oauth);
       if (tokens && signIn) {
         throw new BadRequestError({
           message: "Send either 'tokens' to import or 'signIn' to start a sign-in, not both.",
@@ -522,35 +525,58 @@ export const agentVaultVariableServiceFactory = ({
     }
   };
 
+  // The secret sealed with the current tokens is still the client's while its settings stay the same.
+  const keptClientSecretOf = (
+    current: TAgentVaultVariable,
+    before: TAgentVaultOauthVariableSettings,
+    after: TAgentVaultOauthVariableSettings,
+    cipher: TProjectCipher
+  ) => {
+    if (!current.encryptedValue || isOauthVariableClientChanged(before, after)) return undefined;
+    const secret = JSON.parse(
+      cipher.decryptor({ cipherTextBlob: current.encryptedValue }).toString("utf-8")
+    ) as TAgentVaultOauthSecret;
+    return secret.clientSecret;
+  };
+
+  const disconnectsField = (disconnects: number) => (disconnects ? { disconnects } : {});
+
   /**
    * Built from the row locked by the update. A sign-in setting that changed, or `value: null`, disconnects the variable:
-   * the tokens and the client secret sealed with them belong to the old provider or client. Any other edit keeps the
-   * sealed value untouched and the connection as the locked row holds it, so a refresh committed before the lock is
-   * kept, and one after it waits for the lock and then applies to what this writes.
+   * the tokens and the client secret sealed with them belong to the old provider or client, and the disconnect count
+   * goes up so a sign-in started before it can't complete. Any other edit keeps the sealed value untouched and the
+   * connection as the locked row holds it, so a refresh committed before the lock is kept, and one after it waits for
+   * the lock and then applies to what this writes. Imported tokens sent without a client secret keep the stored one
+   * while the client stays the same.
    */
   const oauthUpdateOf = (
     current: TAgentVaultVariable,
-    {
-      value,
-      oauth,
-      tokens,
-      sealedTokens
-    }: Pick<TUpdateVariableDTO, "value" | "oauth" | "tokens"> & { sealedTokens?: Buffer }
+    { value, oauth, tokens }: Pick<TUpdateVariableDTO, "value" | "oauth" | "tokens">,
+    cipher: TProjectCipher | undefined
   ) => {
     const config = oauthConfigOf(current);
+    const disconnects = oauthVariableDisconnectsOf(config);
     const settings = oauth ? mergeOauthVariableSettings(config.settings, oauth) : config.settings;
     if (oauth) {
       const problem = settingsProblemError(settings);
       if (problem) throw problem;
     }
     // Imported tokens replace whatever the variable held, under the settings this update leaves it with.
-    if (tokens && sealedTokens) {
+    if (tokens && cipher) {
+      const imported = {
+        ...tokens,
+        clientSecret: tokens.clientSecret ?? keptClientSecretOf(current, config.settings, settings, cipher)
+      };
       return {
         disconnected: false,
         imported: true,
         update: {
-          oauthConfig: { settings, connection: importedConnectionOf(settings, tokens) },
-          encryptedValue: sealedTokens
+          oauthConfig: {
+            settings,
+            connection: importedConnectionOf(settings, imported),
+            ...disconnectsField(disconnects)
+          },
+          encryptedValue: sealJsonWith(cipher, oauthVariableSecretOf(imported))
         }
       };
     }
@@ -559,7 +585,11 @@ export const agentVaultVariableServiceFactory = ({
       disconnected: disconnect && Boolean(config.connection),
       imported: false,
       update: {
-        oauthConfig: { settings, connection: disconnect ? null : config.connection },
+        oauthConfig: {
+          settings,
+          connection: disconnect ? null : config.connection,
+          ...disconnectsField(disconnect ? disconnects + 1 : disconnects)
+        },
         ...(disconnect ? { encryptedValue: null } : {})
       }
     };
@@ -573,7 +603,9 @@ export const agentVaultVariableServiceFactory = ({
     assertUpdateFitsType(variable, { value, oauth, tokens });
 
     const encryptedValue = typeof value === "string" ? await sealValue(rest.projectId, value) : undefined;
-    const sealedTokens = tokens ? await sealJson(rest.projectId, oauthVariableSecretOf(tokens)) : undefined;
+    // Fetched before the lock: an import seals its tokens inside it, since a kept client secret is read from the
+    // locked row.
+    const importCipher = tokens ? await getProjectCipher(rest.projectId) : undefined;
 
     const write = () =>
       agentVaultVariableDAL.transaction(async (tx) => {
@@ -590,7 +622,7 @@ export const agentVaultVariableServiceFactory = ({
 
         const oauthUpdate =
           isOauth(current) && (oauth || value === null || tokens)
-            ? oauthUpdateOf(current, { value, oauth, tokens, sealedTokens })
+            ? oauthUpdateOf(current, { value, oauth, tokens }, importCipher)
             : undefined;
 
         // A rename is this row alone. Sealed text names the variable by id, so nothing that uses it changes.

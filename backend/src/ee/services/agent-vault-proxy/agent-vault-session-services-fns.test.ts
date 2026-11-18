@@ -423,7 +423,9 @@ describe("a bundle service's facts", () => {
     });
     const described = describeSessionService(variableFacts);
     expect(described.status).toBe("needs-personal-values");
-    expect(described.howToUse).toMatch(/^Not usable yet: the sign-in "github" uses isn't connected in Agent Vault/);
+    expect(described.howToUse).toBe(
+      'Not usable yet: the sign-in "github" uses isn\'t connected in Agent Vault or was removed. An Agent Vault admin has to sign it in, or, if it was removed, a new session is needed. The proxy refuses requests to it until then.'
+    );
     expect(described.howToUse).not.toMatch(/personal values|connect their account/);
   });
 

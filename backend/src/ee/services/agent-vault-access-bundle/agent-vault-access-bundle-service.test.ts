@@ -12,6 +12,7 @@ import {
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -27,6 +28,7 @@ import {
   agentVaultAccessBundleServiceFactory,
   HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE
 } from "./agent-vault-access-bundle-service";
+import { McpListError } from "./agent-vault-mcp-tool-list-fns";
 
 const listMcpServerTools = vi.hoisted(() => vi.fn());
 vi.mock("./agent-vault-mcp-tool-list-fns", async (importOriginal) => ({
@@ -164,6 +166,12 @@ const buildService = ({
   const agentVaultOauthService = {
     refreshServiceToken: vi.fn(async () => ({
       credential: { value: "refreshed-access" },
+      status: "connected"
+    })),
+    refreshVariableToken: vi.fn<
+      (dto: { rejectedTokenHash?: string }) => Promise<{ credential: { value: string }; status: string }>
+    >(async () => ({
+      credential: { value: "variable-refreshed-access" },
       status: "connected"
     }))
   };
@@ -909,28 +917,70 @@ describe("an OAuth credential from an OAuth variable", () => {
     expect(service.credential).not.toHaveProperty("lastError", expect.anything());
   });
 
-  test("tools load with an unsaved service's variable token", async () => {
-    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
-    const built = buildService({
+  const listUnsavedWithVariable = (built: ReturnType<typeof buildService>, extra: Record<string, unknown> = {}) =>
+    built.service.listMcpTools({
+      projectId: PROJECT_ID,
+      ctx,
+      serverUrl: "https://mcp.example.com/mcp",
+      transport: AgentVaultMcpTransport.StreamableHttp,
+      credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" },
+      ...extra
+    });
+  const unsavedWithVariable = () =>
+    buildService({
       firstRead: plainService(),
       locked: plainService(),
       oauthVariableKeys: ["GDRIVE_A"],
       oauthVariableTokens: { GDRIVE_A: "variable-access" }
     });
+  const rejected = () => Object.assign(new McpListError({ message: "rejected" }), { isCredentialRejected: true });
 
-    const result = await built.service.listMcpTools({
-      projectId: PROJECT_ID,
-      ctx,
-      serverUrl: "https://mcp.example.com/mcp",
-      transport: AgentVaultMcpTransport.StreamableHttp,
-      credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" }
-    });
+  test("tools load with an unsaved service's variable token, refreshed through the variable alone", async () => {
+    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
+    const built = unsavedWithVariable();
+
+    const result = await listUnsavedWithVariable(built);
 
     expect(result.tools).toEqual([{ name: "search" }]);
-    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
-      Authorization: "Bearer variable-access"
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenCalledWith({
+      variableId: VARIABLE_A,
+      projectId: PROJECT_ID,
+      expiresWithinSeconds: 60,
+      rejectedTokenHash: undefined
     });
     expect(built.agentVaultOauthService.refreshServiceToken).not.toHaveBeenCalled();
+    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
+      Authorization: "Bearer variable-refreshed-access"
+    });
+  });
+
+  test("an unsaved service's variable token refused by the server is refreshed once and retried", async () => {
+    listMcpServerTools.mockRejectedValueOnce(rejected()).mockResolvedValueOnce([{ name: "search" }]);
+    const built = unsavedWithVariable();
+    built.agentVaultOauthService.refreshVariableToken.mockImplementation(async ({ rejectedTokenHash }) => ({
+      credential: { value: rejectedTokenHash ? "after-rejection" : "variable-refreshed-access" },
+      status: "connected"
+    }));
+
+    const result = await listUnsavedWithVariable(built);
+
+    expect(result.tools).toEqual([{ name: "search" }]);
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenLastCalledWith(
+      expect.objectContaining({ rejectedTokenHash: hashAccessToken("variable-refreshed-access") })
+    );
+    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
+      Authorization: "Bearer after-rejection"
+    });
+  });
+
+  test("a refusal with a typed custom header beside the variable's token doesn't refresh it", async () => {
+    listMcpServerTools.mockRejectedValueOnce(rejected());
+    const built = unsavedWithVariable();
+
+    await expect(
+      listUnsavedWithVariable(built, { customHeaders: [{ name: "X-Workspace", value: "acme" }] })
+    ).rejects.toThrow("rejected");
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenCalledTimes(1);
   });
 
   test("tools for a saved service load with the variable's token, refreshed through the service", async () => {

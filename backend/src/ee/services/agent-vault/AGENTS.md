@@ -956,7 +956,7 @@ see [OAuth variables](#oauth-variables).
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
-  arrives. Parameters added to every request for a known provider are not fallbacks and are not recorded:
+  arrives (by origin only for an OAuth variable set up by hand with no issuer; see [OAuth variables](#oauth-variables)). Parameters added to every request for a known provider are not fallbacks and are not recorded:
   `buildAuthorizeUrl` sends Google (`accounts.google.com`) `access_type=offline` and `prompt=consent`, since Google
   ignores `offline_access` and issues a refresh token only for those.
 - **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
@@ -1000,8 +1000,7 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   their owner's personal variables, so they never reach one. A string `value` on an OAuth variable is a 400: its tokens
   change only by a sign-in, an import, or a disconnect (`value: null`). A text variable refuses `oauth`, `tokens` and
   `value: null`. Renames are allowed, since services hold the id.
-- **It counts toward the 500 global variables** and is created through `createVariable` (advisory lock and cap), a copy
-  included: `sourceVariableId` copies the settings and never the tokens, because tokens belong to whoever signed in.
+- **It counts toward the 500 global variables** and is created through `createVariable` (advisory lock and cap).
 - **Never in text.** A service field's `{{KEY}}` naming an OAuth variable is refused at save with a 400 that points to
   the OAuth credential. Resolve's text expansion reads text variables only (`findValuesForResolve`), so an id naming
   an OAuth variable stays unresolved even if one got through. The sheet's autocomplete asks `GET /variables?type=text`.
@@ -1017,24 +1016,29 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   (`describeOauthVariableImportProblem`), since refresh needs its endpoints and client.
 - **A sign-in record carries `variableId`**, the redirect URI it was started with (the variable's `redirectUri`, else
   Infisical's callback page; a machine identity must have a `redirectUri`, since the dashboard callback completes as a user), the actor, and `variableSettingsFingerprint` (`oauthVariableSettingsFingerprintOf` over
-  the sign-in fields). Starting needs `edit` on variables, or `create` when it starts with the variable's create
-  (`signIn`). Discovery that only guessed the endpoints, or found metadata naming another issuer, sends nothing to them
+  the sign-in fields). Starting needs `edit` and `read` on variables (the completion returns the variable), or `create` when it starts with the variable's create
+  (`signIn`). With `edit` and no `read` it is a 403 before any registration or link. Discovery that only guessed the endpoints, or found metadata naming another issuer, sends nothing to them
   (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A
   variable set up by hand with no `issuer` records only its authorization endpoint's origin as the issuer, so its record
-  carries `issuerUnchecked` and the callback's `iss` isn't compared (Keycloak issues from a path). A dynamic registration happens on every sign-in,
+  carries `issuerOriginOnly` and a callback's `iss` must have that origin (Keycloak issues from a path under it); no
+  `iss` passes. Records from before the rename carry `issuerUnchecked`, read the same way. A discovered server that
+  lists no scopes, for a variable that names none, gets a sign-in with no `scope` parameter, as a service's own does;
+  a variable set up by hand must name a scope. A dynamic registration happens on every sign-in,
   as for a service's own, and sends the variable's `clientName` (default: the project's name) and the record's redirect
   URI.
 - **Every finished sign-in writes straight into its variable**, from the public complete route and the dashboard's
   hidden `/oauth/authorizations/:id/complete` alike, and a service save refuses a variable record. The code exchange
   runs first, outside any transaction, under `AgentVaultOauthAuthorizationCompleteLock` (a second caller gets a 409).
-  `writeVariableSignIn` then re-checks `edit` on variables, locks the variable row, and compares the fingerprint (409
+  `writeVariableSignIn` then re-checks `edit` and `read` on variables, locks the variable row, and compares the fingerprint (409
   `AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE` on a mismatch) before writing the tokens. The record is kept with its
-  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. A write that
-  fails for any other reason after the code was redeemed saves the record authorized with its sealed tokens
-  (`isUnwrittenVariableSignIn`, read as pending), so completing it again writes them without a second exchange. A `state` whose
+  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. Right after the
+  exchange, before the variable is written, the record is saved authorized with its sealed tokens
+  (`keepUnwrittenVariableSignIn`; `isUnwrittenVariableSignIn`, read as pending), so a completion that fails after the
+  code was redeemed, its own final record save included, is retried without a second exchange. A `state` whose
   record names another variable is a 400. The public route's statuses are part of its contract: 200 done or already
   done, 400 provider refusal or mismatch with the reason, 404 missing, expired or not yours, 409 in progress or
-  settings changed.
+  settings changed. A failed record keeps the class of its refusal (`errorStatus`), so completing it again answers with
+  the same status; a record without one answers 400.
 - **The dashboard hides Reauthorize for a variable with an API `redirectUri`**, whose sign-in has to finish at the
   customer's callback. That is UI only: the API lets anyone who can edit variables start one.
 - **A service using a variable stores `{ type: "oauth", source: "variable", variableId }`** with `encryptedCredential`
@@ -1047,13 +1051,19 @@ from `POST /variables/:variableId/authorizations` that the customer's own callba
   field `credential-value`, through `insertReferenceRows` and its `FOR SHARE` lock), after checking the variable is
   OAuth. It is the one reference row not read off sealed text, and it is what makes the delete refusal and Used By see
   the service.
-- **Refresh runs on `variableTokenHolder(variableId, serviceId)`**: tokens and connection from the variable row
+- **Refresh runs on `variableTokenHolder(variableId, { serviceId })`**: tokens and connection from the variable row
   (compare-and-swap on `encryptedValue`, merge into `oauthConfig.connection` only), destination from the service row
   (host pattern, server URL, and a 409 `AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE` once it no longer names this
-  variable). The lock is per variable (`AgentVaultOauthVariableRefreshLock`). Resolve reads the session's OAuth
+  variable, after a status write too). A service that is gone or in another project is a 409
+  `AGENT_VAULT_SERVICE_MOVED_MESSAGE`; only a missing or unsigned variable is a 404. The lock is per variable (`AgentVaultOauthVariableRefreshLock`). Resolve reads the session's OAuth
   variables once and refreshes each at most once, through the first service still pointing where its snapshot says,
   trying the next on a 409. Its dead-login and not-signed-in texts name the variable but no page, since a variable
-  with an API `redirectUri` is signed in outside the dashboard.
+  with an API `redirectUri` is signed in outside the dashboard; a refused OAuth app of the caller's own asks for its new
+  client secret. Loading tools sends the token to a URL the admin typed, so when no saved service points there it
+  refreshes through `refreshVariableToken` (`variableTokenHolder(variableId, { projectId })`: the same lock and swap,
+  no destination), retrying once on a 401 only when no custom header could be the one refused. A rejection reported
+  there never marks the variable dead on its own (`rejectionUnvouched`), since a wrong URL would cut off every service
+  sharing it.
 - **A service whose variable isn't signed in goes out with `credentialNotConnected`** beside `personalValuesMissing`
   (bundle and session services alike), so a current proxy names the cause and an older one still refuses it. The
   services list reads the same variables (`findOauthForResolve`, never decrypted, `oauthVariableSignedInOf`) and marks
