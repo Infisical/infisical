@@ -288,7 +288,8 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: z
           .object({
             name: z.string(),
-            id: z.string()
+            id: z.string(),
+            isArchived: z.boolean()
           })
           .array()
       }

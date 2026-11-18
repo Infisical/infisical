@@ -111,6 +111,9 @@ const SlackChannelPickers = ({ index }: Props) => {
   ]);
 
   const knownChannelIds = new Set(slackChannels.map((channel) => channel.id));
+  const archivedChannelIds = new Set(
+    slackChannels.filter((channel) => channel.isArchived).map((channel) => channel.id)
+  );
   const isMissingChannel = (channel: TAlertSlackChannel) =>
     channelsQuery.isSuccess && !knownChannelIds.has(channel.id);
 
@@ -203,7 +206,10 @@ const SlackChannelPickers = ({ index }: Props) => {
                     workflowIntegrationId ? "Add Slack channels..." : "Select an integration first"
                   }
                   searchAriaLabel="Search Slack channels"
-                  options={slackChannels}
+                  options={slackChannels.filter(
+                    (channel) =>
+                      !channel.isArchived || value.some((selected) => selected.id === channel.id)
+                  )}
                   value={value}
                   isDisabled={!workflowIntegrationId}
                   isLoading={Boolean(workflowIntegrationId) && channelsQuery.isPending}
@@ -221,13 +227,17 @@ const SlackChannelPickers = ({ index }: Props) => {
                   }
                   getOptionValue={(channel) => channel.id}
                   getOptionLabel={(channel) => `#${channel.name}`}
-                  renderValue={(channel) =>
-                    isMissingChannel(channel) ? (
-                      <span className="text-warning">#{channel.name} (not found in Slack)</span>
-                    ) : (
-                      `#${channel.name}`
-                    )
-                  }
+                  renderValue={(channel) => {
+                    if (isMissingChannel(channel)) {
+                      return (
+                        <span className="text-warning">#{channel.name} (not found in Slack)</span>
+                      );
+                    }
+                    if (archivedChannelIds.has(channel.id)) {
+                      return <span className="text-warning">#{channel.name} (archived)</span>;
+                    }
+                    return `#${channel.name}`;
+                  }}
                   onValueChange={(next: TAlertSlackChannel[]) =>
                     field.onChange(next.map(({ id, name }) => ({ id, name })))
                   }

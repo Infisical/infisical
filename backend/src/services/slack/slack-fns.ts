@@ -23,6 +23,7 @@ export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
     name: string;
     id: string;
+    isArchived: boolean;
   }[] = [];
 
   // The SDK's default retry policy waits out rate limits for up to half an hour, which would hang the request.
@@ -46,7 +47,8 @@ export const fetchSlackChannels = async (botKey: string) => {
     response.channels?.forEach((channel) =>
       slackChannels.push({
         name: channel.name_normalized as string,
-        id: channel.id as string
+        id: channel.id as string,
+        isArchived: Boolean(channel.is_archived)
       })
     );
 
