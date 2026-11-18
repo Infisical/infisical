@@ -195,14 +195,16 @@ const announceSubmission = (
       passedCount: rule.conditions.filter(({ passed }) => passed).length
     }))
     .sort((a, b) => a.failedCount - b.failedCount || b.passedCount - a.passedCount)[0]?.rule;
-  const firstFailure = closest?.conditions.find(({ passed }) => !passed)?.reason;
+  const firstFailure = closest?.conditions.find(({ passed, reason }) => !passed && reason)?.reason;
   const submitted = isCredential
     ? "Credential access request submitted"
     : "Access request submitted";
-  if (firstFailure)
+  if (outcome && closest)
     toast({
       title: submitted,
-      description: `It wasn't auto-approved: ${firstFailure}`
+      description: firstFailure
+        ? `It wasn't auto-approved: ${firstFailure}`
+        : "It wasn't auto-approved"
     });
   else saved(submitted);
 };
