@@ -99,6 +99,9 @@ const parseMetadataFilter = (filters: FilterBarFilter[]) => {
       metadataFilterError: "Filter metadata as key=value, such as env=production."
     };
   const rows = [{ key: query.slice(0, separator), value: query.slice(separator + 1) }];
+  if (!rows[0].key.trim()) return { metadataFilter: undefined, metadataFilterError: "Enter a key" };
+  if (!rows[0].value.trim())
+    return { metadataFilter: undefined, metadataFilterError: "Enter a value" };
   const errors = sessionMetadataErrors(rows);
   const error = errors && (errors.rows[0].key ?? errors.rows[0].value ?? errors.list);
   if (error) return { metadataFilter: undefined, metadataFilterError: error };

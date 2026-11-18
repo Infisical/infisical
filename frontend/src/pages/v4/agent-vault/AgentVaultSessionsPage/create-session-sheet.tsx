@@ -582,89 +582,95 @@ const CreateNowForm = ({
     metadataRowErrors?.map((row) => row.key ?? row.value).find(Boolean);
 
   return (
-    <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
-      <Stack gap={16}>
-        <Controller
-          control={control}
-          name="services"
-          render={({ field, fieldState }) => (
-            <ServicesField
-              projectId={projectId}
-              value={field.value}
-              error={fieldState.error?.message}
-              onChange={field.onChange}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="label"
-          render={({ field, fieldState }) => (
-            <Field label="Label" optional error={fieldState.error?.message}>
-              <Input {...field} placeholder="Nightly deploy" invalid={Boolean(fieldState.error)} />
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="metadata"
-          render={({ field }) => (
-            <Field>
-              <MetadataEditor
-                addLabel="Add metadata"
-                entries={field.value}
-                errors={metadataRowErrors}
+    <Stack gap={16}>
+      <form id={FORM_ID} onSubmit={handleSubmit(submit)}>
+        <Stack gap={16}>
+          <Controller
+            control={control}
+            name="services"
+            render={({ field, fieldState }) => (
+              <ServicesField
+                projectId={projectId}
+                value={field.value}
+                error={fieldState.error?.message}
                 onChange={field.onChange}
               />
-              {metadataListError && <FieldError>{metadataListError}</FieldError>}
-            </Field>
-          )}
-        />
-        <Field
-          label="Expires"
-          error={errors.customTtl?.message}
-          description={
-            ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
-          }
-        >
-          <Stack gap={8}>
-            <Controller
-              control={control}
-              name="ttlPreset"
-              render={({ field }) => (
-                <Select
-                  label="Expires"
-                  value={field.value}
-                  options={TTL_PRESETS}
+            )}
+          />
+          <Controller
+            control={control}
+            name="label"
+            render={({ field, fieldState }) => (
+              <Field label="Label" optional error={fieldState.error?.message}>
+                <Input
+                  {...field}
+                  placeholder="Nightly deploy"
+                  invalid={Boolean(fieldState.error)}
+                />
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="metadata"
+            render={({ field }) => (
+              <Field>
+                <MetadataEditor
+                  addLabel="Add metadata"
+                  entries={field.value}
+                  errors={metadataRowErrors}
                   onChange={field.onChange}
                 />
-              )}
-            />
-            {ttlPreset === CUSTOM_TTL && (
+                {metadataListError && <FieldError>{metadataListError}</FieldError>}
+              </Field>
+            )}
+          />
+          <Field
+            label="Expires"
+            error={errors.customTtl?.message}
+            description={
+              ttlPreset === NEVER_TTL ? "This session runs until someone revokes it." : undefined
+            }
+          >
+            <Stack gap={8}>
               <Controller
                 control={control}
-                name="customTtl"
-                render={({ field, fieldState }) => (
-                  <DurationInput
-                    aria-label="Custom expiry"
+                name="ttlPreset"
+                render={({ field }) => (
+                  <Select
+                    label="Expires"
                     value={field.value}
-                    invalid={Boolean(fieldState.error)}
-                    placeholder="90"
+                    options={TTL_PRESETS}
                     onChange={field.onChange}
                   />
                 )}
               />
-            )}
-          </Stack>
-        </Field>
-        <NeedsSetupNotice
-          orgId={orgId}
-          projectId={projectId}
-          accessBundle={accessBundle}
-          selectedServices={selectedServices}
-        />
-      </Stack>
-    </form>
+              {ttlPreset === CUSTOM_TTL && (
+                <Controller
+                  control={control}
+                  name="customTtl"
+                  render={({ field, fieldState }) => (
+                    <DurationInput
+                      aria-label="Custom expiry"
+                      value={field.value}
+                      invalid={Boolean(fieldState.error)}
+                      placeholder="90"
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              )}
+            </Stack>
+          </Field>
+        </Stack>
+      </form>
+      <NeedsSetupNotice
+        orgId={orgId}
+        projectId={projectId}
+        accessBundle={accessBundle}
+        selectedServices={selectedServices}
+      />
+    </Stack>
   );
 };
 
