@@ -457,8 +457,8 @@ const useEnvironmentOrder = (projectId: string, serverOrder: ProjectEnv[] | unde
   const update = useV4Adapter("projectEnvironments").useUpdateEnvironment();
   const [moving, setMoving] = useState(false);
   const [reordered, setReordered] = useState<{ base: ProjectEnv[]; order: ProjectEnv[] }>();
-  const active =
-    (reordered && reordered.base === serverOrder ? reordered.order : serverOrder) ?? [];
+  const awaitingRefresh = reordered !== undefined && reordered.base === serverOrder;
+  const active = (awaitingRefresh ? reordered.order : serverOrder) ?? [];
 
   const reorder = async (next: ProjectEnv[]) => {
     if (!serverOrder) return;
@@ -482,7 +482,7 @@ const useEnvironmentOrder = (projectId: string, serverOrder: ProjectEnv[] | unde
     }
   };
 
-  return { active, moving, reorder };
+  return { active, busy: moving || awaitingRefresh, reorder };
 };
 
 export const EnvironmentsSettings = () => {
@@ -496,7 +496,7 @@ export const EnvironmentsSettings = () => {
     key: 0
   });
   const [confirm, setConfirm] = useState<Confirm>();
-  const { active, moving, reorder } = useEnvironmentOrder(projectId, project?.environments);
+  const { active, busy, reorder } = useEnvironmentOrder(projectId, project?.environments);
 
   const can = (action: ProjectPermissionActions) =>
     permission.can(action, ProjectPermissionSub.Environments);
@@ -592,7 +592,7 @@ export const EnvironmentsSettings = () => {
               rowLabel={(environment) => environment.name}
               onRowActivate={editBlocked ? undefined : openEdit}
               rowActions={activeActions}
-              reorder={canEdit ? { onReorder: reorder, isRowDisabled: () => moving } : undefined}
+              reorder={canEdit ? { onReorder: reorder, isRowDisabled: () => busy } : undefined}
             />
           ) : (
             <EmptyState size="sm" icon="folder" title="No environments" />
