@@ -9,6 +9,12 @@ export class UsageMonth {
     return new UsageMonth(at.getUTCFullYear(), at.getUTCMonth());
   }
 
+  // The inverse of `key`.
+  static fromKey(key: string): UsageMonth {
+    const [year, month] = key.split("-").map(Number);
+    return new UsageMonth(year, month - 1);
+  }
+
   get key(): string {
     return `${this.year}-${String(this.monthIndex + 1).padStart(2, "0")}`;
   }
