@@ -317,18 +317,26 @@ export const folderPermissionServiceFactory = ({
 
     const page = { limit, offset, search };
     const actorField = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
-    const ancestorFolders = await $resolveAncestorFolders(folder);
-    // grants stay out of the cached folder access so a grant or revoke is visible on the very next request
-    const [folderAccess, grants] = await Promise.all([
+    const [ancestorFolders, folderAccess] = await Promise.all([
+      $resolveAncestorFolders(folder),
       $getFolderAccess<TActor>({ projectId, orgId, folder, actorType, page }, () =>
         fetchMembers({ projectId, orgId }, page)
-      ),
-      additionalPrivilegeDAL.find({
-        projectId,
-        $in: { folderId: [folder.id, ...ancestorFolders.map((ancestor) => ancestor.id)] },
-        $notNull: [actorField]
-      })
+      )
     ]);
+    const folderIds = [folder.id, ...ancestorFolders.map((ancestor) => ancestor.id)];
+    const pageActorIds = folderAccess.actors.map(({ actor }) => actorIdOf(actor));
+    // Grants stay out of the cached folder access so a grant or revoke is visible on the very next request.
+    // They are read for the page's actors only: every actor can hold one grant per folder above this one, so
+    // reading them for the whole project grows with the roster and the folder's depth.
+    const grants = pageActorIds.length
+      ? await additionalPrivilegeDAL.find({
+          projectId,
+          $in:
+            actorType === ActorType.USER
+              ? { folderId: folderIds, actorUserId: pageActorIds }
+              : { folderId: folderIds, actorIdentityId: pageActorIds }
+        })
+      : [];
     const now = new Date();
     const actorIdOfGrant = (grant: (typeof grants)[number]) => grant[actorField] as string;
     const grantByActorId = new Map(

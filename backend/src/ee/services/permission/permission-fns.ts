@@ -731,14 +731,19 @@ export const buildFolderScopedPrivilegeRules = (
   // An exact grant is built from the recursive role table when the recursive grant that decides its folder already
   // lets the actor create and edit folders, so a higher exact role on a subfolder never takes that away. The two
   // tables differ only in folder create and edit, from the edit tier up, so a lower exact role still narrows it.
+  // The deciding grant is found by walking up from the folder's parent, not by scanning every recursive grant:
+  // this runs for each exact grant on every permission build, and an actor can hold a grant on every folder.
+  const recursiveRoleByFolder = new Map(
+    recursiveGrants.map((grant) => [`${grant.environment}:${grant.secretPath}`, grant.role])
+  );
   const usesRecursiveTables = (grant: (typeof scopedGrants)[number]) => {
     if (grant.isRecursive) return true;
-    const decidingRecursiveGrant = recursiveGrants.findLast(
-      (recursiveGrant) =>
-        recursiveGrant.environment === grant.environment &&
-        isFolderPathBelow(grant.secretPath, recursiveGrant.secretPath)
-    );
-    return Boolean(decidingRecursiveGrant && FOLDER_EDITING_ROLES.has(decidingRecursiveGrant.role));
+    const segments = grant.secretPath.split("/").filter(Boolean);
+    for (let depth = segments.length - 1; depth >= 0; depth -= 1) {
+      const decidingRole = recursiveRoleByFolder.get(`${grant.environment}:/${segments.slice(0, depth).join("/")}`);
+      if (decidingRole) return FOLDER_EDITING_ROLES.has(decidingRole);
+    }
+    return false;
   };
 
   const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
