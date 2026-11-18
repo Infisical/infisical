@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { fillActivityPeriods, getActivityPeriodWindow, selectActivityPeriod } from "@app/lib/knex/activity-periods";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { SigningOperationStatus } from "./signer-enums";
@@ -152,28 +153,14 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
-      const now = new Date();
-
-      const useDaily = daysBack <= 30;
-      if (!useDaily) {
-        startDate.setDate(1);
-      }
-
-      const formatPeriod = (date: Date) => {
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        return useDaily ? `${month}-${String(date.getDate()).padStart(2, "0")}` : month;
-      };
-
+      const window = getActivityPeriodWindow(daysBack);
       const counts = new Map<string, { success: number; failed: number }>();
 
       if (!signerIds || signerIds.length) {
         let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
           .where(`${TableName.PkiSigningOperations}.projectId`, projectId)
-          .where(`${TableName.PkiSigningOperations}.createdAt`, ">=", startDate)
-          .where(`${TableName.PkiSigningOperations}.createdAt`, "<=", now);
+          .where(`${TableName.PkiSigningOperations}.createdAt`, ">=", window.startDate)
+          .where(`${TableName.PkiSigningOperations}.createdAt`, "<=", window.endDate);
 
         if (signerIds) {
           query = query.whereIn(`${TableName.PkiSigningOperations}.signerId`, signerIds);
@@ -181,10 +168,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
 
         const rows = (await query
           .select(
-            db.raw(`to_char(date_trunc(?, "${TableName.PkiSigningOperations}"."createdAt"), ?) as period`, [
-              useDaily ? "day" : "month",
-              useDaily ? "YYYY-MM-DD" : "YYYY-MM"
-            ]),
+            selectActivityPeriod(db, window, TableName.PkiSigningOperations, "createdAt"),
             db.raw("count(*) filter (where status = ?)::int as success", [SigningOperationStatus.Success]),
             db.raw("count(*) filter (where status in (?, ?))::int as failed", [
               SigningOperationStatus.Failed,
@@ -196,19 +180,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
         rows.forEach((row) => counts.set(row.period, { success: Number(row.success), failed: Number(row.failed) }));
       }
 
-      const periods: { period: string; success: number; failed: number }[] = [];
-      const cursor = new Date(startDate);
-      while (cursor <= now) {
-        const period = formatPeriod(cursor);
-        periods.push({ period, ...(counts.get(period) ?? { success: 0, failed: 0 }) });
-        if (useDaily) {
-          cursor.setDate(cursor.getDate() + 1);
-        } else {
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
-
-      return periods;
+      return fillActivityPeriods(window, (period) => counts.get(period) ?? { success: 0, failed: 0 });
     } catch (error) {
       throw new DatabaseError({ error, name: "GetSigningOperationActivityTrend" });
     }

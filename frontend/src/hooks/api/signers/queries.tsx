@@ -155,7 +155,7 @@ export const useGetSigningActivityTrend = (
   return useQuery({
     queryKey: signerKeys.activityTrend(dto),
     queryFn: async () => {
-      const params = new URLSearchParams({ projectId: dto.projectId, range: dto.range });
+      const params = new URLSearchParams({ range: dto.range });
       if (dto.signerId) params.set("signerId", dto.signerId);
 
       const { data } = await apiRequest.get<{ periods: TSigningActivityPeriod[] }>(
@@ -163,7 +163,7 @@ export const useGetSigningActivityTrend = (
       );
       return data.periods;
     },
-    enabled: enabled && Boolean(dto.projectId),
+    enabled,
     placeholderData: (previousData) => previousData
   });
 };

@@ -531,7 +531,6 @@ export type TListSigningOperationsDTO = {
 };
 
 export type TGetSigningActivityTrendDTO = {
-  projectId: string;
   range: "7d" | "30d" | "6m";
   signerId?: string;
 };

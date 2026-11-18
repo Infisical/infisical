@@ -4,7 +4,6 @@ import { PkiSigningOperationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SigningOperationStatus } from "@app/services/signer/signer-enums";
@@ -23,7 +22,6 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.PkiSigners],
       description: "Get signing operation counts per period across the signers the caller can read",
       querystring: z.object({
-        projectId: z.string().trim().max(36).optional().describe(openApiHidden()),
         range: z.nativeEnum(SigningActivityRange).default(SigningActivityRange.ThirtyDays),
         signerId: z.string().uuid().optional()
       }),
@@ -43,7 +41,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
     handler: async (req) =>
       server.services.pkiSigner.getActivityTrend({
         ...req.query,
-        projectId: req.query.projectId ?? req.internalCertManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

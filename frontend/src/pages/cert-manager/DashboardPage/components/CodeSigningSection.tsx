@@ -54,7 +54,6 @@ export const CodeSigningSection = ({ projectId }: Props) => {
 
   const { data: trendData = [] } = useGetSigningActivityTrend(
     {
-      projectId,
       range: currentRange,
       signerId: selectedSignerId === ALL_SIGNERS ? undefined : selectedSignerId
     },
