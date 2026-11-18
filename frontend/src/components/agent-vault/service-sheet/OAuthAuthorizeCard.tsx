@@ -27,6 +27,9 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -35,6 +38,7 @@ import { AgentVaultCredentialType, AgentVaultOauthStatus } from "@app/hooks/api/
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { ClientSecretInput } from "../ClientSecretInput";
 import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
@@ -50,6 +54,10 @@ import {
   TServiceForm
 } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
+
+// Who registers the OAuth client: Infisical, or the admin's own app. Shared with the OAuth variable form.
+export const AUTOMATIC_TAB = "automatic";
+export const OWN_APP_TAB = "own-app";
 
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
@@ -451,6 +459,19 @@ export const OAuthAuthorizeCard = ({
       <FieldContent>
         <div className="flex flex-col gap-3">
           {isMemberProvided && !isOwnApp && <div>{memberAuthorizeButton}</div>}
+          {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
+            <Tabs
+              value={isUsingOwnApp ? OWN_APP_TAB : AUTOMATIC_TAB}
+              onValueChange={(next) =>
+                next === OWN_APP_TAB ? switchToOwnApp() : switchToAutomaticSetup()
+              }
+            >
+              <TabsList variant="av">
+                <TabsTrigger value={AUTOMATIC_TAB}>Automatic Setup</TabsTrigger>
+                <TabsTrigger value={OWN_APP_TAB}>Your Own OAuth App</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
           {!isMemberProvided && status && (
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -513,12 +534,10 @@ export const OAuthAuthorizeCard = ({
                 <Field className="flex-1">
                   <FieldLabel htmlFor={clientSecretInputId}>Client Secret (optional)</FieldLabel>
                   <FieldContent>
-                    <Input
-                      type="password"
+                    <ClientSecretInput
                       {...register("oauthClientSecret")}
                       id={clientSecretInputId}
                       maxLength={4096}
-                      autoComplete="new-password"
                       placeholder={
                         isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
                       }
@@ -529,19 +548,6 @@ export const OAuthAuthorizeCard = ({
                 </Field>
               </div>
               <div>{isMemberProvided ? memberAuthorizeButton : authorizeButton}</div>
-            </div>
-          )}
-
-          {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
-            <div>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={isUsingOwnApp ? switchToAutomaticSetup : switchToOwnApp}
-              >
-                {isUsingOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
-              </Button>
             </div>
           )}
         </div>

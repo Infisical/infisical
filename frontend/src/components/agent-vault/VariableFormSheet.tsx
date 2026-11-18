@@ -8,12 +8,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DiscardChangesAlertDialog,
   Field,
   FieldContent,
@@ -29,7 +23,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
@@ -432,144 +432,146 @@ export const VariableForm = ({
   return (
     <FormProvider {...formMethods}>
       {showHeader && (
-        <DialogHeader>
-          <DialogTitle>{variableFormTitle({ ...headerProps, type: fixedType })}</DialogTitle>
-          <DialogDescription>{variableFormDescription({ ...headerProps, type })}</DialogDescription>
-        </DialogHeader>
+        <SheetHeader>
+          <SheetTitle>{variableFormTitle({ ...headerProps, type: fixedType })}</SheetTitle>
+          <SheetDescription>{variableFormDescription({ ...headerProps, type })}</SheetDescription>
+        </SheetHeader>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        {canChooseType && !isCreatedHere && (
-          <Controller
-            control={control}
-            name="type"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel id={typeLabelId}>Type</FieldLabel>
-                <FieldContent>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      clearErrors();
-                    }}
-                    disabled={isSigningIn}
-                  >
-                    <SelectTrigger aria-labelledby={typeLabelId} className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {Object.values(AgentVaultVariableType).map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {TYPE_LABELS[value]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldContent>
-              </Field>
-            )}
-          />
-        )}
-        <Controller
-          control={control}
-          name="key"
-          render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel>Key</FieldLabel>
-              <FieldContent>
-                <Input
-                  {...field}
-                  onChange={(event) => field.onChange(normalizeVariableKey(event.target.value))}
-                  placeholder={isOAuth ? "GOOGLE_DRIVE" : "GITHUB_TOKEN"}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="font-mono"
-                  isError={Boolean(fieldState.error)}
-                />
-                <FieldDescription>
-                  {isRenaming && usedByCount > 0 && (
-                    <>
-                      {usedByCount === 1
-                        ? "The service that uses it keeps working"
-                        : `The ${usedByCount} services that use it keep working`}{" "}
-                      under the new key.
-                    </>
-                  )}
-                  {!(isRenaming && usedByCount > 0) &&
-                    (isOAuth ? (
-                      "Services choose it by this key as their OAuth credential."
-                    ) : (
-                      <>
-                        {isPersonal ? "Your personal values use" : "Services use"} it as{" "}
-                        <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
-                      </>
-                    ))}
-                </FieldDescription>
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            </Field>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          {canChooseType && !isCreatedHere && (
+            <Controller
+              control={control}
+              name="type"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel id={typeLabelId}>Type</FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        clearErrors();
+                      }}
+                      disabled={isSigningIn}
+                    >
+                      <SelectTrigger aria-labelledby={typeLabelId} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {Object.values(AgentVaultVariableType).map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {TYPE_LABELS[value]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              )}
+            />
           )}
-        />
-        {!isOAuth && (
           <Controller
             control={control}
-            name="value"
+            name="key"
             render={({ field, fieldState }) => (
               <Field>
-                <FieldLabel>Value</FieldLabel>
+                <FieldLabel>Key</FieldLabel>
                 <FieldContent>
-                  <InputGroup>
-                    <InputGroupInput
-                      {...field}
-                      type={isValueVisible ? "text" : "password"}
-                      placeholder={
-                        variable ? "Leave blank to keep the current value" : "Enter the value"
-                      }
-                      autoComplete="off"
-                      spellCheck={false}
-                      isError={Boolean(fieldState.error)}
-                    />
-                    <InputGroupAddon align="inline-end">
-                      <InputGroupButton
-                        isDisabled={!field.value}
-                        aria-label={isValueVisible ? "Hide value" : "Show value"}
-                        onClick={() => setIsValueVisible((prev) => !prev)}
-                      >
-                        {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
+                  <Input
+                    {...field}
+                    onChange={(event) => field.onChange(normalizeVariableKey(event.target.value))}
+                    placeholder={isOAuth ? "GOOGLE_DRIVE" : "GITHUB_TOKEN"}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="font-mono"
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldDescription>
+                    {isRenaming && usedByCount > 0 && (
+                      <>
+                        {usedByCount === 1
+                          ? "The service that uses it keeps working"
+                          : `The ${usedByCount} services that use it keep working`}{" "}
+                        under the new key.
+                      </>
+                    )}
+                    {!(isRenaming && usedByCount > 0) &&
+                      (isOAuth ? (
+                        "Services choose it by this key as their OAuth credential."
+                      ) : (
+                        <>
+                          {isPersonal ? "Your personal values use" : "Services use"} it as{" "}
+                          <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
+                        </>
+                      ))}
+                  </FieldDescription>
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
             )}
           />
-        )}
-        {isOAuth && (
-          <OAuthVariableFields
-            variable={saved}
-            getValidValues={getValidValues}
-            persist={persistOAuth}
-            projectId={projectId}
-            onSignInChange={changeSigningIn}
-            onAuthorized={markSavedConnected}
-            initialSignInStart={signInStart}
-          />
-        )}
-        {isSignOutOnSave && saved && (
-          <p className="flex items-start gap-1.5 text-xs text-warning">
-            <TriangleAlertIcon className="mt-0.5 size-3 shrink-0" />
-            <span>
-              Saving signs {saved.key} out.
-              {usedByCount === 1 &&
-                " The service that uses it stops working until it is signed in again."}
-              {usedByCount > 1 &&
-                ` The ${usedByCount} services that use it stop working until it is signed in again.`}
-            </span>
-          </p>
-        )}
+          {!isOAuth && (
+            <Controller
+              control={control}
+              name="value"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Value</FieldLabel>
+                  <FieldContent>
+                    <InputGroup>
+                      <InputGroupInput
+                        {...field}
+                        type={isValueVisible ? "text" : "password"}
+                        placeholder={
+                          variable ? "Leave blank to keep the current value" : "Enter the value"
+                        }
+                        autoComplete="off"
+                        spellCheck={false}
+                        isError={Boolean(fieldState.error)}
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          isDisabled={!field.value}
+                          aria-label={isValueVisible ? "Hide value" : "Show value"}
+                          onClick={() => setIsValueVisible((prev) => !prev)}
+                        >
+                          {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          )}
+          {isOAuth && (
+            <OAuthVariableFields
+              variable={saved}
+              getValidValues={getValidValues}
+              persist={persistOAuth}
+              projectId={projectId}
+              onSignInChange={changeSigningIn}
+              onAuthorized={markSavedConnected}
+              initialSignInStart={signInStart}
+            />
+          )}
+          {isSignOutOnSave && saved && (
+            <p className="flex items-start gap-1.5 text-xs text-warning">
+              <TriangleAlertIcon className="mt-0.5 size-3 shrink-0" />
+              <span>
+                Saving signs {saved.key} out.
+                {usedByCount === 1 &&
+                  " The service that uses it stops working until it is signed in again."}
+                {usedByCount > 1 &&
+                  ` The ${usedByCount} services that use it stop working until it is signed in again.`}
+              </span>
+            </p>
+          )}
+        </div>
 
-        <DialogFooter className="items-center justify-between">
+        <SheetFooter className="items-center justify-between border-t">
           <span className="text-xs text-muted">
             {isSigningIn && "Finish or cancel signing in first."}
             {!isSigningIn && isSecretUnsent && "Authorize to save the client secret."}
@@ -605,37 +607,38 @@ export const VariableForm = ({
               </>
             )}
           </div>
-        </DialogFooter>
+        </SheetFooter>
       </form>
     </FormProvider>
   );
 };
 
-type DialogProps = Omit<TVariableFormProps, "onClose" | "onPendingChange" | "onDirtyChange"> & {
+type SheetProps = Omit<TVariableFormProps, "onClose" | "onPendingChange" | "onDirtyChange"> & {
   onOpenChange: (isOpen: boolean) => void;
   onCloseAutoFocus?: (event: Event) => void;
 };
 
-export const VariableFormDialog = ({
+export const VariableFormSheet = ({
   isOpen,
   onOpenChange,
   onCloseAutoFocus,
   ...formProps
-}: DialogProps) => {
+}: SheetProps) => {
   const [isPending, setIsPending] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const close = () => onOpenChange(false);
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: close });
   return (
-    <Dialog
+    <Sheet
       open={isOpen}
       onOpenChange={(open) => {
         if (open) onOpenChange(true);
         else requestDiscard();
       }}
     >
-      <DialogContent
+      <SheetContent
+        size="form"
         isPending={isPending}
         // The form focuses the value itself when the key arrives filled in.
         onOpenAutoFocus={(event) => {
@@ -663,7 +666,7 @@ export const VariableFormDialog = ({
           title="Discard Changes?"
           description="Your changes will be lost."
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 
-import { ComboboxDialogCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
+import { ComboboxSheetCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { AgentVaultVariableType } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { CREATE_OAUTH_VARIABLE_TITLE } from "./oauthVariableForm";
-import { VariableForm } from "./VariableFormDialog";
+import { VariableForm } from "./VariableFormSheet";
 
 /**
  * The picker's "Create OAuth Variable" row, which opens the variable form set to OAuth and selects the new variable
@@ -16,7 +16,7 @@ import { VariableForm } from "./VariableFormDialog";
 export const useOAuthVariableCreation = <TOption,>(
   canCreate: boolean,
   onCreated: (variable: TAgentVaultVariable) => void
-): ComboboxDialogCreationConfig<TOption> | undefined => {
+): ComboboxSheetCreationConfig<TOption> | undefined => {
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isCreated, setIsCreated] = useState(false);
@@ -50,7 +50,8 @@ export const useOAuthVariableCreation = <TOption,>(
   const attempt = attemptRef.current;
 
   return {
-    mode: "dialog",
+    mode: "sheet",
+    size: "form",
     title: CREATE_OAUTH_VARIABLE_TITLE,
     description:
       "Sign in once and use the sign-in as the credential of any HTTP API or MCP server.",

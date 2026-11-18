@@ -74,7 +74,7 @@ import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { NATIVE_SERVICE_META } from "../nativeServiceMeta";
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
-import { VariableFormDialog } from "../VariableFormDialog";
+import { VariableFormSheet } from "../VariableFormSheet";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { HookFields } from "./HookFields";
@@ -1260,7 +1260,7 @@ export const ServiceSheet = ({
           )}
         </FormProvider>
 
-        <VariableFormDialog
+        <VariableFormSheet
           isOpen={newVariableKey !== null}
           onOpenChange={(open) => {
             if (!open) setNewVariableKey(null);

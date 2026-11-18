@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import { useOAuthAuthorize } from "@app/components/agent-vault/service-sheet/useOAuthAuthorize";
-import { VariableFormDialog } from "@app/components/agent-vault/VariableFormDialog";
+import { VariableFormSheet } from "@app/components/agent-vault/VariableFormSheet";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -643,7 +643,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
         </CardContent>
       )}
 
-      <VariableFormDialog
+      <VariableFormSheet
         scope={scope}
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}

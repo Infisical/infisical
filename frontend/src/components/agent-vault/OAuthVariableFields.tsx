@@ -27,6 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
   Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -46,6 +49,7 @@ import {
   TAgentVaultVariable
 } from "@app/hooks/api/agentVault/types";
 
+import { ClientSecretInput } from "./ClientSecretInput";
 import {
   applySignInPrefill,
   hasCommaSeparatedScope,
@@ -56,7 +60,7 @@ import {
   TOAuthVariableFormValues,
   TVariableFormValues
 } from "./oauthVariableForm";
-import { Scopes, Status } from "./service-sheet/OAuthAuthorizeCard";
+import { AUTOMATIC_TAB, OWN_APP_TAB, Scopes, Status } from "./service-sheet/OAuthAuthorizeCard";
 import {
   defaultOAuthRedirectUri,
   hostOf,
@@ -433,6 +437,33 @@ export const OAuthVariableFields = ({
         </FieldContent>
       </Field>
 
+      {!isWaiting && (
+        <Tabs
+          value={isOwnApp ? OWN_APP_TAB : AUTOMATIC_TAB}
+          onValueChange={(next) =>
+            next === OWN_APP_TAB ? switchToOwnApp() : switchToAutomaticSetup()
+          }
+        >
+          <TabsList variant="av">
+            {hasManualEndpoint ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <TabsTrigger value={AUTOMATIC_TAB} disabled>
+                      Automatic Setup
+                    </TabsTrigger>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Clear the endpoints to use automatic setup.</TooltipContent>
+              </Tooltip>
+            ) : (
+              <TabsTrigger value={AUTOMATIC_TAB}>Automatic Setup</TabsTrigger>
+            )}
+            <TabsTrigger value={OWN_APP_TAB}>Your Own OAuth App</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
       {isOwnApp && (
         <div className="flex flex-col gap-4">
           <Field>
@@ -473,12 +504,10 @@ export const OAuthVariableFields = ({
                     </FieldDescription>
                   </>
                 ) : (
-                  <Input
-                    type="password"
+                  <ClientSecretInput
                     {...register("clientSecret")}
                     id={ids.clientSecret}
                     maxLength={4096}
-                    autoComplete="new-password"
                     placeholder={
                       hasStoredSecret ? "Leave blank to keep the saved secret" : undefined
                     }
@@ -489,19 +518,6 @@ export const OAuthVariableFields = ({
               </FieldContent>
             </Field>
           </div>
-        </div>
-      )}
-
-      {!isWaiting && !hasManualEndpoint && (
-        <div>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={isOwnApp ? switchToAutomaticSetup : switchToOwnApp}
-          >
-            {isOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
-          </Button>
         </div>
       )}
 
