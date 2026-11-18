@@ -330,7 +330,6 @@ export const KeyStoreTtls = {
   PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
-  // Short: people check this chart right after signing.
   SigningActivityTrendInSeconds: 60,
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
