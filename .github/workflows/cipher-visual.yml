@@ -24,8 +24,8 @@ on:
 
 env:
   CIPHER_BASE: "v0.1.15"
-  CIPHER_CANDIDATE: "v0.1.15"
-  CACHE_PREFIX: cvc-dev1
+  CIPHER_CANDIDATE: "v0.1.16"
+  CACHE_PREFIX: cvc-v1
   PIXEL_THRESHOLD: "0"
 
 permissions:
