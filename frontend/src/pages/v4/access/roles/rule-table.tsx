@@ -275,14 +275,16 @@ export const RuleTable = (props: RuleTableProps) => {
   const [editing, setEditing] = useState<Editing>();
   const all = useMemo<Row[]>(
     () =>
-      subjects.flatMap((config) =>
-        (draft[config.subject] ?? []).map((rule, index) => ({
-          key: `${config.subject}:${rule.id}`,
-          config,
-          index,
-          rule
-        }))
-      ),
+      [...subjects]
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .flatMap((config) =>
+          (draft[config.subject] ?? []).map((rule, index) => ({
+            key: `${config.subject}:${rule.id}`,
+            config,
+            index,
+            rule
+          }))
+        ),
     [subjects, draft]
   );
   const rows = useMemo(() => {

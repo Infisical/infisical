@@ -1993,14 +1993,18 @@ export const OverviewPage = () => {
                                 <div className={`${styles.headLine} ${styles.valueHead}`}>
                                   Value
                                   <span className={styles.push}>
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon="eye"
-                                      onClick={() => setRevealAll(!revealAll)}
-                                    >
-                                      {revealAll ? "Hide values" : "Reveal all"}
-                                    </Button>
+                                    {windowRows.some(([, entries]) =>
+                                      ["secret", "import"].includes(entries[0].kind)
+                                    ) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        icon="eye"
+                                        onClick={() => setRevealAll(!revealAll)}
+                                      >
+                                        {revealAll ? "Hide values" : "Reveal all"}
+                                      </Button>
+                                    )}
                                     <SecretSyncStatusBadge
                                       syncs={syncs}
                                       project={project}

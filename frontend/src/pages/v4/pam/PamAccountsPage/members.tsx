@@ -16,7 +16,7 @@ import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { Link } from "@tanstack/react-router";
+import { Link, useMatchRoute } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 
 import type { TPamMember, TPamMembersData } from "@app/hooks/api/pam";
@@ -27,7 +27,7 @@ import { failed, readableFailure, saved } from "../../access/toast";
 import { NoExpiry } from "../../components/no-expiry";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { orgHref, useGo } from "../../links";
+import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmAction } from "./confirm-action";
 
 export type MemberScope = "account" | "folder";
@@ -450,6 +450,7 @@ export const MembersPanel = ({
 }) => {
   const orgId = useOrgId();
   const go = useGo();
+  const matchRoute = useMatchRoute();
   const session = useV4Session();
   const pamAccess = useV4Adapter("pamAccess");
   const directory = usePamDirectory();
@@ -525,12 +526,21 @@ export const MembersPanel = ({
           rows={inherited}
           action={
             <Link
-              {...go.link(
-                orgHref(
-                  orgId,
-                  `/pam/accounts?folderId=${inheritFrom.folderId}&tab=${PamSheetTab.Permissions}`
-                )
-              )}
+              {...(matchRoute({ to: v4Path("/organizations/$orgId/pam/accounts/my-accounts") })
+                ? go.link(
+                    orgHref(
+                      orgId,
+                      `/pam/accounts?folderId=${inheritFrom.folderId}&tab=${PamSheetTab.Permissions}`
+                    )
+                  )
+                : {
+                    to: ".",
+                    search: (prev: Record<string, unknown>) => ({
+                      scenario: prev.scenario,
+                      folderId: inheritFrom.folderId,
+                      tab: PamSheetTab.Permissions
+                    })
+                  })}
             >
               Manage in folder
             </Link>
