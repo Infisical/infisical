@@ -7,7 +7,7 @@ import { AnalyticsEvent } from "@app/lib/analytics";
 import { formatFreeUsageCount } from "./free-usage-format";
 import { useAgentVaultFreeUsage } from "./useAgentVaultFreeUsage";
 
-// Shown from 80% of the free requests to every member, closable once per visit.
+// Shown from 75% of the free requests to every member, closable once per visit.
 export const AgentVaultFreeUsageNotice = () => {
   const [isClosed, setIsClosed] = useState(false);
   const hasTrackedView = useRef(false);

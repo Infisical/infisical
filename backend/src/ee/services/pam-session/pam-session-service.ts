@@ -1,3 +1,4 @@
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -8,8 +9,6 @@ import { ms } from "@app/lib/ms";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
@@ -104,7 +103,7 @@ type TPamSessionServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -131,7 +130,7 @@ export const pamSessionServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayV2DAL,
   gatewayPoolService,
@@ -143,7 +142,10 @@ export const pamSessionServiceFactory = ({
   telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
@@ -363,7 +365,7 @@ export const pamSessionServiceFactory = ({
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
-        kmsService
+        kmsDataKeyService
       });
 
       // A gateway fetches credentials per connection, so two can mint at once; without a single
@@ -397,7 +399,7 @@ export const pamSessionServiceFactory = ({
         projectId: session.projectId,
         sessionId,
         encryptedSessionKey: storedSessionKey,
-        kmsService
+        kmsDataKeyService
       });
 
       recording = {

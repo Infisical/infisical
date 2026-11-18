@@ -73,7 +73,8 @@ export const newProjectMembershipUserFactory = ({
   // Same add rule as everywhere else (findActorsWithActiveOrgAccess).
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
-    newUsers
+    newUsers,
+    newUserEmails
   ) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
@@ -92,7 +93,7 @@ export const newProjectMembershipUserFactory = ({
       identityIds: []
     });
     const withoutActiveAccess = newUsers.filter((el) => !withOrgAccess.userIds.has(el.id));
-    if (withoutActiveAccess.length) {
+    if (withoutActiveAccess.length || newUserEmails.length) {
       const withAnyAccess = await orgDAL.findActorsWithOrgAccess({
         orgId: dto.permission.orgId,
         userIds: withoutActiveAccess.map((el) => el.id),
@@ -107,7 +108,7 @@ export const newProjectMembershipUserFactory = ({
         });
       }
       throw new BadRequestError({
-        message: `Users ${withoutActiveAccess.map((el) => el.email).join(",")} not part of organization`
+        message: `Users ${[...withoutActiveAccess.map((el) => el.email), ...newUserEmails].join(",")} not part of organization`
       });
     }
 

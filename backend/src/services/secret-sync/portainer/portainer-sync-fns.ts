@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -114,7 +115,8 @@ const getGatewayDeps = (
 
 const toSyncError = (error: unknown, message: string) => {
   // A gateway that cannot be reached is a configuration problem a retry will not fix
-  if (error instanceof BadRequestError) return new SecretSyncError({ message: error.message, shouldRetry: false });
+  if (error instanceof BadRequestError || error instanceof RuleViolationError)
+    return new SecretSyncError({ message: error.message, shouldRetry: false });
 
   return new SecretSyncError({ error, message: `${message}: ${getPortainerErrorMessage(error, "unknown error")}` });
 };

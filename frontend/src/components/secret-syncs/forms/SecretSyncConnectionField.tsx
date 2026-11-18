@@ -108,7 +108,11 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                   if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
                     // store for oauth callback connections
-                    localStorage.setItem("secretSyncFormData", JSON.stringify(watch()));
+                    localStorage.setItem(
+                      "secretSyncFormData",
+                      // Only the top-level alert channels are left out; destination configs can have their own.
+                      JSON.stringify({ ...watch(), channels: undefined })
+                    );
                     if (callback) callback();
                     return;
                   }

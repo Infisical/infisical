@@ -8,11 +8,10 @@ import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 
@@ -21,7 +20,7 @@ export const importDataIntoInfisicalFn = async ({
   projectEnvDAL,
   projectDAL,
   secretDAL,
-  kmsService,
+  kmsDataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -178,11 +177,6 @@ export const importDataIntoInfisicalFn = async ({
       }
     }
 
-    // Useful for debugging:
-    // console.log("data.secrets", data.secrets);
-    // console.log("data.folders", data.folders);
-    // console.log("data.environment", data.environments);
-
     if (data.secrets && data.secrets.length > 0) {
       const mappedToEnvironmentId = new Map<
         string,
@@ -304,19 +298,13 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
-          {
-            type: KmsDataKey.SecretManager,
-            projectId: selectedScope.projectId
-          },
-          tx
-        );
-        const blindIndexer = await createSecretBlindIndexer({
+        const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
+          kmsDataKeyService,
           projectId: selectedScope.projectId,
           orgId: actorOrgId,
-          kmsService,
           tx
         });
+        const { encryptor: secretManagerEncrypt } = secretManager;
 
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {
