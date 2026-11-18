@@ -62,7 +62,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .boolean()
             .default(false)
             .describe(
-              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
+              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
             ),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -152,7 +152,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .boolean()
           .optional()
           .describe(
-            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
+            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
           ),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
@@ -326,13 +326,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   });
 
   server.route({
-    url: "/direct-imports",
+    url: "/non-replication-imports",
     method: "GET",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listSecretApprovalPolicyDirectImports",
+      operationId: "listSecretApprovalPolicyNonReplicationImports",
       description:
         "List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.",
       querystring: z.object({
@@ -360,9 +360,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const imports = await server.services.secretChangePolicy.listDirectImportsCoveredByPolicy({
+      const imports = await server.services.secretChangePolicy.listNonReplicationImportsCoveredByPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

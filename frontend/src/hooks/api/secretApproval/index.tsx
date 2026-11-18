@@ -4,7 +4,7 @@ export {
   useUpdateSecretApprovalPolicy
 } from "./mutation";
 export {
-  fetchSecretApprovalPolicyDirectImports,
+  fetchSecretApprovalPolicyNonReplicationImports,
   useGetSecretApprovalPolicies,
   useGetSecretApprovalPolicyOfABoard
 } from "./queries";

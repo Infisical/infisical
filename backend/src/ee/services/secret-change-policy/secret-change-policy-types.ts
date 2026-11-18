@@ -75,14 +75,14 @@ export type TGetBoardSapDTO = {
 
 // The settings of a policy that is being created or edited. `policyId` is set when editing, so the saved
 // version of the policy is replaced by these settings instead of competing with them.
-export type TListDirectImportsDTO = {
+export type TListNonReplicationImportsDTO = {
   projectId: string;
   environments: string[];
   secretPath: string;
   policyId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TDirectSecretImport = {
+export type TNonReplicationSecretImport = {
   id: string;
   environment: { slug: string; name: string };
   secretPath: string;
@@ -125,7 +125,9 @@ export type TSecretChangePolicyMethods = {
     tx?: Knex
   ) => Promise<Map<string, TSecretChangePolicy>>;
   getSecretApprovalPolicyOfFolder: (dto: TGetBoardSapDTO) => Promise<TSecretChangePolicy | undefined>;
-  listDirectImportsCoveredByPolicy: (dto: TListDirectImportsDTO) => Promise<TDirectSecretImport[]>;
+  listNonReplicationImportsCoveredByPolicy: (
+    dto: TListNonReplicationImportsDTO
+  ) => Promise<TNonReplicationSecretImport[]>;
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
@@ -145,7 +147,7 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findDirectImportsByEnvIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findNonReplicationImportsByEnvIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;

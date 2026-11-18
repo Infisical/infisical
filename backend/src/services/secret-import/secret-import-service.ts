@@ -70,7 +70,7 @@ type TSecretImportServiceFactoryDep = {
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
-const ERR_DIRECT_IMPORT_UNDER_POLICY = (policyName: string) =>
+const ERR_NON_REPLICATION_IMPORT_UNDER_POLICY = (policyName: string) =>
   new BadRequestError({
     message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect approval policies. Create an import that respects approval policies instead.`
   });
@@ -236,7 +236,7 @@ export const secretImportServiceFactory = ({
 
     if (!isReplication && !isCrossProjectImport) {
       const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
-      if (policy?.enforceImportReplication) throw ERR_DIRECT_IMPORT_UNDER_POLICY(policy.name);
+      if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
@@ -379,7 +379,7 @@ export const secretImportServiceFactory = ({
       (data.path !== undefined && data.path !== secImpDoc.importPath);
     if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
       const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
-      if (policy?.enforceImportReplication) throw ERR_DIRECT_IMPORT_UNDER_POLICY(policy.name);
+      if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
     // check if user has permission to import from target path when source is changing

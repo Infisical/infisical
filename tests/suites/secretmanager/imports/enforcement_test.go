@@ -63,7 +63,7 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		createPolicy(t, proj, "prod", "/governed-elsewhere", tn.Admin, false)
 
 		// Action
-		imports := listDirectImports(t, proj, "prod", "/**")
+		imports := listNonReplicationImports(t, proj, "prod", "/**")
 
 		// Assert
 		require.Len(t, imports, 1)
@@ -180,8 +180,16 @@ func TestImportReplicationEnforcement_NewImports(t *testing.T) {
 		secretmanager.UpdateSecret(t, proj, "staging", "KEY", "v2", secretmanager.WithPath(stagingApp.Path))
 		waitForOpenRequest(t, proj)
 		require.Equal(t, map[string][]string{"KEY": {"v1"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
-		approveAndMerge(t, tn.Admin, openRequestIDs(t, proj)[0])
-		require.Equal(t, map[string][]string{"KEY": {"v2"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
+		// A run queued for the first copy can open its request late, so the change can sit behind it.
+		wait.Until(t, "the approved change to reach the import", func() bool {
+			if openRequests(t, proj) > 0 {
+				for _, id := range openRequestIDs(t, proj) {
+					approveAndMerge(t, tn.Admin, id)
+				}
+			}
+			values := importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/"))
+			return len(values["KEY"]) == 1 && values["KEY"][0] == "v2"
+		}, replicationBudget)
 	})
 
 	t.Run("should allow a new cross-project import that reads its source directly", func(t *testing.T) {
@@ -241,7 +249,7 @@ func importRowByID(t *testing.T, proj *fixture.Project, env, folderPath, importI
 	return importRow{}
 }
 
-func listDirectImports(t *testing.T, proj *fixture.Project, env, secretPath string) []struct {
+func listNonReplicationImports(t *testing.T, proj *fixture.Project, env, secretPath string) []struct {
 	Environment struct {
 		Name string `json:"name"`
 		Slug string `json:"slug"`
@@ -255,8 +263,8 @@ func listDirectImports(t *testing.T, proj *fixture.Project, env, secretPath stri
 	SourceSecretPath string `json:"sourceSecretPath"`
 } {
 	t.Helper()
-	res, err := proj.Tenant().Admin.API.ListSecretApprovalPolicyDirectImportsWithResponse(t.Context(),
-		&api.ListSecretApprovalPolicyDirectImportsParams{ProjectId: proj.ID, Environments: env, SecretPath: secretPath})
+	res, err := proj.Tenant().Admin.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
+		&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: env, SecretPath: secretPath})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "listing direct imports returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Imports

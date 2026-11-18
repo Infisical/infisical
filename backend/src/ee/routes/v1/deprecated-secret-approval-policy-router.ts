@@ -58,7 +58,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
             .boolean()
             .default(false)
             .describe(
-              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
+              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
             ),
           bypassForMachineIdentities: z.boolean().default(false)
         })
@@ -126,7 +126,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .boolean()
           .optional()
           .describe(
-            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed; list them with the direct imports endpoint and recreate them. Imports from other projects are not affected."
+            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
           ),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()

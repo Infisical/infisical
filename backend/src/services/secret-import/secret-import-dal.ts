@@ -626,7 +626,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
   // Same-project imports that read their source directly (not replication imports), placed in the given
   // environments. Reserved replication folders are left out, since nobody creates imports in them.
-  const findDirectImportsByEnvIds = async (envIds: string[], tx?: Knex) => {
+  const findNonReplicationImportsByEnvIds = async (envIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
@@ -672,14 +672,14 @@ export const secretImportDALFactory = (db: TDbClient) => {
         sourceEnvironmentName: string;
       }[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find direct secret imports by environment IDs" });
+      throw new DatabaseError({ error, name: "Find non-replication secret imports by environment IDs" });
     }
   };
 
   return {
     ...secretImportOrm,
     find,
-    findDirectImportsByEnvIds,
+    findNonReplicationImportsByEnvIds,
     findById,
     lockWithFolderAgainstDelete,
     findByIds,

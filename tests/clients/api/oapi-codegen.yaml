@@ -86,7 +86,7 @@ output-options:
     - deleteSecretApprovalPolicy
     - getSecretApprovalPolicy
     - getSecretApprovalPolicyBoard
-    - listSecretApprovalPolicyDirectImports
+    - listSecretApprovalPolicyNonReplicationImports
     - listSecretApprovalRequests
     - getSecretApprovalRequestCount
     - getSecretApprovalRequest

@@ -63,14 +63,14 @@ export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
 
-export type TListSecretApprovalPolicyDirectImportsDTO = {
+export type TListSecretApprovalPolicyNonReplicationImportsDTO = {
   projectId: string;
   environments: string[];
   secretPath: string;
   policyId?: string;
 };
 
-export type TSecretApprovalPolicyDirectImport = {
+export type TSecretApprovalPolicyNonReplicationImport = {
   id: string;
   environment: { slug: string; name: string };
   secretPath: string;

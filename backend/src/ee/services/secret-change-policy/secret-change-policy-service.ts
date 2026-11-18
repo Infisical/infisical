@@ -17,7 +17,7 @@ import {
   toSecretChangePolicy
 } from "./secret-change-policy-fns";
 import {
-  TDirectSecretImport,
+  TNonReplicationSecretImport,
   TSecretChangePolicy,
   TSecretChangePolicyEnvironment,
   TSecretChangePolicyMethods,
@@ -437,86 +437,81 @@ export const secretChangePolicyServiceFactory = ({
   // Imports from the same project that still read their source directly, in the folders a policy with these
   // settings would govern. A folder governed by a more specific policy is left out, since this one would not
   // apply there.
-  const listDirectImportsCoveredByPolicy: TSecretChangePolicyMethods["listDirectImportsCoveredByPolicy"] = async ({
-    projectId,
-    environments,
-    secretPath,
-    policyId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
-
-    const envs = await projectEnvDAL.find({ projectId, $in: { slug: environments } });
-    if (envs.length !== new Set(environments).size) {
-      const found = new Set(envs.map(({ slug }) => slug));
-      throw new NotFoundError({
-        message: `Environment '${environments.find((slug) => !found.has(slug))}' not found in this project`
+  const listNonReplicationImportsCoveredByPolicy: TSecretChangePolicyMethods["listNonReplicationImportsCoveredByPolicy"] =
+    async ({ projectId, environments, secretPath, policyId, actor, actorId, actorOrgId, actorAuthMethod }) => {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
       });
-    }
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        ProjectPermissionSub.SecretApproval
+      );
 
-    const imports = await secretImportDAL.findDirectImportsByEnvIds(envs.map(({ id }) => id));
-    if (!imports.length) return [];
+      const envs = await projectEnvDAL.find({ projectId, $in: { slug: environments } });
+      if (envs.length !== new Set(environments).size) {
+        const found = new Set(envs.map(({ slug }) => slug));
+        throw new NotFoundError({
+          message: `Environment '${environments.find((slug) => !found.has(slug))}' not found in this project`
+        });
+      }
 
-    const folders = await folderDAL.findSecretPathByFolderIds(projectId, [
-      ...new Set(imports.map(({ folderId }) => folderId))
-    ]);
-    const folderPathById = new Map(
-      folders.filter(Boolean).map((folder) => [folder!.id, folder!.path] as [string, string])
-    );
+      const imports = await secretImportDAL.findNonReplicationImportsByEnvIds(envs.map(({ id }) => id));
+      if (!imports.length) return [];
 
-    const savedPolicy = policyId ? await findSecretChangePolicyById(policyId) : undefined;
-    if (policyId && savedPolicy?.projectId !== projectId) {
-      throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
-    }
-    const draft = {
-      id: policyId ?? "draft",
-      secretPath: removeTrailingSlash(secretPath),
-      createdAt: savedPolicy?.createdAt ?? new Date()
+      const folders = await folderDAL.findSecretPathByFolderIds(projectId, [
+        ...new Set(imports.map(({ folderId }) => folderId))
+      ]);
+      const folderPathById = new Map(
+        folders.filter(Boolean).map((folder) => [folder!.id, folder!.path] as [string, string])
+      );
+
+      const savedPolicy = policyId ? await findSecretChangePolicyById(policyId) : undefined;
+      if (policyId && savedPolicy?.projectId !== projectId) {
+        throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
+      }
+      const draft = {
+        id: policyId ?? "draft",
+        secretPath: removeTrailingSlash(secretPath),
+        createdAt: savedPolicy?.createdAt ?? new Date()
+      };
+
+      const coveredImports: TNonReplicationSecretImport[] = [];
+      for (const env of envs) {
+        // eslint-disable-next-line no-await-in-loop
+        const otherPolicies = (await findSecretChangePoliciesByEnvId(env.id)).filter(({ id }) => id !== policyId);
+        imports
+          .filter(({ envId }) => envId === env.id)
+          .forEach((secretImport) => {
+            const folderPath = folderPathById.get(secretImport.folderId);
+            if (!folderPath) return;
+            if (resolvePolicyForPath([...otherPolicies, draft], folderPath)?.id !== draft.id) return;
+            if (
+              !permission.can(
+                ProjectPermissionActions.Read,
+                subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath: folderPath })
+              )
+            ) {
+              return;
+            }
+            coveredImports.push({
+              id: secretImport.id,
+              environment: { slug: secretImport.environmentSlug, name: secretImport.environmentName },
+              secretPath: folderPath,
+              sourceEnvironment: { slug: secretImport.sourceEnvironmentSlug, name: secretImport.sourceEnvironmentName },
+              sourceSecretPath: secretImport.importPath
+            });
+          });
+      }
+      return coveredImports;
     };
 
-    const coveredImports: TDirectSecretImport[] = [];
-    for (const env of envs) {
-      // eslint-disable-next-line no-await-in-loop
-      const otherPolicies = (await findSecretChangePoliciesByEnvId(env.id)).filter(({ id }) => id !== policyId);
-      imports
-        .filter(({ envId }) => envId === env.id)
-        .forEach((secretImport) => {
-          const folderPath = folderPathById.get(secretImport.folderId);
-          if (!folderPath) return;
-          if (resolvePolicyForPath([...otherPolicies, draft], folderPath)?.id !== draft.id) return;
-          if (
-            !permission.can(
-              ProjectPermissionActions.Read,
-              subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath: folderPath })
-            )
-          ) {
-            return;
-          }
-          coveredImports.push({
-            id: secretImport.id,
-            environment: { slug: secretImport.environmentSlug, name: secretImport.environmentName },
-            secretPath: folderPath,
-            sourceEnvironment: { slug: secretImport.sourceEnvironmentSlug, name: secretImport.sourceEnvironmentName },
-            sourceSecretPath: secretImport.importPath
-          });
-        });
-    }
-    return coveredImports;
-  };
-
   return {
-    listDirectImportsCoveredByPolicy,
+    listNonReplicationImportsCoveredByPolicy,
     findSecretChangePolicyById,
     createSecretApprovalPolicy,
     updateSecretApprovalPolicy,

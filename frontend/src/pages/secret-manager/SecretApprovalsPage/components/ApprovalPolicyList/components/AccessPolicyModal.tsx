@@ -80,8 +80,8 @@ import { TDelegatedApprovalPolicyInput } from "@app/hooks/api/delegatedApprovals
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { onRequestError } from "@app/hooks/api/reactQuery";
-import { fetchSecretApprovalPolicyDirectImports } from "@app/hooks/api/secretApproval";
-import { TSecretApprovalPolicyDirectImport } from "@app/hooks/api/secretApproval/types";
+import { fetchSecretApprovalPolicyNonReplicationImports } from "@app/hooks/api/secretApproval";
+import { TSecretApprovalPolicyNonReplicationImport } from "@app/hooks/api/secretApproval/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -185,8 +185,8 @@ const Form = ({
   onRequestClose: () => void;
 }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [directImportsReview, setDirectImportsReview] = useState<{
-    imports: TSecretApprovalPolicyDirectImport[];
+  const [nonReplicationImportsReview, setNonReplicationImportsReview] = useState<{
+    imports: TSecretApprovalPolicyNonReplicationImport[];
     data: TApprovalPolicyFormSchema;
   } | null>(null);
   const [isSavingAfterReview, setIsSavingAfterReview] = useState(false);
@@ -472,18 +472,23 @@ const Form = ({
   const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
     if (data.policyType === PolicyType.ChangePolicy && data.enforceImportReplication && projectId) {
       try {
-        const imports = await fetchSecretApprovalPolicyDirectImports({
+        const imports = await fetchSecretApprovalPolicyNonReplicationImports({
           projectId,
           environments: data.environments.map((env) => env.slug),
           secretPath: data.secretPath,
           policyId: editValues?.id
         });
         if (imports.length) {
-          setDirectImportsReview({ imports, data });
+          setNonReplicationImportsReview({ imports, data });
           return;
         }
       } catch (error) {
         console.error(error);
+        createNotification({
+          type: "error",
+          text: "Failed to check for imports that ignore this policy. The policy was not saved; try again."
+        });
+        return;
       }
     }
     await savePolicy(data);
@@ -1324,9 +1329,9 @@ const Form = ({
         )}
       </div>
       <AlertDialog
-        open={Boolean(directImportsReview)}
+        open={Boolean(nonReplicationImportsReview)}
         onOpenChange={(open) => {
-          if (!open) setDirectImportsReview(null);
+          if (!open) setNonReplicationImportsReview(null);
         }}
         isPending={isSavingAfterReview}
       >
@@ -1337,16 +1342,16 @@ const Form = ({
             </AlertDialogMedia>
             <AlertDialogTitle>Save With Imports That Ignore This Policy?</AlertDialogTitle>
             <AlertDialogDescription>
-              {directImportsReview?.imports.length === 1
+              {nonReplicationImportsReview?.imports.length === 1
                 ? "This import reads its source directly"
-                : `These ${directImportsReview?.imports.length} imports read their source directly`}
+                : `These ${nonReplicationImportsReview?.imports.length} imports read their source directly`}
               , so changes to their values won&apos;t need approval. Recreate each one as an import
               that respects approval policies, and delete the old one after the new import&apos;s
               first change request is merged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border text-sm">
-            {directImportsReview?.imports.map((secretImport) => (
+            {nonReplicationImportsReview?.imports.map((secretImport) => (
               <li
                 key={secretImport.id}
                 className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2 last:border-b-0"
@@ -1365,13 +1370,13 @@ const Form = ({
               variant="project"
               onClick={async (event) => {
                 event.preventDefault();
-                if (!directImportsReview || isSavingAfterReview) return;
+                if (!nonReplicationImportsReview || isSavingAfterReview) return;
                 setIsSavingAfterReview(true);
                 try {
-                  await savePolicy(directImportsReview.data);
+                  await savePolicy(nonReplicationImportsReview.data);
                 } finally {
                   setIsSavingAfterReview(false);
-                  setDirectImportsReview(null);
+                  setNonReplicationImportsReview(null);
                 }
               }}
             >
