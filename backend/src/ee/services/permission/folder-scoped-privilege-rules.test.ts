@@ -985,8 +985,13 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
 // The boundary reads an ability literally, with no notion of CASL's last-match-wins, so the deny half
 // of a folder grant used to make its own holder look barred from the path the grant opens.
 describe("folder-scoped privilege boundary", () => {
+  // How `$folderScopedGrantAbilities` presents a target's grant: the denies are dropped because the
+  // boundary walks the subset's rules as if each were a grant.
   const grantAbility = (privileges: TProjectFolderScopedPrivilege[]) =>
-    createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules(privileges), { conditionsMatcher });
+    createMongoAbility<ProjectPermissionSet>(
+      buildFolderScopedPrivilegeRules(privileges).filter((rule) => !rule.inverted),
+      { conditionsMatcher }
+    );
 
   test("a grant does not bound out an identical grant", () => {
     const actor = abilityFor(memberRoles, [privilege()]);
@@ -1105,15 +1110,6 @@ describe("folder-scoped privilege boundary", () => {
     const manageA = recursiveAt(SecretFolderRole.Manage, "/a");
     const listAB = recursiveAt(SecretFolderRole.List, "/a/b");
     const listAC = recursiveAt(SecretFolderRole.List, "/a/c");
-
-    test.each([
-      ["no-access", noAccessRoles],
-      ["member", memberRoles]
-    ] as const)("a target restricted below its grant is bounded by an actor with the same grants on %s", (_, roles) => {
-      const actor = abilityFor(roles, [manageA, listAB]);
-
-      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB]))).toEqual({ isValid: true });
-    });
 
     test("an actor restricted below its grant does not bound a target without that restriction", () => {
       const actor = abilityFor(noAccessRoles, [manageA, listAB]);

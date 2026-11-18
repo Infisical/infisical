@@ -1472,14 +1472,12 @@ export const permissionServiceFactory = ({
       secretFolderDAL
     });
 
-    const activePrivileges = privileges.filter(isActiveRole);
-    if (!activePrivileges.length) return [];
-
-    return [
-      createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules(activePrivileges), {
-        conditionsMatcher
-      })
-    ];
+    return privileges.filter(isActiveRole).map((privilege) =>
+      createMongoAbility<ProjectPermissionSet>(
+        buildFolderScopedPrivilegeRules([privilege]).filter((rule) => !rule.inverted),
+        { conditionsMatcher }
+      )
+    );
   };
 
   const $interpolateGrantsForActor = async (

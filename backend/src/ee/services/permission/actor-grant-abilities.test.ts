@@ -41,10 +41,10 @@ const createService = (
     groupDAL: {} as never,
     secretFolderDAL: {
       findSecretPathByFolderIds: vi.fn().mockResolvedValue(
-        folderPrivileges.map((folderPrivilege) => {
-          const { appliesToSubfolders, path } = folderPrivilege as { appliesToSubfolders?: boolean; path?: string };
-          return { environmentSlug: "dev", path: path ?? (appliesToSubfolders ? "/" : "/app") };
-        })
+        folderPrivileges.map((folderPrivilege) => ({
+          environmentSlug: "dev",
+          path: (folderPrivilege as { appliesToSubfolders?: boolean }).appliesToSubfolders ? "/" : "/app"
+        }))
       )
     }
   } as never);
@@ -301,28 +301,11 @@ describe("getActorGrantAbilities folder grants", () => {
     expect(await abilityAt({})).toBe(false);
   });
 
-  test("the folder grants reach the boundary as one ability, with a deeper grant's denies applied below it", async () => {
+  test("only the allow half reaches the boundary", async () => {
     const { service } = createService(
       [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
       [],
-      {
-        folderPrivileges: [
-          folderPrivilege({
-            id: "manage-a",
-            folderId: "folder-a",
-            role: SecretFolderRole.Manage,
-            appliesToSubfolders: true,
-            path: "/a"
-          }),
-          folderPrivilege({
-            id: "list-a-b",
-            folderId: "folder-a-b",
-            role: SecretFolderRole.List,
-            appliesToSubfolders: true,
-            path: "/a/b"
-          })
-        ]
-      }
+      { folderPrivileges: [folderPrivilege()] }
     );
 
     const grants = await service.getActorGrantAbilities({
@@ -330,16 +313,8 @@ describe("getActorGrantAbilities folder grants", () => {
       actorId: "identity-1",
       actorType: ActorType.IDENTITY
     });
-    const canReadValueAt = (secretPath: string) =>
-      grants[0].permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath })
-      );
 
-    expect(grants).toHaveLength(1);
-    expect(grants[0].permission.rules.some((rule) => rule.inverted)).toBe(true);
-    expect(canReadValueAt("/a/x")).toBe(true);
-    expect(canReadValueAt("/a/b/x")).toBe(false);
+    expect(grants[0].permission.rules.every((rule) => !rule.inverted)).toBe(true);
   });
 
   test("an expired folder-scoped grant is left out", async () => {

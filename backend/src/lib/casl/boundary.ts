@@ -212,27 +212,8 @@ const isSubsetForSamePermissionSubjectAction = (
     parentSetRules.length > 0 && parentSetRules.every((el) => !el.inverted && !el.conditions);
   if (hasOnlyUnconditionalNonInvertedRules) return true;
 
-  const subsetDenies = subsetRules.filter((rule) => rule.inverted);
-  const isParentDenyCoveredBy = (
-    parentDenyConditions: Record<string, TPermissionConditionShape | string> | undefined,
-    subsetDeny: (typeof subsetRules)[number]
-  ) => {
-    const subsetDenyConditions = subsetDeny.conditions as Record<string, TPermissionConditionShape | string>;
-    if (!subsetDenyConditions) return true;
-    if (!parentDenyConditions) return false;
-    return Object.keys(subsetDenyConditions).every(
-      (field) =>
-        Boolean(parentDenyConditions[field]) &&
-        isOperatorsASubset(
-          formatConditionOperator(subsetDenyConditions[field]),
-          formatConditionOperator(parentDenyConditions[field])
-        )
-    );
-  };
-
+  // all subset rules must pass in comparison to parent rul
   return subsetRules.every((subsetRule) => {
-    if (subsetRule.inverted) return true;
-    const outrankingSubsetDenies = subsetDenies.filter((rule) => rule.priority < subsetRule.priority);
     const subsetRuleConditions = subsetRule.conditions as Record<string, TPermissionConditionShape | string>;
     // compare subset rule with all parent rules
     const isSubsetOfNonInvertedParentSet = parentSetRules
@@ -277,8 +258,6 @@ const isSubsetForSamePermissionSubjectAction = (
             string,
             TPermissionConditionShape | string
           >;
-          if (outrankingSubsetDenies.some((subsetDeny) => isParentDenyCoveredBy(parentSetRuleConditions, subsetDeny)))
-            return false;
           // Unconditional inverted rule denies everything; any subset overlaps it.
           if (!parentSetRuleConditions) return true;
           return overlapsWithInvertedParent(parentSetRuleConditions);
@@ -318,9 +297,6 @@ export const validatePermissionBoundary = (parentSetPermissions: MongoAbility, s
 
     if (!subsetPermissionActions.length) return;
     subsetPermissionActions.forEach((subsetPermissionAction) => {
-      const subsetRules = subsetPermissions.possibleRulesFor(subsetPermissionAction, subsetPermissionSubject);
-      if (subsetRules.every((rule) => rule.inverted)) return;
-
       const parentSetRulesOfSubset = parentSetPermissions.possibleRulesFor(
         subsetPermissionAction,
         subsetPermissionSubject
@@ -331,6 +307,7 @@ export const validatePermissionBoundary = (parentSetPermissions: MongoAbility, s
         return;
       }
 
+      const subsetRules = subsetPermissions.possibleRulesFor(subsetPermissionAction, subsetPermissionSubject);
       isSubsetForSamePermissionSubjectAction(parentSetRulesOfSubset, subsetRules, (conditions) => {
         missingPermissions.push({ action: subsetPermissionAction, subject: subsetPermissionSubject, conditions });
       });
