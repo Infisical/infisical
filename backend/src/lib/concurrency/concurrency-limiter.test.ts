@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createOcspSigningLimiter, createOcspSigningLimiterRegistry } from "./certificate-authority-ocsp-limiter";
+import { createConcurrencyLimiter, createKeyedConcurrencyLimiter } from "./concurrency-limiter";
 
 const deferred = () => {
   let resolve!: () => void;
@@ -10,16 +10,16 @@ const deferred = () => {
   return { promise, resolve };
 };
 
-describe("createOcspSigningLimiter", () => {
+describe("createConcurrencyLimiter", () => {
   it("should run work immediately while under the limit", async () => {
-    const limiter = createOcspSigningLimiter(2, 1000, 64);
+    const limiter = createConcurrencyLimiter({ limit: 2, maxWaitMs: 1000, maxQueueDepth: 64 });
 
     await expect(limiter.run(async () => "done")).resolves.toBe("done");
     expect(limiter.getActiveCount()).toBe(0);
   });
 
   it("should never exceed the concurrency limit", async () => {
-    const limiter = createOcspSigningLimiter(2, 5000, 64);
+    const limiter = createConcurrencyLimiter({ limit: 2, maxWaitMs: 5000, maxQueueDepth: 64 });
     const gate = deferred();
     let peak = 0;
 
@@ -42,7 +42,7 @@ describe("createOcspSigningLimiter", () => {
   });
 
   it("should hand a freed slot to a queued caller", async () => {
-    const limiter = createOcspSigningLimiter(1, 5000, 64);
+    const limiter = createConcurrencyLimiter({ limit: 1, maxWaitMs: 5000, maxQueueDepth: 64 });
     const first = deferred();
     const order: string[] = [];
 
@@ -63,7 +63,7 @@ describe("createOcspSigningLimiter", () => {
   });
 
   it("should return null rather than queueing forever when saturated", async () => {
-    const limiter = createOcspSigningLimiter(1, 30, 64);
+    const limiter = createConcurrencyLimiter({ limit: 1, maxWaitMs: 30, maxQueueDepth: 64 });
     const gate = deferred();
 
     const holder = limiter.run(async () => {
@@ -78,7 +78,7 @@ describe("createOcspSigningLimiter", () => {
   });
 
   it("should release the slot when the work throws", async () => {
-    const limiter = createOcspSigningLimiter(1, 1000, 64);
+    const limiter = createConcurrencyLimiter({ limit: 1, maxWaitMs: 1000, maxQueueDepth: 64 });
 
     await expect(
       limiter.run(async () => {
@@ -89,11 +89,9 @@ describe("createOcspSigningLimiter", () => {
     expect(limiter.getActiveCount()).toBe(0);
     await expect(limiter.run(async () => "recovered")).resolves.toBe("recovered");
   });
-});
 
-describe("createOcspSigningLimiterRegistry", () => {
   it("should reject immediately once the queue is full rather than admitting every caller to a wait", async () => {
-    const limiter = createOcspSigningLimiter(1, 5000, 1);
+    const limiter = createConcurrencyLimiter({ limit: 1, maxWaitMs: 5000, maxQueueDepth: 1 });
     const gate = deferred();
 
     const holder = limiter.run(async () => {
@@ -106,14 +104,16 @@ describe("createOcspSigningLimiterRegistry", () => {
     gate.resolve();
     await Promise.all([holder, queued]);
   });
+});
 
-  it("should stop one CA from consuming the whole global budget", async () => {
-    const registry = createOcspSigningLimiterRegistry({
+describe("createKeyedConcurrencyLimiter", () => {
+  it("should stop one key from consuming the whole global budget", async () => {
+    const limiter = createKeyedConcurrencyLimiter({
       globalLimit: 8,
-      perCaLimit: 2,
+      perKeyLimit: 2,
       maxWaitMs: 5000,
       maxQueueDepth: 64,
-      maxTrackedCas: 8,
+      maxTrackedKeys: 8,
       maxTotalInFlight: 512
     });
     const gate = deferred();
@@ -121,7 +121,7 @@ describe("createOcspSigningLimiterRegistry", () => {
     let noisyActive = 0;
 
     const noisy = Array.from({ length: 6 }, () =>
-      registry.runForCa("noisy-ca", async () => {
+      limiter.run("noisy", async () => {
         noisyActive += 1;
         noisyPeak = Math.max(noisyPeak, noisyActive);
         await gate.promise;
@@ -133,8 +133,8 @@ describe("createOcspSigningLimiterRegistry", () => {
       setTimeout(r, 20);
     });
 
-    // the quiet CA still gets served while the noisy one is saturated
-    const quiet = await registry.runForCa("quiet-ca", async () => "served");
+    // a quiet key still gets served while the noisy one is saturated
+    const quiet = await limiter.run("quiet", async () => "served");
 
     gate.resolve();
     await Promise.all(noisy);
@@ -143,33 +143,33 @@ describe("createOcspSigningLimiterRegistry", () => {
     expect(quiet).toBe("served");
   });
 
-  it("should prune idle per-CA limiters rather than growing without bound", async () => {
-    const registry = createOcspSigningLimiterRegistry({
+  it("should prune idle per-key limiters rather than growing without bound", async () => {
+    const limiter = createKeyedConcurrencyLimiter({
       globalLimit: 8,
-      perCaLimit: 2,
+      perKeyLimit: 2,
       maxWaitMs: 1000,
       maxQueueDepth: 64,
-      maxTrackedCas: 3,
+      maxTrackedKeys: 3,
       maxTotalInFlight: 512
     });
 
     for (let i = 0; i < 10; i += 1) {
       // eslint-disable-next-line no-await-in-loop -- pruning only reclaims idle limiters, so these must not overlap
-      await registry.runForCa(`ca-${i}`, () => Promise.resolve(i));
+      await limiter.run(`key-${i}`, () => Promise.resolve(i));
     }
 
-    expect(registry.getTrackedCaCount()).toBeLessThanOrEqual(4);
+    expect(limiter.getTrackedKeyCount()).toBeLessThanOrEqual(4);
   });
 });
 
-describe("aggregate admission across CAs", () => {
-  it("should shed once total in-flight reaches the cap, however many CAs the traffic is spread over", async () => {
-    const registry = createOcspSigningLimiterRegistry({
+describe("aggregate admission across keys", () => {
+  it("should shed once total in-flight reaches the cap, however many keys the traffic is spread over", async () => {
+    const limiter = createKeyedConcurrencyLimiter({
       globalLimit: 8,
-      perCaLimit: 4,
+      perKeyLimit: 4,
       maxWaitMs: 60_000,
       maxQueueDepth: 64,
-      maxTrackedCas: 256,
+      maxTrackedKeys: 256,
       maxTotalInFlight: 32
     });
 
@@ -179,10 +179,10 @@ describe("aggregate admission across CAs", () => {
     });
 
     const inFlight: Promise<unknown>[] = [];
-    for (let ca = 0; ca < 64; ca += 1) {
+    for (let key = 0; key < 64; key += 1) {
       for (let i = 0; i < 10; i += 1) {
         inFlight.push(
-          registry.runForCa(`ca-${ca}`, async () => {
+          limiter.run(`key-${key}`, async () => {
             await gate;
           })
         );
@@ -193,13 +193,13 @@ describe("aggregate admission across CAs", () => {
       setTimeout(resolve, 50);
     });
 
-    expect(registry.getTotalInFlight()).toBe(32);
-    expect(registry.getTrackedCaCount()).toBeLessThanOrEqual(32);
+    expect(limiter.getTotalInFlight()).toBe(32);
+    expect(limiter.getTrackedKeyCount()).toBeLessThanOrEqual(32);
 
     release();
     const results = await Promise.all(inFlight);
 
     expect(results.filter((result) => result === null).length).toBeGreaterThan(0);
-    expect(registry.getTotalInFlight()).toBe(0);
+    expect(limiter.getTotalInFlight()).toBe(0);
   });
 });

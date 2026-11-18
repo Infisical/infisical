@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { createKeyedConcurrencyLimiter } from "@app/lib/concurrency/concurrency-limiter";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
@@ -42,7 +43,6 @@ import {
   normalizeSerialNumber,
   parseOcspRequest
 } from "./certificate-authority-ocsp-fns";
-import { createOcspSigningLimiterRegistry } from "./certificate-authority-ocsp-limiter";
 import {
   TCertificateAuthorityOcspServiceFactory,
   TOcspCertStatus,
@@ -84,12 +84,12 @@ const inFlightResponses = new Map<string, Promise<TOcspOutcome>>();
 
 let lastSaturationLogAt = 0;
 
-const signingLimiters = createOcspSigningLimiterRegistry({
+const signingLimiters = createKeyedConcurrencyLimiter({
   globalLimit: OCSP_MAX_CONCURRENT_SIGNATURES,
-  perCaLimit: OCSP_MAX_CONCURRENT_SIGNATURES_PER_CA,
+  perKeyLimit: OCSP_MAX_CONCURRENT_SIGNATURES_PER_CA,
   maxWaitMs: OCSP_SIGNING_QUEUE_TIMEOUT_MS,
   maxQueueDepth: OCSP_SIGNING_MAX_QUEUE_DEPTH,
-  maxTrackedCas: OCSP_MAX_TRACKED_CA_LIMITERS,
+  maxTrackedKeys: OCSP_MAX_TRACKED_CA_LIMITERS,
   maxTotalInFlight: OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT
 });
 
@@ -259,7 +259,7 @@ export const certificateAuthorityOcspServiceFactory = ({
       let validitySeconds = OCSP_RESPONSE_VALIDITY_SECONDS;
       let nextUpdate = new Date(thisUpdate.getTime() + validitySeconds * 1000);
 
-      const response = await signingLimiters.runForCa(ca.id, async () => {
+      const response = await signingLimiters.run(ca.id, async () => {
         const statuses = await $resolveStatuses(ca.id, parsed.entries);
         resolvedCertStatus = $toCertStatusLabel(statuses.map(({ status }) => status.kind));
 
@@ -292,7 +292,7 @@ export const certificateAuthorityOcspServiceFactory = ({
         if (Date.now() - lastSaturationLogAt > OCSP_SATURATION_LOG_INTERVAL_MS) {
           lastSaturationLogAt = Date.now();
           logger.warn(
-            `OCSP responder saturated, shedding request [caId=${ca.id}] [caQueueDepth=${signingLimiters.getCaQueueDepth(
+            `OCSP responder saturated, shedding request [caId=${ca.id}] [caQueueDepth=${signingLimiters.getKeyQueueDepth(
               ca.id
             )}] [globalQueueDepth=${signingLimiters.getGlobalQueueDepth()}]`
           );

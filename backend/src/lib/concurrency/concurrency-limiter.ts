@@ -3,7 +3,13 @@ type TWaiter = {
   timer: NodeJS.Timeout;
 };
 
-export const createOcspSigningLimiter = (limit: number, maxWaitMs: number, maxQueueDepth: number) => {
+type TConcurrencyLimiterOptions = {
+  limit: number;
+  maxWaitMs: number;
+  maxQueueDepth: number;
+};
+
+export const createConcurrencyLimiter = ({ limit, maxWaitMs, maxQueueDepth }: TConcurrencyLimiterOptions) => {
   let active = 0;
   const queue: TWaiter[] = [];
 
@@ -48,61 +54,63 @@ export const createOcspSigningLimiter = (limit: number, maxWaitMs: number, maxQu
   return { run, isIdle, getActiveCount: () => active, getQueueDepth: () => queue.length };
 };
 
-export type TOcspSigningLimiter = ReturnType<typeof createOcspSigningLimiter>;
+export type TConcurrencyLimiter = ReturnType<typeof createConcurrencyLimiter>;
 
-export const createOcspSigningLimiterRegistry = ({
-  globalLimit,
-  perCaLimit,
-  maxWaitMs,
-  maxQueueDepth,
-  maxTrackedCas,
-  maxTotalInFlight
-}: {
+type TKeyedConcurrencyLimiterOptions = {
   globalLimit: number;
-  perCaLimit: number;
+  perKeyLimit: number;
   maxWaitMs: number;
   maxQueueDepth: number;
-  maxTrackedCas: number;
+  maxTrackedKeys: number;
   maxTotalInFlight: number;
-}) => {
-  const globalLimiter = createOcspSigningLimiter(globalLimit, maxWaitMs, maxQueueDepth);
-  const perCaLimiters = new Map<string, TOcspSigningLimiter>();
+};
+
+export const createKeyedConcurrencyLimiter = ({
+  globalLimit,
+  perKeyLimit,
+  maxWaitMs,
+  maxQueueDepth,
+  maxTrackedKeys,
+  maxTotalInFlight
+}: TKeyedConcurrencyLimiterOptions) => {
+  const globalLimiter = createConcurrencyLimiter({ limit: globalLimit, maxWaitMs, maxQueueDepth });
+  const perKeyLimiters = new Map<string, TConcurrencyLimiter>();
   let totalInFlight = 0;
 
   const pruneIdle = () => {
-    if (perCaLimiters.size <= maxTrackedCas) return;
-    for (const [caId, limiter] of perCaLimiters) {
-      if (limiter.isIdle()) perCaLimiters.delete(caId);
-      if (perCaLimiters.size <= maxTrackedCas) return;
+    if (perKeyLimiters.size <= maxTrackedKeys) return;
+    for (const [key, limiter] of perKeyLimiters) {
+      if (limiter.isIdle()) perKeyLimiters.delete(key);
+      if (perKeyLimiters.size <= maxTrackedKeys) return;
     }
   };
 
-  const runForCa = async <T>(caId: string, fn: () => Promise<T>): Promise<T | null> => {
+  const run = async <T>(key: string, fn: () => Promise<T>): Promise<T | null> => {
     if (totalInFlight >= maxTotalInFlight) return null;
 
     totalInFlight += 1;
     try {
-      let caLimiter = perCaLimiters.get(caId);
-      if (!caLimiter) {
+      let keyLimiter = perKeyLimiters.get(key);
+      if (!keyLimiter) {
         pruneIdle();
-        caLimiter = createOcspSigningLimiter(perCaLimit, maxWaitMs, maxQueueDepth);
-        perCaLimiters.set(caId, caLimiter);
+        keyLimiter = createConcurrencyLimiter({ limit: perKeyLimit, maxWaitMs, maxQueueDepth });
+        perKeyLimiters.set(key, keyLimiter);
       }
 
-      return await caLimiter.run(() => globalLimiter.run(fn));
+      return await keyLimiter.run(() => globalLimiter.run(fn));
     } finally {
       totalInFlight -= 1;
     }
   };
 
   return {
-    runForCa,
+    run,
     getGlobalActiveCount: () => globalLimiter.getActiveCount(),
     getGlobalQueueDepth: () => globalLimiter.getQueueDepth(),
-    getCaQueueDepth: (caId: string) => perCaLimiters.get(caId)?.getQueueDepth() ?? 0,
-    getTrackedCaCount: () => perCaLimiters.size,
+    getKeyQueueDepth: (key: string) => perKeyLimiters.get(key)?.getQueueDepth() ?? 0,
+    getTrackedKeyCount: () => perKeyLimiters.size,
     getTotalInFlight: () => totalInFlight
   };
 };
 
-export type TOcspSigningLimiterRegistry = ReturnType<typeof createOcspSigningLimiterRegistry>;
+export type TKeyedConcurrencyLimiter = ReturnType<typeof createKeyedConcurrencyLimiter>;
