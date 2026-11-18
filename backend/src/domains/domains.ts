@@ -16,7 +16,8 @@ import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module"
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
-import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
+import { OrganizationsModule } from "./platform/organizations/ce/module";
+import { ProjectsModule } from "./platform/projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 type TKmsCoreEnvConfig = Pick<
@@ -108,11 +109,13 @@ export const startStandaloneKmsCore = async ({
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
-  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
-  const { organizationsProjectsService } = organizationsProjects;
-  const secrets = new SecretsModule({ organizationsProjectsService });
-  const pam = new PamModule({ organizationsProjectsService });
-  const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
+  const organizations = new OrganizationsModule({ db: deps.db });
+  const { organizationsService } = organizations;
+  const projects = new ProjectsModule({ db: deps.db });
+  const { projectsService } = projects;
+  const secrets = new SecretsModule({ projectsService });
+  const pam = new PamModule({ projectsService });
+  const certManager = new CertManagerModule({ db: deps.db, organizationsService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = await LicenseModule.create({
@@ -123,7 +126,8 @@ export const createDomains = async (deps: TDomainDeps) => {
     startLocalRefresh,
     licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
-    organizationsProjectsService,
+    organizationsService,
+    projectsService,
     usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
   });
 
@@ -134,7 +138,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
     usageMeteringService: license.usageMeteringService,
-    organizationsProjectsService
+    organizationsService
   });
 
   // Before KMS Core writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot before
@@ -170,7 +174,8 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsCore,
     externalKms,
     instanceConfigCore,
-    organizationsProjects,
+    organizations,
+    projects,
     certManager,
     agentVault
   };

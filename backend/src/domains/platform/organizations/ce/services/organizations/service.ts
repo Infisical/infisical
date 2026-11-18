@@ -1,5 +1,3 @@
-import { ProjectType } from "@app/db/schemas";
-import { TReadOptions } from "@app/domains/lib/data-access";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 
 import {
@@ -7,45 +5,34 @@ import {
   TIdentityOwnership,
   TOrganization,
   TOrganizationStore,
-  TOrganizationsProjectsStores
+  TOrganizationsStores
 } from "../dependencies";
-import {
-  OrganizationsProjectsTransaction,
-  TOrganizationsProjectsTransaction
-} from "./organizations-projects-transaction";
+import { OrganizationsTransaction, TOrganizationsTransaction } from "./organizations-transaction";
 
 // An org's root never changes, so cache it for the process. Capped so long-lived pods don't grow forever.
 const ROOT_ORG_CACHE_LIMIT = 10_000;
 
-export type TOrganizationsProjectsService = {
+export type TOrganizationsService = {
   // Null when the org doesn't exist.
   findRootOrgId(orgId: string): Promise<string | null>;
   // Falls back to the org itself when it doesn't exist.
   resolveRootOrgId(orgId: string): Promise<string>;
   // Not cached: name and slug can change.
   findOrganization(orgId: string): Promise<TOrganization | null>;
-  // Includes sub-orgs. Pass readFrom primary right after a commit that changed it.
-  countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
   // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
-  countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number>;
-  countProjectIdentitiesByKind(
-    projectType: ProjectType,
-    orgId?: string
-  ): Promise<{ users: number; identities: number }>;
-  getProjectIdentityBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]>;
   // Joins the caller's transaction. Only for a limit check that must be atomic with the write it guards.
-  within(tx: TTransaction): TOrganizationsProjectsTransaction;
+  within(tx: TTransaction): TOrganizationsTransaction;
 };
 
-export class OrganizationsProjectsService implements TOrganizationsProjectsService {
+export class OrganizationsService implements TOrganizationsService {
   private readonly rootOrgIds = new Map<string, string>();
 
   constructor(
     private readonly organizationStore: TOrganizationStore,
     private readonly billableActorStore: TBillableActorStore,
-    private readonly transactionRunner: TTransactionRunner<TOrganizationsProjectsStores>
+    private readonly transactionRunner: TTransactionRunner<TOrganizationsStores>
   ) {}
 
   async findRootOrgId(orgId: string): Promise<string | null> {
@@ -69,10 +56,6 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
     return this.organizationStore.findById(orgId);
   }
 
-  countWorkspaces(orgId: string, options?: TReadOptions): Promise<number> {
-    return this.organizationStore.countWorkspaces(orgId, options);
-  }
-
   countBillableOrgActors(orgId: string | null) {
     return this.billableActorStore.countBillableOrgActors(orgId);
   }
@@ -81,19 +64,7 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
     return this.billableActorStore.getBillableIdentityOwnershipBreakdown(orgId);
   }
 
-  countProjectIdentities(projectType: ProjectType, orgId: string | null) {
-    return this.billableActorStore.countProjectIdentities(projectType, orgId);
-  }
-
-  countProjectIdentitiesByKind(projectType: ProjectType, orgId?: string) {
-    return this.billableActorStore.countProjectIdentitiesByKind(projectType, orgId);
-  }
-
-  getProjectIdentityBreakdown(projectType: ProjectType, orgId?: string) {
-    return this.billableActorStore.getProjectIdentityOwnershipBreakdown(projectType, orgId);
-  }
-
-  within(tx: TTransaction): TOrganizationsProjectsTransaction {
-    return new OrganizationsProjectsTransaction(this.transactionRunner.within(tx));
+  within(tx: TTransaction): TOrganizationsTransaction {
+    return new OrganizationsTransaction(this.transactionRunner.within(tx));
   }
 }

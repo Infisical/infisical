@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { poolStoreConnection } from "@app/domains/lib/data-access";
 import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 
 import { CertificateUsageStore } from "./data-access/certificate-usage-store";
 import { CertManagerService, TCertManagerService } from "./services/cert-manager/service";
@@ -11,7 +11,7 @@ export type { TCertificateOrgUnitCount, TOrgUnitCount, TPkiRootOrgUsage } from "
 
 export type TCertManagerDeps = {
   db: TDbClient;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  organizationsService: TOrganizationsService;
 };
 
 export class CertManagerModule {
@@ -20,9 +20,9 @@ export class CertManagerModule {
   // These count the whole org tree, so report once at the root.
   readonly usageCounters: TUsageCounter[];
 
-  constructor({ db, organizationsProjectsService }: TCertManagerDeps) {
+  constructor({ db, organizationsService }: TCertManagerDeps) {
     const certificateUsageStore = new CertificateUsageStore(poolStoreConnection(db));
-    this.certManagerService = new CertManagerService(certificateUsageStore, organizationsProjectsService);
+    this.certManagerService = new CertManagerService(certificateUsageStore, organizationsService);
 
     this.usageCounters = [
       { meter: Meter.InternalCas, count: (orgId) => certificateUsageStore.countInternalCas(orgId ?? undefined) },
