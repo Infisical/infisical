@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
@@ -77,13 +78,18 @@ export const signerStatusNote = (signer: TSigner) => {
   return undefined;
 };
 
-export const SignerStatusBadge = ({ signer }: { signer: TSigner }) => {
+export const SignerStatusBadge = ({
+  signer,
+  note = signerStatusNote(signer)
+}: {
+  signer: TSigner;
+  note?: string | null;
+}) => {
   const badge = (
     <Badge tone={STATUS_TONES[signer.status] ?? "outline"} dot>
       {signerStatusLabels[signer.status] ?? signer.status}
     </Badge>
   );
-  const note = signerStatusNote(signer);
   return note ? <Tooltip content={note}>{badge}</Tooltip> : badge;
 };
 
@@ -569,6 +575,143 @@ export const SignerCertificateFields = ({
   );
 };
 
+const HsmConnectorField = ({
+  draft,
+  errors,
+  patch,
+  orgId,
+  projectId,
+  isHsmLicensed
+}: FieldsProps & { orgId: string; projectId: string; isHsmLicensed: boolean }) => {
+  const { permission } = useProjectPermission(projectId);
+  const { data: connectors = [], isPending: connectorsPending } = useV4Adapter(
+    "certificateAuthorities"
+  ).useHsmConnectors({ enabled: isHsmLicensed });
+  const { data: hsmPlan } = useV4Adapter("certManagerSettings").useHsmPlan(orgId);
+  const [adding, setAdding] = useState(false);
+  const canCreate =
+    permission.can(
+      ProjectPermissionHsmConnectorActions.Attach,
+      ProjectPermissionSub.HsmConnectors
+    ) &&
+    permission.can(ProjectPermissionHsmConnectorActions.Create, ProjectPermissionSub.HsmConnectors);
+  return (
+    <Field
+      label="HSM connector"
+      description="Which HSM connector holds the signing key."
+      error={errors.hsmConnectorId}
+      wide
+    >
+      <Combobox
+        label="HSM connector"
+        loading={connectorsPending && isHsmLicensed}
+        invalid={Boolean(errors.hsmConnectorId)}
+        placeholder="Select an HSM connector"
+        emptyText="No HSM connectors yet."
+        options={connectors.map((connector) => ({
+          value: connector.id,
+          label: connector.name,
+          description: `Slot ${connector.slotLabel}`
+        }))}
+        value={draft.hsmConnectorId}
+        onValueChange={(next) => patch({ hsmConnectorId: next })}
+      />
+      {canCreate && hsmPlan && (
+        <div>
+          <Button variant="link" icon="plus" onClick={() => setAdding(true)}>
+            Add HSM connector
+          </Button>
+        </div>
+      )}
+      {hsmPlan && (
+        <AddHsmConnectorSheet orgId={orgId} plan={hsmPlan} open={adding} onOpenChange={setAdding} />
+      )}
+    </Field>
+  );
+};
+
+const ExistingOrderKeyFields = ({
+  draft,
+  errors,
+  patch,
+  lookup,
+  canUseExistingCertificate
+}: FieldsProps & { lookup: HsmKeyLookup; canUseExistingCertificate: boolean }) => {
+  const existing = usesExistingCertificate(draft);
+  const labelProblem = draft.hsmKeyLabel.trim() ? lookup.problem : undefined;
+  return (
+    <>
+      {draft.externalOrderId && !canUseExistingCertificate && (
+        <Alert tone="warn">
+          DigiCert revokes the order&apos;s current certificate within 72 hours of the replacement.
+          After that, it can no longer be used to sign.
+        </Alert>
+      )}
+      {draft.externalOrderId && canUseExistingCertificate && (
+        <Field
+          orientation="horizontal"
+          label="Use existing key"
+          description={
+            draft.useExistingKey
+              ? "Sign with the certificate already issued in this order and its key on the HSM."
+              : "DigiCert issues a new certificate into this order and revokes the current one within 72 hours. After that, the old certificate can no longer be used to sign."
+          }
+          wide
+        >
+          <Switch
+            aria-label="Use existing key"
+            checked={draft.useExistingKey}
+            onCheckedChange={(checked) => patch({ useExistingKey: checked })}
+          />
+        </Field>
+      )}
+      {existing && (
+        <Field
+          label="Key label"
+          description={lookup.hint}
+          error={errors.hsmKeyLabel ?? labelProblem}
+          wide
+        >
+          <Input
+            value={draft.hsmKeyLabel}
+            placeholder="acme-code-signing-2026"
+            invalid={Boolean(errors.hsmKeyLabel || labelProblem)}
+            onChange={(event) => patch({ hsmKeyLabel: event.target.value })}
+          />
+        </Field>
+      )}
+      {existing && lookup.choices.length > 0 && (
+        <Field
+          label="Key ID"
+          description="The key's CKA_ID on the HSM."
+          error={errors.hsmKeyId}
+          wide
+        >
+          <Select
+            aria-label="Key ID"
+            placeholder="Select a key"
+            invalid={Boolean(errors.hsmKeyId)}
+            value={lookup.resolvedKeyId || undefined}
+            options={lookup.choices.map((key) => ({
+              value: key.keyId,
+              label: key.keyAlgorithm
+                ? `ID ${key.keyId} (${hsmKeyAlgorithmLabels[key.keyAlgorithm as HsmKeyAlgorithm] ?? key.keyAlgorithm})`
+                : `ID ${key.keyId}`
+            }))}
+            onValueChange={(next) => patch({ hsmKeyId: next })}
+          />
+        </Field>
+      )}
+    </>
+  );
+};
+
+const keySourceHintFor = (requiresHsm: boolean, isHsm: boolean) => {
+  if (requiresHsm) return "This CA only issues certificates with an HSM-backed key.";
+  if (isHsm) return "Uses an HSM-backed key.";
+  return "Infisical manages the keypair.";
+};
+
 export const SignerKeyFields = ({
   draft,
   errors,
@@ -578,7 +721,8 @@ export const SignerKeyFields = ({
   requiresHsm,
   minRsaKeyBits,
   currentKeyAlgorithm,
-  lookup
+  lookup,
+  canUseExistingCertificate = true
 }: FieldsProps & {
   orgId: string;
   projectId: string;
@@ -586,34 +730,23 @@ export const SignerKeyFields = ({
   minRsaKeyBits?: number;
   currentKeyAlgorithm?: SignerKeyAlgorithm;
   lookup: HsmKeyLookup;
+  canUseExistingCertificate?: boolean;
 }) => {
   const { permission } = useProjectPermission(projectId);
   const { data: subscription } = useV4Adapter("codeSigning").useSubscription(orgId);
   const isHsmLicensed = Boolean(subscription?.hsm);
-  const { data: connectors = [], isPending: connectorsPending } = useV4Adapter(
-    "certificateAuthorities"
-  ).useHsmConnectors({ enabled: isHsmLicensed });
-  const { data: hsmPlan } = useV4Adapter("certManagerSettings").useHsmPlan(orgId);
-  const [adding, setAdding] = useState(false);
   const canAttach = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
     ProjectPermissionSub.HsmConnectors
   );
-  const canCreate =
-    canAttach &&
-    permission.can(ProjectPermissionHsmConnectorActions.Create, ProjectPermissionSub.HsmConnectors);
   const isHsm = draft.keySource === CertKeySource.Hsm;
-  const existing = usesExistingCertificate(draft);
   let hsmReason: string | undefined;
   if (!isHsmLicensed) hsmReason = "Enterprise plan";
   else if (!canAttach) hsmReason = "Requires permission to attach HSM connectors";
-  let keySourceHint = "Infisical manages the keypair.";
-  if (requiresHsm) keySourceHint = "This CA only issues certificates with an HSM-backed key.";
-  else if (isHsm) keySourceHint = "Uses an HSM-backed key.";
 
   return (
     <>
-      <Field label="Key source" description={keySourceHint} wide>
+      <Field label="Key source" description={keySourceHintFor(requiresHsm, isHsm)} wide>
         <Select
           aria-label="Key source"
           value={draft.keySource}
@@ -645,99 +778,25 @@ export const SignerKeyFields = ({
         />
       </Field>
       {isHsm && (
-        <Field
-          label="HSM connector"
-          description="Which HSM connector holds the signing key."
-          error={errors.hsmConnectorId}
-          wide
-        >
-          <Combobox
-            label="HSM connector"
-            loading={connectorsPending && isHsmLicensed}
-            invalid={Boolean(errors.hsmConnectorId)}
-            placeholder="Select an HSM connector"
-            emptyText="No HSM connectors yet."
-            options={connectors.map((connector) => ({
-              value: connector.id,
-              label: connector.name,
-              description: `Slot ${connector.slotLabel}`
-            }))}
-            value={draft.hsmConnectorId}
-            onValueChange={(next) => patch({ hsmConnectorId: next })}
-          />
-          {canCreate && hsmPlan && (
-            <div>
-              <Button variant="link" icon="plus" onClick={() => setAdding(true)}>
-                Add HSM connector
-              </Button>
-            </div>
-          )}
-          {hsmPlan && (
-            <AddHsmConnectorSheet
-              orgId={orgId}
-              plan={hsmPlan}
-              open={adding}
-              onOpenChange={setAdding}
-            />
-          )}
-        </Field>
+        <HsmConnectorField
+          draft={draft}
+          errors={errors}
+          patch={patch}
+          orgId={orgId}
+          projectId={projectId}
+          isHsmLicensed={isHsmLicensed}
+        />
       )}
-      {isHsm && draft.externalOrderId && (
-        <Field
-          orientation="horizontal"
-          label="Use existing key"
-          description={
-            draft.useExistingKey
-              ? "Sign with the certificate already issued in this order and its key on the HSM."
-              : "DigiCert issues a new certificate into this order and revokes the current one within 72 hours. After that, the old certificate can no longer be used to sign."
-          }
-          wide
-        >
-          <Switch
-            aria-label="Use existing key"
-            checked={draft.useExistingKey}
-            onCheckedChange={(checked) => patch({ useExistingKey: checked })}
-          />
-        </Field>
+      {isHsm && (
+        <ExistingOrderKeyFields
+          draft={draft}
+          errors={errors}
+          patch={patch}
+          lookup={lookup}
+          canUseExistingCertificate={canUseExistingCertificate}
+        />
       )}
-      {isHsm && existing && (
-        <Field
-          label="Key label"
-          description={lookup.hint}
-          error={errors.hsmKeyLabel ?? (draft.hsmKeyLabel.trim() ? lookup.problem : undefined)}
-          wide
-        >
-          <Input
-            value={draft.hsmKeyLabel}
-            placeholder="acme-code-signing-2026"
-            invalid={Boolean(errors.hsmKeyLabel || (draft.hsmKeyLabel.trim() && lookup.problem))}
-            onChange={(event) => patch({ hsmKeyLabel: event.target.value })}
-          />
-        </Field>
-      )}
-      {isHsm && existing && lookup.choices.length > 0 && (
-        <Field
-          label="Key ID"
-          description="The key's CKA_ID on the HSM."
-          error={errors.hsmKeyId}
-          wide
-        >
-          <Select
-            aria-label="Key ID"
-            placeholder="Select a key"
-            invalid={Boolean(errors.hsmKeyId)}
-            value={lookup.resolvedKeyId || undefined}
-            options={lookup.choices.map((key) => ({
-              value: key.keyId,
-              label: key.keyAlgorithm
-                ? `ID ${key.keyId} (${hsmKeyAlgorithmLabels[key.keyAlgorithm as HsmKeyAlgorithm] ?? key.keyAlgorithm})`
-                : `ID ${key.keyId}`
-            }))}
-            onValueChange={(next) => patch({ hsmKeyId: next })}
-          />
-        </Field>
-      )}
-      {!existing && (
+      {!usesExistingCertificate(draft) && (
         <Field
           label="Key algorithm"
           description="RSA is widely compatible. ECDSA is smaller and faster."
