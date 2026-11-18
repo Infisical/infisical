@@ -159,6 +159,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "ClickHouse Credentials",
     image: "ClickHouse.png",
     size: 50
+  },
+  [SecretRotation.GitLabServiceAccountToken]: {
+    name: "GitLab Service Account Token",
+    image: "GitLab.png",
+    size: 50
   }
 };
 
@@ -193,7 +198,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare,
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
   [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP,
-  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse
+  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse,
+  [SecretRotation.GitLabServiceAccountToken]: AppConnection.GitLab
 };
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> =
@@ -238,7 +244,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.CloudflareR2AccessKey]: true,
   [SecretRotation.StripeApiKey]: true,
   [SecretRotation.GcpServiceAccountKey]: true,
-  [SecretRotation.ClickHouseCredentials]: true
+  [SecretRotation.ClickHouseCredentials]: true,
+  [SecretRotation.GitLabServiceAccountToken]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

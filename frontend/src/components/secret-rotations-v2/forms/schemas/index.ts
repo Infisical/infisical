@@ -25,6 +25,7 @@ import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
 import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key-rotation-schema";
+import { GitLabServiceAccountTokenRotationSchema } from "./gitlab-service-account-token-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
@@ -118,7 +119,8 @@ export const SecretRotationV2FormSchema = (
         CloudflareR2AccessKeyRotationSchema,
         StripeApiKeyRotationSchema,
         GcpServiceAccountKeyRotationSchema,
-        ClickHouseCredentialsRotationSchema
+        ClickHouseCredentialsRotationSchema,
+        GitLabServiceAccountTokenRotationSchema
       ]),
       z.object({ id: z.string().optional() }).and(buildFailureAlertSchema(savedFailureAlert))
     )

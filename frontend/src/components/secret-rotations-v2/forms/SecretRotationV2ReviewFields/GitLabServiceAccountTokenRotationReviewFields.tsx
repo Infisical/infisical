@@ -1,0 +1,76 @@
+import { useFormContext } from "react-hook-form";
+
+import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
+import { Badge } from "@app/components/v3";
+import {
+  useGitLabConnectionListGroups,
+  useGitLabConnectionListGroupServiceAccounts
+} from "@app/hooks/api/appConnections/gitlab";
+import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+
+import { SecretRotationReviewSection } from "./shared";
+
+// matches the parameters step, so the review reads the groups it already loaded
+const GITLAB_GROUP_LIST_LIMIT = 20;
+
+export const GitLabServiceAccountTokenRotationReviewFields = () => {
+  const { watch } = useFormContext<
+    TSecretRotationV2Form & {
+      type: SecretRotation.GitLabServiceAccountToken;
+    }
+  >();
+
+  const [connectionId, parameters, { tokenId, token }] = watch([
+    "connection.id",
+    "parameters",
+    "secretsMapping"
+  ]);
+
+  const { data: groups } = useGitLabConnectionListGroups(
+    connectionId,
+    undefined,
+    GITLAB_GROUP_LIST_LIMIT,
+    {
+      enabled: Boolean(connectionId)
+    }
+  );
+  const { data: serviceAccounts } = useGitLabConnectionListGroupServiceAccounts(
+    connectionId,
+    parameters.groupId,
+    { enabled: Boolean(connectionId && parameters.groupId) }
+  );
+
+  const group = groups?.find(({ id }) => id === parameters.groupId);
+  const serviceAccount = serviceAccounts?.find(({ id }) => id === parameters.serviceAccountId);
+
+  return (
+    <>
+      <SecretRotationReviewSection label="Parameters">
+        <ReviewField label="Group">{group?.fullPath ?? parameters.groupId}</ReviewField>
+        <ReviewField label="Service Account">
+          {serviceAccount
+            ? `${serviceAccount.name} (@${serviceAccount.username})`
+            : parameters.serviceAccountId}
+        </ReviewField>
+        <ReviewField label="Token Name">{parameters.name}</ReviewField>
+        {parameters.description && (
+          <ReviewField label="Token Description">{parameters.description}</ReviewField>
+        )}
+        <ReviewField label="Scopes">
+          <div className="flex flex-wrap gap-1">
+            {parameters.scopes.map((scope) => (
+              <Badge key={scope} variant="neutral">
+                {scope}
+              </Badge>
+            ))}
+          </div>
+        </ReviewField>
+      </SecretRotationReviewSection>
+      <SecretRotationReviewSection label="Secrets Mapping">
+        <ReviewField label="Token ID">{tokenId}</ReviewField>
+        <ReviewField label="Token">{token}</ReviewField>
+      </SecretRotationReviewSection>
+    </>
+  );
+};

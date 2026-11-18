@@ -4136,6 +4136,13 @@ export const SecretRotations = {
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     },
+    GITLAB_SERVICE_ACCOUNT_TOKEN: {
+      groupId: "The ID of the GitLab group that owns the service account.",
+      serviceAccountId: "The user ID of the GitLab service account to create tokens for.",
+      name: "The name for the generated GitLab token. Infisical appends a timestamp so each rotated token is distinct.",
+      description: "An optional description for the generated GitLab token.",
+      scopes: "The scopes to grant the generated GitLab token, for example 'api', 'read_api', or 'read_repository'."
+    },
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountEmail:
         "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
@@ -4249,6 +4256,10 @@ export const SecretRotations = {
     CLICKHOUSE_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."
+    },
+    GITLAB_SERVICE_ACCOUNT_TOKEN: {
+      tokenId: "The name of the secret that the rotated GitLab token ID will be mapped to.",
+      token: "The name of the secret that the rotated GitLab token value will be mapped to."
     }
   }
 };

@@ -1,0 +1,168 @@
+import { AxiosError, HttpStatusCode } from "axios";
+
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import {
+  GitLabAccessTokenType,
+  GitLabConnectionMethod
+} from "@app/services/app-connection/gitlab/gitlab-connection-enums";
+import {
+  getGitLabAuthHeaders,
+  getGitLabConnectionAccessToken,
+  getGitLabErrorMessage,
+  getGitLabInstanceUrl
+} from "@app/services/app-connection/gitlab/gitlab-connection-fns";
+import { TGitLabConnection } from "@app/services/app-connection/gitlab/gitlab-connection-types";
+
+import { GITLAB_TOKEN_EXPIRY_PADDING_DAYS } from "./gitlab-token-rotation-constants";
+import {
+  TGitLabCreateTokenResponse,
+  TGitLabTokenApiContext,
+  TGitLabTokenCredentials
+} from "./gitlab-token-rotation-types";
+
+/** The token's expiry date (YYYY-MM-DD, UTC): two rotation intervals plus padding from today. */
+export const getGitLabTokenExpiresAt = (rotationInterval: number, now = new Date()) => {
+  const expiresAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  expiresAt.setUTCDate(expiresAt.getUTCDate() + rotationInterval * 2 + GITLAB_TOKEN_EXPIRY_PADDING_DAYS);
+
+  return expiresAt.toISOString().slice(0, 10);
+};
+
+/**
+ * GitLab refuses token creation to group and project access tokens, so only a personal access token
+ * (which is what a service account's own token is) or OAuth can back a token rotation.
+ */
+export const assertGitLabConnectionCanCreateTokens = (connection: TGitLabConnection) => {
+  if (
+    connection.method === GitLabConnectionMethod.AccessToken &&
+    connection.credentials.accessTokenType !== GitLabAccessTokenType.Personal
+  ) {
+    throw new BadRequestError({
+      message: `GitLab ${connection.credentials.accessTokenType} access tokens cannot create other tokens. Use a GitLab connection with a personal access token or OAuth.`
+    });
+  }
+};
+
+export const getGitLabTokenApiContext = async ({
+  connection,
+  appConnectionDAL,
+  kmsDataKeyService
+}: {
+  connection: TGitLabConnection;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsDataKeyService: TKmsDataKeyService;
+}): Promise<TGitLabTokenApiContext> => {
+  const accessToken = await getGitLabConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService);
+  const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
+
+  return {
+    apiUrl: `${instanceUrl}/api/v4`,
+    headers: getGitLabAuthHeaders(connection.method, accessToken)
+  };
+};
+
+const getGitLabTokenPermissionHint = (error: unknown) =>
+  error instanceof AxiosError && error.response?.status === HttpStatusCode.Forbidden
+    ? " Check that the connection's user has the Owner role on the group."
+    : "";
+
+/**
+ * Creates a token under `tokensPath`, a GitLab token collection such as
+ * `/groups/:id/service_accounts/:user_id/personal_access_tokens` or `/groups/:id/access_tokens`.
+ */
+export const createGitLabToken = async ({
+  context,
+  tokensPath,
+  name,
+  description,
+  scopes,
+  rotationInterval,
+  resourceLabel
+}: {
+  context: TGitLabTokenApiContext;
+  tokensPath: string;
+  /** a timestamp is appended so each rotated token is distinct */
+  name: string;
+  description?: string;
+  scopes: string[];
+  rotationInterval: number;
+  /** what the token belongs to, for error messages, e.g. `service account '12' in group '34'` */
+  resourceLabel: string;
+}): Promise<TGitLabTokenCredentials> => {
+  try {
+    const { data } = await safeRequest.post<TGitLabCreateTokenResponse>(
+      `${context.apiUrl}${tokensPath}`,
+      {
+        name: `${name}-${Date.now()}`,
+        ...(description ? { description } : {}),
+        scopes,
+        expires_at: getGitLabTokenExpiresAt(rotationInterval)
+      },
+      {
+        headers: { ...context.headers, "Content-Type": "application/json" },
+        // a retried create whose first response was lost would mint a second token that nothing tracks
+        "axios-retry": { retries: 0 }
+      }
+    );
+
+    if (!data?.id || !data?.token) {
+      throw new BadRequestError({ message: `GitLab did not return a token for ${resourceLabel}` });
+    }
+
+    return { tokenId: data.id.toString(), token: data.token };
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+
+    throw new BadRequestError({
+      message: `Failed to create a GitLab token for ${resourceLabel}: ${getGitLabErrorMessage(error)}.${getGitLabTokenPermissionHint(error)}`
+    });
+  }
+};
+
+export const revokeGitLabToken = async ({
+  context,
+  tokensPath,
+  tokenId,
+  resourceLabel
+}: {
+  context: TGitLabTokenApiContext;
+  tokensPath: string;
+  tokenId: string;
+  resourceLabel: string;
+}) => {
+  try {
+    await safeRequest.delete(`${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}`, {
+      headers: context.headers
+    });
+  } catch (error: unknown) {
+    // already revoked or deleted, which is the end state revocation wants
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.NotFound) return;
+
+    throw new BadRequestError({
+      message: `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}: ${getGitLabErrorMessage(error)}.${getGitLabTokenPermissionHint(error)}`
+    });
+  }
+};
+
+/** Checks a generated token by introspecting it with itself, since the connection's token can't. */
+export const verifyGitLabToken = async ({ instanceUrl, token }: { instanceUrl?: string; token: string }) => {
+  const gitLabInstanceUrl = await getGitLabInstanceUrl(instanceUrl);
+
+  try {
+    const { data } = await safeRequest.get<{ active?: boolean; revoked?: boolean }>(
+      `${gitLabInstanceUrl}/api/v4/personal_access_tokens/self`,
+      { headers: { "PRIVATE-TOKEN": token } }
+    );
+
+    if (data?.active === false || data?.revoked) {
+      throw new BadRequestError({ message: "The GitLab token is no longer active" });
+    }
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+
+    throw new BadRequestError({ message: `Failed to verify the GitLab token: ${getGitLabErrorMessage(error)}` });
+  }
+};

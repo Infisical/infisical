@@ -8,6 +8,7 @@ import {
   SanitizedGitLabConnectionSchema,
   TGitLabGroup,
   TGitLabProject,
+  TGitLabServiceAccount,
   UpdateGitLabConnectionSchema
 } from "@app/services/app-connection/gitlab";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -103,6 +104,39 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       );
 
       return groups;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/groups/:groupId/service-accounts`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listGitLabGroupServiceAccounts",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        groupId: z.string().trim().max(20).regex(/^\d+$/, "Group ID must be a numeric GitLab group ID")
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            username: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId, groupId } = req.params;
+
+      const serviceAccounts: TGitLabServiceAccount[] =
+        await server.services.appConnection.gitlab.listGroupServiceAccounts(connectionId, groupId, req.permission);
+
+      return serviceAccounts;
     }
   });
 };

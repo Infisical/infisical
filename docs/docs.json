@@ -167,6 +167,7 @@
                       "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/fireworks-api-key",
                       "documentation/platform/secret-rotation/gcp-service-account-key",
+                      "documentation/platform/secret-rotation/gitlab-service-account-token",
                       "documentation/platform/secret-rotation/hp-ilo-local-account",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/litellm-api-key",
@@ -3165,6 +3166,19 @@
                           "api-reference/endpoints/secret-rotations/gcp-service-account-key/list",
                           "api-reference/endpoints/secret-rotations/gcp-service-account-key/rotate-secrets",
                           "api-reference/endpoints/secret-rotations/gcp-service-account-key/update"
+                        ]
+                      },
+                      {
+                        "group": "GitLab service account token",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/create",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/delete",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/get-by-id",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/get-by-name",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/list",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/gitlab-service-account-token/update"
                         ]
                       },
                       {

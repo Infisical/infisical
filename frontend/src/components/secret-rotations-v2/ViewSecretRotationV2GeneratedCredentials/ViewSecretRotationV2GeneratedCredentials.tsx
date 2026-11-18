@@ -37,6 +37,7 @@ import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./V
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewFireworksApiKeyRotationGeneratedCredentials } from "./ViewFireworksApiKeyRotationGeneratedCredentials";
 import { ViewGcpServiceAccountKeyRotationGeneratedCredentials } from "./ViewGcpServiceAccountKeyRotationGeneratedCredentials";
+import { ViewGitLabServiceAccountTokenRotationGeneratedCredentials } from "./ViewGitLabServiceAccountTokenRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewLiteLLMApiKeyRotationGeneratedCredentials } from "./ViewLiteLLMApiKeyRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
@@ -271,6 +272,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.GcpServiceAccountKey:
       Component = (
         <ViewGcpServiceAccountKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.GitLabServiceAccountToken:
+      Component = (
+        <ViewGitLabServiceAccountTokenRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

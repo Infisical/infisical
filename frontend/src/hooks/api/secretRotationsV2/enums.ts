@@ -29,7 +29,8 @@ export enum SecretRotation {
   CloudflareR2AccessKey = "cloudflare-r2-access-key",
   StripeApiKey = "stripe-api-key",
   GcpServiceAccountKey = "gcp-service-account-key",
-  ClickHouseCredentials = "clickhouse-credentials"
+  ClickHouseCredentials = "clickhouse-credentials",
+  GitLabServiceAccountToken = "gitlab-service-account-token"
 }
 
 export enum SecretRotationStatus {

@@ -3,14 +3,16 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { appConnectionKeys } from "../queries";
-import { TGitLabGroup, TGitLabProject } from "./types";
+import { TGitLabGroup, TGitLabProject, TGitLabServiceAccount } from "./types";
 
 const gitlabConnectionKeys = {
   all: [...appConnectionKeys.all, "gitlab"] as const,
   listProjects: (connectionId: string, search?: string, limit?: number) =>
     [...gitlabConnectionKeys.all, "projects", connectionId, search ?? "", limit ?? ""] as const,
   listGroups: (connectionId: string, search?: string, limit?: number) =>
-    [...gitlabConnectionKeys.all, "groups", connectionId, search ?? "", limit ?? ""] as const
+    [...gitlabConnectionKeys.all, "groups", connectionId, search ?? "", limit ?? ""] as const,
+  listGroupServiceAccounts: (connectionId: string, groupId: string) =>
+    [...gitlabConnectionKeys.all, "group-service-accounts", connectionId, groupId] as const
 };
 
 export const useGitLabConnectionListProjects = (
@@ -74,6 +76,34 @@ export const useGitLabConnectionListGroups = (
             ...(limit !== undefined ? { limit } : {})
           }
         }
+      );
+
+      return data;
+    },
+    retry: false,
+    ...options
+  });
+};
+
+export const useGitLabConnectionListGroupServiceAccounts = (
+  connectionId: string,
+  groupId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TGitLabServiceAccount[],
+      unknown,
+      TGitLabServiceAccount[],
+      ReturnType<typeof gitlabConnectionKeys.listGroupServiceAccounts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: gitlabConnectionKeys.listGroupServiceAccounts(connectionId, groupId),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiRequest.get<TGitLabServiceAccount[]>(
+        `/api/v1/app-connections/gitlab/${connectionId}/groups/${groupId}/service-accounts`,
+        { signal }
       );
 
       return data;

@@ -28,6 +28,7 @@ import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplic
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { FireworksApiKeyRotationReviewFields } from "./FireworksApiKeyRotationReviewFields";
 import { GcpServiceAccountKeyRotationReviewFields } from "./GcpServiceAccountKeyRotationReviewFields";
+import { GitLabServiceAccountTokenRotationReviewFields } from "./GitLabServiceAccountTokenRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { LiteLLMApiKeyRotationReviewFields } from "./LiteLLMApiKeyRotationReviewFields";
@@ -75,7 +76,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields,
-  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields,
+  [SecretRotation.GitLabServiceAccountToken]: GitLabServiceAccountTokenRotationReviewFields
 };
 
 const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;

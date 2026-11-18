@@ -8,14 +8,20 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
-import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
+import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabGroup,
+  TGitLabProject,
+  TGitLabServiceAccount
+} from "./gitlab-connection-types";
 
 interface GitLabOAuthTokenResponse {
   access_token: string;
@@ -436,4 +442,117 @@ export const listGitLabGroups = async ({
   } catch (error: unknown) {
     return throwGitLabListError(error, "groups");
   }
+};
+
+export const getGitLabConnectionAccessToken = async (
+  appConnection: TGitLabConnection,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
+  kmsDataKeyService: TKmsDataKeyService
+) => {
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    return refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return appConnection.credentials.accessToken;
+};
+
+export const getGitLabAuthHeaders = (method: GitLabConnectionMethod, accessToken: string): Record<string, string> =>
+  method === GitLabConnectionMethod.OAuth
+    ? { Authorization: `Bearer ${accessToken}` }
+    : { "PRIVATE-TOKEN": accessToken };
+
+export const getGitLabErrorMessage = (error: unknown) => {
+  if (!(error instanceof AxiosError)) return (error as Error)?.message || "Unknown error";
+
+  const data = error.response?.data as { message?: unknown; error?: unknown; error_description?: unknown } | undefined;
+
+  if (typeof data?.message === "string") return data.message;
+
+  // validation failures come back as { message: { field: ["reason", ...] } }
+  if (data?.message && typeof data.message === "object") {
+    return Object.entries(data.message as Record<string, unknown>)
+      .map(([field, reasons]) => `${field} ${Array.isArray(reasons) ? reasons.join(", ") : String(reasons)}`)
+      .join("; ");
+  }
+
+  if (typeof data?.error_description === "string") return data.error_description;
+  if (typeof data?.error === "string") return data.error;
+
+  return error.response?.status ? `GitLab responded with status ${error.response.status}` : error.message;
+};
+
+const GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE = 100;
+const GITLAB_SERVICE_ACCOUNTS_MAX_PAGES = 50;
+
+export const listGitLabGroupServiceAccounts = async ({
+  appConnection,
+  appConnectionDAL,
+  kmsDataKeyService,
+  groupId
+}: {
+  appConnection: TGitLabConnection;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  groupId: string;
+}): Promise<TGitLabServiceAccount[]> => {
+  const accessToken = await getGitLabConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
+  const instanceUrl = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
+
+  const serviceAccounts: TGitLabServiceAccount[] = [];
+
+  try {
+    for (let page = 1; page <= GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; page += 1) {
+      const { data } = await safeRequest.get<{ id: number; username: string; name: string }[]>(
+        `${instanceUrl}/api/v4/groups/${encodeURIComponent(groupId)}/service_accounts`,
+        {
+          headers: getGitLabAuthHeaders(appConnection.method, accessToken),
+          params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
+        }
+      );
+
+      serviceAccounts.push(
+        ...data.map((serviceAccount) => ({
+          id: serviceAccount.id.toString(),
+          username: serviceAccount.username,
+          name: serviceAccount.name
+        }))
+      );
+
+      if (data.length < GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE) return serviceAccounts;
+    }
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
+      throw new RateLimitError({
+        message: "GitLab rate limit reached while loading service accounts. Wait a moment and try again."
+      });
+    }
+
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.Forbidden) {
+      throw new BadRequestError({
+        message: `The GitLab connection cannot list the service accounts of group '${groupId}'. The connection's user needs the Owner role on the group.`
+      });
+    }
+
+    throw new BadRequestError({
+      message: `Failed to list the service accounts of GitLab group '${groupId}': ${getGitLabErrorMessage(error)}`
+    });
+  }
+
+  logger.warn(
+    `listGitLabGroupServiceAccounts: stopped after ${GITLAB_SERVICE_ACCOUNTS_MAX_PAGES} pages [connectionId=${appConnection.id}] [groupId=${groupId}]`
+  );
+
+  return serviceAccounts;
 };
