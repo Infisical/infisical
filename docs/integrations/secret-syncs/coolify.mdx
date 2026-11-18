@@ -137,12 +137,9 @@ Coolify passes environment variables to a resource's containers when they start,
 
 <AccordionGroup>
     <Accordion title="Does the sync update preview deployments?">
-        Only if you choose the **Preview Deployments** scope. A sync with the **Production** scope writes only the application's production variables. When it creates one, Coolify also copies it into the preview variables, so the sync deletes that copy to keep production secrets away from the code of pull requests. It doesn't touch preview variables that you or other tools created.
+        Only if you choose the **Preview Deployments** scope. A sync with the **Production** scope writes only the application's production variables. When it creates one, Coolify also copies it into the preview variables, so the sync creates the variable empty, deletes that copy, and only then writes the value. This keeps production secrets away from the code of pull requests. It doesn't touch preview variables that you or other tools created.
 
         To give preview deployments their own values, create a second sync with the **Preview Deployments** scope from a non-production environment, such as `staging`.
-    </Accordion>
-    <Accordion title="How can I tell which variables Infisical manages?">
-        Infisical adds the comment `Managed by Infisical` to the production variables it writes, and `Managed by Infisical for preview deployments` to the preview variables.
     </Accordion>
     <Accordion title="What happens to a value that starts with $?">
         Coolify keeps the value as written. The sync marks every variable it writes as literal, so Coolify doesn't replace a value such as `$DATABASE_URL` with another variable's value.

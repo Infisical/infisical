@@ -3,15 +3,19 @@ import { AxiosError, AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` factories are hoisted above imports, so the spies they reference must come from `vi.hoisted`.
-const { safeRequestMock } = vi.hoisted(() => ({
-  safeRequestMock: vi.fn()
+const { safeRequestMock, gatewayRequestMock, withGatewayV2ProxyMock } = vi.hoisted(() => ({
+  safeRequestMock: vi.fn(),
+  gatewayRequestMock: vi.fn(),
+  withGatewayV2ProxyMock: vi.fn()
 }));
 
 vi.mock("@app/lib/validator/safe-request", () => ({
   safeRequest: { request: (...args: unknown[]) => (safeRequestMock as any)(...args) },
   getSharedHttpsAgent: vi.fn()
 }));
-vi.mock("@app/lib/config/request", () => ({ request: { request: vi.fn() } }));
+vi.mock("@app/lib/config/request", () => ({
+  request: { request: (...args: unknown[]) => (gatewayRequestMock as any)(...args) }
+}));
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -19,16 +23,18 @@ vi.mock("@app/lib/logger", () => ({
 }));
 vi.mock("@app/lib/crypto", () => ({ crypto: {} }));
 vi.mock("@app/lib/gateway-v2/types", () => ({ GatewayProxyProtocol: { Tcp: "tcp", Http: "http" } }));
-vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({ withGatewayV2Proxy: vi.fn() }));
+vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({
+  withGatewayV2Proxy: (...args: unknown[]) => (withGatewayV2ProxyMock as any)(...args)
+}));
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
   verifyHostInputValidity: vi.fn(async () => ["host"])
 }));
 
 /* eslint-disable import/first */
+import { BadRequestError } from "@app/lib/errors";
+
 import { listCoolifyResources, validateCoolifyConnectionCredentials } from "./coolify-connection-fns";
 /* eslint-enable import/first */
-
-const API_URL = "https://coolify.example.com/api/v1";
 
 const connection = {
   id: "connection-id",
@@ -46,12 +52,15 @@ const axiosErrorWithStatus = (status: number, data?: unknown) =>
   new AxiosError("Request failed", undefined, undefined, undefined, { status, data } as AxiosResponse);
 
 // Answers each request by method and path, rejecting with the error a route maps to
-const stubCoolify = (routes: Record<string, unknown>) =>
-  safeRequestMock.mockImplementation(async ({ method, url }: { method: string; url: string }) => {
-    const answer = routes[`${method} ${url.replace(API_URL, "")}`];
+const answerFrom =
+  (routes: Record<string, unknown>) =>
+  async ({ method, url }: { method: string; url: string }) => {
+    const answer = routes[`${method} ${new URL(url).pathname.replace("/api/v1", "")}`];
     if (answer instanceof Error) throw answer;
     return { data: answer };
-  });
+  };
+
+const stubCoolify = (routes: Record<string, unknown>) => safeRequestMock.mockImplementation(answerFrom(routes));
 
 const PERMISSION_CHECKS = {
   "PATCH /applications/infisical-permission-check/envs/bulk": axiosErrorWithStatus(404),
@@ -87,6 +96,23 @@ describe("validateCoolifyConnectionCredentials", () => {
     await expect(validateCoolifyConnectionCredentials(connection, gatewayV2Service)).rejects.toThrow(
       "Unable to validate Coolify connection: Missing required permissions: write"
     );
+  });
+
+  it("accepts a token through a Gateway, which would otherwise hide Coolify's 404 behind its own error", async () => {
+    gatewayRequestMock.mockImplementation(answerFrom({ "GET /projects": [], ...PERMISSION_CHECKS }));
+    withGatewayV2ProxyMock.mockImplementation(async (callback: (port: number) => Promise<unknown>) => {
+      try {
+        return await callback(1234);
+      } catch {
+        throw new BadRequestError({ message: "Application not found" });
+      }
+    });
+    gatewayV2Service.getPlatformConnectionDetailsByGatewayId.mockResolvedValue({});
+
+    await expect(
+      validateCoolifyConnectionCredentials({ ...connection, gatewayId: "gateway-id" }, gatewayV2Service)
+    ).resolves.toEqual(connection.credentials);
+    expect(safeRequestMock).not.toHaveBeenCalled();
   });
 
   it("points at the instance URL when it doesn't serve the Coolify API", async () => {

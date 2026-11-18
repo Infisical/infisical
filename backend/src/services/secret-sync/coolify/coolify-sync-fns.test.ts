@@ -44,9 +44,6 @@ const gatewayPoolService = { resolveEffectiveGatewayId: vi.fn() };
 const API_URL = "https://app.coolify.io/api/v1";
 const APPLICATION_ENVS = `${API_URL}/applications/res-uuid/envs`;
 
-const PRODUCTION_COMMENT = "Managed by Infisical";
-const PREVIEW_COMMENT = "Managed by Infisical for preview deployments";
-
 const syncWith = (
   resourceType: CoolifyResourceType = CoolifyResourceType.Application,
   syncOptions: Record<string, unknown> = {},
@@ -70,25 +67,13 @@ const payloadOf = (secrets: Record<string, string>) =>
   }) as any;
 
 // Leaving `value` undefined stands for a variable whose value Coolify did not return
-const envVar = (
-  key: string,
-  value?: string | null,
-  {
-    isPreview = false,
-    isLiteral = true,
-    comment = isPreview ? PREVIEW_COMMENT : PRODUCTION_COMMENT
-  }: { isPreview?: boolean; isLiteral?: boolean; comment?: string | null } = {}
-) => ({
+const envVar = (key: string, value?: string | null, { isPreview = false, isLiteral = true } = {}) => ({
   uuid: `${isPreview ? "preview" : "main"}-${key}`,
   key,
   ...(value !== undefined && { value }),
   is_preview: isPreview,
-  is_literal: isLiteral,
-  comment
+  is_literal: isLiteral
 });
-
-// Coolify's own preview copy of a production variable Infisical wrote
-const copyOf = (key: string, value: string) => envVar(key, value, { isPreview: true, comment: PRODUCTION_COMMENT });
 
 // Listings made after a write return `afterWrite`, the way Coolify adds preview copies of new production variables
 const stubCoolify = (envVars: ReturnType<typeof envVar>[], afterWrite = envVars) => {
@@ -105,6 +90,8 @@ const axiosErrorWithStatus = (status: number, data?: unknown) =>
 
 const requestsWith = (method: string) =>
   safeRequestMock.mock.calls.map(([config]) => config).filter((config) => config.method === method);
+
+const requestMethods = () => safeRequestMock.mock.calls.map(([config]) => config.method);
 
 const deletedUrls = () => requestsWith("DELETE").map(({ url }) => url);
 
@@ -130,54 +117,53 @@ describe("CoolifySyncFns", () => {
     expect(safeRequestMock).not.toHaveBeenCalled();
   });
 
-  it("writes new and changed production variables as literals marked as managed by Infisical, in one batch", async () => {
+  it("writes new and changed production variables as literals in one batch", async () => {
     stubCoolify([
       envVar("UNCHANGED", "same"),
       envVar("CHANGED", "old"),
-      envVar("NOT_LITERAL", "x", { isLiteral: false }),
-      envVar("UNMARKED", "u", { comment: null })
+      envVar("NOT_LITERAL", "x", { isLiteral: false })
     ]);
 
-    await sync(
-      syncWith(),
-      payloadOf({ UNCHANGED: "same", CHANGED: "new", NEW: "$HOME", NOT_LITERAL: "x", UNMARKED: "u" })
-    );
+    await sync(syncWith(), payloadOf({ UNCHANGED: "same", CHANGED: "new", NEW: "$HOME", NOT_LITERAL: "x" }));
 
     const [list] = requestsWith("GET");
     expect(list.url).toBe(APPLICATION_ENVS);
     expect(list.headers.Authorization).toBe("Bearer 1|token");
 
-    const patches = requestsWith("PATCH");
-    expect(patches).toHaveLength(1);
-    expect(patches[0].url).toBe(`${APPLICATION_ENVS}/bulk`);
-    expect(patches[0].data).toEqual({
-      data: ["CHANGED", "NEW", "NOT_LITERAL", "UNMARKED"].map((key) => ({
-        key,
-        value: { CHANGED: "new", NEW: "$HOME", NOT_LITERAL: "x", UNMARKED: "u" }[key],
-        is_literal: true,
-        comment: PRODUCTION_COMMENT
-      }))
+    const [, write] = requestsWith("PATCH");
+    expect(write.url).toBe(`${APPLICATION_ENVS}/bulk`);
+    expect(write.data).toEqual({
+      data: [
+        { key: "CHANGED", value: "new", is_literal: true },
+        { key: "NEW", value: "$HOME", is_literal: true },
+        { key: "NOT_LITERAL", value: "x", is_literal: true }
+      ]
     });
   });
 
-  it("deletes the preview copy Coolify makes of a new production variable, but no preview variable someone else made", async () => {
+  it("creates a new production variable empty and deletes Coolify's preview copy before writing its value", async () => {
     stubCoolify(
-      [envVar("USER_PREVIEW", "p", { isPreview: true, comment: null })],
-      [envVar("NEW", "a"), copyOf("NEW", "a"), envVar("USER_PREVIEW", "p", { isPreview: true, comment: null })]
+      [envVar("USER_PREVIEW", "p", { isPreview: true })],
+      [envVar("NEW", null), envVar("NEW", null, { isPreview: true }), envVar("USER_PREVIEW", "p", { isPreview: true })]
     );
 
-    await sync(syncWith(), payloadOf({ NEW: "a" }));
+    await sync(syncWith(), payloadOf({ NEW: "secret" }));
 
+    expect(requestMethods()).toEqual(["GET", "PATCH", "GET", "DELETE", "PATCH"]);
+    expect(requestsWith("PATCH").map(({ data }) => data)).toEqual([
+      { data: [{ key: "NEW", value: "", is_literal: true }] },
+      { data: [{ key: "NEW", value: "secret", is_literal: true }] }
+    ]);
     expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-NEW`]);
   });
 
-  it("deletes a preview copy left by an earlier run without listing again", async () => {
-    stubCoolify([envVar("KEY", "a"), copyOf("KEY", "a")]);
+  it("skips the empty step for a key that already has a preview variable, which Coolify doesn't copy over", async () => {
+    stubCoolify([envVar("SHARED", "staging-value", { isPreview: true })]);
 
-    await sync(syncWith(), payloadOf({ KEY: "a" }));
+    await sync(syncWith(), payloadOf({ SHARED: "prod-value" }));
 
-    expect(requestsWith("GET")).toHaveLength(1);
-    expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-KEY`]);
+    expect(requestMethods()).toEqual(["GET", "PATCH"]);
+    expect(deletedUrls()).toHaveLength(0);
   });
 
   it("writes only preview variables in the preview scope, leaving production variables alone", async () => {
@@ -190,12 +176,15 @@ describe("CoolifySyncFns", () => {
 
     await sync(
       syncWith(CoolifyResourceType.Application, {}, CoolifySyncScope.Preview),
-      payloadOf({ API_KEY: "preview-value" })
+      payloadOf({ API_KEY: "preview-value", NEW: "n" })
     );
 
     expect(requestsWith("PATCH").map(({ data }) => data)).toEqual([
       {
-        data: [{ key: "API_KEY", value: "preview-value", is_literal: true, comment: PREVIEW_COMMENT, is_preview: true }]
+        data: [
+          { key: "API_KEY", value: "preview-value", is_literal: true, is_preview: true },
+          { key: "NEW", value: "n", is_literal: true, is_preview: true }
+        ]
       }
     ]);
     expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-STALE`]);
@@ -204,18 +193,15 @@ describe("CoolifySyncFns", () => {
   it.each([
     [CoolifyResourceType.Service, "services"],
     [CoolifyResourceType.Database, "databases"]
-  ])("writes to a %s without the preview flag or a second listing", async (resourceType, path) => {
+  ])("writes to a %s in one request, without the preview flag", async (resourceType, path) => {
     stubCoolify([]);
 
     await sync(syncWith(resourceType), payloadOf({ NEW: "a" }));
 
+    expect(requestMethods()).toEqual(["GET", "PATCH"]);
     expect(requestsWith("PATCH").map(({ url, data }) => [url, data])).toEqual([
-      [
-        `${API_URL}/${path}/res-uuid/envs/bulk`,
-        { data: [{ key: "NEW", value: "a", is_literal: true, comment: PRODUCTION_COMMENT }] }
-      ]
+      [`${API_URL}/${path}/res-uuid/envs/bulk`, { data: [{ key: "NEW", value: "a", is_literal: true }] }]
     ]);
-    expect(requestsWith("GET")).toHaveLength(1);
   });
 
   it("sends no update when every value is already in Coolify, including an empty one Coolify stores as null", async () => {
@@ -226,11 +212,11 @@ describe("CoolifySyncFns", () => {
     expect(requestsWith("PATCH")).toHaveLength(0);
   });
 
-  it("deletes a stale production variable but never one Coolify manages or another preview variable", async () => {
+  it("deletes a stale production variable but never one Coolify manages or a preview variable", async () => {
     stubCoolify([
       envVar("STALE", "a"),
-      envVar("STALE", "a", { isPreview: true, comment: null }),
-      envVar("SERVICE_PASSWORD_DB", "generated", { comment: null })
+      envVar("STALE", "a", { isPreview: true }),
+      envVar("SERVICE_PASSWORD_DB", "generated")
     ]);
 
     await sync(syncWith(), payloadOf({}));
@@ -265,23 +251,17 @@ describe("CoolifySyncFns", () => {
     expect(deletedUrls()).toHaveLength(0);
   });
 
-  it("removes synced production variables and Coolify's copies of them, but not other preview variables", async () => {
+  it("removes the synced variables of its scope only, and never one Coolify manages", async () => {
     stubCoolify([
       envVar("SYNCED", "a"),
-      copyOf("SYNCED", "a"),
-      envVar("WITH_OWN_PREVIEW", "b"),
-      envVar("WITH_OWN_PREVIEW", "staging-b", { isPreview: true, comment: null }),
+      envVar("SYNCED", "staging-a", { isPreview: true }),
       envVar("OTHER", "c"),
-      envVar("SERVICE_FQDN_API", "d", { comment: null })
+      envVar("SERVICE_FQDN_API", "d")
     ]);
 
-    await remove(syncWith(), payloadOf({ SYNCED: "a", WITH_OWN_PREVIEW: "b", SERVICE_FQDN_API: "d" }));
+    await remove(syncWith(), payloadOf({ SYNCED: "a", SERVICE_FQDN_API: "d" }));
 
-    expect(deletedUrls()).toEqual([
-      `${APPLICATION_ENVS}/main-SYNCED`,
-      `${APPLICATION_ENVS}/preview-SYNCED`,
-      `${APPLICATION_ENVS}/main-WITH_OWN_PREVIEW`
-    ]);
+    expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/main-SYNCED`]);
   });
 
   it("does not treat inherited object properties as synced secrets", async () => {

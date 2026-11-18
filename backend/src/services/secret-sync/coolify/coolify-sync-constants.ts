@@ -4,8 +4,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { TSecretSyncListItem } from "@app/services/secret-sync/secret-sync-types";
 
-import { CoolifySyncScope } from "./coolify-sync-enums";
-
 export const COOLIFY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Coolify",
   destination: SecretSync.Coolify,
@@ -25,10 +23,3 @@ export const COOLIFY_ENV_VAR_NAME_RULE = `Coolify environment variable names mus
 
 export const isValidCoolifyEnvVarName = (name: string) =>
   COOLIFY_ENV_VAR_NAME_PATTERN.test(name) && !isManagedByCoolify(name);
-
-// Coolify copies a new production variable of an application into its preview variables, comment included, so a preview
-// variable with the production comment is a copy Coolify made of one Infisical wrote, not one a preview sync wrote
-export const COOLIFY_MANAGED_COMMENT: Record<CoolifySyncScope, string> = {
-  [CoolifySyncScope.Production]: "Managed by Infisical",
-  [CoolifySyncScope.Preview]: "Managed by Infisical for preview deployments"
-};

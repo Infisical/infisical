@@ -18,12 +18,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
-import {
-  COOLIFY_ENV_VAR_NAME_RULE,
-  COOLIFY_MANAGED_COMMENT,
-  isManagedByCoolify,
-  isValidCoolifyEnvVarName
-} from "./coolify-sync-constants";
+import { COOLIFY_ENV_VAR_NAME_RULE, isManagedByCoolify, isValidCoolifyEnvVarName } from "./coolify-sync-constants";
 import { CoolifySyncScope } from "./coolify-sync-enums";
 import { TCoolifyEnvVar, TCoolifyEnvVarUpsert, TCoolifySyncWithCredentials } from "./coolify-sync-types";
 
@@ -42,11 +37,6 @@ const COOLIFY_UPSERT_BATCH_SIZE = 100;
 
 const isInScope = (envVar: TCoolifyEnvVar, scope: CoolifySyncScope) =>
   Boolean(envVar.is_preview) === (scope === CoolifySyncScope.Preview);
-
-// Coolify gives preview deployments a copy of each production variable it creates, which would hand production
-// secrets to the code of a pull request, so the sync deletes the copies of the ones it writes
-const isCopyOfProductionVar = (envVar: TCoolifyEnvVar) =>
-  Boolean(envVar.is_preview) && envVar.comment === COOLIFY_MANAGED_COMMENT[CoolifySyncScope.Production];
 
 const getOwnedEnvVars = (
   { environment, destinationConfig: { scope }, syncOptions: { keySchema } }: TCoolifySyncWithCredentials,
@@ -131,6 +121,28 @@ const deleteCoolifyEnvVar = async ({ connection, envsPath, deps }: TCoolifyEnvVa
   }
 };
 
+// Coolify copies a production variable of an application into its preview variables when it creates it, and never
+// copies a later value, which would hand production secrets to the code of a pull request. New variables are created
+// empty and their copies deleted before any value is written, so a run that stops part way leaves nothing secret in
+// preview deployments.
+const createProductionEnvVarsWithoutPreviewCopies = async (api: TCoolifyEnvVarsApi, keys: string[]) => {
+  if (!keys.length) return;
+
+  await upsertCoolifyEnvVars(
+    api,
+    keys.map((key) => ({ key, value: "", is_literal: true }))
+  );
+
+  const newKeys = new Set(keys);
+  const copies = (await listCoolifyEnvVars(api)).filter(
+    (envVar) => envVar.is_preview && newKeys.has(envVar.key) && !envVar.value
+  );
+
+  for (const copy of copies) {
+    await deleteCoolifyEnvVar(api, copy);
+  }
+};
+
 export const CoolifySyncFns = {
   async getSecrets(
     secretSync: TCoolifySyncWithCredentials,
@@ -181,7 +193,6 @@ export const CoolifySyncFns = {
     const envVars = await listCoolifyEnvVars(api);
 
     const isPreview = scope === CoolifySyncScope.Preview;
-    const comment = COOLIFY_MANAGED_COMMENT[scope];
     const existingVars = new Map(
       envVars.filter((envVar) => isInScope(envVar, scope)).map((envVar) => [envVar.key, envVar])
     );
@@ -192,28 +203,26 @@ export const CoolifySyncFns = {
 
       // Coolify stores an empty value as null, and without the literal flag it resolves a value that starts with $
       // as a reference to another variable
-      if (!existing || existing.value !== (value || null) || !existing.is_literal || existing.comment !== comment) {
-        upserts.push({ key, value, is_literal: true, comment, ...(isPreview && { is_preview: true }) });
+      if (!existing || existing.value !== (value || null) || !existing.is_literal) {
+        upserts.push({ key, value, is_literal: true, ...(isPreview && { is_preview: true }) });
       }
+    }
+
+    // A key that already has a preview variable gets no copy, so only keys new to the application need the empty step
+    if (resourceType === CoolifyResourceType.Application && !isPreview) {
+      const existingKeys = new Set(envVars.map(({ key }) => key));
+      await createProductionEnvVarsWithoutPreviewCopies(
+        api,
+        upserts.map(({ key }) => key).filter((key) => !existingKeys.has(key))
+      );
     }
 
     await upsertCoolifyEnvVars(api, upserts);
 
-    // The copies of production variables created in this run only show up in a fresh listing
-    const createdProductionVars =
-      resourceType === CoolifyResourceType.Application &&
-      !isPreview &&
-      upserts.some(({ key }) => !existingVars.has(key));
-    const productionVarCopies = isPreview
-      ? []
-      : (createdProductionVars ? await listCoolifyEnvVars(api) : envVars).filter(isCopyOfProductionVar);
+    if (disableSecretDeletion) return;
 
-    const staleVars = disableSecretDeletion
-      ? []
-      : getOwnedEnvVars(secretSync, envVars).filter((envVar) => !Object.hasOwn(secretMap, envVar.key));
-
-    for (const envVar of [...productionVarCopies, ...staleVars]) {
-      await deleteCoolifyEnvVar(api, envVar);
+    for (const envVar of getOwnedEnvVars(secretSync, envVars)) {
+      if (!Object.hasOwn(secretMap, envVar.key)) await deleteCoolifyEnvVar(api, envVar);
     }
   },
 
@@ -229,10 +238,7 @@ export const CoolifySyncFns = {
     const envVars = await listCoolifyEnvVars(api);
 
     for (const envVar of envVars) {
-      const isRemovable =
-        isInScope(envVar, scope) || (scope === CoolifySyncScope.Production && isCopyOfProductionVar(envVar));
-
-      if (isRemovable && !isManagedByCoolify(envVar.key) && Object.hasOwn(secretMap, envVar.key)) {
+      if (isInScope(envVar, scope) && !isManagedByCoolify(envVar.key) && Object.hasOwn(secretMap, envVar.key)) {
         await deleteCoolifyEnvVar(api, envVar);
       }
     }

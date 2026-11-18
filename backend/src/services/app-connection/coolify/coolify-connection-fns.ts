@@ -1,4 +1,4 @@
-import { AxiosRequestConfig, isAxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -158,28 +158,39 @@ export const coolifyRequest = async <T>(
     throw new BadRequestError({ message: "Unable to connect to the Gateway assigned to this Coolify connection" });
   }
 
-  return withGatewayV2Proxy(
+  const result = await withGatewayV2Proxy<{ responseData: T } | { coolifyError: AxiosError }>(
     async (proxyPort) => {
       const proxiedUrl = new URL(url.toString());
       proxiedUrl.host = `localhost:${proxyPort}`;
 
-      const { data: responseData } = await request.request<T>({
-        ...baseRequestConfig,
-        url: proxiedUrl.toString(),
-        headers: { ...headers, Host: url.host },
-        maxRedirects: 0,
-        ...(isHttps && {
-          httpsAgent: getSharedHttpsAgent({ servername: targetHost, rejectUnauthorized: true })
-        })
-      });
+      try {
+        const { data: responseData } = await request.request<T>({
+          ...baseRequestConfig,
+          url: proxiedUrl.toString(),
+          headers: { ...headers, Host: url.host },
+          maxRedirects: 0,
+          ...(isHttps && {
+            httpsAgent: getSharedHttpsAgent({ servername: targetHost, rejectUnauthorized: true })
+          })
+        });
 
-      return responseData;
+        return { responseData };
+      } catch (error) {
+        // The proxy turns an error thrown here into a BadRequestError without the status code, which callers need
+        // to tell a missing resource or a refused token apart, so Coolify's answer is carried out of the tunnel
+        if (isAxiosError(error) && error.response) return { coolifyError: error };
+        throw error;
+      }
     },
     {
       protocol: GatewayProxyProtocol.Tcp,
       ...platformConnectionDetails
     }
   );
+
+  if ("coolifyError" in result) throw result.coolifyError;
+
+  return result.responseData;
 };
 
 // Coolify checks a token's permissions before it looks up the resource, so a request for an application that can't
