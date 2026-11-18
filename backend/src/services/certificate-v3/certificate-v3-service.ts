@@ -1414,11 +1414,12 @@ export const certificateV3ServiceFactory = ({
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
     const extractedSignatureAlgorithm = (
-      ca.internalCa
+      ca.internalCa?.keyAlgorithm
         ? await caKeySourceService.resolveCsrSignatureAlgorithm({
             caId: ca.id,
             keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
-            csrSignatureAlgorithm
+            csrSignatureAlgorithm,
+            policySignatureAlgorithms: policy.algorithms?.signature
           })
         : csrSignatureAlgorithm
     ) as typeof csrSignatureAlgorithm;
@@ -2365,6 +2366,7 @@ export const certificateV3ServiceFactory = ({
     recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
     reportCertificateIssued: $reportCertificateIssued,
+    caKeySourceService,
     resolveRequesterInfo,
     approvalPolicyService,
     approvalPolicyDAL

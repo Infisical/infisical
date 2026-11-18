@@ -31,6 +31,7 @@ import {
   TCustomExtensionRule,
   validateCustomExtensionValue
 } from "../certificate-common/certificate-extension-fns";
+import { mapPolicySignatureAlgorithmToApi } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   isDomainComponentRule,
@@ -231,18 +232,6 @@ export const certificatePolicyServiceFactory = ({
 
     const randomSlug = slugify(alphaNumericNanoId(12));
     return randomSlug;
-  };
-
-  const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
-    const mapping: Record<string, string> = {
-      "SHA256-RSA": "RSA-SHA256",
-      "SHA384-RSA": "RSA-SHA384",
-      "SHA512-RSA": "RSA-SHA512",
-      "SHA256-ECDSA": "ECDSA-SHA256",
-      "SHA384-ECDSA": "ECDSA-SHA384",
-      "SHA512-ECDSA": "ECDSA-SHA512"
-    };
-    return mapping[templateFormat] || templateFormat;
   };
 
   const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
@@ -622,7 +611,7 @@ export const certificatePolicyServiceFactory = ({
 
     // An undefined algorithm policy means no algorithm constraint (allow all).
     if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
-      const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
+      const mappedTemplateAlgorithms = template.algorithms.signature.map(mapPolicySignatureAlgorithmToApi);
       if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
         errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by this policy`);
       }
