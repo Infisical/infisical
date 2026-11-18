@@ -30,8 +30,7 @@ export class StandardProjectRoles implements TProjectRoles {
   rulesFor(grant: Grant): TProjectRule[] {
     if (grant.isCustom()) return grant.customRules<TProjectRule>();
     const slug = grant.builtInSlug() as string;
-    const rules = this.builtInRoles[slug];
-    if (rules) return rules;
+    if (Object.hasOwn(this.builtInRoles, slug)) return this.builtInRoles[slug];
     // The logger is only initialised by the server; tests and scripts run without it.
     logger?.warn(
       `Projects: unknown project role slug, granting no rules [role=${slug}] [projectType=${this.projectType}]`
