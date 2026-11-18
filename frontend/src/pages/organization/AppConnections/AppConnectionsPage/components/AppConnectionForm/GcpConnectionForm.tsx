@@ -136,20 +136,41 @@ enum BindingScope {
 }
 
 const WorkloadIdentityFederationSetup = ({
-  appConnection
+  appConnection,
+  editedProvider,
+  editedServiceAccountEmail
 }: {
   appConnection: TWorkloadIdentityFederationConnection;
+  editedProvider?: string;
+  editedServiceAccountEmail?: string;
 }) => {
   const scopeVariant = useScopeVariant();
   const [bindingScope, setBindingScope] = useState(BindingScope.Connection);
 
-  const { federatedCredential, serviceAccountEmail, workloadIdentityProvider } =
-    appConnection.credentials;
+  const { federatedCredential } = appConnection.credentials;
+  const savedProvider = appConnection.credentials.workloadIdentityProvider;
+  const savedServiceAccountEmail = appConnection.credentials.serviceAccountEmail || undefined;
+
+  // Follows the form's unsaved edits, so GCP can be set up for a new target before verifying it
+  const workloadIdentityProvider =
+    editedProvider && parseWorkloadIdentityProvider(editedProvider)
+      ? editedProvider
+      : savedProvider;
+  const serviceAccountEmail =
+    editedServiceAccountEmail === undefined
+      ? savedServiceAccountEmail
+      : editedServiceAccountEmail.trim() || undefined;
   const provider = parseWorkloadIdentityProvider(workloadIdentityProvider);
+  const isEdited =
+    workloadIdentityProvider !== savedProvider || serviceAccountEmail !== savedServiceAccountEmail;
 
   if (!federatedCredential) return null;
 
-  const { issuerUrl, subjectIdentifier, audience } = federatedCredential;
+  const { issuerUrl, subjectIdentifier } = federatedCredential;
+  const audience =
+    workloadIdentityProvider === savedProvider
+      ? federatedCredential.audience
+      : `https://iam.googleapis.com/${workloadIdentityProvider}`;
   const { projectId } = appConnection;
   const effectiveBindingScope = projectId ? bindingScope : BindingScope.Connection;
 
@@ -201,7 +222,9 @@ const WorkloadIdentityFederationSetup = ({
   return (
     <>
       <p className="text-xs leading-normal text-accent">
-        Configure GCP with these values, then verify the connection.
+        {isEdited
+          ? "These values use the credentials you entered, which are saved once verification succeeds. Configure GCP with them, then verify the connection."
+          : "Configure GCP with these values, then verify the connection."}
       </p>
       {issuerUrl ? (
         <FederatedCredentialValue label="Issuer" value={issuerUrl} />
@@ -304,6 +327,9 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const { handleSubmit, control, watch } = form;
 
   const selectedMethod = watch("method");
+  const watchedCredentials = watch("credentials") as
+    | { workloadIdentityProvider?: string; serviceAccountEmail?: string }
+    | undefined;
   const isWorkloadIdentityFederation =
     selectedMethod === GcpConnectionMethod.WorkloadIdentityFederation;
 
@@ -545,7 +571,11 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
               <span className="text-sm font-medium">Federated Credential</span>
               {appConnection?.method === GcpConnectionMethod.WorkloadIdentityFederation ? (
-                <WorkloadIdentityFederationSetup appConnection={appConnection} />
+                <WorkloadIdentityFederationSetup
+                  appConnection={appConnection}
+                  editedProvider={watchedCredentials?.workloadIdentityProvider}
+                  editedServiceAccountEmail={watchedCredentials?.serviceAccountEmail}
+                />
               ) : (
                 <p className="text-xs leading-normal text-accent">
                   The subject identifier includes the connection ID, so Infisical creates the
