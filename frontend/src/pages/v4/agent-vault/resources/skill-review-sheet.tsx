@@ -8,6 +8,9 @@ import {
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { Separator } from "@infisical/cipher/ui/separator";
 import {
   Sheet,
   SheetBody,
@@ -17,6 +20,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Meta } from "@infisical/cipher/ui/text";
+import { SquareTerminalIcon } from "lucide-react";
 
 import {
   buildDiffRows,
@@ -86,13 +90,31 @@ export const SkillFileDiff = ({ oldText, newText }: { oldText: string; newText: 
   );
 };
 
-const ChangeBody = ({ change }: { change: TSkillFileChange }) => {
-  const isContentChanged = change.oldText !== change.newText;
+const ModeChange = ({ change, hasBody }: { change: TSkillFileChange; hasBody: boolean }) => {
   const isModeChanged =
     change.status === "modified" && change.oldMode !== undefined && change.newMode !== undefined;
+  const isAddedExecutable = change.status === "added" && change.newMode === "0755";
+  if (!isModeChanged && !isAddedExecutable) return null;
   return (
     <>
-      {isModeChanged && <Meta>{`Mode ${change.oldMode} to ${change.newMode}`}</Meta>}
+      <Inline gap={8} align="center" wrap={false}>
+        <Icon icon={SquareTerminalIcon} />
+        <Meta mono={false}>
+          {change.newMode === "0755"
+            ? "Marked as executable, so agents can run it as a script."
+            : "No longer marked as executable."}
+        </Meta>
+      </Inline>
+      {hasBody && <Separator />}
+    </>
+  );
+};
+
+const ChangeBody = ({ change }: { change: TSkillFileChange }) => {
+  const isContentChanged = change.oldText !== change.newText;
+  return (
+    <>
+      <ModeChange change={change} hasBody={change.isBinary || isContentChanged} />
       {change.isBinary && <Meta>Binary file. Its contents are not shown.</Meta>}
       {!change.isBinary && isContentChanged && change.isTooLarge && (
         <Meta>Too large to show a diff</Meta>
@@ -151,7 +173,10 @@ export const SaveSkillVersionSheet = ({
                     <span className={styles.changePath} title={change.path}>
                       {change.path}
                     </span>
-                    {!(change.status === "modified" && change.isTooLarge) && (
+                    {!(
+                      change.status === "modified" &&
+                      (change.isTooLarge || change.oldText === change.newText)
+                    ) && (
                       <span className={styles.counts}>
                         <span className={styles.additions}>+{change.additions}</span>{" "}
                         <span className={styles.deletions}>-{change.deletions}</span>

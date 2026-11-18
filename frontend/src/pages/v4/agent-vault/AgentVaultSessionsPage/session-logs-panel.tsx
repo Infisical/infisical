@@ -46,7 +46,6 @@ import { SessionLogDetailsDialog } from "./session-log-details-dialog";
 import {
   chunkIdTime,
   countSessionLogArrivals,
-  DECISION_PRESENTATION,
   decisionPresentation,
   GAP_EXPLANATION,
   groupSessionLogGaps,
@@ -56,8 +55,10 @@ import {
   isSessionEndpoint,
   matchesSessionLogSearch,
   nativeSessionLogSearchTerm,
+  SESSION_LOG_OUTCOMES,
   sessionEndTailDeadline,
   sessionLogMethodLabel,
+  sessionLogOutcome,
   sessionLogRequestSummary,
   sessionLogSearchTerm,
   type TLogRange
@@ -469,7 +470,7 @@ export const SessionLogsPanel = ({
     () =>
       records.filter(
         (record) =>
-          (!decisionFilter || record.decision === decisionFilter) &&
+          (!decisionFilter || sessionLogOutcome(record.decision) === decisionFilter) &&
           matchesSessionLogSearch(record, search)
       ),
     [records, search, decisionFilter]
@@ -567,6 +568,9 @@ export const SessionLogsPanel = ({
   const isStillLoading = !isFiltered && records.length === 0 && isWalkingBack;
   const isUnreachable =
     gaps.length > 0 && !hasOpenedRecords && gaps.every((gap) => gap.reason === "fetch");
+  // Hidden until the first page says there are logs to search, since logs that are off, off-plan or unreadable
+  // replace the whole panel. An active filter keeps it so the filter can always be cleared.
+  const canSearch = !isPending && !isLoadError && (hasChunks || Boolean(hasNextPage) || isFiltered);
 
   const retryButton = (
     <Button
@@ -760,42 +764,47 @@ export const SessionLogsPanel = ({
 
   return (
     <Stack gap={12}>
-      <FilterBar
-        label="Session log filters"
-        width="fill"
-        searchLabel="Search requests"
-        searchPlaceholder="Search host, path, method, tool, service, statement or output"
-        searchValue={search}
-        onSearchChange={setSearch}
-        fields={[
-          {
-            key: OUTCOME_FIELD,
-            label: "Outcome",
-            type: "select",
-            options: Object.entries(DECISION_PRESENTATION).map(([value, { label }]) => ({
-              value,
-              label
-            }))
+      {canSearch && (
+        <FilterBar
+          label="Session log filters"
+          width="fill"
+          searchLabel="Search requests"
+          searchPlaceholder="Search host, path, method, tool, service, statement or output"
+          searchValue={search}
+          onSearchChange={setSearch}
+          fields={[
+            {
+              key: OUTCOME_FIELD,
+              label: "Outcome",
+              type: "select",
+              options: SESSION_LOG_OUTCOMES.map(({ decision, label }) => ({
+                value: decision,
+                label
+              }))
+            }
+          ]}
+          value={filters}
+          onChange={setFilters}
+          actions={
+            <DateRangePicker
+              aria-label="Time range"
+              placeholder="Entire session"
+              align="end"
+              value={rangeDraft?.from ? { from: rangeDraft.from, to: rangeDraft.to } : undefined}
+              presets={isActive ? livePresets() : undefined}
+              disabled={[
+                { before: startOfDay(new Date(session.createdAt)) },
+                { after: new Date() }
+              ]}
+              onValueChange={(next) => {
+                setRangeDraft(next);
+                const picked = rangeOf(next);
+                if (picked || !next) applyRange(picked);
+              }}
+            />
           }
-        ]}
-        value={filters}
-        onChange={setFilters}
-        actions={
-          <DateRangePicker
-            aria-label="Time range"
-            placeholder="Entire session"
-            align="end"
-            value={rangeDraft?.from ? { from: rangeDraft.from, to: rangeDraft.to } : undefined}
-            presets={isActive ? livePresets() : undefined}
-            disabled={[{ before: startOfDay(new Date(session.createdAt)) }, { after: new Date() }]}
-            onValueChange={(next) => {
-              setRangeDraft(next);
-              const picked = rangeOf(next);
-              if (picked || !next) applyRange(picked);
-            }}
-          />
-        }
-      />
+        />
+      )}
 
       {isUnreachable && (
         <Alert
