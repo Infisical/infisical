@@ -284,7 +284,8 @@ export const isOAuthClientSecretRequired = (
   values.tokenEndpointAuthMethod !== AgentVaultOauthClientAuthMethod.None &&
   !values.redirectUri.trim() &&
   !values.clientSecret &&
-  (current.status === AgentVaultOauthStatus.NotConnected || isOAuthVariableSignInChanged(current, values));
+  (current.status === AgentVaultOauthStatus.NotConnected ||
+    isOAuthVariableSignInChanged(current, values));
 
 /**
  * Fills the fields a sign-in found it needs, leaving anything typed alone: guessed endpoints are only a suggestion,

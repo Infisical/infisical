@@ -222,7 +222,11 @@ export const OAuthVariableFields = ({
     const values = getValidValues();
     if (!values) return;
     if (variable?.oauth && isOAuthClientSecretRequired(variable.oauth, values)) {
-      setError("clientSecret", { message: OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE }, { shouldFocus: true });
+      setError(
+        "clientSecret",
+        { message: OAUTH_CLIENT_SECRET_REQUIRED_MESSAGE },
+        { shouldFocus: true }
+      );
       return;
     }
     setAuthorizedScopes(null);

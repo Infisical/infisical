@@ -51,7 +51,10 @@ import {
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultOauthVariableSignInStart, TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultOauthVariableSignInStart,
+  TAgentVaultVariable
+} from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { OAuthVariableFields } from "./OAuthVariableFields";
@@ -219,12 +222,7 @@ export const VariableForm = ({
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
   const schema = useMemo(
-    () =>
-      buildSchema(
-        () => takenKeysRef.current,
-        !variable,
-        isPersonal
-      ),
+    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal),
     [variable, isPersonal]
   );
 
