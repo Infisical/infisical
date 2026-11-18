@@ -3,13 +3,13 @@ import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
+import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";

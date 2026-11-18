@@ -17,6 +17,7 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -70,7 +71,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {

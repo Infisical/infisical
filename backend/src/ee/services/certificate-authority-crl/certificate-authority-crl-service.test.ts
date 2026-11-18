@@ -9,7 +9,7 @@ import { testFeatures } from "@app/domains/platform/license/ce/testing/test-feat
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { buildLocalCaSigner } from "@app/services/certificate-authority/ca-signer";

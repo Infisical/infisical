@@ -8,7 +8,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError } from "@app/lib/errors";
 

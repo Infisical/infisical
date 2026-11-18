@@ -13,15 +13,15 @@ import {
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";

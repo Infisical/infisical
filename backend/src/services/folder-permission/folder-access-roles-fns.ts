@@ -1,9 +1,9 @@
 import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
+import { ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
 import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import {

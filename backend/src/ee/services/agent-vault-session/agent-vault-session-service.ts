@@ -3,13 +3,13 @@ import { Knex } from "knex";
 
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";

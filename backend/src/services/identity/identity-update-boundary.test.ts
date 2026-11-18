@@ -3,14 +3,14 @@ import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { identityServiceFactory } from "./identity-service";

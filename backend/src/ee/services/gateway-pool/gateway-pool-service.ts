@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
@@ -16,7 +17,6 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
-import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";

@@ -3,8 +3,8 @@ import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";

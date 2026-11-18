@@ -1,15 +1,15 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
-import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";

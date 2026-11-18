@@ -13,9 +13,9 @@ import {
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";

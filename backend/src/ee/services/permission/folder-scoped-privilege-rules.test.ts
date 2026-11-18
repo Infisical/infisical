@@ -2,15 +2,6 @@ import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/abil
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
-import { conditionsMatcher } from "@app/lib/casl";
-import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
-
-import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
-import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
-import { buildProjectPermissionRules } from "./permission-service";
-import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,
@@ -25,7 +16,16 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub,
   ProjectPermissionV2Schema
-} from "./project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { conditionsMatcher } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+
+import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
+import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
+import { buildProjectPermissionRules } from "./permission-service";
+import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 

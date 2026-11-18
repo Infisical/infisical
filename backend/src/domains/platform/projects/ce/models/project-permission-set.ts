@@ -3,14 +3,13 @@ import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { canonicalizeSecretPathCondition, conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import {
   CASL_ACTION_SCHEMA_ENUM,
-  CASL_ACTION_SCHEMA_NATIVE_ENUM
-} from "@app/ee/services/permission/permission-schemas";
-import { canonicalizeSecretPathCondition, conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
-import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
-
-import { PermissionConditionSchema } from "./permission-types";
+  CASL_ACTION_SCHEMA_NATIVE_ENUM,
+  PermissionConditionSchema,
+  UnpackedPermissionSchema
+} from "@app/lib/casl/permission-schemas";
 
 export enum ProjectPermissionActions {
   Read = "read",

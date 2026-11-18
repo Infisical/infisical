@@ -1,12 +1,12 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
+import { PermissionConditionOperators } from "@app/lib/casl";
 import {
   CASL_ACTION_SCHEMA_ENUM,
-  CASL_ACTION_SCHEMA_NATIVE_ENUM
-} from "@app/ee/services/permission/permission-schemas";
-import { PermissionConditionSchema } from "@app/ee/services/permission/permission-types";
-import { PermissionConditionOperators } from "@app/lib/casl";
+  CASL_ACTION_SCHEMA_NATIVE_ENUM,
+  PermissionConditionSchema
+} from "@app/lib/casl/permission-schemas";
 
 export enum OrgPermissionActions {
   Read = "read",

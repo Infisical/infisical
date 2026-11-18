@@ -2,8 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

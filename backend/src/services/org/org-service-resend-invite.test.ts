@@ -8,7 +8,7 @@ import {
   orgMemberPermissions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { orgServiceFactory } from "./org-service";

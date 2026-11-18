@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { OrgPermissionRelayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
@@ -30,7 +31,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";

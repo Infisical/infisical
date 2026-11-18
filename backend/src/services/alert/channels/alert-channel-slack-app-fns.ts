@@ -5,7 +5,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";

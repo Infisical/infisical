@@ -3,7 +3,7 @@ import { packRules } from "@casl/ability/extra";
 
 import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
@@ -17,10 +17,10 @@ import {
   TProjectTemplateUser,
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
+import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
-import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";

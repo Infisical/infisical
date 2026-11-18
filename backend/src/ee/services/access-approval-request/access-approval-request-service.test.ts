@@ -8,7 +8,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";

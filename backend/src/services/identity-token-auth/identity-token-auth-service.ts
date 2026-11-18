@@ -9,9 +9,9 @@ import {
 } from "@app/db/schemas";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";

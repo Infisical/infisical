@@ -22,6 +22,7 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AuthMethod } from "@app/lib/auth/actor-types";
@@ -72,7 +73,6 @@ import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-memb
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";

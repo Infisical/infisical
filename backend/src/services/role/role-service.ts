@@ -5,12 +5,12 @@ import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } fr
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { UnpackedPermissionSchema, unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
-import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-role-mapping/external-group-org-role-mapping-dal";

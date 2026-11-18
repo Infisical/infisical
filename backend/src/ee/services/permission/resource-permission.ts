@@ -7,7 +7,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "./project-permission";
+} from "@app/domains/platform/projects/ce/module";
 
 export enum ResourcePermissionSub {
   Application = "certificate-application",

@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";

@@ -11,14 +11,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceType, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";

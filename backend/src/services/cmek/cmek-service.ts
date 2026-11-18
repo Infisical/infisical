@@ -11,12 +11,12 @@ import {
   TKmsKeyService
 } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCmekActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   AsymmetricKeyAlgorithm,

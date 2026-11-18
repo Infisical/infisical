@@ -2,14 +2,14 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
-import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
 import {
   orgAdminPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgIdentityFactory } from "./org/org-identity-factory";

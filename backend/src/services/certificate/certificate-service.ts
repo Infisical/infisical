@@ -6,14 +6,14 @@ import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalReques
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub

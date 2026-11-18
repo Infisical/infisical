@@ -4,13 +4,13 @@ import { Knex } from "knex";
 import { ActionProjectType, ResourceType, TCertificateSyncs } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionPkiSyncActions,

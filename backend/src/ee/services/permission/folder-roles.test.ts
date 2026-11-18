@@ -1,8 +1,6 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 
 import { SecretFolderRole } from "@app/db/schemas";
-
-import { RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,
@@ -12,7 +10,9 @@ import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission";
+} from "@app/domains/platform/projects/ce/module";
+
+import { RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 
 type TFolderRoleTable = Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]>;
 

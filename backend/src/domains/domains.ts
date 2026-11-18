@@ -10,6 +10,7 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { AccessControlModule } from "./platform/access-control/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
@@ -46,6 +47,7 @@ export type TDomainDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
     | "isProductionMode"
+    | "isTestMode"
   > &
     TKmsCoreEnvConfig;
 };
@@ -109,9 +111,28 @@ export const startStandaloneKmsCore = async ({
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
-  const organizations = new OrganizationsModule({ db: deps.db });
+  const accessControl = new AccessControlModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    // Tests check grants on every read, so a change shows on the next request.
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
+  const organizations = new OrganizationsModule({
+    db: deps.db,
+    actorGrantsService: accessControl.actorGrantsService,
+    roleService: accessControl.roleService
+  });
   const { organizationsService } = organizations;
-  const projects = new ProjectsModule({ db: deps.db });
+  const projects = new ProjectsModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    actorGrantsService: accessControl.actorGrantsService,
+    roleService: accessControl.roleService,
+    groupService: accessControl.groupService,
+    orgPermissionService: organizations.orgPermissionService,
+    projectRoles: [],
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
   const { projectsService } = projects;
   const secrets = new SecretsModule({ projectsService });
   const pam = new PamModule({ projectsService });
@@ -168,6 +189,7 @@ export const createDomains = async (deps: TDomainDeps) => {
   });
 
   return {
+    accessControl,
     license,
     licenseBilling,
     kmsCoreEe,

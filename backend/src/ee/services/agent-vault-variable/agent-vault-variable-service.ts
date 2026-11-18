@@ -1,12 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

@@ -11,6 +11,7 @@ import {
   TRelays
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
@@ -44,7 +45,6 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountType } from "../pam/pam-enums";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";

@@ -10,6 +10,7 @@ import {
   TRoles
 } from "@app/db/schemas";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -50,7 +51,6 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

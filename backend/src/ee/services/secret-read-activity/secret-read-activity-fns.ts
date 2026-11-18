@@ -1,8 +1,8 @@
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";

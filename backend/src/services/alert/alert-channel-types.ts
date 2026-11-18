@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionSet } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
