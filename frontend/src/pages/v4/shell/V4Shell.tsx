@@ -40,6 +40,7 @@ import {
 } from "./navigation";
 import { NotificationInbox, useNotificationInbox } from "./notifications";
 import { ProjectGate } from "./project-gate";
+import { nameLabel, useProjectName } from "./resource-name";
 
 import styles from "./shell.module.css";
 
@@ -169,11 +170,11 @@ export const V4Shell = ({
   const product = at.product ? productOf(at.product) : undefined;
   const hue = hueOf(product);
   const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
-  const project = session.projects.find((entry) => entry.id === at.projectId);
+  const projectName = useProjectName(at.projectId ?? "");
   const agentVaultSetup = useAgentVaultSetupSidebar(orgId, at);
   const trail = shellTrail({
     at,
-    projectName: project?.name,
+    projectName: projectName.name,
     isSubOrganization: session.organization.isSubOrganization,
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions
@@ -230,7 +231,7 @@ export const V4Shell = ({
   const projectCrumb: BreadcrumbCrumb | undefined =
     product && at.projectId
       ? {
-          label: project?.name ?? at.projectId,
+          label: nameLabel(projectName, "project"),
           href: resolve(`${base}${projectHome(product.type, at.projectId)}`),
           switcher: {
             label: "Switch project",

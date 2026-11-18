@@ -99,8 +99,8 @@ import { useProjectPermission } from "../../access/permissions";
 import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
-import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
+import { nameLabel, useProjectName } from "../../shell/resource-name";
 import { withoutDefaults } from "../search-defaults";
 import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
@@ -276,7 +276,7 @@ export const OverviewPage = () => {
   const search = useSearch({ from: ROUTE });
   const routerNavigate = useNavigate({ from: ROUTE });
   const adapter = useV4Adapter("secrets");
-  const session = useV4Session();
+  const projectName = useProjectName(projectId);
   const projectQuery = adapter.useProject(projectId);
   const blockFor = useManagedBlock(projectId);
   const { permission } = useProjectPermission(projectId);
@@ -1853,9 +1853,7 @@ export const OverviewPage = () => {
                       <span className={styles.titleIcon}>
                         <Icon name="folder" size={20} />
                       </span>
-                      {session.projects.find((entry) => entry.id === projectId)?.name ??
-                        projectQuery.data?.name ??
-                        projectId}
+                      {nameLabel(projectName, "project")}
                     </>
                   }
                   badges={
