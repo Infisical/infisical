@@ -5,26 +5,9 @@ import {
   AccordionItem,
   AccordionTrigger
 } from "@infisical/cipher/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
+import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -37,12 +20,14 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
+import { DurationInput } from "@infisical/cipher/ui/duration-input";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { FileTree, type FileTreeNode } from "@infisical/cipher/ui/file-tree";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { Select } from "@infisical/cipher/ui/select";
 import { Separator } from "@infisical/cipher/ui/separator";
@@ -55,6 +40,7 @@ import {
   SheetSubheader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { FilterIcon, LayersIcon, ShieldIcon } from "lucide-react";
@@ -67,30 +53,18 @@ import {
   isValidTemporaryRange
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
+import { NoExpiry } from "../../../../components/no-expiry";
 import { Gate } from "../flows/shared";
+import {
+  type AccessMember,
+  type AccessState,
+  type FolderGrant,
+  grantKey,
+  memberKey
+} from "./folder-access-state";
 
 import styles from "./folder-actions.module.css";
 
-export type FolderGrant = {
-  permission: SecretFolderRole;
-  isTemporary: boolean;
-  temporaryRange: string | null;
-  temporaryAccessEndTime: string | null;
-};
-export type AccessMember = {
-  type: "user" | "identity";
-  id: string;
-  name: string;
-  subtitle: string;
-  isProjectAdmin: boolean;
-  roles: string[];
-  inProject: boolean;
-  hasAccess: boolean;
-};
-export type AccessState = {
-  members: AccessMember[];
-  grants: Record<string, Record<string, FolderGrant>>;
-};
 type Actor = AccessMember & { access: FolderGrant | null; listed: boolean };
 type Kind = "admin" | "project-role" | "folder-grant" | "override" | "temporary";
 type Filter = { types: AccessMember["type"][]; kinds: Kind[] };
@@ -124,7 +98,6 @@ const FOLDER_ROLE_TIERS = [
 ];
 const tierLabel = (tier: SecretFolderRole) =>
   FOLDER_ROLE_TIERS.find((option) => option.value === tier)?.label ?? tier;
-const TEMPORARY_RANGE_PRESETS = ["30m", "4h", "1d"];
 const DEFAULT_TEMPORARY_RANGE = "1h";
 const NO_ACCESS_SECTION = "no-access";
 const EMPTY_FILTER: Filter = { types: [], kinds: [] };
@@ -139,10 +112,6 @@ const KIND_OPTIONS: { value: Kind; label: string }[] = [
   { value: "override", label: "Overrides project role" },
   { value: "temporary", label: "Temporary" }
 ];
-
-export const grantKey = (environment: string, path: string) => `${environment}:${path}`;
-export const memberKey = (member: Pick<AccessMember, "type" | "id">) =>
-  `${member.type}:${member.id}`;
 
 const grantStateOf = (access: FolderGrant | null) => {
   if (!access?.isTemporary || !access.temporaryAccessEndTime) return "permanent" as const;
@@ -305,33 +274,73 @@ function GrantRow({
   );
 }
 
+type Review = {
+  actor: Actor;
+  tier: SecretFolderRole | null;
+  editsDuration?: boolean;
+  member?: Partial<AccessMember>;
+};
+
+function GrantValue({ access, isOverride }: { access: FolderGrant; isOverride: boolean }) {
+  const remainingTime =
+    access.isTemporary && access.temporaryAccessEndTime
+      ? formatExpirationTime(access.temporaryAccessEndTime, Date.now())
+      : null;
+  return (
+    <AccessValue value={tierLabel(access.permission)} scope="Folder">
+      {isOverride && <Badge tone="warn">Override</Badge>}
+      {remainingTime ? (
+        <Tooltip
+          content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+        >
+          <span className={styles.badgeSlot}>
+            <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
+              <Icon name="clock" size={12} />
+              {remainingTime.isExpired ? "Expired" : remainingTime.value}
+            </Badge>
+          </span>
+        </Tooltip>
+      ) : (
+        <NoExpiry />
+      )}
+    </AccessValue>
+  );
+}
+
+function TemporaryAccessLabel({ access }: { access: FolderGrant }) {
+  if (!access.isTemporary || !access.temporaryAccessEndTime) return "Add temporary access";
+  const remainingTime = formatExpirationTime(access.temporaryAccessEndTime, Date.now());
+  return (
+    <span className={styles.menuSplit}>
+      Edit temporary access
+      <span className={styles.menuMeta}>
+        {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+      </span>
+    </span>
+  );
+}
+
+const removeLabelOf = (grantState: ReturnType<typeof grantStateOf>, isOverride: boolean) =>
+  ({
+    expired: "Clear expired access",
+    temporary: isOverride ? "End temporary override" : "End temporary access",
+    permanent: isOverride ? "Remove access override" : "Remove folder access"
+  })[grantState];
+
 function AccessRow({
   actor,
-  onSetTier,
-  onSetTemporaryRange,
-  onMakePermanent,
-  onRemove,
+  onReview,
   block
 }: {
   actor: Actor;
-  onSetTier: (tier: SecretFolderRole) => void;
-  onSetTemporaryRange: (range: string) => void;
-  onMakePermanent: () => void;
-  onRemove: () => void;
+  onReview: (review: Omit<Review, "actor">) => void;
   block?: string;
 }) {
-  const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
-  const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
   const { access } = actor;
   const firstName = actor.name.split(" ")[0];
-  const isRangeValid = isValidTemporaryRange(range);
   const roleNames = actor.roles.join(", ");
   const isOverride = Boolean(access && actor.roles.length > 0);
   const grantState = grantStateOf(access);
-  const remainingTime =
-    access?.isTemporary && access.temporaryAccessEndTime
-      ? formatExpirationTime(access.temporaryAccessEndTime, Date.now())
-      : null;
 
   if (actor.isProjectAdmin)
     return (
@@ -356,21 +365,7 @@ function AccessRow({
           <DropdownMenuTrigger asChild disabled={Boolean(block)}>
             {access ? (
               <Button layout="trigger" variant="ghost" size="sm">
-                <AccessValue value={tierLabel(access.permission)} scope="Folder">
-                  {isOverride && <Badge tone="warn">Override</Badge>}
-                  {remainingTime && (
-                    <Tooltip
-                      content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                    >
-                      <span className={styles.badgeSlot}>
-                        <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
-                          <Icon name="clock" size={12} />
-                          {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                        </Badge>
-                      </span>
-                    </Tooltip>
-                  )}
-                </AccessValue>
+                <GrantValue access={access} isOverride={isOverride} />
               </Button>
             ) : (
               <Button layout="trigger" variant="ghost" size="sm" title={roleNames || undefined}>
@@ -389,180 +384,255 @@ function AccessRow({
                 ? undefined
                 : `Choosing a tier overrides ${firstName}'s project role in this folder.`
             }
-            temporaryLabel={
-              remainingTime ? (
-                <span className={styles.menuSplit}>
-                  Edit temporary access
-                  <span className={styles.menuMeta}>
-                    {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
-                  </span>
-                </span>
-              ) : (
-                "Add temporary access"
-              )
-            }
-            onSelectTier={onSetTier}
+            temporaryLabel={access && <TemporaryAccessLabel access={access} />}
+            onSelectTier={(tier) => onReview({ tier })}
             onEditTemporaryAccess={
-              access
-                ? () => {
-                    setRange(access.temporaryRange || DEFAULT_TEMPORARY_RANGE);
-                    setIsTemporaryOpen(true);
-                  }
-                : undefined
+              access ? () => onReview({ tier: access.permission, editsDuration: true }) : undefined
             }
-            onRemove={access ? onRemove : undefined}
-            removeLabel={
-              {
-                expired: "Clear expired access",
-                temporary: isOverride ? "End temporary override" : "End temporary access",
-                permanent: isOverride ? "Remove access override" : "Remove folder access"
-              }[grantState]
-            }
+            onRemove={access ? () => onReview({ tier: null }) : undefined}
+            removeLabel={removeLabelOf(grantState, isOverride)}
             removeVariant={grantState === "expired" || isOverride ? "default" : "destructive"}
           />
         </DropdownMenu>
       </Gate>
-      <Dialog open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Temporary access</DialogTitle>
-            <DialogDescription>
-              {`Access for ${actor.name} is revoked when the duration ends.`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className={styles.stackTight}>
-            <Field
-              label="Duration"
-              error={isRangeValid ? undefined : "Enter a duration such as 30m, 4h or 1d."}
-            >
-              <Input
-                value={range}
-                placeholder={DEFAULT_TEMPORARY_RANGE}
-                invalid={!isRangeValid}
-                onChange={(event) => setRange(event.target.value)}
-              />
-            </Field>
-            <div className={styles.presets}>
-              {TEMPORARY_RANGE_PRESETS.map((preset) => (
-                <Button key={preset} variant="outline" size="xs" onClick={() => setRange(preset)}>
-                  {preset}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            {remainingTime && (
-              <Button
-                variant="destructive"
-                className={styles.push}
-                onClick={() => {
-                  onMakePermanent();
-                  setIsTemporaryOpen(false);
-                }}
-              >
-                Remove expiration
-              </Button>
-            )}
-            <Button variant="ghost" onClick={() => setIsTemporaryOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!isRangeValid}
-              onClick={() => {
-                onSetTemporaryRange(range);
-                setIsTemporaryOpen(false);
-              }}
-            >
-              Apply
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-function RemoveAccessDialog({
-  actor,
+const RANGE_ERROR = "Enter a duration such as 30m, 4h or 1d.";
+const FULL_ACCESS_TEMPORARY =
+  "Full access can't be temporary because its holder can grant lasting access. Use Manage instead.";
+
+const projectRoleOf = (actor: Actor) => `Project role: ${actor.roles.join(", ")}`;
+
+const currentAccessOf = (actor: Actor) => {
+  if (actor.access) {
+    const tier = `${tierLabel(actor.access.permission)} on this folder`;
+    return grantStateOf(actor.access) === "expired" ? `${tier}, expired` : tier;
+  }
+  if (!actor.inProject) return "Not in this project";
+  if (actor.roles.length) return projectRoleOf(actor);
+  return "No access";
+};
+
+const removalCopy = (actor: Actor, folderPath: string) => {
+  const isOverride = actor.roles.length > 0;
+  const roleNames = actor.roles.join(", ");
+  const grantState = grantStateOf(actor.access);
+  const expiry = actor.access?.temporaryAccessEndTime
+    ? formatExpiryFull(new Date(actor.access.temporaryAccessEndTime))
+    : null;
+  const name = <span className={styles.strong}>{actor.name}</span>;
+  const path = <span className={styles.code}>{folderPath}</span>;
+  const noun = isOverride ? "override" : "access";
+  const nextAccess = isOverride ? projectRoleOf(actor) : "No access";
+  const otherwise = grantState === "temporary" && expiry && (
+    <> It would otherwise expire on {expiry}.</>
+  );
+  if (grantState === "expired")
+    return {
+      title: "Clear expired access",
+      nextAccess,
+      completeVariant: "primary" as const,
+      description: <>This grant expired on {expiry}. Clearing it does not change their access.</>
+    };
+  const title = grantState === "temporary" ? `End temporary ${noun}` : undefined;
+  if (isOverride)
+    return {
+      title: title ?? "Remove access override",
+      nextAccess,
+      completeVariant: "primary" as const,
+      description: (
+        <>
+          {name} falls back to their <span className={styles.strong}>{roleNames}</span> project role
+          in {path}, which can broaden or narrow their access.{otherwise}
+        </>
+      )
+    };
+  return {
+    title: title ?? "Remove folder access",
+    nextAccess,
+    completeVariant: "destructive" as const,
+    description: (
+      <>
+        {name} loses access to {path}. No project role grants them access to this folder.
+        {otherwise}
+      </>
+    )
+  };
+};
+
+const grantCopy = (actor: Actor, tier: SecretFolderRole) => {
+  let description: ReactNode = null;
+  if (!actor.inProject)
+    description = `Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`;
+  else if (actor.roles.length)
+    description = (
+      <>
+        {tierLabel(tier)} overrides their{" "}
+        <span className={styles.strong}>{actor.roles.join(", ")}</span> project role in this folder.
+      </>
+    );
+  return {
+    title: actor.access ? "Change folder access" : "Grant folder access",
+    nextAccess: `${tierLabel(tier)} on this folder`,
+    completeVariant: "primary" as const,
+    description
+  };
+};
+
+const temporaryGrant = (
+  permission: SecretFolderRole,
+  range: string,
+  keptEndTime: string | null
+): FolderGrant => ({
+  permission,
+  isTemporary: true,
+  temporaryRange: range,
+  temporaryAccessEndTime: keptEndTime ?? new Date(Date.now() + Number(ms(range))).toISOString()
+});
+
+const reviewStateOf = (
+  { actor, tier, editsDuration }: Review,
+  folderPath: string,
+  isTemporary: boolean,
+  range: string
+) => {
+  const { access } = actor;
+  const restartsClock =
+    Boolean(editsDuration) ||
+    grantStateOf(access) !== "temporary" ||
+    range !== access?.temporaryRange;
+  const rangeError = isTemporary && !isValidTemporaryRange(range) ? RANGE_ERROR : undefined;
+  const copy = tier ? grantCopy(actor, tier) : removalCopy(actor, folderPath);
+  const nextGrant = (): FolderGrant | null => {
+    if (!tier) return null;
+    if (!isTemporary)
+      return {
+        permission: tier,
+        isTemporary: false,
+        temporaryRange: null,
+        temporaryAccessEndTime: null
+      };
+    return temporaryGrant(
+      tier,
+      range,
+      restartsClock ? null : (access?.temporaryAccessEndTime ?? null)
+    );
+  };
+  return {
+    isUnchanged:
+      tier === access?.permission &&
+      isTemporary === Boolean(access?.isTemporary) &&
+      (!isTemporary || !restartsClock),
+    rangeError,
+    temporaryError:
+      isTemporary && tier === SecretFolderRole.FullAccess ? FULL_ACCESS_TEMPORARY : undefined,
+    copy,
+    nextAccess:
+      tier && isTemporary && !rangeError ? `${copy.nextAccess} for ${range}` : copy.nextAccess,
+    nextGrant
+  };
+};
+
+function ReviewAccessDialog({
+  review,
+  open,
   folderPath,
   environmentName,
   onOpenChange,
   onConfirm
 }: {
-  actor: Actor | null;
+  review: Review;
+  open: boolean;
   folderPath: string;
   environmentName: string;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (actor: Actor) => void;
+  onConfirm: (grant: FolderGrant | null) => Promise<boolean>;
 }) {
-  const label = actor?.access ? tierLabel(actor.access.permission) : null;
-  const isOverride = Boolean(actor?.roles.length);
-  const roleNames = actor?.roles.join(", ");
-  const actorKind = actor?.type === "identity" ? "identity" : "user";
-  const grantState = grantStateOf(actor?.access ?? null);
-  const endTime = actor?.access?.temporaryAccessEndTime;
-  const expiry = endTime ? formatExpirationTime(endTime, Date.now()) : null;
-  const isExpired = grantState === "expired";
-  const isTemporary = grantState === "temporary";
-  const noun = isOverride ? "override" : "access";
-  let title = isOverride ? "Remove access override" : "Remove folder access";
-  let confirmLabel = isOverride ? "Remove override" : "Remove access";
-  if (isTemporary) {
-    title = `End temporary ${noun}`;
-    confirmLabel = `End ${noun}`;
-  }
-  if (isExpired) {
-    title = "Clear expired access";
-    confirmLabel = "Clear access";
-  }
-  let confirmVariant: "outline" | "default" | "destructive" = "destructive";
-  if (isOverride) confirmVariant = "default";
-  if (isExpired) confirmVariant = "outline";
-  const name = <span className={styles.strong}>{actor?.name}</span>;
-  const path = <span className={styles.code}>{folderPath}</span>;
+  const { actor, tier, editsDuration } = review;
+  const { access } = actor;
+  const [isTemporary, setIsTemporary] = useState(
+    Boolean(editsDuration || (tier && access?.isTemporary))
+  );
+  const [range, setRange] = useState(access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
+  const { isUnchanged, rangeError, temporaryError, copy, nextAccess, nextGrant } = reviewStateOf(
+    review,
+    folderPath,
+    isTemporary,
+    range
+  );
+
   return (
-    <AlertDialog open={Boolean(actor)} onOpenChange={onOpenChange}>
-      <AlertDialogContent tone={confirmVariant === "destructive" ? "danger" : undefined}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          {isExpired && expiry && (
-            <AlertDialogDescription>
-              This {label} grant for {name} expired on {formatExpiryFull(expiry.expiresAt)}.
-              Clearing it does not change their access.
-            </AlertDialogDescription>
-          )}
-          {!isExpired && isOverride && (
-            <AlertDialogDescription>
-              The {actorKind} {name} falls back to their{" "}
-              <span className={styles.strong}>{roleNames}</span> project role in {path} on{" "}
-              {environmentName}, which can broaden or narrow their access.
-            </AlertDialogDescription>
-          )}
-          {!isExpired && !isOverride && (
-            <AlertDialogDescription>
-              The {actorKind} {name} loses access to {path} on {environmentName}. No project role
-              grants them access to this folder.
-            </AlertDialogDescription>
-          )}
-          {isTemporary && expiry && (
-            <AlertDialogDescription>
-              It would otherwise expire on {formatExpiryFull(expiry.expiresAt)}.
-            </AlertDialogDescription>
-          )}
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant={confirmVariant}
-            onClick={() => {
-              if (actor) onConfirm(actor);
-            }}
-          >
-            {confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <MultiStep
+      variant="dialog"
+      open={open}
+      onOpenChange={onOpenChange}
+      title={copy.title}
+      completeLabel="Confirm"
+      onComplete={() => (rangeError || temporaryError ? false : onConfirm(nextGrant()))}
+      steps={[
+        {
+          title: "Review",
+          disabledReason: isUnchanged ? "Nothing to change" : undefined,
+          completeVariant: copy.completeVariant,
+          content: (
+            <div className={styles.review}>
+              <DetailGroup>
+                <Detail>
+                  <DetailLabel>{actor.type === "user" ? "User" : "Machine identity"}</DetailLabel>
+                  <DetailValue>
+                    {actor.type === "user" ? <ActorIdentity actor={actor} /> : actor.name}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Folder</DetailLabel>
+                  <DetailValue>
+                    <span className={styles.reviewPath}>
+                      {environmentName}
+                      <MiddleTruncate mono text={folderPath} />
+                    </span>
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Current access</DetailLabel>
+                  <DetailValue>{currentAccessOf(actor)}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>New access</DetailLabel>
+                  <DetailValue>{nextAccess}</DetailValue>
+                </Detail>
+              </DetailGroup>
+              {copy.description && <SmallText muted>{copy.description}</SmallText>}
+              {tier && (
+                <div className={styles.stackTight}>
+                  <Switch
+                    layout="row"
+                    label="Temporary access"
+                    checked={isTemporary}
+                    onCheckedChange={setIsTemporary}
+                  />
+                  {isTemporary && (
+                    <Field
+                      label="Duration"
+                      description="Starts when you confirm."
+                      error={rangeError ?? temporaryError}
+                    >
+                      <DurationInput
+                        value={range}
+                        invalid={Boolean(rangeError ?? temporaryError)}
+                        placeholder="1"
+                        onChange={setRange}
+                      />
+                    </Field>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
+      ]}
+    />
   );
 }
 
@@ -651,6 +721,195 @@ function SectionLabel({ title, count }: { title: string; count: number }) {
   );
 }
 
+function AccessFilterMenu({
+  filter,
+  onChange
+}: {
+  filter: Filter;
+  onChange: (filter: Filter) => void;
+}) {
+  const isFiltering = Boolean(filter.types.length || filter.kinds.length);
+  return (
+    <DropdownMenu>
+      <Tooltip content="Filter access">
+        <DropdownMenuTrigger asChild>
+          <Button variant={isFiltering ? "default" : "outline"} size="icon-sm" iconOnly>
+            <Icon icon={FilterIcon} />
+            <span className="sr-only">Filter access</span>
+          </Button>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Type</DropdownMenuLabel>
+        {TYPE_OPTIONS.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.value}
+            checked={filter.types.includes(option.value)}
+            onCheckedChange={() =>
+              onChange({ ...filter, types: toggle(filter.types, option.value) })
+            }
+          >
+            <Icon name={option.icon} />
+            {option.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Access</DropdownMenuLabel>
+        {KIND_OPTIONS.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.value}
+            checked={filter.kinds.includes(option.value)}
+            onCheckedChange={() =>
+              onChange({ ...filter, kinds: toggle(filter.kinds, option.value) })
+            }
+          >
+            {option.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        {isFiltering && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => onChange(EMPTY_FILTER)}>
+              Clear filters
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function NoAccessSection({
+  candidates,
+  orgCandidates,
+  value,
+  onValueChange,
+  onReview,
+  block
+}: {
+  candidates: Actor[];
+  orgCandidates: Actor[];
+  value: string;
+  onValueChange: (value: string) => void;
+  onReview: (actor: Actor, review: Omit<Review, "actor">) => void;
+  block?: string;
+}) {
+  return (
+    <Accordion type="single" collapsible value={value} onValueChange={onValueChange}>
+      <AccordionItem value={NO_ACCESS_SECTION}>
+        <AccordionTrigger>
+          <span className={styles.noAccessTrigger}>
+            No access
+            <Separator className={styles.grow} />
+          </span>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className={styles.accessBody}>
+            {candidates.length > 0 && (
+              <section className={styles.section}>
+                <SectionLabel title="In project" count={candidates.length} />
+                {candidates.map((actor) => (
+                  <GrantRow
+                    key={memberKey(actor)}
+                    actor={actor}
+                    onSetTier={(tier) => onReview(actor, { tier })}
+                    block={block}
+                  />
+                ))}
+              </section>
+            )}
+            {orgCandidates.length > 0 && (
+              <section className={styles.section}>
+                <SectionLabel
+                  title="In organization, not in project"
+                  count={orgCandidates.length}
+                />
+                {orgCandidates.map((actor) => (
+                  <GrantRow
+                    key={memberKey(actor)}
+                    actor={actor}
+                    footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
+                    onSetTier={(tier) =>
+                      onReview(actor, {
+                        tier,
+                        member: { inProject: true, roles: ["No Access"] }
+                      })
+                    }
+                    block={block}
+                  />
+                ))}
+              </section>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+const rosterOf = (
+  state: AccessState,
+  grants: Record<string, FolderGrant>,
+  query: string,
+  filter: Filter
+) => {
+  const wantedKinds = new Set(filter.kinds);
+  const showsNoAccess = !filter.kinds.length;
+  const matchesQuery = (member: AccessMember) =>
+    !query || [member.name, member.subtitle].some((value) => value.toLowerCase().includes(query));
+  const wantsType = (type: AccessMember["type"]) =>
+    !filter.types.length || filter.types.includes(type);
+  const toActor = (member: AccessMember): Actor => {
+    const access = grants[memberKey(member)] ?? null;
+    const listed = member.isProjectAdmin || Boolean(access) || member.hasAccess;
+    return { ...member, access, listed };
+  };
+  const projectMembers = state.members.filter((member) => member.inProject);
+  const roster = projectMembers.filter(matchesQuery).map(toActor);
+  return {
+    rosterCount: projectMembers.length,
+    actors: roster
+      .filter(
+        (actor) =>
+          actor.listed &&
+          wantsType(actor.type) &&
+          (showsNoAccess || kindsOf(actor).some((kind) => wantedKinds.has(kind)))
+      )
+      .sort(byAdminThenName),
+    candidates: showsNoAccess
+      ? roster.filter((actor) => !actor.listed && wantsType(actor.type)).sort(byAdminThenName)
+      : [],
+    orgCandidates: showsNoAccess
+      ? state.members
+          .filter((member) => !member.inProject && matchesQuery(member) && wantsType(member.type))
+          .map(toActor)
+          .sort(byName)
+      : []
+  };
+};
+
+const emptyStateOf = (rosterCount: number, isFiltering: boolean, manageBlock?: string) => {
+  if (manageBlock) return { title: "Access restricted", description: `${manageBlock}.` };
+  if (isFiltering && rosterCount > 0)
+    return { title: "No matching access", description: "Clear a filter, or check another page." };
+  if (rosterCount === 0) return { title: "No project members" };
+  return {
+    title: "No access on this page",
+    description: "Grant access from the No access section, or check another page."
+  };
+};
+
+const successMessage = (actor: Actor, grant: FolderGrant | null) => {
+  if (!grant) return `Removed ${actor.name}'s folder access`;
+  const tier = tierLabel(grant.permission);
+  if (!actor.access) return `Granted ${actor.name} ${tier} access to this folder`;
+  if (grant.permission !== actor.access.permission)
+    return `Updated ${actor.name} to ${tier} on this folder`;
+  if (grant.isTemporary)
+    return `${actor.name}'s folder access now expires in ${grant.temporaryRange}`;
+  return `Removed the expiration on ${actor.name}'s folder access`;
+};
+
 export function FolderAccessSheet({
   open,
   state,
@@ -676,62 +935,28 @@ export function FolderAccessSheet({
   onEnvironmentChange: (environment: string) => void;
   onFolderPathChange: (path: string) => void;
   onOpenChange: (open: boolean) => void;
-  onChange: (update: (current: AccessState) => AccessState) => void;
+  onChange: (update: (current: AccessState) => AccessState) => Promise<unknown> | void;
   onSuccess: (title: string) => void;
   manageBlock?: string;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
   const [noAccessSection, setNoAccessSection] = useState("");
-  const [removalActor, setRemovalActor] = useState<Actor | null>(null);
+  const [review, setReview] = useState<Review | null>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [reviewSession, setReviewSession] = useState(0);
   const key = grantKey(environmentSlug, folderPath);
-  const grants = state.grants[key] ?? {};
-  const query = search.trim().toLowerCase();
-  const isSearching = Boolean(query);
+  const isSearching = Boolean(search.trim());
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
   const showsNoAccess = !filter.kinds.length;
-  const matchesQuery = (member: AccessMember) =>
-    !query || [member.name, member.subtitle].some((value) => value.toLowerCase().includes(query));
-  const wantsType = (type: AccessMember["type"]) =>
-    !filter.types.length || filter.types.includes(type);
+  const { rosterCount, actors, candidates, orgCandidates } = rosterOf(
+    state,
+    state.grants[key] ?? {},
+    search.trim().toLowerCase(),
+    filter
+  );
 
-  const projectMembers = state.members.filter((member) => member.inProject);
-  const toActor = (member: AccessMember): Actor => {
-    const access = grants[memberKey(member)] ?? null;
-    const listed = member.isProjectAdmin || Boolean(access) || member.hasAccess;
-    return { ...member, access, listed };
-  };
-  const roster = projectMembers.filter(matchesQuery).map(toActor);
-  const actors = roster
-    .filter(
-      (actor) =>
-        actor.listed &&
-        wantsType(actor.type) &&
-        (!filter.kinds.length || kindsOf(actor).some((kind) => filter.kinds.includes(kind)))
-    )
-    .sort(byAdminThenName);
-  const candidates = showsNoAccess
-    ? roster.filter((actor) => !actor.listed && wantsType(actor.type)).sort(byAdminThenName)
-    : [];
-  const orgCandidates = showsNoAccess
-    ? state.members
-        .filter((member) => !member.inProject && matchesQuery(member) && wantsType(member.type))
-        .map(toActor)
-        .sort(byName)
-    : [];
-  const rosterCount = projectMembers.length;
-
-  let emptyState: { title: string; description?: string } = {
-    title: "No access on this page",
-    description: "Grant access from the No access section, or check another page."
-  };
-  if (rosterCount === 0) emptyState = { title: "No project members" };
-  if (isFiltering && rosterCount > 0)
-    emptyState = {
-      title: "No matching access",
-      description: "Clear a filter, or check another page."
-    };
-  if (manageBlock) emptyState = { title: "Access restricted", description: `${manageBlock}.` };
+  const emptyState = emptyStateOf(rosterCount, isFiltering, manageBlock);
 
   const writeGrant = (actor: Actor, grant: FolderGrant | null, member?: Partial<AccessMember>) =>
     onChange((current) => {
@@ -748,41 +973,20 @@ export function FolderAccessSheet({
       };
     });
 
-  const setTier = (actor: Actor, permission: SecretFolderRole, member?: Partial<AccessMember>) => {
-    writeGrant(
-      actor,
-      actor.access
-        ? { ...actor.access, permission }
-        : { permission, isTemporary: false, temporaryRange: null, temporaryAccessEndTime: null },
-      member
-    );
-    onSuccess(
-      actor.access
-        ? `Updated ${actor.name} to ${tierLabel(permission)} on this folder`
-        : `Granted ${actor.name} ${tierLabel(permission)} access to this folder`
-    );
+  const confirmReview = async ({ actor, member }: Review, grant: FolderGrant | null) => {
+    try {
+      await writeGrant(actor, grant, member);
+    } catch {
+      return false;
+    }
+    onSuccess(successMessage(actor, grant));
+    return true;
   };
 
-  const setTemporaryRange = (actor: Actor, range: string) => {
-    if (!actor.access) return;
-    writeGrant(actor, {
-      ...actor.access,
-      isTemporary: true,
-      temporaryRange: range,
-      temporaryAccessEndTime: new Date(Date.now() + Number(ms(range))).toISOString()
-    });
-    onSuccess(`${actor.name}'s folder access now expires in ${range}`);
-  };
-
-  const makePermanent = (actor: Actor) => {
-    if (!actor.access) return;
-    writeGrant(actor, {
-      ...actor.access,
-      isTemporary: false,
-      temporaryRange: null,
-      temporaryAccessEndTime: null
-    });
-    onSuccess(`Removed the expiration on ${actor.name}'s folder access`);
+  const openReview = (actor: Actor, next: Omit<Review, "actor">) => {
+    setReview({ actor, ...next });
+    setReviewSession((current) => current + 1);
+    setIsReviewOpen(true);
   };
 
   return (
@@ -838,52 +1042,7 @@ export function FolderAccessSheet({
                     ) : undefined
                   }
                 />
-                <DropdownMenu>
-                  <Tooltip content="Filter access">
-                    <DropdownMenuTrigger asChild>
-                      <Button variant={isFiltering ? "default" : "outline"} size="icon-sm" iconOnly>
-                        <Icon icon={FilterIcon} />
-                        <span className="sr-only">Filter access</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </Tooltip>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Type</DropdownMenuLabel>
-                    {TYPE_OPTIONS.map((option) => (
-                      <DropdownMenuCheckboxItem
-                        key={option.value}
-                        checked={filter.types.includes(option.value)}
-                        onCheckedChange={() =>
-                          setFilter({ ...filter, types: toggle(filter.types, option.value) })
-                        }
-                      >
-                        <Icon name={option.icon} />
-                        {option.label}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Access</DropdownMenuLabel>
-                    {KIND_OPTIONS.map((option) => (
-                      <DropdownMenuCheckboxItem
-                        key={option.value}
-                        checked={filter.kinds.includes(option.value)}
-                        onCheckedChange={() =>
-                          setFilter({ ...filter, kinds: toggle(filter.kinds, option.value) })
-                        }
-                      >
-                        {option.label}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                    {isFiltering && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => setFilter(EMPTY_FILTER)}>
-                          Clear filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <AccessFilterMenu filter={filter} onChange={setFilter} />
               </div>
 
               {!actors.length && !isSearching && (
@@ -903,68 +1062,22 @@ export function FolderAccessSheet({
                     <AccessRow
                       key={memberKey(actor)}
                       actor={actor}
-                      onSetTier={(tier) => setTier(actor, tier)}
-                      onSetTemporaryRange={(range) => setTemporaryRange(actor, range)}
-                      onMakePermanent={() => makePermanent(actor)}
-                      onRemove={() => setRemovalActor(actor)}
+                      onReview={(next) => openReview(actor, next)}
                       block={manageBlock}
                     />
                   ))}
                 </section>
               )}
 
-              {showsNoAccess && (
-                <Accordion
-                  type="single"
-                  collapsible
+              {showsNoAccess && candidates.length + orgCandidates.length > 0 && (
+                <NoAccessSection
+                  candidates={candidates}
+                  orgCandidates={orgCandidates}
                   value={noAccessSection}
                   onValueChange={setNoAccessSection}
-                >
-                  <AccordionItem value={NO_ACCESS_SECTION}>
-                    <AccordionTrigger>
-                      <span className={styles.noAccessTrigger}>
-                        No access
-                        <Separator className={styles.grow} />
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className={styles.accessBody}>
-                        {candidates.length > 0 && (
-                          <section className={styles.section}>
-                            <SectionLabel title="In project" count={candidates.length} />
-                            {candidates.map((actor) => (
-                              <GrantRow
-                                key={memberKey(actor)}
-                                actor={actor}
-                                onSetTier={(tier) => setTier(actor, tier)}
-                                block={manageBlock}
-                              />
-                            ))}
-                          </section>
-                        )}
-                        {orgCandidates.length > 0 && (
-                          <section className={styles.section}>
-                            <SectionLabel
-                              title="In organization, not in project"
-                              count={orgCandidates.length}
-                            />
-                            {orgCandidates.map((actor) => (
-                              <GrantRow
-                                key={memberKey(actor)}
-                                actor={actor}
-                                footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
-                                onSetTier={(tier) =>
-                                  setTier(actor, tier, { inProject: true, roles: ["No Access"] })
-                                }
-                                block={manageBlock}
-                              />
-                            ))}
-                          </section>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                  onReview={openReview}
+                  block={manageBlock}
+                />
               )}
             </div>
           </SheetBody>
@@ -973,19 +1086,17 @@ export function FolderAccessSheet({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-      <RemoveAccessDialog
-        actor={removalActor}
-        folderPath={folderPath}
-        environmentName={environmentName}
-        onOpenChange={(next) => {
-          if (!next) setRemovalActor(null);
-        }}
-        onConfirm={(actor) => {
-          writeGrant(actor, null);
-          onSuccess(`Removed ${actor.name}'s folder access`);
-          setRemovalActor(null);
-        }}
-      />
+      {review && (
+        <ReviewAccessDialog
+          key={reviewSession}
+          review={review}
+          open={isReviewOpen}
+          folderPath={folderPath}
+          environmentName={environmentName}
+          onOpenChange={setIsReviewOpen}
+          onConfirm={(grant) => confirmReview(review, grant)}
+        />
+      )}
     </>
   );
 }

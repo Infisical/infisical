@@ -16,14 +16,14 @@ import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/comp
 import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { MoveSecretsDialog } from "../bulk/move-secrets-dialog";
+import { FolderAccessSheet } from "./folder-access-sheet";
 import {
   type AccessMember,
   type AccessState,
-  FolderAccessSheet,
   type FolderGrant,
   grantKey,
   memberKey
-} from "./folder-access-sheet";
+} from "./folder-access-state";
 import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
@@ -46,6 +46,100 @@ const toGrantType = (grant: FolderGrant): TFolderGrantType =>
         temporaryAccessStartTime: new Date().toISOString()
       }
     : { isTemporary: false };
+
+const fromUser =
+  (hasAccess: boolean) =>
+  (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
+    {
+      type: "user",
+      id: user.userId,
+      name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
+      subtitle: user.email ?? user.username,
+      isProjectAdmin: user.membership.isProjectAdmin,
+      roles: user.membership.roles.map((role) => role.name),
+      inProject: true,
+      hasAccess
+    },
+    toGrant(user.folderRBACAccess)
+  ];
+const fromIdentity =
+  (hasAccess: boolean) =>
+  (identity: TFolderAccessIdentity): [AccessMember, FolderGrant | undefined] => [
+    {
+      type: "identity",
+      id: identity.identityId,
+      name: identity.name,
+      subtitle: "Machine identity",
+      isProjectAdmin: identity.membership.isProjectAdmin,
+      roles: identity.membership.roles.map((role) => role.name),
+      inProject: true,
+      hasAccess
+    },
+    toGrant(identity.folderRBACAccess)
+  ];
+
+const accessStateOf = (
+  key: string,
+  users?: { users: TFolderAccessUser[]; usersWithoutAccess: TFolderAccessUser[] },
+  identities?: {
+    identities: TFolderAccessIdentity[];
+    identitiesWithoutAccess: TFolderAccessIdentity[];
+  }
+): AccessState => {
+  const entries = [
+    ...(users?.users ?? []).map(fromUser(true)),
+    ...(users?.usersWithoutAccess ?? []).map(fromUser(false)),
+    ...(identities?.identities ?? []).map(fromIdentity(true)),
+    ...(identities?.identitiesWithoutAccess ?? []).map(fromIdentity(false))
+  ];
+  return {
+    members: entries.map(([member]) => member),
+    grants: {
+      [key]: Object.fromEntries(
+        entries.flatMap(([member, grant]) => (grant ? [[memberKey(member), grant]] : []))
+      )
+    }
+  };
+};
+
+const useFolderAccessSave = (scoped: {
+  projectId: string;
+  environmentSlug: string;
+  secretPath: string;
+}) => {
+  const adapter = useV4Adapter("secrets");
+  const createUser = adapter.useCreateUserFolderAccess();
+  const updateUser = adapter.useUpdateUserFolderAccess();
+  const deleteUser = adapter.useDeleteUserFolderAccess();
+  const createIdentity = adapter.useCreateIdentityFolderAccess();
+  const updateIdentity = adapter.useUpdateIdentityFolderAccess();
+  const deleteIdentity = adapter.useDeleteIdentityFolderAccess();
+  return (member: AccessMember, before?: FolderGrant, after?: FolderGrant) => {
+    const actor =
+      member.type === "user"
+        ? { create: createUser, update: updateUser, remove: deleteUser, id: { userId: member.id } }
+        : {
+            create: createIdentity,
+            update: updateIdentity,
+            remove: deleteIdentity,
+            id: { identityId: member.id }
+          };
+    if (!after)
+      return (actor.remove.mutateAsync as (dto: object) => Promise<unknown>)({
+        ...scoped,
+        ...actor.id
+      });
+    const dto = {
+      ...scoped,
+      ...actor.id,
+      permission: after.permission,
+      type: toGrantType(after)
+    };
+    return (
+      (before ? actor.update : actor.create).mutateAsync as (dto: object) => Promise<unknown>
+    )(dto);
+  };
+};
 
 export function FolderActions({
   action,
@@ -94,59 +188,11 @@ export function FolderActions({
   };
   const users = adapter.useFolderAccessUsers(target).data;
   const identities = adapter.useFolderAccessIdentities(target).data;
-  const createUser = adapter.useCreateUserFolderAccess();
-  const updateUser = adapter.useUpdateUserFolderAccess();
-  const deleteUser = adapter.useDeleteUserFolderAccess();
-  const createIdentity = adapter.useCreateIdentityFolderAccess();
-  const updateIdentity = adapter.useUpdateIdentityFolderAccess();
-  const deleteIdentity = adapter.useDeleteIdentityFolderAccess();
+  const save = useFolderAccessSave({ ...target, secretPath: folderPath });
   if (!last) return null;
 
   const key = grantKey(target.environmentSlug, folderPath);
-  const fromUser =
-    (hasAccess: boolean) =>
-    (user: TFolderAccessUser): [AccessMember, FolderGrant | undefined] => [
-      {
-        type: "user",
-        id: user.userId,
-        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-        subtitle: user.email ?? user.username,
-        isProjectAdmin: user.membership.isProjectAdmin,
-        roles: user.membership.roles.map((role) => role.name),
-        inProject: true,
-        hasAccess
-      },
-      toGrant(user.folderRBACAccess)
-    ];
-  const fromIdentity =
-    (hasAccess: boolean) =>
-    (identity: TFolderAccessIdentity): [AccessMember, FolderGrant | undefined] => [
-      {
-        type: "identity",
-        id: identity.identityId,
-        name: identity.name,
-        subtitle: "Machine identity",
-        isProjectAdmin: identity.membership.isProjectAdmin,
-        roles: identity.membership.roles.map((role) => role.name),
-        inProject: true,
-        hasAccess
-      },
-      toGrant(identity.folderRBACAccess)
-    ];
-  const entries = [
-    ...(users?.users ?? []).map(fromUser(true)),
-    ...(users?.usersWithoutAccess ?? []).map(fromUser(false)),
-    ...(identities?.identities ?? []).map(fromIdentity(true)),
-    ...(identities?.identitiesWithoutAccess ?? []).map(fromIdentity(false))
-  ];
-  const access: AccessState = {
-    members: entries.map(([member]) => member),
-    grants: {
-      [key]: Object.fromEntries(
-        entries.flatMap(([member, grant]) => (grant ? [[memberKey(member), grant]] : []))
-      )
-    }
-  };
+  const access = accessStateOf(key, users, identities);
 
   const failed = (error: unknown) =>
     !wasErrorReported(error) &&
@@ -154,32 +200,6 @@ export function FolderActions({
       title: "Failed to update folder access",
       description: errorMessage(error)
     });
-  const save = (member: AccessMember, before?: FolderGrant, after?: FolderGrant) => {
-    const scoped = { ...target, secretPath: folderPath };
-    const actor =
-      member.type === "user"
-        ? { create: createUser, update: updateUser, remove: deleteUser, id: { userId: member.id } }
-        : {
-            create: createIdentity,
-            update: updateIdentity,
-            remove: deleteIdentity,
-            id: { identityId: member.id }
-          };
-    if (!after)
-      return (actor.remove.mutateAsync as (dto: object) => Promise<unknown>)({
-        ...scoped,
-        ...actor.id
-      });
-    const dto = {
-      ...scoped,
-      ...actor.id,
-      permission: after.permission,
-      type: toGrantType(after)
-    };
-    return (
-      (before ? actor.update : actor.create).mutateAsync as (dto: object) => Promise<unknown>
-    )(dto);
-  };
   const applyAccess = (update: (current: AccessState) => AccessState) => {
     const next = update(access);
     const before = access.grants[key] ?? {};
@@ -191,7 +211,10 @@ export function FolderActions({
             JSON.stringify(before[memberKey(member)]) !== JSON.stringify(after[memberKey(member)])
         )
         .map((member) => save(member, before[memberKey(member)], after[memberKey(member)]))
-    ).catch(failed);
+    ).catch((error: unknown) => {
+      failed(error);
+      throw error;
+    });
   };
 
   if (last.action === "move")
