@@ -14,7 +14,8 @@ import {
   prepareInlineServices,
   toInlineServiceFacts,
   toInlineServiceSummary,
-  toResolvedInlineService
+  toResolvedInlineService,
+  withoutShadowedServices
 } from "./agent-vault-session-inline-service-fns";
 import { TAgentVaultInlineServiceInput } from "./agent-vault-session-types";
 
@@ -650,5 +651,27 @@ describe("openInlineServiceSecrets", () => {
     });
     expect(openInlineServiceSecrets(row, open)).toBeNull();
     expect(toResolvedInlineService(row, null)?.credential).toEqual({ type: AgentVaultCredentialType.Passthrough });
+  });
+});
+
+describe("withoutShadowedServices", () => {
+  const github = { name: "github" };
+  const readOnly = { name: "gh-readonly", isOverride: true };
+
+  test("an inline service drops a bundle service of its name", () => {
+    const sent = { name: "github", hostPattern: "github.internal.example.com" };
+    expect(withoutShadowedServices([github, { name: "linear" }], [sent])).toEqual({
+      bundleServices: [{ name: "linear" }],
+      inlineServices: [sent]
+    });
+  });
+
+  test("an override keeps its place, and the inline service of its name is the one left out", () => {
+    const sent = { name: "gh-readonly", hostPattern: "unrelated.example.com" };
+    const unnamed = { hostPattern: "gh-readonly" };
+    expect(withoutShadowedServices([github, readOnly], [sent, unnamed])).toEqual({
+      bundleServices: [github, readOnly],
+      inlineServices: []
+    });
   });
 });

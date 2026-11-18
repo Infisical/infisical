@@ -4,12 +4,14 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
+import { TAgentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -121,7 +123,6 @@ import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
@@ -129,7 +130,6 @@ import { TFolderPermissionServiceFactory } from "@app/services/folder-permission
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
@@ -332,7 +332,6 @@ declare module "fastify" {
     orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
-    encryptionKeyRotation: TEncryptionKeyRotationServiceFactory;
     user: TUserServiceFactory;
     group: TGroupServiceFactory;
     groupProject: TGroupProjectServiceFactory;
@@ -407,6 +406,7 @@ declare module "fastify" {
     agentVaultProxy: TAgentVaultProxyServiceFactory;
     agentVaultAccessService: TAgentVaultAccessService;
     agentVaultUsageService: TAgentVaultUsageService;
+    agentVaultFreeUsageNotice: TAgentVaultFreeUsageNoticeServiceFactory;
     agentVaultSession: TAgentVaultSessionServiceFactory;
     agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
@@ -429,6 +429,8 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseService: TLicenseService;
+    kmsDataKeyService: TKmsDataKeyService;
+    kmsRootKeyService: TKmsRootKeyService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
@@ -441,7 +443,6 @@ declare module "fastify" {
     userActivation: TUserActivationServiceFactory;
     userEngagement: TUserEngagementServiceFactory;
     externalKms: TExternalKmsServiceFactory;
-    hsm: THsmServiceFactory;
     orgAdmin: TOrgAdminServiceFactory;
     slack: TSlackServiceFactory;
     workflowIntegration: TWorkflowIntegrationServiceFactory;

@@ -1,7 +1,6 @@
+import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { isJwkKeyAlgorithm } from "@app/lib/crypto/sign";
-
-import { KmsKeyUsage } from "../kms/kms-types";
 
 export const canPublishCmekPublicKey = ({
   keyUsage,

@@ -102,7 +102,7 @@ const connection = {
 } as TAwsConnectionConfig & { id: string };
 
 const appConnectionDAL = { findById: async () => connection } as never;
-const kmsService = {} as never;
+const kmsDataKeyService = {} as never;
 const stopAfterClientIsBuilt = async () => {
   throw new Error("stop after the client is built");
 };
@@ -127,7 +127,7 @@ const buildClients: Record<
         appConnectionService: {
           validateAppConnectionUsageById: async () => {}
         },
-        kmsService
+        kmsDataKeyService
       } as never);
       await expect(
         fns.createCertificateAuthority({
@@ -152,7 +152,7 @@ const buildClients: Record<
           appConnectionId: connection.id,
           region: AWSRegion.US_EAST_1,
           appConnectionDAL,
-          kmsService
+          kmsDataKeyService
         })
       ).rejects.toThrow("stop after the client is built");
     }
@@ -168,7 +168,7 @@ const buildClients: Record<
     buildClient: async () => {
       const fns = awsCertificateManagerPkiSyncFactory({
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         certificateSyncDAL: { findByPkiSyncId: stopAfterClientIsBuilt },
         certificateDAL: {}
       } as never);
@@ -180,7 +180,7 @@ const buildClients: Record<
     buildClient: async () => {
       const fns = awsElasticLoadBalancerPkiSyncFactory({
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         certificateSyncDAL: {
           findByPkiSyncId: async () => [{ certificateId: "cert-1", externalIdentifier: "arn" }]
         },

@@ -10,6 +10,7 @@ import {
   TIdentitySpiffeAuths,
   TIdentitySpiffeAuthsUpdate
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -40,8 +41,6 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -78,7 +77,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: TLicenseService;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -146,7 +145,7 @@ export const identitySpiffeAuthServiceFactory = ({
   permissionService,
   licenseService,
   identityAccessTokenDAL,
-  kmsService,
+  kmsDataKeyService,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -236,7 +235,7 @@ export const identitySpiffeAuthServiceFactory = ({
     forceRefresh?: boolean;
   }): Promise<{ jwksJson: string; fromCache: boolean }> => {
     const { decryptor: orgDataKeyDecryptor, encryptor: orgDataKeyEncryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
       });
@@ -574,7 +573,7 @@ export const identitySpiffeAuthServiceFactory = ({
 
     await $validateSpiffeConfig(trustBundleDistribution);
 
-    const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -723,7 +722,7 @@ export const identitySpiffeAuthServiceFactory = ({
     };
 
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: actorOrgId
       });
@@ -829,7 +828,7 @@ export const identitySpiffeAuthServiceFactory = ({
 
     const identitySpiffeAuth = await identitySpiffeAuthDAL.findOne({ identityId });
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -922,7 +921,7 @@ export const identitySpiffeAuthServiceFactory = ({
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.SPIFFE_AUTH);
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -1009,7 +1008,7 @@ export const identitySpiffeAuthServiceFactory = ({
       forceRefresh: true
     });
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
