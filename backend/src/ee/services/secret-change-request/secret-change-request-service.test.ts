@@ -45,8 +45,17 @@ vi.mock("./secret-change-request-merge-fns", async (importOriginal) => ({
     notifySecretApprovalBypass
   })
 }));
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: async () => BLIND_INDEXER
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: async ({
+    kmsDataKeyService,
+    projectId
+  }: {
+    kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+    projectId: string;
+  }) => ({
+    secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+    blindIndexer: BLIND_INDEXER
+  })
 }));
 vi.mock("./secret-change-request-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./secret-change-request-fns")>()),
@@ -239,7 +248,7 @@ const buildService = ({
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue(undefined) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
     folderDAL: {
@@ -678,7 +687,7 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
 
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
     expect(detectSecretApprovalCommitConflicts).toHaveBeenCalledWith({ folderId: "folder-1", commits: COMMIT_ROWS });
-    expect(deps.kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(deps.kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
     expect(applySecretApprovalCommitsV2Bridge).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: "project-1",

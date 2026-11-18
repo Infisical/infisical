@@ -78,7 +78,7 @@ const setup = (runJudge: (args: { deadline?: number }) => Promise<TAiJudgeResult
     } as never,
     appConnectionService: {} as never,
     aiService: aiService as never,
-    kmsService: {} as never,
+    kmsDataKeyService: {} as never,
     gatewayV2Service: {} as never,
     gatewayPoolService: {} as never,
     membershipDAL: {} as never,
@@ -207,7 +207,7 @@ describe("autoApprovalService requester checks", () => {
       appConnectionDAL: {} as never,
       appConnectionService: {} as never,
       aiService: { getOrgAiModel: vi.fn(), runJudge: vi.fn() } as never,
-      kmsService: {} as never,
+      kmsDataKeyService: {} as never,
       gatewayV2Service: {} as never,
       gatewayPoolService: {} as never,
       membershipDAL: {

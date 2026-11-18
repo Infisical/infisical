@@ -62,6 +62,9 @@ import {
   TAgentVaultSessionInlineServices,
   TAgentVaultSessionInlineServicesInsert,
   TAgentVaultSessionInlineServicesUpdate,
+  TAgentVaultSessionServices,
+  TAgentVaultSessionServicesInsert,
+  TAgentVaultSessionServicesUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -524,6 +527,9 @@ import {
   TPkiSignerCertificateIssuanceJobs,
   TPkiSignerCertificateIssuanceJobsInsert,
   TPkiSignerCertificateIssuanceJobsUpdate,
+  TPkiSignerCertificateRevocations,
+  TPkiSignerCertificateRevocationsInsert,
+  TPkiSignerCertificateRevocationsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1124,6 +1130,11 @@ declare module "knex/types/tables" {
       TPkiSignerCertificateIssuanceJobs,
       TPkiSignerCertificateIssuanceJobsInsert,
       TPkiSignerCertificateIssuanceJobsUpdate
+    >;
+    [TableName.PkiSignerCertificateRevocations]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateRevocations,
+      TPkiSignerCertificateRevocationsInsert,
+      TPkiSignerCertificateRevocationsUpdate
     >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
@@ -1923,6 +1934,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionInlineServices,
       TAgentVaultSessionInlineServicesInsert,
       TAgentVaultSessionInlineServicesUpdate
+    >;
+    [TableName.AgentVaultSessionService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionServices,
+      TAgentVaultSessionServicesInsert,
+      TAgentVaultSessionServicesUpdate
     >;
     [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
       TAgentVaultDelegations,

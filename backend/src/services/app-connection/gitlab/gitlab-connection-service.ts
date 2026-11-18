@@ -1,7 +1,7 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -17,7 +17,7 @@ type TGetAppConnectionFunc = (
 export const gitlabConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
@@ -25,7 +25,7 @@ export const gitlabConnectionService = (
       const projects = await listGitLabProjects({
         appConnection,
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         search,
         limit
       });
@@ -43,7 +43,7 @@ export const gitlabConnectionService = (
       const groups = await listGitLabGroups({
         appConnection,
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         search,
         limit
       });

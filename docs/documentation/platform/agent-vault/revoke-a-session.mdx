@@ -1,0 +1,125 @@
+---
+title: "Revoke an Agent Vault session"
+sidebarTitle: "Revoke a session"
+description: "End a session before it expires so its agent stops getting credentials."
+---
+
+Revoking a [session](/documentation/platform/agent-vault/sessions) ends it before it expires. Within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default), the [proxy](/documentation/platform/agent-vault/proxies) stops attaching credentials to the agent's requests. You can't reactivate a revoked session, so to give the agent access again, [create a new session](/documentation/platform/agent-vault/create-a-session).
+
+Revoke a session when:
+
+- Its agent finishes, even if the agent fails
+- You think its session token leaked, because anyone with the token can call every API in the session's access bundle until the session ends
+- The agent no longer needs access, such as a long-running agent you're shutting down
+
+These people and machine identities can revoke a session:
+
+- Admins of the Agent Vault project, for any session in the project
+- Members of the project, for their own sessions
+- A machine identity, for the sessions it created, including sessions it created [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+- Anyone who holds the session's token
+
+## Revoke the session
+
+<Tabs>
+  <Tab title="Dashboard">
+    In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Revoke Session**.
+
+    If you're an admin of the project, select **All Sessions** to find sessions that other users and machine identities created.
+  </Tab>
+  <Tab title="CLI">
+    If you started the agent with `infisical agent-vault run --access-bundle`, the CLI revokes the session when the agent exits, including when Docker or systemd stops the agent. To keep the session active after the agent exits, pass `--keep-session`.
+
+    To revoke any other session, run [`infisical agent-vault sessions revoke`](/cli/reference#agent-vault-sessions-revoke) with the session's ID, as your user or as a machine identity:
+
+    ```bash
+    infisical agent-vault sessions revoke <session-id>
+    ```
+
+    To revoke a session by its token instead, without logging in, leave out the ID. The CLI revokes the session whose token is in `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, or in `--session-token`:
+
+    ```bash
+    infisical agent-vault sessions revoke
+    ```
+
+    If the session is already revoked or expired, the command still succeeds.
+  </Tab>
+  <Tab title="API">
+    Call the [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoint with the session's ID:
+
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions/<session-id>/revoke \
+      -H "Authorization: Bearer <access-token>"
+    ```
+
+    Revoke the session even if the agent fails, for example in a `finally` block or an exit handler. If the agent can run longer than your access token lasts, log in again before you revoke the session.
+
+    To revoke a session with its session token instead of an access token, such as from the agent itself, call the [Revoke session by token](/api-reference/endpoints/agent-vault-sessions/revoke-by-token) endpoint:
+
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/agent-vault/session/revoke \
+      -H "Authorization: Bearer <session-token>"
+    ```
+  </Tab>
+  <Tab title="Python SDK">
+    Call `agent_vault.sessions.revoke` with the session's ID. To revoke the session even if the agent fails, call it in a `finally` block:
+
+    ```python
+    session = client.agent_vault.sessions.create(project_id="<project-id>", access_bundle="<access-bundle-name>", ttl="1h")
+    try:
+        run_agent(session.token)
+    finally:
+        client.agent_vault.sessions.revoke(session_id=session.id)
+    ```
+
+    The SDK doesn't renew the client's access token. If the agent can run longer than the access token lasts, log in again before you revoke the session. See the [Python SDK reference](/sdks/languages/python#agent_vault-sessions) for every method.
+  </Tab>
+  <Tab title="Node.js SDK">
+    Call `agentVault().sessions.revoke` with the session's ID. To revoke the session even if the agent fails, call it in a `finally` block:
+
+    ```typescript
+    const session = await client.agentVault().sessions.create({
+      projectId: "<project-id>",
+      accessBundle: "<access-bundle-name>",
+      ttl: "1h"
+    });
+
+    try {
+      await runAgent(session.token);
+    } finally {
+      await client.agentVault().sessions.revoke(session.id);
+    }
+    ```
+
+    The SDK doesn't renew the client's access token. If the agent can run longer than the access token lasts, log in again before you revoke the session. See the [Node.js SDK reference](/sdks/languages/node#agentvault-sessions) for every method.
+  </Tab>
+</Tabs>
+
+## Revoked sessions
+
+- The **Sessions** page shows the session as **Revoked**, and keeps the session so you can still see the access bundle and services the agent had
+- You can still [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) and [change its label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata)
+- Infisical deletes the credentials of the session's [inline services](/documentation/platform/agent-vault/inline-services) right away
+- Infisical writes an [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for the revocation
+
+Revoking a session doesn't remove the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, delete the installed copies.
+
+## Sessions left active
+
+If the agent's machine shuts down mid-run, or your code exits before it revokes the session, the session keeps working until it expires. To limit how long that can last, set the session's [duration](/documentation/platform/agent-vault/create-a-session#duration) a little longer than the agent's longest run, instead of `never`.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="A session stays Active after the agent stopped">
+    Nothing revoked the session. This happens if:
+
+    - The machine shut down, or the CLI's process was killed, before the CLI could revoke the session
+    - Your code exited before it reached the revoke call
+
+    Revoke the session on the **Sessions** page, or let it expire.
+  </Accordion>
+  <Accordion title="Revoking a session fails with 401">
+    The access token you sent expired. Log in again to get a new access token, then revoke the session.
+  </Accordion>
+</AccordionGroup>

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { ProjectType } from "@app/hooks/api/projects/types";
+
 import { SecretInsightsPage } from "./SecretInsightsPage";
 
 export const Route = createFileRoute(
@@ -7,6 +9,7 @@ export const Route = createFileRoute(
 )({
   component: SecretInsightsPage,
   context: () => ({
+    productType: ProjectType.SecretManager,
     breadcrumbs: [
       {
         label: "Insights"

@@ -1,4 +1,5 @@
 import { TDbClient } from "@app/db";
+import { poolStoreConnection, singleStoreConnection } from "@app/domains/lib/data-access";
 import { TransactionRunner } from "@app/domains/lib/transactions";
 
 import { BillableActorStore } from "./data-access/billable-actor-store";
@@ -18,13 +19,13 @@ export class OrganizationsProjectsModule {
   readonly organizationsProjectsService: TOrganizationsProjectsService;
 
   constructor({ db }: TOrganizationsProjectsDeps) {
-    const replica = () => db.replicaNode();
+    const connection = poolStoreConnection(db);
     this.organizationsProjectsService = new OrganizationsProjectsService(
-      new OrganizationStore(replica),
-      new BillableActorStore(replica),
+      new OrganizationStore(connection),
+      new BillableActorStore(connection),
       new TransactionRunner<TOrganizationsProjectsStores>(db, (trx, locks) => ({
-        organizationStore: new OrganizationStore(() => trx),
-        billableActorStore: new BillableActorStore(() => trx),
+        organizationStore: new OrganizationStore(singleStoreConnection(trx)),
+        billableActorStore: new BillableActorStore(singleStoreConnection(trx)),
         locks
       }))
     );

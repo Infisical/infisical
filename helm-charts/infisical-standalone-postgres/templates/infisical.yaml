@@ -64,7 +64,7 @@ spec:
     {{- end }}
       containers:
       - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
-        image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
+        image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag | default $.Chart.AppVersion }}"
         imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
         {{- with $infisicalValues.containerSecurityContext }}
         securityContext: {{- toYaml . | nindent 10 }}

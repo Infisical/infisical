@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -24,7 +25,6 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -96,7 +96,7 @@ type TAutoApprovalServiceFactoryDep = {
     "validateAppConnectionUsageById" | "listAvailableAppConnectionsForUser"
   >;
   aiService: Pick<TAiServiceFactory, "getOrgAiModel" | "runJudge">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
@@ -137,7 +137,7 @@ export const autoApprovalServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   aiService,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   membershipDAL,
@@ -158,7 +158,7 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAppConnection | null> => {
     const raw = await appConnectionDAL.findById(connectionId);
     if (!raw || raw.orgId !== orgId || (raw.projectId && raw.projectId !== projectId)) return null;
-    return decryptAppConnection(raw, kmsService);
+    return decryptAppConnection(raw, kmsDataKeyService);
   };
 
   const $findGroupIdsInProject = async (projectId: string, groupIds: string[]) => {

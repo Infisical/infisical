@@ -40,7 +40,7 @@ const makeReq = (authorization?: string, apiKey?: string) =>
 describe("extractAuth — OAuth access token classification", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   afterAll(() => {
@@ -85,7 +85,7 @@ describe("extractAuth — OAuth access token classification", () => {
 describe("extractAuth — token from another instance", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   afterAll(() => {

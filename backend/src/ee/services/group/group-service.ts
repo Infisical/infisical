@@ -531,7 +531,6 @@ export const groupServiceFactory = ({
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
       usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
@@ -539,7 +538,6 @@ export const groupServiceFactory = ({
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
     usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 

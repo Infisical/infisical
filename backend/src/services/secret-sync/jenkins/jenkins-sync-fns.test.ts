@@ -30,6 +30,7 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
 }));
 
 /* eslint-disable import/first */
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { GatewayTransportError } from "@app/lib/errors";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -191,6 +192,15 @@ describe("JenkinsSyncFns", () => {
 
     expect(error.message).toBe(`Failed to list Jenkins credentials: ${reason}`);
     expect(error.shouldRetry).toBe(shouldRetry);
+  });
+
+  it("reports a domain rule violation as its own message without a retry", async () => {
+    safeRequestMock.mockRejectedValue(new RuleViolationError({ message: "The KMS key is disabled" }));
+
+    const error = (await sync(syncWith(), payloadOf({ NEW: "a" })).catch((err: unknown) => err)) as SecretSyncError;
+
+    expect(error.message).toBe("The KMS key is disabled");
+    expect(error.shouldRetry).toBe(false);
   });
 
   it("ignores credentials whose IDs could not have been written by Infisical", async () => {
