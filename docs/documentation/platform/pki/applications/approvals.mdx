@@ -10,13 +10,13 @@ Approval workflows add a human review step before certificates are issued or rev
 
 <CardGroup cols={2}>
   <Card title="Separation of duties" icon="users">
-    Different people must request and approve certificate issuance.
+    Different people must request and approve certificate issuance or revocation.
   </Card>
   <Card title="Sensitive certificates" icon="shield-check">
     Production or customer-facing certificates need additional review.
   </Card>
   <Card title="Compliance requirements" icon="clipboard-check">
-    Regulatory frameworks require documented approval before issuance.
+    Regulatory frameworks require documented approval before issuance or revocation.
   </Card>
   <Card title="Prevent unauthorized issuance" icon="lock">
     Ensure certificates are only issued after proper validation.
@@ -54,7 +54,7 @@ While a renewal is waiting for approval, you can't submit another renewal that n
 
 ### Revocation
 
-If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The endpoint then responds with `202 Accepted`, a `pending_approval` status, and the approval request's ID. Infisical doesn't revoke the certificate for the request until the request is approved, and until then the Application's certificate list marks it **Revocation Pending**.
+If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The endpoint then responds with `202 Accepted`, a `pending_approval` status, and the approval request's ID. Infisical doesn't revoke the certificate for that request until the request is approved. While the request is pending, the Application's certificate list marks an active certificate **Revocation Pending**.
 
 - If the request gets the required approvals at every step, Infisical revokes the certificate with the reason the requester chose
 - If an approver rejects the request, or it's cancelled or expires, Infisical doesn't revoke the certificate
@@ -106,7 +106,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | Status | Meaning |
 |--------|---------|
 | **Open** | Pending approval |
-| **Approved** | The approvers at every step approved the request, and Infisical [issued or revoked the certificate, or recorded why it couldn't](#approve-a-request) |
+| **Approved** | The approvers at every step approved the request, and the certificate was [issued or revoked, or Infisical recorded why it couldn't be](#approve-a-request) |
 | **Rejected** | An approver rejected the request |
 | **Cancelled** | The requester cancelled the request, someone deleted its policy, or a new revocation request replaced it |
 | **Expired** | Request exceeded max TTL |
