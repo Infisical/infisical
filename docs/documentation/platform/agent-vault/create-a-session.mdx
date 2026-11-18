@@ -6,15 +6,13 @@ description: "Create a session and start an agent with its token."
 
 import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
 
-A [session](/documentation/platform/agent-vault/sessions) gives an agent access to the services in an [access bundle](/documentation/platform/agent-vault/access-bundles) of an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session). You can create a session in the Infisical dashboard, with the Infisical CLI, through the API, or with the Python or Node.js SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
+A [session](/documentation/platform/agent-vault/sessions) gives an agent access to the services in an [access bundle](/documentation/platform/agent-vault/access-bundles) of an [Agent Vault project](/documentation/platform/agent-vault/projects) until the session expires or someone [revokes it](/documentation/platform/agent-vault/revoke-a-session).
 
-Pick the interface based on what starts the agent:
+You can create a session in the [Infisical dashboard](#create-a-session-in-the-dashboard), with the [Infisical CLI](#create-a-session-with-the-cli), through the [API](#create-a-session-with-the-api), or with the [Python](#create-a-session-with-the-python-sdk) or [Node.js](#create-a-session-with-the-node-js-sdk) SDK. Each one returns a session token that the agent uses to authenticate to the [proxy](/documentation/platform/agent-vault/proxies).
 
-| What starts the agent | Use |
-| --- | --- |
-| You, such as a coding agent on your laptop or an assistant on a home server | The dashboard, or the CLI as your user |
-| A shell command, such as a cron job, a container's entrypoint, or a CI step | The CLI as a machine identity, which creates the session, starts the agent with its token, and revokes the session when the agent exits |
-| Your own code, such as an orchestrator, a job runner, or a chat bot that starts an agent for each task | The API, or the Python or Node.js SDK |
+<Tip>
+The way you create sessions depends on [where you start your agents](/documentation/platform/agent-vault/how-it-works#orchestrators).
+</Tip>
 
 ## Prerequisites
 
@@ -29,7 +27,7 @@ Pick the interface based on what starts the agent:
 If a scheduled job, CI, or your own code creates sessions, it creates them as a [machine identity](/documentation/platform/identities/machine-identities), so the sessions don't depend on a person's account. Every tab except **Dashboard** includes the steps to set up the machine identity.
 
 <Tabs>
-  <Tab title="Dashboard">
+  <Tab title="Dashboard" id="create-a-session-in-the-dashboard">
     <Steps>
       <Step>
         In your Agent Vault project, go to **Sessions** and select **Create Session**.
@@ -220,7 +218,7 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
 
 The API and both SDKs can set every option in this section. The dashboard and the CLI can set only the access bundle, the duration, the label, and metadata.
 
-- **Access bundle:** the bundle whose services the agent can use (a session has at most one, and you can't change it after you create the session)
+- **Access bundle:** the bundle of services the agent can use (a session has at most one, and you can't change it after you create the session)
 - **Label:** a short description of what the session is for, such as `nightly deploy`, which you can search for on the **Sessions** page (you can [change it later](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata))
 - **Metadata:** keys and values that record which run the session belongs to, such as a run ID or a ticket, which you can [list sessions by](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata)
 - **On behalf of a user:** the user whose [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) the session uses, if a machine identity creates the session for that person (see [Sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users))

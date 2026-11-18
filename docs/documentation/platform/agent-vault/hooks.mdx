@@ -3,7 +3,7 @@ title: "Hooks"
 description: "Let your own server allow or refuse an AI agent's requests and connections to a service, before the proxy attaches the credential."
 ---
 
-A hook is a server you own that the [proxy](/documentation/platform/agent-vault/proxies) asks before using a [service's](/documentation/platform/agent-vault/services) credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny`. The proxy continues only if your server answers `allow`.
+A hook makes the [proxy](/documentation/platform/agent-vault/proxies) ask a server you own before it uses a [service's](/documentation/platform/agent-vault/services) credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny`. The proxy continues only if your server answers `allow`.
 
 Use a hook when a service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) or [allowed tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) can't express the rule you want to apply. For example: to refuse refunds above a set amount, to allow writes to some repositories only, or to check a request against your own ticketing system.
 
