@@ -814,7 +814,7 @@ export const certificateServiceFactory = ({
   // A signer's certificate is revoked through the signer, which also cancels its pending reissue and issuance jobs.
   // A signer can take over a certificate while a revocation request for it is pending, so the approved run checks too.
   const $assertNotUsedBySigner = async (cert: TRevocableCertificate) => {
-    if (await signerDAL.findOne({ certificateId: cert.id })) {
+    if (await signerDAL.findOne({ certificateId: cert.id }, certificateDAL.primaryNode())) {
       throw new BadRequestError({
         message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
       });
