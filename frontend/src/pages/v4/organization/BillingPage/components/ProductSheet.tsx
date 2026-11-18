@@ -538,6 +538,9 @@ export const ProductSheet = ({
     : "your current plan";
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
   const trialAvailable = !entitled && prod.plans.some((plan) => plan.selfServe && plan.trialable);
+  const offersYearly = prod.plans.some(
+    (plan) => plan.selfServe && !plan.salesLed && planHeadlinePrice(plan, "annual") > 0
+  );
   // Plan cards lead with the annual rate as a per-month figure; an entitled product shows its own
   // cadence. The trial's monthly-first default lives in ActivateView.
   const displayCadence: BillingCadence = entitlement?.cadence ?? "annual";
@@ -628,7 +631,11 @@ export const ProductSheet = ({
   };
 
   let footerStart = (
-    <SmallText muted>Choose monthly or yearly at checkout and cancel any time.</SmallText>
+    <SmallText muted>
+      {offersYearly
+        ? "Choose monthly or yearly at checkout and cancel any time."
+        : "Billed monthly. Cancel any time."}
+    </SmallText>
   );
   if (entitled) {
     footerStart =

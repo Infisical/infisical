@@ -1,29 +1,10 @@
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
-import { Button } from "@infisical/cipher/ui/button";
-
+  AgentVaultSessionLogDefaultStorageUpgradeIntent,
+  AgentVaultSessionLogsUpgradeIntent
+} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 
-import { useProjectScope } from "../../../access/project/scope";
-import { orgHref } from "../../../links";
-
-const COPY: Record<AgentVaultSessionLogStorageType, { title: string; description: string }> = {
-  [AgentVaultSessionLogStorageType.Default]: {
-    title: "Upgrade to use default storage",
-    description: "Your plan doesn't include default storage for session logs."
-  },
-  [AgentVaultSessionLogStorageType.External]: {
-    title: "Upgrade to use external storage",
-    description: "Your plan doesn't include storing session logs in your own S3 bucket."
-  }
-};
+import { UpgradeGate } from "../../../license";
 
 export const UpgradeDialog = ({
   storageType,
@@ -32,22 +13,19 @@ export const UpgradeDialog = ({
   storageType: AgentVaultSessionLogStorageType | null;
   onClose: () => void;
 }) => {
-  const { orgId } = useProjectScope();
-  const copy = COPY[storageType ?? AgentVaultSessionLogStorageType.External];
+  const isDefault = storageType === AgentVaultSessionLogStorageType.Default;
   return (
-    <AlertDialog open={storageType !== null} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{copy.title}</AlertDialogTitle>
-          <AlertDialogDescription>{copy.description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button asChild>
-            <a href={orgHref(orgId, "/billing")}>View plans</a>
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <UpgradeGate
+      paywallKey={
+        isDefault ? "agent-vault.session-logs.default-storage" : "agent-vault.session-logs"
+      }
+      isOpen={storageType !== null}
+      onOpenChange={(open) => !open && onClose()}
+      intent={
+        isDefault
+          ? AgentVaultSessionLogDefaultStorageUpgradeIntent
+          : AgentVaultSessionLogsUpgradeIntent
+      }
+    />
   );
 };

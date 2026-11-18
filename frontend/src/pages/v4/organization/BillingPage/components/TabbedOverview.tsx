@@ -16,6 +16,7 @@ import {
   SELF_HOSTED_LICENSE_DOCS_URL
 } from "@app/components/license/self-hosted-license";
 import {
+  AgentVaultUpgradeIntent,
   CertificateManagementUpgradeIntent,
   PamUpgradeIntent,
   SecretsManagementUpgradeIntent,
@@ -47,6 +48,7 @@ import { SubscriptionsTable } from "./SubscriptionsTable";
 import styles from "./billing.module.css";
 
 const PRODUCT_UPGRADE_INTENTS: Record<string, UpgradeIntent> = {
+  [AgentVaultUpgradeIntent.productKey]: AgentVaultUpgradeIntent,
   [CertificateManagementUpgradeIntent.productKey]: CertificateManagementUpgradeIntent,
   [PamUpgradeIntent.productKey]: PamUpgradeIntent,
   [SecretsManagementUpgradeIntent.productKey]: SecretsManagementUpgradeIntent
