@@ -22,7 +22,7 @@ import type {
   TAgentVaultProductMember,
   TAgentVaultSession,
   TAgentVaultSessionActor,
-  TAgentVaultSessionInlineService,
+  TAgentVaultSessionService,
   TChangeAgentVaultDelegationSubjectsDTO,
   TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
@@ -81,11 +81,8 @@ const machines = [
   machine(uuid("a2", 3), "nightly-eval-runner")
 ];
 
-const inline = (
-  index: number,
-  name: string,
-  hostPattern: string
-): TAgentVaultSessionInlineService => ({
+const inline = (index: number, name: string, hostPattern: string): TAgentVaultSessionService => ({
+  isInline: true,
   id: uuid("c1", index),
   name,
   description: null,
@@ -107,7 +104,7 @@ type Seed = [
   actor: TAgentVaultSessionActor,
   onBehalfOf: TAgentVaultSession["onBehalfOf"],
   bundle: number | null,
-  services: TAgentVaultSessionInlineService[],
+  services: TAgentVaultSessionService[],
   status: AgentVaultSessionStatus,
   createdMinutesAgo: number,
   expiresInMinutes: number | null
