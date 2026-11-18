@@ -3,7 +3,9 @@ name: Cipher visual check
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
+    branches: [design/v4-controls-polish, main]
     paths:
+      - "frontend/package.json"
       - ".github/workflows/cipher-visual.yml"
       - ".github/cipher-visual/**"
   workflow_dispatch:
@@ -21,9 +23,10 @@ on:
         default: full
 
 env:
-  CIPHER_BASE: v0.1.14
-  CIPHER_CANDIDATE: v0.1.15
+  CIPHER_BASE: "v0.1.15"
+  CIPHER_CANDIDATE: "v0.1.15"
   CACHE_PREFIX: cvc-dev1
+  PIXEL_THRESHOLD: "0"
 
 permissions:
   contents: read
@@ -39,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
+      skip: ${{ steps.refs.outputs.skip }}
       base_sha: ${{ steps.refs.outputs.base_sha }}
       candidate_sha: ${{ steps.refs.outputs.candidate_sha }}
       pages: ${{ steps.scope.outputs.pages }}
@@ -60,13 +64,31 @@ jobs:
         env:
           BASE: ${{ inputs.base || env.CIPHER_BASE }}
           CANDIDATE: ${{ inputs.candidate || env.CIPHER_CANDIDATE }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPLICIT: ${{ inputs.base || env.CIPHER_BASE }}${{ inputs.candidate || env.CIPHER_CANDIDATE }}
         run: |
+          pin() {
+            git fetch -q --depth 1 --filter=blob:none origin "$1"
+            git show "$1:frontend/package.json" | node -e '
+              const spec = JSON.parse(require("fs").readFileSync(0, "utf8")).dependencies["@infisical/cipher"];
+              process.stdout.write(spec.includes("#") ? spec.split("#").pop() : "v" + spec.replace(/^[~^]/, ""));
+            '
+          }
+          if [ -z "$BASE" ] && [ -n "$PR_BASE_SHA" ]; then BASE=$(pin "$PR_BASE_SHA"); fi
+          if [ -z "$CANDIDATE" ] && [ -n "$PR_HEAD_SHA" ]; then CANDIDATE=$(pin "$PR_HEAD_SHA"); fi
+          echo "Base $BASE, candidate $CANDIDATE"
+          if [ -z "$EXPLICIT" ] && [ "$BASE" = "$CANDIDATE" ]; then
+            echo "The Cipher pin did not change; nothing to compare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           resolve() { git -C cipher rev-parse --verify -q "$1^{commit}" || git -C cipher rev-parse --verify "origin/$1^{commit}"; }
           echo "base_sha=$(resolve "$BASE")" >> "$GITHUB_OUTPUT"
           echo "candidate_sha=$(resolve "$CANDIDATE")" >> "$GITHUB_OUTPUT"
-          echo "Base $BASE, candidate $CANDIDATE"
       - name: Scope
         id: scope
+        if: steps.refs.outputs.skip != 'true'
         env:
           MODE: ${{ inputs.scope || (contains(github.event.pull_request.labels.*.name, 'cipher-visual:scoped') && 'scoped' || 'full') }}
           BASE_SHA: ${{ steps.refs.outputs.base_sha }}
@@ -86,6 +108,7 @@ jobs:
           echo "pages=$pages" >> "$GITHUB_OUTPUT"
           echo "Mode $MODE: $pages"
       - name: Upload scope
+        if: steps.refs.outputs.skip != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cipher-visual-scope
@@ -94,6 +117,7 @@ jobs:
   capture:
     name: Capture (${{ matrix.side }})
     needs: prepare
+    if: needs.prepare.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
@@ -150,7 +174,7 @@ jobs:
           PAGES: ${{ needs.prepare.outputs.pages }}
         run: |
           (cd frontend && npx vite preview --port 4173 --strictPort > ../preview.log 2>&1 &)
-          for i in $(seq 1 60); do node -e 'fetch("http://127.0.0.1:4173/").then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' && break; sleep 1; done
+          for _ in $(seq 1 60); do node -e 'fetch("http://127.0.0.1:4173/").then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' && break; sleep 1; done
           echo "$PAGES" > pages-to-capture.json
           node .github/cipher-visual/capture.mjs http://127.0.0.1:4173 shots .github/cipher-visual/pages.json pages-to-capture.json
       - name: Upload shots

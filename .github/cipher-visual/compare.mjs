@@ -1,5 +1,6 @@
 // Pixel-diffs two snapshot trees and writes the report the Cipher visual check uploads.
 // node compare.mjs <before-dir> <after-dir> <out-dir> [scope.json]
+// PIXEL_THRESHOLD sets pixelmatch's per-pixel color threshold (0 to 1, default 0.1); 0 counts any changed pixel.
 // Writes out/summary.json, out/summary.md and out/changed/<name>.{before,after,diff}.png.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -7,6 +8,7 @@ import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
 const [before, after, out, scopeFile] = process.argv.slice(2);
+const threshold = Number(process.env.PIXEL_THRESHOLD ?? 0.1);
 const list = (root, dir = "") =>
   existsSync(path.join(root, dir))
     ? readdirSync(path.join(root, dir)).flatMap((name) => {
@@ -40,7 +42,7 @@ for (const key of [...b].sort()) {
     pixels = -1;
   } else {
     diff = new PNG({ width: px.width, height: px.height });
-    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold: 0.1 });
+    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold });
   }
   if (pixels === 0) { result.unchanged += 1; continue; }
   result.changed.push({ file: key, pixels: pixels === -1 ? "size " + px.width + "x" + px.height + " -> " + py.width + "x" + py.height : pixels });
