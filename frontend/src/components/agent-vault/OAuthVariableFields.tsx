@@ -26,13 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Spinner
 } from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultVariableActions,
@@ -50,6 +44,7 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { ClientSecretInput } from "./ClientSecretInput";
+import { OAuthAppSelect } from "./OAuthAppSelect";
 import {
   applySignInPrefill,
   hasCommaSeparatedScope,
@@ -60,7 +55,7 @@ import {
   TOAuthVariableFormValues,
   TVariableFormValues
 } from "./oauthVariableForm";
-import { AUTOMATIC_TAB, OWN_APP_TAB, Scopes, Status } from "./service-sheet/OAuthAuthorizeCard";
+import { Scopes, Status } from "./service-sheet/OAuthAuthorizeCard";
 import {
   defaultOAuthRedirectUri,
   hostOf,
@@ -405,30 +400,11 @@ export const OAuthVariableFields = ({
       </Field>
 
       {!isWaiting && (
-        <Tabs
-          value={isOwnApp ? OWN_APP_TAB : AUTOMATIC_TAB}
-          onValueChange={(next) =>
-            next === OWN_APP_TAB ? switchToOwnApp() : switchToAutomaticSetup()
-          }
-        >
-          <TabsList variant="av">
-            {hasManualEndpoint ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <TabsTrigger value={AUTOMATIC_TAB} disabled>
-                      Automatic Setup
-                    </TabsTrigger>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Clear the endpoints to use automatic setup.</TooltipContent>
-              </Tooltip>
-            ) : (
-              <TabsTrigger value={AUTOMATIC_TAB}>Automatic Setup</TabsTrigger>
-            )}
-            <TabsTrigger value={OWN_APP_TAB}>Your Own OAuth App</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <OAuthAppSelect
+          isOwnApp={isOwnApp}
+          onChange={(own) => (own ? switchToOwnApp() : switchToAutomaticSetup())}
+          isAutomaticDisabled={hasManualEndpoint}
+        />
       )}
 
       {isOwnApp && (

@@ -27,9 +27,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -39,6 +36,7 @@ import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ClientSecretInput } from "../ClientSecretInput";
+import { OAuthAppSelect } from "../OAuthAppSelect";
 import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
@@ -54,10 +52,6 @@ import {
   TServiceForm
 } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
-
-// Who registers the OAuth client: Infisical, or the admin's own app. Shared with the OAuth variable form.
-export const AUTOMATIC_TAB = "automatic";
-export const OWN_APP_TAB = "own-app";
 
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
@@ -460,17 +454,10 @@ export const OAuthAuthorizeCard = ({
         <div className="flex flex-col gap-3">
           {isMemberProvided && !isOwnApp && <div>{memberAuthorizeButton}</div>}
           {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
-            <Tabs
-              value={isUsingOwnApp ? OWN_APP_TAB : AUTOMATIC_TAB}
-              onValueChange={(next) =>
-                next === OWN_APP_TAB ? switchToOwnApp() : switchToAutomaticSetup()
-              }
-            >
-              <TabsList variant="av">
-                <TabsTrigger value={AUTOMATIC_TAB}>Automatic Setup</TabsTrigger>
-                <TabsTrigger value={OWN_APP_TAB}>Your Own OAuth App</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <OAuthAppSelect
+              isOwnApp={isUsingOwnApp}
+              onChange={(own) => (own ? switchToOwnApp() : switchToAutomaticSetup())}
+            />
           )}
           {!isMemberProvided && status && (
             <div className="flex items-start justify-between gap-4">
