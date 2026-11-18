@@ -722,39 +722,22 @@ export const userServiceFactory = ({
     return { challenge: replacement, accepted: unique([...asResolved.accepted, replacement]) };
   };
 
-  // Adding a factor must be proven with one the account already has, or a password-only
-  // session could plant its own. A new factor of a kind the user already has passes every
-  // login that asks for that kind, so only that kind can prove it; otherwise a weaker factor
-  // could open an org that enforces the stronger one. Mirrors removal (getStepUpMfaMethod).
-  // The first factor of a kind takes any of the user's factors, and an account with none
-  // gets null so enforced-MFA onboarding at login still works.
+  /**
+   * Adding a factor must be proven with the strongest one the account already has (passkey,
+   * TOTP, then email), or a session holding a weaker factor could plant one
+   * that opens an org enforcing the stronger kind.
+   */
   const getFactorEnrollmentStepUpMfaMethods = async (
-    userId: string,
-    enrollingMethod: MfaMethod
+    userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
 
-    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
-      isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
-      isMfaMethodConfigured(user, MfaMethod.TOTP),
-      findMfaEnforcingOrgs(userId)
-    ]);
-    const isEmailRequiredAtLogin =
-      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
-      enforcingOrgs.some((org) => getOrgAllowedMfaMethods(org).includes(MfaMethod.EMAIL));
-    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
+    const userFactors = await getEnrolledMfaMethods(user);
+    const strongestUserFactor = userFactors[0];
+    if (!strongestUserFactor) return null;
 
-    const userFactors = [
-      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
-      ...(hasTotp ? [MfaMethod.TOTP] : []),
-      ...(hasEmail ? [MfaMethod.EMAIL] : [])
-    ];
-    if (!userFactors.length) return null;
-    if (userFactors.includes(enrollingMethod)) return { challenge: enrollingMethod, accepted: [enrollingMethod] };
-
-    const preferred = userFactors.find((method) => method === user.selectedMfaMethod);
-    return { challenge: preferred ?? userFactors[0], accepted: userFactors };
+    return { challenge: strongestUserFactor, accepted: [strongestUserFactor] };
   };
 
   const $formatOrgNames = (orgs: { name: string }[]) => {

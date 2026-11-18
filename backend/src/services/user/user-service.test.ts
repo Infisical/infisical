@@ -459,13 +459,26 @@ describe("getEnrolledMfaMethods", () => {
 describe("getFactorEnrollmentStepUpMfaMethods", () => {
   const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] };
 
-  test("lets an account with no factor enroll its first one unchallenged", async () => {
+  test("a first factor needs an email code, even when no login asks for email", async () => {
     const service = buildMfaService({ memberOrgIds: [ENFORCED_ORG_ID], orgs: [passkeyEnforcingOrg] });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
   });
 
-  test("adding a passkey while one exists requires a passkey, not a preferred email", async () => {
+  test("lets an account with no address enroll its first factor unchallenged", async () => {
+    const service = buildMfaService({
+      userRow: { email: null },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+
+  test("proves with a passkey when the user has one, not a preferred email", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
       memberOrgIds: [ENFORCED_ORG_ID],
@@ -473,13 +486,13 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
       passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
       challenge: MfaMethod.WEBAUTHN,
       accepted: [MfaMethod.WEBAUTHN]
     });
   });
 
-  test("an authenticator app another org uses can't add a passkey while one exists", async () => {
+  test("proves with a passkey over an authenticator app the user prefers", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       memberOrgIds: [ENFORCED_ORG_ID, "totp-org"],
@@ -488,60 +501,39 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
       passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
       challenge: MfaMethod.WEBAUTHN,
       accepted: [MfaMethod.WEBAUTHN]
     });
   });
 
-  test("the first passkey can be proven with any factor, preferring the user's choice", async () => {
+  test("an email-only org can't prove a new factor for a passkey user", async () => {
     const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [passkeyEnforcingOrg],
-      hasTotp: true
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.TOTP,
-      accepted: [MfaMethod.TOTP]
-    });
-  });
-
-  test("the first authenticator app can be proven with any factor", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      memberOrgIds: ["strict-org", "email-org"],
+      orgs: [
+        { id: "strict-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] },
+        { id: "email-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] }
+      ],
       passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.TOTP)).resolves.toEqual({
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
       challenge: MfaMethod.WEBAUTHN,
       accepted: [MfaMethod.WEBAUTHN]
     });
   });
 
-  test("email MFA the user turned on proves the first passkey an org newly requires", async () => {
+  test("proves with an authenticator app when the user has no passkey", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
       memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [passkeyEnforcingOrg]
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.EMAIL] }],
+      hasTotp: true
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.EMAIL,
-      accepted: [MfaMethod.EMAIL]
-    });
-  });
-
-  test("counts email when an org's login requires it", async () => {
-    const service = buildMfaService({
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] }]
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.EMAIL,
-      accepted: [MfaMethod.EMAIL]
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
     });
   });
 
@@ -551,7 +543,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
       smtp: false
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
   });
 });
 
