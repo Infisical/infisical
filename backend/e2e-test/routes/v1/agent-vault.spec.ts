@@ -6056,7 +6056,7 @@ describe("Agent Vault V1 Router", async () => {
       // An empty list reads as leaving the bundle out, which needs services of the session's own.
       const empty = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [], ttl: "1h" });
       expect(empty.statusCode).toBe(400);
-      expect(empty.json().message).toContain("or the services or skills it should have");
+      expect(empty.json().message).toContain("or list the services or skills it should have");
     });
 
     test("a session whose bundle was deleted keeps its name and loses its id", async () => {
