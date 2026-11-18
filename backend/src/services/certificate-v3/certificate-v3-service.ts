@@ -33,6 +33,7 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   assertCaSupportsCustomExtensions,
+  caSignsCsrAsSent,
   caUsesExternalIssuanceQueue
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
@@ -101,6 +102,7 @@ import {
   removeRootCaFromChain,
   validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
+import { addCommonNameAsDnsSan } from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   holdCertificateRequestForApproval,
@@ -655,7 +657,26 @@ export const certificateV3ServiceFactory = ({
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
     );
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+    const policy = await certificatePolicyService.getPolicyById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
+
+    const profileDefaultedRequest = applyProfileDefaults(certificateRequest, profile.defaults);
+    const certificateSubject = buildCertificateSubjectFromTemplate(profileDefaultedRequest, policy.subject);
+    const certificateRequestWithDefaults = {
+      ...profileDefaultedRequest,
+      altNames: addCommonNameAsDnsSan({
+        policy,
+        enrollmentType: EnrollmentType.API,
+        commonName: certificateSubject.common_name,
+        subjectAlternativeNames: profileDefaultedRequest.altNames
+      }).subjectAlternativeNames
+    };
 
     const quotaUsage = await validateCertificateRequestLicense({
       request: certificateRequestWithDefaults,
@@ -672,18 +693,6 @@ export const certificateV3ServiceFactory = ({
         ...certificateRequestWithDefaults,
         subjectAlternativeNames: certificateRequestWithDefaults.altNames
       });
-
-      const policy = await certificatePolicyService.getPolicyById({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        policyId: profile.certificatePolicyId,
-        internal: true
-      });
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-      }
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
@@ -837,18 +846,6 @@ export const certificateV3ServiceFactory = ({
       subjectAlternativeNames: certificateRequestWithDefaults.altNames
     });
 
-    const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      policyId: profile.certificatePolicyId,
-      internal: true
-    });
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
-
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
@@ -880,7 +877,6 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
       { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
       policy?.sans
@@ -1410,6 +1406,17 @@ export const certificateV3ServiceFactory = ({
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
     const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const {
+      subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+      altNameEntries: altNameEntriesWithCommonName
+    } = addCommonNameAsDnsSan({
+      policy,
+      enrollmentType,
+      commonName: certificateRequest.commonName,
+      csrCommonName: csrCertificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames
+    });
+    mappedCertificateRequest.subjectAlternativeNames = subjectAlternativeNamesWithCommonName;
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
@@ -1697,6 +1704,7 @@ export const certificateV3ServiceFactory = ({
         pathLength: effectiveBasicConstraints?.pathLength,
         ttl: effectiveTtl,
         altNames: undefined,
+        altNameEntries: altNameEntriesWithCommonName,
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         keyUsages: certificateRequest.keyUsages
@@ -1909,7 +1917,23 @@ export const certificateV3ServiceFactory = ({
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
+    const policy = await certificatePolicyService.getPolicyById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
     const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    certificateRequest.subjectAlternativeNames = addCommonNameAsDnsSan({
+      policy,
+      enrollmentType: EnrollmentType.API,
+      commonName: certificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+      isCsrSignedAsSent:
+        Boolean(certificateOrder.csr) && caSignsCsrAsSent(preflightCa?.externalCa?.type as CaType | undefined)
+    }).subjectAlternativeNames;
     if (preflightCa) {
       assertCaInProfileProject(preflightCa, profile);
     }

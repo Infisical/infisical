@@ -341,7 +341,8 @@ export const certManagerExportServiceFactory = ({
             customExtensions: toJsonbValue(sourcePolicy.customExtensions),
             algorithms: toJsonbValue(sourcePolicy.algorithms),
             validity: toJsonbValue(sourcePolicy.validity),
-            basicConstraints: toJsonbValue(sourcePolicy.basicConstraints)
+            basicConstraints: toJsonbValue(sourcePolicy.basicConstraints),
+            addCommonNameAsDnsSan: sourcePolicy.addCommonNameAsDnsSan
           })
           .returning("id");
         policyIdMap.set(sourcePolicy.id, insertedPolicy.id);

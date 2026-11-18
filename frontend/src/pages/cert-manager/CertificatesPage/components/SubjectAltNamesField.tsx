@@ -8,6 +8,7 @@ import {
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -39,6 +40,7 @@ type SubjectAltNamesFieldProps = {
   revealPolicyErrors?: boolean;
   shouldUnregister?: boolean;
   namePrefix?: string;
+  description?: string;
 };
 
 export const SubjectAltNamesField = ({
@@ -50,7 +52,8 @@ export const SubjectAltNamesField = ({
   policyNotices,
   revealPolicyErrors,
   shouldUnregister,
-  namePrefix = "subjectAltNames"
+  namePrefix = "subjectAltNames",
+  description
 }: SubjectAltNamesFieldProps) => {
   const sanTypeLabels = getSanTypeLabels();
   const { subscription } = useSubscription();
@@ -74,6 +77,7 @@ export const SubjectAltNamesField = ({
           return (
             <Field className="mb-4">
               <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
+              {description && <FieldDescription>{description}</FieldDescription>}
               <div className="space-y-3">
                 {currentValues.map((san, index) => {
                   const policy = policyRows?.[index];

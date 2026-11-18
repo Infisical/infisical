@@ -129,6 +129,17 @@ Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to 
 
 Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
+Turn on **Add common name as DNS SAN** to add each certificate's common name to its DNS SANs. The common name is added before the request is checked, so it can satisfy a required **DNS Name** rule and is refused by a denied pattern like any requested name.
+
+- If the request already lists the common name as a DNS SAN, ignoring case, no second copy is added
+- If the common name is a wildcard such as `*.example.com`, it's added as it is
+- If the common name isn't a valid DNS host name, such as a person's name or an IP address, the request is refused
+- If the request is an ACME order, only the common name in the CSR is added, and an IP address common name is left as it is
+- If a renewal keeps the certificate's names, its SANs stay as they are
+- If a renewal changes the common name or SANs, the common name is added
+- If the request goes to a Microsoft AD CS CA with a CSR, the CSR is signed as sent, so list the common name as a DNS SAN in the CSR
+- If the policy defines SAN rules, it needs a **DNS Name** rule for as long as the option is on
+
 ### Key & signature algorithms
 
 Restrict which cryptographic algorithms are permitted:

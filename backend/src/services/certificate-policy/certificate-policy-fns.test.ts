@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
-import { validateDomainComponentsAgainstRule } from "./certificate-policy-fns";
+import { BadRequestError } from "@app/lib/errors";
+
+import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
+import {
+  addCommonNameAsDnsSan,
+  keepReviewedCommonNameDnsSan,
+  validateDomainComponentsAgainstRule
+} from "./certificate-policy-fns";
 import { TSubjectRule } from "./certificate-policy-types";
 
 const domainComponentRule = (rule: Omit<TSubjectRule, "type">): TSubjectRule => ({
@@ -167,5 +174,102 @@ describe("validateDomainComponentsAgainstRule", () => {
     expect(validate(["corp", "example", "com"], domainComponentRule({ allowed: [" corp , example , com "] }))).toEqual(
       []
     );
+  });
+});
+
+describe("addCommonNameAsDnsSan", () => {
+  type TInput = Partial<Parameters<typeof addCommonNameAsDnsSan>[0]>;
+  const dnsSan = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+  const emailSan = { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" };
+  const add = (input: TInput) =>
+    addCommonNameAsDnsSan({ policy: { addCommonNameAsDnsSan: true }, enrollmentType: EnrollmentType.API, ...input });
+
+  it.each<[string, TInput, ReturnType<typeof dnsSan>[]]>([
+    [
+      "after the requested SANs",
+      { commonName: "app.example.com", subjectAlternativeNames: [emailSan] },
+      [emailSan, dnsSan("app.example.com")]
+    ],
+    ["for a wildcard", { commonName: "*.example.com" }, [dnsSan("*.example.com")]],
+    ["for a single label", { commonName: "intranet" }, [dnsSan("intranet")]],
+    [
+      "from the ACME CSR, never a profile default",
+      { enrollmentType: EnrollmentType.ACME, commonName: "default.example.com", csrCommonName: "app.example.com" },
+      [dnsSan("app.example.com")]
+    ]
+  ])("should add the common name %s", (_, input, expected) => {
+    expect(add(input)).toEqual({ subjectAlternativeNames: expected, altNameEntries: expected });
+  });
+
+  it.each<[string, TInput]>([
+    ["the option is off", { policy: { addCommonNameAsDnsSan: false }, commonName: "app.example.com" }],
+    ["there is no common name", {}],
+    [
+      "a DNS name matches it in another case",
+      { commonName: "app.example.com", subjectAlternativeNames: [dnsSan("APP.example.com")] }
+    ],
+    ["ACME has only a profile default", { enrollmentType: EnrollmentType.ACME, commonName: "default.example.com" }],
+    ["the ACME CN is an IP identifier", { enrollmentType: EnrollmentType.ACME, csrCommonName: "10.0.0.1" }],
+    ["the CA signs the CSR as sent", { commonName: "app.example.com", isCsrSignedAsSent: true }],
+    [
+      "a common name that is not a host name is already listed as a DNS name",
+      { commonName: "host_a.corp.local", subjectAlternativeNames: [dnsSan("host_a.corp.local")] }
+    ]
+  ])("should leave the SANs unchanged when %s", (_, input) => {
+    expect(add(input)).toEqual({ subjectAlternativeNames: input.subjectAlternativeNames });
+  });
+
+  it.each(["John Smith", "10.0.0.1"])("should refuse the common name %s that is not a DNS host name", (commonName) => {
+    expect(() => add({ enrollmentType: EnrollmentType.SCEP, commonName })).toThrow(BadRequestError);
+  });
+});
+
+describe("keepReviewedCommonNameDnsSan", () => {
+  const dnsSan = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+  const keep = (
+    commonName: string,
+    subjectAlternativeNames: { type: CertSubjectAlternativeNameType; value: string }[] | undefined,
+    reviewedSubjectAlternativeNames: { type: CertSubjectAlternativeNameType; value: string }[] | null
+  ) =>
+    keepReviewedCommonNameDnsSan({
+      reviewedSubjectAlternativeNames,
+      enrollmentType: EnrollmentType.API,
+      commonName,
+      subjectAlternativeNames
+    });
+
+  it("re-adds the common name DNS SAN the reviewed request carried and the CSR lacks", () => {
+    expect(keep("app.example.com", undefined, [dnsSan("app.example.com")])).toEqual({
+      subjectAlternativeNames: [dnsSan("app.example.com")],
+      altNameEntries: [dnsSan("app.example.com")]
+    });
+  });
+
+  it.each([
+    ["the reviewed request did not list it, though the CA put it on the certificate", [dnsSan("api.example.com")]],
+    ["there is no reviewed request, as for an imported certificate", null]
+  ])("keeps the CSR names when %s", (_, reviewed) => {
+    const subjectAlternativeNames = [dnsSan("api.example.com")];
+    expect(keep("app.example.com", subjectAlternativeNames, reviewed)).toEqual({ subjectAlternativeNames });
+  });
+
+  it.each([
+    ["host_a.corp.local", CertSubjectAlternativeNameType.DNS_NAME],
+    ["2001:db8::1", CertSubjectAlternativeNameType.IP_ADDRESS],
+    ["10.0.0.1", CertSubjectAlternativeNameType.IP_ADDRESS]
+  ])("keeps a common name %s that is already a SAN without refusing it", (commonName, type) => {
+    const subjectAlternativeNames = [{ type, value: commonName }];
+    expect(keep(commonName, subjectAlternativeNames, [dnsSan(commonName)])).toEqual({ subjectAlternativeNames });
+  });
+
+  it("uses the CSR's common name on ACME", () => {
+    expect(
+      keepReviewedCommonNameDnsSan({
+        reviewedSubjectAlternativeNames: [dnsSan("app.example.com")],
+        enrollmentType: EnrollmentType.ACME,
+        commonName: "default.example.com",
+        csrCommonName: "app.example.com"
+      })
+    ).toEqual({ subjectAlternativeNames: [dnsSan("app.example.com")], altNameEntries: [dnsSan("app.example.com")] });
   });
 });

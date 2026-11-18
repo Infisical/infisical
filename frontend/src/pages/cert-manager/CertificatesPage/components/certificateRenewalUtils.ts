@@ -88,6 +88,31 @@ const parseCertificateSans = (
     .map((value) => ({ type: resolveSanType(value, allowedSanTypes), value }));
 };
 
+export const haveRenewalNamesChanged = (
+  cert: Pick<TCertificate, "commonName" | "subjectAltNames" | "altNames">,
+  subjectAttributes: { type: CertSubjectAttributeType; value: string }[],
+  subjectAltNames: { value: string }[]
+): boolean => {
+  const toNameKey = (commonName: string, sanValues: string[]) =>
+    [
+      commonName.trim().toLowerCase(),
+      ...sanValues
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+        .sort()
+    ].join("\n");
+  const commonName =
+    subjectAttributes.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)?.value ??
+    "";
+
+  return (
+    toNameKey(
+      commonName,
+      subjectAltNames.map((san) => san.value)
+    ) !== toNameKey(cert.commonName ?? "", (cert.subjectAltNames || cert.altNames || "").split(","))
+  );
+};
+
 const buildSubjectAttributes = (cert: TCertificate) => {
   const attributes: { type: CertSubjectAttributeType; value: string }[] = [];
 

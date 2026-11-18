@@ -36,7 +36,8 @@ import {
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
-  validateDomainComponentsAgainstRule
+  validateDomainComponentsAgainstRule,
+  withCommonNameDnsSanReason
 } from "./certificate-policy-fns";
 import {
   TCertificatePolicy,
@@ -158,6 +159,18 @@ export const certificatePolicyServiceFactory = ({
           }
         }
       }
+    }
+  };
+
+  const validateCommonNameDnsSanRule = ({
+    addCommonNameAsDnsSan,
+    sans
+  }: Pick<TCertificatePolicyUpdate, "addCommonNameAsDnsSan" | "sans">) => {
+    if (addCommonNameAsDnsSan && sans && !sans.some((san) => san.type === CertSubjectAlternativeNameType.DNS_NAME)) {
+      throw new BadRequestError({
+        message:
+          "This policy restricts subject alternative names without a DNS Name rule, so the common name could never be added as a DNS name. Add a DNS Name rule, or turn off 'Add common name as DNS SAN'."
+      });
     }
   };
 
@@ -506,7 +519,15 @@ export const certificatePolicyServiceFactory = ({
               isUriSan
             );
             if (validation.isValid) {
-              errors.push(`${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`);
+              errors.push(
+                withCommonNameDnsSanReason({
+                  policy: template,
+                  sanType: sanPolicy.type,
+                  sanValue,
+                  request,
+                  error: `${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`
+                })
+              );
             }
           }
         }
@@ -535,7 +556,15 @@ export const certificatePolicyServiceFactory = ({
                 isUriSan
               );
               if (!validation.isValid && validation.error) {
-                errors.push(validation.error);
+                errors.push(
+                  withCommonNameDnsSanReason({
+                    policy: template,
+                    sanType: sanPolicy.type,
+                    sanValue,
+                    request,
+                    error: validation.error
+                  })
+                );
               }
             }
           }
@@ -775,6 +804,8 @@ export const certificatePolicyServiceFactory = ({
       validateSanPolicy(consolidatedData.sans);
     }
 
+    validateCommonNameDnsSanRule(consolidatedData);
+
     if (consolidatedData.keyUsages) {
       validateKeyUsagePolicy(consolidatedData.keyUsages);
     }
@@ -853,6 +884,11 @@ export const certificatePolicyServiceFactory = ({
     if (consolidatedData.sans) {
       validateSanPolicy(consolidatedData.sans);
     }
+
+    validateCommonNameDnsSanRule({
+      addCommonNameAsDnsSan: consolidatedData.addCommonNameAsDnsSan ?? existingTemplate.addCommonNameAsDnsSan,
+      sans: consolidatedData.sans === undefined ? existingTemplate.sans : consolidatedData.sans
+    });
 
     if (consolidatedData.keyUsages) {
       validateKeyUsagePolicy(consolidatedData.keyUsages);

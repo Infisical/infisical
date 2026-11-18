@@ -21,7 +21,8 @@ export const PkiCertificatePoliciesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   basicConstraints: z.unknown().nullable().optional(),
-  customExtensions: z.unknown().nullable().optional()
+  customExtensions: z.unknown().nullable().optional(),
+  addCommonNameAsDnsSan: z.boolean().default(false)
 });
 
 export type TPkiCertificatePolicies = z.infer<typeof PkiCertificatePoliciesSchema>;

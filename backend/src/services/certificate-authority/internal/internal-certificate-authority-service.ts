@@ -2470,6 +2470,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       customExtensions,
       tx
     } = dto;
+    const altNameEntries = dto.isInternal ? dto.altNameEntries : undefined;
 
     let collectionId = pkiCollectionId;
 
@@ -2749,7 +2750,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     let altNamesFromCsr: string = "";
     let altNamesArray: TAltNameMapping[] = [];
 
-    if (altNames) {
+    if (altNameEntries?.length) {
+      altNamesArray = altNameEntries.map(({ type, value }) => ({
+        type: CERT_SUBJECT_ALTERNATIVE_NAMES[type].generalNameType,
+        value
+      }));
+    } else if (altNames) {
       altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
@@ -2869,7 +2875,9 @@ export const internalCertificateAuthorityServiceFactory = ({
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
-          altNames: altNamesFromCsr || altNames,
+          altNames: altNameEntries?.length
+            ? altNameEntries.map(({ value }) => value).join(",")
+            : altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate,

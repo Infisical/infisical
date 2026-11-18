@@ -33,6 +33,7 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isValidHostname } from "@app/helpers/hostname";
 import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { useScopeVariant } from "@app/hooks";
 import { HpeIloConnectionMethod, THpeIloConnection } from "@app/hooks/api/appConnections";
@@ -48,12 +49,6 @@ type Props = {
   appConnection?: THpeIloConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const isValidHostname = (value: string) =>
-  value.length <= 253 &&
-  /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
-    value
-  );
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.HpeIloRedFish)

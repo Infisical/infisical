@@ -1,3 +1,5 @@
+import { isValidHostname } from "@app/helpers/hostname";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import {
   TCertificatePolicy,
   TCertificatePolicyRule,
@@ -94,6 +96,15 @@ const listPatterns = (patterns: string[]): string[] => {
 
 const listSequences = (sequences: string[][]): string[] =>
   listPatterns(sequences.map(formatSequence));
+
+const isMetByCommonName = (
+  type: CertSubjectAlternativeNameType,
+  pattern: string,
+  commonName: string
+): boolean =>
+  type === CertSubjectAlternativeNameType.DNS_NAME &&
+  commonName !== "" &&
+  matchesAny(commonName, [pattern]);
 
 /** A finding no single row can own, such as an ordered sequence or a set-level requirement. */
 export type PolicyNotice = {
@@ -417,13 +428,13 @@ const validateSanValue = (
   type: CertSubjectAlternativeNameType,
   value: string,
   rule: SanRule | undefined,
-  hasSanPolicy: boolean
+  hasSanPolicy: boolean,
+  label = `${formatSANType(type)} SAN`
 ): string | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
 
   const isUri = type === CertSubjectAlternativeNameType.URI;
-  const label = `${formatSANType(type)} SAN`;
   if (!rule) return hasSanPolicy ? `${label} is not allowed by this policy` : undefined;
   if (matchesAny(trimmed, rule.denied, isUri)) {
     return `${label} "${trimmed}" is denied by this policy`;
@@ -434,6 +445,32 @@ const validateSanValue = (
     return `${label} ${patternClause("must match", "one of", accepted)}`;
   }
   return undefined;
+};
+
+const WILDCARD_LABEL_PREFIX = "*.";
+
+const validateCommonNameAsDnsSan = (
+  value: string,
+  rules: CertificatePolicyRules
+): string | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const hostname = trimmed.startsWith(WILDCARD_LABEL_PREFIX)
+    ? trimmed.slice(WILDCARD_LABEL_PREFIX.length)
+    : trimmed;
+  const isHostName = !isIPv4(hostname) && !isIPv6(hostname) && isValidHostname(hostname);
+  if (!isHostName) {
+    return `${SUBJECT_ATTRIBUTE_LABELS[CertSubjectAttributeType.COMMON_NAME]} must be a host name, such as app.example.com`;
+  }
+
+  return validateSanValue(
+    CertSubjectAlternativeNameType.DNS_NAME,
+    trimmed,
+    rules.sans[CertSubjectAlternativeNameType.DNS_NAME],
+    rules.hasSanPolicy,
+    `${SUBJECT_ATTRIBUTE_LABELS[CertSubjectAttributeType.COMMON_NAME]} (added as a DNS Name SAN)`
+  );
 };
 
 const DOMAIN_COMPONENT_ORDER_NOTE =
@@ -574,7 +611,8 @@ const requiredSequenceRows = (rule: TSubjectRule): string[] => {
 export const withRequiredRows = (
   rules: CertificatePolicyRules,
   subjectAttributes: SubjectAttribute[],
-  subjectAltNames: SubjectAltName[]
+  subjectAltNames: SubjectAltName[],
+  isCommonNameAddedAsDnsSan = false
 ): { subjectAttributes: SubjectAttribute[]; subjectAltNames: SubjectAltName[] } => {
   const subject = subjectAttributes.map((attr) => ({ ...attr }));
 
@@ -611,7 +649,11 @@ export const withRequiredRows = (
         (san) =>
           san.type === type && san.value.trim() && matchesAny(san.value.trim(), [pattern], isUri)
       );
-      if (isSatisfied) return;
+      const isLeftToCommonName =
+        isCommonNameAddedAsDnsSan &&
+        type === CertSubjectAlternativeNameType.DNS_NAME &&
+        isWildcardPattern(pattern);
+      if (isSatisfied || isLeftToCommonName) return;
 
       if (!isWildcardPattern(pattern)) {
         sans.push({ type, value: pattern });
@@ -744,14 +786,21 @@ export const evaluateSubjectStep = ({
   subjectAttributes,
   subjectAltNames,
   isSubjectSectionShown,
-  isSanSectionShown
+  isSanSectionShown,
+  isCommonNameAddedAsDnsSan = false
 }: {
   rules: CertificatePolicyRules;
   subjectAttributes: SubjectAttribute[];
   subjectAltNames: SubjectAltName[];
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;
+  isCommonNameAddedAsDnsSan?: boolean;
 }): SubjectPolicyGuidance => {
+  const commonName = isCommonNameAddedAsDnsSan
+    ? (subjectAttributes
+        .find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+        ?.value.trim() ?? "")
+    : "";
   const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
 
   // Domain components are one ordered sequence spread across rows, so they are judged in row order
@@ -775,7 +824,11 @@ export const evaluateSubjectStep = ({
     if (attr.type !== CertSubjectAttributeType.DOMAIN_COMPONENT) {
       return {
         hint: getSubjectAttributeHint(rule),
-        error: validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy),
+        error:
+          validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy) ??
+          (isCommonNameAddedAsDnsSan && attr.type === CertSubjectAttributeType.COMMON_NAME
+            ? validateCommonNameAsDnsSan(attr.value, rules)
+            : undefined),
         isLocked: Boolean(rule?.required?.length)
       };
     }
@@ -848,6 +901,7 @@ export const evaluateSubjectStep = ({
     };
 
     rule.required.forEach((pattern) => {
+      if (isMetByCommonName(type, pattern, commonName)) return;
       const isSatisfiedBy = (san: SubjectAltName) =>
         Boolean(san.value.trim()) && matchesAny(san.value.trim(), [pattern], isUri);
       if (!claim(isSatisfiedBy)) claim((san) => !san.value.trim());
@@ -881,6 +935,7 @@ export const evaluateSubjectStep = ({
 
       rule.required.forEach((pattern) => {
         if (presentValues.some((value) => matchesAny(value, [pattern], isUri))) return;
+        if (isMetByCommonName(type, pattern, commonName)) return;
         if (unclaimedBlankRows > 0) {
           unclaimedBlankRows -= 1;
           return;

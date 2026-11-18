@@ -289,6 +289,7 @@ export type TSignCertFromCaDTO =
       friendlyName?: string;
       commonName?: string;
       altNames?: string;
+      altNameEntries?: { type: CertSubjectAlternativeNameType; value: string }[];
       ttl?: string;
       notBefore?: string;
       notAfter?: string;
