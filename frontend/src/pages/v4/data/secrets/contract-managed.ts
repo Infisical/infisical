@@ -106,7 +106,7 @@ export type SecretsManagedAdapter = SecretsOptionsAdapter &
       },
       options?: { enabled?: boolean }
     ) => V4QueryResult<{ conflicts: TSecretSyncRecursiveConflict[] }>;
-    useCreateSecretSync: V4Mutation<TCreateSecretSyncDTO>;
+    useCreateSecretSync: V4Mutation<TCreateSecretSyncDTO, TSecretSync>;
     useUpdateSecretSync: V4Mutation<TUpdateSecretSyncDTO, TSecretSync>;
     useDeleteSecretSync: V4Mutation<TDeleteSecretSyncDTO>;
     useTriggerSecretSync: V4Mutation<TTriggerSecretSyncSyncSecretsDTO>;

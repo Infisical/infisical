@@ -21,11 +21,12 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 
-import { SecretSyncUnionSchema } from "@app/components/secret-syncs/forms/schemas";
+import { UpdateSecretSyncFormSchema } from "@app/components/secret-syncs/forms/schemas";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
+import { useProjectPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import {
@@ -35,6 +36,14 @@ import {
   SourceFields,
   useSourceConflicts
 } from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
+import {
+  canManageFailureAlert,
+  FAILURE_ALERT_FIELDS,
+  failureAlertDefaults,
+  type TSavedFailureAlert,
+  useSaveFailureAlert
+} from "../../OverviewPage/secrets/secret-sync/failure-alert";
+import { FailureAlertFields } from "../../OverviewPage/secrets/secret-sync/failure-alert-fields";
 import { SyncConnections } from "../../OverviewPage/secrets/secret-sync/sync-fields";
 import type { LocalSyncConnection } from "../../OverviewPage/secrets/secret-sync/sync-model";
 import { SYNC_VIEWS } from "../../OverviewPage/secrets/secret-sync/sync-views";
@@ -42,20 +51,22 @@ import { destinationNameOf } from "./model";
 
 import flowStyles from "../../OverviewPage/secrets/flows/flows.module.css";
 
-export type EditSection = "source" | "destination" | "options" | "details";
+export type EditSection = "source" | "destination" | "options" | "details" | "alerts";
 
 const SECTION_TITLE: Record<EditSection, string> = {
   source: "Edit source",
   destination: "Edit destination",
   options: "Edit sync options",
-  details: "Edit details"
+  details: "Edit details",
+  alerts: "Edit failure alert"
 };
 
 const SECTION_FIELDS: Record<EditSection, string[]> = {
   source: ["environment", "secretPath", "syncOptions"],
   destination: ["connection", "destinationConfig"],
   options: ["syncOptions", "isAutoSyncEnabled"],
-  details: ["name", "description"]
+  details: ["name", "description"],
+  alerts: FAILURE_ALERT_FIELDS
 };
 
 const firstError = (errors: FieldErrors): string | undefined => {
@@ -90,33 +101,88 @@ const DuplicateWarning = ({ sync }: { sync: TSecretSync }) => {
   );
 };
 
+const SectionFields = ({
+  sync,
+  section,
+  environments,
+  conflicts,
+  savedAlertId,
+  canManageAlert,
+  failureAlertUnavailable
+}: {
+  sync: TSecretSync;
+  section: EditSection;
+  environments: readonly { id: string; name: string; slug: string }[];
+  conflicts: ReturnType<typeof useSourceConflicts>;
+  savedAlertId?: string;
+  canManageAlert: boolean;
+  failureAlertUnavailable?: boolean;
+}) => {
+  const { Destination } = SYNC_VIEWS[sync.destination];
+  if (section === "alerts")
+    return (
+      <FailureAlertFields
+        projectId={sync.projectId}
+        syncId={sync.id}
+        alertId={savedAlertId}
+        canManage={canManageAlert}
+        unavailable={failureAlertUnavailable}
+      />
+    );
+  if (section === "source")
+    return <SourceFields environments={[...environments]} conflicts={conflicts} />;
+  if (section === "options")
+    return (
+      <>
+        {!sync.lastSyncedAt && <InitialSyncFields />}
+        <OptionsFields />
+      </>
+    );
+  if (section === "destination")
+    return (
+      <>
+        <Destination />
+        <DuplicateWarning sync={sync} />
+      </>
+    );
+  return <DetailsFields />;
+};
+
 export const EditSyncSheet = ({
   sync,
   section,
   environments,
+  failureAlert,
+  failureAlertUnavailable,
   onClose
 }: {
   sync: TSecretSync;
   section: EditSection;
   environments: readonly { id: string; name: string; slug: string }[];
+  failureAlert?: TSavedFailureAlert;
+  failureAlertUnavailable?: boolean;
   onClose: () => void;
 }) => {
   const adapter = useV4Adapter("secrets");
   const update = adapter.useUpdateSecretSync();
+  const saveFailureAlert = useSaveFailureAlert();
+  const { permission } = useProjectPermission(sync.projectId);
+  const [savedAlert] = useState(failureAlert);
   const [added, setAdded] = useState<LocalSyncConnection[]>([]);
   const app = SECRET_SYNC_CONNECTION_MAP[sync.destination];
   const loaded = adapter.useSyncConnections(app, sync.projectId, {
     enabled: section === "destination"
   }).data;
   const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretSyncUnionSchema),
+    resolver: zodResolver(UpdateSecretSyncFormSchema(savedAlert)),
     mode: "onChange",
     defaultValues: {
       ...sync,
       environment: sync.environment ?? undefined,
       secretPath: sync.folder?.path,
       description: sync.description ?? "",
-      syncOptions: { ...sync.syncOptions, includeAllSubFolders: sync.includeAllSubFolders }
+      syncOptions: { ...sync.syncOptions, includeAllSubFolders: sync.includeAllSubFolders },
+      ...failureAlertDefaults(sync.projectId, savedAlert)
     }
   });
   const { isDirty } = form.formState;
@@ -125,7 +191,6 @@ export const EditSyncSheet = ({
   const [pending, setPending] = useState(false);
   const guard = useDiscardChangesGuard({ isDirty, onDiscard: onClose });
   const name = destinationNameOf(sync.destination);
-  const { Destination } = SYNC_VIEWS[sync.destination];
 
   const connections = [
     { id: sync.connection.id, name: sync.connection.name, app },
@@ -133,30 +198,52 @@ export const EditSyncSheet = ({
     ...added
   ];
 
+  const canManageAlert = canManageFailureAlert(permission, {
+    environment: sync.environment?.slug,
+    secretPath: sync.folder?.path,
+    connectionId: sync.connection.id
+  });
+
   const submit = async (data: FieldValues) => {
     setPending(true);
     try {
-      await update.mutateAsync({
-        syncId: sync.id,
-        destination: sync.destination,
-        projectId: sync.projectId,
-        name: data.name,
-        description: data.description || null,
-        connectionId: data.connection.id,
-        environment: data.environment?.slug,
-        secretPath: data.secretPath,
-        isAutoSyncEnabled: data.isAutoSyncEnabled,
-        includeAllSubFolders: Boolean(data.syncOptions?.includeAllSubFolders),
-        destinationConfig: data.destinationConfig,
-        syncOptions: data.syncOptions
-      });
+      if (section === "alerts") {
+        await saveFailureAlert({
+          syncId: sync.id,
+          projectId: sync.projectId,
+          saved: savedAlert,
+          enabled: data.isFailureAlertEnabled,
+          channels: data.channels
+        });
+        saved(`Updated the failure alert for ${sync.name}`);
+      } else {
+        await update.mutateAsync({
+          syncId: sync.id,
+          destination: sync.destination,
+          projectId: sync.projectId,
+          name: data.name,
+          description: data.description || null,
+          connectionId: data.connection.id,
+          environment: data.environment?.slug,
+          secretPath: data.secretPath,
+          isAutoSyncEnabled: data.isAutoSyncEnabled,
+          includeAllSubFolders: Boolean(data.syncOptions?.includeAllSubFolders),
+          destinationConfig: data.destinationConfig,
+          syncOptions: data.syncOptions
+        });
+        saved(`Updated ${data.name}`);
+      }
+      onClose();
     } catch (error) {
-      failed(`Couldn't update ${sync.name}`, error);
+      failed(
+        section === "alerts"
+          ? `Couldn't update the failure alert for ${sync.name}`
+          : `Couldn't update ${sync.name}`,
+        error
+      );
+    } finally {
       setPending(false);
-      return;
     }
-    saved(`Updated ${data.name}`);
-    onClose();
   };
 
   const save = async () => {
@@ -166,24 +253,6 @@ export const EditSyncSheet = ({
       failed("Some sync settings are invalid", new Error(firstError(errors)))
     )();
   };
-
-  let body = <DetailsFields />;
-  if (section === "source")
-    body = <SourceFields environments={[...environments]} conflicts={conflicts} />;
-  if (section === "options")
-    body = (
-      <>
-        {!sync.lastSyncedAt && <InitialSyncFields />}
-        <OptionsFields />
-      </>
-    );
-  if (section === "destination")
-    body = (
-      <>
-        <Destination />
-        <DuplicateWarning sync={sync} />
-      </>
-    );
 
   return (
     <SyncConnections
@@ -211,7 +280,15 @@ export const EditSyncSheet = ({
                   save();
                 }}
               >
-                {body}
+                <SectionFields
+                  sync={sync}
+                  section={section}
+                  environments={environments}
+                  conflicts={conflicts}
+                  savedAlertId={savedAlert?.id}
+                  canManageAlert={canManageAlert}
+                  failureAlertUnavailable={failureAlertUnavailable}
+                />
               </form>
             </SheetBody>
             <SheetFooter>
@@ -223,6 +300,9 @@ export const EditSyncSheet = ({
                   loading={pending}
                   disabledReason={
                     (conflicts.length > 0 && "Resolve the secret name conflicts first") ||
+                    (section === "alerts" &&
+                      (failureAlertUnavailable || !canManageAlert) &&
+                      "You can't change this sync's failure alert") ||
                     (isDirty ? undefined : "No changes to save")
                   }
                   onClick={save}

@@ -43,6 +43,7 @@ import {
   MAX_CHANNELS,
   normalizeEmail,
   pluralize,
+  PROJECT_RECIPIENT_LABELS,
   type TDraftChannel,
   type TFieldErrors,
   type TMemberEmails,
@@ -123,10 +124,6 @@ const PROJECT_PRINCIPALS: string[] = [
   AlertPrincipalType.ProjectMembers,
   AlertPrincipalType.ProjectAdmins
 ];
-const PROJECT_RECIPIENT_LABELS: Record<string, string> = {
-  [AlertPrincipalType.ProjectMembers]: "All project members",
-  [AlertPrincipalType.ProjectAdmins]: "Project admins"
-};
 
 const EmailRecipientsField = ({
   value,

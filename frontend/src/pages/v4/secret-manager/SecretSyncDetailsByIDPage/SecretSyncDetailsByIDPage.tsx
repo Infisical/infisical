@@ -23,6 +23,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
 import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
@@ -35,6 +36,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { formatDateTime } from "../../access/roles";
 import { AccessRestricted } from "../../access/ui";
+import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -56,6 +58,10 @@ import {
   SyncStatus,
   useSyncActions
 } from "../IntegrationsPage/secret-syncs/parts";
+import {
+  failureAlertReviewItems,
+  toSavedFailureAlert
+} from "../OverviewPage/secrets/secret-sync/failure-alert";
 import { SYNC_VIEWS } from "../OverviewPage/secrets/secret-sync/sync-views";
 
 const route = v4Path(
@@ -217,6 +223,21 @@ const SyncDetails = ({
   const note = sync.syncStatus === SecretSyncStatus.Succeeded ? sync.lastSyncMessage : null;
   const options = sync.syncOptions as Record<string, unknown>;
   const sourceDeleted = !sync.folder || !sync.environment;
+  const alerts = useV4Adapter("certManagerSettings").useAlerts({
+    resourceType: AlertResourceType.SecretSync,
+    resourceId: sync.id,
+    projectId
+  });
+  const failureAlert = toSavedFailureAlert(alerts.data);
+  const members = useAlertMembers(projectId);
+  const failureAlertItems: DataListItem[] = alerts.error
+    ? [["Sync failure", "Couldn't load the failure alert"]]
+    : failureAlertReviewItems({
+        enabled: Boolean(failureAlert?.enabled),
+        channels: failureAlert?.channels ?? [],
+        canManage: true,
+        members
+      });
 
   const editButton = (section: EditSection, reason = editBlock) => (
     <Button variant="ghost" size="sm" disabledReason={reason} onClick={() => setEditing(section)}>
@@ -351,6 +372,16 @@ const SyncDetails = ({
               >
                 <DataList variant="props" density="compact" items={source} />
               </Card>
+              <Card
+                variant="framed"
+                title="Failure alert"
+                action={editButton(
+                  "alerts",
+                  editBlock ?? (alerts.isPending ? "Loading the failure alert" : undefined)
+                )}
+              >
+                <DataList variant="props" density="compact" items={failureAlertItems} />
+              </Card>
             </Stack>
           }
         >
@@ -377,6 +408,8 @@ const SyncDetails = ({
           sync={sync}
           section={editing}
           environments={environments}
+          failureAlert={failureAlert}
+          failureAlertUnavailable={Boolean(alerts.error)}
           onClose={() => setEditing(undefined)}
         />
       )}

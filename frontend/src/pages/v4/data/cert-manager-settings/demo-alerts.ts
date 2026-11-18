@@ -176,6 +176,70 @@ const SETTLEMENT_BROKER = "f04b7d19-3e6a-4c82-b1d5-9a7e2c6f8d30";
 
 const VERCEL_PREVIEW_SYNC = "c83b5d07-2e91-4f6a-9c4d-8b0f1e7a5d22";
 
+const syncFailureAlert = (syncName: string, id: string, channels: TAlert["channels"]) =>
+  alert({
+    id,
+    name: "Sync failure alert",
+    eventType: AlertEventType.SecretSyncFailed,
+    resourceType: AlertResourceType.SecretSync,
+    resourceId: `sync-${syncName}`,
+    projectId: IDENTITY_PROJECT_ID,
+    condition: null,
+    channels
+  });
+
+const syncAlerts = () => [
+  syncFailureAlert("aws-parameter-store-payments-dev", "5b8c2d41-7e3f-4a19-b6d0-2c9e8f1a3b51", [
+    {
+      id: "c1a2b3c4-0201-4000-8000-000000000001",
+      name: "Email",
+      channelType: AlertChannelType.Email,
+      enabled: true,
+      config: {},
+      recipients: [
+        { principalType: AlertPrincipalType.ProjectAdmins, principalId: IDENTITY_PROJECT_ID }
+      ]
+    }
+  ]),
+  syncFailureAlert("aws-secrets-manager-payments-prod", "6c9d3e52-8f40-4b2a-a7e1-3d0f9a2b4c62", [
+    {
+      id: "c1a2b3c4-0202-4000-8000-000000000001",
+      name: "Email",
+      channelType: AlertChannelType.Email,
+      enabled: true,
+      config: {},
+      recipients: [
+        { principalType: AlertPrincipalType.ProjectAdmins, principalId: IDENTITY_PROJECT_ID },
+        { principalType: AlertPrincipalType.User, principalId: "u-sarah" }
+      ]
+    },
+    {
+      id: "c1a2b3c4-0202-4000-8000-000000000002",
+      name: "Slack payments production on-call escalations",
+      channelType: AlertChannelType.Slack,
+      enabled: true,
+      config: { hasWebhookUrl: true },
+      recipients: []
+    },
+    {
+      id: "c1a2b3c4-0202-4000-8000-000000000003",
+      name: "PagerDuty",
+      channelType: AlertChannelType.PagerDuty,
+      enabled: true,
+      config: { hasIntegrationKey: true },
+      recipients: []
+    },
+    {
+      id: "c1a2b3c4-0202-4000-8000-000000000004",
+      name: "Email 2",
+      channelType: AlertChannelType.Email,
+      enabled: false,
+      config: {},
+      recipients: []
+    }
+  ])
+];
+
 const identityAlerts = () => [
   alert({
     id: "4a2b7e5c-bf64-4c8d-99a5-3b0e6f2c4d44",
@@ -415,7 +479,8 @@ const alerts = createFixtureStore<TAlert[]>([
       }
     ]
   }),
-  ...identityAlerts()
+  ...identityAlerts(),
+  ...syncAlerts()
 ]);
 
 const byId = (alertId: string) => alerts.get().find((entry) => entry.id === alertId) as TAlert;
