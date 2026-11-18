@@ -1,12 +1,12 @@
 import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
-import { ProjectsModule } from "../module";
+import { buildProjectsModule } from "../testing/projects-module";
 
 describe("ProjectsService workspaces for License", () => {
   const h = setupIntegration();
 
-  const build = () => ({ projects: new ProjectsModule({ db: h.db }).projectsService });
+  const build = () => ({ projects: buildProjectsModule(h.db).projectsService });
 
   const orgTree = async () => {
     const root = await h.factories.organization();

@@ -4,6 +4,8 @@ import { requestContext } from "@fastify/request-context";
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -19,9 +21,7 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
 import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";

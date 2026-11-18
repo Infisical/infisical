@@ -2,11 +2,11 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  OrgPermissionAppConnectionActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 

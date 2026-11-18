@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
@@ -16,7 +17,7 @@ describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const { organizationsService } = new OrganizationsModule({ db: h.db });
+    const { organizationsService } = new OrganizationsModule({ db: h.db, ...accessControlServices(h.db) });
     return { module: new CertManagerModule({ db: h.db, organizationsService }) };
   };
 

@@ -1,3 +1,4 @@
+import type { TActorOrg } from "@app/domains/lib/actor-context";
 import { TReadOptions } from "@app/domains/lib/data-access";
 import { TStoreLocks } from "@app/domains/lib/transactions";
 
@@ -9,6 +10,8 @@ export type TOrganization = { id: string; name: string; slug: string };
 export type TOrganizationStore = {
   findRootOrgId(orgId: string, options?: TReadOptions): Promise<string | null>;
   findById(orgId: string, options?: TReadOptions): Promise<TOrganization | null>;
+  // The org with its root org's sign-in policy, as a request acting in it needs. Null when it doesn't exist.
+  findActorOrg(orgId: string, options?: TReadOptions): Promise<TActorOrg | null>;
 };
 
 // Null orgId = whole instance.

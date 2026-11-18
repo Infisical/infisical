@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -12,7 +13,6 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";

@@ -2,6 +2,7 @@ import { ProjectType, TableName } from "@app/db/schemas";
 import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
+import { Project } from "../models/project";
 import { TProjectStore } from "../services/dependencies";
 
 const UNCOUNTED_WORKSPACE_TYPES = [
@@ -32,6 +33,30 @@ export class ProjectStore implements TProjectStore {
       return toCount(row?.count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count workspaces" });
+    }
+  }
+
+  async findById(projectId: string, options?: TReadOptions): Promise<Project | null> {
+    try {
+      const row = await this.connection
+        .reader(options)(TableName.Project)
+        .where({ id: projectId })
+        .first("id", "name", "slug", "orgId", "type", "enforceEncryptedSecretManagerSecretMetadata");
+      return row ? Project.restore(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project" });
+    }
+  }
+
+  async findDeletionState(projectId: string, options?: TReadOptions): Promise<string> {
+    try {
+      const row = await this.connection
+        .reader(options)(TableName.Project)
+        .where({ id: projectId })
+        .first("deleteAfter");
+      return row?.deleteAfter ? new Date(row.deleteAfter).toISOString() : "";
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project deletion state" });
     }
   }
 }

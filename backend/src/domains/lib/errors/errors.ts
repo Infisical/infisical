@@ -50,17 +50,24 @@ export type TPermissionDenial = {
   matchedRules: TPermissionDeniedRule[];
 };
 
-// The actor may not do this. `denial` says what was refused, for the response and the permission-denied audit log.
+// The actor may not do this. A refused permission check carries `denial` (what was refused and the rules that matched),
+// which the 403 response and the permission-denied audit log report; a refusal with no check behind it (not a
+// member, another org's project) carries only its message.
 export class PermissionDeniedError extends DomainError {
-  readonly denial: TPermissionDenial;
+  readonly denial?: TPermissionDenial;
 
-  constructor({ denial, cause }: { denial: TPermissionDenial; cause?: unknown }) {
-    super({
-      message: `You are not allowed to ${denial.action} on ${denial.subject}`,
-      name: "PermissionDenied",
-      details: denial.matchedRules,
-      cause
-    });
-    this.denial = denial;
+  constructor(props: { denial: TPermissionDenial; cause?: unknown } | TDomainErrorProps) {
+    if ("denial" in props) {
+      const { denial, cause } = props;
+      super({
+        message: `You are not allowed to ${denial.action} on ${denial.subject}`,
+        name: "PermissionDenied",
+        details: denial.matchedRules,
+        cause
+      });
+      this.denial = denial;
+    } else {
+      super(props);
+    }
   }
 }

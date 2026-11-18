@@ -2,16 +2,16 @@ import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@ca
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   agentVaultProjectAdminPermissions,
   agentVaultProjectMemberPermissions
 } from "@app/ee/services/permission/default-roles";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 

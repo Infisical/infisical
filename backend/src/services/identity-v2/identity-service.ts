@@ -21,17 +21,17 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  isCustomProjectRole,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  isCustomProjectRole,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";

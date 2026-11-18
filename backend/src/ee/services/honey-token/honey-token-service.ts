@@ -5,10 +5,7 @@ import { THoneyTokens } from "@app/db/schemas/honey-tokens";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";

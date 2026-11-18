@@ -18,14 +18,11 @@ import {
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { ProjectPermissionCodeSigningActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionCodeSigningActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
