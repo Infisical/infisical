@@ -208,12 +208,15 @@ export const CoolifySyncFns = {
       }
     }
 
-    // A key that already has a preview variable gets no copy, so only keys new to the application need the empty step
     if (resourceType === CoolifyResourceType.Application && !isPreview) {
-      const existingKeys = new Set(envVars.map(({ key }) => key));
+      const keysWithVars = new Set(envVars.map(({ key }) => key));
       await createProductionEnvVarsWithoutPreviewCopies(
         api,
-        upserts.map(({ key }) => key).filter((key) => !existingKeys.has(key))
+        upserts
+          // New to the application, or still empty because an earlier run stopped before writing the value. A key
+          // that already has a preview variable gets no copy.
+          .filter(({ key, value }) => !keysWithVars.has(key) || (value && existingVars.get(key)?.value === null))
+          .map(({ key }) => key)
       );
     }
 

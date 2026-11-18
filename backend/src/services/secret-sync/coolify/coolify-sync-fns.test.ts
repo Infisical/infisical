@@ -157,6 +157,26 @@ describe("CoolifySyncFns", () => {
     expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-NEW`]);
   });
 
+  it("finishes deleting the preview copy of a variable an earlier run left empty", async () => {
+    stubCoolify([envVar("KEY", null), envVar("KEY", null, { isPreview: true })]);
+
+    await sync(syncWith(), payloadOf({ KEY: "secret" }));
+
+    expect(requestMethods()).toEqual(["GET", "PATCH", "GET", "DELETE", "PATCH"]);
+    expect(deletedUrls()).toEqual([`${APPLICATION_ENVS}/preview-KEY`]);
+  });
+
+  it("never empties a production variable whose value Coolify withheld", async () => {
+    stubCoolify([envVar("KEY"), envVar("KEY", undefined, { isPreview: true })]);
+
+    await sync(syncWith(), payloadOf({ KEY: "secret" }));
+
+    expect(requestsWith("PATCH").map(({ data }) => data)).toEqual([
+      { data: [{ key: "KEY", value: "secret", is_literal: true }] }
+    ]);
+    expect(deletedUrls()).toHaveLength(0);
+  });
+
   it("skips the empty step for a key that already has a preview variable, which Coolify doesn't copy over", async () => {
     stubCoolify([envVar("SHARED", "staging-value", { isPreview: true })]);
 
